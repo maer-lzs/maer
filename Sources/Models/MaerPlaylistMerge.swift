@@ -189,4 +189,19 @@ nonisolated enum MaerPlaylistMerge {
         let mine = Set(candidate.itemIds)
         return !existing.contains { mine.isSubset(of: Set($0)) }
     }
+
+    /// Whether two sets of lists differ in anything but the device name.
+    /// The name only labels a rescue copy; each device stamps its own on
+    /// every reconcile, so comparing it would make every device rewrite
+    /// a list the other one just stored with the same content.
+    static func differs(_ a: [String: Entry], _ b: [String: Entry]) -> Bool {
+        func content(_ lists: [String: Entry]) -> [String: Entry] {
+            lists.mapValues { entry in
+                var unnamed = entry
+                unnamed.device = nil
+                return unnamed
+            }
+        }
+        return content(a) != content(b)
+    }
 }

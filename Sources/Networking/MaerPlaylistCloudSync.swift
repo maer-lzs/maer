@@ -25,6 +25,10 @@ final class MaerPlaylistCloudSync {
     /// ids); the identity where the rule does not hold. A witness hands in
     /// its own, so two devices on different builds can share one carrier.
     private let itemIdMap: (String) -> String
+    /// This device, by the name the system hands out (see `DeviceIdentity`).
+    /// Travels with every version, so a rescue copy can say where it came
+    /// from. A witness hands in its own, so two devices can share one run.
+    private let deviceName: () -> String
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
@@ -34,10 +38,12 @@ final class MaerPlaylistCloudSync {
     /// its own.
     init(carrier: any PlaylistCarrier = PlaylistCarriers.make(),
          playlists: MaerPlaylists = .shared,
-         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) }) {
+         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
+         deviceName: @escaping () -> String = { DeviceIdentity.name }) {
         self.carrier = carrier
         self.playlists = playlists
         self.itemIdMap = itemIdMap
+        self.deviceName = deviceName
     }
 
     func start() {
@@ -93,12 +99,13 @@ final class MaerPlaylistCloudSync {
         playlists.rekey(map)
 
         var local = MaerPlaylistMerge.Snapshot(tombstones: MaerPlaylists.tombstones)
+        let device = deviceName()
         for list in playlists.syncable {
             local.lists[list.id] = .init(name: list.name, updatedAt: list.updatedAt,
                                          itemIds: list.itemIds, titles: list.titles,
                                          nameUpdatedAt: list.nameUpdatedAt,
                                          snapshots: list.snapshots, removed: list.removed,
-                                         added: list.added, device: Self.deviceName)
+                                         added: list.added, device: device)
         }
 
         // The carrier read with its entries in the form this device keeps.
@@ -130,8 +137,10 @@ final class MaerPlaylistCloudSync {
 
         // Hand the merged state back only when it differs from what the
         // carrier holds. An unconditional write would ping-pong between
-        // devices; the carrier does not decide, it stores.
-        if outcome.lists != cloud.lists || outcome.tombstones != cloud.tombstones {
+        // devices; the carrier does not decide, it stores. The device name
+        // is no difference: each device stamps its own, and comparing it
+        // made two devices rewrite the same content after each other.
+        if MaerPlaylistMerge.differs(outcome.lists, cloud.lists) || outcome.tombstones != cloud.tombstones {
             carrier.store(MaerPlaylistMerge.Snapshot(lists: outcome.lists, tombstones: outcome.tombstones))
         }
         if changedLocally {
@@ -154,11 +163,6 @@ final class MaerPlaylistCloudSync {
     nonisolated static func rescueReason(_ entry: MaerPlaylistMerge.Entry) -> String {
         String(localized: "Both devices changed this list. This is the version that lost; rename it to keep it.")
     }
-
-    /// This device, by the name the system hands out (see
-    /// `DeviceIdentity`). Travels with every version, so a rescue copy can
-    /// say where it came from.
-    static var deviceName: String { DeviceIdentity.name }
 }
 
 extension MaerPlaylistCloudSync: AccessFollower {
