@@ -426,7 +426,7 @@ struct NavidromeRekeyTests {
 
         let untouched = MaerPlaylistMerge.Entry(name: "Liste", updatedAt: 5, itemIds: ["rss:f:e"],
                                                 titles: ["rss:gone": "a title of an id the list no longer holds"])
-        #expect(NavidromeRekey.playlist(untouched, Self.map) == untouched,
+        #expect(MaerPlaylistMerge.isSameVersion(NavidromeRekey.playlist(untouched, Self.map), untouched),
                 "a list in which no id changes is handed back as it is")
     }
 

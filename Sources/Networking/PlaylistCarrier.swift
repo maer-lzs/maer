@@ -23,8 +23,9 @@ protocol PlaylistCarrier: AnyObject {
     var name: String { get }
     /// What the far side holds, as far as this carrier knows.
     func held() -> MaerPlaylistMerge.Snapshot
-    /// Store the merged state. The carrier writes only when it differs from
-    /// what it holds; an unconditional write would ping-pong between devices.
+    /// Store the merged state. The runner decides whether to store at all
+    /// (an unconditional write would ping-pong between devices); a carrier
+    /// that compares per list before writing asks `MaerPlaylistMerge.differs`.
     func store(_ snapshot: MaerPlaylistMerge.Snapshot)
     /// Starts delivery. `onChange` fires on main whenever the far side moved;
     /// the runner re-reads, merges and decides.

@@ -232,7 +232,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(records["l1"]?.tombstone == false)
         #expect(records["gone"]?.tombstone == true && records["gone"]?.payload.isEmpty == true)
         let back = CloudKitPlaylistCarrier.snapshot(of: records)
-        #expect(back == snap)
+        #expect(sameSnapshot(back, snap))
         // And the door rows round-trip too.
         #expect(CloudKitPlaylistCarrier.records(of: CloudKitPlaylistCarrier.rows(of: records)) == records)
     }

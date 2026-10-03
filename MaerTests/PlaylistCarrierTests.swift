@@ -8,6 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
+/// Whether two snapshots are the same, every field of every list including
+/// the device name. Only for round trips, where "every field survives" is
+/// the claim; the production question is `MaerPlaylistMerge.differs`.
+nonisolated func sameSnapshot(_ a: MaerPlaylistMerge.Snapshot?, _ b: MaerPlaylistMerge.Snapshot) -> Bool {
+    guard let a, a.tombstones == b.tombstones, Set(a.lists.keys) == Set(b.lists.keys) else { return false }
+    return a.lists.allSatisfy { id, entry in b.lists[id].map { MaerPlaylistMerge.isSameVersion(entry, $0) } ?? false }
+}
+
 /// The playlists travel through a carrier; the rule (`MaerPlaylistMerge`)
 /// does not. The key-value carrier keeps the ONE consolidated blob and the
 /// tombstones, reads them back as a snapshot and writes a snapshot back;
@@ -39,7 +47,7 @@ struct PlaylistCarrierTests {
 
         carrier.store(sample)
         let back = carrier.held()
-        #expect(back == sample, "every field survives the plist round trip")
+        #expect(sameSnapshot(back, sample), "every field survives the plist round trip")
         #expect(back.lists["l1"]?.device == "phone")
         #expect(back.lists["l1"]?.nameUpdatedAt == 1_700_000_100)
         #expect(back.tombstones["gone"] == 1_699_000_000)
@@ -94,8 +102,8 @@ struct PlaylistCarrierTests {
         #expect(writes.first?.declared == true, "playlists may shrink (a deletion), so the shrink is declared")
         let key = MaerSyncCarrierTests.FakeTransport.key(MaerSyncSession.playlistsKind, "")
         let stored = try #require(transport.documents[key])
-        #expect(MaerSyncPlaylistWire.decode(stored.body) == sample)
-        #expect(carrier.held() == sample)
+        #expect(sameSnapshot(MaerSyncPlaylistWire.decode(stored.body), sample))
+        #expect(sameSnapshot(carrier.held(), sample))
 
         // Another device writes a different snapshot; the version moves, the
         // next round takes it and wakes the runner to re-merge.
@@ -104,7 +112,7 @@ struct PlaylistCarrierTests {
         transport.foreignWrite(kind: MaerSyncSession.playlistsKind, scope: "",
                                body: try MaerSyncPlaylistWire.encode(other))
         await session.refresh(by: "tick")
-        #expect(carrier.held() == other, "the far side is now the other device's snapshot")
+        #expect(sameSnapshot(carrier.held(), other), "the far side is now the other device's snapshot")
         #expect(woken >= 1)
 
         // The claim and stats families are untouched by the playlists channel.
@@ -114,7 +122,7 @@ struct PlaylistCarrierTests {
     @Test("der Draht traegt jedes Feld hin und zurueck; Unlesbares ist keine Momentaufnahme")
     func theServiceWireRoundTrips() throws {
         let data = try MaerSyncPlaylistWire.encode(sample)
-        #expect(MaerSyncPlaylistWire.decode(data) == sample)
+        #expect(sameSnapshot(MaerSyncPlaylistWire.decode(data), sample))
         #expect(MaerSyncPlaylistWire.decode(Data("nonsense".utf8)) == nil)
         // The same snapshot gives the same bytes, so a needless write is a
         // byte-for-byte match the runner skips.

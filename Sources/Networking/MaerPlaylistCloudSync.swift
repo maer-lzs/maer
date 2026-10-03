@@ -129,7 +129,7 @@ final class MaerPlaylistCloudSync {
             let kept = playlists.playlists.map(\.itemIds)
             let rescued = outcome.rescued.filter { MaerPlaylistMerge.needsRescue($0, existing: kept) }
             for loser in rescued {
-                let id = local.lists.first { $0.value == loser }?.key ?? cloud.lists.first { $0.value == loser }?.key ?? "?"
+                let id = MaerPlaylistMerge.sourceId(of: loser, local: local, cloud: cloud) ?? "?"
                 let winner = outcome.lists[id]
                 Logger.library.notice("PLAYLIST merge rescue list=\(id, privacy: .public) name=\(loser.name, privacy: .public) loser.t=\(Int(loser.updatedAt)) loser.device=\(loser.device ?? "-", privacy: .public) loser.items=\(loser.itemIds.count) hash=\(loser.itemIds.hashValue) winner.t=\(Int(winner?.updatedAt ?? 0)) winner.device=\(winner?.device ?? "-", privacy: .public) winner.items=\(winner?.itemIds.count ?? 0) hash=\(winner?.itemIds.hashValue ?? 0) reason=content-differs")
             }

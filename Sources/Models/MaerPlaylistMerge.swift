@@ -29,8 +29,14 @@ import Foundation
 /// here comes back from iCloud on the next reconcile. A tombstone carries the
 /// moment of deletion and wins against any older version of that list. And
 /// loses against a newer one, so re-creating a list on another device works.
+///
+/// **No version compares with `==`.** `Entry`, `Snapshot` and `Outcome` are
+/// not `Equatable`: the one question a caller has is whether two versions
+/// differ in what they carry, and `differs` answers it without the device
+/// name. A plain `==` counted the name and made devices rewrite each other's
+/// lists, so the compiler refuses it.
 nonisolated enum MaerPlaylistMerge {
-    struct Entry: Equatable, Sendable {
+    struct Entry: Sendable {
         var name: String
         var updatedAt: Double
         /// When the NAME was last changed, as its own clock. `updatedAt`
@@ -78,7 +84,7 @@ nonisolated enum MaerPlaylistMerge {
         }
     }
 
-    struct Snapshot: Equatable, Sendable {
+    struct Snapshot: Sendable {
         /// list id → version
         var lists: [String: Entry] = [:]
         /// list id → moment of deletion
@@ -90,7 +96,7 @@ nonisolated enum MaerPlaylistMerge {
         }
     }
 
-    struct Outcome: Equatable, Sendable {
+    struct Outcome: Sendable {
         /// The state BOTH sides converge to.
         var lists: [String: Entry] = [:]
         /// Deletion marks both sides carry from now on.
@@ -197,11 +203,34 @@ nonisolated enum MaerPlaylistMerge {
     /// to "is this a difference?" for the runner and for every carrier that
     /// writes per list.
     static func differs(_ a: Entry, _ b: Entry) -> Bool {
-        var unnamedA = a
-        var unnamedB = b
-        unnamedA.device = nil
-        unnamedB.device = nil
-        return unnamedA != unnamedB
+        a.name != b.name
+            || a.updatedAt != b.updatedAt
+            || a.nameUpdatedAt != b.nameUpdatedAt
+            || a.itemIds != b.itemIds
+            || a.titles != b.titles
+            || a.snapshots != b.snapshots
+            || a.removed != b.removed
+            || a.added != b.added
+    }
+
+    /// The fields `differs` compares, every stored field of `Entry` but
+    /// `device`. A witness holds this list against the stored fields, so a
+    /// new field cannot be left out of the comparison unnoticed.
+    static let comparedFields: Set<String> =
+        ["name", "updatedAt", "nameUpdatedAt", "itemIds", "titles", "snapshots", "removed", "added"]
+
+    /// Whether `a` and `b` are the same version, device name included. Only
+    /// for finding where a version came from (the id of a rescued loser),
+    /// never for deciding whether something changed.
+    static func isSameVersion(_ a: Entry, _ b: Entry) -> Bool {
+        !differs(a, b) && a.device == b.device
+    }
+
+    /// The list id a rescued loser stood under, looked up on the local side
+    /// first, then on the cloud side; nil when neither holds that version.
+    static func sourceId(of loser: Entry, local: Snapshot, cloud: Snapshot) -> String? {
+        local.lists.first { isSameVersion($0.value, loser) }?.key
+            ?? cloud.lists.first { isSameVersion($0.value, loser) }?.key
     }
 
     /// The same answer over two sets of lists.

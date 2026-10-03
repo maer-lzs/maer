@@ -214,5 +214,60 @@ struct MaerPlaylistMergeTests {
         #expect(legacy.lists["l"]?.name == "B",
                 "zwei Seiten ohne Uhr verhalten sich nicht mehr wie vor dem Feld")
     }
+
+    /// A version every field of which is set, so a change of any one field
+    /// is a change from a value, not from a default.
+    private static let full = MaerPlaylistMerge.Entry(
+        name: "Liste", updatedAt: 100, itemIds: ["a", "b"], titles: ["a": "A"], nameUpdatedAt: 90,
+        snapshots: ["a": CarriedItem(id: "a", title: "A", subtitle: "S", duration: 60)],
+        removed: ["c": 80], added: ["a": 70], device: "phone")
+
+    /// `differs` compares every stored field but the device name, and the
+    /// list of compared fields is the list of stored fields.
+    @Test("jedes gespeicherte Feld ausser dem Geraetenamen ist ein Unterschied, und die Liste der Felder ist vollstaendig")
+    func differsSeesEveryFieldButTheDevice() {
+        let stored = Set(Mirror(reflecting: Self.full).children.compactMap(\.label))
+        #expect(stored == MaerPlaylistMerge.comparedFields.union(["device"]),
+                "a stored field of Entry is missing from comparedFields: \(stored)")
+        var changes: [String: MaerPlaylistMerge.Entry] = [:]
+        var e = Self.full; e.name = "Andere"; changes["name"] = e
+        e = Self.full; e.updatedAt = 101; changes["updatedAt"] = e
+        e = Self.full; e.nameUpdatedAt = 91; changes["nameUpdatedAt"] = e
+        e = Self.full; e.itemIds = ["a"]; changes["itemIds"] = e
+        e = Self.full; e.titles = ["a": "B"]; changes["titles"] = e
+        e = Self.full; e.snapshots = [:]; changes["snapshots"] = e
+        e = Self.full; e.removed = [:]; changes["removed"] = e
+        e = Self.full; e.added = [:]; changes["added"] = e
+        #expect(Set(changes.keys) == MaerPlaylistMerge.comparedFields, "the witness changes every compared field")
+        for (field, changed) in changes {
+            #expect(MaerPlaylistMerge.differs(Self.full, changed), "a change of \(field) is no difference")
+        }
+        e = Self.full; e.device = "tablet"
+        #expect(!MaerPlaylistMerge.differs(Self.full, e), "the device name counted as a difference")
+        #expect(!MaerPlaylistMerge.isSameVersion(Self.full, e), "another device is another version")
+        #expect(MaerPlaylistMerge.isSameVersion(Self.full, Self.full))
+    }
+
+    /// The id a rescued loser came from: the local side first, then the
+    /// cloud side, and only the very version, device name included.
+    @Test("die Kennung einer geretteten Fassung ist die Liste, unter der genau diese Fassung stand")
+    func theRescuedLoserNamesItsList() {
+        var other = Self.full; other.name = "Andere"
+        var elsewhere = Self.full; elsewhere.device = "tablet"
+        let local = MaerPlaylistMerge.Snapshot(lists: ["mine": other, "near": elsewhere])
+        let cloud = MaerPlaylistMerge.Snapshot(lists: ["far": Self.full])
+        #expect(MaerPlaylistMerge.sourceId(of: Self.full, local: local, cloud: cloud) == "far")
+        #expect(MaerPlaylistMerge.sourceId(of: other, local: local, cloud: cloud) == "mine")
+        #expect(MaerPlaylistMerge.sourceId(of: Self.full, local: local, cloud: .init()) == nil,
+                "a version neither side holds has no list")
+    }
+
+    /// No version compares with `==`; the compiler refuses it.
+    @Test("weder Fassung noch Momentaufnahme noch Ergebnis sind vergleichbar mit ==")
+    func noVersionIsEquatable() {
+        #expect(!(MaerPlaylistMerge.Entry.self is any Equatable.Type))
+        #expect(!(MaerPlaylistMerge.Snapshot.self is any Equatable.Type))
+        #expect(!(MaerPlaylistMerge.Outcome.self is any Equatable.Type))
+    }
 }
 #endif
