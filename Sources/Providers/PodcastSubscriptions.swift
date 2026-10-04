@@ -298,6 +298,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.notice("SUBSTORE bootstrap: rows=\(rows != nil) shows=\(decoded?.count ?? 0)")
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             self?.rowBase = base
+            if case .unknown = base { self?.seenWhileUnknown = decoded ?? [] }
             guard let self, let decoded, !decoded.isEmpty else { return }
             // The base stays what the rows hold: the LOADED stock, set above.
             // A fold or re-key in `migrated` is written as a diff against it,
@@ -370,6 +371,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed.
     private var rowBase: RowBase<[PodcastShow]> = .fresh
+    /// The shows this run read at start while the rows stayed unknown:
+    /// rows somebody saw. One that is gone from the stock goes with the
+    /// write as a removal; rows nobody could read stay untouched.
+    private var seenWhileUnknown: [PodcastShow] = []
     /// The shows the rows are known to hold (the wipe guard's measure).
     private var landedShows: [PodcastShow] { rowBase.knownValue ?? [] }
 
@@ -397,10 +402,14 @@ final class PodcastSubscriptions: ObservableObject {
             // The base is read HERE, after the write before landed or
             // failed. Known rows: the diff against them. Fresh rows: the
             // diff against nothing is the whole stock. Unknown rows: the
-            // same diff, and it removes nothing, so rows nobody saw are
-            // not buried.
+            // diff against the shows this run read and that are gone now,
+            // so an unsubscribe survives the restart, and rows nobody saw
+            // are not buried.
             let base = self.rowBase
-            let diff = PodcastRowDiff.compute(previous: base.knownValue ?? [], current: snapshot)
+            let previous = base.knownValue ?? self.seenWhileUnknown.filter { seen in
+                !snapshot.contains { $0.id == seen.id }
+            }
+            let diff = PodcastRowDiff.compute(previous: previous, current: snapshot)
             guard !diff.isEmpty else { return }
             let started = Date()
             do {
@@ -408,6 +417,7 @@ final class PodcastSubscriptions: ObservableObject {
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
                 Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
                 self.rowBase = .known(snapshot)
+                self.seenWhileUnknown = []
             } catch {
                 Logger.rss.error("SUBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
             }
