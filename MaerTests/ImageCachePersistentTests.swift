@@ -130,13 +130,17 @@ struct ImageCachePersistentTests {
         let today = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/other.jpg?t=1700000002")!
         #expect(ImageCache.shared.testPlacePersistent(png(64), for: today), "the precondition: a foreign name of today with t")
         defer { ImageCache.shared.removePersistent(coverURL: today) }
-        // An incomplete answer, so the pass demotes nothing of its neighbours.
-        // `today` is not active: the move would otherwise hand a name that the
-        // first step wrongly shortened back to it, and hide that step.
+        // An incomplete answer moves nothing and demotes nothing of the
+        // neighbours; the first step still runs and must leave `today` alone.
         await ImageCache.shared.performMaintenance(activeCoverURLs: [url], knowsAll: false).value
+        #expect(ImageCache.shared.testIsPersistent(named: old), "an incomplete pass moved a name")
+        #expect(ImageCache.shared.testIsPersistent(today), "a foreign name of today lost its t")
+        // The move of a complete pass. `today` is not active: the move would
+        // otherwise hand a name that the first step wrongly shortened back
+        // to it, and hide that step.
+        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url])
         #expect(ImageCache.shared.testIsPersistent(url), "the kept foreign cover is not under today's name")
         #expect(!ImageCache.shared.testIsPersistent(named: old), "the old name stayed")
-        #expect(ImageCache.shared.testIsPersistent(today), "a foreign name of today lost its t")
     }
 
     /// Episode A has its own picture with a `t`, episode B of the same show
@@ -156,14 +160,14 @@ struct ImageCachePersistentTests {
             ImageCache.shared.removePersistent(coverURL: episodeA)
             ImageCache.shared.removePersistent(coverURL: episodeB)
         }
-        // An incomplete answer, so the pass demotes nothing of its neighbours.
-        await ImageCache.shared.performMaintenance(activeCoverURLs: [episodeA, episodeB], knowsAll: false).value
+        // The move of a complete pass.
+        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
         #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B lost its kept cover")
         #expect(ImageCache.shared.testPersistentBytes(episodeA) == nil, "A carries B's picture")
         // A already kept: the move would have deleted B's file.
         let bytesA = png(64)
         #expect(ImageCache.shared.testPlacePersistent(bytesA, for: episodeA))
-        await ImageCache.shared.performMaintenance(activeCoverURLs: [episodeA, episodeB], knowsAll: false).value
+        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
         #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B's cover was deleted")
         #expect(ImageCache.shared.testPersistentBytes(episodeA) == bytesA)
     }
@@ -179,7 +183,7 @@ struct ImageCachePersistentTests {
         #expect(old == ImageCache.legacyName(for: large), "the precondition: one old name")
         #expect(ImageCache.shared.testKey(for: small) != ImageCache.shared.testKey(for: large),
                 "the precondition: two names of today")
-        let moves = ImageCache.legacyMoves(for: [small, large]) { ImageCache.shared.testKey(for: $0) }
+        let moves = ImageCache.legacyMoves(for: [small, large], knowsAll: true) { ImageCache.shared.testKey(for: $0) }
         #expect(moves[old] == nil, "an ambiguous old name moves: \(moves)")
         #expect(ImageCache.shared.testPlacePersistent(png(48), named: old), "the precondition: kept under the old name")
         defer {
@@ -187,9 +191,34 @@ struct ImageCachePersistentTests {
             ImageCache.shared.removePersistent(coverURL: large)
             ImageCache.shared.testRemovePersistent(named: old)
         }
-        await ImageCache.shared.performMaintenance(activeCoverURLs: [small, large], knowsAll: false).value
+        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [small, large])
         #expect(ImageCache.shared.testPersistentBytes(small) == nil, "the small size inherited")
         #expect(ImageCache.shared.testPersistentBytes(large) == nil, "the large size inherited")
+    }
+
+    /// A kept cover whose address this pass could not build (a download of
+    /// a show no longer followed) is missing from the list, while an active
+    /// neighbour carries its name as its old name. An incomplete pass moves
+    /// nothing: the cover stays where it is, and nothing is handed over.
+    @Test("ein geschuetztes Cover ohne baubare Adresse uebersteht einen unvollstaendigen Lauf, auch wenn ein aktiver Nachbar seinen Namen als alten traegt")
+    func anIncompletePassMovesNoName() async throws {
+        let tag = UUID().uuidString.prefix(8)
+        let neighbour = URL(string: "https://cdn.example.org/\(tag)/z.jpg?t=7")!
+        let unresolved = URL(string: "https://cdn.example.org/\(tag)/z.jpg")!
+        #expect(ImageCache.legacyName(for: neighbour) == ImageCache.shared.testKey(for: unresolved),
+                "the precondition: the neighbour's old name is the unresolved cover's name")
+        #expect(!ImageCache.legacyMoves(for: [neighbour], knowsAll: true) { ImageCache.shared.testKey(for: $0) }.isEmpty,
+                "the precondition: a complete pass with this list would move it")
+        let bytes = png(48)
+        #expect(ImageCache.shared.testPlacePersistent(bytes, for: unresolved), "the precondition: the cover is kept")
+        defer {
+            ImageCache.shared.removePersistent(coverURL: unresolved)
+            ImageCache.shared.removePersistent(coverURL: neighbour)
+        }
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [neighbour], knowsAll: false).value
+        #expect(ImageCache.shared.testPersistentBytes(unresolved) == bytes, "the unresolved cover was moved away")
+        #expect(ImageCache.shared.testPersistentBytes(neighbour) == nil, "the neighbour carries the unresolved cover")
+        #expect(ImageCache.legacyMoves(for: [neighbour], knowsAll: false) { ImageCache.shared.testKey(for: $0) }.isEmpty)
     }
 
     /// A cover an earlier sweep already demoted stands in the cache under the

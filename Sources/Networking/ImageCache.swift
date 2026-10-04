@@ -192,7 +192,14 @@ final class ImageCache {
     /// address's cover and never moves; an old name two active addresses
     /// lead to different names from does not move either. Such a cover loads
     /// once more instead of handing one address the bytes of another.
-    nonisolated static func legacyMoves(for activeURLs: [URL], name: (URL) -> String) -> [String: String] {
+    /// Only when `activeURLs` names every download's cover (`knowsAll`): a
+    /// download that could not be resolved (an episode of a show no longer
+    /// followed) is missing from the list, and its kept cover could stand
+    /// under the old name of an active neighbour. Without it nothing moves;
+    /// an old name waits for the next complete pass, a reload at worst.
+    nonisolated static func legacyMoves(for activeURLs: [URL], knowsAll: Bool,
+                                        name: (URL) -> String) -> [String: String] {
+        guard knowsAll else { return [:] }
         let todays = activeURLs.map { ($0, name($0)) }
         let activeNames = Set(todays.map(\.1))
         var targets: [String: Set<String>] = [:]
@@ -201,6 +208,18 @@ final class ImageCache {
             if old != new, !activeNames.contains(old) { targets[old, default: []].insert(new) }
         }
         return targets.compactMapValues { $0.count == 1 ? $0.first : nil }
+    }
+
+    /// The file names in a cover directory.
+    nonisolated private static func fileNames(in directory: URL) -> Set<String> {
+        // bearable, because a missing directory holds no cover
+        Set(((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []))
+    }
+
+    /// Moves the kept covers of foreign addresses to today's name (`legacyMoves`).
+    nonisolated private static func moveLegacyNames(in directories: [URL], listing: (URL) -> Set<String>,
+                                                    moves: [String: String]) {
+        rename(in: directories, listing: listing, what: "foreign names moved") { moves[$0] }
     }
 
     /// Renames every file `newName` gives a new name for; a file already
@@ -308,6 +327,13 @@ final class ImageCache {
     /// Test seam: whether a literal name stands in the persistent tier.
     func testIsPersistent(named name: String) -> Bool {
         FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
+    }
+
+    /// Test seam: the move of foreign names alone, as a complete pass would
+    /// run it, without demoting the covers of neighbouring witnesses.
+    func testMoveLegacyNames(activeCoverURLs: [URL]) {
+        let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: true) { key(for: $0) }
+        Self.moveLegacyNames(in: [persistentDirectory, diskDirectory], listing: Self.fileNames, moves: moves)
     }
 
     /// Test seam: removes a literal name from the persistent tier; false when
@@ -824,7 +850,7 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
-        let moves = Self.legacyMoves(for: activeCoverURLs) { key(for: $0) }
+        let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: knowsAll) { key(for: $0) }
         let started = Date()
         // detached because the sweep is disk work off the MainActor and must not die with the caller
         return Task.detached(priority: .utility) {
@@ -833,10 +859,7 @@ final class ImageCache {
                 return
             }
             let fm = FileManager.default
-            let names: (URL) -> Set<String> = { directory in
-                // bearable, because a missing directory holds no cover
-                Set(((try? fm.contentsOfDirectory(atPath: directory.path)) ?? []))
-            }
+            let names: (URL) -> Set<String> = Self.fileNames
 
             // 0) A name an older build wrote with a sign-in part in it takes
             //    the name without, in both tiers and before anything compares
@@ -847,7 +870,7 @@ final class ImageCache {
             // earlier rule gave it; it takes today's name before anything
             // compares names, without the network, so no offline cover of a
             // downloaded episode is demoted.
-            Self.rename(in: [persistent, cache], listing: names, what: "foreign names moved") { moves[$0] }
+            Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves)
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
             //    in the cache goes up, a persistent one without a download
