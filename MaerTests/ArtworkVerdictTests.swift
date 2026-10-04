@@ -249,6 +249,134 @@ struct ArtworkVerdictTests {
         #expect(ImageCache.shared.testIsRefreshing(url), "the address stopped waiting for a fresh picture")
     }
 
+    /// Holds the disk queue of `url` behind a write that waits at its first
+    /// byte, so the removal an invalidation queues stays queued and the old
+    /// cache file stands. The returned release lets the write and everything
+    /// behind it run and waits for that.
+    private static func holdQueue(of url: URL) async throws -> @MainActor () async -> Void {
+        let key = ImageCache.shared.testKey(for: url)
+        let (reached, reachedGo) = AsyncStream<Void>.makeStream()
+        let (release, releaseGo) = AsyncStream<Void>.makeStream()
+        let (written, writtenGo) = AsyncStream<Void>.makeStream()
+        ImageCache.shared.testDiskHold = { stage, fileKey in
+            if stage == "write", fileKey == key {
+                reachedGo.yield()
+                for await _ in release { break }
+            }
+            if stage == "written", fileKey == key { writtenGo.yield() }
+        }
+        let answer = Self.png(pixels: 24)
+        ImageCache.shared.set(try #require(UIImage(data: answer)), data: answer, for: url,
+                              startedAt: ImageCache.shared.invalidationCount(for: url))
+        try #require(await Self.arrives(reached), "the precondition: the disk queue is held")
+        return {
+            releaseGo.finish()
+            _ = await Self.arrives(written)
+            await ImageCache.shared.testDiskSettled(url)
+            ImageCache.shared.testDiskHold = nil
+        }
+    }
+
+    /// A read after the invalidation and before its queued removal finds
+    /// the old cache file first. The reader gets it, the waiting name does
+    /// not: under it stand only bytes of the persistent copy.
+    @Test("ein Lesen zwischen Invalidierung und Loeschen legt die alte Cache-Datei nicht unter den Wartenamen")
+    func theWaitingNameHoldsOnlyKeptBytes() async throws {
+        let url = URL(string: "http://127.0.0.1:9/window-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 16), for: url), "the precondition: a kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let release = try await Self.holdQueue(of: url)
+        Artwork.invalidate(url)
+        #expect(ImageCache.shared.testCacheBytes(url) != nil, "the precondition: the removal is still queued")
+        let read = await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400)
+        #expect(read.map { Int($0.size.width * $0.scale) } == 8, "the precondition: the read found the old cache file")
+        #expect(Artwork.cachedThumbnail(for: url, maxPixel: 400) == nil,
+                "the cache file from before the invalidation stands under the waiting name")
+        await release()
+    }
+
+    /// The wait ends during a read (a `set` lands and replaces the kept
+    /// copy): the kept bytes the read holds are stored nowhere, so the
+    /// network gate finds the new picture, not the old one under the plain
+    /// name.
+    @Test("endet das Warten waehrend eines Lesens, findet das Netz-Tor danach das neue Bild, nicht das alte")
+    func aWaitThatEndsDuringAReadStoresNothing() async throws {
+        let url = URL(string: "http://127.0.0.1:9/ended-\(UUID().uuidString).png")!
+        let key = ImageCache.shared.testKey(for: url)
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        Artwork.invalidate(url)
+        await ImageCache.shared.testDiskSettled(url)
+        let (reached, reachedGo) = AsyncStream<Void>.makeStream()
+        let (release, releaseGo) = AsyncStream<Void>.makeStream()
+        ImageCache.shared.testDiskHold = { stage, fileKey in
+            if stage == "read", fileKey == key {
+                reachedGo.yield()
+                for await _ in release { break }
+            }
+        }
+        defer {
+            ImageCache.shared.testDiskHold = nil
+            releaseGo.finish()
+        }
+        let read = Task { await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400) }
+        try #require(await Self.arrives(reached), "the precondition: the read holds the kept cover")
+        let answer = Self.png(pixels: 24)
+        ImageCache.shared.set(try #require(UIImage(data: answer)), data: answer, for: url,
+                              startedAt: ImageCache.shared.invalidationCount(for: url))
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(!ImageCache.shared.testIsRefreshing(url), "the precondition: the set landed and ended the wait")
+        // Finished, not yielded: the gate's read below passes the same stage
+        // and must not be held a second time.
+        releaseGo.finish()
+        #expect(await read.value.map { Int($0.size.width * $0.scale) } == 8, "the precondition: the read held the old cover")
+        let gate = await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400, allowKept: false)
+        #expect(gate.map { Int($0.size.width * $0.scale) } == 24, "the network gate found the old kept cover")
+    }
+
+    /// A download that finishes while an invalidation's removal is queued
+    /// does not lift the old cache file into the persistent tier.
+    @Test("ein Download waehrend des eingereihten Loeschens hebt die alte Cache-Datei nicht in die geschuetzte Ablage")
+    func makePersistentLeavesAWaitingCacheFileDown() async throws {
+        let url = URL(string: "http://127.0.0.1:9/persist-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let release = try await Self.holdQueue(of: url)
+        Artwork.invalidate(url)
+        await ImageCache.shared.makePersistent(coverURL: url)
+        #expect(!ImageCache.shared.testIsPersistent(url), "the old cache file went up past its queued removal")
+        await release()
+    }
+
+    /// The sweep's lift of an active cover asks the same question.
+    @Test("der Fegelauf hebt die Cache-Datei einer wartenden Adresse nicht hoch")
+    func theSweepLeavesAWaitingCacheFileDown() async throws {
+        let url = URL(string: "http://127.0.0.1:9/sweep-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let release = try await Self.holdQueue(of: url)
+        Artwork.invalidate(url)
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [url], knowsAll: false).value
+        #expect(!ImageCache.shared.testIsPersistent(url), "the sweep lifted the old cache file past its queued removal")
+        await release()
+    }
+
+    /// A download moved to a new id takes its demoted cover up under the new
+    /// name, but not the cache file of a waiting address.
+    @Test("ein Umbenennen hebt die Cache-Datei einer wartenden Adresse nicht unter den neuen Namen")
+    func aRenameLeavesAWaitingCacheFileDown() async throws {
+        let old = URL(string: "http://127.0.0.1:9/rename-old-\(UUID().uuidString).png")!
+        let new = URL(string: "http://127.0.0.1:9/rename-new-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: old), "the precondition: an old cache file")
+        defer { ImageCache.shared.removePersistent(coverURL: new) }
+        let release = try await Self.holdQueue(of: old)
+        Artwork.invalidate(old)
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        #expect(!ImageCache.shared.testIsPersistent(new), "the old cache file went up under the new name")
+        await release()
+    }
+
     /// Only the gates that go to the network next skip the kept copy.
     @Test("die geschuetzte Fassung ueberspringen nur die Tore, die danach ins Netz gehen", .needsTheSources)
     func onlyNetworkGatesSkipTheKeptCopy() throws {

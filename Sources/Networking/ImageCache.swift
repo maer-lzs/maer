@@ -532,33 +532,47 @@ final class ImageCache {
         }
         let startedAt = invalidations[fileKey, default: 0]
         let candidates = readCandidates(fileKey, allowKept: allowKept)
-        guard let thumb = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
+        guard let (thumb, source) = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
         #if DEBUG
         await testDiskHold?("read", fileKey)
         #endif
-        // An invalidation during the read: these bytes may be the picture
-        // from before it, and the network gate's next look must not find them.
-        guard invalidations[fileKey, default: 0] == startedAt else { return thumb }
-        // Read while the address waits for the network: kept under the
-        // waiting name, so the old picture never answers the network gate.
-        let name = waiting ? Self.waitingName(cacheKey) : cacheKey as NSString
-        thumbCache.setObject(thumb, forKey: name, cost: cost(of: thumb))
+        if let name = memoryName(cacheKey, fileKey: fileKey, waitingAtStart: waiting, startedAt: startedAt, source: source) {
+            thumbCache.setObject(thumb, forKey: name, cost: cost(of: thumb))
+        }
         return thumb
     }
 
-    /// The first of `candidates` that holds a picture, as a thumbnail. Disk
-    /// read and decode run off the MainActor; nothing is cached here.
-    private func diskThumbnail(_ candidates: [URL], maxPixelSize: CGFloat) async -> UIImage? {
+    /// Where a picture a read path took from `source` may stand in memory;
+    /// nil = nowhere, the caller still gets it. The one rule of both read
+    /// paths: nothing read across an invalidation (the bytes may be the
+    /// picture from before it); nothing when the wait ended during the read
+    /// (a `set` landed, and these may be the kept bytes it replaced, which
+    /// the network gate would then find under the plain name); while the
+    /// address waits, only bytes of the persistent copy, under the waiting
+    /// name (a cache file read then may be the one the invalidation's
+    /// removal has not reached yet).
+    private func memoryName(_ name: String, fileKey: String, waitingAtStart: Bool,
+                            startedAt: Int, source: URL) -> NSString? {
+        guard invalidations[fileKey, default: 0] == startedAt,
+              refreshing.contains(fileKey) == waitingAtStart else { return nil }
+        guard waitingAtStart else { return name as NSString }
+        return source.deletingLastPathComponent().path == persistentDirectory.path ? Self.waitingName(name) : nil
+    }
+
+    /// The first of `candidates` that holds a picture, as a thumbnail, with
+    /// the file that answered. Disk read and decode run off the MainActor;
+    /// nothing is cached here.
+    private func diskThumbnail(_ candidates: [URL], maxPixelSize: CGFloat) async -> (UIImage, URL)? {
         // Disk read + decode off the MainActor. This runs per visible cell.
         // detached because disk read and decode run per visible cell, off the MainActor
-        await Task.detached(priority: .userInitiated) { () -> UIImage? in
+        await Task.detached(priority: .userInitiated) { () -> (UIImage, URL)? in
             // Regression guard: disk read + image decode stay off the main actor.
             #if DEBUG
             dispatchPrecondition(condition: .notOnQueue(.main))
             #endif
             for file in candidates {
                 if let data = try? Data(contentsOf: file) {
-                    return Self.decodedThumbnail(data, maxPixelSize: maxPixelSize)
+                    return Self.decodedThumbnail(data, maxPixelSize: maxPixelSize).map { ($0, file) }
                 }
             }
             return nil
@@ -650,24 +664,22 @@ final class ImageCache {
             return kept
         }
         let startedAt = invalidations[cacheKey, default: 0]
-        guard let image = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
-        // Same two rules as the thumbnail: nothing read across an
-        // invalidation is stored, and a waiting address's picture stays
-        // under the waiting name.
-        guard invalidations[cacheKey, default: 0] == startedAt else { return image }
-        let name = waiting ? Self.waitingName(cacheKey) : cacheKey as NSString
-        memoryCache.setObject(image, forKey: name, cost: cost(of: image))
+        guard let (image, source) = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
+        if let name = memoryName(cacheKey, fileKey: cacheKey, waitingAtStart: waiting, startedAt: startedAt, source: source) {
+            memoryCache.setObject(image, forKey: name, cost: cost(of: image))
+        }
         return image
     }
 
-    /// The first of `candidates` that holds a picture, full size. Disk read
-    /// and decode run off the MainActor; nothing is cached here.
-    private func diskImage(_ candidates: [URL]) async -> UIImage? {
+    /// The first of `candidates` that holds a picture, full size, with the
+    /// file that answered. Disk read and decode run off the MainActor;
+    /// nothing is cached here.
+    private func diskImage(_ candidates: [URL]) async -> (UIImage, URL)? {
         // detached because disk read and decode belong off the MainActor
-        await Task.detached(priority: .userInitiated) { () -> UIImage? in
+        await Task.detached(priority: .userInitiated) { () -> (UIImage, URL)? in
             for fileURL in candidates {
                 if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
-                    return image
+                    return (image, fileURL)
                 }
             }
             return nil
@@ -788,7 +800,14 @@ final class ImageCache {
         // Behind a write that is still running, so it removes what that
         // write left instead of running before it.
         onDisk(cacheKey) {
-            try? FileManager.default.removeItem(at: target)
+            // No file is the common case and no failure; a file that stays
+            // would answer the network gate with the picture from before.
+            guard FileManager.default.fileExists(atPath: target.path) else { return }
+            do {
+                try FileManager.default.removeItem(at: target)
+            } catch {
+                Logger.library.error("COVERCACHE invalidated file not removed: \(FailureReason.of(error), privacy: .public)")
+            }
         }
     }
 
@@ -803,7 +822,10 @@ final class ImageCache {
         let target = persistentDirectory.appendingPathComponent(cacheKey)
         guard !FileManager.default.fileExists(atPath: target.path) else { return }
         let cached = diskDirectory.appendingPathComponent(cacheKey)
-        if FileManager.default.fileExists(atPath: cached.path) {
+        // A waiting address's cache file may be the picture from before its
+        // invalidation, with the removal still queued; it never goes up, the
+        // bytes come fresh from the network instead.
+        if !refreshing.contains(cacheKey), FileManager.default.fileExists(atPath: cached.path) {
             do {
                 try FileManager.default.moveItem(at: cached, to: target)
                 return
@@ -868,8 +890,12 @@ final class ImageCache {
         let demoted = diskDirectory.appendingPathComponent(key(for: old))
         let target = persistentDirectory.appendingPathComponent(key(for: new))
         let fm = FileManager.default
+        // The demoted cache file of a waiting address may be the picture
+        // from before its invalidation; it does not go up (`makePersistent`).
+        let demotedMayGoUp = !refreshing.contains(key(for: old))
         let source = fm.fileExists(atPath: kept.path) ? kept : demoted
-        guard source != target, fm.fileExists(atPath: source.path) else { return }
+        guard source != target, fm.fileExists(atPath: source.path),
+              source == kept || demotedMayGoUp else { return }
         do {
             if fm.fileExists(atPath: target.path) {
                 try fm.removeItem(at: source)
@@ -999,11 +1025,22 @@ final class ImageCache {
             //    goes down.
             var promoted = 0
             var failed = 0
+            var waiting = 0
             for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,
                                        knowsAll: knowsAll) {
                 do {
                     switch move {
                     case .promote(let name):
+                        // A waiting address's cache file may be the picture
+                        // from before its invalidation, with the removal
+                        // still queued; it stays down. An invalidation after
+                        // this look ends as if it came after the move: the
+                        // persistent copy waits for the network.
+                        let mayGoUp = await MainActor.run { !self.refreshing.contains(name) }
+                        guard mayGoUp else {
+                            waiting += 1
+                            continue
+                        }
                         try fm.moveItem(at: cache.appendingPathComponent(name), to: persistent.appendingPathComponent(name))
                         promoted += 1
                     case .demote(let name):
@@ -1015,8 +1052,8 @@ final class ImageCache {
                     failed += 1
                 }
             }
-            if promoted > 0 || failed > 0 {
-                Logger.library.notice("COVERCACHE tiers promoted=\(promoted) failed=\(failed)")
+            if promoted > 0 || failed > 0 || waiting > 0 {
+                Logger.library.notice("COVERCACHE tiers promoted=\(promoted) failed=\(failed) waiting=\(waiting)")
             }
 
             // 2) TTL + 3) size cap.
