@@ -74,6 +74,10 @@ final class ListeningStatsStore: ObservableObject {
     /// removes a row nobody read.
     private var rowBase: RowBase<ListeningStatsData> = .fresh
     private var pendingWrite: Task<Void, Never>?
+    /// The own pot taken back over rows nobody could read: it counts in
+    /// what is shown and published, and no write carries it, because the
+    /// rows on disk may hold more than the pot (`adoptionWrites`).
+    private var potHeld: ListeningStatsData?
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one.
@@ -166,6 +170,9 @@ final class ListeningStatsStore: ObservableObject {
     /// numbers back instead of starting at zero (`adoptedOwnPot`). A table
     /// that was read is never replaced by the pot, which is only a part of
     /// it; a second run changes nothing because the rows are then known.
+    /// Only a fresh file takes the pot as a write; over rows that could not
+    /// be read the pot is shown and published but held out of every write
+    /// (`potHeld`), since those rows may hold more than it.
     func start() {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { publish(); cloudChanged(); return }
@@ -180,15 +187,51 @@ final class ListeningStatsStore: ObservableObject {
         carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
             self?.cloudChanged()
         })
-        let ownPot = carrier.pots()[SyncHistoryStore.deviceId]
-        if let adopted = ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: ownPot) {
-            Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0))")
-            ownData = adopted
-            save()
-        }
+        adoptOwnPot(carrier.pots()[SyncHistoryStore.deviceId])
         publish()
         cloudChanged()
     }
+
+    /// This device's own published pot back into the stock when the rows
+    /// could not be read (`ListeningStatsSync.adoptedOwnPot`): written after
+    /// a fresh start, held out of every write over unread rows.
+    private func adoptOwnPot(_ ownPot: ListeningStatsData?) {
+        if let adopted = ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: ownPot) {
+            let writes = ListeningStatsSync.adoptionWrites(rowBase)
+            Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0)) \(writes ? "written" : "held out of writes", privacy: .public)")
+            if writes {
+                ownData = adopted
+                save()
+            } else {
+                let added = ListeningStatsSync.above(ownData, in: adopted)
+                let held = potHeld ?? ListeningStatsData()
+                potHeld = ListeningStatsData(
+                    secondsPerDay: held.secondsPerDay.merging(added.secondsPerDay, uniquingKeysWith: +),
+                    secondsPerItem: held.secondsPerItem.merging(added.secondsPerItem, uniquingKeysWith: +))
+                ownData = adopted
+            }
+        }
+    }
+
+    /// What the next write carries: the stock, without a held pot.
+    private var writeSnapshot: ListeningStatsData {
+        potHeld.map { ListeningStatsSync.above($0, in: ownData) } ?? ownData
+    }
+
+    #if DEBUG
+    /// Test seam: the start's adoption over a chosen stock and base, without
+    /// the rows of the database. Only for a base that does not write.
+    func testAdopt(own: ListeningStatsData, base: RowBase<ListeningStatsData>, pot: ListeningStatsData?) {
+        ownData = own
+        rowBase = base
+        potHeld = nil
+        adoptOwnPot(pot)
+    }
+
+    /// Test seam: what the next write would carry, and what is shown.
+    var testWriteSnapshot: ListeningStatsData { writeSnapshot }
+    var testOwnData: ListeningStatsData { ownData }
+    #endif
 
     /// The carrier the access of this moment asks for, when it travels
     /// another way than the held one; see `PodcastCloudSync.follow`.
@@ -278,6 +321,12 @@ final class ListeningStatsStore: ObservableObject {
         let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
         guard changed > 0 else { return 0 }
         ownData.secondsPerItem = NavidromeRekey.summed(ownData.secondsPerItem, map)
+        // The held part moves with the keys, or it would no longer be
+        // subtracted and the pot would reach the write under the new key.
+        if let held = potHeld {
+            potHeld = ListeningStatsData(secondsPerDay: held.secondsPerDay,
+                                         secondsPerItem: NavidromeRekey.summed(held.secondsPerItem, map))
+        }
         recompose()
         save()
         return changed
@@ -333,7 +382,8 @@ final class ListeningStatsStore: ObservableObject {
         // Only the pots' entries that changed go to the rows, in order. A
         // failure is logged; the totals live on in memory and the next
         // throttled save writes again.
-        let snapshot = ownData
+        // A held pot stays out: the write carries only what lies above it.
+        let snapshot = writeSnapshot
         let previous = pendingWrite
         pendingWrite = Task { [weak self] in
             await previous?.value

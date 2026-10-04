@@ -77,6 +77,31 @@ nonisolated enum ListeningStatsSync {
         return merged == own ? nil : merged
     }
 
+    /// Whether the start may WRITE an adopted pot. After a fresh start yes:
+    /// the table was read and is empty, nothing on disk is covered. While
+    /// the rows could not be read no: they still stand on disk and may hold
+    /// more than the pot, which lags them by every save since the last
+    /// publish. Then the pot is only shown and published, and the store
+    /// holds it out of every write (`above`).
+    static func adoptionWrites(_ base: RowBase<ListeningStatsData>) -> Bool {
+        if case .fresh = base { return true }
+        return false
+    }
+
+    /// Per key what `stock` holds above `held`; keys at or below it are left
+    /// out. The part of the stock a write may carry while an adopted pot is
+    /// held, and the part an adoption adds to what is held.
+    static func above(_ held: ListeningStatsData, in stock: ListeningStatsData) -> ListeningStatsData {
+        func rest(_ values: [String: Int], _ floor: [String: Int]) -> [String: Int] {
+            values.reduce(into: [:]) { out, entry in
+                let left = entry.value - (floor[entry.key] ?? 0)
+                if left > 0 { out[entry.key] = left }
+            }
+        }
+        return ListeningStatsData(secondsPerDay: rest(stock.secondsPerDay, held.secondsPerDay),
+                                  secondsPerItem: rest(stock.secondsPerItem, held.secondsPerItem))
+    }
+
     /// The total across devices: this device's own numbers come from its LOCAL
     /// file (always the freshest), every other device from its published pot.
     ///

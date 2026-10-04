@@ -175,6 +175,34 @@ struct ListeningStatsSyncTests {
         #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: ListeningStatsData(), pot: nil) == nil)
         #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: pot, pot: pot) == nil, "a second run changes nothing")
     }
+
+    /// The measured loss: the day table could not be read, its row holds
+    /// 2400 from a save after the last publish, the own pot 1200. The pot
+    /// is shown and published, but no write carries it over the unread row;
+    /// only what this run counted above it goes.
+    @Test("Tabelle unlesbar, Zeile 2400, Topf 1200: der Topf zeigt sich, aber kein Schrieb traegt ihn ueber die ungelesene Zeile")
+    func aPotOverUnreadRowsIsHeldOutOfEveryWrite() {
+        let day = "2026-10-04"
+        let pot = ListeningStatsData(secondsPerDay: [day: 1200], secondsPerItem: ["radio:rb:x": 60])
+        let counted = ListeningStatsData(secondsPerDay: [day: 300], secondsPerItem: [:])
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
+        stats.testAdopt(own: counted, base: .unknown(seen: nil), pot: pot)
+        #expect(stats.testOwnData.secondsPerDay[day] == 1200, "the precondition: the pot was adopted for the display")
+        #expect(stats.testOwnData.secondsPerItem["radio:rb:x"] == 60)
+        #expect(stats.testWriteSnapshot == counted, "a pot value reaches the write over the unread row")
+        #expect(!ListeningStatsSync.adoptionWrites(.unknown(seen: nil)))
+        #expect(ListeningStatsSync.adoptionWrites(.fresh), "a fresh file takes the pot as a write")
+    }
+
+    /// What lies above the held part, per key; nothing at or below it.
+    @Test("ueber dem gehaltenen Teil bleibt je Schluessel nur der Rest, nichts darunter")
+    func aboveKeepsOnlyTheRest() {
+        let held = ListeningStatsData(secondsPerDay: ["a": 100, "b": 50], secondsPerItem: ["x": 10])
+        let stock = ListeningStatsData(secondsPerDay: ["a": 130, "b": 50, "c": 7], secondsPerItem: ["x": 5, "y": 3])
+        #expect(ListeningStatsSync.above(held, in: stock)
+                == ListeningStatsData(secondsPerDay: ["a": 30, "c": 7], secondsPerItem: ["y": 3]))
+        #expect(ListeningStatsSync.above(ListeningStatsData(), in: stock) == stock)
+    }
 }
 /// The shared derivation "how much did I listen to this show". One place, two
 /// callers (recommendation seed and statistics). Two derivations of the same
