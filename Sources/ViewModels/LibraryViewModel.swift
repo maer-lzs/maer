@@ -590,6 +590,18 @@ final class LibraryViewModel: ObservableObject {
     /// True for the whole background reload, even with content on screen.
     /// Drives the subtle toolbar/footer indicator.
     @Published var isRefreshing = false
+    /// How many loads began, counted before their first suspension: the
+    /// cached render lays its disk state down only when no load began while
+    /// it read. `loadInFlight` is set after the load's first suspension, and
+    /// a load that found an empty library leaves `entries` empty, so neither
+    /// tells the cached render that a fresher state is already there.
+    private var loadsBegun = 0
+
+    #if DEBUG
+    /// Test seam: awaited by the cached render after its last suspension
+    /// and before its second look; a witness runs a load in between.
+    var testBeforeCachedApply: (@MainActor () async -> Void)?
+    #endif
 
     /// Cache-first (stale-while-revalidate): render the last persisted
     /// library state IMMEDIATELY at cold start, before any network round-trip;
@@ -597,15 +609,27 @@ final class LibraryViewModel: ObservableObject {
     /// state (no downloaded-filtering. That belongs to the offline FALLBACK)
     /// and no offline banner (showing the cache at start is not an offline
     /// condition). No-op when entries are already showing or no cache exists.
+    /// The conditions are read again after the last suspension: a load that
+    /// ran meanwhile (CarPlay at a cold start) built the fresh state, and
+    /// the disk state must not lie down over it.
     func showCachedLibraryIfAvailable() async {
         guard entries.isEmpty, !loadInFlight else { return }
+        let begun = loadsBegun
         guard let cache = await loadDiskCache(), !cache.items.isEmpty else { return }
         await reloadLocalCache()
+        #if DEBUG
+        await testBeforeCachedApply?()
+        #endif
+        guard loadsBegun == begun, entries.isEmpty, !loadInFlight else {
+            Logger.library.notice("LIBRARY cached render skipped: a load began while the cache was read")
+            return
+        }
         isShowingOfflineCache = false
         await rebuild(items: cache.items, progress: cache.progress)
     }
 
     func loadLibrary() async {
+        loadsBegun += 1
         // The LOCAL sources come first, and they come UNCONDITIONALLY. They
         // used to sit behind the server guard below, so a start without an
         // Audiobookshelf login collected nothing at all. Imported files and a

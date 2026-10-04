@@ -131,6 +131,15 @@ struct ConcurrencyFenceTests {
     /// same condition. Between the check and the set a second caller finds
     /// the flag still down; only the approachable-concurrency setting kept
     /// the door from suspending there.
+    ///
+    /// The bound, measured: the second shape (check, then an `await` of its
+    /// own, then set or act) is not read. Taken at its form it found twelve
+    /// sites, all of them flags that say a run ENDED (`reachedEnd`,
+    /// `shelvesLoaded`, `fellBack`), each beside an in-flight flag set
+    /// before the first suspension; the form does not tell the two kinds
+    /// apart. A check on state the function does not set (`entries.isEmpty`
+    /// before a cached render) is not read either; such a site re-reads its
+    /// condition after its last suspension, witnessed where it lives.
     nonisolated static func flagChecksAcrossAwait(in text: String) throws -> [String] {
         let code = SyncContractFenceTests.stripped(text)
             .components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")

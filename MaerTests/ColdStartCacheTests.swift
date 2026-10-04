@@ -89,6 +89,48 @@ struct ColdStartCacheTests {
         #expect(!vm.entries.map(\.id).contains("stale"))
     }
 
+    /// A load runs to its end while the cached render reads the disk (CarPlay
+    /// at a cold start): the disk state does not lie down over the fresh one.
+    @Test("ein Laden waehrend des Cache-Lesens: der Platten-Stand legt sich nicht ueber den frischen")
+    func aLoadDuringTheCachedReadWins() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
+        let provider = MockProvider()
+        provider.items = [item("fresh")]
+        let vm = LibraryViewModel(provider: provider, database: home.database)
+        var loaded = false
+        vm.testBeforeCachedApply = {
+            await vm.loadLibrary()
+            loaded = true
+        }
+        await vm.showCachedLibraryIfAvailable()
+        #expect(loaded, "the precondition: the load ran inside the cached render's window")
+        #expect(vm.entries.map(\.id).contains("fresh"))
+        #expect(!vm.entries.map(\.id).contains("stale"), "the disk state lay down over the fresh one")
+    }
+
+    /// The same with a load that found an empty library: `entries` stays
+    /// empty, so a second look at it alone would let the disk state through.
+    @Test("ein Laden mit leerer Bibliothek waehrend des Cache-Lesens: auch dann bleibt der Platten-Stand liegen")
+    func anEmptyLoadDuringTheCachedReadWinsToo() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
+        let provider = MockProvider()
+        provider.items = []
+        let vm = LibraryViewModel(provider: provider, database: home.database)
+        var loaded = false
+        vm.testBeforeCachedApply = {
+            await vm.loadLibrary()
+            loaded = true
+        }
+        await vm.showCachedLibraryIfAvailable()
+        #expect(loaded, "the precondition: the load ran inside the cached render's window")
+        #expect(vm.entries.isEmpty, "the precondition: the load found nothing")
+        #expect(!vm.entries.map(\.id).contains("stale"), "the disk state lay down over an empty fresh library")
+    }
+
     // MARK: - Stored library id
 
     /// Snapshot/restore the global selected-library key.
