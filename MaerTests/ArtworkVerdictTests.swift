@@ -32,6 +32,67 @@ struct ArtworkVerdictTests {
         }
     }
 
+    /// A picture exactly `pixels` wide, so the old and the new cover can be
+    /// told apart on disk.
+    private static func png(pixels: Int) -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: pixels, height: pixels)
+        return UIGraphicsImageRenderer(size: size, format: format).pngData { context in
+            UIColor.blue.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+
+    /// The persistent copy's width once the background write landed.
+    private static func persistentWidth(_ url: URL, becomes width: Int) async throws -> Int? {
+        for _ in 0..<40 {
+            if persistentWidth(url) == width { return width }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        return persistentWidth(url)
+    }
+
+    /// The persistent copy's pixel width, nil without one.
+    private static func persistentWidth(_ url: URL) -> Int? {
+        guard let data = ImageCache.shared.testPersistentBytes(url), let image = UIImage(data: data) else { return nil }
+        return Int(image.size.width * image.scale)
+    }
+
+    /// The measured defect: pull-to-refresh on the music tab invalidated a
+    /// downloaded album's cover, but the read paths found the persistent
+    /// copy first, so the old cover stayed for good. Now the next display
+    /// asks the server, and its picture replaces the persistent copy.
+    @Test("nach einer Invalidierung zeigt ein geschuetztes Cover das Bild vom Server und steht danach geschuetzt als neues")
+    func anInvalidatedKeptCoverIsReplacedByTheServer() async throws {
+        let served = try await BulkImportTests.Stand.start(.answer(status: 200, body: Self.png(pixels: 24)))
+        defer { served.stop() }
+        let url = Self.url(served, "kept")
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        #expect(Self.name(await Artwork.verdict(for: url)) == "picture:full", "the precondition: the kept cover answers")
+        Artwork.invalidate(url)
+        #expect(Self.name(await Artwork.verdict(for: url)) == "picture:net", "the old kept cover answered after the invalidation")
+        #expect(try await Self.persistentWidth(url, becomes: 24) == 24, "the server's picture did not replace the kept one")
+        #expect(!ImageCache.shared.testIsRefreshing(url), "the address still waits for the network")
+    }
+
+    /// Offline, or with a server that fails, the kept cover is not lost: it
+    /// stays on disk and on screen, and the next display asks again.
+    @Test("scheitert das Laden nach einer Invalidierung, bleibt das alte geschuetzte Cover stehen und sichtbar")
+    func aFailedLoadKeepsTheOldCover() async throws {
+        let broken = try await BulkImportTests.Stand.start(.answer(status: 403, body: Data()))
+        defer { broken.stop() }
+        let url = Self.url(broken, "kept-broken")
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        Artwork.invalidate(url)
+        #expect(Self.name(await Artwork.verdict(for: url)) == "picture:kept", "a failed load left the placeholder")
+        #expect(await broken.settledCount(expected: 2) == 2, "the server was not asked")
+        #expect(Self.persistentWidth(url) == 8, "the kept cover was lost")
+        #expect(ImageCache.shared.testIsRefreshing(url), "the next display does not ask again")
+    }
+
     @Test("Tuer: ein 404 ist absent, ein 403 und Bytes ohne Bild sind unanswered und werden noch einmal gefragt, ein Bild ist picture und liegt danach auf der Platte")
     func theVerdictNamesWhatWasLearned() async throws {
         let gone = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data("{\"error\":\"none\"}".utf8)))

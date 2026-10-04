@@ -96,7 +96,14 @@ enum Artwork {
         }) {
         case .picture(let image): return .picture(Answer(image: image, pot: "net2"))
         case .absent: return .absent
-        case .unanswered: return .unanswered
+        case .unanswered:
+            // An invalidated downloaded cover whose fresh picture did not
+            // come: the old one stays on screen, the next display asks again.
+            if let kept = await tiers.keptWhileRefreshing(for: url, maxPixelSize: maxPixel) {
+                CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
+                return .picture(Answer(image: kept, pot: "kept"))
+            }
+            return .unanswered
         }
     }
 

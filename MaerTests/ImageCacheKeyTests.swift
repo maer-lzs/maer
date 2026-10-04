@@ -106,6 +106,17 @@ struct ImageCacheKeyTests {
         #expect(ImageCache.nameWithoutSignIn(today) == nil, "a name without a sign-in part stays")
     }
 
+    /// A key holding `_`, `/` or `:` was written with `_` in the old name;
+    /// its pieces go with the sign-in part, no piece of the key stays.
+    @Test("ein Schluessel mit Unterstrich, Schraegstrich oder Doppelpunkt verschwindet ganz aus dem alten Namen")
+    func aKeyWithSeparatorsLeavesNoPiece() {
+        let today = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=ab_cd/e:f&id=al-1&size=600")
+        let old = "nc.example.lan__rest_getCoverArt.view_apiKey=ab_cd_e_f_id=al-1_size=600"
+        let renamed = ImageCache.nameWithoutSignIn(old)
+        #expect(renamed == today)
+        #expect(renamed.map { !$0.contains("cd") && !$0.contains("_e_") } == true, "a piece of the key stayed: \(renamed ?? "-")")
+    }
+
     @Test func absPathBasedCoversUnaffected() {
         let a = key("https://abs.maer.fm/api/items/book-1/cover")
         let b = key("https://abs.maer.fm/api/items/book-2/cover")

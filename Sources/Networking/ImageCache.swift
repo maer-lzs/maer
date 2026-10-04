@@ -47,6 +47,10 @@ final class ImageCache {
 
     private let diskDirectory: URL
     private let persistentDirectory: URL
+    /// Keys invalidated this session whose persistent copy must not answer
+    /// before the network replaced it (`invalidate`). The copy stays on
+    /// disk, so a failed load still shows it (`keptWhileRefreshing`).
+    private var refreshing: Set<String> = []
 
     /// Device-adaptive storage size (longest side): screen short side in
     /// pixels × 1.6 headroom. Plain 1× turned out visibly soft on modern
@@ -121,13 +125,25 @@ final class ImageCache {
 
     /// A cover's file name as a build that kept a sign-in part in it wrote it,
     /// without that part, or nil when the name carries none. The parts of a
-    /// clear name are joined by `_`, a query part reads `name=value`; a
-    /// digest name cannot be read and stays (its cover loads again).
+    /// clear name are joined by `_`, a query part reads `name=value`, and the
+    /// query parts follow the path parts. A value holding `_`, `/` or `:`
+    /// (all written as `_`) leaves parts without `=` behind its sign-in part;
+    /// they belong to its value and go with it. A digest name cannot be read
+    /// and stays (its cover loads again).
     nonisolated static func nameWithoutSignIn(_ name: String) -> String? {
-        var parts = name.components(separatedBy: "_")
-        let before = parts.count
-        parts.removeAll { part in signInQueryNames.contains { part.hasPrefix("\($0)=") } }
-        return parts.count == before ? nil : parts.joined(separator: "_")
+        let parts = name.components(separatedBy: "_")
+        var kept: [String] = []
+        var inSignInValue = false
+        for part in parts {
+            if signInQueryNames.contains(where: { part.hasPrefix("\($0)=") }) {
+                inSignInValue = true
+                continue
+            }
+            if inSignInValue && !part.contains("=") { continue }
+            inSignInValue = false
+            kept.append(part)
+        }
+        return kept.count == parts.count ? nil : kept.joined(separator: "_")
     }
 
     /// Renames every file whose name carries a sign-in part to the name
@@ -227,7 +243,24 @@ final class ImageCache {
         FileManager.default.createFile(atPath: persistentDirectory.appendingPathComponent(key(for: url)).path,
                                        contents: data)
     }
+
+    /// Test seam: the bytes of the persistent copy, nil without one.
+    func testPersistentBytes(_ url: URL) -> Data? {
+        FileManager.default.contents(atPath: persistentDirectory.appendingPathComponent(key(for: url)).path)
+    }
+
+    /// Test seam: whether an address waits for the network to replace its
+    /// persistent copy.
+    func testIsRefreshing(_ url: URL) -> Bool { refreshing.contains(key(for: url)) }
     #endif
+
+    /// The files a read path tries, in order. An address waiting for the
+    /// network after an invalidation skips its persistent copy, so the next
+    /// display asks the server instead of showing the old picture.
+    private func readCandidates(_ fileKey: String) -> [URL] {
+        let tiers = refreshing.contains(fileKey) ? [diskDirectory] : [persistentDirectory, diskDirectory]
+        return tiers.map { $0.appendingPathComponent(fileKey) }
+    }
 
     /// Decoded bytes as NSCache cost (pixels × 4).
     private func cost(of image: UIImage) -> Int {
@@ -290,10 +323,17 @@ final class ImageCache {
             PerfSignpost.thumbnailHit()
             return cached
         }
-        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
+        guard let thumb = await diskThumbnail(readCandidates(fileKey), maxPixelSize: maxPixelSize) else { return nil }
+        thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
+        return thumb
+    }
+
+    /// The first of `candidates` that holds a picture, as a thumbnail. Disk
+    /// read and decode run off the MainActor; nothing is cached here.
+    private func diskThumbnail(_ candidates: [URL], maxPixelSize: CGFloat) async -> UIImage? {
         // Disk read + decode off the MainActor. This runs per visible cell.
         // detached because disk read and decode run per visible cell, off the MainActor
-        let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+        await Task.detached(priority: .userInitiated) { () -> UIImage? in
             // Regression guard: disk read + image decode stay off the main actor.
             #if DEBUG
             dispatchPrecondition(condition: .notOnQueue(.main))
@@ -305,9 +345,6 @@ final class ImageCache {
             }
             return nil
         }.value
-        guard let thumb else { return nil }
-        thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
-        return thumb
     }
 
     /// Cache first, NETWORK second. And it reports the SOURCE size alongside
@@ -381,9 +418,16 @@ final class ImageCache {
         if let cached = memoryCache.object(forKey: cacheKey as NSString) {
             return cached
         }
-        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(cacheKey) }
+        guard let image = await diskImage(readCandidates(cacheKey)) else { return nil }
+        memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        return image
+    }
+
+    /// The first of `candidates` that holds a picture, full size. Disk read
+    /// and decode run off the MainActor; nothing is cached here.
+    private func diskImage(_ candidates: [URL]) async -> UIImage? {
         // detached because disk read and decode belong off the MainActor
-        let image = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+        await Task.detached(priority: .userInitiated) { () -> UIImage? in
             for fileURL in candidates {
                 if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
                     return image
@@ -391,9 +435,6 @@ final class ImageCache {
             }
             return nil
         }.value
-        guard let image else { return nil }
-        memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
-        return image
     }
 
     /// Stores it reduced to display size (not pixelated, see maxPixelSize).
@@ -406,6 +447,7 @@ final class ImageCache {
         PerfSignpost.coverOriginalCached(pixelWidth: Int(image.size.width * image.scale),
                                          pixelHeight: Int(image.size.height * image.scale))
         let target = diskDirectory.appendingPathComponent(cacheKey)
+        let kept = persistentDirectory.appendingPathComponent(cacheKey)
         let maxSize = maxPixelSize
         // detached because downsample and write are CPU and disk work off the MainActor and must finish once started
         Task.detached(priority: .utility) {
@@ -418,22 +460,57 @@ final class ImageCache {
                 // that. Path stays out of the log, the name is the key.
                 Logger.library.error("COVERCACHE write failed: \(FailureReason.of(error), privacy: .public)")
             }
+            // A persistent copy (a downloaded item's cover) is replaced by
+            // the fresh cache file in one step, never deleted first: until
+            // the replacement lands the old picture stays available offline.
+            var keptReplaced = true
+            if FileManager.default.fileExists(atPath: kept.path) {
+                let fresh = kept.deletingLastPathComponent().appendingPathComponent(UUID().uuidString)
+                do {
+                    try FileManager.default.copyItem(at: target, to: fresh)
+                    _ = try FileManager.default.replaceItemAt(kept, withItemAt: fresh)
+                } catch {
+                    if FileManager.default.fileExists(atPath: fresh.path) {
+                        do { try FileManager.default.removeItem(at: fresh) } catch {
+                            Logger.library.error("COVERCACHE replace leftover not removed: \(FailureReason.of(error), privacy: .public)")
+                        }
+                    }
+                    keptReplaced = false
+                    Logger.library.error("COVERCACHE persistent replace failed: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
             await MainActor.run {
                 ImageCache.shared.memoryCache.setObject(
                     stored.0, forKey: cacheKey as NSString,
                     cost: ImageCache.shared.cost(of: stored.0)
                 )
+                if keptReplaced { ImageCache.shared.refreshing.remove(cacheKey) }
             }
         }
     }
 
-    /// Drop every cached representation (memory, thumbnails, disk) of a cover
-    /// URL. Used when the server may have replaced the artwork behind an
-    /// UNCHANGED id (e.g. a Navidrome re-tag). The URL then still matches the
-    /// old bytes, so a manual invalidation on refresh is the only way to pull
-    /// the new cover.
+    /// The persistent copy of an address that waits for the network after an
+    /// invalidation, for a display whose load failed: the old picture beats
+    /// the placeholder, and the next display asks the network again.
+    func keptWhileRefreshing(for url: URL, maxPixelSize: CGFloat?) async -> UIImage? {
+        let fileKey = key(for: url)
+        guard refreshing.contains(fileKey) else { return nil }
+        let kept = [persistentDirectory.appendingPathComponent(fileKey)]
+        if let maxPixelSize { return await diskThumbnail(kept, maxPixelSize: maxPixelSize) }
+        return await diskImage(kept)
+    }
+
+    /// Drop every cached representation (memory, thumbnails, cache file) of a
+    /// cover URL, and let a persistent copy wait for the network. Used when
+    /// the server may have replaced the artwork behind an UNCHANGED id (e.g.
+    /// a Navidrome re-tag). The URL then still matches the old bytes, so a
+    /// manual invalidation on refresh is the only way to pull the new cover.
+    /// The persistent copy of a downloaded item is not deleted: the read
+    /// paths skip it until `set` replaced it with the server's picture, and a
+    /// failed load still shows it (`keptWhileRefreshing`).
     func invalidate(url: URL) {
         let cacheKey = key(for: url)
+        refreshing.insert(cacheKey)
         memoryCache.removeObject(forKey: cacheKey as NSString)
         // This used to be `removeAllObjects()`. ONE url emptied EVERY
         // preview in the app. Its only caller runs in a loop over hundreds of
@@ -646,7 +723,8 @@ final class ImageCache {
 
             // 0) A name an older build wrote with a sign-in part in it takes
             //    the name without, in both tiers and before anything compares
-            //    names, so a kept cover stays kept and no offline cover is lost.
+            //    names, so a kept cover stays kept. A name already stored as a
+            //    digest cannot be read; that cover loads once more.
             Self.dropSignInFromNames(in: [persistent, cache], listing: names)
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
