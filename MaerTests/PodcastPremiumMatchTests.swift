@@ -280,7 +280,6 @@ struct PodcastFeedBlockTests {
 /// per-show podcatcher URL added by hand runs through the EXISTING chain.
 /// Verified on the ZEIT URL *structure*; the real token values never appear
 /// here (nor anywhere outside the device).
-@Suite(.reachableNetwork)
 struct ProviderTokenChainTests {
     /// Same shape as the real thing, placeholder value.
     private let zeitPremium =

@@ -8,22 +8,6 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Runs every test of a suite as if the network were there, so a witness
-/// that fakes a service's wire or serves on the loopback does not follow the
-/// network of the machine it runs on.
-struct ReachableNetwork: SuiteTrait, TestTrait, TestScoping {
-    var isRecursive: Bool { true }
-
-    func provideScope(for test: Test, testCase: Test.Case?,
-                      performing function: @Sendable @concurrent () async throws -> Void) async throws {
-        try await Reachability.$assumed.withValue(true) { try await function() }
-    }
-}
-
-extension Trait where Self == ReachableNetwork {
-    static var reachableNetwork: Self { Self() }
-}
-
 /// The one door the services ask before the network, and its reach.
 struct ReachabilityTests {
     @Test("die Tuer folgt der Antwort des Tests, nicht dem Netz des Wirts")
@@ -52,8 +36,12 @@ struct ReachabilityTests {
         #expect(wire.asks("one") == 1, "online, the service did not ask")
     }
 
-    @Test("der Trait reicht in jeden Test der Suite", .reachableNetwork)
-    func theTraitReachesTheTest() async {
+    /// In the unit test host the door never asks the machine's network: a
+    /// suite that sets nothing gets "there", whatever the host's network is.
+    @Test("im Test-Wirt fragt die Tuer nie das Netz des Rechners, ohne Antwort des Tests ist das Netz da")
+    func theTestHostNeverAsksTheMachine() async {
+        #expect(Reachability.inTestHost, "the precondition: this process is the unit test host")
+        #expect(Reachability.assumed == nil, "the precondition: the test set no answer")
         #expect(await Reachability.isConnected() == true)
     }
 
@@ -72,6 +60,29 @@ struct ReachabilityTests {
         let door = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/Reachability.swift"), encoding: .utf8))
         #expect(door.contains("return await NetworkMonitor.shared.isConnected"), "the door does not ask the monitor")
+    }
+
+    /// Who names the monitor under `Sources/Networking`, each with its
+    /// reason. The stock holds in both directions: a new file is a finding,
+    /// and so is an entry that no longer names the monitor.
+    nonisolated static let monitorStock: [String: String] = [
+        "Reachability.swift": "the door itself",
+        "APIClient.swift": "the audiobook search falls back to its offline search when the monitor says offline",
+        "MaerSyncCarriers.swift": "hands the monitor to the sync session as its path source, it reads nothing",
+    ]
+
+    @Test("unter Networking nennt nur der Bestand den Netzwaechter, jeder mit Grund, in beide Richtungen", .needsTheSources)
+    func onlyTheStockNamesTheMonitor() throws {
+        let networking = SourceTree.root.appendingPathComponent("Sources/Networking")
+        let files = try #require(FileManager.default.enumerator(at: networking, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        #expect(files.contains { $0.lastPathComponent == "Reachability.swift" }, "the fence read the folder")
+        var naming: Set<String> = []
+        for file in files {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("NetworkMonitor.shared") { naming.insert(file.lastPathComponent) }
+        }
+        #expect(naming == Set(Self.monitorStock.keys), "names the monitor outside the stock or left it: \(naming.sorted())")
     }
 }
 #endif

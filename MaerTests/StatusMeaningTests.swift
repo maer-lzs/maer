@@ -77,7 +77,6 @@ struct StatusMeaningTests {
 /// the store, against a host that answers with one status. A clean no is
 /// booked for seven days; a refusal, a pause and a server error book
 /// nothing, so the next appearance asks again.
-@Suite(.reachableNetwork)
 struct FeedArtworkRefusalTests {
     @Test("over the carrier: 404 and an image-less head book a no, 429 and 500 book nothing")
     @MainActor func aRefusalLeavesNoNegativeMemo() async {
