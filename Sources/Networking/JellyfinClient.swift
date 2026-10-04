@@ -111,6 +111,12 @@ final class JellyfinClient {
     /// carries it (`ImageCache.signInQueryNames`).
     nonisolated static let mediaAuthQueryName = "ApiKey"
 
+    /// Whether a path is one of this client's image addresses
+    /// (`Items/<id>/Images/<type>`, see `imageURL(itemId:maxWidth:)`).
+    nonisolated static func buildsImage(path: String) -> Bool {
+        path.range(of: #"/Items/[^/]+/Images/[^/]+$"#, options: .regularExpression) != nil
+    }
+
     private func base() throws -> URL {
         var raw = serverURL.trimmingCharacters(in: .whitespaces)
         while raw.hasSuffix("/") { raw = String(raw.dropLast()) }

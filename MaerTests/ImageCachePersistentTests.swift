@@ -115,6 +115,30 @@ struct ImageCachePersistentTests {
         #expect(!ImageCache.shared.testIsPersistent(named: old), "no name carries the key any more")
     }
 
+    /// The kept cover of a downloaded episode with a foreign cover address
+    /// stands under the name the earlier rule gave it (without its `t`); the
+    /// next sweep moves it to today's name, without the network, and a
+    /// foreign name of today that carries `t=` is left as it is.
+    @Test("ein geschuetztes fremdes Cover zieht ohne Netz unter den heutigen Namen, ein heutiger Name mit t bleibt stehen")
+    func aKeptForeignCoverMovesToTodaysName() async {
+        let tag = UUID().uuidString.prefix(8)
+        let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/image.jpg?t=1700000001&size=3000")!
+        let old = ImageCache.legacyName(for: url)
+        #expect(old != ImageCache.shared.testKey(for: url), "the precondition: the earlier rule gave another name")
+        #expect(ImageCache.shared.testPlacePersistent(png(64), named: old), "the precondition: kept under the old name")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let today = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/other.jpg?t=1700000002")!
+        #expect(ImageCache.shared.testPlacePersistent(png(64), for: today), "the precondition: a foreign name of today with t")
+        defer { ImageCache.shared.removePersistent(coverURL: today) }
+        // An incomplete answer, so the pass demotes nothing of its neighbours.
+        // `today` is not active: the move would otherwise hand a name that the
+        // first step wrongly shortened back to it, and hide that step.
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [url], knowsAll: false).value
+        #expect(ImageCache.shared.testIsPersistent(url), "the kept foreign cover is not under today's name")
+        #expect(!ImageCache.shared.testIsPersistent(named: old), "the old name stayed")
+        #expect(ImageCache.shared.testIsPersistent(today), "a foreign name of today lost its t")
+    }
+
     /// A cover an earlier sweep already demoted stands in the cache under the
     /// old name. The move finds it there and puts it up under the new one.
     @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")

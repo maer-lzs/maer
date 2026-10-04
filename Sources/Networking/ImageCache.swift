@@ -129,6 +129,27 @@ final class ImageCache {
     /// Subsonic's password form `p`.
     nonisolated static let retiredQueryNames: Set<String> = ["api_key", "p"]
 
+    /// The sign-in names that name nothing else, every one longer than one
+    /// letter (`token`, `apiKey`, `api_key`, `ApiKey`): they stay out of the
+    /// name at ANY address. A one-letter name (`t`, `s`, `u`, `v`, `c`, `f`,
+    /// `p`) names the picture itself on many foreign hosts (a cache-buster
+    /// `t`, a version `v`, a size `s`), so it is a sign-in part only at an
+    /// address one of our clients built (`isClientImage`).
+    nonisolated static let unambiguousSignInNames: Set<String> = signInQueryNames.filter { $0.count > 1 }
+
+    /// Whether one of our clients built this image address, from the path
+    /// shapes each client declares where it builds them.
+    nonisolated static func isClientImage(_ url: URL) -> Bool {
+        let path = url.path
+        return SubsonicClient.buildsImage(path: path) || APIClient.buildsImage(path: path)
+            || JellyfinClient.buildsImage(path: path)
+    }
+
+    /// Whether a query name stays out of the file name of an address.
+    nonisolated static func dropsFromName(_ name: String, clientImage: Bool) -> Bool {
+        unambiguousSignInNames.contains(name) || (clientImage && signInQueryNames.contains(name))
+    }
+
     /// A cover's file name as a build that kept a sign-in part in it wrote it,
     /// without that part, or nil when the name carries none. The parts of a
     /// clear name are joined by `_`, a query part reads `name=value`, and the
@@ -138,13 +159,16 @@ final class ImageCache {
     /// carries `=` itself (`p=ab_cd=ef`) reads like a query part and stays in
     /// the name, so that name differs from today's and its cover loads once
     /// more; a name gives no way to tell such a piece from a query part. A
-    /// digest name cannot be read and stays (its cover loads again).
+    /// digest name cannot be read and stays (its cover loads again). Only
+    /// the unambiguous names are dropped: a one-letter part stays, because
+    /// today's rule keeps it at a foreign address, and no build ever wrote
+    /// one into the name of an address of our clients.
     nonisolated static func nameWithoutSignIn(_ name: String) -> String? {
         let parts = name.components(separatedBy: "_")
         var kept: [String] = []
         var inSignInValue = false
         for part in parts {
-            if signInQueryNames.contains(where: { part.hasPrefix("\($0)=") }) {
+            if unambiguousSignInNames.contains(where: { part.hasPrefix("\($0)=") }) {
                 inSignInValue = true
                 continue
             }
@@ -156,15 +180,35 @@ final class ImageCache {
     }
 
     /// Renames every file whose name carries a sign-in part to the name
-    /// without; a file already standing under that name wins. Logged when
-    /// anything was renamed or failed.
+    /// without; a file already standing under that name wins.
     nonisolated private static func dropSignInFromNames(in directories: [URL], listing: (URL) -> Set<String>) {
+        rename(in: directories, listing: listing, what: "sign-in dropped from names") { nameWithoutSignIn($0) }
+    }
+
+    /// The kept covers of foreign addresses under the name the earlier rule
+    /// gave them (it dropped one-letter query parts that name the picture):
+    /// old name to today's name, for every active address where they differ.
+    nonisolated static func legacyMoves(for activeURLs: [URL], name: (URL) -> String) -> [String: String] {
+        var moves: [String: String] = [:]
+        for url in activeURLs {
+            let old = legacyName(for: url)
+            let new = name(url)
+            if old != new { moves[old] = new }
+        }
+        return moves
+    }
+
+    /// Renames every file `newName` gives a new name for; a file already
+    /// standing under the new name wins. Logged when anything was renamed or
+    /// failed.
+    nonisolated private static func rename(in directories: [URL], listing: (URL) -> Set<String>, what: String,
+                                           newName: (String) -> String?) {
         let fm = FileManager.default
         var renamed = 0
         var failed = 0
         for directory in directories {
             for name in listing(directory).sorted() {
-                guard let clean = nameWithoutSignIn(name) else { continue }
+                guard let clean = newName(name) else { continue }
                 let source = directory.appendingPathComponent(name)
                 let target = directory.appendingPathComponent(clean)
                 do {
@@ -176,12 +220,12 @@ final class ImageCache {
                     renamed += 1
                 } catch {
                     failed += 1
-                    Logger.library.error("COVERCACHE sign-in name not dropped: \(FailureReason.of(error), privacy: .public)")
+                    Logger.library.error("COVERCACHE \(what, privacy: .public) failed for a name: \(FailureReason.of(error), privacy: .public)")
                 }
             }
         }
         if renamed > 0 || failed > 0 {
-            Logger.library.notice("COVERCACHE sign-in dropped from names=\(renamed) failed=\(failed)")
+            Logger.library.notice("COVERCACHE \(what, privacy: .public)=\(renamed) failed=\(failed)")
         }
     }
 
@@ -194,10 +238,24 @@ final class ImageCache {
     /// alone collided every Subsonic cover onto one key. Their identifying
     /// `id` lives in the query, so all albums shared a single cached file.
     nonisolated private func key(for url: URL) -> String {
+        let clientImage = Self.isClientImage(url)
+        return Self.fileName(for: url) { Self.dropsFromName($0, clientImage: clientImage) }
+    }
+
+    /// The name an address had under the earlier rule, which dropped every
+    /// sign-in name at every address. Only for moving kept covers of foreign
+    /// addresses to their new name (`legacyMoves`).
+    nonisolated static func legacyName(for url: URL) -> String {
+        fileName(for: url) { signInQueryNames.contains($0) }
+    }
+
+    /// The file name of an address with the query names `drops` names left
+    /// out.
+    nonisolated private static func fileName(for url: URL, drops: (String) -> Bool) -> String {
         var parts = [url.host ?? "", url.path]
         if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
             let stable = items
-                .filter { !Self.signInQueryNames.contains($0.name) }
+                .filter { !drops($0.name) }
                 .sorted { $0.name < $1.name }
                 .map { "\($0.name)=\($0.value ?? "")" }
             parts.append(contentsOf: stable)
@@ -749,6 +807,7 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
+        let moves = Self.legacyMoves(for: activeCoverURLs) { key(for: $0) }
         let started = Date()
         // detached because the sweep is disk work off the MainActor and must not die with the caller
         return Task.detached(priority: .utility) {
@@ -767,6 +826,11 @@ final class ImageCache {
             //    names, so a kept cover stays kept. A name already stored as a
             //    digest cannot be read; that cover loads once more.
             Self.dropSignInFromNames(in: [persistent, cache], listing: names)
+            // A kept cover of a foreign address stands under the name the
+            // earlier rule gave it; it takes today's name before anything
+            // compares names, without the network, so no offline cover of a
+            // downloaded episode is demoted.
+            Self.rename(in: [persistent, cache], listing: names, what: "foreign names moved") { moves[$0] }
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
             //    in the cache goes up, a persistent one without a download

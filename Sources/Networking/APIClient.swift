@@ -363,6 +363,14 @@ final class APIClient {
     /// (`ImageCache.signInQueryNames`).
     nonisolated static let mediaTokenName = "token"
 
+    /// Whether a path is one of this client's image addresses: an item's
+    /// cover (`api/items/<id>/cover`) or an author's image
+    /// (`api/authors/<id>/image`).
+    nonisolated static func buildsImage(path: String) -> Bool {
+        path.range(of: #"/api/items/[^/]+/cover$"#, options: .regularExpression) != nil
+            || path.range(of: #"/api/authors/[^/]+/image$"#, options: .regularExpression) != nil
+    }
+
     /// Cover image URL. AsyncImage cannot set custom headers, so the token goes
     /// as a query parameter here (officially supported for Audiobookshelf GET
     /// requests). Worst case only a cover image is missing, no core function.

@@ -123,5 +123,51 @@ struct ImageCacheKeyTests {
         #expect(a != b)
         #expect(a == key("https://abs.maer.fm/api/items/book-1/cover"))
     }
+
+    /// A foreign picture keeps every one-letter query part: there they name
+    /// the picture (measured on feed and station images: a cache-buster `t`,
+    /// a version `v`, NPR's size and crop `s`, `c`, `f`).
+    @Test("eine fremde Bild-Adresse behaelt jeden Kurznamen, zwei Groessen geben zwei Namen")
+    func aForeignPictureKeepsItsShortNames() {
+        let npr = key("https://media.npr.org/assets/img/show.jpg?s=1400&c=66&f=jpg")
+        #expect(npr.contains("s=1400") && npr.contains("c=66") && npr.contains("f=jpg"))
+        #expect(key("https://media.npr.org/assets/img/show.jpg?s=600&c=66&f=jpg") != npr, "two sizes share a name")
+        #expect(key("https://www.omnycontent.com/d/programs/x/image.jpg?t=1700000001")
+                != key("https://www.omnycontent.com/d/programs/x/image.jpg?t=1700000002"),
+                "a publisher's cache-buster does not reach the name")
+        #expect(key("https://cdn.example.org/cover.png?v=3").contains("v=3"))
+    }
+
+    /// The unambiguous sign-in names stay out of every name, also at a
+    /// foreign address, so a sign-in never reaches a file name there either.
+    @Test("ein eindeutiger Zugangsname faellt auch an einer fremden Adresse")
+    func anUnambiguousSignInNameDropsEverywhere() {
+        for name in ["token", "apiKey", "api_key", "ApiKey"] {
+            let carried = key("https://cdn.example.org/cover.png?\(name)=SECRET9&v=3")
+            #expect(!carried.contains("SECRET9"), "\(name) entered a foreign name")
+            #expect(carried == key("https://cdn.example.org/cover.png?v=3"))
+        }
+        #expect(ImageCache.unambiguousSignInNames == ["token", "apiKey", "api_key", "ApiKey"])
+    }
+
+    /// The image addresses our clients build are client images, measured at
+    /// the built addresses; a foreign address is none.
+    @Test("die gebauten Bild-Adressen der Klienten sind Klient-Formen, eine fremde nicht")
+    func theClientsBuildClientImages() throws {
+        let subsonic = try #require(SubsonicClient(serverURL: "https://music.example.lan/sub", username: "hoerer", password: "geheim-42"))
+        #expect(ImageCache.isClientImage(try #require(subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]))))
+        #expect(!ImageCache.isClientImage(try #require(subsonic.mediaURL("stream", ["id": "so-1"]))), "a stream is no image")
+        let abs = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "jwt-1")
+        #expect(ImageCache.isClientImage(try #require(abs.coverURL(forItemId: "li_1"))))
+        #expect(ImageCache.isClientImage(try #require(abs.authorImageURL(authorId: "aut_1"))))
+        let jellyfin = JellyfinClient(serverURL: "https://jf.example.lan", username: "u", password: "p",
+                                      deviceId: "d", accessToken: "tok", userId: "user")
+        #expect(ImageCache.isClientImage(try #require(jellyfin.imageURL(itemId: "it1", maxWidth: 600))))
+        #expect(!ImageCache.isClientImage(URL(string: "https://media.npr.org/assets/img/show.jpg?s=1400")!))
+        // At a client image the short names still carry the sign-in.
+        let built = try #require(subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]))
+        let name = ImageCache.shared.testKey(for: built)
+        #expect(!name.contains("t=") && !name.contains("s=") && !name.contains("u=hoerer"), "a sign-in part entered: \(name)")
+    }
 }
 #endif

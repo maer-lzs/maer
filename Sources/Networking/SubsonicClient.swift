@@ -31,6 +31,13 @@ struct SubsonicClient {
     /// cover file name carries them (`ImageCache.signInQueryNames`).
     nonisolated static let clientQueryNames: Set<String> = ["v", "c", "f"]
 
+    /// Whether a path is one of this client's image addresses (`mediaURL`
+    /// with `getCoverArt`, written as `rest/getCoverArt.view`). Only there
+    /// do the short query names carry a sign-in (`ImageCache.isClientImage`).
+    nonisolated static func buildsImage(path: String) -> Bool {
+        path.hasSuffix("/rest/getCoverArt.view")
+    }
+
     private var apiVersion: String {
         Self.negotiatedVersion(host: baseURL.host ?? "") ?? Self.preferredVersion
     }
