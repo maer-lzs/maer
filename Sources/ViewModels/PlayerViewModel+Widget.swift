@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 import UIKit
 import WidgetKit
 
@@ -35,14 +36,14 @@ extension PlayerViewModel {
         // Copy the cover only on a book change (the thumbnail tier is plenty for
         // the widget).
         if Self.coverNeedsRewrite(previous: Self.lastWidgetCoverItemId, current: item.id) {
-            Self.lastWidgetCoverItemId = item.id
+            let itemId = item.id
             let coverURL = provider.coverURL(forItemId: item.id)
             Task { @MainActor in
-                guard let coverURL,
-                      let thumb = await Artwork.thumbnail(for: coverURL),
-                      let data = thumb.pngData(),
-                      let target = WidgetSnapshot.coverURL else { return }
-                try? data.write(to: target, options: .atomic)
+                var data: Data?
+                if let coverURL, let thumb = await Artwork.thumbnail(for: coverURL) { data = thumb.pngData() }
+                let written = Self.writeSharedCover(data)
+                Self.lastWidgetCoverItemId = Self.coverMark(previous: Self.lastWidgetCoverItemId,
+                                                            current: itemId, written: written)
                 WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
             }
         }
@@ -55,16 +56,44 @@ extension PlayerViewModel {
         previous != current
     }
 
+    /// The item whose cover the shared file holds after a write attempt: the
+    /// new one only when its picture was written, otherwise the mark stays,
+    /// so the next update tries again.
+    static func coverMark(previous: String?, current: String, written: Bool) -> String? {
+        written ? current : previous
+    }
+
+    /// Writes the shared cover file, or removes it when there is no picture,
+    /// so the widget never shows the previous title's cover under a new one.
+    /// True when written.
+    @discardableResult
+    static func writeSharedCover(_ data: Data?) -> Bool {
+        guard let target = WidgetSnapshot.coverURL else { return false }
+        do {
+            if let data {
+                try data.write(to: target, options: .atomic)
+                return true
+            }
+            if FileManager.default.fileExists(atPath: target.path) {
+                try FileManager.default.removeItem(at: target)
+            }
+        } catch {
+            Logger.library.error("WIDGET cover not written: \(FailureReason.of(error), privacy: .public)")
+        }
+        return false
+    }
+
     /// Write a small cover PNG (from the reliably-loaded lock-screen
     /// artwork) into the shared app-group file the home widget reads, then
     /// refresh it. Dependable across item changes, unlike the
     /// ImageCache-thumbnail path which is often empty right after a switch.
     func refreshSharedCover(from image: UIImage) {
-        guard let target = WidgetSnapshot.coverURL else { return }
-        Self.lastWidgetCoverItemId = item?.id
         let thumb = Self.downscaled(image, maxPixel: 300)
-        guard let data = thumb.pngData() else { return }
-        try? data.write(to: target, options: .atomic)
+        let written = Self.writeSharedCover(thumb.pngData())
+        if let itemId = item?.id {
+            Self.lastWidgetCoverItemId = Self.coverMark(previous: Self.lastWidgetCoverItemId,
+                                                        current: itemId, written: written)
+        }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
     }
 

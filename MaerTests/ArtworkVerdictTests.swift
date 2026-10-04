@@ -92,6 +92,55 @@ struct ArtworkVerdictTests {
         #expect(ImageCache.shared.testIsRefreshing(url), "the next display does not ask again")
     }
 
+    /// CarPlay and the widget read without the network (`Artwork.thumbnail`):
+    /// after an invalidation they still get the kept picture, and their read
+    /// does not answer the network gate's next look in its place.
+    @Test("nach einer Invalidierung liefert der Leseweg ohne Netz die geschuetzte Fassung, und das Netz-Tor fragt trotzdem den Server")
+    func aReaderWithoutTheNetworkStillGetsTheKeptCover() async throws {
+        let served = try await BulkImportTests.Stand.start(.answer(status: 200, body: Self.png(pixels: 24)))
+        defer { served.stop() }
+        let url = Self.url(served, "kept-reader")
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        Artwork.invalidate(url)
+        let read = await Artwork.thumbnail(for: url, maxPixel: 100)
+        #expect(read.map { Int($0.size.width * $0.scale) } == 8, "CarPlay and the widget lost the kept cover")
+        #expect(Self.name(await Artwork.verdict(for: url, thumbnail: 100)) == "picture:net", "the reader's look answered the network gate")
+        #expect(try await Self.persistentWidth(url, becomes: 24) == 24)
+    }
+
+    /// An answer to a request that left before the invalidation is the old
+    /// picture: it does not become the new kept copy, and the address keeps
+    /// waiting for a fresh one.
+    @Test("eine Antwort, die vor der Invalidierung losging, wird nicht die neue geschuetzte Fassung")
+    func anAnswerOlderThanTheInvalidationIsNotKept() async throws {
+        let url = URL(string: "http://127.0.0.1:9/stale-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let startedAt = ImageCache.shared.invalidationCount(for: url)
+        Artwork.invalidate(url)
+        let stale = Self.png(pixels: 24)
+        ImageCache.shared.set(try #require(UIImage(data: stale)), data: stale, for: url, startedAt: startedAt)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(Self.persistentWidth(url) == 8, "an answer from before the invalidation replaced the kept cover")
+        #expect(ImageCache.shared.testIsRefreshing(url), "the address stopped waiting for a fresh picture")
+        #expect(await ImageCache.shared.image(for: url, allowKept: false) == nil, "the stale answer was stored")
+    }
+
+    /// Only the gates that go to the network next skip the kept copy.
+    @Test("die geschuetzte Fassung ueberspringen nur die Tore, die danach ins Netz gehen", .needsTheSources)
+    func onlyNetworkGatesSkipTheKeptCopy() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        var skipping: Set<String> = []
+        for file in files {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("allowKept: false") { skipping.insert(file.lastPathComponent) }
+        }
+        #expect(skipping == ["Artwork.swift", "ImageCache.swift"], "a reader skips the kept copy: \(skipping.sorted())")
+    }
+
     @Test("Tuer: ein 404 ist absent, ein 403 und Bytes ohne Bild sind unanswered und werden noch einmal gefragt, ein Bild ist picture und liegt danach auf der Platte")
     func theVerdictNamesWhatWasLearned() async throws {
         let gone = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data("{\"error\":\"none\"}".utf8)))

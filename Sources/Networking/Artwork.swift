@@ -68,12 +68,14 @@ enum Artwork {
             CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return .absent
         }
+        // This gate goes to the network next, so an invalidated address's
+        // kept copy does not answer here; it answers after a failed load.
         if let maxPixel {
-            if let thumb = await ImageCache.shared.thumbnail(for: url, maxPixelSize: maxPixel) {
+            if let thumb = await ImageCache.shared.thumbnail(for: url, maxPixelSize: maxPixel, allowKept: false) {
                 CoverTraceLog.note(pot: .thumbnail, outcome: .hit, attempt: attempt, url: url)
                 return .picture(Answer(image: thumb, pot: "thumb"))
             }
-        } else if let cached = await ImageCache.shared.image(for: url) {
+        } else if let cached = await ImageCache.shared.image(for: url, allowKept: false) {
             CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
             return .picture(Answer(image: cached, pot: "full"))
         }
@@ -99,7 +101,9 @@ enum Artwork {
         case .unanswered:
             // An invalidated downloaded cover whose fresh picture did not
             // come: the old one stays on screen, the next display asks again.
-            if let kept = await tiers.keptWhileRefreshing(for: url, maxPixelSize: maxPixel) {
+            let kept = if let maxPixel { await tiers.thumbnail(for: url, maxPixelSize: maxPixel) }
+                       else { await tiers.image(for: url) }
+            if let kept {
                 CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
                 return .picture(Answer(image: kept, pot: "kept"))
             }
@@ -230,6 +234,9 @@ enum Artwork {
             // bearable, because a cancelled sleep only drops the second attempt
             try? await Task.sleep(nanoseconds: retryDelay)
         }
+        // The invalidation count when this request leaves; `set` keeps the
+        // answer only when no invalidation came in between.
+        let startedAt = tiers.invalidationCount(for: url)
         // bearable, because the HTTP door logs the failure with its reason and the trace names it as transport
         guard let (data, http) = try? await HTTP.data(from: url, lane: .cover) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
@@ -264,7 +271,7 @@ enum Artwork {
                                url: url, bytes: data.count)
             return .unanswered
         }
-        ImageCache.shared.set(image, data: data, for: url)
+        ImageCache.shared.set(image, data: data, for: url, startedAt: startedAt)
         CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
         return .picture(image)
     }

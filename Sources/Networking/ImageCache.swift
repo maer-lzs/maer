@@ -47,10 +47,16 @@ final class ImageCache {
 
     private let diskDirectory: URL
     private let persistentDirectory: URL
-    /// Keys invalidated this session whose persistent copy must not answer
-    /// before the network replaced it (`invalidate`). The copy stays on
-    /// disk, so a failed load still shows it (`keptWhileRefreshing`).
+    /// Keys invalidated this session whose persistent copy must not answer a
+    /// gate that goes to the network before the network replaced it
+    /// (`invalidate`). The copy stays on disk and stays the last candidate
+    /// of every read path (`readCandidates`).
     private var refreshing: Set<String> = []
+    /// How often each key was invalidated this session. A load takes the
+    /// count when it starts (`invalidationCount`); `set` keeps its bytes only
+    /// when no invalidation came in between, so an answer to a request sent
+    /// before the invalidation never becomes the new picture.
+    private var invalidations: [String: Int] = [:]
 
     /// Device-adaptive storage size (longest side): screen short side in
     /// pixels × 1.6 headroom. Plain 1× turned out visibly soft on modern
@@ -128,8 +134,11 @@ final class ImageCache {
     /// clear name are joined by `_`, a query part reads `name=value`, and the
     /// query parts follow the path parts. A value holding `_`, `/` or `:`
     /// (all written as `_`) leaves parts without `=` behind its sign-in part;
-    /// they belong to its value and go with it. A digest name cannot be read
-    /// and stays (its cover loads again).
+    /// they belong to its value and go with it. The limit: a value piece that
+    /// carries `=` itself (`p=ab_cd=ef`) reads like a query part and stays in
+    /// the name, so that name differs from today's and its cover loads once
+    /// more; a name gives no way to tell such a piece from a query part. A
+    /// digest name cannot be read and stays (its cover loads again).
     nonisolated static func nameWithoutSignIn(_ name: String) -> String? {
         let parts = name.components(separatedBy: "_")
         var kept: [String] = []
@@ -254,13 +263,25 @@ final class ImageCache {
     func testIsRefreshing(_ url: URL) -> Bool { refreshing.contains(key(for: url)) }
     #endif
 
-    /// The files a read path tries, in order. An address waiting for the
-    /// network after an invalidation skips its persistent copy, so the next
-    /// display asks the server instead of showing the old picture.
-    private func readCandidates(_ fileKey: String) -> [URL] {
-        let tiers = refreshing.contains(fileKey) ? [diskDirectory] : [persistentDirectory, diskDirectory]
+    /// The files a read path tries, in order. For an address waiting for the
+    /// network after an invalidation the persistent copy is the LAST
+    /// candidate: a gate that goes to the network asks first without it
+    /// (`allowKept: false`), so the next display asks the server, and every
+    /// other reader (CarPlay, the widget) and the network gate after a failed
+    /// load still find it.
+    private func readCandidates(_ fileKey: String, allowKept: Bool) -> [URL] {
+        let tiers: [URL]
+        if !refreshing.contains(fileKey) {
+            tiers = [persistentDirectory, diskDirectory]
+        } else {
+            tiers = allowKept ? [diskDirectory, persistentDirectory] : [diskDirectory]
+        }
         return tiers.map { $0.appendingPathComponent(fileKey) }
     }
+
+    /// The invalidation count of an address, taken by a load when it starts
+    /// and handed to `set`.
+    func invalidationCount(for url: URL) -> Int { invalidations[key(for: url), default: 0] }
 
     /// Decoded bytes as NSCache cost (pixels × 4).
     private func cost(of image: UIImage) -> Int {
@@ -314,7 +335,9 @@ final class ImageCache {
     /// As above, but with a freely chosen target size (e.g. 800 px for the large
     /// "Up Next" cards). The cache is size-aware keyed so 400- and 800-px
     /// variants of the same cover do not overwrite each other.
-    func thumbnail(for url: URL, maxPixelSize: CGFloat) async -> UIImage? {
+    /// `allowKept: false` is for a gate that goes to the network next: an
+    /// address waiting after an invalidation then skips its persistent copy.
+    func thumbnail(for url: URL, maxPixelSize: CGFloat, allowKept: Bool = true) async -> UIImage? {
         let fileKey = key(for: url)
         let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
         if let cached = thumbCache.object(forKey: cacheKey) {
@@ -323,8 +346,13 @@ final class ImageCache {
             PerfSignpost.thumbnailHit()
             return cached
         }
-        guard let thumb = await diskThumbnail(readCandidates(fileKey), maxPixelSize: maxPixelSize) else { return nil }
-        thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
+        let candidates = readCandidates(fileKey, allowKept: allowKept)
+        guard let thumb = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
+        // While the address waits for the network, nothing is kept in memory:
+        // the old picture must not answer the network gate's next look.
+        if !refreshing.contains(fileKey) {
+            thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
+        }
         return thumb
     }
 
@@ -364,20 +392,29 @@ final class ImageCache {
     func loadedImage(for url: URL, maxPixelSize: CGFloat? = nil)
         async -> (image: UIImage, sourcePixels: CGSize)? {
         let target = maxPixelSize ?? thumbPixelSize
-        if let cached = await thumbnail(for: url, maxPixelSize: target),
-           let full = await image(for: url) {
-            return (cached, CGSize(width: full.size.width * full.scale,
-                                   height: full.size.height * full.scale))
-        }
+        if let found = await storedImage(for: url, maxPixelSize: target, allowKept: false) { return found }
         // A tile stays a moment before the network is asked (`TileDwell`);
         // a tile that left asks nothing.
         guard await TileDwell.stood(TileDwell.cover) else { return nil }
+        let startedAt = invalidationCount(for: url)
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
-              let full = UIImage(data: data) else { return nil }
-        set(full, data: data, for: url)
+              let full = UIImage(data: data) else {
+            // A failed load still shows a kept picture of an invalidated address.
+            return await storedImage(for: url, maxPixelSize: target, allowKept: true)
+        }
+        set(full, data: data, for: url, startedAt: startedAt)
         let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? full
         return (display, CGSize(width: full.size.width * full.scale,
                                 height: full.size.height * full.scale))
+    }
+
+    /// The display image and the source size from disk, nil when either is
+    /// missing.
+    private func storedImage(for url: URL, maxPixelSize: CGFloat, allowKept: Bool)
+        async -> (image: UIImage, sourcePixels: CGSize)? {
+        guard let cached = await thumbnail(for: url, maxPixelSize: maxPixelSize, allowKept: allowKept),
+              let full = await image(for: url, allowKept: allowKept) else { return nil }
+        return (cached, CGSize(width: full.size.width * full.scale, height: full.size.height * full.scale))
     }
 
     /// What ImageIO makes of these bytes. The door's second try when
@@ -413,13 +450,15 @@ final class ImageCache {
     /// Full-size cached image. Memory-cache hits return immediately; the disk
     /// read + full decode run off-main (a ~2000 px decode on the main actor was
     /// a visible hitch right when pushing the detail screen / full player).
-    func image(for url: URL) async -> UIImage? {
+    func image(for url: URL, allowKept: Bool = true) async -> UIImage? {
         let cacheKey = key(for: url)
         if let cached = memoryCache.object(forKey: cacheKey as NSString) {
             return cached
         }
-        guard let image = await diskImage(readCandidates(cacheKey)) else { return nil }
-        memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        guard let image = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
+        if !refreshing.contains(cacheKey) {
+            memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        }
         return image
     }
 
@@ -440,8 +479,16 @@ final class ImageCache {
     /// Stores it reduced to display size (not pixelated, see maxPixelSize).
     /// Downsampling + disk write run in the background; the memory cache is then
     /// updated with the downsized version.
-    func set(_ image: UIImage, data: Data, for url: URL) {
+    /// `startedAt` is the address's invalidation count when the load began
+    /// (`invalidationCount`). An answer to a request sent before an
+    /// invalidation is the old picture: it is not stored at all, the address
+    /// keeps waiting, and the next display asks again.
+    func set(_ image: UIImage, data: Data, for url: URL, startedAt: Int) {
         let cacheKey = key(for: url)
+        guard invalidations[cacheKey, default: 0] == startedAt else {
+            Logger.library.notice("COVERCACHE answer older than its invalidation, not stored")
+            return
+        }
         // Make it available immediately (original, cost-limited by NSCache).
         memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
         PerfSignpost.coverOriginalCached(pixelWidth: Int(image.size.width * image.scale),
@@ -484,20 +531,12 @@ final class ImageCache {
                     stored.0, forKey: cacheKey as NSString,
                     cost: ImageCache.shared.cost(of: stored.0)
                 )
-                if keptReplaced { ImageCache.shared.refreshing.remove(cacheKey) }
+                // An invalidation that came while this write ran keeps the
+                // address waiting.
+                let current = ImageCache.shared.invalidations[cacheKey, default: 0] == startedAt
+                if keptReplaced && current { ImageCache.shared.refreshing.remove(cacheKey) }
             }
         }
-    }
-
-    /// The persistent copy of an address that waits for the network after an
-    /// invalidation, for a display whose load failed: the old picture beats
-    /// the placeholder, and the next display asks the network again.
-    func keptWhileRefreshing(for url: URL, maxPixelSize: CGFloat?) async -> UIImage? {
-        let fileKey = key(for: url)
-        guard refreshing.contains(fileKey) else { return nil }
-        let kept = [persistentDirectory.appendingPathComponent(fileKey)]
-        if let maxPixelSize { return await diskThumbnail(kept, maxPixelSize: maxPixelSize) }
-        return await diskImage(kept)
     }
 
     /// Drop every cached representation (memory, thumbnails, cache file) of a
@@ -505,12 +544,14 @@ final class ImageCache {
     /// the server may have replaced the artwork behind an UNCHANGED id (e.g.
     /// a Navidrome re-tag). The URL then still matches the old bytes, so a
     /// manual invalidation on refresh is the only way to pull the new cover.
-    /// The persistent copy of a downloaded item is not deleted: the read
-    /// paths skip it until `set` replaced it with the server's picture, and a
-    /// failed load still shows it (`keptWhileRefreshing`).
+    /// The persistent copy of a downloaded item is not deleted: it becomes
+    /// the last candidate of every read path until `set` replaced it with the
+    /// server's picture, so a gate that goes to the network asks first, and
+    /// every other reader and a failed load still find it.
     func invalidate(url: URL) {
         let cacheKey = key(for: url)
         refreshing.insert(cacheKey)
+        invalidations[cacheKey, default: 0] += 1
         memoryCache.removeObject(forKey: cacheKey as NSString)
         // This used to be `removeAllObjects()`. ONE url emptied EVERY
         // preview in the app. Its only caller runs in a loop over hundreds of
@@ -846,8 +887,9 @@ final class ImageCache {
         guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)
         defer { inFlight.remove(url) }
+        let startedAt = invalidationCount(for: url)
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return }
-        set(image, data: data, for: url)
+        set(image, data: data, for: url, startedAt: startedAt)
     }
 }

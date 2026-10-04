@@ -19,6 +19,17 @@ struct WidgetCoverRewriteTests {
         #expect(!PlayerViewModel.coverNeedsRewrite(previous: "a", current: "a"))    // same → no rewrite
     }
 
+    /// The mark follows the file: only a written cover moves it, a failed one
+    /// leaves it, so the next update tries again instead of showing the
+    /// previous title's cover for good.
+    @Test("die Marke des Widget-Covers wandert nur mit einem geschriebenen Bild")
+    func theMarkMovesOnlyWithAWrittenCover() {
+        #expect(PlayerViewModel.coverMark(previous: "a", current: "b", written: true) == "b")
+        #expect(PlayerViewModel.coverMark(previous: "a", current: "b", written: false) == "a",
+                "a failed cover moved the mark")
+        #expect(PlayerViewModel.coverMark(previous: nil, current: "b", written: false) == nil)
+    }
+
     /// The shared cover is downscaled so the app-group PNG stays small.
     @Test("downscaled caps the longest side; small images pass through")
     func downscale() {
