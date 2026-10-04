@@ -97,9 +97,7 @@ final class UserChoiceCloudSync {
     /// (test-poisons-real-store class). Injected test instances carry their
     /// own fake cloud and stay fully live.
     private var sharedMustStaySilent: Bool {
-        self === Self.shared
-            && (UITestSeed.isHarness
-                || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
+        self === Self.shared && TestProcess.isUnderTest
     }
     #else
     private var sharedMustStaySilent: Bool { false }

@@ -45,7 +45,7 @@ final class OERRLiveStore: ObservableObject {
     }
 
     func ensureLoaded(forLanguages codes: [String]) async {
-        guard !loaded, !loading, NetworkMonitor.shared.isConnected else { return }
+        guard !loaded, !loading, await Reachability.isConnected() else { return }
         #if DEBUG
         if UITestSeed.isActive { return }   // seed-only in the harness
         #endif

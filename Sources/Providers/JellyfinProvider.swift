@@ -979,7 +979,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 extension JellyfinProvider: SearchableProvider {
     @MainActor
     func search(query: String) async throws -> [SearchResult] {
-        guard let client, NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
+        guard let client, await Reachability.isConnected() else { return offlineSearch(query) }
         let hits = try await client.search(term: query)
         var out: [SearchResult] = []
         for hit in hits {

@@ -601,7 +601,7 @@ extension APIClient: SearchableProvider {
         #if DEBUG
         if UITestSeed.isActive { return offlineSearch(query) }   // seeded stock, no server
         #endif
-        guard NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
+        guard await Reachability.isConnected() else { return offlineSearch(query) }
         guard let libraryId = resolvedLibraryId() else { return offlineSearch(query) }
         let data = try await get(
             path: "api/libraries/\(libraryId)/search",

@@ -19,7 +19,7 @@ extension RSSProvider: SearchableProvider {
     /// downloaded) carry the glyph flag.
     @MainActor
     func search(query: String) async throws -> [SearchResult] {
-        let online = NetworkMonitor.shared.isConnected
+        let online = await Reachability.isConnected()
         // Such-Freeze (b) 01.08: the per-query snapshot mapping + scan over
         // EVERY subscribed episode ran on the main actor. The first-query
         // hang. The show structs are Sendable values; map and scan detached,

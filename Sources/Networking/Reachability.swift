@@ -17,17 +17,15 @@ import Foundation
 nonisolated enum Reachability {
     #if DEBUG
     @TaskLocal static var assumed: Bool?
-
-    /// Whether this process is the unit test host: XCTest names its
-    /// configuration file in the environment of the process it runs the
-    /// unit tests in. DEBUG only, so the shipped app never asks.
-    static let inTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     #endif
 
     static func isConnected() async -> Bool {
         #if DEBUG
         if let assumed { return assumed }
-        if inTestHost { return true }
+        // The unit test host only, not the UI harness: a journey runs the
+        // app on a simulator whose network is what the journey measures,
+        // and its offline side must stay offline.
+        if TestProcess.isUnitTestHost { return true }
         #endif
         return await NetworkMonitor.shared.isConnected
     }

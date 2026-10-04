@@ -133,7 +133,7 @@ final class RadioProvider: AudioProvider {
     func searchStations(query: String) async -> [RadioStation] {
         let local = (RadioStore.favorites() + RadioStore.manualStations())
             .filter { $0.name.localizedCaseInsensitiveContains(query) }
-        guard NetworkMonitor.shared.isConnected else { return local }
+        guard await Reachability.isConnected() else { return local }
         let remote = (try? await RadioBrowserClient.search(name: query)) ?? []
         remember(remote)
         var seen = Set(local.map(\.id))

@@ -82,7 +82,7 @@ enum AppHousekeeping {
     /// follow.
     static var catalogRunsMustStaySilent: Bool {
         #if DEBUG
-        UITestSeed.isHarness || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        TestProcess.isUnderTest
         #else
         false
         #endif

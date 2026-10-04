@@ -1233,7 +1233,7 @@ extension SubsonicProvider: SearchableProvider {
                 }
         }
         #endif
-        guard let client, NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
+        guard let client, await Reachability.isConnected() else { return offlineSearch(query) }
         let hits = try await client.search3(query: query,
                                            musicFolderIds: folderScope(for: .music))
         var out: [SearchResult] = []
