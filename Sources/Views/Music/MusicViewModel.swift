@@ -153,10 +153,12 @@ final class MusicViewModel: ObservableObject {
 
     /// The sources changed (an address or account added or removed here):
     /// the reachability is asked again on every change, a page that said
-    /// "no server here" loads at once, a server that went away shows the way
+    /// "no server here" loads at once, so does a tab that never loaded (it
+    /// was mounted without a server), a server that went away shows the way
     /// out, and a full page is not asked again.
     func sourcesChanged() async {
-        switch MusicPageState.onSourcesChange(reachableNow: source.reachable(), wasMissing: serverMissingHere) {
+        switch MusicPageState.onSourcesChange(reachableNow: source.reachable(), wasMissing: serverMissingHere,
+                                              asked: hasAsked) {
         case .showMissing:
             serverMissingHere = true
             Logger.music.notice("music server went away on this device")

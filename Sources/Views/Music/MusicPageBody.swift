@@ -103,11 +103,14 @@ extension View {
 
     /// The same for a page that keeps its own state: the reachability is
     /// asked on every change (`MusicPageState.onSourcesChange`), a server
-    /// that went away shows the way out, one that came loads the page.
-    func reasksOnSourcesChange(serverMissing: Binding<Bool>, reachable: @escaping () -> Bool,
+    /// that went away shows the way out, one that came loads the page, and so
+    /// does a page that never asked (`asked`, from its runs).
+    func reasksOnSourcesChange(serverMissing: Binding<Bool>, asked: @escaping () -> Bool,
+                               reachable: @escaping () -> Bool,
                                reload: @escaping () async -> Void) -> some View {
         onMusicSourcesChange {
-            switch MusicPageState.onSourcesChange(reachableNow: reachable(), wasMissing: serverMissing.wrappedValue) {
+            switch MusicPageState.onSourcesChange(reachableNow: reachable(), wasMissing: serverMissing.wrappedValue,
+                                                  asked: asked()) {
             case .showMissing: serverMissing.wrappedValue = true
             case .reload: Task { await reload() }
             case .keep: break

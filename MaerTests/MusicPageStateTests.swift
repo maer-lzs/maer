@@ -31,11 +31,14 @@ struct MusicPageStateTests {
 
     @Test("eine Aenderung der Quellen fragt die Erreichbarkeit immer, laedt nur, wo vorher kein Server war")
     func theSourcesChange() {
-        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false) == .showMissing)
-        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: true) == .keep)
-        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: true) == .reload)
-        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: false) == .keep,
+        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: true) == .showMissing)
+        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: true, asked: true) == .keep)
+        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: true, asked: true) == .reload)
+        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: false, asked: true) == .keep,
                 "a page with its server is not asked again")
+        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: false, asked: false) == .reload,
+                "a page that never asked and whose server came loads")
+        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: false) == .showMissing)
     }
 
     @Test("der Ladeweg fragt zuerst den Server, ein Fehlschlag wird der Satz der Seite, ein Abbruch entscheidet nichts")
@@ -124,20 +127,27 @@ struct MusicPageStateTests {
     /// The views in one file that ask the device's music server, each with
     /// whether it draws the body and listens to the sources.
     nonisolated static func surfaces(in raw: String) -> [(name: String, drawsBody: Bool, listens: Bool)] {
+        musicViews(in: raw).map { view in
+            (view.name, view.body.contains("MusicPageBody("),
+             view.body.contains(".onMusicSourcesChange") || view.body.contains(".reasksOnSourcesChange("))
+        }
+    }
+
+    /// The views in one file that ask the device's music server, with the
+    /// code of each, found by structure (the view declaration up to the next
+    /// type), not by how a call is wrapped.
+    nonisolated static func musicViews(in raw: String) -> [(name: String, body: String)] {
         let code = SyncContractFenceTests.stripped(raw)
         let start = #/(?m)^(?:private |fileprivate )?struct (\w+)(?:<[^>\n]*>)?\s*:\s*View\b/#
         let next = #/(?m)^(?:private |fileprivate |final |@MainActor )*(?:struct|class|enum|extension|actor) /#
         let asks = #/(?:^|[^A-Za-z0-9_])musicProvider(?![A-Za-z0-9_(])/#
-        var found: [(String, Bool, Bool)] = []
+        var found: [(String, String)] = []
         var rest = code[...]
         while let head = rest.firstMatch(of: start) {
             let afterHead = rest[head.range.upperBound...]
             let end = afterHead.firstMatch(of: next)?.range.lowerBound ?? afterHead.endIndex
             let body = String(afterHead[..<end])
-            if body.contains(asks) {
-                found.append((String(head.1), body.contains("MusicPageBody("),
-                              body.contains(".onMusicSourcesChange") || body.contains(".reasksOnSourcesChange(")))
-            }
+            if body.contains(asks) { found.append((String(head.1), body)) }
             rest = afterHead[end...]
         }
         return found
@@ -233,23 +243,35 @@ struct MusicPageStateTests {
         #expect(paged.hasStarted, "a paged load counts as asked")
     }
 
+    /// The surfaces that draw `MusicPageBody`, found by structure. Held in
+    /// both directions: a new surface is a finding, so is one that left.
+    nonisolated static let bodySurfaces: Set<String> =
+        ["MusicView", "MusicAlbumsPage", "MusicSongsPage", "MusicGenresPage", "MusicGenreDetailPage", "MusicShelfPage"]
+
     /// Every surface that draws `MusicPageBody` passes whether it has asked,
-    /// from its runs, never a fixed answer.
+    /// from its runs, never a fixed answer, both to the body and to the
+    /// change of the sources.
     @Test("jede Seite mit dem Musik-Koerper sagt, ob sie schon gefragt hat, aus ihren Laeufen", .needsTheSources)
     func everyPageSaysWhetherItAsked() throws {
         let views = SourceTree.root.appendingPathComponent("Sources/Views")
         let files = try #require(FileManager.default.enumerator(at: views, includingPropertiesForKeys: nil))
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
-        var calls: [String] = []
+        var drawing: Set<String> = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            calls += code.components(separatedBy: "MusicPageBody(state: .of(").dropFirst().map { String($0.prefix(160)) }
+            for view in Self.musicViews(in: try String(contentsOf: file, encoding: .utf8))
+            where view.body.contains("MusicPageBody(") {
+                drawing.insert(view.name)
+                let flat = view.body.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+                #expect(flat.contains("asked: vm.hasAsked,") || flat.contains("asked: runs.hasStarted,"),
+                        "\(view.name) does not answer asked from its runs")
+                #expect(!flat.contains("asked: true") && !flat.contains("asked: false"),
+                        "\(view.name) answers asked with a fixed value")
+                if flat.contains(".reasksOnSourcesChange(") {
+                    #expect(flat.contains("asked: { runs.hasStarted }"), "\(view.name) listens without saying whether it asked")
+                }
+            }
         }
-        #expect(!calls.isEmpty, "the fence found no page that draws the music body")
-        for call in calls {
-            #expect(call.contains("asked: vm.hasAsked,") || call.contains("asked: runs.hasStarted,"),
-                    "a page answers asked otherwise: \(call.prefix(90))")
-        }
+        #expect(drawing == Self.bodySurfaces, "the surfaces that draw the music body changed: \(drawing.sorted())")
     }
 }
 #endif

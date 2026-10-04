@@ -154,7 +154,7 @@ struct MusicSongsPage: View {
         }
         .navigationTitle(Text("Songs"))
         .task { if songs.isEmpty { await loadMore() } }
-        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+        .reasksOnSourcesChange(serverMissing: $serverMissing, asked: { runs.hasStarted }, reachable: { music.isAvailable },
                                reload: { await reload() })
         // Choice family: the same key as the album grid, noted like there.
         .onChange(of: musicSort) { _, newSort in
@@ -340,7 +340,7 @@ struct MusicGenresPage: View {
         }
         .navigationTitle(Text("Genres"))
         .task { if genres.isEmpty { await load() } }
-        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+        .reasksOnSourcesChange(serverMissing: $serverMissing, asked: { runs.hasStarted }, reachable: { music.isAvailable },
                                reload: { await load() })
     }
 
@@ -416,7 +416,7 @@ struct MusicGenreDetailPage: View {
         }
         .navigationTitle(Text(genre.name))
         .task { if albums.isEmpty, songs.isEmpty { await load() } }
-        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+        .reasksOnSourcesChange(serverMissing: $serverMissing, asked: { runs.hasStarted }, reachable: { music.isAvailable },
                                reload: { await load() })
     }
 
@@ -517,7 +517,7 @@ struct MusicShelfPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task { if items.isEmpty { await load() } }
-        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+        .reasksOnSourcesChange(serverMissing: $serverMissing, asked: { runs.hasStarted }, reachable: { music.isAvailable },
                                reload: { await load() })
     }
 

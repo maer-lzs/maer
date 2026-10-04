@@ -114,6 +114,27 @@ struct MusicViewModelTests {
         #expect(controls.pageRequests == requests, "asking the reachability is no load")
     }
 
+    /// The tab mounted without a server never loads (its task waits for a
+    /// configured server), and before its first run an empty tab shows the
+    /// loading state. When the server is entered, the change of the sources
+    /// loads it; no loading state stands without a run.
+    @Test("der ohne Server montierte Reiter laedt, sobald ein Server eingetragen ist, und dreht nicht ohne Lauf")
+    func aTabMountedWithoutAServerLoadsWhenOneComes() async {
+        let controls = Controls()
+        controls.reachable = false
+        let vm = makeVM(controls)
+        let before = MusicPageState.of(serverMissing: vm.serverMissingHere, asked: vm.hasAsked,
+                                       isEmpty: vm.albums.isEmpty, isLoading: vm.isLoading, failure: vm.errorText)
+        #expect(before == .loading && !vm.isLoading, "the precondition: the tab shows loading without a run")
+        controls.reachable = true
+        await vm.sourcesChanged()
+        #expect(vm.hasAsked, "the tab did not load when its server came")
+        #expect(controls.pageRequests == [0])
+        let after = MusicPageState.of(serverMissing: vm.serverMissingHere, asked: vm.hasAsked,
+                                      isEmpty: vm.albums.isEmpty, isLoading: vm.isLoading, failure: vm.errorText)
+        #expect(after == .content, "the tab still shows loading without a run")
+    }
+
     /// The measured hang: a first load CANCELLED by a tab switch used to set
     /// `loaded` before the run and made the empty state final. "No music"
     /// until a hard restart. A cancelled run is no attempt: the next

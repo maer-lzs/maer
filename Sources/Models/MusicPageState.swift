@@ -41,9 +41,12 @@ nonisolated enum MusicPageState: Equatable, Sendable {
     }
 
     /// The reachability is asked on every change, also on a full page; a
-    /// load follows only where the page had no server before.
-    static func onSourcesChange(reachableNow: Bool, wasMissing: Bool) -> SourcesChange {
+    /// load follows where the page had no server before, or where it never
+    /// asked at all (`asked`, its runs have started): a page mounted without
+    /// a server and then given one would otherwise load forever, since
+    /// before its first run an empty page shows the loading state.
+    static func onSourcesChange(reachableNow: Bool, wasMissing: Bool, asked: Bool) -> SourcesChange {
         if !reachableNow { return wasMissing ? .keep : .showMissing }
-        return wasMissing ? .reload : .keep
+        return wasMissing || !asked ? .reload : .keep
     }
 }
