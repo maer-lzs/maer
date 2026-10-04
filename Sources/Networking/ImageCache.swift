@@ -194,8 +194,9 @@ final class ImageCache {
 
     /// Renames every file whose name carries a sign-in part to the name
     /// without; a file already standing under that name wins.
-    nonisolated private static func dropSignInFromNames(in directories: [URL], listing: (URL) -> Set<String>) {
-        rename(in: directories, listing: listing, what: "sign-in dropped from names") { nameWithoutSignIn($0) }
+    nonisolated private static func dropSignInFromNames(in directories: [URL], listing: (URL) -> Set<String>,
+                                                        holds: (URL) -> Bool) {
+        rename(in: directories, listing: listing, what: "sign-in dropped from names", holds: holds) { nameWithoutSignIn($0) }
     }
 
     /// The kept covers of foreign addresses under the name the earlier rule
@@ -223,6 +224,14 @@ final class ImageCache {
         return targets.compactMapValues { $0.count == 1 ? $0.first : nil }
     }
 
+    /// Whether the network gate of a waiting address reads `target`: it reads
+    /// the purgeable tier alone (`readCandidates`), so a file landing there
+    /// under a waiting name is what that gate answers instead of the network.
+    nonisolated static func gateOfWaitingReads(_ target: URL, cache: URL, waiting: Set<String>) -> Bool {
+        target.deletingLastPathComponent().standardizedFileURL == cache.standardizedFileURL
+            && waiting.contains(target.lastPathComponent)
+    }
+
     /// The file names in a cover directory.
     nonisolated private static func fileNames(in directory: URL) -> Set<String> {
         // bearable, because a missing directory holds no cover
@@ -231,23 +240,30 @@ final class ImageCache {
 
     /// Moves the kept covers of foreign addresses to today's name (`legacyMoves`).
     nonisolated private static func moveLegacyNames(in directories: [URL], listing: (URL) -> Set<String>,
-                                                    moves: [String: String]) {
-        rename(in: directories, listing: listing, what: "foreign names moved") { moves[$0] }
+                                                    moves: [String: String], holds: (URL) -> Bool) {
+        rename(in: directories, listing: listing, what: "foreign names moved", holds: holds) { moves[$0] }
     }
 
     /// Renames every file `newName` gives a new name for; a file already
-    /// standing under the new name wins. Logged when anything was renamed or
-    /// failed.
+    /// standing under the new name wins. A target `holds` names stays as it
+    /// is and the file keeps its old name: under that name the network gate
+    /// of a waiting address would answer with bytes from before its
+    /// invalidation. Logged when anything was renamed, held or failed.
     nonisolated private static func rename(in directories: [URL], listing: (URL) -> Set<String>, what: String,
-                                           newName: (String) -> String?) {
+                                           holds: (URL) -> Bool, newName: (String) -> String?) {
         let fm = FileManager.default
         var renamed = 0
         var failed = 0
+        var held = 0
         for directory in directories {
             for name in listing(directory).sorted() {
                 guard let clean = newName(name) else { continue }
                 let source = directory.appendingPathComponent(name)
                 let target = directory.appendingPathComponent(clean)
+                if holds(target) {
+                    held += 1
+                    continue
+                }
                 do {
                     if fm.fileExists(atPath: target.path) {
                         try fm.removeItem(at: source)
@@ -261,8 +277,8 @@ final class ImageCache {
                 }
             }
         }
-        if renamed > 0 || failed > 0 {
-            Logger.library.notice("COVERCACHE \(what, privacy: .public)=\(renamed) failed=\(failed)")
+        if renamed > 0 || failed > 0 || held > 0 {
+            Logger.library.notice("COVERCACHE \(what, privacy: .public)=\(renamed) failed=\(failed) waiting=\(held)")
         }
     }
 
@@ -337,6 +353,12 @@ final class ImageCache {
         FileManager.default.createFile(atPath: persistentDirectory.appendingPathComponent(name).path, contents: data)
     }
 
+    /// Test seam: a file under a literal name in the purgeable tier, the way
+    /// an older build named it.
+    func testPlaceInCache(_ data: Data, named name: String) -> Bool {
+        FileManager.default.createFile(atPath: diskDirectory.appendingPathComponent(name).path, contents: data)
+    }
+
     /// Test seam: whether a literal name stands in the persistent tier.
     func testIsPersistent(named name: String) -> Bool {
         FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
@@ -346,7 +368,18 @@ final class ImageCache {
     /// run it, without demoting the covers of neighbouring witnesses.
     func testMoveLegacyNames(activeCoverURLs: [URL]) {
         let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: true) { key(for: $0) }
-        Self.moveLegacyNames(in: [persistentDirectory, diskDirectory], listing: Self.fileNames, moves: moves)
+        let cache = diskDirectory, waiting = refreshing
+        Self.moveLegacyNames(in: [persistentDirectory, diskDirectory], listing: Self.fileNames, moves: moves) {
+            Self.gateOfWaitingReads($0, cache: cache, waiting: waiting)
+        }
+    }
+
+    /// Test seam: the moves between the tiers for the given moves alone, as
+    /// the sweep runs them, without the moves of neighbouring witnesses.
+    func testApplyTierMoves(_ moves: [TierMove]) async {
+        await Self.applyTierMoves(moves, persistent: persistentDirectory, cache: diskDirectory) { name in
+            await MainActor.run { self.refreshing.contains(name) }
+        }
     }
 
     /// Test seam: removes a literal name from the persistent tier; false when
@@ -860,12 +893,20 @@ final class ImageCache {
     /// On deleting a download: move the persistent cover back into the purgeable
     /// cache (stays visible, but is now reclaimable).
     /// The persistent copy goes back into the cache when the download
-    /// goes; the picture stays available until the cache lets it go.
+    /// goes; the picture stays available until the cache lets it go. The
+    /// copy of an address that waits for the network stays where it is: in
+    /// the cache its network gate would answer with the picture from before
+    /// the invalidation; the load that answers replaces it, and a later
+    /// sweep moves it down.
     func removePersistent(coverURL: URL?) {
         guard let coverURL else { return }
         let cacheKey = key(for: coverURL)
         let source = persistentDirectory.appendingPathComponent(cacheKey)
         guard FileManager.default.fileExists(atPath: source.path) else { return }
+        if refreshing.contains(cacheKey) {
+            Logger.library.notice("COVERCACHE unpersist held: the address waits for the network")
+            return
+        }
         let target = diskDirectory.appendingPathComponent(cacheKey)
         do {
             if !FileManager.default.fileExists(atPath: target.path) {
@@ -884,6 +925,9 @@ final class ImageCache {
     /// already standing under the new name wins; the old one goes. A cover an
     /// earlier sweep already demoted stands in the cache; it is found there
     /// too and goes up under the new name, or it would fall after the TTL.
+    /// When the old address waits for the network, so does the new one: its
+    /// kept copy is the picture from before the invalidation, and under a
+    /// name that does not wait the network gate would answer with it.
     func renamePersistent(from old: URL?, to new: URL?) {
         guard let old, let new else { return }
         let kept = persistentDirectory.appendingPathComponent(key(for: old))
@@ -892,15 +936,19 @@ final class ImageCache {
         let fm = FileManager.default
         // The demoted cache file of a waiting address may be the picture
         // from before its invalidation; it does not go up (`makePersistent`).
-        let demotedMayGoUp = !refreshing.contains(key(for: old))
+        let oldWaits = refreshing.contains(key(for: old))
         let source = fm.fileExists(atPath: kept.path) ? kept : demoted
         guard source != target, fm.fileExists(atPath: source.path),
-              source == kept || demotedMayGoUp else { return }
+              source == kept || !oldWaits else { return }
         do {
             if fm.fileExists(atPath: target.path) {
                 try fm.removeItem(at: source)
             } else {
                 try fm.moveItem(at: source, to: target)
+                if oldWaits {
+                    invalidate(url: new)
+                    Logger.library.notice("COVERCACHE rename: the new address waits for the network like the old one")
+                }
             }
         } catch {
             Logger.library.error("COVERCACHE rename failed: \(FailureReason.of(error), privacy: .public)")
@@ -918,6 +966,50 @@ final class ImageCache {
         case promote(String)
         case demote(String)
         case drop(String)
+    }
+
+    /// Runs the moves between the tiers. Neither way moves the name of an
+    /// address that waits for the network (`isWaiting`, asked per name at
+    /// the move): its cache file may be the picture from before its
+    /// invalidation with the removal still queued, so it stays down, and its
+    /// persistent copy stays up, because in the cache its network gate would
+    /// answer with it instead of asking the server. An invalidation after
+    /// the look ends as if it came after the move. Logged when anything
+    /// moved, waited or failed.
+    nonisolated static func applyTierMoves(_ moves: [TierMove], persistent: URL, cache: URL,
+                                           isWaiting: (String) async -> Bool) async {
+        let fm = FileManager.default
+        var promoted = 0
+        var demoted = 0
+        var failed = 0
+        var waiting = 0
+        for move in moves {
+            do {
+                switch move {
+                case .promote(let name):
+                    guard await !isWaiting(name) else {
+                        waiting += 1
+                        continue
+                    }
+                    try fm.moveItem(at: cache.appendingPathComponent(name), to: persistent.appendingPathComponent(name))
+                    promoted += 1
+                case .demote(let name):
+                    guard await !isWaiting(name) else {
+                        waiting += 1
+                        continue
+                    }
+                    try fm.moveItem(at: persistent.appendingPathComponent(name), to: cache.appendingPathComponent(name))
+                    demoted += 1
+                case .drop(let name):
+                    try fm.removeItem(at: persistent.appendingPathComponent(name))
+                }
+            } catch {
+                failed += 1
+            }
+        }
+        if promoted > 0 || demoted > 0 || failed > 0 || waiting > 0 {
+            Logger.library.notice("COVERCACHE tiers promoted=\(promoted) demoted=\(demoted) failed=\(failed) waiting=\(waiting)")
+        }
     }
 
     nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,
@@ -1013,47 +1105,24 @@ final class ImageCache {
             //    the name without, in both tiers and before anything compares
             //    names, so a kept cover stays kept. A name already stored as a
             //    digest cannot be read; that cover loads once more.
-            Self.dropSignInFromNames(in: [persistent, cache], listing: names)
+            // No rename puts a file into the purgeable tier under the name of
+            // an address that waits for the network (`gateOfWaitingReads`).
+            let waitingNames = await MainActor.run { self.refreshing }
+            let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waitingNames) }
+            Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
             // A kept cover of a foreign address stands under the name the
             // earlier rule gave it; it takes today's name before anything
             // compares names, without the network, so no offline cover of a
             // downloaded episode is demoted.
-            Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves)
+            Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
             //    in the cache goes up, a persistent one without a download
             //    goes down.
-            var promoted = 0
-            var failed = 0
-            var waiting = 0
-            for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,
-                                       knowsAll: knowsAll) {
-                do {
-                    switch move {
-                    case .promote(let name):
-                        // A waiting address's cache file may be the picture
-                        // from before its invalidation, with the removal
-                        // still queued; it stays down. An invalidation after
-                        // this look ends as if it came after the move: the
-                        // persistent copy waits for the network.
-                        let mayGoUp = await MainActor.run { !self.refreshing.contains(name) }
-                        guard mayGoUp else {
-                            waiting += 1
-                            continue
-                        }
-                        try fm.moveItem(at: cache.appendingPathComponent(name), to: persistent.appendingPathComponent(name))
-                        promoted += 1
-                    case .demote(let name):
-                        try fm.moveItem(at: persistent.appendingPathComponent(name), to: cache.appendingPathComponent(name))
-                    case .drop(let name):
-                        try fm.removeItem(at: persistent.appendingPathComponent(name))
-                    }
-                } catch {
-                    failed += 1
-                }
-            }
-            if promoted > 0 || failed > 0 || waiting > 0 {
-                Logger.library.notice("COVERCACHE tiers promoted=\(promoted) failed=\(failed) waiting=\(waiting)")
+            let moved = Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,
+                                       knowsAll: knowsAll)
+            await Self.applyTierMoves(moved, persistent: persistent, cache: cache) { name in
+                await MainActor.run { self.refreshing.contains(name) }
             }
 
             // 2) TTL + 3) size cap.

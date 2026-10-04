@@ -364,6 +364,96 @@ struct ImageCachePersistentTests {
                 "the marker of a whole pass ends it")
     }
 
+    // MARK: - No move feeds the network gate of a waiting address
+
+    /// What the network gate of an address asks first: the purgeable tier
+    /// alone while the address waits (`allowKept: false`).
+    private func gate(_ url: URL) async -> UIImage? {
+        await ImageCache.shared.thumbnail(for: url, maxPixelSize: 64, allowKept: false)
+    }
+
+    /// A kept cover, then an invalidation: the address waits, and its gate
+    /// finds nothing, so it asks the server.
+    private func keptAndWaiting(_ url: URL) async {
+        await ImageCache.shared.makePersistent(coverURL: url, data: png(64))
+        ImageCache.shared.invalidate(url: url)
+        await ImageCache.shared.testDiskSettled(url)
+    }
+
+    @Test("das Entfernen eines Downloads legt das geschuetzte Cover einer wartenden Adresse nicht dorthin, wo das Netz-Tor liest")
+    func removingADownloadKeepsAWaitingCopyFromTheGate() async {
+        let url = coverURL(UUID().uuidString)
+        await keptAndWaiting(url)
+        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)) }
+        #expect(ImageCache.shared.testIsRefreshing(url), "the precondition: the address waits")
+        #expect(await gate(url) == nil, "the precondition: the gate finds nothing and asks the server")
+        ImageCache.shared.removePersistent(coverURL: url)
+        #expect(await gate(url) == nil, "the gate answers with the picture from before the invalidation")
+        #expect(ImageCache.shared.testCacheBytes(url) == nil)
+        #expect(await ImageCache.shared.thumbnail(for: url, maxPixelSize: 64) != nil, "every other reader still finds the kept copy")
+    }
+
+    @Test("das geschuetzte Cover einer wartenden Adresse zieht mit um, und die neue Adresse wartet: das Netz-Tor findet nichts")
+    func renamingAWaitingCopyKeepsTheNewAddressWaiting() async {
+        let tag = UUID().uuidString
+        let old = navidromeCover("old-\(tag)")
+        let new = navidromeCover("new-\(tag)")
+        await keptAndWaiting(old)
+        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: new)) }
+        #expect(await gate(new) == nil, "the precondition: nothing stands under the new address")
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
+        #expect(ImageCache.shared.testIsPersistent(new), "the kept copy follows the download")
+        #expect(ImageCache.shared.testIsRefreshing(new), "the new address waits like the old one")
+        #expect(await gate(new) == nil, "the gate of the new address answers with the picture from before the invalidation")
+        #expect(await ImageCache.shared.thumbnail(for: new, maxPixelSize: 64) != nil, "every other reader finds the kept copy")
+    }
+
+    @Test("der Fegelauf stuft das geschuetzte Cover einer wartenden Adresse nicht ab; eines, das nicht wartet, schon")
+    func theSweepKeepsAWaitingCopyUp() async {
+        let url = coverURL(UUID().uuidString)
+        await keptAndWaiting(url)
+        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)) }
+        await ImageCache.shared.testApplyTierMoves([.demote(ImageCache.shared.testKey(for: url))])
+        #expect(ImageCache.shared.testIsPersistent(url), "the kept copy of a waiting address went down")
+        #expect(await gate(url) == nil, "the gate answers with the picture from before the invalidation")
+
+        let other = coverURL(UUID().uuidString)
+        await ImageCache.shared.makePersistent(coverURL: other, data: png(64))
+        await ImageCache.shared.testApplyTierMoves([.demote(ImageCache.shared.testKey(for: other))])
+        #expect(!ImageCache.shared.testIsPersistent(other) && ImageCache.shared.testCacheBytes(other) != nil,
+                "the control: a copy that does not wait goes down")
+    }
+
+    @Test("ein Altname im Cache-Ordner zieht nicht unter den Namen einer wartenden Adresse; ohne Warten zieht er um")
+    func aLegacyNameDoesNotMoveOntoAWaitingName() async {
+        let tag = UUID().uuidString.prefix(8)
+        let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/image.jpg?t=1700000001&size=3000")!
+        let free = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/free.jpg?t=1700000003&size=3000")!
+        for each in [url, free] {
+            #expect(ImageCache.legacyName(for: each) != ImageCache.shared.testKey(for: each), "the precondition: an earlier name")
+            #expect(ImageCache.shared.testPlaceInCache(png(64), named: ImageCache.legacyName(for: each)))
+        }
+        ImageCache.shared.invalidate(url: url)
+        await ImageCache.shared.testDiskSettled(url)
+        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url, free])
+        #expect(await gate(url) == nil, "the old bytes landed under the name of a waiting address")
+        #expect(await gate(free) != nil, "the control: an old name moves where no address waits")
+    }
+
+    /// Every move of a file in the cover cache, counted: a new one has to
+    /// answer whether it puts bytes of a waiting address under a name the
+    /// network gate answers (makePersistent, removePersistent,
+    /// renamePersistent, the renames of step 0, up and down in the sweep).
+    @Test("jede Datei-Bewegung im Cover-Cache steht im Bestand", .needsTheSources)
+    func everyMoveInTheCoverCacheIsCounted() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
+        // With the dot: `removeItem(` holds `moveItem(` as well.
+        #expect(ConcurrencyFenceTests.sites(of: ".moveItem(", in: code) == 6,
+                "a move came or went; ask it the question of the gate of a waiting address, then set the count")
+    }
+
     /// The one place that knows which covers are active is the downloads'
     /// own answer; nowhere else builds one. Every witness above injects the
     /// pending move, so the production wiring is held here: the default asks
