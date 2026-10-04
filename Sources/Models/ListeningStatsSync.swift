@@ -82,15 +82,28 @@ nonisolated enum ListeningStatsSync {
     /// the rows could not be read no: they still stand on disk and may hold
     /// more than the pot, which lags them by every save since the last
     /// publish. Then the pot is only shown and published, and the store
-    /// holds it out of every write (`above`).
+    /// writes nothing until the rows are read (`rebuilt`).
     static func adoptionWrites(_ base: RowBase<ListeningStatsData>) -> Bool {
         if case .fresh = base { return true }
         return false
     }
 
+    /// The stock once a table the start could not read has been read: per
+    /// such table its rows, plus what this run counted (the stock above the
+    /// held pot), per key the sum; a table that was read at the start
+    /// (`nil` here) keeps the stock as it is. The pot lags the rows, so it
+    /// is left out; the rows already hold what it held.
+    static func rebuilt(own: ListeningStatsData, held: ListeningStatsData?,
+                        readDays: [String: Int]?, readItems: [String: Int]?) -> ListeningStatsData {
+        let counted = above(held ?? ListeningStatsData(), in: own)
+        return ListeningStatsData(
+            secondsPerDay: readDays.map { $0.merging(counted.secondsPerDay, uniquingKeysWith: +) } ?? own.secondsPerDay,
+            secondsPerItem: readItems.map { $0.merging(counted.secondsPerItem, uniquingKeysWith: +) } ?? own.secondsPerItem)
+    }
+
     /// Per key what `stock` holds above `held`; keys at or below it are left
-    /// out. The part of the stock a write may carry while an adopted pot is
-    /// held, and the part an adoption adds to what is held.
+    /// out. What this run counted on top of an adopted pot, and the part an
+    /// adoption adds to what is held.
     static func above(_ held: ListeningStatsData, in stock: ListeningStatsData) -> ListeningStatsData {
         func rest(_ values: [String: Int], _ floor: [String: Int]) -> [String: Int] {
             values.reduce(into: [:]) { out, entry in

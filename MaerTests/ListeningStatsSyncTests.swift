@@ -176,22 +176,48 @@ struct ListeningStatsSyncTests {
         #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: pot, pot: pot) == nil, "a second run changes nothing")
     }
 
-    /// The measured loss: the day table could not be read, its row holds
-    /// 2400 from a save after the last publish, the own pot 1200. The pot
-    /// is shown and published, but no write carries it over the unread row;
-    /// only what this run counted above it goes.
-    @Test("Tabelle unlesbar, Zeile 2400, Topf 1200: der Topf zeigt sich, aber kein Schrieb traegt ihn ueber die ungelesene Zeile")
-    func aPotOverUnreadRowsIsHeldOutOfEveryWrite() {
-        let day = "2026-10-04"
-        let pot = ListeningStatsData(secondsPerDay: [day: 1200], secondsPerItem: ["radio:rb:x": 60])
-        let counted = ListeningStatsData(secondsPerDay: [day: 300], secondsPerItem: [:])
-        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
-        stats.testAdopt(own: counted, base: .unknown(seen: nil), pot: pot)
-        #expect(stats.testOwnData.secondsPerDay[day] == 1200, "the precondition: the pot was adopted for the display")
-        #expect(stats.testOwnData.secondsPerItem["radio:rb:x"] == 60)
-        #expect(stats.testWriteSnapshot == counted, "a pot value reaches the write over the unread row")
+    /// The measured loss, with real rows in a database of its own: at the
+    /// start no table could be read, on disk the row holds 2400 (a save
+    /// after the last publish), the own pot 1200. The pot is shown; sixty
+    /// seconds of listening and a save later the row stands at 2460, not at
+    /// the pot plus the session and not at the session alone.
+    @Test("Tabellen beim Start unlesbar, auf der Platte 2400, Topf 1200, 60 s gehoert: nach dem save steht die Zeile nicht unter 2400")
+    func aSaveOverUnreadRowsNeverLowersThem() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("w80b-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let database = MaerDatabase(path: path)
+        let item = "radio:rb:w80b-\(UUID().uuidString)"
+        _ = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
+        let items = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsItem)
+        _ = try await items.apply(previous: [:], current: [item: 2400])
+        let carrier = KeyValueStatsCarrier(store: InMemoryCloudStore())
+        carrier.publish(ListeningStatsData(secondsPerDay: [:], secondsPerItem: [item: 1200]),
+                        deviceId: SyncHistoryStore.deviceId, by: "witness")
+        let restore = SyncSwitchProbe.armOn()
+        defer { restore() }
+        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database)
+        stats.start()
+        #expect(stats.seconds(forItemId: item) == 1200, "the precondition: the pot was adopted for the display")
+        stats.addSeconds(60, itemId: item)
+        await stats.awaitPendingWrites()
+        let reader = try #require(try database.readerNow())
+        let rows = try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: reader).rows
+        #expect(rows[item] == 2460, "the save over the unread row wrote \(rows[item] ?? -1) instead of 2460")
+        #expect(stats.seconds(forItemId: item) == 2460, "the display did not take the rows read on save")
         #expect(!ListeningStatsSync.adoptionWrites(.unknown(seen: nil)))
         #expect(ListeningStatsSync.adoptionWrites(.fresh), "a fresh file takes the pot as a write")
+    }
+
+    /// The rebuild after the read: per unread table its rows plus what the
+    /// run counted above the held pot; a table read at the start stays.
+    @Test("nach dem Lesen: Zeilen plus das Gezaehlte ueber dem Topf, eine gelesene Tabelle bleibt")
+    func theRebuildAddsOnlyWhatTheRunCounted() {
+        let held = ListeningStatsData(secondsPerDay: ["d": 1200], secondsPerItem: ["x": 1200])
+        let own = ListeningStatsData(secondsPerDay: ["d": 1260, "e": 30], secondsPerItem: ["x": 1260])
+        let both = ListeningStatsSync.rebuilt(own: own, held: held, readDays: ["d": 2400], readItems: ["x": 2400, "y": 5])
+        #expect(both == ListeningStatsData(secondsPerDay: ["d": 2460, "e": 30], secondsPerItem: ["x": 2460, "y": 5]))
+        let itemsOnly = ListeningStatsSync.rebuilt(own: own, held: nil, readDays: nil, readItems: ["x": 100])
+        #expect(itemsOnly == ListeningStatsData(secondsPerDay: own.secondsPerDay, secondsPerItem: ["x": 1360]))
     }
 
     /// What lies above the held part, per key; nothing at or below it.

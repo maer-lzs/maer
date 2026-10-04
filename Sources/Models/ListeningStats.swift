@@ -75,23 +75,56 @@ final class ListeningStatsStore: ObservableObject {
     private var rowBase: RowBase<ListeningStatsData> = .fresh
     private var pendingWrite: Task<Void, Never>?
     /// The own pot taken back over rows nobody could read: it counts in
-    /// what is shown and published, and no write carries it, because the
-    /// rows on disk may hold more than the pot (`adoptionWrites`).
+    /// what is shown and published; when the rows are read it is the part
+    /// of the stock that is NOT this run's counting (`rowsReadForWrite`).
     private var potHeld: ListeningStatsData?
+
+    /// The database the rows live in; a witness hands in a file of its own.
+    private let database: MaerDatabase
+    /// Which table the start could not read at all. While one is unread no
+    /// write goes: its rows may hold more than anything this run knows, and
+    /// a write replaces a row's value whole (`rowsReadForWrite`).
+    private var unreadDays = false
+    private var unreadItems = false
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one.
-    init(carrier: any StatsCarrier = StatsCarriers.make()) {
+    convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared) {
+        self.init(carrier: carrier, database: database, startReadFails: false)
+    }
+
+    private init(carrier: any StatsCarrier, database: MaerDatabase, startReadFails: Bool) {
         self.carrier = carrier
+        self.database = database
         // Rows first, synchronously through a reader (the init is
         // synchronous by contract: the first tick must find its pot).
         let started = Date()
-        // Each table is read on its own: a table that cannot be read leaves
-        // the other one's rows standing (nil = could not be read).
-        var days: StatsTable.Load?
-        var items: StatsTable.Load?
+        let (days, items) = startReadFails ? (nil, nil) : Self.readTables(database)
+        let (loaded, base) = Self.startBase(days: days, items: items)
+        let stock = loaded ?? ListeningStatsData()
+        ownData = stock
+        data = stock
+        rowBase = base
+        unreadDays = days == nil
+        unreadItems = items == nil
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
+    }
+
+    #if DEBUG
+    /// Test seam: a start whose read of both tables failed, over a database
+    /// whose rows a later read finds.
+    static func testFailingStart(carrier: any StatsCarrier, database: MaerDatabase) -> ListeningStatsStore {
+        ListeningStatsStore(carrier: carrier, database: database, startReadFails: true)
+    }
+    #endif
+
+    /// Both tables, each read on its own: a table that cannot be read leaves
+    /// the other one's rows standing (nil = could not be read).
+    private static func readTables(_ database: MaerDatabase) -> (days: StatsTable.Load?, items: StatsTable.Load?) {
+        var days, items: StatsTable.Load?
         do {
-            if let reader = try MaerDatabase.shared.readerNow() {
+            if let reader = try database.readerNow() {
                 do {
                     days = try StatsTable.loadNow(table: .statsDay, reader: reader)
                 } catch {
@@ -110,13 +143,7 @@ final class ListeningStatsStore: ObservableObject {
         } catch {
             Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
-        let (loaded, base) = Self.startBase(days: days, items: items)
-        let stock = loaded ?? ListeningStatsData()
-        ownData = stock
-        data = stock
-        rowBase = base
-        let ms = Int(Date().timeIntervalSince(started) * 1000)
-        Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
+        return (days, items)
     }
 
     /// The stock and the base the start leaves, from the two tables read on
@@ -141,7 +168,7 @@ final class ListeningStatsStore: ObservableObject {
         if let rowsOpening { return await rowsOpening.value }
         let opening = Task<(StatsTable, StatsTable)?, Never> {
             do {
-                let connection = try MaerDatabase.shared.connection()
+                let connection = try self.database.connection()
                 let days = try await StatsTable(connection: connection, table: .statsDay)
                 let items = try await StatsTable(connection: connection, table: .statsItem)
                 return (days, items)
@@ -171,8 +198,8 @@ final class ListeningStatsStore: ObservableObject {
     /// that was read is never replaced by the pot, which is only a part of
     /// it; a second run changes nothing because the rows are then known.
     /// Only a fresh file takes the pot as a write; over rows that could not
-    /// be read the pot is shown and published but held out of every write
-    /// (`potHeld`), since those rows may hold more than it.
+    /// be read the pot is shown and published, and nothing is written until
+    /// the rows are read (`rowsReadForWrite`), since they may hold more.
     func start() {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { publish(); cloudChanged(); return }
@@ -194,11 +221,13 @@ final class ListeningStatsStore: ObservableObject {
 
     /// This device's own published pot back into the stock when the rows
     /// could not be read (`ListeningStatsSync.adoptedOwnPot`): written after
-    /// a fresh start, held out of every write over unread rows.
+    /// a fresh start; over unread rows only shown and published, and held
+    /// apart, so the read that comes later can tell the pot from what this
+    /// run counted (`rowsReadForWrite`).
     private func adoptOwnPot(_ ownPot: ListeningStatsData?) {
         if let adopted = ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: ownPot) {
             let writes = ListeningStatsSync.adoptionWrites(rowBase)
-            Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0)) \(writes ? "written" : "held out of writes", privacy: .public)")
+            Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0)) \(writes ? "written" : "held until the rows are read", privacy: .public)")
             if writes {
                 ownData = adopted
                 save()
@@ -213,25 +242,31 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
-    /// What the next write carries: the stock, without a held pot.
-    private var writeSnapshot: ListeningStatsData {
-        potHeld.map { ListeningStatsSync.above($0, in: ownData) } ?? ownData
-    }
-
-    #if DEBUG
-    /// Test seam: the start's adoption over a chosen stock and base, without
-    /// the rows of the database. Only for a base that does not write.
-    func testAdopt(own: ListeningStatsData, base: RowBase<ListeningStatsData>, pot: ListeningStatsData?) {
-        ownData = own
-        rowBase = base
+    /// Whether a write may go. Yes when every table was read, at the start
+    /// or here. A table the start could not read is read again; while it
+    /// still cannot be read nothing is written, because a write replaces a
+    /// row's value whole and nobody knows what the unread row holds. Once
+    /// it is read, each such table is rebuilt from its rows plus what this
+    /// run counted above the held pot (`ListeningStatsSync.rebuilt`), and
+    /// the rows are known.
+    private func rowsReadForWrite() -> Bool {
+        guard unreadDays || unreadItems else { return true }
+        let (days, items) = Self.readTables(database)
+        guard let days, let items else {
+            Logger.library.notice("STATS save held: rows still not read days=\(days != nil) items=\(items != nil)")
+            return false
+        }
+        ownData = ListeningStatsSync.rebuilt(own: ownData, held: potHeld,
+                                             readDays: unreadDays ? days.rows : nil,
+                                             readItems: unreadItems ? items.rows : nil)
+        rowBase = Self.startBase(days: days, items: items).base
+        Logger.library.notice("STATS rows read on save: days=\(days.rows.count) items=\(items.rows.count) plan=\(String(describing: self.rowBase.plan), privacy: .public)")
         potHeld = nil
-        adoptOwnPot(pot)
+        unreadDays = false
+        unreadItems = false
+        recompose()
+        return true
     }
-
-    /// Test seam: what the next write would carry, and what is shown.
-    var testWriteSnapshot: ListeningStatsData { writeSnapshot }
-    var testOwnData: ListeningStatsData { ownData }
-    #endif
 
     /// The carrier the access of this moment asks for, when it travels
     /// another way than the held one; see `PodcastCloudSync.follow`.
@@ -321,8 +356,8 @@ final class ListeningStatsStore: ObservableObject {
         let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
         guard changed > 0 else { return 0 }
         ownData.secondsPerItem = NavidromeRekey.summed(ownData.secondsPerItem, map)
-        // The held part moves with the keys, or it would no longer be
-        // subtracted and the pot would reach the write under the new key.
+        // The held part moves with the keys, or the read that comes later
+        // would count the pot as this run's listening under the new key.
         if let held = potHeld {
             potHeld = ListeningStatsData(secondsPerDay: held.secondsPerDay,
                                          secondsPerItem: NavidromeRekey.summed(held.secondsPerItem, map))
@@ -382,12 +417,14 @@ final class ListeningStatsStore: ObservableObject {
         // Only the pots' entries that changed go to the rows, in order. A
         // failure is logged; the totals live on in memory and the next
         // throttled save writes again.
-        // A held pot stays out: the write carries only what lies above it.
-        let snapshot = writeSnapshot
         let previous = pendingWrite
         pendingWrite = Task { [weak self] in
             await previous?.value
-            guard let self, let (days, items) = await self.openRows() else { return }
+            // Over a table nobody could read nothing is written; the stock
+            // is taken after a read that may have rebuilt it.
+            guard let self, self.rowsReadForWrite() else { return }
+            let snapshot = self.ownData
+            guard let (days, items) = await self.openRows() else { return }
             // The base is read HERE, after the write before landed or failed.
             let base = self.rowBase
             let dayBase = base.map(\.secondsPerDay)
