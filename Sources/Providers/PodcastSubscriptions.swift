@@ -53,7 +53,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// ⇒ address and reason). The Podcasts tab shows them with the reason;
     /// the adoption skips them until the person retries, signs in or
     /// removes them.
-    @Published private(set) var feedsNotFollowed: [String: FeedAdoptionPending.Entry] = FeedAdoptionPending.pending()
+    @Published private(set) var feedsNotFollowed: [String: FeedAdoptionPending.Entry] = [:]
 
     /// Test seam: replaces the network fetch of the adoption path.
     var _testFeedFetcher: ((URL) async -> FeedFetchOutcome)?
@@ -91,7 +91,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// free address first, else the one search's hit. None for a free show,
     /// an accepted feed or an offer the person declined here.
     func freeTwinOffer(_ show: PodcastShow) -> FreeTwin.Offer? {
-        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL) else { return nil }
+        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL, defaults: defaults) else { return nil }
         let searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]]
         let declined = defaults.stringArray(forKey: AppStorageKeys.podcastFreeTwinDeclined) ?? []
         return FreeTwin.offer(remembered: defaults.string(forKey: AppStorageKeys.podcastFreeTwin(show.id)),
@@ -122,7 +122,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// kept, "nothing found" too; a failed search keeps nothing and may ask
     /// once more at the next refresh. No directory chosen, no request.
     private func lookForFreeTwin(_ show: PodcastShow) async {
-        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL),
+        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL, defaults: defaults),
               defaults.string(forKey: AppStorageKeys.podcastFreeTwin(show.id)) == nil,
               !freeTwinSearching.contains(show.id) else { return }
         var searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
@@ -136,7 +136,7 @@ final class PodcastSubscriptions: ObservableObject {
         do {
             let hits = try await directory.search(show.title)
             let index = FreeTwin.pick(hits: hits.map { ($0.title, $0.feedURL) }, showTitle: show.title,
-                                      isPremium: { Self.isPremiumFeed($0) })
+                                      isPremium: { Self.isPremiumFeed($0, defaults: defaults) })
             searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
             searched[show.id] = index.map { [hits[$0].feedURL, hits[$0].title] } ?? []
             defaults.set(searched, forKey: AppStorageKeys.podcastFreeTwinSearched)
@@ -234,6 +234,7 @@ final class PodcastSubscriptions: ObservableObject {
         self.database = database
         self.defaults = defaults
         self.isTheApp = isTheApp
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         refusedFeedKeys = FeedRefusal.lasting(defaults: defaults)
         // The subscription family of the choice sync reads the list through
         // the store and hands adopted statements back to it.
@@ -602,8 +603,8 @@ final class PodcastSubscriptions: ObservableObject {
         if isTokenFeedURL(feedURL) { return true }
         // The feed says it itself. Catches the path-token class
         // the query-param heuristic cannot see.
-        if isFeedBlocked(feedURL) { return true }
-        if manualPremiumFeedKeys().contains(feedKey(feedURL)) { return true }
+        if isFeedBlocked(feedURL, defaults: defaults) { return true }
+        if manualPremiumFeedKeys(defaults: defaults).contains(feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
         return premiumHosts.contains { lower.contains($0) }
     }
@@ -997,9 +998,9 @@ final class PodcastSubscriptions: ObservableObject {
         // only that one act follows the twin.
         if paidShowId == nil,
            shows.first(where: { $0.id == show.id }) == nil,
-           !Self.isPremiumFeed(show.feedURL),
+           !Self.isPremiumFeed(show.feedURL, defaults: defaults),
            let premium = shows.first(where: {
-               Self.isPremiumFeed($0.feedURL)
+               Self.isPremiumFeed($0.feedURL, defaults: defaults)
                    && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
            }) {
             let matches = PodcastPremiumMatch.episodeMatches(free: show.episodes,
@@ -1039,10 +1040,10 @@ final class PodcastSubscriptions: ObservableObject {
             // members host, manual mark) that looks like an existing free
             // subscription → offer the replacement.
             // Conservative same-show test; the user decides.
-            if Self.isPremiumFeed(show.feedURL),
+            if Self.isPremiumFeed(show.feedURL, defaults: defaults),
                let free = shows.first(where: {
                    $0.id != show.id
-                       && !Self.isPremiumFeed($0.feedURL)
+                       && !Self.isPremiumFeed($0.feedURL, defaults: defaults)
                        && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
                }) {
                 pendingPremiumReplacement = PremiumReplacementOffer(
@@ -1233,7 +1234,7 @@ final class PodcastSubscriptions: ObservableObject {
                 // A feed that failed or was dismissed here is not fetched
                 // again until the person retries, signs in, or the account
                 // brings a newer statement (no endless retry).
-                guard FeedAdoptionPending.shouldAttempt(feedKey: key, statementT: entry.t) else {
+                guard FeedAdoptionPending.shouldAttempt(feedKey: key, statementT: entry.t, defaults: defaults) else {
                     let reason = self.feedsNotFollowed[key]?.reason.rawValue ?? "none"
                     Logger.rss.notice("SUBSCRIBE cloud adoption skipped, not followed reason=\(reason, privacy: .public): \(key, privacy: .private(mask: .hash))")
                     continue
@@ -1279,8 +1280,8 @@ final class PodcastSubscriptions: ObservableObject {
                                  statementT: Double? = nil) {
         let key = Self.feedKey(feedURL)
         FeedAdoptionPending.mark(feedKey: key, feedURL: feedURL, reason: reason, status: status,
-                                 statementT: statementT)
-        feedsNotFollowed = FeedAdoptionPending.pending()
+                                 statementT: statementT, defaults: defaults)
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         // Adoption and import both mark here, so the line names neither.
         Logger.rss.notice("SUBSCRIBE marked not followed: \(key, privacy: .private(mask: .hash)) reason=\(reason.rawValue, privacy: .public) status=\(status ?? 0)")
     }
@@ -1291,8 +1292,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// save.
     func retryAdoption(feedKey: String) {
         guard let entry = feedsNotFollowed[feedKey] else { return }
-        FeedAdoptionPending.clear(feedKey: feedKey)
-        feedsNotFollowed = FeedAdoptionPending.pending()
+        FeedAdoptionPending.clear(feedKey: feedKey, defaults: defaults)
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         Task { [weak self] in
             guard let self else { return }
             let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true, isSingleUserAct: false)
@@ -1319,8 +1320,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// fails too marks the old one again, so nothing silently disappears.
     func replaceAdoption(feedKey: String, newURL: String) {
         guard let entry = feedsNotFollowed[feedKey] else { return }
-        FeedAdoptionPending.clear(feedKey: feedKey)
-        feedsNotFollowed = FeedAdoptionPending.pending()
+        FeedAdoptionPending.clear(feedKey: feedKey, defaults: defaults)
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         Task { [weak self] in
             guard let self else { return }
             let ok = await self.subscribe(urlString: newURL, notesCloud: true, adopting: false, isSingleUserAct: true)
@@ -1356,8 +1357,8 @@ final class PodcastSubscriptions: ObservableObject {
     func removeNotFollowed(feedKey: String) {
         guard let entry = feedsNotFollowed[feedKey] else { return }
         FeedAdoptionPending.mark(feedKey: feedKey, feedURL: entry.feedURL, reason: .dismissed,
-                                 statementT: entry.statementT)
-        feedsNotFollowed = FeedAdoptionPending.pending()
+                                 statementT: entry.statementT, defaults: defaults)
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         Logger.rss.notice("SUBSCRIBE cloud adoption dismissed here: \(feedKey, privacy: .private(mask: .hash))")
     }
 
@@ -2194,7 +2195,10 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// The same fetch, with the reason for a miss: the adoption path
-    /// tells a sign-in demand from an outage.
+    /// tells a sign-in demand from an outage. A channel block it finds is
+    /// noted in the app's domain: this runs off the main actor without a
+    /// store (`UserDefaults` cannot be sent here), and a store built for a
+    /// test fetches through `_testFeedFetcher`, never through this.
     @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL,
                                                      patience: FeedFetchPatience = .patient) async -> FeedFetchOutcome {
         // THE funnel for every feed request. The rule sits here so a call
