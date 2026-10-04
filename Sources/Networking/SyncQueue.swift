@@ -12,6 +12,9 @@ protocol SyncQueueStorage {
     func save(_ pending: [String: SyncQueue.PendingUpdate])
     /// Returns once every handed-over save has landed on disk.
     func awaitPendingWrites() async
+    /// Whether the start could not read the stored entries: then the store
+    /// may hold entries `load()` lacks.
+    var startReadFailed: Bool { get }
 }
 
 /// Narrow API view the flush needs. APIClient satisfies it; tests can inject a
@@ -60,6 +63,8 @@ final class SyncQueueRowStorage: SyncQueueStorage {
     func load() -> [String: SyncQueue.PendingUpdate] {
         pending
     }
+
+    var startReadFailed: Bool { keeper.startReadFailed }
 
     /// The memory is the truth at once; the rows get the diff in the chain,
     /// and a failed write keeps the entries queued in memory. Emptying is
@@ -140,9 +145,11 @@ final class SyncQueue {
     /// Every waiting update under the id in the form the server answers to
     /// (`NavidromeRekey`); where an old and a new id of one title meet, the
     /// one queued later stays. Returns how many entries changed, after the
-    /// write landed.
+    /// write landed. Nil while the start could not read the entries: the
+    /// rows may hold old ids this memory lacks.
     @discardableResult
-    func rekey(_ map: (String) -> String) async -> Int {
+    func rekey(_ map: (String) -> String) async -> Int? {
+        if storage.startReadFailed { return nil }
         let pending = loadAll()
         let moves = NavidromeRekey.moves(pending.keys, map)
         guard !moves.isEmpty else { return 0 }

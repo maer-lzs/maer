@@ -130,6 +130,9 @@ final class MaerPlaylists: ObservableObject {
     /// or the start read. A failed start read leaves it unknown, and then
     /// no write removes a row nobody saw.
     private var rowBase: RowBase<[String: Playlist]> = .fresh
+    /// Whether the start read failed as a whole: the rows may hold lists
+    /// the memory lacks, and a later write does not change that.
+    private var startReadFailed = false
 
     /// The database is chosen once; a witness hands in a file of its own.
     init(database: MaerDatabase = MaerDatabase.shared) {
@@ -372,9 +375,11 @@ final class MaerPlaylists: ObservableObject {
     /// Every list with its entries in the form `map` gives (Navidrome's new
     /// ids), by the rule the runner reads the far side with. Mechanics: the
     /// list clock stays, so the move does not travel as a change of its own.
-    /// Returns how many lists changed and how many there are.
+    /// Returns how many lists changed and how many there are; nil while the
+    /// start could not read the rows, which may hold lists with old ids.
     @discardableResult
-    func rekey(_ map: (String) -> String) -> (changed: Int, total: Int) {
+    func rekey(_ map: (String) -> String) -> (changed: Int, total: Int)? {
+        if startReadFailed { return nil }
         var changed = 0
         let next = playlists.map { list -> Playlist in
             let entry = NavidromeRekey.playlist(
@@ -433,6 +438,7 @@ final class MaerPlaylists: ObservableObject {
             }
         } catch {
             base = .unknown(seen: nil)
+            startReadFailed = true
             Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
         playlists = loaded ?? []

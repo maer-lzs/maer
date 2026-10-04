@@ -82,8 +82,11 @@ final class PlaybackContext: ObservableObject {
 
     /// Every entry in the form the server answers to (`NavidromeRekey`);
     /// returns how many entries changed. Saved only when something did.
+    /// Nil while the start could not read the row: the row may hold the
+    /// old ids this memory lacks, so the move waits for a start that reads.
     @discardableResult
-    func rekey(_ map: (String) -> String) -> Int {
+    func rekey(_ map: (String) -> String) -> Int? {
+        if keeper?.startReadFailed == true { return nil }
         let changed = NavidromeRekey.changedCount(ids, map)
         let rekeyed = NavidromeRekey.rekeyed(ids, map)
         guard rekeyed != ids else { return 0 }

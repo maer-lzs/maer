@@ -868,9 +868,11 @@ final class DownloadManager {
     /// written and measured once for the whole pass. `onMove` hears every
     /// complete download that moved, so what hangs on its id beside the
     /// folder (the persistent cover) can follow. Returns how many downloads
-    /// changed and how many there are.
+    /// changed and how many there are; nil while the start could not read
+    /// the marks, which may name downloads the memory lacks.
     func rekey(_ map: (String) -> String,
-               onMove: (_ oldId: String, _ newId: String) -> Void = { _, _ in }) -> (changed: Int, total: Int) {
+               onMove: (_ oldId: String, _ newId: String) -> Void = { _, _ in }) -> (changed: Int, total: Int)? {
+        if keeper.startReadFailed { return nil }
         let total = details.count
         var changed = 0
         var marksChanged = false

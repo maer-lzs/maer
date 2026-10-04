@@ -43,10 +43,10 @@ struct NavidromeRekeyTests {
         let before = stats.ownData.secondsPerItem
         stats.addSeconds(5, itemId: old)
         stats.addSeconds(7, itemId: new)
-        #expect(stats.rekeyItems(Self.map) >= 1)
+        #expect((stats.rekeyItems(Self.map)?.changed ?? 0) >= 1)
         #expect(stats.ownData.secondsPerItem[old] == nil, "the old key stayed")
         #expect(stats.ownData.secondsPerItem[new] == (before[new] ?? 0) + (before[old] ?? 0) + 12)
-        #expect(stats.rekeyItems(Self.map) == 0, "a second pass changes nothing")
+        #expect(stats.rekeyItems(Self.map)?.changed == 0, "a second pass changes nothing")
     }
 
     @Test("die Regel: Reihenfolge bleibt, alt und neu eines Titels bleiben einmal an der ersten Stelle")
@@ -95,6 +95,7 @@ struct NavidromeRekeyTests {
         func load() -> [String: SyncQueue.PendingUpdate] { stored }
         func save(_ pending: [String: SyncQueue.PendingUpdate]) { stored = pending; saves += 1 }
         func awaitPendingWrites() async {}
+        let startReadFailed = false
     }
 
     @Test("die Sync-Warteschlange zieht um, bei alt und neu bleibt der spaeter eingereihte")
@@ -187,7 +188,7 @@ struct NavidromeRekeyTests {
         await manager.ensureScanned()
         #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.old)").count == 1,
                 "the precondition: the index was built, and holds the old song id")
-        #expect(manager.rekey(Self.map).changed == 1)
+        #expect(manager.rekey(Self.map)?.changed == 1)
         #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.new)").count == 1, "the new id finds its file")
         #expect(manager.loadCachedDetail(forItemId: "sub:song:\(Self.new)") != nil)
         #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.old)").isEmpty)
@@ -212,7 +213,7 @@ struct NavidromeRekeyTests {
         #expect(manager.kinds[hexAlbum] == .music, "the precondition: the album has its kind")
 
         var heard: [String] = []
-        let result = manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") })
+        let result = try #require(manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") }))
         #expect(result.changed == 2 && result.total == 3)
         let moved = Self.map(hexAlbum)
         #expect(heard == ["\(hexAlbum)>\(moved)"], "the one download that moved is heard, so its cover can follow")
@@ -222,7 +223,7 @@ struct NavidromeRekeyTests {
         #expect(manager.loadCachedDetail(forItemId: moved)?.media.tracks?.map(\.contentUrl) == [Self.new])
         #expect(manager.loadCachedDetail(forItemId: plain)?.media.tracks?.map(\.contentUrl) == [Self.new, Self.new])
         #expect(manager.loadCachedDetail(forItemId: "li_book")?.media.tracks?.map(\.contentUrl) == [Self.old])
-        #expect(manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") }).changed == 0,
+        #expect(manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") })?.changed == 0,
                 "a second pass changes nothing")
         #expect(heard.count == 1, "a second pass moves nothing and hears nothing")
 
@@ -656,13 +657,13 @@ struct NavidromeRekeyTests {
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds.isEmpty, "the precondition: no folder carries a mark")
 
-        let result = manager.rekey(Self.map)
+        let result = try #require(manager.rekey(Self.map))
         let moved = downloads.appendingPathComponent(Self.map(old)).appendingPathComponent("0.mp3").path
         #expect(FileManager.default.fileExists(atPath: moved), "the interrupted download stayed under its old id")
         #expect(!FileManager.default.fileExists(atPath: downloads.appendingPathComponent(old).path))
         #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(taken).path), "a taken target is left alone")
         #expect(result.changed == 1)
-        #expect(manager.rekey(Self.map).changed == 0, "a second pass changes nothing")
+        #expect(manager.rekey(Self.map)?.changed == 0, "a second pass changes nothing")
     }
 
     /// A pass over many downloads writes the marks and the kinds and
@@ -681,6 +682,120 @@ struct NavidromeRekeyTests {
             #expect(body.components(separatedBy: "keeper.write(").count - 1 == 1, "\(head): marks written per item")
             #expect(!body.contains("adoptDownload("), "\(head): goes through the move with its writes")
         }
+    }
+
+    // MARK: - Ungelesene Ablagen
+
+    /// A database file whose named tables carry no `key` and `payload`
+    /// columns: the start read of each fails as a whole, as a read error
+    /// does, and the file holds a row, so it is no fresh install.
+    static func unreadableDatabase(_ tables: [String], at path: String) async throws -> MaerDatabase {
+        let database = MaerDatabase(path: path)
+        let connection = try database.connection()
+        for table in tables { try await connection.execute("CREATE TABLE \(table) (other TEXT)") }
+        try await connection.execute("INSERT INTO \(tables[0]) (other) VALUES ('x')")
+        _ = try await connection.checkpoint()
+        return database
+    }
+
+    static func temporaryDirectory(_ name: String) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(name)-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    /// A store whose start could not read its rows holds in memory only what
+    /// this run added; the rows may hold old ids. The step answers nil, so
+    /// the marker stays off and a later start that reads moves them.
+    @Test("eine Ablage, deren Start-Lesen scheiterte, zieht nicht um: Warteschlange, Kontext, Sync-Warteschlange, Playlisten, Downloads antworten nil")
+    func aStoreWhoseStartReadFailedDoesNotMove() async throws {
+        let directory = try Self.temporaryDirectory("rekey-unread")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let database = try await Self.unreadableDatabase(
+            ["play_queue", "playback_context", "pending_sync", "maer_playlist", "download_meta"],
+            at: directory.appendingPathComponent("maer.sqlite").path)
+        #expect(try database.readerNow() != nil, "the precondition: the file is no fresh install")
+        let old = "sub:song:\(Self.old)"
+
+        let queue = PlayQueue(persists: true, database: database)
+        queue.playLast(old)
+        #expect(queue.rekey(Self.map) == nil, "the queue moved over a row it never read")
+        #expect(queue.ids == [old])
+
+        let context = PlaybackContext(persists: true, database: database)
+        context.replace(ids: [old], source: "Album")
+        #expect(context.rekey(Self.map) == nil, "the context moved over a row it never read")
+
+        let pending = SyncQueue(storage: SyncQueueRowStorage(database: database))
+        #expect(await pending.rekey(Self.map) == nil, "the sync queue moved over rows it never read")
+
+        #expect(MaerPlaylists(database: database).rekey(Self.map) == nil, "the lists moved over rows they never read")
+
+        let downloads = DownloadManager(documents: directory, database: database)
+        await downloads.ensureScanned()
+        #expect(downloads.rekey(Self.map) == nil, "the downloads moved over marks they never read")
+
+        // The same stores over a file they can read move what they hold.
+        let readable = MaerDatabase(path: directory.appendingPathComponent("readable.sqlite").path)
+        let readQueue = PlayQueue(persists: true, database: readable)
+        readQueue.playLast(old)
+        #expect(readQueue.rekey(Self.map) == 1, "the control: a queue that read its row moves")
+        let readPending = SyncQueue(storage: SyncQueueRowStorage(database: readable))
+        #expect(await readPending.rekey(Self.map) == 0, "the control: a sync queue that read its rows answers")
+        // The chains end before the files go.
+        await queue.awaitPendingWrites()
+        await context.awaitPendingWrites()
+        await readQueue.awaitPendingWrites()
+        await RowKeepers.awaitAll()
+    }
+
+    @Test("die Hoerstaende ziehen nicht um, solange das Lesen ihrer Tabelle scheiterte; gelesen ziehen sie um")
+    func theStandsWaitForTheirTable() throws {
+        let suite = "rekey-stands-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: ListeningStore.movedKey)
+        struct ReadFailed: Error {}
+        ListeningStore.installTable(for: defaults) { throw ReadFailed() }
+        #expect(ListeningStore.rekey(Self.map, in: defaults) == nil, "the stands moved over a table nobody read")
+
+        let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
+        let stock = ListeningStore.Stock(backups: [old: [12, 1_700_000_000]], flushed: [:])
+        ListeningStore.installTable(for: defaults) { stock }
+        let moved = try #require(ListeningStore.rekey(Self.map, in: defaults))
+        #expect(moved.changed == 1 && moved.total == 1)
+        #expect(ListeningStore.positions(in: defaults)[new] == [12, 1_700_000_000])
+        #expect(ListeningStore.positions(in: defaults)[old] == nil)
+    }
+
+    /// The table the start could not read is read before the move, so its
+    /// rows move with the run's; while it stays unread the step answers nil.
+    @Test("die Statistik liest eine ungelesene Tabelle vor dem Umzug nach; bleibt sie ungelesen, antwortet der Schritt nil")
+    func theStatsReadBeforeTheyMove() async throws {
+        let directory = try Self.temporaryDirectory("rekey-stats")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
+        let carrier = KeyValueStatsCarrier(store: InMemoryCloudStore())
+
+        let broken = try await Self.unreadableDatabase(["stats_item"], at: directory.appendingPathComponent("broken.sqlite").path)
+        let blind = ListeningStatsStore(carrier: carrier, database: broken)
+        blind.addSeconds(5, itemId: old)
+        #expect(blind.rekeyItems(Self.map) == nil, "the stats moved over a table nobody could read")
+
+        let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+        _ = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
+        let items = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsItem)
+        _ = try await items.apply(previous: [:], current: [old: 2400])
+        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database)
+        #expect(stats.seconds(forItemId: old) == 0, "the precondition: the start read no row")
+        let moved = try #require(stats.rekeyItems(Self.map))
+        #expect(moved.changed == 1)
+        await stats.awaitPendingWrites()
+        let reader = try #require(try database.readerNow())
+        let rows = try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: reader).rows
+        #expect(rows[new] == 2400, "the row read on the move is not under the new id: \(rows)")
+        #expect(rows[old] == nil, "the old id stayed in the rows")
     }
 
     /// Which stores the pass names, held in the sources: a store that keeps

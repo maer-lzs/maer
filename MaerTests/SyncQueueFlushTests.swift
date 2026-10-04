@@ -14,6 +14,7 @@ private final class MemoryStorage: SyncQueueStorage {
     func load() -> [String: SyncQueue.PendingUpdate] { dict }
     func save(_ pending: [String: SyncQueue.PendingUpdate]) { dict = pending }
     func awaitPendingWrites() async {}
+    let startReadFailed = false
 }
 
 @MainActor

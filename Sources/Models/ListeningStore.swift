@@ -91,6 +91,9 @@ nonisolated enum ListeningStore {
 
     private static let stocks = Mutex<[ObjectIdentifier: Stock]>([:])
     private static let tables = Mutex<[ObjectIdentifier: Table]>([:])
+    /// The defaults objects whose held stock came from a failed table read:
+    /// the old keys answer, and the table may hold entries they lack.
+    private static let readFailures = Mutex<Set<ObjectIdentifier>>([])
 
     /// The defaults objects a stock is held for, kept alive so an identity
     /// is never reused by another object. `UserDefaults` is not `Sendable`
@@ -126,6 +129,7 @@ nonisolated enum ListeningStore {
             }
             return moved ? rows : merged(legacy, rows)
         } catch {
+            readFailures.withLock { _ = $0.insert(ObjectIdentifier(defaults)) }
             Logger.library.error("STAND load failed reason=\(FailureReason.of(error), privacy: .public); the old keys answer")
             return legacy
         }
@@ -152,6 +156,21 @@ nonisolated enum ListeningStore {
                              load: @escaping @Sendable () throws -> Stock?) {
         tables.withLock { $0[ObjectIdentifier(defaults)] = Table(read: load, resumes: resumes) }
         stocks.withLock { $0[ObjectIdentifier(defaults)] = nil }
+        readFailures.withLock { _ = $0.remove(ObjectIdentifier(defaults)) }
+    }
+
+    /// Every stand under the id `map` gives (Navidrome's new ids), by the
+    /// one move rule; returns how many moved and how many there are. Nil
+    /// while the held stock came from a failed table read: the table may
+    /// hold stands under old ids that the old keys lack.
+    static func rekey(_ map: (String) -> String,
+                      in defaults: UserDefaults = .standard) -> (changed: Int, total: Int)? {
+        // The first question loads the stock, so the read is decided here.
+        let keys = Array(positions(in: defaults).keys)
+        if readFailures.withLock({ $0.contains(ObjectIdentifier(defaults)) }) { return nil }
+        let moves = NavidromeRekey.moves(keys, map)
+        for move in moves { self.move(from: move.from, to: move.to, in: defaults) }
+        return (moves.count, keys.count)
     }
 
     /// Whether the table is the stock of `defaults`.

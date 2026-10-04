@@ -36,31 +36,25 @@ enum NavidromeRekeyRun {
             // with error 70 while it holds old ids, and nothing else waits
             // on it.
             SubsonicProvider.songListRekeyStep,
+            // Every store answers nil while its start could not read its
+            // rows: they may hold old ids its memory lacks, and a marker set
+            // over them would leave them under the old id for good.
             Step(name: "queue") { map in
                 let queue = PlayQueue.shared
                 let total = queue.ids.count
-                return (queue.rekey(map), total)
+                return queue.rekey(map).map { ($0, total) }
             },
             Step(name: "context") { map in
                 let context = PlaybackContext.shared
                 let total = context.ids.count
-                return (context.rekey(map), total)
+                return context.rekey(map).map { ($0, total) }
             },
-            Step(name: "stands") { map in
-                let keys = Array(ListeningStore.positions().keys)
-                let moves = NavidromeRekey.moves(keys, map)
-                for move in moves { ListeningStore.move(from: move.from, to: move.to) }
-                return (moves.count, keys.count)
-            },
-            Step(name: "stats") { map in
-                let stats = ListeningStatsStore.shared
-                let total = stats.ownData.secondsPerItem.count
-                return (stats.rekeyItems(map), total)
-            },
+            Step(name: "stands") { map in ListeningStore.rekey(map) },
+            Step(name: "stats") { map in ListeningStatsStore.shared.rekeyItems(map) },
             Step(name: "pending") { map in
                 let queue = SyncQueue.shared
                 let total = queue.allPending().count
-                return (await queue.rekey(map), total)
+                return await queue.rekey(map).map { ($0, total) }
             },
             // These two also run in every reconcile of their carrier; here
             // for a device whose sync is off.

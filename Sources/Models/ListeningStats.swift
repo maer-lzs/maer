@@ -349,12 +349,16 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     /// This device's seconds per title in the form the server answers to
-    /// (`NavidromeRekey.summed`); returns how many keys changed. The days
-    /// stay as they are, they name no title.
+    /// (`NavidromeRekey.summed`); returns how many keys changed and how many
+    /// there are. The days stay as they are, they name no title. A table
+    /// the start could not read is read first; nil while it still cannot be
+    /// read, because its rows hold titles under ids this memory lacks.
     @discardableResult
-    func rekeyItems(_ map: (String) -> String) -> Int {
+    func rekeyItems(_ map: (String) -> String) -> (changed: Int, total: Int)? {
+        guard rowsReadForWrite() else { return nil }
+        let total = ownData.secondsPerItem.count
         let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
-        guard changed > 0 else { return 0 }
+        guard changed > 0 else { return (0, total) }
         ownData.secondsPerItem = NavidromeRekey.summed(ownData.secondsPerItem, map)
         // The held part moves with the keys, or the read that comes later
         // would count the pot as this run's listening under the new key.
@@ -364,7 +368,7 @@ final class ListeningStatsStore: ObservableObject {
         }
         recompose()
         save()
-        return changed
+        return (changed, total)
     }
 
     /// Seconds listened to one item, across all days.

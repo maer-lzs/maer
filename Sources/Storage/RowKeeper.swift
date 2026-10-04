@@ -30,6 +30,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read.
     private(set) var base: RowBase<Rows> = .fresh
+    /// Whether the start read failed as a whole: the rows may hold any row
+    /// the store's memory lacks, and a later write does not change that. A
+    /// pass that must reach every row (the id move) waits while it holds.
+    private(set) var startReadFailed = false
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
     /// The last handed-over write; each write waits for the one before it.
@@ -59,6 +63,7 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             return load.rows
         } catch {
             base = .unknown(seen: nil)
+            startReadFailed = true
             Logger.library.error("\(self.label, privacy: .public) rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
             return nil
         }
