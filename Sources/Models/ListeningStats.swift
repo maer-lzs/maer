@@ -160,11 +160,12 @@ final class ListeningStatsStore: ObservableObject {
     /// has to move and nothing can be lost on the way. The one-time step is
     /// only that the file gets PUBLISHED, which `start()` does.
     ///
-    /// The other direction is the one that needs care: a device whose file is
-    /// gone (a reset, a failed write) but whose pot still stands in iCloud
-    /// adopts its own numbers back instead of starting at zero. Presence is
-    /// checked, nothing is written blind, and a second run changes nothing
-    /// because the file then exists.
+    /// The other direction is the one that needs care: a device whose rows
+    /// could not be read at all (a fresh file after a reset, a read that
+    /// failed as a whole) but whose pot still stands in iCloud merges its own
+    /// numbers back instead of starting at zero (`adoptedOwnPot`). A table
+    /// that was read is never replaced by the pot, which is only a part of
+    /// it; a second run changes nothing because the rows are then known.
     func start() {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { publish(); cloudChanged(); return }
@@ -180,9 +181,9 @@ final class ListeningStatsStore: ObservableObject {
             self?.cloudChanged()
         })
         let ownPot = carrier.pots()[SyncHistoryStore.deviceId]
-        if ownData.secondsPerDay.isEmpty, let ownPot, !ownPot.secondsPerDay.isEmpty {
-            Logger.library.notice("listening stats: local file empty, adopting this device's own published pot (\(ownPot.secondsPerDay.count) days)")
-            ownData = ownPot
+        if let adopted = ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: ownPot) {
+            Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0))")
+            ownData = adopted
             save()
         }
         publish()

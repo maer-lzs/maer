@@ -10,8 +10,9 @@ import Foundation
 /// write leaves it where it was, so the next write diffs against the last
 /// state that really is in the rows. A start that could not read every row
 /// leaves the rows unknown and keeps what it did read: a write then removes
-/// a row it read and that is gone from the stock, and never a row nobody
-/// could read, so those are not buried under an empty or older stand.
+/// a row it read and that is gone from the stock, and never removes a row
+/// nobody could read. It does not protect such a row from being written
+/// over: a write that carries the same key replaces it.
 nonisolated enum RowBase<Value> {
     /// The rows as the last landed write or the successful start read left them.
     case known(Value)

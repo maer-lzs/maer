@@ -54,11 +54,20 @@ struct RowStoreFenceTests {
     /// keeper and still read and write their rows by hand. A store that
     /// moved a document since goes through `RowKeeper`, which holds the
     /// start read, the pour and the write chain once; the stock only falls.
+    /// A type alias for the store counts as the store: every line that names
+    /// the alias is a site. The totals read their two tables one by one, so
+    /// a table that cannot be read leaves the other standing; that is where
+    /// their stock grew.
     // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
     // Speicher von vor der Naht).
     nonisolated static let keyedRowStoreStock: [String: Int] = [
-        "ListeningStats.swift": 1, "PodcastListenLog.swift": 5, "MaerPlaylists.swift": 6
+        "ListeningStats.swift": 13, "PodcastListenLog.swift": 5, "MaerPlaylists.swift": 6
     ]
+
+    /// `KeyedRowStore<` and every alias `code` declares for it.
+    nonisolated static func keyedTokens(in code: String) -> [String] {
+        ["KeyedRowStore<"] + code.matches(of: #/typealias\s+(\w+)\s*=\s*KeyedRowStore</#).map { String($0.1) }
+    }
 
     @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")
     func rowsHaveOneHome() throws {
@@ -77,7 +86,7 @@ struct RowStoreFenceTests {
             if replaces > (Self.replaceAllStock[name] ?? 0) {
                 offenders.append("\(name): \(replaces) replaceAll sites")
             }
-            let keyed = Self.sites(of: ["KeyedRowStore<"], in: text)
+            let keyed = Self.sites(of: Self.keyedTokens(in: text), in: text)
             if keyed > (Self.keyedRowStoreStock[name] ?? 0) {
                 offenders.append("\(name): \(keyed) KeyedRowStore sites, new stores go through RowKeeper")
             }
@@ -85,6 +94,9 @@ struct RowStoreFenceTests {
         #expect(offenders.isEmpty, "rows past their home: \(offenders)")
         #expect(Self.sites(of: ["replaceAll("], in: "let n = try await rows.replaceAll(stock)\n// replaceAll( in a comment") == 1)
         #expect(Self.sites(of: ["SQLiteConnection(", "MaerDatabase.shared"], in: "let c = try MaerDatabase.shared.connection()") == 1)
+        // Calibration: an alias counts as the store.
+        let aliased = "typealias T = KeyedRowStore<Int>\nlet a: T.Load\nlet b = KeyedRowStore<Int>.self"
+        #expect(Self.sites(of: Self.keyedTokens(in: aliased), in: aliased) == 3)
     }
 }
 #endif

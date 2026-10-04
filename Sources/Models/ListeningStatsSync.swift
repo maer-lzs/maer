@@ -56,6 +56,27 @@ nonisolated enum ListeningStatsSync {
             secondsPerItem: itemCap.map { cappedItems(live, limit: $0) } ?? live)
     }
 
+    /// Whether a start takes this device's own published pot back, and the
+    /// stock it then holds; nil = nothing to adopt. Only when the start
+    /// could not read the local rows at all (a fresh file, or a read that
+    /// failed as a whole): a table that was read, empty or not, is the local
+    /// truth, and a pot taken over it would remove read rows on the next
+    /// write. The pot is a part by construction (`publishable`: live items
+    /// only, capped), so it is merged into what the device holds, per key the
+    /// larger value, never written as the whole stock.
+    static func adoptedOwnPot(base: RowBase<ListeningStatsData>, own: ListeningStatsData,
+                              pot: ListeningStatsData?) -> ListeningStatsData? {
+        switch base {
+        case .fresh, .unknown(seen: nil): break
+        case .known, .unknown: return nil
+        }
+        guard let pot, !pot.secondsPerDay.isEmpty || !pot.secondsPerItem.isEmpty else { return nil }
+        let merged = ListeningStatsData(
+            secondsPerDay: own.secondsPerDay.merging(pot.secondsPerDay, uniquingKeysWith: max),
+            secondsPerItem: own.secondsPerItem.merging(pot.secondsPerItem, uniquingKeysWith: max))
+        return merged == own ? nil : merged
+    }
+
     /// The total across devices: this device's own numbers come from its LOCAL
     /// file (always the freshest), every other device from its published pot.
     ///
