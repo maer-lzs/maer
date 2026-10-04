@@ -104,6 +104,9 @@ nonisolated enum MaerPlaylistMerge {
         /// Versions that lost and could not be united. Empty by construction
         /// today; kept as the net for the unknown.
         var rescued: [Entry] = []
+
+        /// The state both sides converge to, as a snapshot.
+        var snapshot: Snapshot { Snapshot(lists: lists, tombstones: tombstones) }
     }
 
     /// How long a removal mark travels. A removal older than this has
@@ -238,4 +241,14 @@ nonisolated enum MaerPlaylistMerge {
         guard Set(a.keys) == Set(b.keys) else { return true }
         return a.contains { id, entry in b[id].map { differs(entry, $0) } ?? true }
     }
+
+    /// The same answer over two snapshots: the ONE answer to "is this
+    /// snapshot a difference?" for the store and for the carrier.
+    static func differs(_ a: Snapshot, _ b: Snapshot) -> Bool {
+        differs(a.lists, b.lists) || a.tombstones != b.tombstones
+    }
+
+    /// The fields `differs` compares for a snapshot, every stored field of
+    /// `Snapshot`. A witness holds this list against the stored fields.
+    static let comparedSnapshotFields: Set<String> = ["lists", "tombstones"]
 }

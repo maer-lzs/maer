@@ -145,7 +145,7 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
         if fellBack { return fallback.held() }
         let cloud = Self.snapshot(of: mirror)
         let outcome = MaerPlaylistMerge.merge(local: fallback.held(), cloud: cloud)
-        return MaerPlaylistMerge.Snapshot(lists: outcome.lists, tombstones: outcome.tombstones)
+        return outcome.snapshot
     }
 
     func store(_ snapshot: MaerPlaylistMerge.Snapshot) {

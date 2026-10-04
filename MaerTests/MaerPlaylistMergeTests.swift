@@ -240,12 +240,80 @@ struct MaerPlaylistMergeTests {
         e = Self.full; e.added = [:]; changes["added"] = e
         #expect(Set(changes.keys) == MaerPlaylistMerge.comparedFields, "the witness changes every compared field")
         for (field, changed) in changes {
+            #expect(Self.changedFields(Self.full, changed) == [field], "the case \(field) changes another field")
             #expect(MaerPlaylistMerge.differs(Self.full, changed), "a change of \(field) is no difference")
         }
         e = Self.full; e.device = "tablet"
         #expect(!MaerPlaylistMerge.differs(Self.full, e), "the device name counted as a difference")
         #expect(!MaerPlaylistMerge.isSameVersion(Self.full, e), "another device is another version")
         #expect(MaerPlaylistMerge.isSameVersion(Self.full, Self.full))
+    }
+
+    /// The stored fields whose values differ between `a` and `b`, read by
+    /// reflection. The witnesses keep every collection at one element at
+    /// most, so the written form of a value is stable.
+    nonisolated static func changedFields<T>(_ a: T, _ b: T) -> Set<String> {
+        func fields(_ value: T) -> [String: String] {
+            var out: [String: String] = [:]
+            for child in Mirror(reflecting: value).children {
+                if let label = child.label { out[label] = String(describing: child.value) }
+            }
+            return out
+        }
+        let left = fields(a)
+        let right = fields(b)
+        return Set(left.keys.filter { left[$0] != right[$0] })
+    }
+
+    /// A snapshot every field of which is set.
+    private static let fullSnapshot = MaerPlaylistMerge.Snapshot(lists: ["l": full], tombstones: ["t": 50])
+
+    /// `differs` over a snapshot compares every stored field of `Snapshot`,
+    /// and the list of compared fields is the list of stored fields; the
+    /// round trip helper of the carrier witnesses asks the same question.
+    @Test("jedes gespeicherte Feld eines Snapshots ist ein Unterschied, und die Liste der Felder ist vollstaendig")
+    func snapshotDiffersSeesEveryField() {
+        let stored = Set(Mirror(reflecting: Self.fullSnapshot).children.compactMap(\.label))
+        #expect(stored == MaerPlaylistMerge.comparedSnapshotFields,
+                "a stored field of Snapshot is missing from comparedSnapshotFields: \(stored)")
+        var changes: [String: MaerPlaylistMerge.Snapshot] = [:]
+        var renamed = Self.full; renamed.name = "Andere"
+        var s = Self.fullSnapshot; s.lists = ["l": renamed]; changes["lists"] = s
+        s = Self.fullSnapshot; s.tombstones = ["t": 51]; changes["tombstones"] = s
+        #expect(Set(changes.keys) == MaerPlaylistMerge.comparedSnapshotFields, "the witness changes every compared field")
+        for (field, changed) in changes {
+            #expect(Self.changedFields(Self.fullSnapshot, changed) == [field], "the case \(field) changes another field")
+            #expect(MaerPlaylistMerge.differs(Self.fullSnapshot, changed), "a change of \(field) is no difference")
+            #expect(!sameSnapshot(changed, Self.fullSnapshot), "the round trip helper missed \(field)")
+        }
+        var elsewhere = Self.full; elsewhere.device = "tablet"
+        s = Self.fullSnapshot; s.lists = ["l": elsewhere]
+        #expect(!MaerPlaylistMerge.differs(Self.fullSnapshot, s), "the device name counted as a difference")
+        #expect(!sameSnapshot(s, Self.fullSnapshot), "the round trip helper ignores the device name")
+        #expect(sameSnapshot(Self.fullSnapshot, Self.fullSnapshot))
+    }
+
+    /// The removal marks of two snapshots are compared in one place: no
+    /// source outside the rule compares them by hand.
+    @Test("die Loeschmarken zweier Snapshots vergleicht nur die Regel", .needsTheSources)
+    func onlyTheRuleComparesRemovalMarks() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        var offenders: [String] = []
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        for file in files where file.lastPathComponent != "MaerPlaylistMerge.swift" {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if Self.comparesRemovalMarks(code) { offenders.append(file.lastPathComponent) }
+        }
+        #expect(!files.isEmpty, "the fence found no sources")
+        #expect(offenders.isEmpty, "removal marks compared by hand in \(offenders)")
+        // Calibration: the form the sync had before.
+        #expect(Self.comparesRemovalMarks("x || outcome.tombstones != local.tombstones"))
+        #expect(!Self.comparesRemovalMarks("tombstones: outcome.tombstones"))
+    }
+
+    nonisolated static func comparesRemovalMarks(_ code: String) -> Bool {
+        code.contains(#/tombstones\s*[!=]=|[!=]=\s*\w+\.tombstones/#)
     }
 
     /// The id a rescued loser came from: the local side first, then the

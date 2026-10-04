@@ -10,9 +10,10 @@ import Foundation
 
 /// Whether two snapshots are the same, every field of every list including
 /// the device name. Only for round trips, where "every field survives" is
-/// the claim; the production question is `MaerPlaylistMerge.differs`.
+/// the claim; built on the production question `MaerPlaylistMerge.differs`,
+/// so it compares the same fields, and the device name on top.
 nonisolated func sameSnapshot(_ a: MaerPlaylistMerge.Snapshot?, _ b: MaerPlaylistMerge.Snapshot) -> Bool {
-    guard let a, a.tombstones == b.tombstones, Set(a.lists.keys) == Set(b.lists.keys) else { return false }
+    guard let a, !MaerPlaylistMerge.differs(a, b) else { return false }
     return a.lists.allSatisfy { id, entry in b.lists[id].map { MaerPlaylistMerge.isSameVersion(entry, $0) } ?? false }
 }
 

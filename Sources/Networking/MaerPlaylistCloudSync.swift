@@ -117,9 +117,7 @@ final class MaerPlaylistCloudSync {
         // The same answer as for the carrier below: the device name is no
         // change here either. The store keeps no device name, so a merge
         // that only took the other side's name has nothing to apply.
-        let changedLocally = MaerPlaylistMerge.differs(outcome.lists, local.lists)
-            || !outcome.rescued.isEmpty
-            || outcome.tombstones != local.tombstones
+        let changedLocally = MaerPlaylistMerge.differs(outcome.snapshot, local) || !outcome.rescued.isEmpty
         if changedLocally {
             // Every rescue says in the log WHY it exists: which list, both
             // clocks, both contents. Without that a copy on a person's
@@ -143,8 +141,8 @@ final class MaerPlaylistCloudSync {
         // devices; the carrier does not decide, it stores. The device name
         // is no difference: each device stamps its own, and comparing it
         // made two devices rewrite the same content after each other.
-        if MaerPlaylistMerge.differs(outcome.lists, cloud.lists) || outcome.tombstones != cloud.tombstones {
-            carrier.store(MaerPlaylistMerge.Snapshot(lists: outcome.lists, tombstones: outcome.tombstones))
+        if MaerPlaylistMerge.differs(outcome.snapshot, cloud) {
+            carrier.store(outcome.snapshot)
         }
         if changedLocally {
             let kept = playlists.playlists.filter(\.isRescue).count
