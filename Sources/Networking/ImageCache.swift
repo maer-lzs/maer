@@ -32,9 +32,15 @@ final class ImageCache {
     /// asks the door without naming a size.
     nonisolated static let defaultThumbnailPixel: CGFloat = 400
     private let thumbPixelSize: CGFloat = ImageCache.defaultThumbnailPixel
-    /// Every preview size the app asks for. They are ours, not the
+    /// The preview sizes an invalidation removes. They are ours, not the
     /// server's. So an invalidation can name them instead of emptying the
-    /// whole store. A new size belongs in here; the fence holds that.
+    /// whole store. The bound: the list holds the sizes of the surfaces
+    /// that show an address something invalidates (the music tab's grid and
+    /// album page, the default of CarPlay and the widget). The 800 px
+    /// Continue card is not in it because music never stands in Continue
+    /// (`HomeSections.continueAccepts`). A surface that invalidates the
+    /// covers it shows at another size adds that size here; the fence only
+    /// holds the list as written, not this question.
     nonisolated static let thumbnailVariants: [CGFloat] = [400, 600]
 
     /// How many images each cache is MEANT to hold. The cost limit is
@@ -57,6 +63,13 @@ final class ImageCache {
     /// when no invalidation came in between, so an answer to a request sent
     /// before the invalidation never becomes the new picture.
     private var invalidations: [String: Int] = [:]
+    /// The disk work of each address, one after the other in the order the
+    /// main actor asked for it (`onDisk`). A write and an invalidation's
+    /// removal were two unordered background tasks, and a write that landed
+    /// after the removal left the picture from before the invalidation in
+    /// the cache file, where the network gate found it for the session.
+    private var diskTail: [String: (turn: Int, task: Task<Void, Never>)] = [:]
+    private var diskTurns = 0
 
     /// Device-adaptive storage size (longest side): screen short side in
     /// pixels × 1.6 headroom. Plain 1× turned out visibly soft on modern
@@ -362,6 +375,26 @@ final class ImageCache {
     /// Test seam: whether an address waits for the network to replace its
     /// persistent copy.
     func testIsRefreshing(_ url: URL) -> Bool { refreshing.contains(key(for: url)) }
+
+    /// Test seam: the bytes of the purgeable cache file, nil without one.
+    func testCacheBytes(_ url: URL) -> Data? {
+        FileManager.default.contents(atPath: diskDirectory.appendingPathComponent(key(for: url)).path)
+    }
+
+    /// Test seam: returns once every disk work the main actor ordered for
+    /// this address so far has run.
+    func testDiskSettled(_ url: URL) async {
+        await diskTail[key(for: url)]?.task.value
+    }
+
+    /// Test seam: awaited with the stage and the file name by a write after
+    /// its look at the invalidation count and before its first byte
+    /// ("write"), by the same write after its last step ("written"), and by
+    /// a read after its disk read and before it stores the picture in memory
+    /// ("read"). A witness holds a stage there and invalidates in between;
+    /// "written" lets it wait for the write without relying on the order
+    /// `onDisk` is meant to give.
+    var testDiskHold: (@Sendable (_ stage: String, _ fileKey: String) async -> Void)?
     #endif
 
     /// The files a read path tries, in order. For an address waiting for the
@@ -378,6 +411,46 @@ final class ImageCache {
             tiers = allowKept ? [diskDirectory, persistentDirectory] : [diskDirectory]
         }
         return tiers.map { $0.appendingPathComponent(fileKey) }
+    }
+
+    /// The memory name of a picture read while its address waits for the
+    /// network. It may be the persistent copy, so it shares the budget of
+    /// its cache under its own name: a reader that may show the kept copy
+    /// finds it there, and a gate that goes to the network next never does.
+    /// Without it nothing read during the wait stayed in memory, and every
+    /// look decoded from disk again with the placeholder in between.
+    private nonisolated static func waitingName(_ memoryKey: String) -> NSString {
+        "\(memoryKey)#waiting" as NSString
+    }
+
+    /// Removes the waiting entries of an address from both memory caches.
+    private func dropWaiting(_ fileKey: String) {
+        memoryCache.removeObject(forKey: Self.waitingName(fileKey))
+        for size in Self.thumbnailVariants {
+            thumbCache.removeObject(forKey: Self.waitingName("\(fileKey)@\(Int(size))"))
+        }
+    }
+
+    /// Runs `work` off the main actor after every disk work this address
+    /// already has, so a write and an invalidation's removal land in the
+    /// order the main actor asked for them.
+    private func onDisk(_ fileKey: String, _ work: @escaping @Sendable () async -> Void) {
+        diskTurns += 1
+        let turn = diskTurns
+        let previous = diskTail[fileKey]?.task
+        // detached because the work is disk and CPU work off the MainActor and must finish once started
+        let task = Task.detached(priority: .utility) {
+            await previous?.value
+            await work()
+            await ImageCache.shared.leaveDisk(fileKey, turn: turn)
+        }
+        diskTail[fileKey] = (turn, task)
+    }
+
+    /// The last disk work of an address ended: its entry goes, unless newer
+    /// work was queued behind it.
+    private func leaveDisk(_ fileKey: String, turn: Int) {
+        if diskTail[fileKey]?.turn == turn { diskTail[fileKey] = nil }
     }
 
     /// The invalidation count of an address, taken by a load when it starts
@@ -429,8 +502,13 @@ final class ImageCache {
     /// flashing the placeholder and awaiting a round-trip each time it re-enters
     /// the viewport. Takes the warm-cover cost fully out of the scroll path.
     func cachedThumbnail(for url: URL, maxPixelSize: CGFloat? = nil) -> UIImage? {
-        let cacheKey = "\(key(for: url))@\(Int(maxPixelSize ?? thumbPixelSize))" as NSString
-        return thumbCache.object(forKey: cacheKey)
+        let fileKey = key(for: url)
+        let cacheKey = "\(fileKey)@\(Int(maxPixelSize ?? thumbPixelSize))"
+        if let warm = thumbCache.object(forKey: cacheKey as NSString) { return warm }
+        // The first frame may show the kept copy of a waiting address; the
+        // cell's load still asks the network gate, which never reads it.
+        guard refreshing.contains(fileKey) else { return nil }
+        return thumbCache.object(forKey: Self.waitingName(cacheKey))
     }
 
     /// As above, but with a freely chosen target size (e.g. 800 px for the large
@@ -440,20 +518,31 @@ final class ImageCache {
     /// address waiting after an invalidation then skips its persistent copy.
     func thumbnail(for url: URL, maxPixelSize: CGFloat, allowKept: Bool = true) async -> UIImage? {
         let fileKey = key(for: url)
-        let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
-        if let cached = thumbCache.object(forKey: cacheKey) {
+        let cacheKey = "\(fileKey)@\(Int(maxPixelSize))"
+        if let cached = thumbCache.object(forKey: cacheKey as NSString) {
             // A warm hit returns a display-ready image (see decodedThumbnail).
             // No main-thread decode at draw time.
             PerfSignpost.thumbnailHit()
             return cached
         }
+        let waiting = refreshing.contains(fileKey)
+        if waiting, allowKept, let kept = thumbCache.object(forKey: Self.waitingName(cacheKey)) {
+            PerfSignpost.thumbnailHit()
+            return kept
+        }
+        let startedAt = invalidations[fileKey, default: 0]
         let candidates = readCandidates(fileKey, allowKept: allowKept)
         guard let thumb = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
-        // While the address waits for the network, nothing is kept in memory:
-        // the old picture must not answer the network gate's next look.
-        if !refreshing.contains(fileKey) {
-            thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
-        }
+        #if DEBUG
+        await testDiskHold?("read", fileKey)
+        #endif
+        // An invalidation during the read: these bytes may be the picture
+        // from before it, and the network gate's next look must not find them.
+        guard invalidations[fileKey, default: 0] == startedAt else { return thumb }
+        // Read while the address waits for the network: kept under the
+        // waiting name, so the old picture never answers the network gate.
+        let name = waiting ? Self.waitingName(cacheKey) : cacheKey as NSString
+        thumbCache.setObject(thumb, forKey: name, cost: cost(of: thumb))
         return thumb
     }
 
@@ -556,10 +645,18 @@ final class ImageCache {
         if let cached = memoryCache.object(forKey: cacheKey as NSString) {
             return cached
         }
-        guard let image = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
-        if !refreshing.contains(cacheKey) {
-            memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        let waiting = refreshing.contains(cacheKey)
+        if waiting, allowKept, let kept = memoryCache.object(forKey: Self.waitingName(cacheKey)) {
+            return kept
         }
+        let startedAt = invalidations[cacheKey, default: 0]
+        guard let image = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
+        // Same two rules as the thumbnail: nothing read across an
+        // invalidation is stored, and a waiting address's picture stays
+        // under the waiting name.
+        guard invalidations[cacheKey, default: 0] == startedAt else { return image }
+        let name = waiting ? Self.waitingName(cacheKey) : cacheKey as NSString
+        memoryCache.setObject(image, forKey: name, cost: cost(of: image))
         return image
     }
 
@@ -583,7 +680,11 @@ final class ImageCache {
     /// `startedAt` is the address's invalidation count when the load began
     /// (`invalidationCount`). An answer to a request sent before an
     /// invalidation is the old picture: it is not stored at all, the address
-    /// keeps waiting, and the next display asks again.
+    /// keeps waiting, and the next display asks again. The same holds for an
+    /// invalidation that comes while the write runs: the write looks at the
+    /// count once more before its first byte, and an invalidation after that
+    /// look removes the cache file after the write (`onDisk`), as if it had
+    /// come after a finished write.
     func set(_ image: UIImage, data: Data, for url: URL, startedAt: Int) {
         let cacheKey = key(for: url)
         guard invalidations[cacheKey, default: 0] == startedAt else {
@@ -597,9 +698,21 @@ final class ImageCache {
         let target = diskDirectory.appendingPathComponent(cacheKey)
         let kept = persistentDirectory.appendingPathComponent(cacheKey)
         let maxSize = maxPixelSize
-        // detached because downsample and write are CPU and disk work off the MainActor and must finish once started
-        Task.detached(priority: .utility) {
+        #if DEBUG
+        let hold = testDiskHold
+        #endif
+        onDisk(cacheKey) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
+            let stillCurrent = await MainActor.run {
+                ImageCache.shared.invalidations[cacheKey, default: 0] == startedAt
+            }
+            guard stillCurrent else {
+                Logger.library.notice("COVERCACHE answer overtaken by an invalidation, not written")
+                return
+            }
+            #if DEBUG
+            await hold?("write", cacheKey)
+            #endif
             do {
                 try stored.1.write(to: target, options: .atomic)
             } catch {
@@ -628,15 +741,20 @@ final class ImageCache {
                 }
             }
             await MainActor.run {
-                ImageCache.shared.memoryCache.setObject(
-                    stored.0, forKey: cacheKey as NSString,
-                    cost: ImageCache.shared.cost(of: stored.0)
-                )
+                let cache = ImageCache.shared
                 // An invalidation that came while this write ran keeps the
-                // address waiting.
-                let current = ImageCache.shared.invalidations[cacheKey, default: 0] == startedAt
-                if keptReplaced && current { ImageCache.shared.refreshing.remove(cacheKey) }
+                // address waiting and its memory empty; its removal of the
+                // cache file runs after this work.
+                guard cache.invalidations[cacheKey, default: 0] == startedAt else { return }
+                cache.memoryCache.setObject(stored.0, forKey: cacheKey as NSString, cost: cache.cost(of: stored.0))
+                if keptReplaced {
+                    cache.refreshing.remove(cacheKey)
+                    cache.dropWaiting(cacheKey)
+                }
             }
+            #if DEBUG
+            await hold?("written", cacheKey)
+            #endif
         }
     }
 
@@ -663,9 +781,13 @@ final class ImageCache {
         for size in Self.thumbnailVariants {
             thumbCache.removeObject(forKey: "\(cacheKey)@\(Int(size))" as NSString)
         }
+        // The waiting entries may hold a copy an overtaken write replaced
+        // on disk since; the next read takes the copy that stands there now.
+        dropWaiting(cacheKey)
         let target = diskDirectory.appendingPathComponent(cacheKey)
-        // detached because the write is disk work off the MainActor and must finish once started
-        Task.detached(priority: .utility) {
+        // Behind a write that is still running, so it removes what that
+        // write left instead of running before it.
+        onDisk(cacheKey) {
             try? FileManager.default.removeItem(at: target)
         }
     }

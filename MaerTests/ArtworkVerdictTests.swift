@@ -127,6 +127,128 @@ struct ArtworkVerdictTests {
         #expect(await ImageCache.shared.image(for: url, allowKept: false) == nil, "the stale answer was stored")
     }
 
+    /// True once `stream` yields, false after `seconds`: a witness that
+    /// waits for a held stage must not hang when the stage never comes.
+    private static func arrives(_ stream: AsyncStream<Void>, within seconds: Double = 5) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask { for await _ in stream { return true }; return false }
+            group.addTask {
+                // bearable, because a cancelled sleep only ends the deadline early
+                try? await Task.sleep(for: .seconds(seconds))
+                return false
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+    }
+
+    /// The answer passed `set`'s entry, then a second pull invalidated
+    /// before its background write began: nothing of it reaches the disk.
+    @Test("eine Invalidierung nach dem Eintritt von set und vor dem Schreiben laesst weder Cache noch geschuetzte Fassung mit dem Bild davor")
+    func anInvalidationBeforeTheWriteKeepsTheDiskClean() async throws {
+        let url = URL(string: "http://127.0.0.1:9/race-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        let answer = Self.png(pixels: 24)
+        ImageCache.shared.set(try #require(UIImage(data: answer)), data: answer, for: url,
+                              startedAt: ImageCache.shared.invalidationCount(for: url))
+        Artwork.invalidate(url)
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(ImageCache.shared.testCacheBytes(url) == nil, "the overtaken write left its picture in the cache file")
+        #expect(Self.persistentWidth(url) == 8, "the overtaken write replaced the kept cover")
+        #expect(ImageCache.shared.testIsRefreshing(url), "the address stopped waiting for a fresh picture")
+        #expect(await ImageCache.shared.image(for: url, allowKept: false) == nil,
+                "the network gate found the picture from before the invalidation")
+    }
+
+    /// The invalidation comes while the write runs, after its last look at
+    /// the count: the removal runs after the write, as if the invalidation
+    /// had come after a finished write.
+    @Test("eine Invalidierung waehrend des Schreibens raeumt die Cache-Datei danach, und der Speicher bleibt leer")
+    func anInvalidationDuringTheWriteRemovesWhatTheWriteLeft() async throws {
+        let url = URL(string: "http://127.0.0.1:9/race-hold-\(UUID().uuidString).png")!
+        let key = ImageCache.shared.testKey(for: url)
+        let (reached, reachedGo) = AsyncStream<Void>.makeStream()
+        let (release, releaseGo) = AsyncStream<Void>.makeStream()
+        let (written, writtenGo) = AsyncStream<Void>.makeStream()
+        ImageCache.shared.testDiskHold = { stage, fileKey in
+            if stage == "write", fileKey == key {
+                reachedGo.yield()
+                for await _ in release { break }
+            }
+            if stage == "written", fileKey == key { writtenGo.yield() }
+        }
+        defer {
+            ImageCache.shared.testDiskHold = nil
+            releaseGo.finish()
+        }
+        let answer = Self.png(pixels: 24)
+        ImageCache.shared.set(try #require(UIImage(data: answer)), data: answer, for: url,
+                              startedAt: ImageCache.shared.invalidationCount(for: url))
+        try #require(await Self.arrives(reached), "the precondition: the write reached its first byte")
+        Artwork.invalidate(url)
+        releaseGo.yield()
+        // Waits for the write itself, not through the order under test.
+        try #require(await Self.arrives(written), "the precondition: the write finished")
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(ImageCache.shared.testCacheBytes(url) == nil, "the removal ran before the write it interrupted")
+        #expect(ImageCache.shared.testIsRefreshing(url), "the address stopped waiting for a fresh picture")
+        #expect(await ImageCache.shared.image(for: url, allowKept: false) == nil,
+                "the network gate found the picture from before the invalidation")
+    }
+
+    /// A read that began before an invalidation and ended after it holds
+    /// the picture from before it: it is handed to its caller, not stored.
+    @Test("ein Lesen ueber eine Invalidierung hinweg legt das Bild davor nicht in den Speicher")
+    func aReadAcrossAnInvalidationIsNotStored() async throws {
+        let url = URL(string: "http://127.0.0.1:9/race-read-\(UUID().uuidString).png")!
+        let key = ImageCache.shared.testKey(for: url)
+        #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: a cached cover")
+        let (reached, reachedGo) = AsyncStream<Void>.makeStream()
+        let (release, releaseGo) = AsyncStream<Void>.makeStream()
+        ImageCache.shared.testDiskHold = { stage, fileKey in
+            if stage == "read", fileKey == key {
+                reachedGo.yield()
+                for await _ in release { break }
+            }
+        }
+        defer {
+            ImageCache.shared.testDiskHold = nil
+            releaseGo.finish()
+        }
+        let read = Task { await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400) }
+        try #require(await Self.arrives(reached), "the precondition: the read found the cached cover")
+        Artwork.invalidate(url)
+        releaseGo.yield()
+        #expect(await read.value.map { Int($0.size.width * $0.scale) } == 8, "the read lost its own answer")
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400, allowKept: false) == nil,
+                "a read across the invalidation answered the network gate with the picture from before it")
+    }
+
+    /// Offline an invalidated address waits the whole session. Its kept
+    /// picture stays in memory under its own name: the second look does not
+    /// decode from disk again, and the network gate still never sees it.
+    @Test("offline trifft der zweite Blick auf eine wartende Adresse den Speicher, das Netz-Tor nie")
+    func aWaitingAddressIsWarmForReadersButNotForTheGate() async throws {
+        let url = URL(string: "http://127.0.0.1:9/waiting-\(UUID().uuidString).png")!
+        #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        Artwork.invalidate(url)
+        let first = await Artwork.thumbnail(for: url, maxPixel: 400)
+        #expect(first.map { Int($0.size.width * $0.scale) } == 8, "the precondition: the first look read the kept cover")
+        #expect(ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)),
+                "the precondition: the disk no longer holds it")
+        let second = await Artwork.thumbnail(for: url, maxPixel: 400)
+        #expect(second.map { Int($0.size.width * $0.scale) } == 8, "the second look found nothing in memory")
+        #expect(Artwork.cachedThumbnail(for: url, maxPixel: 400).map { Int($0.size.width * $0.scale) } == 8,
+                "the first frame of a cell shows the placeholder again")
+        #expect(await ImageCache.shared.thumbnail(for: url, maxPixelSize: 400, allowKept: false) == nil,
+                "the kept picture in memory answered the network gate")
+        #expect(ImageCache.shared.testIsRefreshing(url), "the address stopped waiting for a fresh picture")
+    }
+
     /// Only the gates that go to the network next skip the kept copy.
     @Test("die geschuetzte Fassung ueberspringen nur die Tore, die danach ins Netz gehen", .needsTheSources)
     func onlyNetworkGatesSkipTheKeptCopy() throws {

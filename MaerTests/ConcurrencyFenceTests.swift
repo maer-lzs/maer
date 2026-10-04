@@ -49,7 +49,7 @@ struct ConcurrencyFenceTests {
     nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
     // Fall darunter erzwungen.
-    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 5, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("unsafe because") und wird vom
     // Fall darunter erzwungen; gemessen am 27.09.2026, 18 Stellen in 8 Dateien, seit
     // `ServerTimestamp` 15 in 6.
