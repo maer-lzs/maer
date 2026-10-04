@@ -86,6 +86,12 @@ final class ListeningStatsStore: ObservableObject {
     /// a write replaces a row's value whole (`rowsReadForWrite`).
     private var unreadDays = false
     private var unreadItems = false
+    /// The two tables as one read leaves them (nil = could not be read).
+    typealias Loads = (days: StatsTable.Load?, items: StatsTable.Load?)
+    /// What the start read of each table found, kept while another table is
+    /// unread: a table the start read is not read again, since nothing is
+    /// written while one is unread and its rows are what the start found.
+    private var readAtStart: Loads = (nil, nil)
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one.
@@ -107,6 +113,7 @@ final class ListeningStatsStore: ObservableObject {
         rowBase = base
         unreadDays = days == nil
         unreadItems = items == nil
+        if unreadDays || unreadItems { readAtStart = (days, items) }
         let ms = Int(Date().timeIntervalSince(started) * 1000)
         Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
     }
@@ -119,26 +126,33 @@ final class ListeningStatsStore: ObservableObject {
     }
     #endif
 
-    /// Both tables, each read on its own: a table that cannot be read leaves
-    /// the other one's rows standing (nil = could not be read).
-    private static func readTables(_ database: MaerDatabase) -> (days: StatsTable.Load?, items: StatsTable.Load?) {
+    /// The asked tables, each read on its own: a table that cannot be read
+    /// leaves the other one's rows standing (nil = could not be read or
+    /// not asked). Synchronous and off any actor, for the start and for the
+    /// read again off the main actor.
+    nonisolated private static func readTables(_ database: MaerDatabase,
+                                               days readDays: Bool = true, items readItems: Bool = true) -> Loads {
         var days, items: StatsTable.Load?
         do {
             if let reader = try database.readerNow() {
-                do {
-                    days = try StatsTable.loadNow(table: .statsDay, reader: reader)
-                } catch {
-                    Logger.library.error("STATS rows read failed table=days reason=\(String(describing: error), privacy: .public) base=unknown")
+                if readDays {
+                    do {
+                        days = try StatsTable.loadNow(table: .statsDay, reader: reader)
+                    } catch {
+                        Logger.library.error("STATS rows read failed table=days reason=\(String(describing: error), privacy: .public) base=unknown")
+                    }
                 }
-                do {
-                    items = try StatsTable.loadNow(table: .statsItem, reader: reader)
-                } catch {
-                    Logger.library.error("STATS rows read failed table=items reason=\(String(describing: error), privacy: .public) base=unknown")
+                if readItems {
+                    do {
+                        items = try StatsTable.loadNow(table: .statsItem, reader: reader)
+                    } catch {
+                        Logger.library.error("STATS rows read failed table=items reason=\(String(describing: error), privacy: .public) base=unknown")
+                    }
                 }
             } else {
                 // No file yet is a fresh install: nothing to read.
-                days = StatsTable.Load(rows: [:], skipped: 0)
-                items = StatsTable.Load(rows: [:], skipped: 0)
+                if readDays { days = StatsTable.Load(rows: [:], skipped: 0) }
+                if readItems { items = StatsTable.Load(rows: [:], skipped: 0) }
             }
         } catch {
             Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
@@ -248,10 +262,21 @@ final class ListeningStatsStore: ObservableObject {
     /// row's value whole and nobody knows what the unread row holds. Once
     /// it is read, each such table is rebuilt from its rows plus what this
     /// run counted above the held pot (`ListeningStatsSync.rebuilt`), and
-    /// the rows are known.
-    private func rowsReadForWrite() -> Bool {
+    /// the rows are known. Only the unread tables are read again, each on
+    /// its own and off the main actor, since this repeats on every held save.
+    private func rowsReadForWrite() async -> Bool {
         guard unreadDays || unreadItems else { return true }
-        let (days, items) = Self.readTables(database)
+        let database = self.database
+        let askDays = unreadDays, askItems = unreadItems
+        // detached because the synchronous read must not run on the main
+        // actor, and it repeats on every held save while a table stays unread.
+        let read = await Task.detached(priority: .utility) {
+            Self.readTables(database, days: askDays, items: askItems)
+        }.value
+        // Another caller may have finished the read while this one waited.
+        guard unreadDays || unreadItems else { return true }
+        let days = unreadDays ? read.days : readAtStart.days
+        let items = unreadItems ? read.items : readAtStart.items
         guard let days, let items else {
             Logger.library.notice("STATS save held: rows still not read days=\(days != nil) items=\(items != nil)")
             return false
@@ -264,6 +289,7 @@ final class ListeningStatsStore: ObservableObject {
         potHeld = nil
         unreadDays = false
         unreadItems = false
+        readAtStart = (nil, nil)
         recompose()
         return true
     }
@@ -354,8 +380,8 @@ final class ListeningStatsStore: ObservableObject {
     /// the start could not read is read first; nil while it still cannot be
     /// read, because its rows hold titles under ids this memory lacks.
     @discardableResult
-    func rekeyItems(_ map: (String) -> String) -> (changed: Int, total: Int)? {
-        guard rowsReadForWrite() else { return nil }
+    func rekeyItems(_ map: (String) -> String) async -> (changed: Int, total: Int)? {
+        guard await rowsReadForWrite() else { return nil }
         let total = ownData.secondsPerItem.count
         let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
         guard changed > 0 else { return (0, total) }
@@ -426,7 +452,7 @@ final class ListeningStatsStore: ObservableObject {
             await previous?.value
             // Over a table nobody could read nothing is written; the stock
             // is taken after a read that may have rebuilt it.
-            guard let self, self.rowsReadForWrite() else { return }
+            guard let self, await self.rowsReadForWrite() else { return }
             let snapshot = self.ownData
             guard let (days, items) = await self.openRows() else { return }
             // The base is read HERE, after the write before landed or failed.

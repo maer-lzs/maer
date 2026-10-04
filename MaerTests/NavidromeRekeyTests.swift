@@ -37,16 +37,16 @@ struct NavidromeRekeyTests {
     /// and a second pass changes nothing. Relative to what the store already
     /// held, because it reads the app's database.
     @Test("die Statistik zieht um: alt und neu eines Titels addieren sich, ein zweiter Lauf aendert nichts")
-    func theStatsMove() {
+    func theStatsMove() async {
         let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
         let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
         let before = stats.ownData.secondsPerItem
         stats.addSeconds(5, itemId: old)
         stats.addSeconds(7, itemId: new)
-        #expect((stats.rekeyItems(Self.map)?.changed ?? 0) >= 1)
+        #expect((await stats.rekeyItems(Self.map)?.changed ?? 0) >= 1)
         #expect(stats.ownData.secondsPerItem[old] == nil, "the old key stayed")
         #expect(stats.ownData.secondsPerItem[new] == (before[new] ?? 0) + (before[old] ?? 0) + 12)
-        #expect(stats.rekeyItems(Self.map)?.changed == 0, "a second pass changes nothing")
+        #expect(await stats.rekeyItems(Self.map)?.changed == 0, "a second pass changes nothing")
     }
 
     @Test("die Regel: Reihenfolge bleibt, alt und neu eines Titels bleiben einmal an der ersten Stelle")
@@ -781,7 +781,7 @@ struct NavidromeRekeyTests {
         let broken = try await Self.unreadableDatabase(["stats_item"], at: directory.appendingPathComponent("broken.sqlite").path)
         let blind = ListeningStatsStore(carrier: carrier, database: broken)
         blind.addSeconds(5, itemId: old)
-        #expect(blind.rekeyItems(Self.map) == nil, "the stats moved over a table nobody could read")
+        #expect(await blind.rekeyItems(Self.map) == nil, "the stats moved over a table nobody could read")
 
         let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
         _ = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
@@ -789,13 +789,44 @@ struct NavidromeRekeyTests {
         _ = try await items.apply(previous: [:], current: [old: 2400])
         let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database)
         #expect(stats.seconds(forItemId: old) == 0, "the precondition: the start read no row")
-        let moved = try #require(stats.rekeyItems(Self.map))
+        let moved = try #require(await stats.rekeyItems(Self.map))
         #expect(moved.changed == 1)
         await stats.awaitPendingWrites()
         let reader = try #require(try database.readerNow())
         let rows = try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: reader).rows
         #expect(rows[new] == 2400, "the row read on the move is not under the new id: \(rows)")
         #expect(rows[old] == nil, "the old id stayed in the rows")
+    }
+
+    /// Each table on its own: a table the start read is not read again.
+    /// Here the day table turns unreadable after the start and the item
+    /// table readable; the read again asks only the item table and goes.
+    @Test("die Statistik liest nur die ungelesene Tabelle nach; eine beim Start gelesene haelt sie nicht auf")
+    func theStatsReadOnlyTheUnreadTable() async throws {
+        let directory = try Self.temporaryDirectory("rekey-stats-table")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
+        let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+        let days = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
+        _ = try await days.apply(previous: [:], current: ["2026-10-04": 300])
+        let connection = try database.connection()
+        try await connection.execute("CREATE TABLE stats_item (other TEXT)")
+        _ = try await connection.checkpoint()
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()), database: database)
+        #expect(stats.ownData.secondsPerDay["2026-10-04"] == 300, "the precondition: the start read the day table")
+        #expect(await stats.rekeyItems(Self.map) == nil, "the precondition: the item table is unread")
+
+        try await connection.execute("DROP TABLE stats_day")
+        try await connection.execute("CREATE TABLE stats_day (other TEXT)")
+        try await connection.execute("DROP TABLE stats_item")
+        let items = try await KeyedRowStore<Int>(connection: connection, table: .statsItem)
+        _ = try await items.apply(previous: [:], current: [old: 2400])
+        _ = try await connection.checkpoint()
+        let moved = try #require(await stats.rekeyItems(Self.map), "a day table read at the start held the read again")
+        #expect(moved.changed == 1)
+        #expect(stats.ownData.secondsPerItem[new] == 2400)
+        #expect(stats.ownData.secondsPerDay["2026-10-04"] == 300, "the day table read at the start stays")
+        await stats.awaitPendingWrites()
     }
 
     /// Which stores the pass names, held in the sources: a store that keeps
