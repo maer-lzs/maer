@@ -258,9 +258,10 @@ final class PodcastSubscriptions: ObservableObject {
             // What this run had standing: the heads, then the decoded stock.
             var seen: [PodcastShow] = []
             // What the rows hold after the start: known (read), fresh (read,
-            // nothing there) or unknown (could not open or read). Unknown
-            // rows are never replaced whole; the first write upserts only.
-            var base: RowBase<[PodcastShow]> = rows == nil ? .unknown : .fresh
+            // nothing there) or unknown (could not open or read every row),
+            // carrying what this run had standing: a write removes only
+            // those rows of it that are gone, never one nobody read.
+            var base: RowBase<[PodcastShow]> = rows == nil ? .unknown(seen: nil) : .fresh
             if let rows {
                 do {
                     // Two stages: the show list first (heads, no episodes:
@@ -287,16 +288,18 @@ final class PodcastSubscriptions: ObservableObject {
                         if !loaded.isEmpty { decoded = loaded }
                         seen = loaded + heads.filter { head in !loaded.contains { $0.id == head.id } }
                         // Rows that did not decode make the rows unknown,
-                        // never fresh.
+                        // never fresh; seen are the heads as well.
                         base = RowBase.afterLoad(rows: loaded.isEmpty ? nil : loaded, skipped: skipped)
+                        if case .unknown = base { base = .unknown(seen: seen) }
                     } else {
                         // No heads: the rows may still hold rows nobody can
                         // read. Count them before calling the rows empty.
                         let (_, skipped) = try await rows.loadAllCounted()
-                        if skipped > 0 { base = .unknown }
+                        if skipped > 0 { base = .unknown(seen: nil) }
                     }
                 } catch {
-                    base = .unknown
+                    // The heads read before the failure stand: seen.
+                    base = .unknown(seen: seen.isEmpty ? nil : seen)
                     Logger.rss.error("SUBROWS load failed reason=\(String(describing: error), privacy: .public) base=unknown")
                 }
             }
@@ -305,7 +308,6 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.notice("SUBSTORE bootstrap: rows=\(rows != nil) shows=\(decoded?.count ?? 0)")
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             self?.rowBase = base
-            if case .unknown = base { self?.seenWhileUnknown = seen }
             guard let self, let decoded, !decoded.isEmpty else { return }
             // The base stays what the rows hold: the LOADED stock, set above.
             // A fold or re-key in `migrated` is written as a diff against it,
@@ -378,18 +380,6 @@ final class PodcastSubscriptions: ObservableObject {
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed.
     private var rowBase: RowBase<[PodcastShow]> = .fresh
-    /// The shows this run had standing at start while the rows stayed
-    /// unknown (the decoded stock, or the heads when the full read failed
-    /// after them): rows somebody saw. One that is gone from the stock goes
-    /// with the write as a removal; rows nobody could read stay untouched.
-    private var seenWhileUnknown: [PodcastShow] = []
-
-    /// The shows a write may remove: the known rows, or without a known base
-    /// the shows this run saw. The ONE measure of the removal and of the
-    /// wipe guard, taken from the base the write really takes.
-    private func removable(under base: RowBase<[PodcastShow]>) -> [PodcastShow] {
-        base.knownValue ?? seenWhileUnknown
-    }
 
     private func persist(_ snapshot: [PodcastShow]) {
         // The intent belongs to this snapshot; the next one starts without.
@@ -410,7 +400,10 @@ final class PodcastSubscriptions: ObservableObject {
             // so an unsubscribe survives the restart, and rows nobody saw
             // are not buried.
             let base = self.rowBase
-            let removable = self.removable(under: base)
+            // The shows a write may remove (`RowBase.removable`): the ONE
+            // measure of the removal and of the wipe guard, taken from the
+            // base the write really takes.
+            let removable = base.removable ?? []
             // Last line of defense, against the same base and measure: an
             // EMPTY snapshot never removes rows unless the user explicitly
             // emptied the list. Refuse loudly + drop a note so the NEXT
@@ -431,7 +424,6 @@ final class PodcastSubscriptions: ObservableObject {
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
                 Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
                 self.rowBase = .known(snapshot)
-                self.seenWhileUnknown = []
             } catch {
                 Logger.rss.error("SUBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
             }

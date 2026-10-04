@@ -60,5 +60,28 @@ struct MaerPlaylistRowsTests {
         #expect(rows[b.id]?.itemIds == ["jam:5"])
         #expect(rows[b.id]?.titles["jam:5"] == "Fuenf")
     }
+
+    /// A row a later shape wrote leaves the base unknown; a list deleted in
+    /// this run stays gone after a restart, the unread row stays.
+    @Test("bei unbekannter Grundlage bleibt eine geloeschte Liste nach dem Neustart weg, eine nie gelesene Zeile bleibt")
+    func aDeletedListStaysGoneUnderAnUnknownBase() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let first = home.store()
+        let gone = first.create(name: "Weg")
+        let kept = first.create(name: "Bleibt")
+        await first.awaitPendingWrites()
+        _ = try await home.database.connection().run("INSERT INTO maer_playlist (key, payload) VALUES (?, ?)",
+                                                     [.text("foreign"), .blob(Data("spaeter".utf8))])
+        let second = home.store()
+        #expect(Set(second.playlists.map(\.id)) == [gone.id, kept.id], "the precondition: both lists read")
+        second.delete(playlistId: gone.id)
+        await second.awaitPendingWrites()
+        let third = home.store()
+        #expect(third.playlists.map(\.id) == [kept.id], "after the restart: \(third.playlists.map(\.name))")
+        let reader = try #require(try home.database.readerNow())
+        let load = try KeyedRowStore<MaerPlaylists.Playlist>.loadNow(table: .maerPlaylist, reader: reader)
+        #expect(load.skipped == 1, "the row nobody could read was buried")
+    }
 }
 #endif

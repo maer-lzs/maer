@@ -539,7 +539,7 @@ final class DownloadManager {
     /// covers the way into the background; this covers the kill after it.
     private func saveDetail(_ detail: LibraryItemDetail) async {
         details[detail.id] = detail
-        keeper.write(details)
+        keeper.write(details, emptying: .refused)
         await keeper.awaitPendingWrites()
     }
 
@@ -776,7 +776,8 @@ final class DownloadManager {
             Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
             downloadedItemIds.remove(itemId)
         }
-        keeper.write(details)
+        // The marks leave with the deleted downloads, the last one too.
+        keeper.write(details, emptying: .allowed)
         if kindsChanged { writeKinds() }
         recalculateTotalSize()
     }
@@ -817,7 +818,7 @@ final class DownloadManager {
     @discardableResult
     func adoptDownload(from oldItemId: String, to newItemId: String) -> Bool {
         guard let kindMoved = moveDownload(from: oldItemId, to: newItemId) else { return false }
-        keeper.write(details)
+        keeper.write(details, emptying: .refused)
         if kindMoved { writeKinds() }
         // The folder moved whole: its size moves with the key.
         recalculateTotalSize()
@@ -898,7 +899,7 @@ final class DownloadManager {
         let remnants = rekeyRemnants(map)
         if remnants.moved > 0 { moved = true }
         if marksChanged {
-            keeper.write(details)
+            keeper.write(details, emptying: .refused)
             songIndexFor = nil
         }
         if kindsChanged { writeKinds() }

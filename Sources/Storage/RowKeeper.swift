@@ -12,9 +12,11 @@ import OSLog
 /// read and the write chain are written once for every store.
 ///
 /// A missing file is a fresh install and a missing table is empty, both
-/// leave a fresh base. A failed read leaves the base unknown; the store
-/// starts empty, and the first write only upserts, removing nothing it
-/// never saw. After the first landed write the base is known and later removals
+/// leave a fresh base. A read that could not read every row leaves the base
+/// unknown with what it did read; a write then removes a row it read and
+/// that is gone, never one nobody could read (a read that failed as a
+/// whole read nothing, so the store starts empty and removes nothing).
+/// After the first landed write the base is known and later removals
 /// apply. A failed write is logged and leaves the base where it was, so
 /// the next write diffs against what really landed.
 @MainActor
@@ -56,24 +58,26 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             base = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
             return load.rows
         } catch {
-            base = .unknown
+            base = .unknown(seen: nil)
             Logger.library.error("\(self.label, privacy: .public) rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
             return nil
         }
     }
 
-    /// The whole snapshot; the rows get the diff against the base. A write
-    /// that matches the base is skipped by the store.
-    func write(_ snapshot: Rows) {
+    /// The whole snapshot; the rows get the diff against the base (known
+    /// rows, or the rows the start read that are gone). `emptying` says
+    /// whether an empty snapshot is the action of this write; when it is
+    /// not, an empty snapshot that would remove rows is refused and logged.
+    /// A write that matches the base is skipped by the store.
+    func write(_ snapshot: Rows, emptying: RowEmptying) {
         chain(what: "save", priority: .utility) { rows in
             // The base is read HERE, after the write before landed or failed.
             let base = self.base
-            switch base.plan {
-            case .diff:
-                _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-            case .upsertOnly:
-                _ = try await rows.apply(previous: [:], current: snapshot)
+            if base.refuses(snapshot, emptying) {
+                Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) rows plan=\(String(describing: base.plan), privacy: .public)")
+                return
             }
+            _ = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
             self.base = .known(snapshot)
         }
     }

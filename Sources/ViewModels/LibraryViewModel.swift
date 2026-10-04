@@ -1338,7 +1338,10 @@ final class LibraryViewModel: ObservableObject {
                 let counts: LibraryRowStore.Counts
                 var removed = 0
                 // Against what landed; without a known base against nothing,
-                // which upserts and removes nothing.
+                // which upserts and removes nothing. The one store that does
+                // not remove what it read under an unknown base, by name: the
+                // rows are an image of the servers, a row that stays is
+                // replaced or dropped by the next fetch, never a loss.
                 let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
                 guard !diff.isEmpty else { return }
                 removed = diff.itemsRemoved.count + diff.progressRemoved.count
@@ -1373,7 +1376,7 @@ final class LibraryViewModel: ObservableObject {
     /// no write replaces them whole.
     private func loadDiskCache() async -> LibraryDiskCache? {
         guard let rows = await openRows() else {
-            rowBase = .unknown
+            rowBase = .unknown(seen: nil)
             return nil
         }
         do {
@@ -1382,7 +1385,7 @@ final class LibraryViewModel: ObservableObject {
             rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
             return cache
         } catch {
-            rowBase = .unknown
+            rowBase = .unknown(seen: nil)
             Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) base=unknown")
             return nil
         }

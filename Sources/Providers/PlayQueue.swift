@@ -159,7 +159,7 @@ final class PlayQueue: ObservableObject {
     /// again.
     private func save() {
         guard persists else { return }
-        keeper?.write([Self.rowKey: ids])
+        keeper?.write([Self.rowKey: ids], emptying: .refused)
         writeWidgetSnapshot()
     }
 

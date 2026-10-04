@@ -211,8 +211,9 @@ final class PodcastListenLog {
     /// the same task.
     private var rowsOpening: Task<KeyedRowStore<Entry>?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. Advances only when a write landed; a failed start
-    /// read leaves it unknown, and then no write replaces the rows whole.
+    /// or the start read. Advances only when a write landed; a start read
+    /// that could not read every row leaves it unknown, and then no write
+    /// removes a row nobody read.
     private var rowBase: RowBase<[String: Entry]> = .fresh
     private var pendingWrite: Task<Void, Never>?
 
@@ -249,7 +250,7 @@ final class PodcastListenLog {
             guard let reader = try MaerDatabase.shared.readerNow() else { throw NoRowsYet() }
             let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
             // Rows that did not decode make the rows unknown, never fresh:
-            // the first write then upserts and removes nothing.
+            // a write then removes only rows this read decoded.
             rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
             if !load.rows.isEmpty || load.skipped > 0 {
                 entries = load.rows
@@ -262,9 +263,9 @@ final class PodcastListenLog {
             rowBase = .fresh
         } catch {
             // The rows could not be READ (not: hold nothing): they stay
-            // unknown, so the first write upserts and removes nothing, and
-            // they heal on the next successful open.
-            rowBase = .unknown
+            // unknown with nothing read, so the first write upserts and
+            // removes nothing, and they heal on the next successful open.
+            rowBase = .unknown(seen: nil)
             Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
     }
@@ -333,16 +334,16 @@ final class PodcastListenLog {
             // failed: a failed write leaves it, so this diff still starts
             // from what the rows really hold.
             let base = self.rowBase
+            // The log never removes an entry (unplayed is a mark on it), so
+            // an empty snapshot is never what a write means.
+            if base.refuses(snapshot, .refused) {
+                Logger.rss.error("LISTENLOG wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) entries plan=\(String(describing: base.plan), privacy: .public)")
+                return
+            }
             do {
-                switch base.plan {
-                case .diff:
-                    let written = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-                    if written.upserted + written.removed > 0 {
-                        Logger.rss.notice("LISTENLOG save: upserted=\(written.upserted) removed=\(written.removed)")
-                    }
-                case .upsertOnly:
-                    let written = try await rows.apply(previous: [:], current: snapshot)
-                    Logger.rss.notice("LISTENLOG save: upsertOnly=\(written.upserted)")
+                let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
+                if base.plan != .diff || written.upserted + written.removed > 0 {
+                    Logger.rss.notice("LISTENLOG save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
                 }
                 self.rowBase = .known(snapshot)
             } catch {

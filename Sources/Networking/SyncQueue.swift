@@ -62,10 +62,12 @@ final class SyncQueueRowStorage: SyncQueueStorage {
     }
 
     /// The memory is the truth at once; the rows get the diff in the chain,
-    /// and a failed write keeps the entries queued in memory.
+    /// and a failed write keeps the entries queued in memory. Emptying is
+    /// allowed: a sent entry leaves the queue, and one that stayed would be
+    /// sent again.
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
         self.pending = pending
-        keeper.write(pending)
+        keeper.write(pending, emptying: .allowed)
     }
 
     /// Waits for every queued write of the rows (tests, teardown).

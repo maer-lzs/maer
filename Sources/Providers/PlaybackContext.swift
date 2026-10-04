@@ -111,7 +111,7 @@ final class PlaybackContext: ObservableObject {
     /// collection start.
     private func save() {
         guard persists else { return }
-        keeper?.write([Self.rowKey: Stored(version: 1, sourceTitle: sourceTitle, ids: ids)])
+        keeper?.write([Self.rowKey: Stored(version: 1, sourceTitle: sourceTitle, ids: ids)], emptying: .refused)
     }
 }
 

@@ -182,7 +182,7 @@ final class LocalLibrary: ObservableObject {
             hasCover: hasCover
         )
         entries.insert(entry, at: 0)
-        save()
+        save(emptying: .refused)
         return failed
     }
 
@@ -190,7 +190,7 @@ final class LocalLibrary: ObservableObject {
         guard let entry = entries.first(where: { $0.id == id }) else { return }
         root.removeFiles(ofEntry: entry.id)
         entries.removeAll { $0.id == id }
-        save()
+        save(emptying: .allowed)
         // The ONE legitimate removal: the user deleted the item itself, so
         // its state has nothing left to belong to. Every other path replaces
         // instead of removing.
@@ -277,8 +277,8 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Persistenz
 
-    /// The rows; a failed read starts empty with the base unknown, so the
-    /// first write removes nothing it never saw.
+    /// The rows; a read that could not read every row leaves the base
+    /// unknown, so a write removes only rows it read.
     private func load() {
         entries = (keeper.startNow() ?? [:]).values.sorted { $0.addedAt > $1.addedAt }
         Logger.library.notice("LOCALLIB start: entries=\(self.entries.count)")
@@ -295,8 +295,8 @@ final class LocalLibrary: ObservableObject {
     }
 
     /// The rows get the diff; the keeper logs a failure and the index lives
-    /// on in memory.
-    private func save() {
-        keeper.write(Self.keyed(entries))
+    /// on in memory. `emptying` is `.allowed` only where the user deleted.
+    private func save(emptying: RowEmptying) {
+        keeper.write(Self.keyed(entries), emptying: emptying)
     }
 }

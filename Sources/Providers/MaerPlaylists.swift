@@ -157,7 +157,7 @@ final class MaerPlaylists: ObservableObject {
                             titles: snapshots.mapValues(\.title),
                             snapshots: snapshots)
         playlists.append(list)
-        save()
+        save(emptying: .refused)
         return list
     }
 
@@ -214,7 +214,7 @@ final class MaerPlaylists: ObservableObject {
             Logger.library.notice("PLAYLIST snapshot EMPTY for id=\(itemId, privacy: .public) — row will need the detail fetch")
         }
         playlists[index].updatedAt = Date().timeIntervalSince1970
-        save()
+        save(emptying: .refused)
         return .added
     }
 
@@ -250,7 +250,7 @@ final class MaerPlaylists: ObservableObject {
         if !learned.isEmpty {
             playlists[index].snapshots.merge(learned) { old, _ in old }
             playlists[index].titles.merge(learned.mapValues(\.title)) { old, _ in old }
-            save()
+            save(emptying: .refused)
         }
         // The cache is only the shortcut. What it cannot answer goes
         // the SAME reload way the row goes, so a shared list heals itself
@@ -282,7 +282,7 @@ final class MaerPlaylists: ObservableObject {
         playlists[index].snapshots.merge(learned) { old, _ in old }
         playlists[index].titles.merge(learned.mapValues(\.title)) { old, _ in old }
         Logger.library.notice("PLAYLIST healed \(learned.count) snapshot(s) via detail fetch")
-        save()
+        save(emptying: .refused)
     }
 
     /// What this device makes of an entry: the seam's answer with the
@@ -314,7 +314,7 @@ final class MaerPlaylists: ObservableObject {
         playlists[index].removed[itemId] = now
         playlists[index].added[itemId] = nil
         playlists[index].updatedAt = now
-        save()
+        save(emptying: .refused)
     }
 
     func rename(playlistId: String, to name: String) {
@@ -327,7 +327,7 @@ final class MaerPlaylists: ObservableObject {
         // The name's own clock. Without it a rename on the side that later
         // loses the list on content died silently in the merge.
         playlists[index].nameUpdatedAt = Date().timeIntervalSince1970
-        save()
+        save(emptying: .refused)
     }
 
     func delete(playlistId: String) {
@@ -337,7 +337,7 @@ final class MaerPlaylists: ObservableObject {
         var marks = Self.tombstones
         marks[playlistId] = Date().timeIntervalSince1970
         Self.tombstones = marks
-        save()
+        save(emptying: .allowed)
     }
 
     /// Adopt the state a merge produced. Rescue copies are appended, never
@@ -364,7 +364,9 @@ final class MaerPlaylists: ObservableObject {
         }
         Self.tombstones = marks
         playlists = next.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        save()
+        // The merge carries the removal marks of the account: a list deleted
+        // on another device leaves here as well, the last one too.
+        save(emptying: .allowed)
     }
 
     /// Every list with its entries in the form `map` gives (Navidrome's new
@@ -390,7 +392,7 @@ final class MaerPlaylists: ObservableObject {
         }
         if changed > 0 {
             playlists = next
-            save()
+            save(emptying: .refused)
         }
         return (changed, playlists.count)
     }
@@ -407,7 +409,7 @@ final class MaerPlaylists: ObservableObject {
         ids.insert(contentsOf: moved, at: insertAt)
         playlists[index].itemIds = ids
         playlists[index].updatedAt = Date().timeIntervalSince1970
-        save()
+        save(emptying: .refused)
     }
 
     // MARK: - Persistence: rows
@@ -430,7 +432,7 @@ final class MaerPlaylists: ObservableObject {
                 base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
             }
         } catch {
-            base = .unknown
+            base = .unknown(seen: nil)
             Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
         playlists = loaded ?? []
@@ -470,10 +472,12 @@ final class MaerPlaylists: ObservableObject {
         await pendingWrite?.value
     }
 
-    /// Only the lists that changed go to the rows, in order. A failure is
-    /// logged; the lists live on in memory and the next change writes
-    /// again (the carrier holds them too).
-    private func save() {
+    /// Only the lists that changed go to the rows, in order (the diff
+    /// against the known rows, or the rows the start read that are gone).
+    /// A failure is logged; the lists live on in memory and the next change
+    /// writes again (the carrier holds them too). `emptying` is `.allowed`
+    /// only where removing lists is the action.
+    private func save(emptying: RowEmptying) {
         changed?()
         let snapshot = Self.keyed(playlists)
         let previous = pendingWrite
@@ -482,16 +486,14 @@ final class MaerPlaylists: ObservableObject {
             guard let self, let rows = await self.openRows() else { return }
             // The base is read HERE, after the write before landed or failed.
             let base = self.rowBase
+            if base.refuses(snapshot, emptying) {
+                Logger.library.error("PLAYLIST wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) lists plan=\(String(describing: base.plan), privacy: .public)")
+                return
+            }
             do {
-                switch base.plan {
-                case .diff:
-                    let written = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-                    if written.upserted + written.removed > 0 {
-                        Logger.library.notice("PLAYLIST save: lists=\(written.upserted)/-\(written.removed)")
-                    }
-                case .upsertOnly:
-                    let written = try await rows.apply(previous: [:], current: snapshot)
-                    Logger.library.notice("PLAYLIST save: upsertOnly lists=\(written.upserted)")
+                let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
+                if base.plan != .diff || written.upserted + written.removed > 0 {
+                    Logger.library.notice("PLAYLIST save: lists=\(written.upserted)/-\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
                 }
                 self.rowBase = .known(snapshot)
             } catch {

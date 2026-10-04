@@ -79,7 +79,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         setChecked(entry.service, at: entry.startedAt)
         Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
         // The trim's drop-outs become the diff's removals.
-        entriesKeeper.write(Self.keyed(entries))
+        entriesKeeper.write(Self.keyed(entries), emptying: .refused)
     }
 
     func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date = Date()) {
@@ -100,7 +100,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         lastChecked[key] = date
         guard date.timeIntervalSince(lastPersistedAt) >= 30 else { return }
         lastPersistedAt = date
-        checkedKeeper.write(lastChecked)
+        checkedKeeper.write(lastChecked, emptying: .refused)
     }
 
     /// Stable device id (persistent random UUID. Portable to non-Apple

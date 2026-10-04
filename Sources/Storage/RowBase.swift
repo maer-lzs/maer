@@ -8,33 +8,34 @@ import Foundation
 /// What a store knows about its rows before a write, and the one rule that
 /// follows from it. The base advances ONLY after a write landed: a failed
 /// write leaves it where it was, so the next write diffs against the last
-/// state that really is in the rows. A start whose read FAILED (not: found
-/// nothing) leaves the rows unknown: the first write then removes no row
-/// the store never saw, so those are not buried under an empty or older
-/// stand.
+/// state that really is in the rows. A start that could not read every row
+/// leaves the rows unknown and keeps what it did read: a write then removes
+/// a row it read and that is gone from the stock, and never a row nobody
+/// could read, so those are not buried under an empty or older stand.
 nonisolated enum RowBase<Value> {
     /// The rows as the last landed write or the successful start read left them.
     case known(Value)
     /// The start read succeeded and found no rows: the first write is the
     /// diff against nothing (every row an upsert, the table was empty).
     case fresh
-    /// The start read failed: the rows may hold anything.
-    case unknown
+    /// The start read could not read every row. `seen` is what it did read,
+    /// nil when the read failed as a whole: the rows may hold anything else.
+    case unknown(seen: Value?)
 
     /// A whole replace is not a plan: it belongs to the migration paths
-    /// alone. Without a known base the write upserts and removes nothing it
-    /// never read. A store that keeps the rows it read at start (the podcast
-    /// subscriptions) also removes those of them that are gone from its
-    /// stock, and its wipe guard measures against the same rows.
+    /// alone. Without a known base a write upserts, and removes only rows
+    /// the start read (`removeSeen`), never one nobody could read.
     enum Plan: Equatable, Sendable {
         case diff
         case upsertOnly
+        case removeSeen
     }
 
     var plan: Plan {
         switch self {
         case .known: return .diff
-        case .fresh, .unknown: return .upsertOnly
+        case .fresh, .unknown(seen: nil): return .upsertOnly
+        case .unknown: return .removeSeen
         }
     }
 
@@ -43,7 +44,7 @@ nonisolated enum RowBase<Value> {
     /// changed the shape must not have its first write remove what it
     /// could not read. `rows` is nil when nothing decoded.
     static func afterLoad(rows: Value?, skipped: Int) -> RowBase<Value> {
-        if skipped > 0 { return .unknown }
+        if skipped > 0 { return .unknown(seen: rows) }
         guard let rows else { return .fresh }
         return .known(rows)
     }
@@ -53,9 +54,61 @@ nonisolated enum RowBase<Value> {
         return nil
     }
 
+    /// The rows a write may remove: the known rows, or without a known base
+    /// the rows the start read. The ONE measure of a removal and of the
+    /// wipe guard.
+    var removable: Value? {
+        switch self {
+        case .known(let value): return value
+        case .unknown(let seen): return seen
+        case .fresh: return nil
+        }
+    }
+
+    /// The same base over a part of the value (one table of a store that
+    /// keeps two).
+    func map<Part>(_ part: (Value) -> Part) -> RowBase<Part> {
+        switch self {
+        case .known(let value): return .known(part(value))
+        case .fresh: return .fresh
+        case .unknown(let seen): return .unknown(seen: seen.map(part))
+        }
+    }
+
     /// The base after a write: landed, the snapshot is what the rows hold;
     /// failed, nothing changes.
     func landed(_ snapshot: Value, success: Bool) -> RowBase<Value> {
         success ? .known(snapshot) : self
+    }
+}
+
+/// Whether emptying the stock is what a write means to do. Every write of a
+/// row store says so; an empty snapshot under `refused` that would remove
+/// rows is refused and logged instead of written.
+nonisolated enum RowEmptying: Equatable, Sendable {
+    /// Emptying is the action of the write (the last one deleted, the
+    /// queue sent).
+    case allowed
+    /// The write adds or changes; an empty snapshot here is a fault.
+    case refused
+}
+
+extension RowBase {
+    /// The rows a write of `current` diffs against, for rows keyed by id:
+    /// the known rows, or without a known base the rows the start read that
+    /// are gone from `current`, so they are removed and nothing else is.
+    nonisolated func previous<Row>(for current: [String: Row]) -> [String: Row] where Value == [String: Row] {
+        switch self {
+        case .known(let rows): return rows
+        case .unknown(let seen?): return seen.filter { current[$0.key] == nil }
+        case .fresh, .unknown(seen: nil): return [:]
+        }
+    }
+
+    /// Whether a write of `current` is refused: an empty snapshot that is
+    /// not meant to empty and would remove rows (`removable`).
+    nonisolated func refuses<Row>(_ current: [String: Row], _ emptying: RowEmptying) -> Bool
+    where Value == [String: Row] {
+        current.isEmpty && emptying == .refused && !(removable?.isEmpty ?? true)
     }
 }

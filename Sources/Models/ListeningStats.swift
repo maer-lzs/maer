@@ -67,8 +67,9 @@ final class ListeningStatsStore: ObservableObject {
     /// The one opening of the rows: every caller awaits the same task.
     private var rowsOpening: Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. Advances only when a write landed; a failed start
-    /// read leaves it unknown, and then no write replaces the rows whole.
+    /// or the start read. Advances only when a write landed; a start read
+    /// that could not read every row leaves it unknown, and then no write
+    /// removes a row nobody read.
     private var rowBase: RowBase<ListeningStatsData> = .fresh
     private var pendingWrite: Task<Void, Never>?
 
@@ -97,9 +98,9 @@ final class ListeningStatsStore: ObservableObject {
                 base = RowBase.afterLoad(rows: stock, skipped: skipped)
             }
         } catch {
-            // The rows could not be READ (not: hold nothing): unknown, so
-            // no write replaces them whole.
-            base = .unknown
+            // The rows could not be READ (not: hold nothing): unknown with
+            // nothing read, so no write removes a row.
+            base = .unknown(seen: nil)
             Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
         let stock = loaded ?? ListeningStatsData()
@@ -316,19 +317,19 @@ final class ListeningStatsStore: ObservableObject {
             guard let self, let (days, items) = await self.openRows() else { return }
             // The base is read HERE, after the write before landed or failed.
             let base = self.rowBase
+            let dayBase = base.map(\.secondsPerDay)
+            let itemBase = base.map(\.secondsPerItem)
+            // The totals only grow or change their keys, never empty: an
+            // empty table here is never what a write means.
+            if dayBase.refuses(snapshot.secondsPerDay, .refused) || itemBase.refuses(snapshot.secondsPerItem, .refused) {
+                Logger.library.error("STATS wipe REFUSED: empty table over days=\(dayBase.removable?.count ?? 0) items=\(itemBase.removable?.count ?? 0) plan=\(String(describing: base.plan), privacy: .public)")
+                return
+            }
             do {
-                switch base.plan {
-                case .diff:
-                    let before = base.knownValue ?? ListeningStatsData()
-                    let d = try await days.apply(previous: before.secondsPerDay, current: snapshot.secondsPerDay)
-                    let i = try await items.apply(previous: before.secondsPerItem, current: snapshot.secondsPerItem)
-                    if d.upserted + d.removed + i.upserted + i.removed > 0 {
-                        Logger.library.notice("STATS save: days=\(d.upserted)/-\(d.removed) items=\(i.upserted)/-\(i.removed)")
-                    }
-                case .upsertOnly:
-                    let d = try await days.apply(previous: [:], current: snapshot.secondsPerDay)
-                    let i = try await items.apply(previous: [:], current: snapshot.secondsPerItem)
-                    Logger.library.notice("STATS save: upsertOnly days=\(d.upserted) items=\(i.upserted)")
+                let d = try await days.apply(previous: dayBase.previous(for: snapshot.secondsPerDay), current: snapshot.secondsPerDay)
+                let i = try await items.apply(previous: itemBase.previous(for: snapshot.secondsPerItem), current: snapshot.secondsPerItem)
+                if base.plan != .diff || d.upserted + d.removed + i.upserted + i.removed > 0 {
+                    Logger.library.notice("STATS save: days=\(d.upserted)/-\(d.removed) items=\(i.upserted)/-\(i.removed) plan=\(String(describing: base.plan), privacy: .public)")
                 }
                 self.rowBase = .known(snapshot)
             } catch {
