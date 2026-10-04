@@ -18,10 +18,13 @@ nonisolated enum MusicPageState: Equatable, Sendable {
     case failed(String)
     case empty
 
-    static func of(serverMissing: Bool, isEmpty: Bool, isLoading: Bool, failure: String?) -> MusicPageState {
+    /// `asked` is whether the page has started its first run: before that
+    /// an empty page knows nothing yet and loads, it never says "none".
+    static func of(serverMissing: Bool, asked: Bool, isEmpty: Bool, isLoading: Bool,
+                   failure: String?) -> MusicPageState {
         if serverMissing { return .missing }
         if !isEmpty { return .content }
-        if isLoading { return .loading }
+        if !asked || isLoading { return .loading }
         if let failure { return .failed(failure) }
         return .empty
     }

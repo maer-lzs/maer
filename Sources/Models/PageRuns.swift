@@ -13,12 +13,16 @@ import Foundation
 nonisolated struct PageRuns: Equatable, Sendable {
     private(set) var generation = 0
     private var running: Int?
+    /// Whether the page has started a run at all. Before its first run a
+    /// page has asked nothing, so an empty page is not "none" yet.
+    private(set) var hasStarted = false
 
     /// Whether a run of the current generation is under way.
     var isRunning: Bool { running == generation }
 
     @discardableResult
     mutating func reset() -> Int {
+        hasStarted = true
         generation += 1
         return generation
     }
@@ -26,6 +30,7 @@ nonisolated struct PageRuns: Equatable, Sendable {
     /// A run of the current generation, or nil while one already runs in it.
     mutating func begin() -> Int? {
         guard running != generation else { return nil }
+        hasStarted = true
         running = generation
         return generation
     }

@@ -48,7 +48,7 @@ struct MusicAlbumsPage: View {
     @ViewBuilder private var musicSortMenu: some View { MusicSortMenu(musicSort: $musicSort) }
 
     var body: some View {
-        MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, isEmpty: vm.albums.isEmpty,
+        MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, asked: vm.hasAsked, isEmpty: vm.albums.isEmpty,
                                  isLoading: vm.isLoading, failure: vm.errorText),
                       emptyTitle: "No music",
                       retry: { Task { await vm.reload() } }) {
@@ -115,7 +115,7 @@ struct MusicSongsPage: View {
     private var music: MusicProvider { AppSession.shared.musicProvider }
 
     var body: some View {
-        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: songs.isEmpty,
+        MusicPageBody(state: .of(serverMissing: serverMissing, asked: runs.hasStarted, isEmpty: songs.isEmpty,
                                  isLoading: runs.isRunning, failure: errorText),
                       emptyTitle: "No songs",
                       retry: { Task { await reload() } }) {
@@ -318,7 +318,7 @@ struct MusicGenresPage: View {
 
     var body: some View {
         // Rule 3: a failed load is distinguishable from "none".
-        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: genres.isEmpty,
+        MusicPageBody(state: .of(serverMissing: serverMissing, asked: runs.hasStarted, isEmpty: genres.isEmpty,
                                  isLoading: isLoading, failure: failure),
                       emptyTitle: "No genres",
                       retry: { Task { await load() } }) {
@@ -380,7 +380,7 @@ struct MusicGenreDetailPage: View {
     private let albumColumns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     var body: some View {
-        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: albums.isEmpty && songs.isEmpty,
+        MusicPageBody(state: .of(serverMissing: serverMissing, asked: runs.hasStarted, isEmpty: albums.isEmpty && songs.isEmpty,
                                  isLoading: isLoading, failure: failure),
                       emptyTitle: "No music",
                       retry: { Task { await load() } }) {
@@ -501,7 +501,7 @@ struct MusicShelfPage: View {
 
     var body: some View {
         ScrollView {
-            MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: items.isEmpty,
+            MusicPageBody(state: .of(serverMissing: serverMissing, asked: runs.hasStarted, isEmpty: items.isEmpty,
                                      isLoading: isLoading, failure: failure),
                           emptyTitle: "No music",
                           retry: { Task { await load() } }) {

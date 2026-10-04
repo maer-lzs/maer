@@ -100,6 +100,9 @@ final class MusicViewModel: ObservableObject {
     /// reload has moved past decides nothing, so a page of the old sort never
     /// lands in the new grid.
     private var runs = PageRuns()
+    /// Whether the tab has started its first load (`MusicPageState.of`).
+    /// A reload sets `isLoading` right after the reset, so the change shows.
+    var hasAsked: Bool { runs.hasStarted }
     /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
     var sort: MusicSortOption = .nameAZ
 

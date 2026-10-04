@@ -18,15 +18,15 @@ struct MusicPageStateTests {
 
     @Test("ohne Server nie leer und nie Fehler, ein Fehlschlag auf leerer Seite ist der Fehler, eine volle Seite bleibt")
     func theDecision() {
-        #expect(MusicPageState.of(serverMissing: true, isEmpty: true, isLoading: false, failure: nil) == .missing)
-        #expect(MusicPageState.of(serverMissing: true, isEmpty: true, isLoading: true, failure: "x") == .missing)
-        #expect(MusicPageState.of(serverMissing: true, isEmpty: false, isLoading: false, failure: nil) == .missing,
+        #expect(MusicPageState.of(serverMissing: true, asked: true, isEmpty: true, isLoading: false, failure: nil) == .missing)
+        #expect(MusicPageState.of(serverMissing: true, asked: true, isEmpty: true, isLoading: true, failure: "x") == .missing)
+        #expect(MusicPageState.of(serverMissing: true, asked: true, isEmpty: false, isLoading: false, failure: nil) == .missing,
                 "a server that went away replaces a full page with the way out")
-        #expect(MusicPageState.of(serverMissing: false, isEmpty: false, isLoading: false, failure: "x") == .content,
+        #expect(MusicPageState.of(serverMissing: false, asked: true, isEmpty: false, isLoading: false, failure: "x") == .content,
                 "stale beats empty: a later failure keeps the page")
-        #expect(MusicPageState.of(serverMissing: false, isEmpty: true, isLoading: true, failure: nil) == .loading)
-        #expect(MusicPageState.of(serverMissing: false, isEmpty: true, isLoading: false, failure: "x") == .failed("x"))
-        #expect(MusicPageState.of(serverMissing: false, isEmpty: true, isLoading: false, failure: nil) == .empty)
+        #expect(MusicPageState.of(serverMissing: false, asked: true, isEmpty: true, isLoading: true, failure: nil) == .loading)
+        #expect(MusicPageState.of(serverMissing: false, asked: true, isEmpty: true, isLoading: false, failure: "x") == .failed("x"))
+        #expect(MusicPageState.of(serverMissing: false, asked: true, isEmpty: true, isLoading: false, failure: nil) == .empty)
     }
 
     @Test("eine Aenderung der Quellen fragt die Erreichbarkeit immer, laedt nur, wo vorher kein Server war")
@@ -214,6 +214,42 @@ struct MusicPageStateTests {
         #expect(unnamed.isEmpty, "a page load without its run: \(unnamed.map { $0.prefix(80) })")
         #expect(code.contains("MusicPageLoad.superseded(\"jamendo shelf\", runs.isCurrent(run))"),
                 "the page with its own loader asks the same rule")
+    }
+
+    /// Before its first run a page has asked nothing: an empty page loads,
+    /// it says neither "none" nor an error.
+    @Test("vor dem ersten Lauf sagt keine Seite leer, sie laedt")
+    func beforeTheFirstRunThePageLoads() {
+        #expect(MusicPageState.of(serverMissing: false, asked: false, isEmpty: true, isLoading: false, failure: nil) == .loading,
+                "the first frame said none before the server was asked")
+        #expect(MusicPageState.of(serverMissing: false, asked: false, isEmpty: true, isLoading: false, failure: "x") == .loading)
+        #expect(MusicPageState.of(serverMissing: true, asked: false, isEmpty: true, isLoading: false, failure: nil) == .missing)
+        var runs = PageRuns()
+        #expect(!runs.hasStarted)
+        runs.reset()
+        #expect(runs.hasStarted, "a whole load counts as asked")
+        var paged = PageRuns()
+        _ = paged.begin()
+        #expect(paged.hasStarted, "a paged load counts as asked")
+    }
+
+    /// Every surface that draws `MusicPageBody` passes whether it has asked,
+    /// from its runs, never a fixed answer.
+    @Test("jede Seite mit dem Musik-Koerper sagt, ob sie schon gefragt hat, aus ihren Laeufen", .needsTheSources)
+    func everyPageSaysWhetherItAsked() throws {
+        let views = SourceTree.root.appendingPathComponent("Sources/Views")
+        let files = try #require(FileManager.default.enumerator(at: views, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        var calls: [String] = []
+        for file in files {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            calls += code.components(separatedBy: "MusicPageBody(state: .of(").dropFirst().map { String($0.prefix(160)) }
+        }
+        #expect(!calls.isEmpty, "the fence found no page that draws the music body")
+        for call in calls {
+            #expect(call.contains("asked: vm.hasAsked,") || call.contains("asked: runs.hasStarted,"),
+                    "a page answers asked otherwise: \(call.prefix(90))")
+        }
     }
 }
 #endif

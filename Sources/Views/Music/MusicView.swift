@@ -164,7 +164,7 @@ struct MusicView: View {
             // Music is on (the switch travels between devices), the
             // server's access may not be: the shared body says so.
             if serverConfigured {
-                MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, isEmpty: vm.albums.isEmpty,
+                MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, asked: vm.hasAsked, isEmpty: vm.albums.isEmpty,
                                          isLoading: vm.isLoading, failure: vm.errorText),
                               emptyTitle: "No music on your server",
                               emptyDetail: "The connected music server reported an empty library.",
