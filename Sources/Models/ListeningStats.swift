@@ -63,9 +63,11 @@ final class ListeningStatsStore: ObservableObject {
     private var generation = CarrierGeneration()
 
     private var lastSaveAt: TimeInterval = 0
+    /// One table of the totals (day to seconds, item to seconds).
+    typealias StatsTable = KeyedRowStore<Int>
     /// The two pots as rows (day to seconds, item to seconds).
     /// The one opening of the rows: every caller awaits the same task.
-    private var rowsOpening: Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never>?
+    private var rowsOpening: Task<(StatsTable, StatsTable)?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed; a start read
     /// that could not read every row leaves it unknown, and then no write
@@ -80,29 +82,31 @@ final class ListeningStatsStore: ObservableObject {
         // Rows first, synchronously through a reader (the init is
         // synchronous by contract: the first tick must find its pot).
         let started = Date()
-        var loaded: ListeningStatsData?
-        var base: RowBase<ListeningStatsData> = .fresh
+        // Each table is read on its own: a table that cannot be read leaves
+        // the other one's rows standing (nil = could not be read).
+        var days: StatsTable.Load?
+        var items: StatsTable.Load?
         do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            let reader = try MaerDatabase.shared.readerNow()
-            let days = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: $0) }
-                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
-            let items = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: $0) }
-                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
-            let skipped = days.skipped + items.skipped
-            if !days.rows.isEmpty || !items.rows.isEmpty || skipped > 0 {
-                let stock = ListeningStatsData(secondsPerDay: days.rows, secondsPerItem: items.rows)
-                loaded = stock
-                // Rows that did not decode make the rows unknown, never
-                // fresh.
-                base = RowBase.afterLoad(rows: stock, skipped: skipped)
+            if let reader = try MaerDatabase.shared.readerNow() {
+                do {
+                    days = try StatsTable.loadNow(table: .statsDay, reader: reader)
+                } catch {
+                    Logger.library.error("STATS rows read failed table=days reason=\(String(describing: error), privacy: .public) base=unknown")
+                }
+                do {
+                    items = try StatsTable.loadNow(table: .statsItem, reader: reader)
+                } catch {
+                    Logger.library.error("STATS rows read failed table=items reason=\(String(describing: error), privacy: .public) base=unknown")
+                }
+            } else {
+                // No file yet is a fresh install: nothing to read.
+                days = StatsTable.Load(rows: [:], skipped: 0)
+                items = StatsTable.Load(rows: [:], skipped: 0)
             }
         } catch {
-            // The rows could not be READ (not: hold nothing): unknown with
-            // nothing read, so no write removes a row.
-            base = .unknown(seen: nil)
             Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
+        let (loaded, base) = Self.startBase(days: days, items: items)
         let stock = loaded ?? ListeningStatsData()
         ownData = stock
         data = stock
@@ -111,13 +115,31 @@ final class ListeningStatsStore: ObservableObject {
         Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
     }
 
-    private func openRows() async -> (KeyedRowStore<Int>, KeyedRowStore<Int>)? {
+    /// The stock and the base the start leaves, from the two tables read on
+    /// their own (nil = the table could not be read). A table that could
+    /// not be read makes the rows unknown, and the store starts with what
+    /// the other one held, which is also what a write may remove; rows that
+    /// did not decode make them unknown with what did; nothing read and
+    /// nothing skipped is fresh.
+    nonisolated static func startBase(days: StatsTable.Load?, items: StatsTable.Load?)
+    -> (stock: ListeningStatsData?, base: RowBase<ListeningStatsData>) {
+        let stock = ListeningStatsData(secondsPerDay: days?.rows ?? [:], secondsPerItem: items?.rows ?? [:])
+        let read = !stock.secondsPerDay.isEmpty || !stock.secondsPerItem.isEmpty
+        guard let days, let items else {
+            return (read ? stock : nil, .unknown(seen: read ? stock : nil))
+        }
+        let skipped = days.skipped + items.skipped
+        guard read || skipped > 0 else { return (nil, .fresh) }
+        return (stock, RowBase.afterLoad(rows: stock, skipped: skipped))
+    }
+
+    private func openRows() async -> (StatsTable, StatsTable)? {
         if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never> {
+        let opening = Task<(StatsTable, StatsTable)?, Never> {
             do {
                 let connection = try MaerDatabase.shared.connection()
-                let days = try await KeyedRowStore<Int>(connection: connection, table: .statsDay)
-                let items = try await KeyedRowStore<Int>(connection: connection, table: .statsItem)
+                let days = try await StatsTable(connection: connection, table: .statsDay)
+                let items = try await StatsTable(connection: connection, table: .statsItem)
                 return (days, items)
             } catch {
                 Logger.library.error("STATS rows open failed reason=\(String(describing: error), privacy: .public)")

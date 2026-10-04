@@ -20,18 +20,6 @@ struct RowBaseTests {
         #expect(RowBase<[String: Int]>.unknown(seen: ["a": 1]).knownValue == nil)
     }
 
-    @Test("Ein gelandeter Schrieb rueckt die Basis vor, ein gescheiterter laesst sie stehen")
-    func onlyALandedWriteMovesTheBase() {
-        let base = RowBase<[String: Int]>.known(["a": 1])
-        #expect(base.landed(["a": 2], success: true).knownValue == ["a": 2])
-        #expect(base.landed(["a": 2], success: false).knownValue == ["a": 1])
-        // Unknown rows stay unknown, with what was read, after a failed
-        // write; a landed write makes the snapshot the known state.
-        let unknown = RowBase<[String: Int]>.unknown(seen: ["a": 1])
-        #expect(unknown.landed(["a": 2], success: false).removable == ["a": 1])
-        #expect(unknown.landed(["a": 2], success: true).plan == .diff)
-    }
-
     @Test("Uebersprungene Zeilen machen die Basis unbekannt, nie frisch, und sie behaelt das Gelesene")
     func skippedRowsAreNotNothing() {
         #expect(RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 0).plan == .upsertOnly)

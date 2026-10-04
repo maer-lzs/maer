@@ -18,11 +18,8 @@ struct RowEmptyingFenceTests {
         "DownloadManager.swift": (1, "the marks leave with the deleted downloads, the last one too"),
         "LocalLibrary.swift": (1, "the user deleted the item"),
         "MaerPlaylists.swift": (2, "the user deleted the list; the merge carries the account's removal marks"),
+        "PodcastSubscriptions.swift": (1, "the person's own unsubscribe, the last one too"),
     ]
-
-    /// The subscriptions keep their own intent: the one place that sets it
-    /// is the user's last unsubscribe.
-    nonisolated static let subscriptionIntentStock = 1
 
     /// The writes in `code` that may empty, as written.
     nonisolated static func allowedWrites(in code: String) -> Int {
@@ -36,17 +33,12 @@ struct RowEmptyingFenceTests {
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowKeeper.swift" }, "the fence read the sources")
         var found: [String: Int] = [:]
-        var intents = 0
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             let n = Self.allowedWrites(in: code)
             if n > 0 { found[file.lastPathComponent] = n }
-            if file.lastPathComponent == "PodcastSubscriptions.swift" {
-                intents = code.components(separatedBy: "userInitiatedEmptyWrite = true").count - 1
-            }
         }
         #expect(found == Self.allowedStock.mapValues(\.count), "writes that may empty outside the stock or left it: \(found)")
-        #expect(intents == Self.subscriptionIntentStock, "the subscriptions' intent is set elsewhere: \(intents)")
         // Calibration: both spellings count, the declaration does not.
         #expect(Self.allowedWrites(in: "a.write(x, emptying: .allowed)\nb(emptying: RowEmptying.allowed)") == 2)
         #expect(Self.allowedWrites(in: "case allowed\nwrite(x, emptying: .refused)") == 0)
@@ -55,10 +47,11 @@ struct RowEmptyingFenceTests {
     /// The stores with a write chain of their own ask the same rule as the
     /// keeper (`previous(for:)`, `refuses`), and no source diffs against
     /// nothing by hand any more: that form forgot what the start read.
-    nonisolated static let ownChains = ["RowKeeper.swift", "MaerPlaylists.swift", "PodcastListenLog.swift", "ListeningStats.swift"]
+    nonisolated static let ownChains = ["RowKeeper.swift", "MaerPlaylists.swift", "PodcastListenLog.swift",
+                                        "ListeningStats.swift", "PodcastSubscriptions.swift"]
 
     nonisolated static func diffsAgainstNothing(_ code: String) -> Bool {
-        code.contains(#/apply\(previous:\s*\[:\]|knownValue\s*\?\?\s*\[:\]|knownValue\s*\?\?\s*ListeningStatsData\(\)/#)
+        code.contains(#/apply\(previous:\s*\[:\]|knownValue\s*\?\?\s*(?:\[:?\]|ListeningStatsData\(\)|removable|\(?base\.removable)/#)
     }
 
     @Test("jede eigene Schreibkette fragt die eine Regel, und keine Quelle vergleicht von Hand gegen nichts", .needsTheSources)
@@ -79,6 +72,9 @@ struct RowEmptyingFenceTests {
         #expect(Self.diffsAgainstNothing("_ = try await rows.apply(previous: [:], current: snapshot)"))
         #expect(Self.diffsAgainstNothing("rows.apply(previous: base.knownValue ?? [:], current: s)"))
         #expect(!Self.diffsAgainstNothing("rows.apply(previous: base.previous(for: s), current: s)"))
+        // And the forms the subscriptions had before.
+        #expect(Self.diffsAgainstNothing("compute(previous: base.knownValue ?? [], current: snapshot)"))
+        #expect(Self.diffsAgainstNothing("let previous = base.knownValue ?? removable.filter { _ in true }"))
     }
 }
 #endif

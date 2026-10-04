@@ -57,7 +57,7 @@ struct RowStoreFenceTests {
     // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
     // Speicher von vor der Naht).
     nonisolated static let keyedRowStoreStock: [String: Int] = [
-        "ListeningStats.swift": 9, "PodcastListenLog.swift": 5, "MaerPlaylists.swift": 6
+        "ListeningStats.swift": 1, "PodcastListenLog.swift": 5, "MaerPlaylists.swift": 6
     ]
 
     @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")

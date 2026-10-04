@@ -348,11 +348,6 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Serialized row writes
 
-    /// Consumed one-shot flag. ONLY a user-initiated path
-    /// (last unsubscribe) may legitimately write an EMPTY store over a
-    /// non-empty stock.
-    private var userInitiatedEmptyWrite = false
-
     /// The row backend, opened once in the bootstrap. Nil when the database
     /// could not be opened: the stock then lives in memory for this run and
     /// the failure is in the log.
@@ -381,10 +376,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// or the start read. Advances only when a write landed.
     private var rowBase: RowBase<[PodcastShow]> = .fresh
 
-    private func persist(_ snapshot: [PodcastShow]) {
-        // The intent belongs to this snapshot; the next one starts without.
-        let intended = userInitiatedEmptyWrite
-        userInitiatedEmptyWrite = false
+    /// `emptying` belongs to this snapshot: `.allowed` only where the
+    /// person's own unsubscribe may empty the list.
+    private func persist(_ snapshot: [PodcastShow], emptying: RowEmptying) {
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
         // and the diff is taken against the stock of the write before, so a
@@ -400,23 +394,20 @@ final class PodcastSubscriptions: ObservableObject {
             // so an unsubscribe survives the restart, and rows nobody saw
             // are not buried.
             let base = self.rowBase
-            // The shows a write may remove (`RowBase.removable`): the ONE
-            // measure of the removal and of the wipe guard, taken from the
-            // base the write really takes.
-            let removable = base.removable ?? []
-            // Last line of defense, against the same base and measure: an
-            // EMPTY snapshot never removes rows unless the user explicitly
-            // emptied the list. Refuse loudly + drop a note so the NEXT
-            // incident is diagnosable instead of traceless (log-first).
-            if snapshot.isEmpty, !intended, !removable.isEmpty {
-                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(removable.count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
-                let note = "wipe refused at \(Date()): empty snapshot, \(removable.count) shows, isLoaded=\(self.isLoaded)\n"
+            // Last line of defense, the one rule of every row store against
+            // the base the write really takes: an EMPTY snapshot never
+            // removes rows unless the user explicitly emptied the list.
+            // Refuse loudly + drop a note so the NEXT incident is
+            // diagnosable instead of traceless (log-first).
+            if base.refuses(snapshot, emptying) {
+                let count = base.removable?.count ?? 0
+                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
+                let note = "wipe refused at \(Date()): empty snapshot, \(count) shows, isLoaded=\(self.isLoaded)\n"
                 let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
                 try? note.data(using: .utf8)?.write(to: tombstone)
                 return
             }
-            let previous = base.knownValue ?? removable.filter { seen in !snapshot.contains { $0.id == seen.id } }
-            let diff = PodcastRowDiff.compute(previous: previous, current: snapshot)
+            let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             guard !diff.isEmpty else { return }
             let started = Date()
             do {
@@ -456,7 +447,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// UI-test seeding only (see UITestSeed). Injects deterministic shows.
     func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
     /// Drive the wipe guard + load gate deterministically.
-    func _testPersist(_ snapshot: [PodcastShow]) { persist(snapshot) }
+    func _testPersist(_ snapshot: [PodcastShow]) { persist(snapshot, emptying: .refused) }
     func _testSetLoaded(_ value: Bool) { isLoaded = value }
     func _testSave() { save() }
     var _testFileURL: URL { fileURL }
@@ -699,7 +690,7 @@ final class PodcastSubscriptions: ObservableObject {
         }, retired: { retiredTwins.append(($0, $1)) })
         if changed {
             // Write back (serialized, off-main) so the cleanup is persistent.
-            persist(result)
+            persist(result, emptying: .refused)
         }
         // The held token addresses, once per load, for the comparison with
         // another device's adoption line. Hashes only.
@@ -1196,8 +1187,8 @@ final class PodcastSubscriptions: ObservableObject {
             removedFeedURL = show.feedURL
         }
         shows.removeAll { $0.id == id }
-        if shows.isEmpty { userInitiatedEmptyWrite = true }
-        save()
+        // ONLY the person's own unsubscribe may empty the list.
+        save(emptying: .allowed)
         if let removedFeedURL {
             FeedRefusal.forget(feedKey: Self.feedKey(removedFeedURL), defaults: defaults)
             // Published only on a change: an unsubscribe announces once.
@@ -2182,7 +2173,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// Persist the current store (serialized, off-main. See `persist`). The
     /// old implementation encoded and wrote the whole JSON synchronously on the
     /// main actor: a visible hitch on subscribe/refresh/import.
-    private func save() {
+    /// `emptying` is `.refused` for every path but the person's own
+    /// unsubscribe.
+    private func save(emptying: RowEmptying = .refused) {
         // The central funnel. Persisting before the bootstrap
         // finished would write the still-empty RAM state over the good file
         // (the cold-start BGAppRefresh race). The mutation stays in RAM; the
@@ -2192,7 +2185,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.error("SUBSTORE save SKIPPED before bootstrap (cold-start race trapped)")
             return
         }
-        persist(shows)
+        persist(shows, emptying: emptying)
     }
 
     private func normalizedFeedURL(_ raw: String) -> URL? {

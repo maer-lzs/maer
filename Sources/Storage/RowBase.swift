@@ -75,11 +75,6 @@ nonisolated enum RowBase<Value> {
         }
     }
 
-    /// The base after a write: landed, the snapshot is what the rows hold;
-    /// failed, nothing changes.
-    func landed(_ snapshot: Value, success: Bool) -> RowBase<Value> {
-        success ? .known(snapshot) : self
-    }
 }
 
 /// Whether emptying the stock is what a write means to do. Every write of a
@@ -109,6 +104,25 @@ extension RowBase {
     /// not meant to empty and would remove rows (`removable`).
     nonisolated func refuses<Row>(_ current: [String: Row], _ emptying: RowEmptying) -> Bool
     where Value == [String: Row] {
+        current.isEmpty && emptying == .refused && !(removable?.isEmpty ?? true)
+    }
+
+    /// The same rule for an ordered stock whose rows carry their id (the
+    /// podcast subscriptions keep their order): the known rows, or the rows
+    /// the start read whose id is gone from `current`.
+    nonisolated func previous<Row: Identifiable>(for current: [Row]) -> [Row]
+    where Value == [Row], Row.ID == String {
+        switch self {
+        case .known(let rows): return rows
+        case .unknown(let seen?):
+            let ids = Set(current.map(\.id))
+            return seen.filter { !ids.contains($0.id) }
+        case .fresh, .unknown(seen: nil): return []
+        }
+    }
+
+    /// The same refusal for an ordered stock.
+    nonisolated func refuses<Row>(_ current: [Row], _ emptying: RowEmptying) -> Bool where Value == [Row] {
         current.isEmpty && emptying == .refused && !(removable?.isEmpty ?? true)
     }
 }
