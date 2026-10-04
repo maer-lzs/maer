@@ -65,9 +65,8 @@ struct ReachabilityTests {
     /// Who names the monitor under `Sources/Networking` and
     /// `Sources/Providers`, each with its reason. The stock holds in both
     /// directions: a new file is a finding, and so is an entry that no
-    /// longer names the monitor. Views and view models read the monitor as
-    /// the state they show (offline banner, glyphs), not before a request,
-    /// and stay outside this fence by name (`components.md`).
+    /// longer names the monitor. Every other reader stands in
+    /// `outsideStock`.
     nonisolated static let monitorStock: [String: String] = [
         "Reachability.swift": "the door itself",
         "MaerSyncCarriers.swift": "hands the monitor to the sync session as its path source, it reads nothing",
@@ -89,6 +88,37 @@ struct ReachabilityTests {
             if code.contains("NetworkMonitor.shared") { naming.insert(file.lastPathComponent) }
         }
         #expect(naming == Set(Self.monitorStock.keys), "names the monitor outside the stock or left it: \(naming.sorted())")
+    }
+
+    /// Who reads the monitor outside those two folders, each with what the
+    /// answer decides. Only two of them show it; the others decide before a
+    /// load or a playback, synchronously, so they cannot ask the door
+    /// (`async`). In the test host they follow the machine's network, and
+    /// no fence keeps a witness from leaning on that; this stock only keeps
+    /// the list true in both directions.
+    nonisolated static let outsideStock: [String: String] = [
+        "RootView.swift": "shows: the offline banner observes it",
+        "PodcastHelpers.swift": "shows: the episode menu offers play and download by it",
+        "FreeCatalogStore.swift": "decides: its four load gates start a catalog pass by it",
+        "PlayerCoordinator.swift": "decides: opening refuses an undownloaded title offline, and both next-item picks skip one",
+        "PlayerViewModel.swift": "decides: a missing track download restarts, and a failed local file is dropped for streaming",
+        "PodcastAutoContinue.swift": "decides: offline the next episode is picked among the downloaded ones",
+        "Lyrics.swift": "decides: offline LRCLIB is not asked and the round books a failure",
+        "RadioArtwork.swift": "decides: a logo that does not serve is booked as a failure only online",
+    ]
+
+    @Test("ausserhalb von Networking und Providers lesen nur die genannten Dateien den Netzwaechter, in beide Richtungen", .needsTheSources)
+    func onlyTheNamedFilesReadTheMonitorOutside() throws {
+        let fenced = ["/Sources/Networking/", "/Sources/Providers/"]
+        var naming: Set<String> = []
+        var read = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() where !fenced.contains(where: { file.path.contains($0) }) {
+            read += 1
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("NetworkMonitor.shared") { naming.insert(file.lastPathComponent) }
+        }
+        #expect(read > 0, "the fence read no source outside the two folders")
+        #expect(naming == Set(Self.outsideStock.keys), "reads the monitor outside the stock or left it: \(naming.sorted())")
     }
 
     /// The one answer to "does this process run under a test?": no other

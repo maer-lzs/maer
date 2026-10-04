@@ -126,5 +126,55 @@ struct ConcurrencyFenceTests {
         #expect(offenders.isEmpty, "sleep sites past the inventory: \(offenders)")
         #expect(Self.sites(of: "Task.sleep", in: "try? await Task.sleep(for: .seconds(1))\n// Task.sleep in a comment") == 1)
     }
+
+    /// Guards that check a flag the file sets to `true` and wait in the
+    /// same condition. Between the check and the set a second caller finds
+    /// the flag still down; only the approachable-concurrency setting kept
+    /// the door from suspending there.
+    nonisolated static func flagChecksAcrossAwait(in text: String) throws -> [String] {
+        let code = SyncContractFenceTests.stripped(text)
+            .components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        let whole = NSRange(code.startIndex..., in: code)
+        let setter = try NSRegularExpression(pattern: "([A-Za-z_][A-Za-z0-9_]*) = true")
+        let flags = Set(setter.matches(in: code, range: whole).compactMap {
+            Range($0.range(at: 1), in: code).map { String(code[$0]) }
+        })
+        let guards = try NSRegularExpression(pattern: "guard ([^{}]*?) else \\{")
+        var found: [String] = []
+        for match in guards.matches(in: code, range: whole) {
+            guard let range = Range(match.range(at: 1), in: code) else { continue }
+            let condition = String(code[range])
+            guard condition.contains("await ") else { continue }
+            for flag in flags.sorted()
+            where condition.range(of: "!(self\\.)?\(flag)(?![A-Za-z0-9_])", options: .regularExpression) != nil {
+                found.append(flag)
+            }
+        }
+        return found
+    }
+
+    @Test("kein Merker wird geprueft, waehrend dieselbe Bedingung wartet", .needsTheSources)
+    func noFlagIsCheckedAcrossAnAwait() throws {
+        var offenders: [String] = []
+        var read = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            read += 1
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for flag in try Self.flagChecksAcrossAwait(in: text) {
+                offenders.append("\(file.lastPathComponent): \(flag)")
+            }
+        }
+        #expect(read > 0, "the fence read no source")
+        #expect(offenders.isEmpty, "a flag checked across an await: \(offenders)")
+        // The calibration lines: the old form is found, also over lines and
+        // with a receiver; the healed form and a flag the file never sets are not.
+        let old = "guard !loaded, !loading, await Reachability.isConnected() else { return }\nloading = true"
+        #expect(try Self.flagChecksAcrossAwait(in: old) == ["loading"])
+        let spread = "guard\n  !self.isLoading,\n  await ready()\nelse { return }\nself.isLoading = true"
+        #expect(try Self.flagChecksAcrossAwait(in: spread) == ["isLoading"])
+        let healed = "guard !loaded, !loading else { return }\nloading = true\nguard await Reachability.isConnected() else { return }"
+        #expect(try Self.flagChecksAcrossAwait(in: healed).isEmpty)
+        #expect(try Self.flagChecksAcrossAwait(in: "guard !done, await ready() else { return }").isEmpty)
+    }
 }
 #endif

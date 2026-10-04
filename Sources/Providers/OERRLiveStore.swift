@@ -45,12 +45,16 @@ final class OERRLiveStore: ObservableObject {
     }
 
     func ensureLoaded(forLanguages codes: [String]) async {
-        guard !loaded, !loading, await Reachability.isConnected() else { return }
+        guard !loaded, !loading else { return }
         #if DEBUG
         if UITestSeed.isActive { return }   // seed-only in the harness
         #endif
+        // Set before the first suspension: a second caller that came in
+        // while this one waited at the door found the flag still down and
+        // started a second load beside it.
         loading = true
         defer { loading = false }
+        guard await Reachability.isConnected() else { return }
 
         let seed = HoerspielCuration.feeds(forLanguages: ["de", "en", "fr", "it", "es",
                                                           "nl", "sv", "no", "da", "fi",
