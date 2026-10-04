@@ -117,6 +117,7 @@ struct SyncHistoryView: View {
         case .iCloud: return "iCloud"
         case .music: return String(localized: "Music")
         case .maerSync: return "Mär Sync"
+        case .statistics: return String(localized: "Statistics")
         }
     }
 
@@ -127,6 +128,7 @@ struct SyncHistoryView: View {
         case .iCloud: return "icloud"
         case .music: return "music.note"
         case .maerSync: return "arrow.triangle.2.circlepath"
+        case .statistics: return "chart.bar"
         }
     }
 

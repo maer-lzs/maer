@@ -92,16 +92,27 @@ final class ListeningStatsStore: ObservableObject {
     /// unread: a table the start read is not read again, since nothing is
     /// written while one is unread and its rows are what the start found.
     private var readAtStart: Loads = (nil, nil)
+    /// The read again that runs, so a second caller awaits it.
+    private var rereading: Task<Loads, Never>?
+    /// Whether a write is held because a table stays unread: this run's
+    /// listening is then in memory only, and gone when the process ends. The
+    /// statistics page says so while it holds.
+    @Published private(set) var rowsHeld = false
+    /// The sync history, where the person reads that a write is held; one
+    /// entry per run (`heldNoted`).
+    private let history: any SyncHistoryStoring
+    private var heldNoted = false
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one.
-    convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared) {
-        self.init(carrier: carrier, database: database, startReadFails: false)
+    convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared, history: any SyncHistoryStoring = SyncHistoryStore.shared) {
+        self.init(carrier: carrier, database: database, history: history, startReadFails: false)
     }
 
-    private init(carrier: any StatsCarrier, database: MaerDatabase, startReadFails: Bool) {
+    private init(carrier: any StatsCarrier, database: MaerDatabase, history: any SyncHistoryStoring, startReadFails: Bool) {
         self.carrier = carrier
         self.database = database
+        self.history = history
         // Rows first, synchronously through a reader (the init is
         // synchronous by contract: the first tick must find its pot).
         let started = Date()
@@ -121,8 +132,9 @@ final class ListeningStatsStore: ObservableObject {
     #if DEBUG
     /// Test seam: a start whose read of both tables failed, over a database
     /// whose rows a later read finds.
-    static func testFailingStart(carrier: any StatsCarrier, database: MaerDatabase) -> ListeningStatsStore {
-        ListeningStatsStore(carrier: carrier, database: database, startReadFails: true)
+    static func testFailingStart(carrier: any StatsCarrier, database: MaerDatabase,
+                                 history: any SyncHistoryStoring) -> ListeningStatsStore {
+        ListeningStatsStore(carrier: carrier, database: database, history: history, startReadFails: true)
     }
     #endif
 
@@ -264,23 +276,42 @@ final class ListeningStatsStore: ObservableObject {
     /// run counted above the held pot (`ListeningStatsSync.rebuilt`), and
     /// the rows are known. Only the unread tables are read again, each on
     /// its own and off the main actor, since this repeats on every held save.
+    /// While any table stays unread, the day table too, which names no title:
+    /// every write holds, the Navidrome move answers "not now" (`rekeyItems`)
+    /// and with it the cover sweep keeps waiting (`isPending`), over every
+    /// restart until the table reads. Held is said once per run in the sync
+    /// history and on the statistics page as long as it lasts (`rowsHeld`).
     private func rowsReadForWrite() async -> Bool {
         guard unreadDays || unreadItems else { return true }
         let database = self.database
         let askDays = unreadDays, askItems = unreadItems
-        // detached because the synchronous read must not run on the main
-        // actor, and it repeats on every held save while a table stays unread.
-        let read = await Task.detached(priority: .utility) {
-            Self.readTables(database, days: askDays, items: askItems)
-        }.value
+        // One read at a time: a caller that comes while one runs (the save
+        // chain and the move) awaits the same read instead of a second one.
+        let read: Loads
+        if let running = rereading {
+            read = await running.value
+        } else {
+            // detached because the synchronous read must not run on the main
+            // actor, and it repeats on every held save while a table stays unread.
+            let task = Task.detached(priority: .utility) {
+                Self.readTables(database, days: askDays, items: askItems)
+            }
+            rereading = task
+            read = await task.value
+            rereading = nil
+        }
         // Another caller may have finished the read while this one waited.
+        // Both marks clear together, below, so either one still set means
+        // no caller applied a read yet.
         guard unreadDays || unreadItems else { return true }
         let days = unreadDays ? read.days : readAtStart.days
         let items = unreadItems ? read.items : readAtStart.items
         guard let days, let items else {
             Logger.library.notice("STATS save held: rows still not read days=\(days != nil) items=\(items != nil)")
+            noteHeld()
             return false
         }
+        rowsHeld = false
         ownData = ListeningStatsSync.rebuilt(own: ownData, held: potHeld,
                                              readDays: unreadDays ? days.rows : nil,
                                              readItems: unreadItems ? items.rows : nil)
@@ -292,6 +323,18 @@ final class ListeningStatsStore: ObservableObject {
         readAtStart = (nil, nil)
         recompose()
         return true
+    }
+
+    /// The held write, visible: the page's line while it holds, and one
+    /// failed entry in the sync history per run, not one per held save.
+    private func noteHeld() {
+        rowsHeld = true
+        guard !heldNoted else { return }
+        heldNoted = true
+        history.append(SyncHistory.entry(
+            service: .statistics, direction: .up, counters: [], duration: 0,
+            error: String(localized: "The listening statistics cannot be read, so the listening time of this session is not saved."),
+            deviceId: SyncHistoryStore.deviceId))
     }
 
     /// The carrier the access of this moment asks for, when it travels

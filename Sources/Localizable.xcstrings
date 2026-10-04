@@ -11079,6 +11079,16 @@
         }
       }
     },
+    "The listening statistics cannot be read, so the listening time of this session is not saved." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Hörstatistik ist nicht lesbar, deshalb wird die Hörzeit dieser Sitzung nicht gespeichert."
+          }
+        }
+      }
+    },
     "The new key is held. Syncing goes on at the next occasion." : {
       "localizations" : {
         "de" : {

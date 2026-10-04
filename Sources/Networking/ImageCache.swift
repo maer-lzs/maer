@@ -1107,6 +1107,9 @@ final class ImageCache {
             //    digest cannot be read; that cover loads once more.
             // No rename puts a file into the purgeable tier under the name of
             // an address that waits for the network (`gateOfWaitingReads`).
+            // The waiting names are read once, here: an invalidation during
+            // these renames is not covered. They rename what an older build
+            // wrote and run once after an update; the window is one sweep.
             let waitingNames = await MainActor.run { self.refreshing }
             let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waitingNames) }
             Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)

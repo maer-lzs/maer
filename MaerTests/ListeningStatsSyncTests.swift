@@ -195,7 +195,7 @@ struct ListeningStatsSyncTests {
                         deviceId: SyncHistoryStore.deviceId, by: "witness")
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }
-        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database)
+        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database, history: RecordingHistory())
         stats.start()
         #expect(stats.seconds(forItemId: item) == 1200, "the precondition: the pot was adopted for the display")
         stats.addSeconds(60, itemId: item)
@@ -206,6 +206,48 @@ struct ListeningStatsSyncTests {
         #expect(stats.seconds(forItemId: item) == 2460, "the display did not take the rows read on save")
         #expect(!ListeningStatsSync.adoptionWrites(.unknown(seen: nil)))
         #expect(ListeningStatsSync.adoptionWrites(.fresh), "a fresh file takes the pot as a write")
+    }
+
+    /// A sync history that keeps what it is told, for the witnesses.
+    @MainActor
+    final class RecordingHistory: SyncHistoryStoring {
+        var entries: [SyncHistoryEntry] = []
+        var lastChecked: [String: Date] = [:]
+        func append(_ entry: SyncHistoryEntry) { entries.append(entry) }
+        func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date) { lastChecked[service.rawValue] = date }
+    }
+
+    /// A table that stays unread holds every write; this run's listening is
+    /// then in memory only. Said once per run in the sync history, and on
+    /// the statistics page while it lasts; a read that succeeds takes the
+    /// line away.
+    @Test("eine unlesbare Tabelle: ein Eintrag im Sync-Verlauf je Lauf, die Zeile steht, bis das Lesen gelingt")
+    @MainActor
+    func aHeldWriteIsSaidOnce() async throws {
+        let directory = try NavidromeRekeyTests.temporaryDirectory("stats-held")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let database = try await NavidromeRekeyTests.unreadableDatabase(
+            ["stats_item"], at: directory.appendingPathComponent("maer.sqlite").path)
+        let history = RecordingHistory()
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()),
+                                        database: database, history: history)
+        #expect(!stats.rowsHeld, "the precondition: nothing held before a save")
+        stats.addSeconds(5, itemId: "radio:rb:held")
+        await stats.awaitPendingWrites()
+        #expect(stats.rowsHeld, "the page says nothing while the write is held")
+        stats.flush()
+        await stats.awaitPendingWrites()
+        #expect(history.entries.count == 1, "one entry per run, not one per held save: \(history.entries.count)")
+        #expect(history.entries.first?.service == .statistics)
+        #expect(history.entries.first?.error != nil, "the entry is a failed run")
+
+        let connection = try database.connection()
+        try await connection.execute("DROP TABLE stats_item")
+        _ = try await connection.checkpoint()
+        stats.flush()
+        await stats.awaitPendingWrites()
+        #expect(!stats.rowsHeld, "a read that succeeded leaves the line standing")
+        #expect(history.entries.count == 1)
     }
 
     /// The rebuild after the read: per unread table its rows plus what the

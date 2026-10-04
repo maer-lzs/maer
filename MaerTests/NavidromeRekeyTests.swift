@@ -743,10 +743,19 @@ struct NavidromeRekeyTests {
         #expect(readQueue.rekey(Self.map) == 1, "the control: a queue that read its row moves")
         let readPending = SyncQueue(storage: SyncQueueRowStorage(database: readable))
         #expect(await readPending.rekey(Self.map) == 0, "the control: a sync queue that read its rows answers")
+        let readContext = PlaybackContext(persists: true, database: readable)
+        readContext.replace(ids: [old], source: "Album")
+        #expect(readContext.rekey(Self.map) == 1, "the control: a context that read its row moves")
+        #expect(MaerPlaylists(database: readable).rekey(Self.map) != nil, "the control: lists that read their rows answer")
+        let readDocuments = directory.appendingPathComponent("readable", isDirectory: true)
+        let readDownloads = DownloadManager(documents: readDocuments, database: readable)
+        await readDownloads.ensureScanned()
+        #expect(readDownloads.rekey(Self.map) != nil, "the control: downloads that read their marks answer")
         // The chains end before the files go.
         await queue.awaitPendingWrites()
         await context.awaitPendingWrites()
         await readQueue.awaitPendingWrites()
+        await readContext.awaitPendingWrites()
         await RowKeepers.awaitAll()
     }
 
@@ -779,7 +788,7 @@ struct NavidromeRekeyTests {
         let carrier = KeyValueStatsCarrier(store: InMemoryCloudStore())
 
         let broken = try await Self.unreadableDatabase(["stats_item"], at: directory.appendingPathComponent("broken.sqlite").path)
-        let blind = ListeningStatsStore(carrier: carrier, database: broken)
+        let blind = ListeningStatsStore(carrier: carrier, database: broken, history: ListeningStatsSyncTests.RecordingHistory())
         blind.addSeconds(5, itemId: old)
         #expect(await blind.rekeyItems(Self.map) == nil, "the stats moved over a table nobody could read")
 
@@ -787,7 +796,8 @@ struct NavidromeRekeyTests {
         _ = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
         let items = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsItem)
         _ = try await items.apply(previous: [:], current: [old: 2400])
-        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database)
+        let stats = ListeningStatsStore.testFailingStart(carrier: carrier, database: database,
+                                                         history: ListeningStatsSyncTests.RecordingHistory())
         #expect(stats.seconds(forItemId: old) == 0, "the precondition: the start read no row")
         let moved = try #require(await stats.rekeyItems(Self.map))
         #expect(moved.changed == 1)
@@ -812,7 +822,8 @@ struct NavidromeRekeyTests {
         let connection = try database.connection()
         try await connection.execute("CREATE TABLE stats_item (other TEXT)")
         _ = try await connection.checkpoint()
-        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()), database: database)
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()), database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
         #expect(stats.ownData.secondsPerDay["2026-10-04"] == 300, "the precondition: the start read the day table")
         #expect(await stats.rekeyItems(Self.map) == nil, "the precondition: the item table is unread")
 

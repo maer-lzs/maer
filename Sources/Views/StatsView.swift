@@ -16,6 +16,20 @@ struct StatsView: View {
 
     var body: some View {
         Form {
+            // A write held over unread rows keeps this run's listening in
+            // memory only; it is said where the numbers are read.
+            if stats.rowsHeld {
+                Section {
+                    Label {
+                        Text("The listening statistics cannot be read, so the listening time of this session is not saved.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("stats-held-warning")
+                }
+            }
             Section("Listening Time") {
                 LabeledContent("Today") { Text(formatted(stats.seconds(on: Date()))) }
                 LabeledContent("Last 7 Days") { Text(formatted(stats.seconds(lastDays: 7))) }

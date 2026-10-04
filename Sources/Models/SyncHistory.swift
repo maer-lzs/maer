@@ -21,6 +21,10 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable, Sendable 
         /// history and cannot decode this case; the ring is one row per
         /// entry, so that build skips the entry and keeps the rest.
         case maerSync
+        /// This device's listening statistics, when their rows cannot be
+        /// read and a write is held: local, no service. An older build
+        /// skips the entry like `maerSync`.
+        case statistics
     }
 
     enum Direction: String, Codable {
