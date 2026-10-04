@@ -63,7 +63,7 @@ final class GPodderClient {
         let body = try JSONSerialization.data(withJSONObject: [
             "caption": caption, "type": "mobile",
         ])
-        var req = try request("api/2/devices/\(enc(config.username))/\(enc(config.deviceId)).json",
+        var req = try request("api/2/devices/\(Self.segment(config.username))/\(Self.segment(config.deviceId)).json",
                               method: "POST")
         req.httpBody = body
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -72,13 +72,13 @@ final class GPodderClient {
 
     /// The registered devices (cheap probe for the sync history).
     func devices() async throws -> [[String: Any]] {
-        let data = try await send(try request("api/2/devices/\(enc(config.username)).json", method: "GET"))
+        let data = try await send(try request("api/2/devices/\(Self.segment(config.username)).json", method: "GET"))
         return try Self.logged(data, label: "devices") { try Self.parseDevices($0) }
     }
 
     /// Login via Basic auth → session cookie. Throws on wrong credentials.
     func login() async throws {
-        _ = try await send(request("api/2/auth/\(enc(config.username))/login.json", method: "POST"),
+        _ = try await send(request("api/2/auth/\(Self.segment(config.username))/login.json", method: "POST"),
                            allowAuthRetry: false)
     }
 
@@ -100,7 +100,7 @@ final class GPodderClient {
     /// Episode actions since `since` (0 = everything). Returns actions + new marker.
     func episodeActions(since: Int) async throws -> (actions: [GPodderEpisodeAction], timestamp: Int) {
         let data = try await send(request(
-            "api/2/episodes/\(enc(config.username)).json",
+            "api/2/episodes/\(Self.segment(config.username)).json",
             method: "GET",
             query: [URLQueryItem(name: "since", value: String(since))]
         ))
@@ -113,7 +113,7 @@ final class GPodderClient {
     func uploadEpisodeActions(_ actions: [[String: Any]]) async throws -> Int {
         guard !actions.isEmpty else { return 0 }
         let body = try JSONSerialization.data(withJSONObject: actions)
-        let data = try await send(request("api/2/episodes/\(enc(config.username)).json",
+        let data = try await send(request("api/2/episodes/\(Self.segment(config.username)).json",
                                           method: "POST", body: body))
         // try?-with-reason (audit 01.08): the POST itself SUCCEEDED. Throwing
         // on a broken timestamp body would falsely fail the upload. Marker 0
@@ -124,15 +124,12 @@ final class GPodderClient {
     // MARK: - Internal
 
     private var subsPath: String {
-        "api/2/subscriptions/\(enc(config.username))/\(enc(config.deviceId)).json"
+        "api/2/subscriptions/\(Self.segment(config.username))/\(Self.segment(config.deviceId)).json"
     }
 
     private func request(_ path: String, method: String,
                          query: [URLQueryItem] = [], body: Data? = nil) throws -> URLRequest {
-        guard var comp = URLComponents(url: config.baseURL.appendingPathComponent(path),
-                                       resolvingAgainstBaseURL: false) else { throw GPodderError.badURL }
-        if !query.isEmpty { comp.setQuery(query) }
-        guard let url = comp.url else { throw GPodderError.badURL }
+        guard let url = Self.address(base: config.baseURL, path: path, query: query) else { throw GPodderError.badURL }
         var req = URLRequest(url: url)
         req.httpMethod = method
         let cred = "\(config.username):\(config.password)"
@@ -202,8 +199,29 @@ final class GPodderClient {
             .contains((error as NSError).code)
     }
 
-    private func enc(_ s: String) -> String {
-        s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? s
+    /// A user name or device id as ONE path segment, percent-encoded once:
+    /// a slash inside it is encoded too, so it never splits the path.
+    nonisolated static func segment(_ s: String) -> String {
+        s.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? s
+    }
+
+    nonisolated private static let segmentAllowed: CharacterSet = {
+        var set = CharacterSet.urlPathAllowed
+        set.remove(charactersIn: "/")
+        return set
+    }()
+
+    /// The request address: the base's path, then `path` as it stands, its
+    /// segments already encoded by `segment`. Joined on the encoded path,
+    /// never through `appendingPathComponent`, which would encode every `%`
+    /// a second time (a name with a space reached the server as `%20`).
+    nonisolated static func address(base: URL, path: String, query: [URLQueryItem] = []) -> URL? {
+        guard var comp = URLComponents(url: base, resolvingAgainstBaseURL: false) else { return nil }
+        var basePath = comp.percentEncodedPath
+        while basePath.hasSuffix("/") { basePath.removeLast() }
+        comp.percentEncodedPath = basePath + "/" + path
+        if !query.isEmpty { comp.setQuery(query) }
+        return comp.url
     }
 
     // MARK: - Payload parsing (pure, tested. Fix 01.08)
