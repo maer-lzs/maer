@@ -139,6 +139,59 @@ struct ImageCachePersistentTests {
         #expect(ImageCache.shared.testIsPersistent(today), "a foreign name of today lost its t")
     }
 
+    /// Episode A has its own picture with a `t`, episode B of the same show
+    /// falls back to the show's picture without it; both are downloaded. The
+    /// earlier rule's name for A is today's name of B: the move leaves B's
+    /// kept cover where it is and hands A nothing of it.
+    @Test("der Umzug nimmt nie den Namen einer anderen aktiven Adresse: B behaelt sein Cover, A erbt es nicht")
+    func theMoveNeverTakesTheNameOfAnotherActiveAddress() async throws {
+        let tag = UUID().uuidString.prefix(8)
+        let episodeA = URL(string: "https://cdn.example.org/\(tag)/x.jpg?t=2")!
+        let episodeB = URL(string: "https://cdn.example.org/\(tag)/x.jpg")!
+        #expect(ImageCache.legacyName(for: episodeA) == ImageCache.shared.testKey(for: episodeB),
+                "the precondition: A's old name is B's name of today")
+        let bytesB = png(48)
+        #expect(ImageCache.shared.testPlacePersistent(bytesB, for: episodeB), "the precondition: B's cover is kept")
+        defer {
+            ImageCache.shared.removePersistent(coverURL: episodeA)
+            ImageCache.shared.removePersistent(coverURL: episodeB)
+        }
+        // An incomplete answer, so the pass demotes nothing of its neighbours.
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [episodeA, episodeB], knowsAll: false).value
+        #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B lost its kept cover")
+        #expect(ImageCache.shared.testPersistentBytes(episodeA) == nil, "A carries B's picture")
+        // A already kept: the move would have deleted B's file.
+        let bytesA = png(64)
+        #expect(ImageCache.shared.testPlacePersistent(bytesA, for: episodeA))
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [episodeA, episodeB], knowsAll: false).value
+        #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B's cover was deleted")
+        #expect(ImageCache.shared.testPersistentBytes(episodeA) == bytesA)
+    }
+
+    /// Two active sizes of one picture share the earlier rule's name: which
+    /// one would inherit is a matter of order, so neither moves.
+    @Test("zwei aktive Groessen mit einem alten Namen: keine zieht um")
+    func twoSizesWithOneOldNameDoNotMove() async throws {
+        let tag = UUID().uuidString.prefix(8)
+        let small = URL(string: "https://cdn.example.org/\(tag)/y.jpg?s=600")!
+        let large = URL(string: "https://cdn.example.org/\(tag)/y.jpg?s=1400")!
+        let old = ImageCache.legacyName(for: small)
+        #expect(old == ImageCache.legacyName(for: large), "the precondition: one old name")
+        #expect(ImageCache.shared.testKey(for: small) != ImageCache.shared.testKey(for: large),
+                "the precondition: two names of today")
+        let moves = ImageCache.legacyMoves(for: [small, large]) { ImageCache.shared.testKey(for: $0) }
+        #expect(moves[old] == nil, "an ambiguous old name moves: \(moves)")
+        #expect(ImageCache.shared.testPlacePersistent(png(48), named: old), "the precondition: kept under the old name")
+        defer {
+            ImageCache.shared.removePersistent(coverURL: small)
+            ImageCache.shared.removePersistent(coverURL: large)
+            ImageCache.shared.testRemovePersistent(named: old)
+        }
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [small, large], knowsAll: false).value
+        #expect(ImageCache.shared.testPersistentBytes(small) == nil, "the small size inherited")
+        #expect(ImageCache.shared.testPersistentBytes(large) == nil, "the large size inherited")
+    }
+
     /// A cover an earlier sweep already demoted stands in the cache under the
     /// old name. The move finds it there and puts it up under the new one.
     @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")

@@ -188,14 +188,19 @@ final class ImageCache {
     /// The kept covers of foreign addresses under the name the earlier rule
     /// gave them (it dropped one-letter query parts that name the picture):
     /// old name to today's name, for every active address where they differ.
+    /// An old name that is today's name of an active address is that
+    /// address's cover and never moves; an old name two active addresses
+    /// lead to different names from does not move either. Such a cover loads
+    /// once more instead of handing one address the bytes of another.
     nonisolated static func legacyMoves(for activeURLs: [URL], name: (URL) -> String) -> [String: String] {
-        var moves: [String: String] = [:]
-        for url in activeURLs {
+        let todays = activeURLs.map { ($0, name($0)) }
+        let activeNames = Set(todays.map(\.1))
+        var targets: [String: Set<String>] = [:]
+        for (url, new) in todays {
             let old = legacyName(for: url)
-            let new = name(url)
-            if old != new { moves[old] = new }
+            if old != new, !activeNames.contains(old) { targets[old, default: []].insert(new) }
         }
-        return moves
+        return targets.compactMapValues { $0.count == 1 ? $0.first : nil }
     }
 
     /// Renames every file `newName` gives a new name for; a file already
@@ -303,6 +308,18 @@ final class ImageCache {
     /// Test seam: whether a literal name stands in the persistent tier.
     func testIsPersistent(named name: String) -> Bool {
         FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
+    }
+
+    /// Test seam: removes a literal name from the persistent tier; false when
+    /// nothing stood there.
+    @discardableResult
+    func testRemovePersistent(named name: String) -> Bool {
+        do {
+            try FileManager.default.removeItem(at: persistentDirectory.appendingPathComponent(name))
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Test seam: a picture written straight into the persistent tier.
