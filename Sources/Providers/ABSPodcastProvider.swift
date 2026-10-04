@@ -142,13 +142,30 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
         // Update ONLY on a successful response. A transient error (no net/brief
         // hiccup) must not flip `hasPodcasts` to false. Otherwise the podcast
-        // tab disappears or goes empty.
-        guard let libs = try? await client.fetchPodcastLibraries() else { return }
+        // tab disappears or goes empty. The failure is logged.
+        let libs: [ABSLibrary]
+        do {
+            libs = try await client.fetchPodcastLibraries()
+        } catch {
+            Logger.library.error("ABSPOD availability failed, kept: \(FailureReason.of(error), privacy: .public)")
+            return
+        }
         hasPodcasts = !libs.isEmpty
     }
 
-    /// Timestamp of the last successful refresh. Basis for the throttle below.
+    /// Timestamp of the last refresh that adopted the server's answer.
+    /// Basis for the throttle below: a run that kept the stock because a
+    /// fetch failed does not stamp it, so the next mount asks again.
     private var lastRefreshAt: Date?
+
+    /// The ONE way the shows change: the bridge with them, and the token the
+    /// podcast tab recomputes on.
+    private func replaceShows(_ next: [PodcastShow], absToRSS: [String: String], rssToABS: [String: String]) {
+        shows = next
+        self.absToRSS = absToRSS
+        self.rssToABS = rssToABS
+        changeToken += 1
+    }
 
     /// Throttled refresh for frequent, implicit callers (the podcast tab's
     /// mount task): skips when the catalog was loaded recently. Pull-to-refresh
@@ -164,7 +181,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         // ABS is opt-in as a podcast source. Without it enabled load nothing and
         // clear the existing state (the user then uses ABS for audiobooks only).
         guard AppStorageKeys.absPodcastsActive else {
-            if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
+            if hasPodcasts || !shows.isEmpty {
+                hasPodcasts = false
+                replaceShows([], absToRSS: [:], rssToABS: [:])
+            }
             return
         }
         // Retry queued played-writes first (failed offline). The refresh is
@@ -172,17 +192,29 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         await flushPendingPlayedWrites()
         // Failed library fetch → KEEP the existing state, don't clear (this
         // refresh runs on every tab switch; a brief net hiccup would otherwise
-        // empty the whole podcast tab).
-        guard let libraries = try? await client.fetchPodcastLibraries() else { return }
+        // empty the whole podcast tab). The failure is logged.
+        let libraries: [ABSLibrary]
+        do {
+            libraries = try await client.fetchPodcastLibraries()
+        } catch {
+            Logger.library.error("ABSPOD libraries failed, shows kept: \(FailureReason.of(error), privacy: .public)")
+            return
+        }
         guard !libraries.isEmpty else {
-            // The server really has no podcast library.
+            // The server really has no podcast library: an answer, adopted.
             hasPodcasts = false
-            shows = []
+            replaceShows([], absToRSS: [:], rssToABS: [:])
+            lastRefreshAt = Date()
             return
         }
         hasPodcasts = true
-        // Progress of all episodes in one go (for the played state).
-        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
+        // Progress of all episodes in one go (for the played state); a
+        // failure keeps the progress held and is logged.
+        do {
+            episodeProgress = try await client.fetchPodcastEpisodeProgress()
+        } catch {
+            Logger.library.error("ABSPOD progress failed, kept: \(FailureReason.of(error), privacy: .public)")
+        }
 
         let client = self.client
         let fetched = await Self.fetchShows(
@@ -209,12 +241,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
         if ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0,
                                         loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
-            shows = loaded
-            absToRSS = newAbsToRSS
-            rssToABS = newRSSToABS
-            changeToken += 1
+            replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS)
+            lastRefreshAt = Date()
         }
-        lastRefreshAt = Date()
     }
 
     /// What one refresh fetched: the show details that came back, and how

@@ -65,11 +65,58 @@ struct ABSPodcastRefreshTests {
     /// run swallows its error any more.
     @Test("die Aktualisierung fragt die Regel mit den gescheiterten Abrufen", .needsTheSources)
     func theRefreshAsksTheRule() throws {
-        let code = SyncContractFenceTests.stripped(try String(
-            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/ABSPodcastProvider.swift"), encoding: .utf8))
+        let code = try Self.providerCode()
         #expect(code.contains("ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0"))
-        #expect(!code.contains("try? await client.fetchLibraryItems"), "an item list fails silently")
-        #expect(!code.contains("try? await client.fetchItemDetail"), "a detail fails silently")
+        for name in ["refresh()", "refreshAvailability()"] {
+            let body = try #require(Self.body(of: "func \(name) async {", in: code), "the fence found \(name)")
+            #expect(!Self.swallowsAFetch(body), "\(name) swallows a fetch without a line")
+        }
+        // Calibration: the form the refresh had before.
+        #expect(Self.swallowsAFetch("guard let libraries = try? await client.fetchPodcastLibraries() else { return }"))
+        #expect(!Self.swallowsAFetch("libraries = try await client.fetchPodcastLibraries()"))
+    }
+
+    /// Every change of the shows goes through `replaceShows`, which counts
+    /// the token up, and the throttle is stamped only right after a run
+    /// adopted the server's answer.
+    @Test("jede Aenderung der Sendungen zaehlt das Token hoch, und die Drossel stellt sich nur nach einer Uebernahme", .needsTheSources)
+    func everyChangeCountsTheTokenAndOnlyAnAdoptionStampsTheThrottle() throws {
+        let code = try Self.providerCode()
+        let lines = code.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        #expect(lines.filter { $0.hasPrefix("shows = ") } == ["shows = next"], "the shows change outside replaceShows")
+        let replace = try #require(Self.body(of: "private func replaceShows(", in: code))
+        #expect(replace.contains("changeToken += 1"), "replaceShows does not count the token")
+        let stamps = lines.indices.filter { lines[$0].hasPrefix("lastRefreshAt = ") }
+        #expect(stamps.count == 2, "the throttle is stamped \(stamps.count) times")
+        for index in stamps {
+            #expect(index > 0 && lines[index - 1].hasPrefix("replaceShows("), "a stamp without an adoption: \(lines[index - 1])")
+        }
+    }
+
+    private static func providerCode() throws -> String {
+        SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/ABSPodcastProvider.swift"), encoding: .utf8))
+    }
+
+    /// The body of the function whose signature starts with `signature`, up
+    /// to its closing brace at the same depth.
+    nonisolated static func body(of signature: String, in code: String) -> String? {
+        guard let start = code.range(of: signature) else { return nil }
+        var depth = 0
+        var seenOpen = false
+        var index = start.lowerBound
+        while index < code.endIndex {
+            let char = code[index]
+            if char == "{" { depth += 1; seenOpen = true }
+            if char == "}" { depth -= 1 }
+            index = code.index(after: index)
+            if seenOpen && depth == 0 { return String(code[start.lowerBound..<index]) }
+        }
+        return nil
+    }
+
+    nonisolated static func swallowsAFetch(_ code: String) -> Bool {
+        code.contains(#/try\?\s*await\s+client\./#)
     }
 }
 #endif
