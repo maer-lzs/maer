@@ -9,9 +9,9 @@ import Foundation
 /// follows from it. The base advances ONLY after a write landed: a failed
 /// write leaves it where it was, so the next write diffs against the last
 /// state that really is in the rows. A start whose read FAILED (not: found
-/// nothing) leaves the rows unknown: the first write then only upserts and
-/// removes nothing, so rows the store never saw are not buried under an
-/// empty or older stand.
+/// nothing) leaves the rows unknown: the first write then removes no row
+/// the store never saw, so those are not buried under an empty or older
+/// stand.
 nonisolated enum RowBase<Value> {
     /// The rows as the last landed write or the successful start read left them.
     case known(Value)
@@ -22,7 +22,10 @@ nonisolated enum RowBase<Value> {
     case unknown
 
     /// A whole replace is not a plan: it belongs to the migration paths
-    /// alone. Without a known base the write upserts and removes nothing.
+    /// alone. Without a known base the write upserts and removes nothing it
+    /// never read. A store that keeps the rows it read at start (the podcast
+    /// subscriptions) also removes those of them that are gone from its
+    /// stock, and its wipe guard measures against the same rows.
     enum Plan: Equatable, Sendable {
         case diff
         case upsertOnly

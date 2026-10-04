@@ -255,6 +255,8 @@ final class PodcastSubscriptions: ObservableObject {
             // The rows are the stock.
             let rows = await self?.openRows()
             var decoded: [PodcastShow]? = nil
+            // What this run had standing: the heads, then the decoded stock.
+            var seen: [PodcastShow] = []
             // What the rows hold after the start: known (read), fresh (read,
             // nothing there) or unknown (could not open or read). Unknown
             // rows are never replaced whole; the first write upserts only.
@@ -275,10 +277,15 @@ final class PodcastSubscriptions: ObservableObject {
                         // write a show without episodes. The full stage
                         // below folds once, on the real stock.
                         self.shows = heads
+                        seen = heads
                         let headsMs = Int(Date().timeIntervalSince(started) * 1000)
+                        #if DEBUG
+                        if self._testFullReadFails { throw CocoaError(.fileReadCorruptFile) }
+                        #endif
                         let (loaded, skipped) = try await rows.loadAllCounted()
                         Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) skipped=\(skipped) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                         if !loaded.isEmpty { decoded = loaded }
+                        seen = loaded + heads.filter { head in !loaded.contains { $0.id == head.id } }
                         // Rows that did not decode make the rows unknown,
                         // never fresh.
                         base = RowBase.afterLoad(rows: loaded.isEmpty ? nil : loaded, skipped: skipped)
@@ -298,7 +305,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.notice("SUBSTORE bootstrap: rows=\(rows != nil) shows=\(decoded?.count ?? 0)")
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             self?.rowBase = base
-            if case .unknown = base { self?.seenWhileUnknown = decoded ?? [] }
+            if case .unknown = base { self?.seenWhileUnknown = seen }
             guard let self, let decoded, !decoded.isEmpty else { return }
             // The base stays what the rows hold: the LOADED stock, set above.
             // A fold or re-key in `migrated` is written as a diff against it,
@@ -371,25 +378,22 @@ final class PodcastSubscriptions: ObservableObject {
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed.
     private var rowBase: RowBase<[PodcastShow]> = .fresh
-    /// The shows this run read at start while the rows stayed unknown:
-    /// rows somebody saw. One that is gone from the stock goes with the
-    /// write as a removal; rows nobody could read stay untouched.
+    /// The shows this run had standing at start while the rows stayed
+    /// unknown (the decoded stock, or the heads when the full read failed
+    /// after them): rows somebody saw. One that is gone from the stock goes
+    /// with the write as a removal; rows nobody could read stay untouched.
     private var seenWhileUnknown: [PodcastShow] = []
-    /// The shows the rows are known to hold (the wipe guard's measure).
-    private var landedShows: [PodcastShow] { rowBase.knownValue ?? [] }
+
+    /// The shows a write may remove: the known rows, or without a known base
+    /// the shows this run saw. The ONE measure of the removal and of the
+    /// wipe guard, taken from the base the write really takes.
+    private func removable(under base: RowBase<[PodcastShow]>) -> [PodcastShow] {
+        base.knownValue ?? seenWhileUnknown
+    }
 
     private func persist(_ snapshot: [PodcastShow]) {
-        // Last line of defense. An EMPTY snapshot never overwrites
-        // a non-empty stock unless the user explicitly emptied the list.
-        // Refuse loudly + drop a tombstone note so the NEXT incident is
-        // diagnosable instead of traceless (log-first).
-        if snapshot.isEmpty, !userInitiatedEmptyWrite, !landedShows.isEmpty {
-            Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(self.landedShows.count) shows without user intent")
-            let note = "wipe refused at \(Date()): empty snapshot, \(landedShows.count) shows, isLoaded=\(isLoaded)\n"
-            let tombstone = fileURL.appendingPathExtension("wipe-refused.txt")
-            try? note.data(using: .utf8)?.write(to: tombstone)
-            return
-        }
+        // The intent belongs to this snapshot; the next one starts without.
+        let intended = userInitiatedEmptyWrite
         userInitiatedEmptyWrite = false
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
@@ -402,13 +406,23 @@ final class PodcastSubscriptions: ObservableObject {
             // The base is read HERE, after the write before landed or
             // failed. Known rows: the diff against them. Fresh rows: the
             // diff against nothing is the whole stock. Unknown rows: the
-            // diff against the shows this run read and that are gone now,
+            // diff against the shows this run saw and that are gone now,
             // so an unsubscribe survives the restart, and rows nobody saw
             // are not buried.
             let base = self.rowBase
-            let previous = base.knownValue ?? self.seenWhileUnknown.filter { seen in
-                !snapshot.contains { $0.id == seen.id }
+            let removable = self.removable(under: base)
+            // Last line of defense, against the same base and measure: an
+            // EMPTY snapshot never removes rows unless the user explicitly
+            // emptied the list. Refuse loudly + drop a note so the NEXT
+            // incident is diagnosable instead of traceless (log-first).
+            if snapshot.isEmpty, !intended, !removable.isEmpty {
+                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(removable.count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
+                let note = "wipe refused at \(Date()): empty snapshot, \(removable.count) shows, isLoaded=\(self.isLoaded)\n"
+                let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
+                try? note.data(using: .utf8)?.write(to: tombstone)
+                return
             }
+            let previous = base.knownValue ?? removable.filter { seen in !snapshot.contains { $0.id == seen.id } }
             let diff = PodcastRowDiff.compute(previous: previous, current: snapshot)
             guard !diff.isEmpty else { return }
             let started = Date()
@@ -444,6 +458,9 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     #if DEBUG
+    /// Test seam: the full read after the heads fails. Set right after the
+    /// init, before the start task first runs on the main actor.
+    var _testFullReadFails = false
     /// UI-test seeding only (see UITestSeed). Injects deterministic shows.
     func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
     /// Drive the wipe guard + load gate deterministically.
