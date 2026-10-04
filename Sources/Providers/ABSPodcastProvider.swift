@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// A feed episode (parsed raw from the server) that is not yet in the library
 /// and can be downloaded server-side. `raw` is passed 1:1 to
@@ -183,58 +184,91 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         // Progress of all episodes in one go (for the played state).
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
 
-        // Collect show items per library (few requests).
-        var itemIds: [String] = []
-        for library in libraries {
-            if let items = try? await client.fetchLibraryItems(libraryId: library.id) {
-                itemIds.append(contentsOf: items.map(\.id))
-            }
-        }
-
-        // Detail fetches in PARALLEL, batched (max ~5 at once). Serial was
-        // noticeably slow with many shows. Concurrency is enough (each request
-        // suspends at the net await), order irrelevant → sort at the end.
         let client = self.client
+        let fetched = await Self.fetchShows(
+            libraryIds: libraries.map(\.id),
+            items: { try await client.fetchLibraryItems(libraryId: $0).map(\.id) },
+            detail: { try await client.fetchItemDetail(itemId: $0) })
         var loaded: [PodcastShow] = []
         var newAbsToRSS: [String: String] = [:]
         var newRSSToABS: [String: String] = [:]
-        var i = 0
-        while i < itemIds.count {
-            let batch = itemIds[i..<min(i + 5, itemIds.count)]
-            i += 5
-            let details = await withTaskGroup(of: LibraryItemDetail?.self) { group in
-                for id in batch {
-                    group.addTask { try? await client.fetchItemDetail(itemId: id) }
-                }
-                var out: [LibraryItemDetail] = []
-                for await detail in group { if let detail { out.append(detail) } }
-                return out
-            }
-            for detail in details {
-                loaded.append(podcastShow(from: detail))
-                // Build the feed-guid bridge → both ids (for shared history).
-                let feedURL = detail.media.metadata?.feedUrl ?? ""
-                guard !feedURL.isEmpty else { continue }
-                let feedKey = PodcastSubscriptions.feedKey(feedURL)
-                for ep in detail.media.episodes ?? [] {
-                    guard let orig = ep.guid ?? ep.enclosure?.url, !orig.isEmpty else { continue }
-                    let rssId = "rss:\(feedKey):\(orig)"
-                    let absId = "abspod:\(detail.id):\(ep.id)"
-                    newAbsToRSS[absId] = rssId
-                    newRSSToABS[rssId] = absId
-                }
+        for detail in fetched.details {
+            loaded.append(podcastShow(from: detail))
+            // Build the feed-guid bridge → both ids (for shared history).
+            let feedURL = detail.media.metadata?.feedUrl ?? ""
+            guard !feedURL.isEmpty else { continue }
+            let feedKey = PodcastSubscriptions.feedKey(feedURL)
+            for ep in detail.media.episodes ?? [] {
+                guard let orig = ep.guid ?? ep.enclosure?.url, !orig.isEmpty else { continue }
+                let rssId = "rss:\(feedKey):\(orig)"
+                let absId = "abspod:\(detail.id):\(ep.id)"
+                newAbsToRSS[absId] = rssId
+                newRSSToABS[rssId] = absId
             }
         }
 
-        // Only adopt if something was actually loaded. Otherwise (all detail
-        // fetches failed) keep the previous state.
-        if !loaded.isEmpty || shows.isEmpty {
+        if ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0,
+                                        loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
             shows = loaded
             absToRSS = newAbsToRSS
             rssToABS = newRSSToABS
             changeToken += 1
         }
         lastRefreshAt = Date()
+    }
+
+    /// What one refresh fetched: the show details that came back, and how
+    /// many fetches (item lists and details) failed.
+    nonisolated struct FetchedShows: Sendable {
+        var details: [LibraryItemDetail]
+        var failures: Int
+    }
+
+    /// The item ids of every library, then their details in parallel,
+    /// batched (at most five at once; serial was noticeably slow with many
+    /// shows). Every failed fetch is logged with its reason and counted, so
+    /// an empty answer can be told from "nothing came through".
+    nonisolated static func fetchShows(
+        libraryIds: [String],
+        items: @escaping @Sendable (String) async throws -> [String],
+        detail: @escaping @Sendable (String) async throws -> LibraryItemDetail
+    ) async -> FetchedShows {
+        var failures = 0
+        var itemIds: [String] = []
+        for libraryId in libraryIds {
+            do {
+                itemIds.append(contentsOf: try await items(libraryId))
+            } catch {
+                failures += 1
+                Logger.library.error("ABSPOD items failed library=\(libraryId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        var details: [LibraryItemDetail] = []
+        var i = 0
+        while i < itemIds.count {
+            let batch = itemIds[i..<min(i + 5, itemIds.count)]
+            i += 5
+            let results = await withTaskGroup(of: (String, Result<LibraryItemDetail, Error>).self) { group in
+                for id in batch {
+                    group.addTask {
+                        do { return (id, .success(try await detail(id))) } catch { return (id, .failure(error)) }
+                    }
+                }
+                var out: [(String, Result<LibraryItemDetail, Error>)] = []
+                for await result in group { out.append(result) }
+                return out
+            }
+            for (id, result) in results {
+                switch result {
+                case .success(let loaded):
+                    details.append(loaded)
+                case .failure(let error):
+                    failures += 1
+                    Logger.library.error("ABSPOD detail failed item=\(id, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+        }
+        return FetchedShows(details: details, failures: failures)
     }
 
     /// Equivalent ids of the same episode across both sources (self + bridge).
