@@ -68,11 +68,11 @@ final class RowChain<Snapshot> {
         Logger.library.error("\(self.label, privacy: .public) rows read failed reason=\(reason, privacy: .public) base=unknown")
     }
 
-    /// The start read that saw part of the rows before it failed: the base
-    /// is unknown with what it saw, and the mark stays off (the store holds
-    /// that part).
-    func startedWithPart(seen: Snapshot?) {
-        base = .unknown(seen: seen)
+    /// A start read whose base the store reckons itself (a read in stages
+    /// that saw part of the rows before it failed: unknown with what it
+    /// saw); the mark stays off, the store holds what it saw.
+    func started(base: RowBase<Snapshot>) {
+        self.base = base
         startReadFailed = false
     }
 
@@ -108,7 +108,10 @@ final class RowChain<Snapshot> {
                     return
                 }
             }
-            guard let snapshot = take() else { return }
+            guard let snapshot = take() else {
+                Logger.library.notice("\(self.label, privacy: .public) save dropped: store gone")
+                return
+            }
             do {
                 // The base is read HERE, after the write before landed or failed.
                 if try await apply(snapshot, self.base, self.waiting > 0) == .landed {

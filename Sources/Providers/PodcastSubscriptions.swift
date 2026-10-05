@@ -262,6 +262,9 @@ final class PodcastSubscriptions: ObservableObject {
             // carrying what this run had standing: a write removes only
             // those rows of it that are gone, never one nobody read.
             var base: RowBase<[PodcastShow]> = rows == nil ? .unknown(seen: nil) : .fresh
+            // Whether the read failed as a whole (nothing seen): then the
+            // chain holds every write until the rows are read and adopted.
+            var readFailed = rows == nil
             if let rows {
                 do {
                     // Two stages: the show list first (heads, no episodes:
@@ -300,6 +303,7 @@ final class PodcastSubscriptions: ObservableObject {
                 } catch {
                     // The heads read before the failure stand: seen.
                     base = .unknown(seen: seen.isEmpty ? nil : seen)
+                    readFailed = seen.isEmpty
                     Logger.rss.error("SUBROWS load failed reason=\(String(describing: error), privacy: .public) base=unknown")
                 }
             }
@@ -307,7 +311,11 @@ final class PodcastSubscriptions: ObservableObject {
             // from the log, not reconstructed.
             Logger.rss.notice("SUBSTORE bootstrap: rows=\(rows != nil) shows=\(decoded?.count ?? 0)")
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
-            self?.rowBase = base
+            if readFailed {
+                self?.rowChain.startReadFailedAsAWhole(reason: rows == nil ? "rows not open" : "start read failed")
+            } else {
+                self?.rowChain.started(base: base)
+            }
             guard let self, let decoded, !decoded.isEmpty else { return }
             // The base stays what the rows hold: the LOADED stock, set above.
             // A fold or re-key in `migrated` is written as a diff against it,
@@ -370,62 +378,86 @@ final class PodcastSubscriptions: ObservableObject {
         return await opening.value
     }
 
-    /// The stock as the rows hold it after the last handed-over write. The
-    /// next write is the diff against this, never the whole stock.
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. Advances only when a write landed.
-    private var rowBase: RowBase<[PodcastShow]> = .fresh
+    /// The rows' one write chain (`RowChain`): what they hold as far as
+    /// this run knows (known after a landed write, fresh, or unknown with
+    /// the shows this run saw), the mark of a start read that failed as a
+    /// whole, and the serial writes. Over rows the start could not read, a
+    /// write reads them first and the list takes them (`adopted`).
+    private lazy var rowChain: RowChain<[PodcastShow]> = {
+        let chain = RowChain<[PodcastShow]>(label: "SUBROWS")
+        chain.adopt = { [weak self] read in
+            guard let self else { return }
+            self.shows = Self.adopted(read: read, run: self.shows)
+        }
+        return chain
+    }()
 
-    /// `emptying` belongs to this snapshot: `.allowed` only where the
-    /// person's own unsubscribe may empty the list.
-    private func persist(_ snapshot: [PodcastShow], emptying: RowEmptying) {
+    /// The rows could not be opened; a read after a failed start holds.
+    private struct RowsNotOpen: Error {}
+
+    /// Rows read after a failed start with the list of this run: the order
+    /// of the rows, a show of the run in the place of its row and its
+    /// episodes joined with the row's (an episode of the run wins by guid,
+    /// an episode only the row holds stays), a show only the run holds at
+    /// the end. Before the read the run holds only what it added.
+    nonisolated static func adopted(read: [PodcastShow], run: [PodcastShow]) -> [PodcastShow] {
+        let runById = Dictionary(run.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var out: [PodcastShow] = read.map { row in
+            guard var show = runById[row.id] else { return row }
+            let runGuids = Set(show.episodes.map(\.guid))
+            show.episodes += row.episodes.filter { !runGuids.contains($0.guid) }
+            return show
+        }
+        let readIds = Set(read.map(\.id))
+        out += run.filter { !readIds.contains($0.id) }
+        return out
+    }
+
+    /// `emptying` belongs to this write: `.allowed` only where the person's
+    /// own unsubscribe may empty the list. `take` gives the list when the
+    /// write runs in the chain (the stock of that moment, never a picture
+    /// frozen at the call).
+    private func persist(emptying: RowEmptying, _ take: @escaping @MainActor () -> [PodcastShow]?) {
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
-        // and the diff is taken against the stock of the write before, so a
-        // later snapshot always lands last and complete.
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or
-            // failed. Known rows: the diff against them. Fresh rows: the
-            // diff against nothing is the whole stock. Unknown rows: the
-            // diff against the shows this run saw and that are gone now,
-            // so an unsubscribe survives the restart, and rows nobody saw
-            // are not buried.
-            let base = self.rowBase
-            // Last line of defense, the one rule of every row store against
-            // the base the write really takes: an EMPTY snapshot never
-            // removes rows unless the user explicitly emptied the list.
-            // Refuse loudly + drop a note so the NEXT incident is
-            // diagnosable instead of traceless (log-first).
+        // and the diff is taken against the stock of the write before.
+        rowChain.write(read: { [weak self] in
+            guard let self, let rows = await self.openRows() else { throw RowsNotOpen() }
+            let (loaded, skipped) = try await rows.loadAllCounted()
+            return (loaded.isEmpty ? nil : loaded, skipped)
+        }, take: take, apply: { [weak self] snapshot, base, laterQueued in
+            guard let self, let rows = await self.openRows() else { return .skipped }
+            // Known rows: the diff against them. Fresh rows: the diff
+            // against nothing is the whole stock. Unknown rows: the diff
+            // against the shows this run saw and that are gone now, so an
+            // unsubscribe survives the restart, and rows nobody saw are not
+            // buried. Last line of defense, the one rule of every row store
+            // against the base the write really takes: an EMPTY snapshot
+            // never removes rows unless the user explicitly emptied the
+            // list. Refused loudly with a note, so the NEXT incident is
+            // diagnosable instead of traceless; not when a later write is
+            // already queued (it takes the list anyway).
             if base.refuses(snapshot, emptying) {
+                guard !laterQueued else { return .skipped }
                 let count = base.removable?.count ?? 0
                 Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
                 let note = "wipe refused at \(Date()): empty snapshot, \(count) shows, isLoaded=\(self.isLoaded)\n"
                 let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
                 try? note.data(using: .utf8)?.write(to: tombstone)
-                return
+                return .skipped
             }
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
-            guard !diff.isEmpty else { return }
+            guard !diff.isEmpty else { return .skipped }
             let started = Date()
-            do {
-                let counts = try await rows.apply(diff)
-                let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.rss.error("SUBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+            let counts = try await rows.apply(diff)
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
+            return .landed
+        })
     }
 
-    /// The last handed-over write (tests, teardown).
-    private var pendingWrite: Task<Void, Never>?
-
     func awaitPendingWrites() async {
-        await pendingWrite?.value
+        await rowChain.awaitPendingWrites()
     }
 
     var hasSubscriptions: Bool { !shows.isEmpty }
@@ -447,7 +479,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// UI-test seeding only (see UITestSeed). Injects deterministic shows.
     func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
     /// Drive the wipe guard + load gate deterministically.
-    func _testPersist(_ snapshot: [PodcastShow]) { persist(snapshot, emptying: .refused) }
+    func _testPersist(_ snapshot: [PodcastShow]) { persist(emptying: .refused) { snapshot } }
     func _testSetLoaded(_ value: Bool) { isLoaded = value }
     func _testSave() { save() }
     var _testFileURL: URL { fileURL }
@@ -690,7 +722,9 @@ final class PodcastSubscriptions: ObservableObject {
         }, retired: { retiredTwins.append(($0, $1)) })
         if changed {
             // Write back (serialized, off-main) so the cleanup is persistent.
-            persist(result, emptying: .refused)
+            // The list holds `result` by the time the chain runs (the
+            // caller sets it right after this returns).
+            persist(emptying: .refused) { [weak self] in self?.shows }
         }
         // The held token addresses, once per load, for the comparison with
         // another device's adoption line. Hashes only.
@@ -2185,7 +2219,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.error("SUBSTORE save SKIPPED before bootstrap (cold-start race trapped)")
             return
         }
-        persist(shows, emptying: emptying)
+        persist(emptying: emptying) { [weak self] in self?.shows }
     }
 
     private func normalizedFeedURL(_ raw: String) -> URL? {

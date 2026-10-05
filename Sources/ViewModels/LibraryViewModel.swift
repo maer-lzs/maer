@@ -208,15 +208,15 @@ final class LibraryViewModel: ObservableObject {
     private let database: MaerDatabase
     /// The one opening of the rows: every caller awaits the same task.
     private var rowsOpening: Task<LibraryRowStore?, Never>?
-    /// The cache as the rows hold it after the last handed-over write; nil
-    /// until this session read or wrote the rows, so the first write then
-    /// replaces the rows whole (a diff against nothing would leave removed
-    /// titles behind).
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. Advances only when a write landed; a failed start
-    /// read leaves it unknown, and then no write replaces the rows whole.
-    private var rowBase: RowBase<LibraryDiskCache> = .fresh
-    private var pendingCacheWrite: Task<Void, Never>?
+    /// The rows' one write chain (`RowChain`): what they hold as far as
+    /// this run knows, the mark of a start read that failed as a whole, and
+    /// the serial writes. Over rows the start could not read, a write reads
+    /// them first, so the diff knows what stands there; adopted is nothing
+    /// of them: the rows are an image of the servers and this run's fetch is
+    /// the newer image.
+    private let rowChain = RowChain<LibraryDiskCache>(label: "LIBROWS")
+    /// The cache the last save handed over, taken by the write when it runs.
+    private var cacheToWrite: LibraryDiskCache?
 
     init(
         provider: any AudioProvider,
@@ -1330,6 +1330,11 @@ final class LibraryViewModel: ObservableObject {
         for entry in entries { if let p = entry.progress { progress[entry.id] = p } }
         saveLibraryDiskCache(items: entries.map(\.item), progress: progress)
     }
+
+    /// Test seam: returns once the handed-over cache write has landed.
+    func _testAwaitCacheWrite() async {
+        await rowChain.awaitPendingWrites()
+    }
     #endif
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
@@ -1347,37 +1352,33 @@ final class LibraryViewModel: ObservableObject {
         lastSavedSignature = signature
 
         // Only the rows a refresh changed go to the database, off the main
-        // actor and in order: each write waits for the one before it, and
-        // the diff is taken against the cache of the write before. Without a
-        // base (first write of the session) the rows are replaced whole.
-        let cache = LibraryDiskCache(items: items, progress: progress)
-        let previous = pendingCacheWrite
-        pendingCacheWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.rowBase
+        // actor and in order, through the rows' one chain: each write waits
+        // for the one before it and takes the newest cache handed over.
+        cacheToWrite = LibraryDiskCache(items: items, progress: progress)
+        rowChain.write(read: { [weak self] in
+            guard let self, let rows = await self.openRows() else { throw RowsNotOpen() }
+            let read = try await rows.loadAllCounted()
+            return (read.cache, read.skipped)
+        }, take: { [weak self] in self?.cacheToWrite }, apply: { [weak self] cache, base, _ in
+            guard let self, let rows = await self.openRows() else { return .skipped }
             let started = Date()
-            do {
-                let counts: LibraryRowStore.Counts
-                var removed = 0
-                // Against what landed; without a known base against nothing,
-                // which upserts and removes nothing. The one store that does
-                // not remove what it read under an unknown base, by name: the
-                // rows are an image of the servers, a row that stays is
-                // replaced or dropped by the next fetch, never a loss.
-                let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
-                guard !diff.isEmpty else { return }
-                removed = diff.itemsRemoved.count + diff.progressRemoved.count
-                counts = try await rows.apply(diff)
-                let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
-                self.rowBase = .known(cache)
-            } catch {
-                Logger.library.error("LIBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+            // Against what landed; without a known base against nothing,
+            // which upserts and removes nothing. The one store that does not
+            // remove what it read under an unknown base, by name: the rows
+            // are an image of the servers, a row that stays is replaced or
+            // dropped by the next fetch, never a loss.
+            let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
+            guard !diff.isEmpty else { return .skipped }
+            let removed = diff.itemsRemoved.count + diff.progressRemoved.count
+            let counts = try await rows.apply(diff)
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
+            return .landed
+        })
     }
+
+    /// The rows could not be opened; a read after a failed start holds.
+    private struct RowsNotOpen: Error {}
 
 
     private func openRows() async -> LibraryRowStore? {
@@ -1399,18 +1400,20 @@ final class LibraryViewModel: ObservableObject {
     /// the whole library. A failed read leaves the rows unknown, and then
     /// no write replaces them whole.
     private func loadDiskCache() async -> LibraryDiskCache? {
+        // Nothing of the rows goes into memory on a read after a failed
+        // start: this run's fetch is the newer image (`rowChain`).
+        rowChain.adopt = { _ in }
         guard let rows = await openRows() else {
-            rowBase = .unknown(seen: nil)
+            rowChain.startReadFailedAsAWhole(reason: "rows not open")
             return nil
         }
         do {
             let (cache, skipped) = try await rows.loadAllCounted()
             // Rows that did not decode make the rows unknown, never fresh.
-            rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
+            rowChain.started(rows: cache, skipped: skipped)
             return cache
         } catch {
-            rowBase = .unknown(seen: nil)
-            Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) base=unknown")
+            rowChain.startReadFailedAsAWhole(reason: String(describing: error))
             return nil
         }
     }

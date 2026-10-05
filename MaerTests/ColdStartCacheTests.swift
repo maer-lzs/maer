@@ -170,5 +170,31 @@ struct ColdStartCacheTests {
         }
         #expect(vm.entries.map(\.id).contains("y"), "must fall back to the existing library")
     }
+
+    /// The rows are an image of the servers. After a start that could not
+    /// read them, a write reads them first, so a title the fetch no longer
+    /// has leaves the rows instead of staying under a base nobody knew.
+    @Test("Bibliothek nach gescheitertem Start: ein Schrieb liest zuerst, ein Titel, den es am Server nicht mehr gibt, faellt")
+    func aWriteAfterAFailedStartReadsFirst() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        let connection = try home.database.connection()
+        try await connection.execute("CREATE TABLE library_item (other TEXT)")
+        try await connection.execute("INSERT INTO library_item (other) VALUES ('x')")
+        _ = try await connection.checkpoint()
+        let vm = LibraryViewModel(provider: MockProvider(), database: home.database)
+        await vm.showCachedLibraryIfAvailable()
+        #expect(vm.entries.isEmpty, "the precondition: the start read nothing")
+
+        try await connection.execute("DROP TABLE library_item")
+        try await writeCache(home.database, items: [item("stale"), item("kept")])
+        vm.entries = [LibraryEntry(item: item("kept"), progress: nil), LibraryEntry(item: item("fresh"), progress: nil)]
+        vm._testPersistCache()
+        await vm._testAwaitCacheWrite()
+
+        let rows = try await LibraryRowStore(connection: connection)
+        let ids = try #require(try await rows.loadAllCounted().cache).items.map(\.id).sorted()
+        #expect(ids == ["fresh", "kept"], "rows: \(ids)")
+    }
 }
 #endif

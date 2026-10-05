@@ -147,6 +147,22 @@ struct RowKeeperTests {
         #expect(keeper.startReadFailed)
     }
 
+    /// A store gone before its write ran: the write takes nothing and writes
+    /// nothing (the chain says so in a line), and the base stays.
+    @Test("ein Speicher, der vor seinem Schrieb fort ist: nichts wird geschrieben, die Grundlage bleibt")
+    func aStoreGoneBeforeItsWriteWritesNothing() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
+        _ = try await store.apply(previous: [:], current: ["kept": 1])
+        let keeper = RowKeeper<Int>(database: database, table: .statsDay, label: "WITNESS")
+        #expect(keeper.startNow() == ["kept": 1], "the precondition: the row read")
+        keeper.write(emptying: .allowed) { nil }
+        await keeper.awaitPendingWrites()
+        #expect(try rows(database).rows == ["kept": 1], "a write without a store changed the rows")
+        #expect(keeper.base.knownValue == ["kept": 1], "the base moved without a write")
+    }
+
     /// Two writes queued in one go before the adoption, the rows readable by
     /// then: the second write takes the memory after the adoption, so no row
     /// the first one read leaves.
@@ -226,22 +242,24 @@ struct RowKeeperTests {
         #expect(try KeyedRowStore<SyncHistoryEntry>.loadNow(table: .syncHistory, reader: reader).rows.count == 2)
     }
 
-    /// Every keeper in the sources has its store's adoption: a keeper
-    /// without one holds every write over unread rows for good.
-    @Test("jeder Keeper in den Quellen hat die Uebernahme seines Speichers", .needsTheSources)
+    /// Every keeper and every chain a store builds itself has the store's
+    /// adoption: one without it holds every write over unread rows for good.
+    @Test("jeder Keeper und jede eigene Kette in den Quellen hat die Uebernahme ihres Speichers", .needsTheSources)
     func everyKeeperHasItsAdoption() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && $0.lastPathComponent != "RowKeeper.swift" }
-        var keepers = 0
+            .compactMap { $0 as? URL }
+            .filter { $0.pathExtension == "swift" && !["RowKeeper.swift", "RowChain.swift"].contains($0.lastPathComponent) }
+        var built = 0
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            let built = ConcurrencyFenceTests.sites(of: "RowKeeper(database:", in: code)
+            let here = ConcurrencyFenceTests.sites(of: "RowKeeper(database:", in: code)
+                + code.matches(of: #/RowChain(<[^\n(]*>)?\(label:/#).count
             let adopted = ConcurrencyFenceTests.sites(of: ".adopt = {", in: code)
-            #expect(built == adopted, "\(file.lastPathComponent): \(built) keepers, \(adopted) adoptions")
-            keepers += built
+            #expect(here == adopted, "\(file.lastPathComponent): \(here) keepers and chains, \(adopted) adoptions")
+            built += here
         }
-        #expect(keepers == 9, "the keepers counted: \(keepers)")
+        #expect(built == 11, "nine keepers and two chains of their own counted: \(built)")
     }
 
     /// The mechanism "read first over unread rows, adopt, then write" stands
@@ -256,11 +274,18 @@ struct RowKeeperTests {
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
         var holding: [String] = []
+        var ownChains: [String] = []
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             if code.contains("save held") { holding.append(file.lastPathComponent) }
+            if !file.path.contains("/Sources/Storage/"),
+               code.contains(#/pending\w*Write = Task/#) { ownChains.append(file.lastPathComponent) }
         }
-        #expect(Set(holding) == ["RowChain.swift", "ListeningStats.swift"], "a copy of the mechanism: \(holding.sorted())")
+        #expect(Set(holding) == ["RowChain.swift", "ListeningStats.swift"], "a second mechanism: \(holding.sorted())")
+        // A write chain of its own outside the storage layer: the totals
+        // (their rule, above) and the stand carrier, which writes to a
+        // carrier, not to rows.
+        #expect(Set(ownChains) == ["ListeningStats.swift", "StandCarrier.swift"], "a chain of its own: \(ownChains.sorted())")
     }
 }
 #endif

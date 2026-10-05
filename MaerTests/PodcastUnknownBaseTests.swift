@@ -107,12 +107,16 @@ struct PodcastUnknownBaseTests {
             try await insertForeignRow(connection, id: "feed:fremd-\(run)")
             let subs = make(folder, defaults, database)
             await subs.ensureLoaded()
-            // Both handed over before the first lands.
+            // Both handed over before the first lands. Each write takes the
+            // list when it runs in the chain, so both take the empty list:
+            // the first is skipped (a later one is queued), the second is
+            // refused, and no row leaves; an empty list without intent never
+            // removes rows, also not in two steps.
             subs.removeMirrored(feedURL: first.feedURL)
             subs.removeMirrored(feedURL: second.feedURL)
             await subs.awaitPendingWrites()
             let rows = try await PodcastRowStore(connection: connection).loadAllCounted()
-            #expect(rows.shows.map(\.id) == [second.id], "rows: \(rows.shows.map(\.id))")
+            #expect(Set(rows.shows.map(\.id)) == [first.id, second.id], "rows: \(rows.shows.map(\.id))")
             #expect(rows.skipped == 1, "the row nobody could read was buried")
             #expect(refusalNote(folder), "the refusal left no note")
         }
@@ -179,6 +183,56 @@ struct PodcastUnknownBaseTests {
         #expect(after.skipped == 1, "the row nobody could read was buried")
         let foreign = try await connection.query("SELECT id FROM show WHERE id = ?", [.text(foreignId)])
         #expect(foreign.count == 1, "the row nobody could read is gone")
+    }
+
+    /// The adoption by the list's own rule: the rows' order, a show of the
+    /// run in its row's place with the row's episodes joined, a show only
+    /// the run holds at the end.
+    @Test("die Uebernahme der Abos: Reihenfolge der Zeilen, Folgen vereinigt, die Sendung des Laufs am Ende")
+    func theAdoptionRule() {
+        var rowA = Self.show("https://feeds.example.org/a.xml")
+        let rowB = Self.show("https://feeds.example.org/b.xml")
+        var runA = rowA
+        runA.episodes = [PodcastEpisode(guid: "rss:new", title: "Neu", audioURL: "https://feeds.example.org/new.mp3",
+                                        pubDate: 9_000, duration: 60)]
+        let runC = Self.show("https://feeds.example.org/c.xml")
+        rowA.title = "Alt"
+        let adopted = PodcastSubscriptions.adopted(read: [rowA, rowB], run: [runC, runA])
+        #expect(adopted.map(\.id) == [rowA.id, rowB.id, runC.id])
+        #expect(adopted[0].episodes.map(\.guid) == ["rss:new"] + rowA.episodes.map(\.guid), "the row's episodes were lost")
+        #expect(adopted[0].title == runA.title, "the run's show is not the one in the row's place")
+    }
+
+    /// A start whose read failed before it saw a show: a write waits until
+    /// the rows are read, then the show of the rows stands with its episodes
+    /// beside the one of the run, in memory and in the rows.
+    @Test("Abos nach gescheitertem Start: ein Schrieb liest zuerst, die Sendung der Zeilen bleibt mit ihren Folgen")
+    func aWriteAfterAFailedStartReadsFirst() async throws {
+        try await withOwnStore { folder, defaults, database in
+            let connection = try database.connection()
+            try await connection.execute("CREATE TABLE show (other TEXT)")
+            try await connection.execute("INSERT INTO show (other) VALUES ('x')")
+            _ = try await connection.checkpoint()
+            let subs = make(folder, defaults, database)
+            await subs.ensureLoaded()
+            #expect(subs.shows.isEmpty, "the precondition: the start read nothing")
+            let read = Self.show("https://feeds.example.org/read.xml")
+            let run = Self.show("https://feeds.example.org/run.xml")
+            subs._seedForUITest([run])
+            subs._testSave()
+            await subs.awaitPendingWrites()
+
+            try await connection.execute("DROP TABLE show")
+            let rows = try await PodcastRowStore(connection: connection)
+            _ = try await rows.replaceAll([read])
+            subs._testSave()
+            await subs.awaitPendingWrites()
+
+            #expect(Set(subs.shows.map(\.id)) == [read.id, run.id], "memory: \(subs.shows.map(\.id))")
+            let stored = try await rows.loadAll()
+            #expect(Set(stored.map(\.id)) == [read.id, run.id], "rows: \(stored.map(\.id))")
+            #expect(stored.first { $0.id == read.id }?.episodes.count == 2, "the episodes of the row nobody read were lost")
+        }
     }
 }
 #endif
