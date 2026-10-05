@@ -599,8 +599,13 @@ final class LibraryViewModel: ObservableObject {
     /// process began until then. `loadInFlight` is set after the load's
     /// first suspension, and a load that found an empty library leaves
     /// `entries` empty, so neither tells the cached render that a fresher
-    /// state is already there; every load brings its own fallback to the
-    /// cache.
+    /// state is already there. A load with an available source brings its
+    /// own fallback to the cache; a load without one rebuilds empty, counts
+    /// all the same, and then the cached render shows nothing for the rest
+    /// of the process. That is right when the source is switched off, and
+    /// the same exit is taken when its access only cannot be read: the
+    /// server token is read at start from the keychain, unreadable before
+    /// the first unlock after a restart.
     private var loadsBegun = 0
 
     #if DEBUG
@@ -626,9 +631,10 @@ final class LibraryViewModel: ObservableObject {
     /// until then, asked after the last suspension: a load that ran inside
     /// the read, one that began before it and ends after it, and one that
     /// ran to its end before it (CarPlay at a cold start, then the phone)
-    /// all built a fresher state or bring their own fallback, and the disk
-    /// state must not lie down over it. The read itself still runs: it is
-    /// the start read of the rows.
+    /// all built a fresher state or, with an available source, bring their
+    /// own fallback, and the disk state must not lie down over it; a load
+    /// without an available source leaves the library empty (`loadsBegun`).
+    /// The read itself still runs: it is the start read of the rows.
     func showCachedLibraryIfAvailable() async {
         guard entries.isEmpty, !loadInFlight else { return }
         guard let cache = await loadDiskCache(), !cache.items.isEmpty else { return }

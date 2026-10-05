@@ -176,6 +176,9 @@ final class MockProvider: AudioProvider {
     var failProgress = false
     /// Library ids whose item fetch fails (simulates a vanished library).
     var failForLibraryIds: Set<String> = []
+    /// Whether the source can be asked (switched off, or its access unreadable).
+    var available = true
+    var isAvailable: Bool { available }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         [ABSLibrary(id: "mock-lib", name: "Mock")]
