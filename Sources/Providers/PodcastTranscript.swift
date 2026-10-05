@@ -13,6 +13,16 @@ import OSLog
 /// panel idiom). Pure + tested; an unparseable document yields nil and the
 /// player entry simply stays away (no false affordance).
 nonisolated enum PodcastTranscript {
+    /// Whether an answer may stand for the rest of the session: a document
+    /// the server sent (2xx, even one that does not parse) and a clean
+    /// "there is none" (`StatusMeaning.isAbsence`). A transport failure, a
+    /// pause, a refusal or a server error says nothing about the
+    /// transcript, so the next look asks again. `status` is nil without an
+    /// HTTP answer.
+    static func remembers(status: Int?) -> Bool {
+        guard let status else { return false }
+        return (200...299).contains(status) || StatusMeaning.from(status: status).isAbsence
+    }
 
     static func parse(_ data: Data) -> SongLyrics? {
         guard let text = String(data: data, encoding: .utf8)
@@ -110,10 +120,14 @@ nonisolated enum PodcastTranscript {
 /// Fetch + session-cache for episode transcripts (URL → parsed panel
 /// data). Network fetch is best-effort; a failure logs and the panel entry
 /// stays away (the tag promised something the server didn't deliver).
+/// Only an answer about the transcript is kept (`remembers`): a failed
+/// fetch is asked again at the next look.
 @MainActor
 final class PodcastTranscriptService {
     static let shared = PodcastTranscriptService()
     private var cache: [String: SongLyrics?] = [:]
+    /// The fetch, a seam for the witness.
+    var fetch: (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }
 
     func transcript(for url: String) async -> SongLyrics? {
         if let hit = cache[url] { return hit }
@@ -122,17 +136,20 @@ final class PodcastTranscriptService {
             return nil
         }
         let parsed: SongLyrics?
+        let status: Int?
         do {
-            let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: remote))
+            let (data, response) = try await fetch(URLRequest(url: remote))
+            status = response?.statusCode
             parsed = PodcastTranscript.parse(data)
             if parsed == nil {
-                Logger.rss.notice("transcript at \(remote.host ?? "?", privacy: .public) did not parse (SRT/VTT/JSON sniff failed)")
+                Logger.rss.notice("transcript at \(remote.host ?? "?", privacy: .public) gave none status=\(status ?? -1) (no document, or SRT/VTT/JSON sniff failed)")
             }
         } catch {
             Logger.rss.notice("transcript fetch failed: \(String(describing: error), privacy: .public)")
             parsed = nil
+            status = nil
         }
-        cache[url] = parsed
+        if PodcastTranscript.remembers(status: status) { cache[url] = parsed }
         return parsed
     }
 }

@@ -74,6 +74,57 @@ struct PodcastTranscriptTests {
         #expect(PodcastTranscript.parse(Data("<html><body>portal</body></html>".utf8)) == nil)
     }
 
+    @Test("ein Ausfall ist kein Befund: gemerkt wird nur ein Dokument oder ein klares Nein")
+    func onlyAnAnswerIsRemembered() {
+        #expect(PodcastTranscript.remembers(status: 200))
+        #expect(PodcastTranscript.remembers(status: 404) && PodcastTranscript.remembers(status: 410))
+        #expect(!PodcastTranscript.remembers(status: nil), "a transport failure is no answer")
+        #expect(!PodcastTranscript.remembers(status: 500) && !PodcastTranscript.remembers(status: 503))
+        #expect(!PodcastTranscript.remembers(status: 429) && !PodcastTranscript.remembers(status: 401))
+    }
+
+    /// The session cache of the service: a failed fetch is asked again at
+    /// the next look and the transcript arrives; a document that does not
+    /// parse and a 404 stand for the session.
+    @Test("der Dienst fragt nach einem Ausfall neu und merkt nur Antworten")
+    @MainActor
+    func theServiceAsksAgainAfterAFailure() async throws {
+        let url = "https://feeds.example/transcript-\(UUID().uuidString).vtt"
+        let remote = try #require(URL(string: url))
+        let vtt = Data("WEBVTT\n\n00:00.000 --> 00:03.000\nGuten Morgen!\n".utf8)
+        final class Script { var answers: [Result<(Data, Int), URLError>] = []; var asked = 0 }
+        let script = Script()
+        let service = PodcastTranscriptService()
+        service.fetch = { _ in
+            script.asked += 1
+            let next = script.answers.removeFirst()
+            let (data, status) = try next.get()
+            return (data, HTTPURLResponse(url: remote, statusCode: status, httpVersion: nil, headerFields: nil))
+        }
+
+        script.answers = [.failure(URLError(.notConnectedToInternet)), .success((vtt, 200))]
+        #expect(await service.transcript(for: url) == nil, "the precondition: the first fetch failed")
+        #expect(await service.transcript(for: url)?.lines.first?.text == "Guten Morgen!",
+                "a transport failure stood as no transcript for the session")
+        #expect(script.asked == 2)
+        _ = await service.transcript(for: url)
+        #expect(script.asked == 2, "a read transcript is asked again")
+
+        let broken = "https://feeds.example/broken-\(UUID().uuidString).vtt"
+        script.answers = [.success((Data("<html>portal</html>".utf8), 503)), .success((Data("not a transcript".utf8), 200))]
+        #expect(await service.transcript(for: broken) == nil)
+        #expect(await service.transcript(for: broken) == nil)
+        #expect(script.asked == 4, "a server error stood as no transcript")
+        _ = await service.transcript(for: broken)
+        #expect(script.asked == 4, "a document that does not parse is an answer and stands")
+
+        let gone = "https://feeds.example/gone-\(UUID().uuidString).vtt"
+        script.answers = [.success((Data(), 404))]
+        #expect(await service.transcript(for: gone) == nil)
+        _ = await service.transcript(for: gone)
+        #expect(script.asked == 5, "a clean 404 is an answer and stands")
+    }
+
     @Test("Timestamp forms: SRT comma, VTT dot, with/without hours")
     func timestamps() {
         #expect(PodcastTranscript.timestamp("00:00:01,500") == 1.5)

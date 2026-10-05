@@ -33,6 +33,7 @@ struct StatusMeaningFenceTests {
         "FeedArtworkService.swift": "only an absence is booked as no image for 7 days",
         "FeedRefusal.swift": "a subscribed feed's refresh counts only what means sign in; every other answer says nothing about the access",
         "GutenbergWorks.swift": "only an absence is kept as no record of the work; a refusal, a pause or a server error keeps nothing",
+        "PodcastTranscript.swift": "a document or an absence stands for the session as the transcript's answer; a failure is asked again",
     ]
 
     /// The files that read the number themselves, each with the reason the
