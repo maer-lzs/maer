@@ -220,9 +220,18 @@ final class MaerSyncSession {
     /// Everything that stops the rounds until a person or a new start acts.
     var halted: Bool { unauthorized || keyChange != nil || serviceOlder }
 
+    /// The token could not be read at start (the device not unlocked since
+    /// it started): the families stay with the service (`servesFamilies`),
+    /// no round runs without an access, and nothing the families write
+    /// meanwhile is kept, because no identity names it yet (`persist`).
+    /// `rereadIfUnknown` asks again.
+    private(set) var accessUnknown: Bool
+    private let loadUnknown: () -> Bool
+
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
          access: @escaping () -> MaerSyncAccess?,
          identity: @escaping () -> MaerSyncIdentity? = { nil },
+         accessUnknown: @escaping () -> Bool = { false },
          deviceId: @escaping () -> String,
          defaults: UserDefaults = AppStorageKeys.store,
          path: (any MaerSyncPathSource)? = nil,
@@ -236,9 +245,11 @@ final class MaerSyncSession {
                                                  Self.claimKind, Self.statsKind, Self.feedAuthKind]
         self.loadAccess = access
         self.loadIdentity = identity
+        self.loadUnknown = accessUnknown
         self.deviceId = deviceId
         self.defaults = defaults
         self.access = access()
+        self.accessUnknown = self.access == nil && accessUnknown()
         let current = identity()
         self.identity = current
         if let current { Self.adoptPlainKeys(into: current, defaults: defaults) }
@@ -339,6 +350,23 @@ final class MaerSyncSession {
     /// a session that already started fetches right away and opens its
     /// socket, because `start()` runs once per process and a second sign-in
     /// in the same run would otherwise wait for the next foreground.
+    /// Reads the access again while it is unknown. Once it reads, the
+    /// session goes on as after a sign-in (`reloadAccess`), and what the
+    /// families wrote meanwhile is dropped, never written under keys
+    /// without an identity: each family's own store holds it, and its
+    /// runner, started again, reads first and writes it then. Returns
+    /// whether the access became known; the caller restarts the runners.
+    @discardableResult
+    func rereadIfUnknown() -> Bool {
+        guard accessUnknown, !loadUnknown() else { return false }
+        // Still unknown here, so neither of these writes the held state.
+        if loadIdentity() == identity { loadIdentityState() }
+        reloadAccess()
+        accessUnknown = false
+        Logger.library.notice("MAERSYNC access read again: signedIn=\(self.access != nil, privacy: .public)")
+        return true
+    }
+
     func reloadAccess() {
         access = loadAccess()
         let next = loadIdentity()
@@ -1157,6 +1185,8 @@ final class MaerSyncSession {
     // MARK: - The door
 
     private func persist() {
+        // While the access is unknown no identity names the state.
+        guard !accessUnknown else { return }
         StandMirrorStore.save(stands, key: key(Self.mirrorKey), defaults: defaults)
         StandMirrorStore.save(queue, key: key(Self.queueKey), defaults: defaults)
         StandMirrorStore.saveList(Array(queuedRemovals), key: key(Self.removalsKey), defaults: defaults)
@@ -1555,6 +1585,7 @@ enum MaerSyncCarriers {
     static let session = MaerSyncSession(transport: MaerSyncHTTP(), announcer: MaerSyncSocket(),
                                          access: { MaerSyncAccess.stored() },
                                          identity: { MaerSyncIdentity.stored() },
+                                         accessUnknown: { MaerSyncAccess.read() == .unknown },
                                          deviceId: { SyncHistoryStore.deviceId },
                                          path: NetworkMonitor.shared)
 }

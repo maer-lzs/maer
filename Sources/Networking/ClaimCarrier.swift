@@ -49,8 +49,13 @@ extension ClaimCarrier {
 /// asks, answered the same way.
 @MainActor
 enum ClaimCarriers {
-    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ClaimCarrier {
-        if access != nil { return MaerSyncClaimCarrier(session: MaerSyncCarriers.session) }
+    static func make(access: MaerSyncAccess?) -> any ClaimCarrier {
+        make(read: access.map { .access($0) } ?? .absent)
+    }
+
+    /// An unknown access keeps the family with the service (`servesFamilies`).
+    static func make(read: MaerSyncAccessRead = MaerSyncAccess.read()) -> any ClaimCarrier {
+        if read.servesFamilies { return MaerSyncClaimCarrier(session: MaerSyncCarriers.session) }
         return KeyValueClaimCarrier()
     }
 }

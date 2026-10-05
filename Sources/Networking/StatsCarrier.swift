@@ -47,8 +47,13 @@ protocol StatsCarrier: AnyObject {
 /// The same three answers the pot gives.
 @MainActor
 enum StatsCarriers {
-    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any StatsCarrier {
-        if access != nil { return MaerSyncStatsCarrier(session: MaerSyncCarriers.session) }
+    static func make(access: MaerSyncAccess?) -> any StatsCarrier {
+        make(read: access.map { .access($0) } ?? .absent)
+    }
+
+    /// An unknown access keeps the family with the service (`servesFamilies`).
+    static func make(read: MaerSyncAccessRead = MaerSyncAccess.read()) -> any StatsCarrier {
+        if read.servesFamilies { return MaerSyncStatsCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValueStatsCarrier()
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }

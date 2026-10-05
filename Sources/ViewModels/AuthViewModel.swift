@@ -197,7 +197,9 @@ final class AuthViewModel: ObservableObject {
     /// server is demonstrably reachable and still rejects us. Nothing is
     /// deleted here. Not even then.
     func markSessionSuspect() {
-        guard !sessionSuspect else { return }
+        // An access that could not be read is no rejected one: the client
+        // sends nothing then (`APIError.accessUnknown`), and no doubt starts.
+        guard !sessionSuspect, !accessUnknown else { return }
         sessionSuspect = true
         errorMessage = String(localized: "Session expired, checking the server…")
         Logger.library.warning("ABS session SUSPECT after 401 — token kept, probing")

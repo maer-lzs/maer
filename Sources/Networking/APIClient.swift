@@ -10,9 +10,13 @@ enum APIError: LocalizedError {
     case invalidResponse
     case http(Int, String)
     case decoding(String)
+    /// The stored access could not be read yet: nothing was sent.
+    case accessUnknown
 
     var errorDescription: String? {
         switch self {
+        case .accessUnknown:
+            return String(localized: "The server access can be read once this device is unlocked.")
         case .invalidURL:
             return String(localized: "Invalid server address.")
         case .invalidResponse:
@@ -458,6 +462,7 @@ final class APIClient {
         try handle.write(contentsOf: Data("--\(boundary)--\r\n".utf8))
         try handle.close()
 
+        guard !accessUnknown else { throw APIError.accessUnknown }
         var request = URLRequest(url: baseURL.appendingPathComponent("api/upload"))
         request.httpMethod = "POST"
         request.timeoutInterval = 3600
@@ -514,6 +519,10 @@ final class APIClient {
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
     /// back off briefly instead of surfacing straight away.
     private func perform(_ request: URLRequest) async throws -> Data {
+        // While the access could not be read the request would leave
+        // without a token, the server would answer 401, and the doubt and
+        // its probe would end in a sign-in that nothing called for.
+        guard !accessUnknown else { throw APIError.accessUnknown }
         // The door runs the policy (401 probed once, 429 and 5xx backed off
         // twice, transient URL errors likewise) and hands back the LAST
         // response; the logout hook stays here, at the one place that

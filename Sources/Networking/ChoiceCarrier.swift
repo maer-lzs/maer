@@ -46,8 +46,13 @@ protocol ChoiceCarrier: AnyObject {
 /// answered the same way.
 @MainActor
 enum ChoiceCarriers {
-    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ChoiceCarrier {
-        if access != nil { return MaerSyncChoiceCarrier(session: MaerSyncCarriers.session) }
+    static func make(access: MaerSyncAccess?) -> any ChoiceCarrier {
+        make(read: access.map { .access($0) } ?? .absent)
+    }
+
+    /// An unknown access keeps the family with the service (`servesFamilies`).
+    static func make(read: MaerSyncAccessRead = MaerSyncAccess.read()) -> any ChoiceCarrier {
+        if read.servesFamilies { return MaerSyncChoiceCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValueChoiceCarrier()
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }

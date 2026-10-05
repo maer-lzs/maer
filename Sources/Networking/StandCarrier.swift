@@ -75,8 +75,13 @@ extension StandCarrier {
 /// CloudKit with the key-value store as fallback and legacy reader.
 @MainActor
 enum StandCarriers {
-    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any StandCarrier {
-        if access != nil { return MaerSyncStandCarrier(session: MaerSyncCarriers.session) }
+    static func make(access: MaerSyncAccess?) -> any StandCarrier {
+        make(read: access.map { .access($0) } ?? .absent)
+    }
+
+    /// An unknown access keeps the family with the service (`servesFamilies`).
+    static func make(read: MaerSyncAccessRead = MaerSyncAccess.read()) -> any StandCarrier {
+        if read.servesFamilies { return MaerSyncStandCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValueStandCarrier()
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }

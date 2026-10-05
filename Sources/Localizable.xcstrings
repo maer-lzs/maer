@@ -11159,6 +11159,16 @@
         }
       }
     },
+    "The server access can be read once this device is unlocked." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Serverzugang ist lesbar, sobald dieses Gerät entsperrt ist."
+          }
+        }
+      }
+    },
     "The server answered, but not with a channel list." : {
       "localizations" : {
         "de" : {

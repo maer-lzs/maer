@@ -290,6 +290,10 @@ nonisolated enum AppStorageKeys {
     static var maerSyncTokenValue: String {
         KeychainStore.load(forKey: KeychainKey.maerSyncToken) ?? ""
     }
+    /// The same token, saying whether it is missing or could not be read.
+    static var maerSyncTokenRead: KeychainRead {
+        KeychainStore.read(forKey: KeychainKey.maerSyncToken)
+    }
     static func setMaerSyncToken(_ value: String) {
         if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.maerSyncToken) }
         else { KeychainStore.save(value, forKey: KeychainKey.maerSyncToken) }

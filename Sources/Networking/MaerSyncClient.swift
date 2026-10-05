@@ -18,13 +18,47 @@ nonisolated struct MaerSyncAccess: Equatable, Sendable {
     /// address without a token is not an access: the sign-in issues the
     /// token, and until then nothing runs.
     static func stored() -> MaerSyncAccess? {
+        read().access
+    }
+
+    /// The same, saying whether a missing access is missing or its token
+    /// could not be read (`MaerSyncAccessRead`).
+    static func read() -> MaerSyncAccessRead {
         let signpost = PerfSignpost.accessRead()
         defer { signpost.end() }
-        guard let url = MaerSyncPaths.normalized(AppStorageKeys.maerSyncURLValue) else { return nil }
-        let token = AppStorageKeys.maerSyncTokenValue
-        guard !token.isEmpty else { return nil }
-        return MaerSyncAccess(baseURL: url, token: token)
+        return MaerSyncAccessRead.of(url: AppStorageKeys.maerSyncURLValue, token: AppStorageKeys.maerSyncTokenRead)
     }
+}
+
+/// What the stored access of the sync service says. A token that could not
+/// be read (the device not unlocked since it started) is no missing one:
+/// the families stay with the service and nothing goes to iCloud, until a
+/// read answers (`MaerSyncSession.rereadIfUnknown`).
+nonisolated enum MaerSyncAccessRead: Equatable, Sendable {
+    case access(MaerSyncAccess)
+    case absent
+    case unknown
+
+    /// An address without a token is not an access: the sign-in issues the
+    /// token, and until then nothing runs.
+    static func of(url: String, token: KeychainRead) -> MaerSyncAccessRead {
+        guard let base = MaerSyncPaths.normalized(url) else { return .absent }
+        switch token {
+        case .unreadable: return .unknown
+        case .missing: return .absent
+        case .value(let text): return text.isEmpty ? .absent : .access(MaerSyncAccess(baseURL: base, token: text))
+        }
+    }
+
+    var access: MaerSyncAccess? {
+        if case .access(let access) = self { return access }
+        return nil
+    }
+
+    /// Whether the families travel over the service: with an access, and
+    /// while it is unknown, so no factory picks an iCloud carrier on an
+    /// unreadable token. The ONE rule of the five factories.
+    var servesFamilies: Bool { self != .absent }
 }
 
 extension MaerSyncIdentity {

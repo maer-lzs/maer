@@ -124,6 +124,9 @@ enum AppHousekeeping {
         DriveModeController.shared.scenePhaseChanged(active: phase == .active)
         switch phase {
         case .active:
+            // First: a sync access unreadable at start is read again, so the
+            // pull below already goes over the service.
+            AccessFollowers.followOnceTheAccessReads(by: "scene active")
             // Pull only: coming back is not an occasion to write the pot.
             let stands = pot
             stands.reconcile(pushing: false, caller: "scene active")

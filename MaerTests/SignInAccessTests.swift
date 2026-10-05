@@ -67,6 +67,25 @@ struct SignInAccessTests {
         #expect(!auth.rereadIfUnknown(), "a known access is not read again")
     }
 
+    @Test("bei unbekanntem Zugang geht kein Abruf an den Server, und kein Zweifel an der Sitzung beginnt")
+    func anUnknownAccessSendsNothing() async {
+        let keychain = Keychain()
+        keychain.answers = [KeychainKey.serverURL: .value("https://abs.invalid"), KeychainKey.apiToken: .unreadable]
+        let auth = AuthViewModel(read: keychain.read)
+        #expect(auth.accessUnknown, "the precondition: the access is unknown")
+        var refused = false
+        do {
+            _ = try await auth.apiClient.fetchLibraries()
+        } catch APIError.accessUnknown {
+            refused = true
+        } catch {
+            Issue.record("the request left: \(error)")
+        }
+        #expect(refused, "a request without a token went out")
+        auth.markSessionSuspect()
+        #expect(!auth.sessionSuspect && !auth.needsReauth, "an unreadable access started the doubt")
+    }
+
     @Test("ein fehlender Zugang bleibt abgemeldet, auch nach dem Nachlesen")
     func aMissingAccessStaysSignedOut() {
         let keychain = Keychain()

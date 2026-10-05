@@ -45,8 +45,13 @@ protocol PlaylistCarrier: AnyObject {
 /// question the pot, the claim and the statistics ask, answered the same way.
 @MainActor
 enum PlaylistCarriers {
-    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any PlaylistCarrier {
-        if access != nil { return MaerSyncPlaylistCarrier(session: MaerSyncCarriers.session) }
+    static func make(access: MaerSyncAccess?) -> any PlaylistCarrier {
+        make(read: access.map { .access($0) } ?? .absent)
+    }
+
+    /// An unknown access keeps the family with the service (`servesFamilies`).
+    static func make(read: MaerSyncAccessRead = MaerSyncAccess.read()) -> any PlaylistCarrier {
+        if read.servesFamilies { return MaerSyncPlaylistCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValuePlaylistCarrier()
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }

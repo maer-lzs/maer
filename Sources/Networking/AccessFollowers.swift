@@ -52,8 +52,17 @@ enum AccessFollowers {
 
     /// Every enrolled runner follows the access of this moment. Called where
     /// the access is written, after the session read it again.
-    static func followAll(by caller: String) {
-        register.followAll(by: caller)
+    static func followAll(by caller: String, restart: Bool = false) {
+        register.followAll(by: caller, restart: restart)
+    }
+
+    /// A sync token unreadable at start is read again; once it reads, the
+    /// session goes on as after a sign-in and every runner starts again
+    /// (`restart`). While it is unknown the families stay with the service
+    /// and nothing goes to iCloud (`MaerSyncAccessRead.servesFamilies`).
+    static func followOnceTheAccessReads(by caller: String) {
+        guard MaerSyncCarriers.session.rereadIfUnknown() else { return }
+        register.followAll(by: caller, restart: true)
     }
 
     /// An accepted key change names the same account: the runners keep
@@ -95,11 +104,17 @@ final class AccessRegister {
         entries.compactMap { $0.follower?.followerName }
     }
 
-    func followAll(by caller: String) {
+    /// `restart`: the access became known after it could not be read. The
+    /// runners already hold the service's carrier, and what they wrote
+    /// meanwhile was dropped (`MaerSyncSession.rereadIfUnknown`), so a
+    /// signed-in runner starts again as on a change of account and reads
+    /// before it writes its own store.
+    func followAll(by caller: String, restart: Bool = false) {
         entries.removeAll { $0.follower == nil }
         let now = identity()
         let signedIn = now != nil
-        let identityChanged = followed.map { CarrierWay.identityChanged(held: $0, now: now) } ?? false
+        let identityChanged = (restart && signedIn)
+            || (followed.map { CarrierWay.identityChanged(held: $0, now: now) } ?? false)
         followed = .some(now)
         Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) runners=\(self.names.joined(separator: ","), privacy: .public)")
         for entry in entries {
