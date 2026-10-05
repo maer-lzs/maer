@@ -50,8 +50,16 @@ final class PodcastListenLog {
     private var loaded = false
     /// Bulk passes (backfill/rescan) coalesce the per-hit file writes.
     private var suspendPersist = false
+    /// The database the rows live in; a witness hands in a file of its own.
+    private let database: MaerDatabase
+    /// Whether the start read failed as a whole: the rows may hold entries
+    /// (a tombstone too) this memory lacks. No write goes until they are
+    /// read and adopted (`persist`); only that read ends it.
+    private var startReadFailed = false
 
-    private init() {}
+    init(database: MaerDatabase = .shared) {
+        self.database = database
+    }
 
     // MARK: - Recording (the ONE hook; threshold logic stays in
     // PodcastProgressStore.state. Reused, never copied)
@@ -82,10 +90,25 @@ final class PodcastListenLog {
     /// Explicit "mark unplayed": tombstone the entry (kept, flagged). The
     /// history survives, and only a newer real play-through flips it back.
     /// `at` carries a remote transition's own timestamp (reconcile ordering).
+    /// Over rows the start could not read, a guid this memory lacks gets a
+    /// tombstone of its own, so the choice survives the adoption of the rows
+    /// (it hides the entry until a newer play); with the rows read, a guid
+    /// that never played has nothing to mark, and a line says so.
     func markUnplayed(guid: String, at ts: Double? = nil) {
         loadIfNeeded()
-        guard var entry = entries[guid] else { return }
-        entry.unplayedAt = ts ?? Date().timeIntervalSince1970 * 1000
+        let stamp = ts ?? Date().timeIntervalSince1970 * 1000
+        guard var entry = entries[guid] else {
+            guard startReadFailed else {
+                Logger.rss.notice("LISTENLOG mark unplayed: no entry, nothing played to mark")
+                return
+            }
+            entries[guid] = Entry(guid: guid, episodeTitle: "", showTitle: "", feedURL: "", duration: 0,
+                                  playedAt: 0, unplayedAt: stamp, synthesizedAt: true)
+            Logger.rss.notice("LISTENLOG mark unplayed over unread rows: tombstone kept for the adoption")
+            persist()
+            return
+        }
+        entry.unplayedAt = stamp
         entries[guid] = entry
         persist()
     }
@@ -221,7 +244,7 @@ final class PodcastListenLog {
         if let rowsOpening { return await rowsOpening.value }
         let opening = Task<KeyedRowStore<Entry>?, Never> {
             do {
-                return try await KeyedRowStore<Entry>(connection: try MaerDatabase.shared.connection(), table: .listenLog)
+                return try await KeyedRowStore<Entry>(connection: try self.database.connection(), table: .listenLog)
             } catch {
                 Logger.rss.error("LISTENLOG rows open failed reason=\(String(describing: error), privacy: .public)")
                 return nil
@@ -247,7 +270,7 @@ final class PodcastListenLog {
         // here: the load is lazy-synchronous before every mutation).
         do {
             // No file yet is a fresh install: nothing to read, fresh base.
-            guard let reader = try MaerDatabase.shared.readerNow() else { throw NoRowsYet() }
+            guard let reader = try database.readerNow() else { throw NoRowsYet() }
             let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
             // Rows that did not decode make the rows unknown, never fresh:
             // a write then removes only rows this read decoded.
@@ -266,6 +289,7 @@ final class PodcastListenLog {
             // unknown with nothing read, so the first write upserts and
             // removes nothing, and they heal on the next successful open.
             rowBase = .unknown(seen: nil)
+            startReadFailed = true
             Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
     }
@@ -325,11 +349,29 @@ final class PodcastListenLog {
         // waits for the one before it and diffs against the log of the
         // write before. A lost write self-heals on the next transition (the
         // log is derived from localPosition state).
-        let snapshot = entries
+        let taken = entries
         let previous = pendingWrite
         pendingWrite = Task { [weak self] in
             await previous?.value
             guard let self, let rows = await self.openRows() else { return }
+            var snapshot = taken
+            // Over rows the start could not read nothing is written: a write
+            // replaces an entry whole and would replace a tombstone nobody
+            // read. They are read first, then adopted by the log's own rule
+            // (`adopted`), and the memory after that is written.
+            if self.startReadFailed {
+                do {
+                    let load = try await rows.load()
+                    self.entries = Self.adopted(read: load.rows, run: self.entries)
+                    self.rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+                    self.startReadFailed = false
+                    snapshot = self.entries
+                    Logger.rss.notice("LISTENLOG rows read on save: rows=\(load.rows.count) skipped=\(load.skipped) entries=\(snapshot.count)")
+                } catch {
+                    Logger.rss.notice("LISTENLOG save held: rows still not read reason=\(String(describing: error), privacy: .public)")
+                    return
+                }
+            }
             // The base is read HERE, after the write before landed or
             // failed: a failed write leaves it, so this diff still starts
             // from what the rows really hold.
@@ -350,6 +392,28 @@ final class PodcastListenLog {
                 Logger.rss.error("LISTENLOG save failed reason=\(String(describing: error), privacy: .public) base kept")
             }
         }
+    }
+
+    /// The rows read after a failed start with what this run holds, by guid
+    /// (`merged` where both hold one).
+    nonisolated static func adopted(read: [String: Entry], run: [String: Entry]) -> [String: Entry] {
+        read.merging(run) { fromRows, fromRun in merged(read: fromRows, run: fromRun) }
+    }
+
+    /// One guid held by the rows and by this run, by the log's own rule: the
+    /// later play and the later tombstone both stand, so a tombstone yields
+    /// only to a newer play (`isPlayed`), whichever side holds what. The
+    /// side with the later play carries its stamp kind; an empty title or
+    /// feed and a missing duration are filled from the other side.
+    nonisolated static func merged(read: Entry, run: Entry) -> Entry {
+        let (later, other) = run.playedAt >= read.playedAt ? (run, read) : (read, run)
+        var out = later
+        out.unplayedAt = [read.unplayedAt, run.unplayedAt].compactMap { $0 }.max()
+        if out.episodeTitle.isEmpty { out.episodeTitle = other.episodeTitle }
+        if out.showTitle.isEmpty { out.showTitle = other.showTitle }
+        if out.feedURL.isEmpty { out.feedURL = other.feedURL }
+        if out.duration <= 0 { out.duration = other.duration }
+        return out
     }
 
     /// The chronological history (pure, tested). Tombstoned entries
