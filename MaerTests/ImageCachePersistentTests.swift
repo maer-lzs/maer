@@ -654,6 +654,21 @@ struct ImageCachePersistentTests {
             }
             if file.lastPathComponent == "Artwork.swift" {
                 #expect(code.contains("await downloads.activeCovers()"), "the sweep does not keep the default")
+                #expect(code.contains("performMaintenance(activeCoverURLs: covers.urls, knowsAll: covers.knowsAll"),
+                        "the sweep does not hand on whether the answer is complete")
+            }
+            if file.lastPathComponent == "ImageCache.swift" {
+                // The move of old names: every witness of it goes through a
+                // seam with `knowsAll` fixed, so the sweep's own wiring is
+                // held here. It computes the moves with the answer it was
+                // given and runs them in its first step.
+                let sweep = try #require(functionBody(of: "func performMaintenance(", in: code), "the sweep moved")
+                #expect(sweep.contains("Self.legacyMoves(for: activeCoverURLs, knowsAll: knowsAll)"),
+                        "the sweep moves old names without asking whether the answer is complete")
+                #expect(sweep.contains("self.renameStep(persistent: persistent, cache: cache, moves: moves)"),
+                        "the sweep no longer moves old names")
+                let step = try #require(functionBody(of: "func renameStep(", in: code), "the rename step moved")
+                #expect(step.contains("Self.moveLegacyNames("), "the rename step no longer moves old names")
             }
         }
         #expect(builders == ["DownloadManager.swift"], "active covers built elsewhere: \(builders)")

@@ -210,7 +210,10 @@ final class ImageCache {
     /// download that could not be resolved (an episode of a show no longer
     /// followed) is missing from the list, and its kept cover could stand
     /// under the old name of an active neighbour. Without it nothing moves;
-    /// an old name waits for the next complete pass, a reload at worst.
+    /// an old name waits for the next complete pass. On a device whose list
+    /// stays incomplete, it stays in the kept folder, outside the cap, and
+    /// its address loads once more under today's name: safety over clearing
+    /// up.
     nonisolated static func legacyMoves(for activeURLs: [URL], knowsAll: Bool,
                                         name: (URL) -> String) -> [String: String] {
         guard knowsAll else { return [:] }
@@ -1201,8 +1204,9 @@ final class ImageCache {
     /// So the question moved in here, where a sweep runs off the main actor
     /// anyway, and the directory is now enumerated ONCE instead of twice.
     /// `knowsAll`: whether `activeCoverURLs` names every download's cover;
-    /// without it nothing is demoted (`tierMoves`). Returns the pass, so a
-    /// caller can wait for it.
+    /// without it nothing is demoted (`tierMoves`) and no cover moves from
+    /// an old name (`legacyMoves`), which then stays in the kept folder.
+    /// Returns the pass, so a caller can wait for it.
     @discardableResult
     func performMaintenance(activeCoverURLs: [URL], knowsAll: Bool,
                             onlyWhenOverCap: Bool = false) -> Task<Void, Never> {
