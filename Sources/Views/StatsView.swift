@@ -13,6 +13,15 @@ struct StatsView: View {
     var libraryViewModel: LibraryViewModel?
     /// Chart height follows the (now scaling) day labels.
     @ScaledMetric(relativeTo: .caption2) private var chartHeight: CGFloat = 120
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Which bars carry their day under them: every other one, and at an
+    /// accessibility size every third, so a two-digit day has the width of
+    /// its empty neighbours and stands in one line (at AX3 it split into a
+    /// digit over a digit).
+    nonisolated static func labelsDay(at index: Int, accessibilitySize: Bool) -> Bool {
+        index % (accessibilitySize ? 3 : 2) == 0
+    }
 
     var body: some View {
         Form {
@@ -117,8 +126,9 @@ struct StatsView: View {
         StatsRankedRow(name: name, duration: formatted(seconds))
     }
 
-    /// Plain capsule bars; weekday/day label only under every other bar so
-    /// nothing collides.
+    /// Plain capsule bars; the day only under some bars (`labelsDay`), in
+    /// one line, wider than its bar into the empty neighbours, so nothing
+    /// collides and nothing wraps.
     private var barChart: some View {
         let days = stats.dailySeconds(lastDays: 14)
         let maxSeconds = max(days.map(\.seconds).max() ?? 0, 1)
@@ -129,12 +139,22 @@ struct StatsView: View {
                         .fill(day.seconds > 0 ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.quaternary))
                         .frame(height: max(4, CGFloat(day.seconds) / CGFloat(maxSeconds) * 90))
                         .frame(maxHeight: 90, alignment: .bottom)
-                    Text(index % 2 == 0 ? day.date.formatted(.dateTime.day()) : " ")
-                        // Fixed 9pt ignored Dynamic Type entirely.
+                    // The line's height, in the bar's width; the day lies
+                    // over it in its own width, so the bars stay equal.
+                    // Fixed 9pt ignored Dynamic Type entirely.
+                    Text(verbatim: " ")
                         .font(.caption2)
-                        .minimumScaleFactor(0.6)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                        .frame(maxWidth: .infinity)
+                        .overlay {
+                            if Self.labelsDay(at: index, accessibilitySize: dynamicTypeSize.isAccessibilitySize) {
+                                Text(day.date.formatted(.dateTime.day()))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
+                        }
                 }
                 .frame(maxWidth: .infinity)
             }
