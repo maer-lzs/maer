@@ -69,14 +69,23 @@ enum NavidromeRekeyRun {
     /// (music off here) a download that would move keeps the pass open: the
     /// marker stays off, so the cover sweep holds (`isPending`), and the pass
     /// runs again once the covers can follow.
+    ///
+    /// A rename only queues its move in the disk chain. The step returns
+    /// after every queued move landed (`settle`): the marker comes after it,
+    /// and with the marker the sweep knows every cover by its new name and
+    /// may demote the old one. While the step waits the pass is pending, so
+    /// a sweep in between demotes nothing.
     static func downloadsStep(manager: @escaping @MainActor () -> DownloadManager = { DownloadManager.shared },
                               canRename: @escaping @MainActor () -> Bool = { SubsonicProvider.canRenameCovers },
-                              rename: @escaping @MainActor (String, String) -> Void = SubsonicProvider.renameCover) -> Step {
+                              rename: @escaping @MainActor (String, String) -> Void = SubsonicProvider.renameCover,
+                              settle: @escaping @MainActor () async -> Void = { await Artwork.settleDisk() }) -> Step {
         Step(name: "downloads") { map in
             let downloads = manager()
             await downloads.ensureScanned()
             guard canRename() || !downloads.wouldMove(map) else { return nil }
-            return downloads.rekey(map, onMove: rename)
+            let result = downloads.rekey(map, onMove: rename)
+            await settle()
+            return result
         }
     }
 

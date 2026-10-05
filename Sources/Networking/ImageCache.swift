@@ -436,6 +436,14 @@ final class ImageCache {
         await diskTail[key(for: url)]?.task.value
     }
 
+    /// Test seam: holds the disk chain of an address until the returned
+    /// release is called, so work queued for it after this stays queued.
+    func testHoldDisk(_ url: URL) -> @Sendable () -> Void {
+        let (gate, open) = AsyncStream<Void>.makeStream()
+        onDisk(key(for: url)) { for await _ in gate {} }
+        return { open.finish() }
+    }
+
     /// Test seam: awaited with the stage and the file name by a write after
     /// its look at the invalidation count and before its first byte
     /// ("write"), by the same write after its last step ("written"), and by
@@ -502,6 +510,16 @@ final class ImageCache {
             for key in keys { await ImageCache.shared.leaveDisk(key, turn: turn) }
         }
         for key in keys { diskTail[key] = (turn, task) }
+    }
+
+    /// Returns once every disk work queued so far has run. A rename has not
+    /// moved its file when `renamePersistent` returns; whoever relies on the
+    /// files standing under their new names (the id move's marker, after
+    /// which the sweep demotes by those names) waits here first. Work queued
+    /// after the call is not waited for.
+    func settleDisk() async {
+        let queued = diskTail.values.map(\.task)
+        for task in queued { await task.value }
     }
 
     /// The last disk work of an address ended: its entry goes, unless newer

@@ -626,6 +626,56 @@ struct NavidromeRekeyTests {
                 "nothing would move, so the pass completes without the client")
     }
 
+    /// A rename only queues its move. The marker waits for it: while the
+    /// move of the cover is held in the disk chain the pass stays pending,
+    /// a sweep right then demotes nothing, and once the move lands the
+    /// marker falls and the cover stands kept under the new form.
+    @Test("die Marke des Umzugs faellt erst, wenn das eingereihte Umbenennen des Covers gelandet ist")
+    func theMarkerWaitsForTheQueuedRename() async throws {
+        let suite = "rekey-settle-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let server = "music.example/rest"
+        let marker = NavidromeRekey.markerKey(server: server)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-settle-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let album = "sub:album:\(Self.hexAlbum)"
+        let moved = Self.map(album)
+        try await Self.plant([(album, [Self.old])], in: directory)
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        let cover: (String) -> URL = { URL(string: "https://nd.example.lan/rest/getCoverArt.view?id=\($0)-\(suite)&size=600")! }
+        #expect(ImageCache.shared.testPlacePersistent(Data("cover".utf8), for: cover(album)), "the precondition: a kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: cover(album)); ImageCache.shared.removePersistent(coverURL: cover(moved)) }
+        final class Renames { var queued = 0 }
+        let renames = Renames()
+        let step = NavidromeRekeyRun.downloadsStep(manager: { manager }, canRename: { true }, rename: { old, new in
+            ImageCache.shared.renamePersistent(from: cover(old), to: cover(new))
+            renames.queued += 1
+        })
+
+        let release = ImageCache.shared.testHoldDisk(cover(album))
+        let pass = Task { await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true,
+                                                          defaults: defaults, steps: [step]) }
+        for _ in 0..<200 where renames.queued == 0 || !defaults.bool(forKey: marker) { await Task.yield() }
+        #expect(renames.queued == 1, "the precondition: the rename is queued")
+        #expect(!defaults.bool(forKey: marker), "the marker fell before the queued rename landed")
+        #expect(ImageCache.shared.testIsPersistent(cover(album)), "the precondition: the move is still held")
+
+        // A sweep right then, as the housekeeping starts one next to the pass.
+        let pending = { NavidromeRekeyRun.isPending(server: server, applies: true, defaults: defaults) }
+        let covers = await manager.activeCovers(address: { cover($0) }, idMovePending: pending)
+        #expect(!covers.knowsAll, "while the rename is queued the sweep cannot name every cover")
+        await ImageCache.shared.performMaintenance(activeCoverURLs: covers.urls, knowsAll: covers.knowsAll).value
+
+        release()
+        #expect(await pass.value)
+        #expect(defaults.bool(forKey: marker), "the pass is done once the rename landed")
+        #expect(ImageCache.shared.testIsPersistent(cover(moved)) && !ImageCache.shared.testIsPersistent(cover(album)),
+                "the cover stands kept under the new form")
+    }
+
     /// The kept song list is named by the address the client reads, so the
     /// pass finds it by the stored address while music is off here.
     @Test("die Songliste heisst nach der Adresse, mit Klient wie ohne")

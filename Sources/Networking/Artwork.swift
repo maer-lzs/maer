@@ -174,6 +174,12 @@ enum Artwork {
         tiers.renamePersistent(from: old, to: new)
     }
 
+    /// Returns once every rename, like every other disk work, queued so far
+    /// has moved its files.
+    static func settleDisk() async {
+        await tiers.settleDisk()
+    }
+
     /// Every cached representation of an address is dropped: the server may
     /// have replaced the artwork behind an unchanged id.
     static func invalidate(_ url: URL) {
