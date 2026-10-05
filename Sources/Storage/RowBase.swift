@@ -87,6 +87,16 @@ nonisolated enum RowEmptying: Equatable, Sendable {
     case allowed
     /// The write adds or changes; an empty snapshot here is a fault.
     case refused
+
+    /// The permission a write carries into the chain, fixed at its call.
+    /// The snapshot is taken when the write runs, so a permission must not
+    /// travel further than the change it was given for: it covers an empty
+    /// list only when the action itself left the memory empty. Granted
+    /// while rows still stood, it does not ride along on a list a refused
+    /// change emptied before the write ran.
+    nonisolated func atCall(memoryIsEmpty: Bool) -> RowEmptying {
+        self == .allowed && memoryIsEmpty ? .allowed : .refused
+    }
 }
 
 extension RowBase {

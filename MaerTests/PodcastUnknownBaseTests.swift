@@ -121,6 +121,31 @@ struct PodcastUnknownBaseTests {
         }
     }
 
+    /// The case of the order: a mirrored show and one of the person's own;
+    /// the person unsubscribes their own (allowed, a show still stands), and
+    /// before that write runs a mirror round takes the mirrored one
+    /// (refused). The list is empty when the write runs, and the permission
+    /// does not ride along: the mirrored row stays.
+    @Test("eine Abbestellung, waehrend noch eine Sendung stand, erlaubt nicht das Leeren durch eine Spiegel-Runde danach")
+    func aPermissionDoesNotCoverAMirrorRoundAfterIt() async throws {
+        try await withOwnStore { folder, defaults, database in
+            let run = UUID().uuidString.prefix(8)
+            let mirrored = Self.show("https://feeds.example.org/\(run)/spiegel.xml", mirrored: true)
+            let own = Self.show("https://feeds.example.org/\(run)/eigen.xml")
+            try await PodcastRowStore(connection: try database.connection()).replaceAll([mirrored, own])
+            let subs = make(folder, defaults, database)
+            await subs.ensureLoaded()
+            #expect(subs.shows.count == 2, "the precondition: both shows loaded")
+            subs.unsubscribe(id: own.id, notesCloud: false)
+            subs.removeMirrored(feedURL: mirrored.feedURL)
+            #expect(subs.shows.isEmpty, "the precondition: both left the memory before a write ran")
+            await subs.awaitPendingWrites()
+            let rows = try await PodcastRowStore(connection: try database.connection()).loadAllCounted()
+            #expect(rows.shows.map(\.id).contains(mirrored.id),
+                    "the refused emptying rode along on the permission: \(rows.shows.map(\.id))")
+        }
+    }
+
     @Test("zwei eingereihte Schriebe bei unbekannter Grundlage, der zweite leer: der leere entfernt nichts")
     func twoQueuedWritesUnderAnUnknownBase() async throws {
         try await withOwnStore { folder, defaults, database in

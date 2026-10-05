@@ -414,10 +414,12 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// `emptying` belongs to this write: `.allowed` only where the person's
-    /// own unsubscribe may empty the list. `take` gives the list when the
-    /// write runs in the chain (the stock of that moment, never a picture
-    /// frozen at the call).
-    private func persist(emptying: RowEmptying, _ take: @escaping @MainActor () -> [PodcastShow]?) {
+    /// own unsubscribe may empty the list, and fixed at the call (`atCall`):
+    /// it covers an empty list only when the unsubscribe left it empty.
+    /// `take` gives the list when the write runs in the chain (the stock of
+    /// that moment, never a picture frozen at the call).
+    private func persist(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> [PodcastShow]?) {
+        let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
         // and the diff is taken against the stock of the write before.

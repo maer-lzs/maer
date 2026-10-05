@@ -56,6 +56,40 @@ struct RowKeeperTests {
         #expect(days.values.reduce(0, +) == 120, "after awaitAll the totals' last write has landed")
     }
 
+    @Test("die Erlaubnis zum Leeren gilt im Moment des Aufrufs: nur wenn die Handlung selbst leer liess")
+    func thePermissionIsFixedAtTheCall() {
+        #expect(RowEmptying.allowed.atCall(memoryIsEmpty: true) == .allowed)
+        #expect(RowEmptying.allowed.atCall(memoryIsEmpty: false) == .refused, "a permission granted while rows stood")
+        #expect(RowEmptying.refused.atCall(memoryIsEmpty: true) == .refused)
+        #expect(RowEmptying.refused.atCall(memoryIsEmpty: false) == .refused)
+    }
+
+    /// The memory of a witness, shared by the calls and by the chain.
+    @MainActor private final class ListMemory { var rows: [String: [String]] = [:] }
+
+    /// A write allowed to empty, handed over while a row still stood, and a
+    /// refused change that empties the memory before the first one runs:
+    /// the permission does not ride along on the refused emptying.
+    @Test("eine Erlaubnis zum Leeren faehrt nicht auf einem verweigerten Leeren mit (Keeper)")
+    func aPermissionDoesNotCoverALaterRefusedEmptying() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let memory = ListMemory()
+        memory.rows = ["a": ["1"], "b": ["2"]]
+        let keeper = RowKeeper<[String]>(database: database, table: .playQueue, label: "PROBE")
+        keeper.write(emptying: .refused) { memory.rows }
+        await keeper.awaitPendingWrites()
+        // Both handed over before the first runs.
+        memory.rows.removeValue(forKey: "b")
+        keeper.write(emptying: .allowed) { memory.rows }
+        memory.rows = [:]
+        keeper.write(emptying: .refused) { memory.rows }
+        await keeper.awaitPendingWrites()
+        let reader = try #require(try database.readerNow())
+        let rows = try KeyedRowStore<[String]>.loadNow(table: .playQueue, reader: reader).rows
+        #expect(rows["a"] == ["1"], "the refused emptying rode along on the permission: \(rows.keys.sorted())")
+    }
+
     /// Rows with one row nobody can read: the start read leaves the base
     /// unknown with the rows it read.
     private func keeperOverUnreadableRows() async throws -> (RowKeeper<Int>, MaerDatabase, URL) {

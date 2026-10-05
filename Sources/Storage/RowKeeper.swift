@@ -77,11 +77,12 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// The store's memory, taken by `take` when the write runs in the chain;
     /// the rows get the diff against the base (known rows, or the rows the
     /// start read that are gone). `emptying` says whether an empty snapshot
-    /// is the action of this write; when it is not, an empty snapshot that
-    /// would remove rows is refused and logged, unless a later write is
-    /// already queued (it takes the memory anyway, so this is no wipe
-    /// attempt). `take` answers nil once the store is gone.
-    func write(emptying: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
+    /// is the action of this write, fixed at the call (`atCall`); when it is
+    /// not, an empty snapshot that would remove rows is refused, with an
+    /// error line, or a notice when a later write is already queued.
+    /// `take` answers nil once the store is gone.
+    func write(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
+        let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
         chain.write(read: { [weak self] in
             guard let self, let rows = await self.open() else { throw RowsNotOpen() }
             let load = try await rows.load()
