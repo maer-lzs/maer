@@ -437,7 +437,12 @@ struct ImageCachePersistentTests {
         ImageCache.shared.invalidate(url: url)
         await ImageCache.shared.testDiskSettled(url)
         await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url, free])
-        #expect(await gate(url) == nil, "the old bytes landed under the name of a waiting address")
+        // At the place, not at the gate: the clearing after the step would
+        // make the gate empty too, so the gate alone could not tell which
+        // rule held.
+        #expect(ImageCache.shared.testIsInCache(named: ImageCache.legacyName(for: url)), "the old name moved")
+        #expect(!ImageCache.shared.testIsInCache(named: ImageCache.shared.testKey(for: url)),
+                "the old bytes landed under the name of a waiting address")
         #expect(await gate(free) != nil, "the control: an old name moves where no address waits")
     }
 
@@ -465,21 +470,41 @@ struct ImageCachePersistentTests {
         #expect(!ImageCache.shared.testIsPersistent(old), "the carried copy stayed under the old name")
     }
 
-    /// A file under a waiting name in the cache, as a rename of step 0 leaves
-    /// it after an invalidation during the step: the sweep clears it when it
-    /// is done, behind the disk work of that address.
-    @Test("nach den Umbenennungen raeumt der Fegelauf jede Cache-Datei unter einem wartenden Namen")
+    /// An invalidation during step 0: the waiting names as the step began do
+    /// not hold the address, so a rename puts an old name's file under its
+    /// name; the sweep clears it when it is done, behind the disk work of
+    /// that address. A file the step did not put there is not its matter.
+    @Test("nach den Umbenennungen raeumt der Fegelauf eine Datei, die sie unter einen inzwischen wartenden Namen legten")
     func theSweepClearsAWaitingNameFromTheCache() async {
-        let url = coverURL(UUID().uuidString)
-        await keptAndWaiting(url)
-        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)) }
-        #expect(ImageCache.shared.testPlaceInCache(png(64), for: url), "the precondition: bytes under the waiting name")
-        #expect(await gate(url) != nil, "the precondition: the gate would answer with them")
-        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [])
+        let tag = UUID().uuidString.prefix(8)
+        let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/late.jpg?t=1700000005&size=3000")!
+        let old = ImageCache.legacyName(for: url)
+        #expect(old != ImageCache.shared.testKey(for: url), "the precondition: an earlier name")
+        #expect(ImageCache.shared.testPlaceInCache(png(64), named: old), "the precondition: the old name in the cache")
+        ImageCache.shared.invalidate(url: url)
         await ImageCache.shared.testDiskSettled(url)
-        #expect(ImageCache.shared.testCacheBytes(url) == nil, "the file under the waiting name stayed")
+        // As the step began, the address did not wait yet.
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url], waitingAtStart: [])
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(!ImageCache.shared.testIsInCache(named: old), "the precondition: the step moved the old name")
+        #expect(ImageCache.shared.testCacheBytes(url) == nil, "the file the step put under the waiting name stayed")
         #expect(await gate(url) == nil, "the gate answers instead of the network")
-        #expect(ImageCache.shared.testIsPersistent(url), "the kept copy stays")
+    }
+
+    /// The clearing after step 0 asks only the names the renames placed: a
+    /// file under a waiting name that came another way (fresh bytes of a
+    /// load whose replacing of the kept copy failed) is not its matter.
+    @Test("eine Datei unter einem wartenden Namen, die Schritt 0 nicht legte, laesst der Fegelauf stehen")
+    func theSweepLeavesAFileItDidNotPlace() async {
+        let url = coverURL(UUID().uuidString)
+        ImageCache.shared.invalidate(url: url)
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(ImageCache.shared.testIsRefreshing(url), "the precondition: the address waits")
+        let fresh = png(48)
+        #expect(ImageCache.shared.testPlaceInCache(fresh, for: url), "the precondition: bytes under the waiting name")
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url], waitingAtStart: [])
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(ImageCache.shared.testCacheBytes(url) == fresh, "step 0 cleared a file it did not place")
     }
 
     @Test("der Fegelauf laesst die geschuetzte Fassung einer wartenden Adresse stehen, auch wenn der Cache denselben Namen haelt")

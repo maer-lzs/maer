@@ -195,7 +195,7 @@ final class ImageCache {
     /// Renames every file whose name carries a sign-in part to the name
     /// without; a file already standing under that name wins.
     nonisolated private static func dropSignInFromNames(in directories: [URL], listing: (URL) -> Set<String>,
-                                                        holds: (URL) -> Bool) {
+                                                        holds: (URL) -> Bool) -> [URL] {
         rename(in: directories, listing: listing, what: "sign-in dropped from names", holds: holds) { nameWithoutSignIn($0) }
     }
 
@@ -240,7 +240,7 @@ final class ImageCache {
 
     /// Moves the kept covers of foreign addresses to today's name (`legacyMoves`).
     nonisolated private static func moveLegacyNames(in directories: [URL], listing: (URL) -> Set<String>,
-                                                    moves: [String: String], holds: (URL) -> Bool) {
+                                                    moves: [String: String], holds: (URL) -> Bool) -> [URL] {
         rename(in: directories, listing: listing, what: "foreign names moved", holds: holds) { moves[$0] }
     }
 
@@ -248,13 +248,15 @@ final class ImageCache {
     /// standing under the new name wins. A target `holds` names stays as it
     /// is and the file keeps its old name: under that name the network gate
     /// of a waiting address would answer with bytes from before its
-    /// invalidation. Logged when anything was renamed, held or failed.
+    /// invalidation. Returns the targets a file was moved to. Logged when
+    /// anything was renamed, held or failed.
     nonisolated private static func rename(in directories: [URL], listing: (URL) -> Set<String>, what: String,
-                                           holds: (URL) -> Bool, newName: (String) -> String?) {
+                                           holds: (URL) -> Bool, newName: (String) -> String?) -> [URL] {
         let fm = FileManager.default
         var renamed = 0
         var failed = 0
         var held = 0
+        var placed: [URL] = []
         for directory in directories {
             for name in listing(directory).sorted() {
                 guard let clean = newName(name) else { continue }
@@ -269,6 +271,7 @@ final class ImageCache {
                         try fm.removeItem(at: source)
                     } else {
                         try fm.moveItem(at: source, to: target)
+                        placed.append(target)
                     }
                     renamed += 1
                 } catch {
@@ -280,6 +283,7 @@ final class ImageCache {
         if renamed > 0 || failed > 0 || held > 0 {
             Logger.library.notice("COVERCACHE \(what, privacy: .public)=\(renamed) failed=\(failed) waiting=\(held)")
         }
+        return placed
     }
 
     /// APFS refuses names over 255 bytes. A key beyond `keyByteCeiling`
@@ -359,6 +363,11 @@ final class ImageCache {
         FileManager.default.createFile(atPath: diskDirectory.appendingPathComponent(name).path, contents: data)
     }
 
+    /// Test seam: whether a literal name stands in the purgeable tier.
+    func testIsInCache(named name: String) -> Bool {
+        FileManager.default.fileExists(atPath: diskDirectory.appendingPathComponent(name).path)
+    }
+
     /// Test seam: whether a literal name stands in the persistent tier.
     func testIsPersistent(named name: String) -> Bool {
         FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
@@ -366,9 +375,11 @@ final class ImageCache {
 
     /// Test seam: step 0 as a complete pass runs it, through the sweep's own
     /// `renameStep`, without demoting the covers of neighbouring witnesses.
-    func testMoveLegacyNames(activeCoverURLs: [URL]) async {
+    /// `waitingAtStart` stands in for the waiting names as the step begins
+    /// (an invalidation that comes during the step is not among them).
+    func testMoveLegacyNames(activeCoverURLs: [URL], waitingAtStart: Set<String>? = nil) async {
         let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: true) { key(for: $0) }
-        await renameStep(persistent: persistentDirectory, cache: diskDirectory, moves: moves)
+        await renameStep(persistent: persistentDirectory, cache: diskDirectory, moves: moves, waitingAtStart: waitingAtStart)
     }
 
     /// Test seam: the moves between the tiers for the given moves alone, as
@@ -940,7 +951,9 @@ final class ImageCache {
         // Fresh bytes of the new address in the cache make the carried copy
         // from before the old address's invalidation the one too many: it
         // goes, and the new address does not wait (`invalidate` would remove
-        // exactly those bytes).
+        // exactly those bytes). The moved download then has no persistent
+        // copy until the next sweep lifts the fresh file (its address is
+        // active); until then the cache's TTL is the only bound.
         let newCached = diskDirectory.appendingPathComponent(key(for: new))
         do {
             if fm.fileExists(atPath: target.path) || (oldWaits && fm.fileExists(atPath: newCached.path)) {
@@ -979,26 +992,33 @@ final class ImageCache {
     /// network, so no offline cover of a downloaded episode is demoted. No
     /// rename puts a file into the purgeable tier under the name of an
     /// address that waits (`gateOfWaitingReads`, the names as the step
-    /// begins); an invalidation during the renames is met after them
-    /// (`clearWaitingFromCache`), so the rule holds when the sweep is done.
-    nonisolated func renameStep(persistent: URL, cache: URL, moves: [String: String]) async {
+    /// begins); an invalidation during the renames is met after them: of the
+    /// names the renames put into the purgeable tier, each one that waits by
+    /// then goes (`clearWaitingFromCache`), so the rule holds when the sweep
+    /// is done. `waitingAtStart` stands in for the names at the start (a
+    /// witness of an invalidation during the step); nil asks the cache.
+    nonisolated func renameStep(persistent: URL, cache: URL, moves: [String: String],
+                                waitingAtStart: Set<String>? = nil) async {
         let names: (URL) -> Set<String> = Self.fileNames
-        let waiting = await MainActor.run { self.refreshing }
+        let waiting: Set<String>
+        if let waitingAtStart { waiting = waitingAtStart } else { waiting = await MainActor.run { self.refreshing } }
         let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waiting) }
-        Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
-        Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
-        await MainActor.run { self.clearWaitingFromCache() }
+        let placed = Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
+            + Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
+        let intoCache = placed.filter { $0.deletingLastPathComponent().standardizedFileURL == cache.standardizedFileURL }
+            .map(\.lastPathComponent)
+        guard !intoCache.isEmpty else { return }
+        await MainActor.run { self.clearWaitingFromCache(names: intoCache) }
     }
 
-    /// Every file in the purgeable tier under the name of an address that
-    /// waits now goes, behind the disk work of that address and only if it
-    /// still waits then: a load that landed meanwhile ended the wait, and
-    /// its fresh bytes stay. Such a file can only be one a rename of step 0
-    /// put there after an invalidation that came during the step.
-    private func clearWaitingFromCache() {
-        for name in refreshing {
+    /// Of the names a rename of step 0 put into the purgeable tier, each one
+    /// whose address waits now goes, behind the disk work of that address
+    /// and only if it still waits then: a load that landed meanwhile ended
+    /// the wait, and its fresh bytes stay. On the main actor only the set of
+    /// waiting names is asked; the file is asked in the disk chain.
+    private func clearWaitingFromCache(names: [String]) {
+        for name in names where refreshing.contains(name) {
             let target = diskDirectory.appendingPathComponent(name)
-            guard FileManager.default.fileExists(atPath: target.path) else { continue }
             onDisk(name) { [self] in
                 guard await MainActor.run(body: { self.refreshing.contains(name) }),
                       FileManager.default.fileExists(atPath: target.path) else { return }
