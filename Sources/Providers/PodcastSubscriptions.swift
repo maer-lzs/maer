@@ -737,7 +737,7 @@ final class PodcastSubscriptions: ObservableObject {
         // comparison the old private copy lacked.
         var retiredTwins: [(loser: String, survivor: String)] = []
         let (result, changed) = Self.migrate(decoded, moveProgress: { old, new in
-            ListeningStore.move(from: old, to: new)
+            ListeningStore.move(from: old, to: new, in: defaults)
         }, retired: { retiredTwins.append(($0, $1)) })
         if changed {
             // Write back (serialized, off-main) so the cleanup is persistent.
@@ -1077,9 +1077,9 @@ final class PodcastSubscriptions: ObservableObject {
                                                     premium: premium.episodes)) { old, _ in old }
             var redirected = 0
             for (freeGuid, premiumGuid) in matches {
-                guard let stored = ListeningStore.backup(freeGuid),
-                      !ListeningStore.hasStand(premiumGuid) else { continue }
-                ListeningStore.store(premiumGuid, entry: stored)
+                guard let stored = ListeningStore.backup(freeGuid, in: defaults),
+                      !ListeningStore.hasStand(premiumGuid, in: defaults) else { continue }
+                ListeningStore.store(premiumGuid, entry: stored, in: defaults)
                 redirected += 1
             }
             Logger.rss.notice("SUBSCRIBE skipped free twin of premium \(show.title, privacy: .public): progress redirected=\(redirected)")
@@ -1707,13 +1707,13 @@ final class PodcastSubscriptions: ObservableObject {
         var states: [ForeignListeningState] = []
         for show in shows {
             for episode in show.episodes {
-                guard let entry = ListeningStore.backup(episode.guid),
+                guard let entry = ListeningStore.backup(episode.guid, in: defaults),
                       let state = OPMLExport.exportedState(
                         entry: entry, feedURL: show.feedURL,
                         guid: ForeignStateMatcher.rawGUID(storedGUID: episode.guid),
                         enclosureURL: episode.audioURL, link: episode.link, title: episode.title,
                         duration: episode.duration,
-                        archived: ForeignMarks.isArchived(episode.guid)) else { continue }
+                        archived: ForeignMarks.isArchived(episode.guid, in: defaults)) else { continue }
                 states.append(state)
             }
         }
@@ -1928,7 +1928,7 @@ final class PodcastSubscriptions: ObservableObject {
         // below changes an entry read here.
         var locals: [String: [Double]] = [:]
         for match in plan.matches {
-            if let entry = ListeningStore.backup(match.targetID) { locals[match.targetID] = entry }
+            if let entry = ListeningStore.backup(match.targetID, in: defaults) { locals[match.targetID] = entry }
         }
         for match in plan.matches {
             guard let idx = episodeIndex[match.targetID] else { continue }
@@ -1950,7 +1950,7 @@ final class PodcastSubscriptions: ObservableObject {
             case .adopt(let entry, let reason):
                 adoption = (entry, reason)
             }
-            ListeningStore.store(match.targetID, entry: adoption.entry)
+            ListeningStore.store(match.targetID, entry: adoption.entry, in: defaults)
             // The marks: imported keeps it out of the listening time until
             // it is heard here; archived travels back out with an export.
             // Written together after the loop, one write per list.
@@ -1965,8 +1965,8 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.debug("FOREIGN adopt \(match.targetID, privacy: .public) reason=\(adoption.reason.rawValue, privacy: .public) local=\(String(describing: local), privacy: .public) foreign=\(match.state.position)/\(match.state.finished)/\(String(describing: match.state.stampedAt), privacy: .public)")
             #endif
         }
-        ForeignMarks.markImported(importedMarks)
-        ForeignMarks.markArchived(archivedMarks)
+        ForeignMarks.markImported(importedMarks, in: defaults)
+        ForeignMarks.markArchived(archivedMarks, in: defaults)
         tally.lookedUp += plan.matches.filter(\.state.handleFromLookup).map(\.state)
         if tally.applied > appliedBefore {
             shows = updated
@@ -2196,9 +2196,9 @@ final class PodcastSubscriptions: ObservableObject {
             for: allEpisodes().map {
                 PodcastProgressHealing.Episode(guid: $0.episode.guid, duration: $0.episode.duration)
             },
-            stored: { ListeningStore.backup($0) })
+            stored: { ListeningStore.backup($0, in: self.defaults) })
         for (guid, entry) in writes {
-            ListeningStore.store(guid, entry: entry)
+            ListeningStore.store(guid, entry: entry, in: defaults)
         }
         if !writes.isEmpty {
             Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")

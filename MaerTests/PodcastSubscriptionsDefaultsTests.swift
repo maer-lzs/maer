@@ -70,12 +70,24 @@ struct PodcastSubscriptionsDefaultsTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
         let pending = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/FeedAdoptionPending.swift"), encoding: .utf8))
-        let offenders = Self.callsWithoutDefaults(in: store, declaredIn: [("", store), ("FeedAdoptionPending.", pending)])
+        let listening = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStore.swift"), encoding: .utf8))
+        let marks = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ForeignMarks.swift"), encoding: .utf8))
+        let offenders = Self.callsWithoutDefaults(in: store, declaredIn: [
+            ("", store), ("FeedAdoptionPending.", pending), ("ListeningStore.", listening), ("ForeignMarks.", marks),
+        ])
         #expect(!Self.declaredWithDefaults(in: store).isEmpty, "the fence found no function that takes defaults")
+        #expect(Self.declaredWithDefaults(in: listening)["backup"] == ["in"]
+                && Self.declaredWithDefaults(in: marks)["isArchived"] == ["in"],
+                "the fence does not read the label form of the two stores")
         #expect(offenders == Self.namedExceptions, "calls without defaults outside the named one: \(offenders)")
-        // Calibration: the shape the store had before.
+        // Calibration: the shape the store had before, the label form, and
+        // a label that only ends in the same letters.
         let before = "func a(x: Int, defaults: UserDefaults = .standard) {}\nfunc b() { a(x: 1) }\nfunc c() { a(x: 1, defaults: d) }"
         #expect(Self.callsWithoutDefaults(in: before, declaredIn: [("", before)]) == ["a(x: 1)"])
+        let labelled = "func s(_ id: String,\n in defaults: UserDefaults = .standard) {}\nfunc t() { S.s(id) }\nfunc u() { S.s(id, in: own) }\nfunc v() { S.s(join: id) }"
+        #expect(Self.callsWithoutDefaults(in: labelled, declaredIn: [("S.", labelled)]) == ["S.s(id)", "S.s(join: id)"])
     }
 
     /// The one call without the store's defaults, with its reason:
@@ -85,23 +97,28 @@ struct PodcastSubscriptionsDefaultsTests {
     /// `_testFeedFetcher` and never reaches it. Held in both directions.
     nonisolated static let namedExceptions = ["noteFeedBlocked(feedURL.absoluteString)"]
 
-    /// The names of the functions in `code` that take `defaults:`.
-    nonisolated static func declaredWithDefaults(in code: String) -> Set<String> {
-        var names: Set<String> = []
-        for match in code.matches(of: #/func (\w+)\(([^)]*)\)/#) where match.2.contains("defaults: UserDefaults") {
-            names.insert(String(match.1))
+    /// The functions in `code` that take a `UserDefaults` parameter named
+    /// `defaults`, each with the label it is passed by (`defaults`, or the
+    /// label before it, as `in` in `in defaults:`).
+    nonisolated static func declaredWithDefaults(in code: String) -> [String: Set<String>] {
+        var labels: [String: Set<String>] = [:]
+        for match in code.matches(of: #/func (\w+)\(([^)]*)\)/#) {
+            guard let parameter = String(match.2).firstMatch(of: #/(?:(\w+)\s+)?defaults: UserDefaults/#) else { continue }
+            labels[String(match.1), default: []].insert(parameter.1.map(String.init) ?? "defaults")
         }
-        return names
+        return labels
     }
 
-    /// Every call in `code` to a function declared with `defaults:` in one of
-    /// `declaredIn` (with the prefix it is called by) whose arguments lack
-    /// `defaults:`, as written. Declarations are no calls.
+    /// Every call in `code` to a function declared with a `defaults`
+    /// parameter in one of `declaredIn` (with the prefix it is called by)
+    /// whose arguments lack its label, as written. Declarations are no calls.
     nonisolated static func callsWithoutDefaults(in code: String, declaredIn: [(prefix: String, code: String)]) -> [String] {
         var found: [String] = []
         let chars = Array(code)
         for (prefix, declaring) in declaredIn {
-            for name in declaredWithDefaults(in: declaring).sorted() {
+            let declared = declaredWithDefaults(in: declaring)
+            for name in declared.keys.sorted() {
+                let labels = declared[name] ?? []
                 let needle = Array(prefix + name + "(")
                 var i = 0
                 while i + needle.count <= chars.count {
@@ -117,7 +134,10 @@ struct PodcastSubscriptionsDefaultsTests {
                         j += 1
                     } while depth > 0 && j < chars.count
                     let call = String(chars[i..<j])
-                    if !call.contains("defaults:") { found.append(call.split(whereSeparator: \.isWhitespace).joined(separator: " ")) }
+                    let passes = labels.contains { label in
+                        (try? Regex("(^|[^A-Za-z0-9_])\(label):")).map { call.contains($0) } ?? false
+                    }
+                    if !passes { found.append(call.split(whereSeparator: \.isWhitespace).joined(separator: " ")) }
                     i = j
                 }
             }

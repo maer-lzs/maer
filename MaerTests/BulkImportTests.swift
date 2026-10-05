@@ -35,6 +35,13 @@ struct BulkImportTests {
 
     /// A store of its own, on its own files and suite.
     static func store() async throws -> (PodcastSubscriptions, () -> Void) {
+        let (subs, _, cleanup) = try await storeAndDefaults()
+        return (subs, cleanup)
+    }
+
+    /// The same store with its suite: the states and marks it writes land
+    /// there, not in the app's domain, so a witness reads them there.
+    static func storeAndDefaults() async throws -> (PodcastSubscriptions, UserDefaults, () -> Void) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("bulk-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let suite = "bulk-\(UUID().uuidString)"
@@ -44,7 +51,7 @@ struct BulkImportTests {
             database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
             defaults: defaults, isTheApp: false)
         await subs.ensureLoaded()
-        return (subs, {
+        return (subs, defaults, {
             defaults.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: folder)
         })
@@ -144,33 +151,33 @@ struct BulkImportTests {
 
     @Test("TF-9 Z2: ein Stand, der nur ueber den Titel passt, landet nie bei der falschen Sendung, auch wenn seine eigene fehlt")
     func aTitleOnlyStateNeverLandsElsewhere() async throws {
-        let (subs, cleanup) = try await Self.store()
+        let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
         let fixture = Self.sameTitle(run)
         defer {
             cleanup()
-            ListeningStore.clearBackup(fixture.aEpisode)
-            ForeignMarks.clear(fixture.aEpisode)
+            ListeningStore.clearBackup(fixture.aEpisode, in: defaults)
+            ForeignMarks.clear(fixture.aEpisode, in: defaults)
             FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
         }
         subs._testFeedFetcher = { url in
             url.host == "a.example" ? .show(Self.sameTitleShow(url, run)) : .failed(.timeout)
         }
         let result = await subs.importForeignLibrary(fixture.library)
-        let entry = try #require(ListeningStore.backup(fixture.aEpisode), "A's own state was applied")
+        let entry = try #require(ListeningStore.backup(fixture.aEpisode, in: defaults), "A's own state was applied")
         #expect(entry.first == 120, "A holds its own state, not B's newer one: \(entry)")
         #expect(result.progressApplied == 1 && result.unmatched == ["Same Title"], "B's state waits unmatched")
     }
 
     @Test("TF-9 I1: der Stand einer Sendung steht, sobald sie gefolgt ist, bevor der naechste Feed antwortet; ein zweiter Lauf holt sie nicht neu")
     func aShowsStatesLandWhenItIsFollowed() async throws {
-        let (subs, cleanup) = try await Self.store()
+        let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
         let fixture = Self.sameTitle(run)
         defer {
             cleanup()
-            ListeningStore.clearBackup(fixture.aEpisode)
-            ForeignMarks.clear(fixture.aEpisode)
+            ListeningStore.clearBackup(fixture.aEpisode, in: defaults)
+            ForeignMarks.clear(fixture.aEpisode, in: defaults)
             FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
         }
         let gate = Gate()
@@ -185,7 +192,7 @@ struct BulkImportTests {
         let importing = Task { await subs.importForeignLibrary(fixture.library) { gate.progress.append($0) } }
         var landedWhileWaiting = false
         for _ in 0..<150 where !landedWhileWaiting {
-            landedWhileWaiting = ListeningStore.backup(fixture.aEpisode)?.first == 120
+            landedWhileWaiting = ListeningStore.backup(fixture.aEpisode, in: defaults)?.first == 120
             if !landedWhileWaiting { try await Task.sleep(nanoseconds: 20_000_000) }
         }
         gate.open = true
@@ -242,13 +249,13 @@ struct BulkImportTests {
 
     @Test("TF-9 I3: endet die Hintergrundzeit, hoert der Import an der naechsten Sendungsgrenze auf, sagt wo, behaelt das Getane und ein zweiter Lauf setzt fort")
     func anExpiredImportStopsAndContinues() async throws {
-        let (subs, cleanup) = try await Self.store()
+        let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
         let feeds = (0..<8).map { "https://stop\($0)-\(run).example/feed.xml" }
         let episodes = (0..<8).map { "rss:bulk:stop\($0)-\(run).example-0" }
         defer {
             cleanup()
-            for id in episodes { ListeningStore.clearBackup(id); ForeignMarks.clear(id) }
+            for id in episodes { ListeningStore.clearBackup(id, in: defaults); ForeignMarks.clear(id, in: defaults) }
         }
         let states = (0..<8).map {
             ForeignListeningState(feedURL: feeds[$0], episodeGUID: nil,
@@ -279,7 +286,7 @@ struct BulkImportTests {
         let second = await subs.importForeignLibrary(library)
         #expect(tally.calls == 8 - asked, "the second run asks only the shows it does not hold: \(tally.calls)")
         #expect(second.stoppedAt == nil && second.notAsked == 0)
-        #expect(episodes.allSatisfy { ListeningStore.backup($0)?.first == 60 }, "every show's state stands")
+        #expect(episodes.allSatisfy { ListeningStore.backup($0, in: defaults)?.first == 60 }, "every show's state stands")
     }
 
     // MARK: - One attempt, a short silence, against a real socket
@@ -508,11 +515,11 @@ struct BulkImportTests {
         #expect(byEnclosure["https://orphan-\(run).example/0.mp3"]?.feedURL == nil, "no show, no feed")
 
         // The import: A answers, B stays silent until the witness has looked.
-        let (subs, cleanup) = try await Self.store()
+        let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         defer {
             cleanup()
-            ListeningStore.clearBackup(aEpisode)
-            ForeignMarks.clear(aEpisode)
+            ListeningStore.clearBackup(aEpisode, in: defaults)
+            ForeignMarks.clear(aEpisode, in: defaults)
             FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(b))
         }
         let gate = Gate()
@@ -524,7 +531,7 @@ struct BulkImportTests {
         let importing = Task { await subs.importForeignLibrary(library) }
         var landedWhileWaiting = false
         for _ in 0..<150 where !landedWhileWaiting {
-            landedWhileWaiting = ListeningStore.backup(aEpisode)?.first == 120
+            landedWhileWaiting = ListeningStore.backup(aEpisode, in: defaults)?.first == 120
             if !landedWhileWaiting { try await Task.sleep(nanoseconds: 20_000_000) }
         }
         gate.open = true
@@ -553,13 +560,13 @@ struct BulkImportTests {
 
     @Test("S2b I1: ein Import schreibt die Marken einmal je Anwendung, nicht je Folge")
     func marksAreWrittenOncePerApply() async throws {
-        let (subs, cleanup) = try await Self.store()
+        let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
         let feed = "https://marks-\(run).example/feed.xml"
         let ids = (0..<30).map { "rss:bulk:marks-\(run).example-\($0)" }
         defer {
             cleanup()
-            for id in ids { ListeningStore.clearBackup(id); ForeignMarks.clear(id) }
+            for id in ids { ListeningStore.clearBackup(id, in: defaults); ForeignMarks.clear(id, in: defaults) }
         }
         let states = (0..<30).map {
             ForeignListeningState(feedURL: feed, episodeGUID: nil,
@@ -568,14 +575,14 @@ struct BulkImportTests {
                                   stampedAt: Double(1_000 + $0), archived: $0 < 5)
         }
         subs._testFeedFetcher = { url in .show(Self.show(url, title: "Marks", episodes: 30)) }
-        _ = ForeignMarks.importedIDs()
-        _ = ForeignMarks.isArchived("")
+        _ = ForeignMarks.importedIDs(in: defaults)
+        _ = ForeignMarks.isArchived("", in: defaults)
         let writes = ForeignMarks.listWrites
         let result = await subs.importForeignLibrary(ForeignLibrary(feedURLs: [feed], states: states))
         try #require(result.progressApplied == 30, "every state was applied: \(result.progressApplied)")
         #expect(ForeignMarks.listWrites - writes == 2, "one write for imported, one for archived: \(ForeignMarks.listWrites - writes)")
-        #expect(ForeignMarks.importedIDs().isSuperset(of: ids))
-        let archived = ids.prefix(5).filter { ForeignMarks.isArchived($0) }
+        #expect(ForeignMarks.importedIDs(in: defaults).isSuperset(of: ids))
+        let archived = ids.prefix(5).filter { ForeignMarks.isArchived($0, in: defaults) }
         #expect(archived.count == 5)
     }
 
