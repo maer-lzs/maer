@@ -213,10 +213,9 @@ final class DownloadManager {
         // Marks read after a failed start join the ones this run wrote; a
         // download this run marked again is the newer mark.
         keeper.adopt = { [weak self] read in
-            guard let self else { return read }
+            guard let self else { return }
             self.details = RowKeeper.union(read: read, run: self.details)
             self.songIndexFor = nil
-            return self.details
         }
         Logger.library.notice("DOWNLOADS start: marked=\(self.details.count)")
     }
@@ -547,7 +546,7 @@ final class DownloadManager {
     /// covers the way into the background; this covers the kill after it.
     private func saveDetail(_ detail: LibraryItemDetail) async {
         details[detail.id] = detail
-        keeper.write(details, emptying: .refused)
+        keeper.write(emptying: .refused) { [weak self] in self?.details }
         await keeper.awaitPendingWrites()
     }
 
@@ -785,7 +784,7 @@ final class DownloadManager {
             downloadedItemIds.remove(itemId)
         }
         // The marks leave with the deleted downloads, the last one too.
-        keeper.write(details, emptying: .allowed)
+        keeper.write(emptying: .allowed) { [weak self] in self?.details }
         if kindsChanged { writeKinds() }
         recalculateTotalSize()
     }
@@ -826,7 +825,7 @@ final class DownloadManager {
     @discardableResult
     func adoptDownload(from oldItemId: String, to newItemId: String) -> Bool {
         guard let kindMoved = moveDownload(from: oldItemId, to: newItemId) else { return false }
-        keeper.write(details, emptying: .refused)
+        keeper.write(emptying: .refused) { [weak self] in self?.details }
         if kindMoved { writeKinds() }
         // The folder moved whole: its size moves with the key.
         recalculateTotalSize()
@@ -909,7 +908,7 @@ final class DownloadManager {
         let remnants = rekeyRemnants(map)
         if remnants.moved > 0 { moved = true }
         if marksChanged {
-            keeper.write(details, emptying: .refused)
+            keeper.write(emptying: .refused) { [weak self] in self?.details }
             songIndexFor = nil
         }
         if kindsChanged { writeKinds() }

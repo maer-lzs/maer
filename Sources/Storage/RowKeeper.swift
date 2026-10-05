@@ -36,10 +36,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// row (the id move) waits while it holds.
     private(set) var startReadFailed = false
     /// The store's adoption of rows read after a failed start: it takes the
-    /// rows into its memory by its rule (`union` unless it has its own) and
-    /// returns the memory to write. Every store sets it at its start; a
-    /// keeper without it holds every write over unread rows.
-    var adopt: (@MainActor (Rows) -> Rows)?
+    /// rows into its memory by its rule (`union` unless it has its own); the
+    /// write then takes the memory (`write`). Every store sets it at its
+    /// start; a keeper without it holds every write over unread rows.
+    var adopt: (@MainActor (Rows) -> Void)?
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
     /// The last handed-over write; each write waits for the one before it.
@@ -75,20 +75,26 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         }
     }
 
-    /// The whole snapshot; the rows get the diff against the base (known
-    /// rows, or the rows the start read that are gone). `emptying` says
-    /// whether an empty snapshot is the action of this write; when it is
-    /// not, an empty snapshot that would remove rows is refused and logged.
-    /// A write that matches the base is skipped by the store.
+    /// The store's memory, taken by `take` when the write runs; the rows get
+    /// the diff against the base (known rows, or the rows the start read
+    /// that are gone). `emptying` says whether an empty snapshot is the
+    /// action of this write; when it is not, an empty snapshot that would
+    /// remove rows is refused and logged. `take` answers nil once the store
+    /// is gone; then nothing is written.
+    ///
+    /// The memory is taken in the chain, after the write before and after an
+    /// adoption, never at the call: a picture frozen at the call would diff
+    /// against a base that changed under it since and remove what the base
+    /// now holds (two writes queued before an adoption: the second would
+    /// remove every row the first one read).
     ///
     /// Over rows the start could not read nothing is written: a write
     /// replaces a row whole and nobody knows what an unread row holds. The
     /// write reads the rows first; while they cannot be read it holds. Once
     /// read, the store adopts them (`adopt`), the base is what was read, and
     /// the store's memory after the adoption is written.
-    func write(_ snapshot: Rows, emptying: RowEmptying) {
+    func write(emptying: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
         chain(what: "save", priority: .utility) { rows in
-            var snapshot = snapshot
             if self.startReadFailed {
                 guard let adopt = self.adopt else {
                     Logger.library.error("\(self.label, privacy: .public) save held: rows not read and no adoption")
@@ -103,9 +109,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
                 }
                 self.base = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
                 self.startReadFailed = false
-                snapshot = adopt(load.rows)
+                adopt(load.rows)
                 Logger.library.notice("\(self.label, privacy: .public) rows read on save: rows=\(load.rows.count) skipped=\(load.skipped)")
             }
+            guard let snapshot = take() else { return }
             // The base is read HERE, after the write before landed or failed.
             let base = self.base
             if base.refuses(snapshot, emptying) {
@@ -118,7 +125,11 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     }
 
     /// The adoption most stores take: the rows read, with what this run holds
-    /// over them, the run winning per key (it is the newer word).
+    /// over them, the run winning per key (it is the newer word). A key this
+    /// run removed before the read comes back if the rows hold it: the union
+    /// cannot tell a removal from a key the run never had. Before the read
+    /// the run holds only what it added, so only a key it added and removed
+    /// again that an unread row also holds is met.
     nonisolated static func union(read: Rows, run: Rows) -> Rows {
         read.merging(run) { _, fromRun in fromRun }
     }
@@ -170,8 +181,14 @@ enum RowKeepers {
     private static var entries: [Entry] = []
 
     static func register<Value>(_ keeper: RowKeeper<Value>) {
+        register(owner: keeper) { [weak keeper] in await keeper?.awaitPendingWrites() }
+    }
+
+    /// A write chain of a store that keeps its rows without a keeper (the
+    /// listen log): waited on at the app's two ends like a keeper's.
+    static func register(owner: AnyObject, settle: @escaping () async -> Void) {
         entries.removeAll { $0.keeper == nil }
-        entries.append(Entry(keeper: keeper, settle: { [weak keeper] in await keeper?.awaitPendingWrites() }))
+        entries.append(Entry(keeper: owner, settle: settle))
     }
 
     /// The keepers alive right now, for the witness.

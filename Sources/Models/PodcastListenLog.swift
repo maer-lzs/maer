@@ -59,6 +59,8 @@ final class PodcastListenLog {
 
     init(database: MaerDatabase = .shared) {
         self.database = database
+        // The app's two ends wait for this chain like a keeper's.
+        RowKeepers.register(owner: self) { [weak self] in await self?.awaitPendingWrites() }
     }
 
     // MARK: - Recording (the ONE hook; threshold logic stays in
@@ -348,13 +350,15 @@ final class PodcastListenLog {
         // Only the entries that changed go to the rows, in order: each write
         // waits for the one before it and diffs against the log of the
         // write before. A lost write self-heals on the next transition (the
-        // log is derived from localPosition state).
-        let taken = entries
+        // log is derived from localPosition state). The log is taken HERE, in
+        // the chain after the write before and after an adoption, never at
+        // the call: a picture frozen at the call would diff against a base
+        // that changed under it since and remove what the base now holds.
         let previous = pendingWrite
         pendingWrite = Task { [weak self] in
             await previous?.value
             guard let self, let rows = await self.openRows() else { return }
-            var snapshot = taken
+            var snapshot = self.entries
             // Over rows the start could not read nothing is written: a write
             // replaces an entry whole and would replace a tombstone nobody
             // read. They are read first, then adopted by the log's own rule

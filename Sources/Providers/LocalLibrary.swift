@@ -284,10 +284,9 @@ final class LocalLibrary: ObservableObject {
         // Entries read after a failed start join the index; an entry this
         // run wrote again is the newer one.
         keeper.adopt = { [weak self] read in
-            guard let self else { return read }
+            guard let self else { return }
             let merged = RowKeeper.union(read: read, run: Self.keyed(self.entries))
             self.entries = merged.values.sorted { $0.addedAt > $1.addedAt }
-            return merged
         }
         Logger.library.notice("LOCALLIB start: entries=\(self.entries.count)")
     }
@@ -305,6 +304,6 @@ final class LocalLibrary: ObservableObject {
     /// The rows get the diff; the keeper logs a failure and the index lives
     /// on in memory. `emptying` is `.allowed` only where the user deleted.
     private func save(emptying: RowEmptying) {
-        keeper.write(Self.keyed(entries), emptying: emptying)
+        keeper.write(emptying: emptying) { [weak self] in self.map { Self.keyed($0.entries) } }
     }
 }

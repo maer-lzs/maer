@@ -58,11 +58,8 @@ final class PlayQueue: ObservableObject {
         }
         ids = keeper.startNow()?[Self.rowKey] ?? []
         // One row: a queue this run wrote is the newer word over the row read
-        // after a failed start.
-        keeper.adopt = { [weak self] read in
-            guard let self else { return read }
-            return RowKeeper.union(read: read, run: [Self.rowKey: self.ids])
-        }
+        // after a failed start, so nothing of that row goes into memory.
+        keeper.adopt = { _ in }
         Logger.library.notice("QUEUE start: entries=\(self.ids.count)")
     }
 
@@ -168,7 +165,7 @@ final class PlayQueue: ObservableObject {
     /// again.
     private func save() {
         guard persists else { return }
-        keeper?.write([Self.rowKey: ids], emptying: .refused)
+        keeper?.write(emptying: .refused) { [weak self] in self.map { [Self.rowKey: $0.ids] } }
         writeWidgetSnapshot()
     }
 

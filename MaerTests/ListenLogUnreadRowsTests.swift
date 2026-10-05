@@ -93,5 +93,34 @@ struct ListenLogUnreadRowsTests {
         #expect(stored.unplayedAt == marked && !stored.isPlayed, "the mark did not survive the read")
         #expect(stored.episodeTitle == "Folge", "the entry of the rows lost its title")
     }
+
+    /// Two notes in one go (a reconcile notes guid after guid) before the
+    /// adoption, the rows readable by then: the second write takes the log
+    /// after the adoption, so the tombstone row stays.
+    @Test("zwei Notizen in einem Zug vor der Uebernahme: der Grabstein auf der Platte bleibt")
+    func aNoteQueuedBeforeTheAdoptionKeepsTheTombstone() async throws {
+        let directory = try NavidromeRekeyTests.temporaryDirectory("listenlog-queued")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let database = try await NavidromeRekeyTests.unreadableDatabase(
+            ["listen_log"], at: directory.appendingPathComponent("maer.sqlite").path)
+        let log = PodcastListenLog(database: database)
+        let tag = UUID().uuidString
+        let heard = 1_700_000_000_000.0, tombstone = 1_700_000_500_000.0
+        log.markUnplayed(guid: "probe-\(tag)", at: tombstone)
+        await log.awaitPendingWrites()
+        let connection = try database.connection()
+        try await connection.execute("DROP TABLE listen_log")
+        let rows = try await KeyedRowStore<PodcastListenLog.Entry>(connection: connection, table: .listenLog)
+        let marked = "marked-\(tag)"
+        _ = try await rows.apply(previous: [:], current: [marked: entry(marked, playedAt: heard - 1_000, unplayedAt: tombstone)])
+        log.noteIfPlayed(guid: "a-\(tag)", duration: 100, episodeTitle: "", showTitle: "", feedURL: "", written: [100, heard])
+        log.noteIfPlayed(guid: "b-\(tag)", duration: 100, episodeTitle: "", showTitle: "", feedURL: "", written: [100, heard])
+        await log.awaitPendingWrites()
+
+        let reader = try #require(try database.readerNow())
+        let stored = try KeyedRowStore<PodcastListenLog.Entry>.loadNow(table: .listenLog, reader: reader).rows
+        #expect(stored[marked]?.unplayedAt == tombstone, "a note queued before the adoption removed the tombstone row")
+        #expect(stored["a-\(tag)"] != nil && stored["b-\(tag)"] != nil, "rows: \(stored.keys.sorted())")
+    }
 }
 #endif

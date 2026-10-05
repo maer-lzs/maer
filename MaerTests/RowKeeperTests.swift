@@ -27,8 +27,8 @@ struct RowKeeperTests {
         let before = RowKeepers.count
         var keeper: RowKeeper<[String]>? = RowKeeper(database: database, table: .playQueue, label: "PROBE")
         #expect(RowKeepers.count == before + 1, "a keeper registers itself on creation")
-        keeper?.write(["k": ["a"]], emptying: .refused)
-        keeper?.write(["k": ["a", "b"]], emptying: .refused)
+        keeper?.write(emptying: .refused) { ["k": ["a"]] }
+        keeper?.write(emptying: .refused) { ["k": ["a", "b"]] }
         let waited = await RowKeepers.awaitAll()
         #expect(waited >= 1)
         let reader = try #require(try database.readerNow())
@@ -60,7 +60,7 @@ struct RowKeeperTests {
     func aReadRowThatIsGoneLeavesTheRows() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()
         defer { try? FileManager.default.removeItem(at: directory) }
-        keeper.write(["kept": 3], emptying: .refused)
+        keeper.write(emptying: .refused) { ["kept": 3] }
         await keeper.awaitPendingWrites()
         let after = try rows(database)
         #expect(after.rows == ["kept": 3], "rows: \(after.rows)")
@@ -71,10 +71,10 @@ struct RowKeeperTests {
     func anEmptySnapshotWithoutIntentLeavesTheRows() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()
         defer { try? FileManager.default.removeItem(at: directory) }
-        keeper.write([:], emptying: .refused)
+        keeper.write(emptying: .refused) { [:] }
         await keeper.awaitPendingWrites()
         #expect(try rows(database).rows == ["gone": 1, "kept": 2], "an empty snapshot without intent removed rows")
-        keeper.write([:], emptying: .allowed)
+        keeper.write(emptying: .allowed) { [:] }
         await keeper.awaitPendingWrites()
         let after = try rows(database)
         #expect(after.rows.isEmpty && after.skipped == 1, "intended: the read rows leave, the unread one stays")
@@ -119,14 +119,13 @@ struct RowKeeperTests {
         keeper.adopt = { read in
             memory.adopted.append(read)
             memory.rows = RowKeeper.union(read: read, run: memory.rows)
-            return memory.rows
         }
-        keeper.write(memory.rows, emptying: .refused)
+        keeper.write(emptying: .refused) { memory.rows }
         await keeper.awaitPendingWrites()
         #expect(keeper.startReadFailed && memory.adopted.isEmpty, "a write went over rows nobody could read")
 
         try await healed(.statsDay, rows: ["read": 3, "run": 1], in: database)
-        keeper.write(memory.rows, emptying: .refused)
+        keeper.write(emptying: .refused) { memory.rows }
         await keeper.awaitPendingWrites()
         #expect(memory.adopted == [["read": 3, "run": 1]], "the store did not take the rows read")
         #expect(memory.rows == ["read": 3, "run": 5], "the run wins per key, the read rows join")
@@ -142,10 +141,32 @@ struct RowKeeperTests {
         let keeper = RowKeeper<Int>(database: database, table: .statsDay, label: "WITNESS")
         _ = keeper.startNow()
         try await healed(.statsDay, rows: ["read": 3], in: database)
-        keeper.write(["run": 5], emptying: .refused)
+        keeper.write(emptying: .refused) { ["run": 5] }
         await keeper.awaitPendingWrites()
         #expect(try rows(database).rows == ["read": 3], "a keeper without its store's rule wrote over the rows")
         #expect(keeper.startReadFailed)
+    }
+
+    /// Two writes queued in one go before the adoption, the rows readable by
+    /// then: the second write takes the memory after the adoption, so no row
+    /// the first one read leaves.
+    @Test("zwei Schriebe in einem Zug vor der Uebernahme: der zweite entfernt keine gelesene Zeile")
+    func aWriteQueuedBeforeTheAdoptionKeepsTheReadRows() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try await unreadable("stats_day", in: database)
+        let keeper = RowKeeper<Int>(database: database, table: .statsDay, label: "WITNESS")
+        _ = keeper.startNow()
+        let memory = Memory()
+        keeper.adopt = { read in memory.rows = RowKeeper.union(read: read, run: memory.rows) }
+        try await healed(.statsDay, rows: ["read": 3], in: database)
+        memory.rows["first"] = 1
+        keeper.write(emptying: .refused) { memory.rows }
+        memory.rows["second"] = 2
+        keeper.write(emptying: .refused) { memory.rows }
+        await keeper.awaitPendingWrites()
+        let after = try rows(database).rows
+        #expect(after == ["read": 3, "first": 1, "second": 2], "a write queued before the adoption removed rows it read: \(after)")
     }
 
     /// The positions that never reached the server, after a failed start:

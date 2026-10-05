@@ -59,11 +59,8 @@ final class PlaybackContext: ObservableObject {
         ids = loaded?.ids ?? []
         sourceTitle = loaded?.sourceTitle
         // One row: a context this run wrote is the newer word over the row
-        // read after a failed start.
-        keeper.adopt = { [weak self] read in
-            guard let self else { return read }
-            return RowKeeper.union(read: read, run: [Self.rowKey: Stored(version: 1, sourceTitle: self.sourceTitle, ids: self.ids)])
-        }
+        // read after a failed start, so nothing of that row goes into memory.
+        keeper.adopt = { _ in }
         Logger.library.notice("CONTEXT start: entries=\(self.ids.count)")
     }
 
@@ -120,7 +117,9 @@ final class PlaybackContext: ObservableObject {
     /// collection start.
     private func save() {
         guard persists else { return }
-        keeper?.write([Self.rowKey: Stored(version: 1, sourceTitle: sourceTitle, ids: ids)], emptying: .refused)
+        keeper?.write(emptying: .refused) { [weak self] in
+            self.map { [Self.rowKey: Stored(version: 1, sourceTitle: $0.sourceTitle, ids: $0.ids)] }
+        }
     }
 }
 

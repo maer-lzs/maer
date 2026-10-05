@@ -60,9 +60,8 @@ final class SyncQueueRowStorage: SyncQueueStorage {
         // Rows read after a failed start join the queue; an entry this run
         // queued again is the newer one.
         keeper.adopt = { [weak self] read in
-            guard let self else { return read }
+            guard let self else { return }
             self.pending = RowKeeper.union(read: read, run: self.pending)
-            return self.pending
         }
         Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count)")
     }
@@ -79,7 +78,7 @@ final class SyncQueueRowStorage: SyncQueueStorage {
     /// sent again.
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
         self.pending = pending
-        keeper.write(pending, emptying: .allowed)
+        keeper.write(emptying: .allowed) { [weak self] in self?.pending }
     }
 
     /// Waits for every queued write of the rows (tests, teardown).

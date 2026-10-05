@@ -62,14 +62,12 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // Rows read after a failed start join the ring (trimmed again) and
         // the stamps (each stamp only moves forward).
         entriesKeeper.adopt = { [weak self] read in
-            guard let self else { return read }
+            guard let self else { return }
             self.entries = SyncHistory.trimmed(Array(RowKeeper.union(read: read, run: Self.keyed(self.entries)).values))
-            return Self.keyed(self.entries)
         }
         checkedKeeper.adopt = { [weak self] read in
-            guard let self else { return read }
+            guard let self else { return }
             self.lastChecked = read.merging(self.lastChecked) { max($0, $1) }
-            return self.lastChecked
         }
         Logger.library.notice("sync history loaded: \(self.entries.count) entries")
     }
@@ -91,7 +89,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         setChecked(entry.service, at: entry.startedAt)
         Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
         // The trim's drop-outs become the diff's removals.
-        entriesKeeper.write(Self.keyed(entries), emptying: .refused)
+        entriesKeeper.write(emptying: .refused) { [weak self] in self.map { Self.keyed($0.entries) } }
     }
 
     func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date = Date()) {
@@ -112,7 +110,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         lastChecked[key] = date
         guard date.timeIntervalSince(lastPersistedAt) >= 30 else { return }
         lastPersistedAt = date
-        checkedKeeper.write(lastChecked, emptying: .refused)
+        checkedKeeper.write(emptying: .refused) { [weak self] in self?.lastChecked }
     }
 
     /// Stable device id (persistent random UUID. Portable to non-Apple
