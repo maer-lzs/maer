@@ -244,6 +244,34 @@ struct UserChoiceCloudSyncTests {
         #expect(b.defaults.object(forKey: oldSort) as? Bool == false, "a sort from before this build arrives too")
     }
 
+    /// A source switch chosen on A arrives on B and takes the one door of
+    /// the sources, as a switch flipped on B does; a choice that is no
+    /// source switch does not.
+    @Test("ein uebernommener Quellen-Schalter wirkt wie ein hier gestellter, eine andere Wahl nicht")
+    func anAdoptedSourceSwitchTakesTheSourceDoor() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        final class Doors { var taken = 0 }
+        let doors = Doors()
+        b.sync.sourcesAdopted = { doors.taken += 1 }
+
+        a.defaults.set(true, forKey: AppStorageKeys.subsonicEnabled)
+        a.sync.noteScalar(key: AppStorageKeys.subsonicEnabled, value: true)
+        b.sync.reconcile()
+        #expect(b.defaults.object(forKey: AppStorageKeys.subsonicEnabled) as? Bool == true, "the precondition: the switch arrived")
+        #expect(doors.taken == 1, "the adopted switch left the clients as they were")
+
+        a.sync.noteScalar(key: "musicSortOption", value: "nameZA")
+        b.sync.reconcile()
+        #expect(b.defaults.object(forKey: "musicSortOption") as? String == "nameZA", "the precondition: the sort arrived")
+        #expect(doors.taken == 1, "a choice that is no source switch took the source door")
+
+        let notTravelling = UserChoiceCatalog.sourceSwitches.filter { UserChoiceCatalog.statics[$0] != .travels }
+        #expect(notTravelling.isEmpty, "a source switch that does not travel names nothing: \(notTravelling)")
+    }
+
     /// Plan A: what the adoption announces is what an open show page and its
     /// sheet ask the rule with, and reading again gives B what A chose.
     @Test("Eine Uebernahme meldet die Werte der Sendung so, dass die offene Seite sie nachliest, und nur fuer diese Sendung")

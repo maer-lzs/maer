@@ -69,6 +69,10 @@ final class UserChoiceCloudSync {
     /// Applies adopted subscription statements: feeds to follow (with the
     /// moment of subscribing) and feed keys to leave. Set by the store.
     var subscriptionAdopter: ((_ added: [(feedURL: String, t: Double)], _ removed: [String]) -> Void)?
+    /// The one door of the sources, taken when an adoption changed a tab or
+    /// source switch (`UserChoiceCatalog.touchesSources`), as a change here
+    /// takes it: the clients are built and the sources signal goes out.
+    var sourcesAdopted: @MainActor () -> Void = { AppSession.shared.reconfigureSources() }
     /// Collected during one reconcile, handed to the adopter once at its end.
     private var pendingSubscriptionsAdded: [(feedURL: String, t: Double)] = []
     private var pendingSubscriptionsRemoved: [String] = []
@@ -457,6 +461,7 @@ final class UserChoiceCloudSync {
             }
             NotificationCenter.default.post(name: .userChoicesAdopted, object: nil,
                                             userInfo: ["keys": keys])
+            if UserChoiceCatalog.touchesSources(keys) { sourcesAdopted() }
             isAdopting = false
         }
     }

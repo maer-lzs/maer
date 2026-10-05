@@ -237,6 +237,21 @@ nonisolated enum UserChoiceCatalog {
         "userChoiceStamps": .machine,
     ]
 
+    /// The travelling tab and source switches whose change here goes
+    /// through the one door of the sources (settings and the source map):
+    /// an adopted one takes the same door, or the clients stay as they were
+    /// until the next foreground.
+    static let sourceSwitches: Set<String> = [
+        "audiobooksTabEnabled", "podcastsTabEnabled", "musicTabEnabled", "radioTabEnabled",
+        "absAudiobooksEnabled", "absPodcastsEnabled", "rssEnabled", "subsonicEnabled",
+        "jellyfinEnabled", "radioEnabled",
+    ]
+
+    /// Whether an adoption of these keys changes which sources are active.
+    static func touchesSources(_ keys: [String]) -> Bool {
+        keys.contains { sourceSwitches.contains($0) }
+    }
+
     /// Dynamic key families (`<prefix><id>`) → class.
     static let prefixes: [String: UserChoiceClass] = [
         "playbackRate.": .travels,

@@ -39,9 +39,9 @@ final class AppSession: ObservableObject {
     /// stop) and refreshes the tab bar. Every library toggle in Settings calls
     /// this. The ONE entry point so a flipped toggle takes effect everywhere.
     func reconfigureSources() {
-        SubsonicProvider.shared.reloadConfig()   // rebuilds/nils client + notifies
-        JellyfinProvider.shared.reloadConfig()
-        notifySourcesChanged()                   // toggles that don't touch the music clients
+        subsonicProvider.reloadConfig()   // rebuilds/nils client + notifies
+        jellyfinProvider.reloadConfig()
+        notifySourcesChanged()            // toggles that don't touch the music clients
     }
 
     /// Owns the APIClient (built from the keychain). Base URL and token are

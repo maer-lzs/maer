@@ -114,6 +114,26 @@ struct MusicViewModelTests {
         #expect(controls.pageRequests == requests, "asking the reachability is no load")
     }
 
+    /// The way back: a full page, the server goes away, the server comes
+    /// back. The page loads by itself; the attempt gate of the first run
+    /// stood and refused the load, and "no server" stood over a server that
+    /// was there until the person tapped retry.
+    @Test("eine Quelle, die wiederkommt, laedt von selbst: voll, weg, wieder da")
+    func aServerThatComesBackLoadsByItself() async {
+        let controls = Controls()
+        let vm = makeVM(controls)
+        await vm.loadIfNeeded()
+        #expect(!vm.albums.isEmpty && !vm.serverMissingHere, "the precondition: a full page with its server")
+        controls.reachable = false
+        await vm.sourcesChanged()
+        #expect(vm.serverMissingHere, "the precondition: the page shows the way out")
+        let requests = controls.pageRequests
+        controls.reachable = true
+        await vm.sourcesChanged()
+        #expect(!vm.serverMissingHere, "no server stands over a server that is back")
+        #expect(controls.pageRequests.count == requests.count + 1, "the page did not load when its server came back")
+    }
+
     /// The tab mounted without a server never loads (its task waits for a
     /// configured server), and before its first run an empty tab shows the
     /// loading state. When the server is entered, the change of the sources

@@ -161,6 +161,10 @@ final class MusicViewModel: ObservableObject {
                                               asked: hasAsked) {
         case .showMissing:
             serverMissingHere = true
+            // As in `loadIfNeeded`: a page without its server decided
+            // nothing, so the attempt gate opens again and the server's
+            // return (`.reload`) loads it.
+            gate.reopen()
             Logger.music.notice("music server went away on this device")
         case .reload:
             await loadIfNeeded()
