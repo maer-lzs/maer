@@ -27,6 +27,16 @@ nonisolated enum MetricGate {
         case .production, .unknown: return false
         }
     }
+
+    /// Whether the environment may be asked of the App Store. An install
+    /// that carries a provisioning profile (a build from Xcode, or an ad hoc
+    /// one) holds no App Store transaction; asking for one fetched it, and
+    /// the system asked the person to sign in at every start (measured on a
+    /// device without an Apple account, iOS 18.0.1). Such an install is
+    /// Xcode's, without asking.
+    static func asksTheStore(carriesProfile: Bool) -> Bool {
+        !carriesProfile
+    }
 }
 
 /// One MetricKit payload as this device keeps it: the few numbers the

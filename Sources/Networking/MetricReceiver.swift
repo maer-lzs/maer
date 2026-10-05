@@ -58,10 +58,16 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     }
     private static var started = false
 
-    /// The environment that signed this install. `AppTransaction.shared`
-    /// never asks the person to sign in (only a refresh would, and none is
-    /// made here); it throws when nobody is signed in or nothing is there.
-    static func readEnvironment() async -> MetricGate.Environment {
+    /// The environment that signed this install. An install with a
+    /// provisioning profile is Xcode's and the App Store is not asked
+    /// (`MetricGate.asksTheStore`): there `AppTransaction.shared` asked the
+    /// person to sign in at every start. TestFlight and App Store installs
+    /// carry no profile and are asked; whether the system asks for a
+    /// sign-in there is not measured. It throws when nothing is there.
+    static func readEnvironment(
+        carriesProfile: Bool = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") != nil
+    ) async -> MetricGate.Environment {
+        guard MetricGate.asksTheStore(carriesProfile: carriesProfile) else { return .xcode }
         do {
             let transaction: AppTransaction
             switch try await AppTransaction.shared {

@@ -23,6 +23,23 @@ struct MetricGateTests {
         #expect(!MetricGate.receives(environment: .unknown, isDebugBuild: false), "an unread environment is off")
     }
 
+    /// An install with a provisioning profile never asks the App Store:
+    /// there the read asked the person to sign in at every start. The rule,
+    /// the receiver answering Xcode's without the store, and the question
+    /// standing before the only read of the transaction.
+    @Test("eine Installation mit Profil fragt den Store nie, sie ist die von Xcode", .needsTheSources)
+    func anInstallWithAProfileNeverAsksTheStore() async throws {
+        #expect(!MetricGate.asksTheStore(carriesProfile: true), "a profile install asked the store")
+        #expect(MetricGate.asksTheStore(carriesProfile: false))
+        #expect(await MetricReceiver.readEnvironment(carriesProfile: true) == .xcode)
+        let receiver = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        let question = try #require(receiver.range(of: "MetricGate.asksTheStore(carriesProfile:"))
+        let read = try #require(receiver.range(of: "AppTransaction.shared"))
+        #expect(question.upperBound <= read.lowerBound, "the transaction is read before the profile was asked")
+        #expect(receiver.components(separatedBy: "AppTransaction.shared").count == 2, "one read of the transaction")
+    }
+
     static let now = Date(timeIntervalSince1970: 1_759_400_000)
     static func record(_ kind: MetricRecord.Kind = .metrics, daysAgo: Double) -> MetricRecord {
         let end = now.addingTimeInterval(-daysAgo * 86_400)
