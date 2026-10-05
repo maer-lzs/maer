@@ -281,6 +281,14 @@ final class LocalLibrary: ObservableObject {
     /// unknown, so a write removes only rows it read.
     private func load() {
         entries = (keeper.startNow() ?? [:]).values.sorted { $0.addedAt > $1.addedAt }
+        // Entries read after a failed start join the index; an entry this
+        // run wrote again is the newer one.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            let merged = RowKeeper.union(read: read, run: Self.keyed(self.entries))
+            self.entries = merged.values.sorted { $0.addedAt > $1.addedAt }
+            return merged
+        }
         Logger.library.notice("LOCALLIB start: entries=\(self.entries.count)")
     }
 

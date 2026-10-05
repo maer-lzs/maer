@@ -58,6 +58,12 @@ final class PlaybackContext: ObservableObject {
         let loaded = keeper.startNow()?[Self.rowKey]
         ids = loaded?.ids ?? []
         sourceTitle = loaded?.sourceTitle
+        // One row: a context this run wrote is the newer word over the row
+        // read after a failed start.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            return RowKeeper.union(read: read, run: [Self.rowKey: Stored(version: 1, sourceTitle: self.sourceTitle, ids: self.ids)])
+        }
         Logger.library.notice("CONTEXT start: entries=\(self.ids.count)")
     }
 

@@ -62,8 +62,15 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     /// The whole table; nil when it holds no rows. An unreadable row is
     /// skipped and counted.
     func loadAll() async throws -> [String: Value]? {
-        let load = Self.decode(try await connection.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
+        let load = try await self.load()
         return load.rows.isEmpty ? nil : load.rows
+    }
+
+    /// The whole table with the count of rows that did not decode, for a
+    /// read after a failed start (`RowKeeper.write`). Throws when the read
+    /// fails.
+    func load() async throws -> Load {
+        Self.decode(try await connection.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
     }
 
     /// The same read at init time, through a reader of its own, for the

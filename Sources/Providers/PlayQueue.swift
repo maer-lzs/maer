@@ -57,6 +57,12 @@ final class PlayQueue: ObservableObject {
             return
         }
         ids = keeper.startNow()?[Self.rowKey] ?? []
+        // One row: a queue this run wrote is the newer word over the row read
+        // after a failed start.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            return RowKeeper.union(read: read, run: [Self.rowKey: self.ids])
+        }
         Logger.library.notice("QUEUE start: entries=\(self.ids.count)")
     }
 

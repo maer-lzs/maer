@@ -57,6 +57,13 @@ final class SyncQueueRowStorage: SyncQueueStorage {
     init(database: MaerDatabase) {
         self.keeper = RowKeeper(database: database, table: .pendingSync, label: "SYNCQUEUE")
         pending = keeper.startNow() ?? [:]
+        // Rows read after a failed start join the queue; an entry this run
+        // queued again is the newer one.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            self.pending = RowKeeper.union(read: read, run: self.pending)
+            return self.pending
+        }
         Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count)")
     }
 

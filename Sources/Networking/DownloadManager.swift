@@ -210,6 +210,14 @@ final class DownloadManager {
     /// The rows; a failed read starts empty with the base unknown.
     private func loadDetails() {
         details = keeper.startNow() ?? [:]
+        // Marks read after a failed start join the ones this run wrote; a
+        // download this run marked again is the newer mark.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            self.details = RowKeeper.union(read: read, run: self.details)
+            self.songIndexFor = nil
+            return self.details
+        }
         Logger.library.notice("DOWNLOADS start: marked=\(self.details.count)")
     }
 

@@ -14,11 +14,11 @@ import OSLog
 /// A missing file is a fresh install and a missing table is empty, both
 /// leave a fresh base. A read that could not read every row leaves the base
 /// unknown with what it did read; a write then removes a row it read and
-/// that is gone, never one nobody could read (a read that failed as a
-/// whole read nothing, so the store starts empty and removes nothing).
-/// After the first landed write the base is known and later removals
-/// apply. A failed write is logged and leaves the base where it was, so
-/// the next write diffs against what really landed.
+/// that is gone, never one nobody could read. A read that failed as a whole
+/// read nothing: no write goes until the rows are read and the store took
+/// them (`write`, `adopt`). After the first landed write the base is known
+/// and later removals apply. A failed write is logged and leaves the base
+/// where it was, so the next write diffs against what really landed.
 @MainActor
 final class RowKeeper<Value: Codable & Equatable & Sendable> {
     typealias Rows = [String: Value]
@@ -31,9 +31,15 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// or the start read.
     private(set) var base: RowBase<Rows> = .fresh
     /// Whether the start read failed as a whole: the rows may hold any row
-    /// the store's memory lacks, and a later write does not change that. A
-    /// pass that must reach every row (the id move) waits while it holds.
+    /// the store's memory lacks. No write changes it; only a read that
+    /// succeeds before a write (`write`) does. A pass that must reach every
+    /// row (the id move) waits while it holds.
     private(set) var startReadFailed = false
+    /// The store's adoption of rows read after a failed start: it takes the
+    /// rows into its memory by its rule (`union` unless it has its own) and
+    /// returns the memory to write. Every store sets it at its start; a
+    /// keeper without it holds every write over unread rows.
+    var adopt: (@MainActor (Rows) -> Rows)?
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
     /// The last handed-over write; each write waits for the one before it.
@@ -74,8 +80,32 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// whether an empty snapshot is the action of this write; when it is
     /// not, an empty snapshot that would remove rows is refused and logged.
     /// A write that matches the base is skipped by the store.
+    ///
+    /// Over rows the start could not read nothing is written: a write
+    /// replaces a row whole and nobody knows what an unread row holds. The
+    /// write reads the rows first; while they cannot be read it holds. Once
+    /// read, the store adopts them (`adopt`), the base is what was read, and
+    /// the store's memory after the adoption is written.
     func write(_ snapshot: Rows, emptying: RowEmptying) {
         chain(what: "save", priority: .utility) { rows in
+            var snapshot = snapshot
+            if self.startReadFailed {
+                guard let adopt = self.adopt else {
+                    Logger.library.error("\(self.label, privacy: .public) save held: rows not read and no adoption")
+                    return
+                }
+                let load: KeyedRowStore<Value>.Load
+                do {
+                    load = try await rows.load()
+                } catch {
+                    Logger.library.notice("\(self.label, privacy: .public) save held: rows still not read reason=\(String(describing: error), privacy: .public)")
+                    return
+                }
+                self.base = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+                self.startReadFailed = false
+                snapshot = adopt(load.rows)
+                Logger.library.notice("\(self.label, privacy: .public) rows read on save: rows=\(load.rows.count) skipped=\(load.skipped)")
+            }
             // The base is read HERE, after the write before landed or failed.
             let base = self.base
             if base.refuses(snapshot, emptying) {
@@ -85,6 +115,12 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             _ = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
             self.base = .known(snapshot)
         }
+    }
+
+    /// The adoption most stores take: the rows read, with what this run holds
+    /// over them, the run winning per key (it is the newer word).
+    nonisolated static func union(read: Rows, run: Rows) -> Rows {
+        read.merging(run) { _, fromRun in fromRun }
     }
 
     /// Waits for every queued write (tests, teardown).

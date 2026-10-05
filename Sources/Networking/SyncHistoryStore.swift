@@ -59,6 +59,18 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         self.checkedKeeper = RowKeeper(database: database, table: .syncLastChecked, label: "HISTORY checked")
         entries = SyncHistory.trimmed(Array((entriesKeeper.startNow() ?? [:]).values))
         lastChecked = checkedKeeper.startNow() ?? [:]
+        // Rows read after a failed start join the ring (trimmed again) and
+        // the stamps (each stamp only moves forward).
+        entriesKeeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            self.entries = SyncHistory.trimmed(Array(RowKeeper.union(read: read, run: Self.keyed(self.entries)).values))
+            return Self.keyed(self.entries)
+        }
+        checkedKeeper.adopt = { [weak self] read in
+            guard let self else { return read }
+            self.lastChecked = read.merging(self.lastChecked) { max($0, $1) }
+            return self.lastChecked
+        }
         Logger.library.notice("sync history loaded: \(self.entries.count) entries")
     }
 
