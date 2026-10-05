@@ -602,10 +602,11 @@ final class LibraryViewModel: ObservableObject {
     /// state is already there. A load with an available source brings its
     /// own fallback to the cache; a load without one rebuilds empty, counts
     /// all the same, and then the cached render shows nothing for the rest
-    /// of the process. That is right when the source is switched off, and
-    /// the same exit is taken when its access only cannot be read: the
-    /// server token is read at start from the keychain, unreadable before
-    /// the first unlock after a restart.
+    /// of the process. That is right when the source is switched off. A
+    /// load while the source's access could not be read yet
+    /// (`accessUnknown`, before the first unlock after a restart) does not
+    /// count: the cached render may still lay its state down, and the load
+    /// after the access reads replaces it.
     private var loadsBegun = 0
 
     #if DEBUG
@@ -651,7 +652,7 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func loadLibrary() async {
-        loadsBegun += 1
+        if !provider.accessUnknown { loadsBegun += 1 }
         #if DEBUG
         await testAfterLoadBegan?()
         #endif

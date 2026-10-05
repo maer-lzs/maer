@@ -118,6 +118,12 @@ nonisolated enum KeychainStore {
     }
 
     static func load(forKey key: String) -> String? {
+        read(forKey: key).value
+    }
+
+    /// The same read, saying whether a missing value is missing or could
+    /// not be read (`KeychainRead`).
+    static func read(forKey key: String) -> KeychainRead {
         // Synchronizable ANY: a device that inherited an item through the
         // iCloud keychain must find it here, and a local item must keep
         // being found after the switch was flipped.
@@ -131,16 +137,14 @@ nonisolated enum KeychainStore {
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else {
-            // An unreadable item is NOT the same as a missing
-            // one. Log every non-notFound failure (e.g. -25308
-            // interactionNotAllowed while the device is locked).
-            if status != errSecItemNotFound {
-                Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status)")
-            }
-            return nil
+        let read = KeychainRead.of(status: status, data: result as? Data)
+        // An unreadable item is NOT the same as a missing one. Log every
+        // non-notFound failure (e.g. -25308 interactionNotAllowed while the
+        // device is locked).
+        if status != errSecSuccess && status != errSecItemNotFound {
+            Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status)")
         }
-        return String(data: data, encoding: .utf8)
+        return read
     }
 
     /// 🔴 Every deletion names its CALLER. the user also
@@ -159,6 +163,29 @@ nonisolated enum KeychainStore {
         ]
         let status = SecItemDelete(query as CFDictionary)
         Logger.library.notice("KEYCHAIN delete key=\(key, privacy: .public) by=\(String(describing: file), privacy: .public)#\(String(describing: caller), privacy: .public) status=\(status)")
+    }
+}
+
+/// What a read of one item found. An item that could not be read (the
+/// device not yet unlocked since it started, -25308) is not a missing one:
+/// a reader that holds the answer for the process asks again later.
+nonisolated enum KeychainRead: Equatable, Sendable {
+    case value(String)
+    case missing
+    case unreadable
+
+    /// Bytes that do not decode are no access, and reading them again does
+    /// not change that: missing, as the plain read always answered.
+    static func of(status: OSStatus, data: Data?) -> KeychainRead {
+        if status == errSecItemNotFound { return .missing }
+        guard status == errSecSuccess else { return .unreadable }
+        guard let data, let text = String(data: data, encoding: .utf8) else { return .missing }
+        return .value(text)
+    }
+
+    var value: String? {
+        if case .value(let text) = self { return text }
+        return nil
     }
 }
 

@@ -174,9 +174,9 @@ struct ColdStartCacheTests {
         #expect(!vm.entries.map(\.id).contains("stale"), "the disk state lay down after a finished load")
     }
 
-    /// A load without an available source (switched off, or its access not
-    /// readable yet) brings no fallback to the cache: it rebuilds empty and
-    /// counts as a load, so the cached render after it shows nothing.
+    /// A load without an available source (switched off) brings no fallback
+    /// to the cache: it rebuilds empty and counts as a load, so the cached
+    /// render after it shows nothing.
     @Test("ein Laden ohne verfuegbare Quelle faellt auf leer, danach zeigt der Cache-Weg nichts")
     func aLoadWithoutAnAvailableSourceLeavesTheLibraryEmpty() async throws {
         let home = try tempDatabase()
@@ -190,6 +190,30 @@ struct ColdStartCacheTests {
         #expect(!vm.entries.map(\.id).contains("fresh"), "the precondition: the source was not asked")
         await vm.showCachedLibraryIfAvailable()
         #expect(vm.entries.isEmpty, "a load without a source fell back to the cache: \(vm.entries.map(\.id))")
+    }
+
+    /// A load while the source's access could not be read yet is no load:
+    /// the cached render still lays its state down, and a load once the
+    /// access reads replaces it.
+    @Test("ein Laden mit noch nicht lesbarem Zugang zaehlt nicht, der Cache-Weg zeigt danach den Stand")
+    func aLoadWithAnUnknownAccessDoesNotCount() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
+        let provider = MockProvider()
+        provider.items = [item("fresh")]
+        provider.available = false
+        provider.unknownAccess = true
+        let vm = LibraryViewModel(provider: provider, database: home.database)
+        await vm.loadLibrary()
+        #expect(!vm.entries.map(\.id).contains("fresh"), "the precondition: the source was not asked")
+        await vm.showCachedLibraryIfAvailable()
+        #expect(vm.entries.map(\.id).contains("stale"), "a load before the access read counted: \(vm.entries.map(\.id))")
+
+        provider.available = true
+        provider.unknownAccess = false
+        await vm.loadLibrary()
+        #expect(vm.entries.map(\.id).contains("fresh"), "the load after the access read: \(vm.entries.map(\.id))")
     }
 
     // MARK: - Stored library id

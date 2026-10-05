@@ -104,6 +104,16 @@ enum AppHousekeeping {
         Task { await NavidromeRekeyRun.runIfDue(by: "maintenance") }
     }
 
+    /// The book server's access could not be read at start (before the first
+    /// unlock after a restart): every return reads it again, and once it
+    /// reads as signed in the library loads, without a force-quit. The
+    /// return is the occasion: a process started before the first unlock
+    /// reaches the person only through it.
+    static func rereadUnknownAccess(auth: AuthViewModel, load: @escaping @MainActor () async -> Void) {
+        guard auth.rereadIfUnknown() else { return }
+        Task { await load() }
+    }
+
     /// The app-level half of a scene change. The VIEW keeps its own half (its
     /// library reload, progress refresh, quick actions), because those need
     /// view state and this does not.
@@ -127,7 +137,9 @@ enum AppHousekeeping {
             Task { await CarrierRefreshers.refreshAll(by: "scene active") }
             // Recheck the active sources and reconnect silently. An outage
             // must never require a force-quit to recover.
-            AppSession.shared.musicProvider.reconnectIfNeeded()
+            let session = AppSession.shared
+            session.musicProvider.reconnectIfNeeded()
+            rereadUnknownAccess(auth: session.authViewModel) { await session.libraryViewModel.loadLibrary() }
             // The cover cap on returning is NOT here: it hangs on the calm
             // gate, and „when is the scrolling calm" is the view's question.
             // A type that is no view and schedules UI work is exactly the

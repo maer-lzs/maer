@@ -69,6 +69,10 @@ final class APIClient {
     /// load and search fan-out skip it, so no audiobooks server calls fire.
     var isAvailable: Bool { AppStorageKeys.absAudiobooksActive && token?.isEmpty == false }
 
+    /// Set by the sign-in state while the stored access could not be read
+    /// (`AuthViewModel.accessUnknown`); the client then has no token.
+    var accessUnknown = false
+
     init(baseURL: URL, token: String? = nil) {
         self.baseURL = baseURL
         self.token = token

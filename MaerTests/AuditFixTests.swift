@@ -179,6 +179,9 @@ final class MockProvider: AudioProvider {
     /// Whether the source can be asked (switched off, or its access unreadable).
     var available = true
     var isAvailable: Bool { available }
+    /// Whether its access could not be read yet (`AudioProvider.accessUnknown`).
+    var unknownAccess = false
+    var accessUnknown: Bool { unknownAccess }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         [ABSLibrary(id: "mock-lib", name: "Mock")]

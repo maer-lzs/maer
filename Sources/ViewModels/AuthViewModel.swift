@@ -41,20 +41,58 @@ final class AuthViewModel: ObservableObject {
     /// fact, so the source page and the source map read the same thing.
     var serverAddress: String { apiClient.baseURL.absoluteString }
 
-    init() {
-        let storedURLString = KeychainStore.load(forKey: KeychainKey.serverURL) ?? ""
-        let storedToken = KeychainStore.load(forKey: KeychainKey.apiToken)
+    /// The stored access could not be read (the device not unlocked since it
+    /// started): the person is not known to be signed out, so the sign-in
+    /// state stays, the client has no token and the source is not
+    /// available, until `rereadIfUnknown` reads it.
+    @Published private(set) var accessUnknown: Bool
+
+    /// The keychain read, a seam for the witness.
+    private let readKeychain: (String) -> KeychainRead
+
+    init(read: @escaping (String) -> KeychainRead = { KeychainStore.read(forKey: $0) }) {
+        self.readKeychain = read
+        let storedURL = read(KeychainKey.serverURL)
+        let storedToken = read(KeychainKey.apiToken)
+        let state = SignInState.of(url: storedURL, token: storedToken)
+        let storedURLString = storedURL.value ?? ""
 
         self.serverURLString = storedURLString
         let url = Self.normalizedURL(from: storedURLString) ?? URL(string: "https://example.invalid")!
-        self.apiClient = APIClient(baseURL: url, token: storedToken)
-        self.isLoggedIn = (storedToken?.isEmpty == false) && !storedURLString.isEmpty
+        self.apiClient = APIClient(baseURL: url, token: storedToken.value)
+        self.isLoggedIn = state.signedIn
+        self.accessUnknown = state.unknown
+        apiClient.accessUnknown = state.unknown
+        if state.unknown {
+            Logger.library.notice("ABS access unreadable at start: signed in kept, read again on return")
+        }
 
         // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
             self.markSessionSuspect()
         }
+    }
+
+    /// Reads the access again while it is unknown. Returns true when it now
+    /// reads as signed in: the client has its address and token, and the
+    /// caller loads the library. A missing access ends as signed out.
+    @discardableResult
+    func rereadIfUnknown() -> Bool {
+        guard accessUnknown else { return false }
+        let storedURL = readKeychain(KeychainKey.serverURL)
+        let storedToken = readKeychain(KeychainKey.apiToken)
+        let state = SignInState.of(url: storedURL, token: storedToken)
+        guard !state.unknown else { return false }
+        let storedURLString = storedURL.value ?? ""
+        serverURLString = storedURLString
+        if let url = Self.normalizedURL(from: storedURLString) { apiClient.updateBaseURL(url) }
+        if let token = storedToken.value { apiClient.updateToken(token) }
+        apiClient.accessUnknown = false
+        accessUnknown = false
+        isLoggedIn = state.signedIn
+        Logger.library.notice("ABS access read again: signedIn=\(state.signedIn, privacy: .public)")
+        return state.signedIn
     }
 
     /// Translates technical connection errors into clear, actionable messages
@@ -146,6 +184,8 @@ final class AuthViewModel: ObservableObject {
             // `needsReauth` is set, so nothing else would have cleared them.
             sessionSuspect = false
             needsReauth = false
+            accessUnknown = false
+            apiClient.accessUnknown = false
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
@@ -200,6 +240,8 @@ final class AuthViewModel: ObservableObject {
         isLoggedIn = false
         sessionSuspect = false
         needsReauth = false
+        accessUnknown = false
+        apiClient.accessUnknown = false
         Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
     }
@@ -212,5 +254,17 @@ final class AuthViewModel: ObservableObject {
             trimmed = "https://" + trimmed
         }
         return URL(string: trimmed)
+    }
+}
+
+/// What the stored address and token say about signing in. Either one
+/// unreadable makes the answer unknown, and unknown keeps the person signed
+/// in: a start before the first unlock after a restart must not look like a
+/// sign-out. A missing value is a real answer and signs out.
+nonisolated enum SignInState {
+    static func of(url: KeychainRead, token: KeychainRead) -> (signedIn: Bool, unknown: Bool) {
+        if url == .unreadable || token == .unreadable { return (true, true) }
+        let signedIn = !(url.value ?? "").isEmpty && !(token.value ?? "").isEmpty
+        return (signedIn, false)
     }
 }

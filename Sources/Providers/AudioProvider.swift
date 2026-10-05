@@ -90,6 +90,11 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// (Subsonic toggle, podcast subscriptions) were never consulted (hence the
     /// always-on Music tab).
     var isAvailable: Bool { get }
+    /// Whether the source's stored access could not be read yet (the device
+    /// not unlocked since it started): it is not available, and it is not
+    /// known to be signed out either. A requirement for the same reason as
+    /// `isAvailable`; default false.
+    var accessUnknown: Bool { get }
 
     // MARK: Library
     func fetchLibraries() async throws -> [ABSLibrary]
@@ -170,6 +175,7 @@ extension AudioProvider {
     /// Whether the source currently has content (drives tab visibility).
     /// Default: always available; podcasts e.g. only with a subscription.
     var isAvailable: Bool { true }
+    var accessUnknown: Bool { false }
 }
 
 /// Search is a PROVIDER CAPABILITY, not a feature island. Every provider
