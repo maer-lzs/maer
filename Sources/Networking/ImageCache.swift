@@ -228,8 +228,14 @@ final class ImageCache {
     /// the purgeable tier alone (`readCandidates`), so a file landing there
     /// under a waiting name is what that gate answers instead of the network.
     nonisolated static func gateOfWaitingReads(_ target: URL, cache: URL, waiting: Set<String>) -> Bool {
-        target.deletingLastPathComponent().standardizedFileURL == cache.standardizedFileURL
-            && waiting.contains(target.lastPathComponent)
+        stands(target, in: cache) && waiting.contains(target.lastPathComponent)
+    }
+
+    /// The one answer to "which tier holds this file": its folder, compared
+    /// as standardized paths (a trailing slash or a dot segment makes no
+    /// other folder).
+    nonisolated static func stands(_ file: URL, in directory: URL) -> Bool {
+        file.deletingLastPathComponent().standardizedFileURL.path == directory.standardizedFileURL.path
     }
 
     /// The file names in a cover directory.
@@ -597,7 +603,7 @@ final class ImageCache {
         guard invalidations[fileKey, default: 0] == startedAt,
               refreshing.contains(fileKey) == waitingAtStart else { return nil }
         guard waitingAtStart else { return name as NSString }
-        return source.deletingLastPathComponent().path == persistentDirectory.path ? Self.waitingName(name) : nil
+        return Self.stands(source, in: persistentDirectory) ? Self.waitingName(name) : nil
     }
 
     /// The first of `candidates` that holds a picture, as a thumbnail, with
@@ -951,13 +957,19 @@ final class ImageCache {
         // Fresh bytes of the new address in the cache make the carried copy
         // from before the old address's invalidation the one too many: it
         // goes, and the new address does not wait (`invalidate` would remove
-        // exactly those bytes). The moved download then has no persistent
-        // copy until the next sweep lifts the fresh file (its address is
-        // active); until then the cache's TTL is the only bound.
+        // exactly those bytes). The fresh file goes up under the new name in
+        // the same step, so the moved download keeps a persistent copy; the
+        // new address does not wait, so its gate reads that tier too. Were
+        // the new address waiting itself, its cache file stays down.
         let newCached = diskDirectory.appendingPathComponent(key(for: new))
         do {
-            if fm.fileExists(atPath: target.path) || (oldWaits && fm.fileExists(atPath: newCached.path)) {
+            if fm.fileExists(atPath: target.path) {
                 try fm.removeItem(at: source)
+            } else if oldWaits && fm.fileExists(atPath: newCached.path) {
+                try fm.removeItem(at: source)
+                if !refreshing.contains(key(for: new)) {
+                    try fm.moveItem(at: newCached, to: target)
+                }
             } else {
                 try fm.moveItem(at: source, to: target)
                 if oldWaits {
@@ -1005,8 +1017,7 @@ final class ImageCache {
         let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waiting) }
         let placed = Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
             + Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
-        let intoCache = placed.filter { $0.deletingLastPathComponent().standardizedFileURL == cache.standardizedFileURL }
-            .map(\.lastPathComponent)
+        let intoCache = placed.filter { Self.stands($0, in: cache) }.map(\.lastPathComponent)
         guard !intoCache.isEmpty else { return }
         await MainActor.run { self.clearWaitingFromCache(names: intoCache) }
     }

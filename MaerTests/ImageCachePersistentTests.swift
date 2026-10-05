@@ -449,8 +449,10 @@ struct ImageCachePersistentTests {
     /// Fresh bytes of the new address in the cache: the carried copy from
     /// before the old address's invalidation is the one too many and goes,
     /// and the new address does not wait, so every reader finds the fresh
-    /// bytes (an invalidation would remove exactly those).
-    @Test("ein Umbenennen macht frische Bytes der neuen Adresse nie unsichtbar")
+    /// bytes (an invalidation would remove exactly those). They go up under
+    /// the new name in the same step: the moved download keeps a persistent
+    /// copy, not only from the next sweep on.
+    @Test("ein Umbenennen macht frische Bytes der neuen Adresse nie unsichtbar und hebt sie fuer den Download hoch")
     func renamingKeepsFreshBytesOfTheNewAddress() async {
         let tag = UUID().uuidString
         let old = navidromeCover("old-\(tag)")
@@ -464,9 +466,11 @@ struct ImageCachePersistentTests {
         }
         ImageCache.shared.renamePersistent(from: old, to: new)
         await ImageCache.shared.testDiskSettled(new)
-        #expect(ImageCache.shared.testCacheBytes(new) == fresh, "the fresh bytes of the new address went")
+        #expect(ImageCache.shared.testPersistentBytes(new) == fresh,
+                "the fresh bytes did not go up, or the copy from before the invalidation took the new name")
+        #expect(ImageCache.shared.testCacheBytes(new) == nil, "the fresh bytes stand twice")
         #expect(!ImageCache.shared.testIsRefreshing(new), "the new address waits although fresh bytes stand")
-        #expect(!ImageCache.shared.testIsPersistent(new), "the copy from before the invalidation took the new name")
+        #expect(await gate(new) != nil, "the network gate of the new address finds no picture")
         #expect(!ImageCache.shared.testIsPersistent(old), "the carried copy stayed under the old name")
     }
 
@@ -520,7 +524,9 @@ struct ImageCachePersistentTests {
     /// The `.moveItem(` sites in the cover cache, counted: a new one has to
     /// answer whether it puts bytes of a waiting address under a name the
     /// network gate answers (makePersistent, removePersistent,
-    /// renamePersistent, the renames of step 0, up and down in the sweep).
+    /// renamePersistent twice: the kept copy and the fresh file of a new
+    /// address that does not wait, the renames of step 0, up and down in
+    /// the sweep).
     /// What the count does not see: the writers of fresh bytes (`write(to:)`,
     /// `copyItem` with `replaceItemAt`), which lay down a loaded picture.
     @Test("jede moveItem-Stelle im Cover-Cache steht im Bestand", .needsTheSources)
@@ -528,8 +534,83 @@ struct ImageCachePersistentTests {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
         // With the dot: `removeItem(` holds `moveItem(` as well.
-        #expect(ConcurrencyFenceTests.sites(of: ".moveItem(", in: code) == 6,
+        #expect(ConcurrencyFenceTests.sites(of: ".moveItem(", in: code) == 7,
                 "a move came or went; ask it the question of the gate of a waiting address, then set the count")
+    }
+
+    /// Rule 5 in the sweep, which came back twice: on the main actor the
+    /// clearing after step 0 asks the set of waiting names only, and no hop
+    /// of `renameStep` onto the main actor asks a file; files are asked in
+    /// the disk chain (`onDisk`) and in the step itself, off the main actor.
+    @Test("Regel 5 im Fegelauf: das Raeumen nach Schritt 0 fragt auf dem Hauptstrang keine Datei", .needsTheSources)
+    func theSweepAsksNoFileOnTheMainActor() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
+        let clearing = try #require(functionBody(of: "private func clearWaitingFromCache(names: [String])", in: code))
+        #expect(!Self.withoutDiskChain(clearing).contains("FileManager"),
+                "the clearing asks a file on the main actor; ask it in onDisk")
+        let step = try #require(functionBody(of: "nonisolated func renameStep(", in: code))
+        let hops = Self.blocks(after: "MainActor.run", in: step)
+        #expect(hops.count == 2, "the hops of the step onto the main actor came or went: \(hops.count)")
+        #expect(!hops.contains { $0.contains("FileManager") }, "a hop of the step asks a file on the main actor")
+        // Calibration, both ways: a file asked on the main actor is seen, one
+        // asked in the disk chain is not, and a hop's block is read whole.
+        #expect(Self.withoutDiskChain("for n in names { FileManager.default.fileExists(atPath: n) }").contains("FileManager"))
+        #expect(!Self.withoutDiskChain("for n in names { onDisk(n) { if a { FileManager.default.removeItem(at: n) } } }")
+            .contains("FileManager"))
+        #expect(Self.blocks(after: "MainActor.run", in: "await MainActor.run { if a { b() }; FileManager.default }")
+            .first?.contains("FileManager") == true)
+    }
+
+    /// The block in braces that follows `head`, brace-exact, with its braces.
+    private static func braceRange(after head: Range<String.Index>, in text: String) -> Range<String.Index>? {
+        var depth = 0
+        var open: String.Index?
+        var index = head.upperBound
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "{" {
+                if depth == 0 { open = index }
+                depth += 1
+            }
+            if character == "}", let open {
+                depth -= 1
+                if depth == 0 { return open..<text.index(after: index) }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+
+    /// `text` without the closures handed to the disk chain (`onDisk(…) { … }`).
+    private static func withoutDiskChain(_ text: String) -> String {
+        var out = text
+        while let head = out.range(of: "onDisk("), let block = braceRange(after: head, in: out) {
+            out.removeSubrange(head.lowerBound..<block.upperBound)
+        }
+        return out
+    }
+
+    /// Every block in braces that follows an occurrence of `head`.
+    private static func blocks(after head: String, in text: String) -> [String] {
+        var found: [String] = []
+        var from = text.startIndex
+        while let hit = text.range(of: head, range: from..<text.endIndex),
+              let block = braceRange(after: hit, in: text) {
+            found.append(String(text[block]))
+            from = hit.upperBound
+        }
+        return found
+    }
+
+    @Test("die Frage, in welchem Ordner eine Datei steht, hat eine Antwort fuer Schraegstrich und Punkt")
+    func theFolderQuestionHasOneAnswer() {
+        let file = URL(fileURLWithPath: "/a/b/c.png")
+        #expect(ImageCache.stands(file, in: URL(fileURLWithPath: "/a/b", isDirectory: true)))
+        #expect(ImageCache.stands(file, in: URL(fileURLWithPath: "/a/b", isDirectory: false)))
+        #expect(ImageCache.stands(file, in: URL(fileURLWithPath: "/a/./b/")))
+        #expect(!ImageCache.stands(file, in: URL(fileURLWithPath: "/a")))
+        #expect(!ImageCache.stands(file, in: URL(fileURLWithPath: "/a/bb")))
     }
 
     /// The one place that knows which covers are active is the downloads'
