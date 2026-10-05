@@ -50,14 +50,14 @@ struct SharedGrowthFenceTests {
     /// behind a default.
     nonisolated static let stock = 373
 
-    /// The same count over all of `Sources`, measured 742 today. This is the
+    /// The same count over all of `Sources`, measured 741 today. This is the
     /// number that tells a move from a collapse, and it is allowed to RISE:
     /// a store that moves into the database gains one grip on the one
     /// database, and if nothing in its neighbourhood was written twice there
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 742
+    nonisolated static let sourcesStock = 741
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

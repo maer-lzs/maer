@@ -131,6 +131,49 @@ struct ColdStartCacheTests {
         #expect(!vm.entries.map(\.id).contains("stale"), "the disk state lay down over an empty fresh library")
     }
 
+    /// A load that began before the cached render and ends after it (a
+    /// CarPlay cold start, then the phone): counted before the cached render
+    /// looked, it finds an empty library, and the disk state does not lie
+    /// down in between.
+    @Test("ein Laden, das vor dem Cache-Weg begann und danach endet: der Platten-Stand legt sich nicht hin")
+    func aLoadBegunBeforeTheCachedRenderWins() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
+        let provider = MockProvider()
+        provider.items = []
+        let vm = LibraryViewModel(provider: provider, database: home.database)
+        var renderedInside = false
+        var staleInside = true
+        vm.testAfterLoadBegan = {
+            vm.testAfterLoadBegan = nil
+            await vm.showCachedLibraryIfAvailable()
+            renderedInside = true
+            staleInside = vm.entries.map(\.id).contains("stale")
+        }
+        await vm.loadLibrary()
+        #expect(renderedInside, "the precondition: the cached render ran inside the load")
+        #expect(!staleInside, "the disk state lay down while a load that began before was still running")
+        #expect(vm.entries.isEmpty, "the precondition: the load found nothing")
+    }
+
+    /// A load ran to its end before the cached render and found an empty
+    /// library: `entries` is empty and no load is in flight, and still the
+    /// disk state does not lie down; the load brought its own fallback.
+    @Test("ein Laden, das vor dem Cache-Weg ganz lief und leer fand: der Platten-Stand legt sich nicht hin")
+    func anEmptyLoadBeforeTheCachedRenderWins() async throws {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
+        let provider = MockProvider()
+        provider.items = []
+        let vm = LibraryViewModel(provider: provider, database: home.database)
+        await vm.loadLibrary()
+        #expect(vm.entries.isEmpty, "the precondition: the load found nothing")
+        await vm.showCachedLibraryIfAvailable()
+        #expect(!vm.entries.map(\.id).contains("stale"), "the disk state lay down after a finished load")
+    }
+
     // MARK: - Stored library id
 
     /// Snapshot/restore the global selected-library key.

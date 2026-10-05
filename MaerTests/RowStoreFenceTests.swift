@@ -34,12 +34,12 @@ struct RowStoreFenceTests {
     ]
     /// `SQLiteConnection(` and `MaerDatabase.shared` outside Storage. The
     /// app's two lifecycle hooks (background, termination) ask the database
-    /// for its checkpoint; they hold no rows.
-    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die zwei
-    // Lebenszyklus-Haken der App, die die Datenbank um ihren Checkpoint
-    // bitten).
+    /// for its checkpoint through one door (`settleRows`); they hold no rows.
+    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die eine
+    // Tuer der zwei Lebenszyklus-Haken der App, die die Datenbank um ihren
+    // Checkpoint bittet).
     nonisolated static let connectionStock: [String: Int] = [
-        "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2,
+        "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 1,
         "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1, "SyncQueue.swift": 1,
         "SyncHistoryStore.swift": 1, "LocalLibrary.swift": 1, "DownloadManager.swift": 1
     ]

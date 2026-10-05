@@ -212,34 +212,30 @@ struct MaerApp: App {
                 .followsAppearanceChoice()
                 // On moving to the background, schedule the next podcast refresh.
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
-                    // Every row chain lands first, then the journal is
-                    // written back: an entry still on its way to the rows
-                    // is the one thing this end must not lose.
-                    Task {
-                        await RowKeepers.awaitAll()
-                        await MaerDatabase.shared.checkpoint()
-                    }
+                    Self.settleRows()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background {
                         PodcastRefreshService.schedule()
-                        // The ONE end that loses time: the store writes at most
-                        // every 30 s, and a swiped-away or system-killed app
-                        // never reaches pause or stop. Going to background is
-                        // the last moment reliably delivered before that.
-                        // Playback itself continues here. This only persists
-                        // what is already counted.
-                        ListeningStatsStore.shared.flush()
-                        // Every row chain lands, then the rows' journal is
-                        // written back into the file: iOS ends the app
-                        // without a clean close, and a copy of the file
-                        // alone would lose the journal.
-                        Task {
-                            await RowKeepers.awaitAll()
-                            await MaerDatabase.shared.checkpoint()
-                        }
+                        Self.settleRows()
                     }
                 }
+        }
+    }
+
+    /// The app's two ends (going to background, terminating), one door. The
+    /// totals write at most every 30 s, and a swiped-away or system-killed
+    /// app never reaches pause or stop, so their counted seconds go to their
+    /// chain first; playback itself continues in the background. Then every
+    /// row chain lands, and the rows' journal is written back into the file:
+    /// iOS ends the app without a clean close, and a copy of the file alone
+    /// would lose the journal.
+    @MainActor
+    private static func settleRows() {
+        ListeningStatsStore.shared.flush()
+        Task {
+            await RowKeepers.awaitAll()
+            await MaerDatabase.shared.checkpoint()
         }
     }
 

@@ -595,11 +595,20 @@ final class LibraryViewModel: ObservableObject {
     /// Drives the subtle toolbar/footer indicator.
     @Published var isRefreshing = false
     /// How many loads began, counted before their first suspension: the
-    /// cached render lays its disk state down only when no load began while
-    /// it read. `loadInFlight` is set after the load's first suspension, and
-    /// a load that found an empty library leaves `entries` empty, so neither
-    /// tells the cached render that a fresher state is already there.
+    /// cached render lays its disk state down only when no load of this
+    /// process began until then. `loadInFlight` is set after the load's
+    /// first suspension, and a load that found an empty library leaves
+    /// `entries` empty, so neither tells the cached render that a fresher
+    /// state is already there; every load brings its own fallback to the
+    /// cache.
     private var loadsBegun = 0
+
+    #if DEBUG
+    /// Test seam: awaited by a load right after it is counted, before its
+    /// first suspension; a witness runs the cached render in between (a
+    /// load that began before the cached render and ends after it).
+    var testAfterLoadBegan: (@MainActor () async -> Void)?
+    #endif
 
     #if DEBUG
     /// Test seam: awaited by the cached render after its last suspension
@@ -613,19 +622,22 @@ final class LibraryViewModel: ObservableObject {
     /// state (no downloaded-filtering. That belongs to the offline FALLBACK)
     /// and no offline banner (showing the cache at start is not an offline
     /// condition). No-op when entries are already showing or no cache exists.
-    /// The conditions are read again after the last suspension: a load that
-    /// ran meanwhile (CarPlay at a cold start) built the fresh state, and
-    /// the disk state must not lie down over it.
+    /// The disk state lies down only when no load of this process began
+    /// until then, asked after the last suspension: a load that ran inside
+    /// the read, one that began before it and ends after it, and one that
+    /// ran to its end before it (CarPlay at a cold start, then the phone)
+    /// all built a fresher state or bring their own fallback, and the disk
+    /// state must not lie down over it. The read itself still runs: it is
+    /// the start read of the rows.
     func showCachedLibraryIfAvailable() async {
         guard entries.isEmpty, !loadInFlight else { return }
-        let begun = loadsBegun
         guard let cache = await loadDiskCache(), !cache.items.isEmpty else { return }
         await reloadLocalCache()
         #if DEBUG
         await testBeforeCachedApply?()
         #endif
-        guard loadsBegun == begun, entries.isEmpty, !loadInFlight else {
-            Logger.library.notice("LIBRARY cached render skipped: a load began while the cache was read")
+        guard loadsBegun == 0, entries.isEmpty, !loadInFlight else {
+            Logger.library.notice("LIBRARY cached render skipped: a load of this run began loads=\(self.loadsBegun)")
             return
         }
         isShowingOfflineCache = false
@@ -634,6 +646,9 @@ final class LibraryViewModel: ObservableObject {
 
     func loadLibrary() async {
         loadsBegun += 1
+        #if DEBUG
+        await testAfterLoadBegan?()
+        #endif
         // The LOCAL sources come first, and they come UNCONDITIONALLY. They
         // used to sit behind the server guard below, so a start without an
         // Audiobookshelf login collected nothing at all. Imported files and a
