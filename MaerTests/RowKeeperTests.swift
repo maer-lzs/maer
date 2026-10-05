@@ -323,7 +323,8 @@ struct RowKeeperTests {
     /// Held at the form, not at a log text: a base from a read
     /// (`RowBase.afterLoad`) is reckoned in the chain, by the totals, and by
     /// the podcast rows, whose start reads in stages and hands the base it
-    /// reckoned to its chain (`started(base:)`).
+    /// reckoned to its chain (`started(base:skipped:)`). Both ways of a start
+    /// say rows that did not decode in the one line of the chain.
     @Test("die Mechanik lesen, uebernehmen, schreiben steht an einer Stelle", .needsTheSources)
     func theMechanismStandsInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
@@ -333,12 +334,18 @@ struct RowKeeperTests {
         var reckoning: [String] = []
         var ownChains: [String] = []
         var statsCode = ""
+        var chainCode = ""
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             if code.contains("RowBase.afterLoad(") { reckoning.append(file.lastPathComponent) }
             if !file.path.contains("/Sources/Storage/"),
                code.contains(#/pending\w*Write = Task/#) { ownChains.append(file.lastPathComponent) }
             if file.lastPathComponent == "ListeningStats.swift" { statsCode = code }
+            if file.lastPathComponent == "RowChain.swift" { chainCode = code }
+        }
+        for head in ["func started(rows: Snapshot?, skipped: Int)", "func started(base: RowBase<Snapshot>, skipped: Int)"] {
+            #expect(functionBody(of: head, in: chainCode)?.contains("logSkippedStart(") == true,
+                    "a start without the chain's line for rows that did not decode: \(head)")
         }
         #expect(Set(reckoning) == ["RowChain.swift", "ListeningStats.swift", "PodcastSubscriptions.swift"],
                 "a base from a read reckoned in a second place: \(reckoning.sorted())")

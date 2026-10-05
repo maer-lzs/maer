@@ -265,6 +265,8 @@ final class PodcastSubscriptions: ObservableObject {
             // Whether the read failed as a whole (nothing seen): then the
             // chain holds every write until the rows are read and adopted.
             var readFailed = rows == nil
+            // Rows that did not decode, for the chain's start line.
+            var skippedAtStart = 0
             if let rows {
                 do {
                     // Two stages: the show list first (heads, no episodes:
@@ -288,6 +290,7 @@ final class PodcastSubscriptions: ObservableObject {
                         #endif
                         let (loaded, skipped) = try await rows.loadAllCounted()
                         Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) skipped=\(skipped) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                        skippedAtStart = skipped
                         if !loaded.isEmpty { decoded = loaded }
                         seen = loaded + heads.filter { head in !loaded.contains { $0.id == head.id } }
                         // Rows that did not decode make the rows unknown,
@@ -298,6 +301,7 @@ final class PodcastSubscriptions: ObservableObject {
                         // No heads: the rows may still hold rows nobody can
                         // read. Count them before calling the rows empty.
                         let (_, skipped) = try await rows.loadAllCounted()
+                        skippedAtStart = skipped
                         if skipped > 0 { base = .unknown(seen: nil) }
                     }
                 } catch {
@@ -314,7 +318,7 @@ final class PodcastSubscriptions: ObservableObject {
             if readFailed {
                 self?.rowChain.startReadFailedAsAWhole(reason: rows == nil ? "rows not open" : "start read failed")
             } else {
-                self?.rowChain.started(base: base)
+                self?.rowChain.started(base: base, skipped: skippedAtStart)
             }
             guard let self, let decoded, !decoded.isEmpty else { return }
             // The base stays what the rows hold: the LOADED stock, set above.

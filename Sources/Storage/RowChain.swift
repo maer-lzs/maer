@@ -63,11 +63,15 @@ final class RowChain<Snapshot> {
     func started(rows: Snapshot?, skipped: Int) {
         base = RowBase.afterLoad(rows: rows, skipped: skipped)
         startReadFailed = false
-        // The table's read names the table; this line names the owner and
-        // what follows: the base is unknown, no write removes an unread row.
-        if skipped > 0 {
-            Logger.library.error("\(self.label, privacy: .public) start: skipped=\(skipped) rows=\(rows == nil ? "none" : "some", privacy: .public) base=unknown")
-        }
+        logSkippedStart(skipped, rowsSeen: rows != nil)
+    }
+
+    /// The one line of a start with rows that did not decode. The table's
+    /// read names the table; this line names the owner and what follows:
+    /// the base is unknown, no write removes an unread row.
+    private func logSkippedStart(_ skipped: Int, rowsSeen: Bool) {
+        guard skipped > 0 else { return }
+        Logger.library.error("\(self.label, privacy: .public) start: skipped=\(skipped) rows=\(rowsSeen ? "some" : "none", privacy: .public) base=unknown")
     }
 
     /// The start read failed as a whole: nothing read, the mark set.
@@ -79,10 +83,13 @@ final class RowChain<Snapshot> {
 
     /// A start read whose base the store reckons itself (a read in stages
     /// that saw part of the rows before it failed: unknown with what it
-    /// saw); the mark stays off, the store holds what it saw.
-    func started(base: RowBase<Snapshot>) {
+    /// saw); the mark stays off, the store holds what it saw. `skipped` rows
+    /// that did not decode speak in the same line as `started(rows:skipped:)`;
+    /// a read that failed after the first stage says its own line.
+    func started(base: RowBase<Snapshot>, skipped: Int) {
         self.base = base
         startReadFailed = false
+        if case .unknown(let seen) = base { logSkippedStart(skipped, rowsSeen: seen != nil) }
     }
 
     /// Hands one write to the chain. `read` reads the rows again (the rows,
