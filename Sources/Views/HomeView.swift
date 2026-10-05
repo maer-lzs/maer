@@ -374,6 +374,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                 if let item = recentMusicItems.first(where: { $0.id == id }) {
                                     AlbumCell(item: item, width: Self.recentlyPlayedTileWidth,
                                               playerCoordinator: playerCoordinator)
+                                        .kindGlyph(MediaFamily.kind(for: id))
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }
@@ -381,6 +382,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                 CatalogTrackCell(itemId: id,
                                                  width: Self.recentlyPlayedTileWidth,
                                                  playerCoordinator: playerCoordinator)
+                                    .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
                                     // The ROW's metric, not the class's.
@@ -395,6 +397,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                                      onRemoveFromRecents: {
                                                          RadioStore.removeRecentNoting(station)
                                                      })
+                                        .kindGlyph(.radio)
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }
@@ -463,6 +466,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     RecommendationTile(
                                         result: result,
                                         subtitle: reasonText(recommendations.reason(for: result)))
+                                        .kindGlyph(.podcasts)
                                         .recommendationHideMenu(result)
                                 } else if let book = slot.book {
                                     // The SAME free-catalog tile
@@ -475,6 +479,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     FreeCatalogBookTile(
                                         item: book,
                                         onTap: { pushFreeAudiobooksRoute(.catalogBook(itemId: book.id)) })
+                                    .kindGlyph(MediaFamily.kind(for: book.id, markedForm: ListeningStore.startedForm(book.id)))
                                     .contextMenu {
                                         Button {
                                             Task { await playerCoordinator.open(item: book) }
@@ -510,7 +515,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                 RowHeading.entry("Discover · Audiobooks and Radio Plays",
                                  destination: FreeAudiobooksRoute.area)
                     .accessibilityIdentifier("home-discover-audiobooks")
-                CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)
+                CatalogMixRow(tiles: tiles, marksKinds: true, playerCoordinator: playerCoordinator)
             }
         }
     }
@@ -939,6 +944,7 @@ struct RediscoverTile: View {
                     placeholderSystemImage: "mic",
                     onTap: { pushRoute(.show(feedURL: feedURL)) }
                 )
+                .kindGlyph(.podcasts)
             }
         } else if let entry = libraryViewModel.entry(id: pick.id) {
             MediaAvailabilityScope(itemId: entry.id) { unavailable in
@@ -953,6 +959,7 @@ struct RediscoverTile: View {
                 ) {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
                 }
+                .kindGlyph(MediaFamily.kind(for: entry.id, markedForm: ListeningStore.startedForm(entry.id)))
             }
         } else if let item = router.item(pick.id) {
             MediaAvailabilityScope(itemId: item.id) { unavailable in
@@ -969,6 +976,7 @@ struct RediscoverTile: View {
                 ) {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
                 }
+                .kindGlyph(MediaFamily.kind(for: item.id))
             }
         }
     }

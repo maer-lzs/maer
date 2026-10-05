@@ -16,6 +16,10 @@ import SwiftUI
 /// prominent Play; long-press keeps Play as the shortcut for catalog tiles.
 struct CatalogMixRow: View {
     let tiles: [CatalogMix.Tile]
+    /// Start mixes feeds (podcast shows) with catalog titles, and only
+    /// there do the tiles carry their kind mark; the tabs' rows hold one
+    /// kind each (`CatalogMix`: books no feeds, podcasts no catalogs).
+    var marksKinds = false
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @Environment(\.catalogFacts) private var catalogFacts
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -42,6 +46,7 @@ struct CatalogMixRow: View {
                 artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                 subtitle: entry.form?.label,
                 badgeText: entry.ccLicense)
+                .kindGlyph(marksKinds ? .podcasts : nil)
         case .item(let item):
             FreeCatalogBookTile(
                 item: item,
@@ -52,6 +57,7 @@ struct CatalogMixRow: View {
                     pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                 }
             )
+            .kindGlyph(marksKinds ? MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)) : nil)
             .contextMenu {
                 Button {
                     Task { await playerCoordinator.open(item: item) }

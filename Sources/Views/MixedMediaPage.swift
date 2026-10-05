@@ -47,8 +47,10 @@ struct HomeContinueCard: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
+                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         } else if let item = router.item(id) {
             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
+                .kindGlyph(MediaFamily.kind(for: id))
         }
     }
 }
@@ -64,8 +66,10 @@ struct HomeRecentlyAddedTile: View {
         if let entry = libraryViewModel.entry(id: item.id) {
             BookGridCell(entry: entry, width: 150,
                          playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
+                .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         } else {
             AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
+                .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         }
     }
 }
@@ -153,11 +157,13 @@ struct MixedMediaPage: View {
                             if let item = listenAgainAlbums.first(where: { $0.id == id }) {
                                 AlbumCell(item: item, width: cardWidth,
                                           playerCoordinator: playerCoordinator)
+                                    .kindGlyph(MediaFamily.kind(for: id))
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         case .catalogTrack(let id):
                             CatalogTrackCell(itemId: id, width: cardWidth,
                                              playerCoordinator: playerCoordinator)
+                                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
                                 // Kachel navigiert (siehe HomeView).
@@ -167,6 +173,7 @@ struct MixedMediaPage: View {
                                                  onRemoveFromRecents: {
                                                      RadioStore.removeRecentNoting(station)
                                                  })
+                                    .kindGlyph(.radio)
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         }
@@ -191,6 +198,7 @@ struct MixedMediaPage: View {
                       placeholderSystemImage: "book.closed",
                       progress: entry.progress?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: entry.item) } })
+                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                 .modifier(BookCellContextMenu(
                     entry: entry, playerCoordinator: playerCoordinator,
                     libraryViewModel: libraryViewModel, showsContinueHide: true))
@@ -201,6 +209,7 @@ struct MixedMediaPage: View {
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
+                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         }
     }
 }

@@ -80,8 +80,11 @@ struct FreeCatalogRows: View {
                         // later. Long-press keeps Play as the shortcut.
                         FreeCatalogBookTile(
                             item: item,
+                            // The row is music: a work not started yet
+                            // has no form, and the id alone would call an
+                            // archive work a reading.
                             placeholderSystemImage: MediaFamily.placeholderSymbol(
-                                for: item.id, markedForm: ListeningStore.startedForm(item.id)),
+                                for: item.id, markedForm: ListeningStore.startedForm(item.id) ?? .album),
                             onTap: { detailItem = item }
                         )
                         .cardRowSlot(spacing: 14)

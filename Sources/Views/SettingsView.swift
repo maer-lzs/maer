@@ -876,6 +876,15 @@ struct SettingsView: View {
 
 /// The words the storage section uses for each kind of download.
 private extension DownloadKind {
+    /// The kind in the one glyph table (`MediaType.systemImage`).
+    var glyphKind: MediaType {
+        switch self {
+        case .audiobooks: .audiobooks
+        case .podcasts: .podcasts
+        case .music: .music
+        }
+    }
+
     var label: LocalizedStringKey {
         switch self {
         case .audiobooks: "Audiobooks"
@@ -965,7 +974,9 @@ private struct StorageKindSize: View {
                 countStyle: .file))
         } label: {
             if indented {
-                Text(kind.label).padding(.leading, 28)
+                // The kind's glyph from the one table, so the three lines
+                // read at a glance like the pills above them.
+                Label(kind.label, systemImage: kind.glyphKind.systemImage).padding(.leading, 28)
             } else {
                 Label("Downloads", systemImage: "arrow.down.circle")
             }

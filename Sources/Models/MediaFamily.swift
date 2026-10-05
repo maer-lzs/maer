@@ -99,15 +99,20 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     /// used to be "podcast? music? else book", so radio, Jellyfin music and
     /// archive music all showed a book. The ONE place every surface asks.
     static func placeholderSymbol(for id: String, markedForm: ProgressMark.StartedForm? = nil) -> String {
+        kind(for: id, markedForm: markedForm)?.systemImage ?? "waveform"
+    }
+
+    /// The kind an id shows as, by the same positive assignment: the
+    /// placeholder and the kind mark of a mixed row (`KindGlyph`) ask
+    /// here, so they never disagree. nil for an id no family knows.
+    static func kind(for id: String, markedForm: ProgressMark.StartedForm? = nil) -> MediaType? {
         switch of(id) {
-        case .radio: return MediaType.radio.systemImage
-        case .podcast: return MediaType.podcasts.systemImage
-        case .music: return MediaType.music.systemImage
-        case .book: return MediaType.audiobooks.systemImage
-        case .catalog:
-            return isMusicByForm(id, markedForm: markedForm)
-                ? MediaType.music.systemImage : MediaType.audiobooks.systemImage
-        case .unknown: return "waveform"
+        case .radio: return .radio
+        case .podcast: return .podcasts
+        case .music: return .music
+        case .book: return .audiobooks
+        case .catalog: return isMusicByForm(id, markedForm: markedForm) ? .music : .audiobooks
+        case .unknown: return nil
         }
     }
 
