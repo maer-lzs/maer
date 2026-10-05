@@ -110,31 +110,21 @@ struct MaerSyncSettingsView: View {
                                                  tokenRefused: tokenRefused,
                                                  serviceOlder: serviceOlder) {
                 case .serviceOlder:
-                    Label {
+                    HintLine(systemImage: "clock.arrow.circlepath") {
                         Text("The sync service is older than this app, so nothing travels. It works again once the service is updated.")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "clock.arrow.circlepath")
                     }
-                    .foregroundStyle(.orange)
                     .accessibilityIdentifier("maer-sync-service-older")
                 case .tokenRefused:
-                    Label {
+                    HintLine(systemImage: "person.crop.circle.badge.exclamationmark") {
                         // The service says why when the password changed on
                         // another device, and then the remedy is the new
                         // password, not the old one again.
-                        Group {
-                            if passwordWithdrawn {
-                                Text("The password was changed on another device, so this device's token no longer counts. Sign in with the new password.")
-                            } else {
-                                Text("The service refused this device's token, so nothing travels. Sign in again.")
-                            }
+                        if passwordWithdrawn {
+                            Text("The password was changed on another device, so this device's token no longer counts. Sign in with the new password.")
+                        } else {
+                            Text("The service refused this device's token, so nothing travels. Sign in again.")
                         }
-                        .font(.footnote)
-                    } icon: {
-                        Image(systemName: "person.crop.circle.badge.exclamationmark")
                     }
-                    .foregroundStyle(.orange)
                     .accessibilityIdentifier("maer-sync-token-refused")
                 case .carrying:
                     Label {
@@ -154,13 +144,9 @@ struct MaerSyncSettingsView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("maer-sync-not-in-use")
                 case .switchedOff:
-                    Label {
+                    HintLine(systemImage: "exclamationmark.triangle") {
                         Text("Sync across devices is off, so nothing travels yet. The switch is in Settings, under Sync.")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle")
                     }
-                    .foregroundStyle(.orange)
                     .accessibilityIdentifier("maer-sync-switch-off")
                 }
 
@@ -236,13 +222,9 @@ struct MaerSyncSettingsView: View {
 
             if let refusal {
                 Section {
-                    Label {
+                    HintLine(systemImage: "exclamationmark.triangle") {
                         Text("The service refused a write on \(refusal.at.formatted(date: .abbreviated, time: .shortened)): \(refusal.reason)")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle")
                     }
-                    .foregroundStyle(.orange)
                     .accessibilityIdentifier("maer-sync-refusal")
                 } footer: {
                     Text("Nothing was lost: the device keeps what it wrote and tries again at the next occasion. A pot that shrank or a format the service holds newer is not something this device decides on its own.")
@@ -313,12 +295,9 @@ struct MaerSyncSettingsView: View {
 
     private func keyChangeSection(_ change: KeyChange) -> some View {
         Section {
-            Label {
+            HintLine(systemImage: "exclamationmark.triangle") {
                 Text("The service at this address offers a different key than the one this device holds.")
-            } icon: {
-                Image(systemName: "exclamationmark.triangle")
             }
-            .foregroundStyle(.orange)
             .accessibilityIdentifier("maer-sync-key-changed")
             LabeledContent("Held") {
                 Text(change.held).font(.system(.footnote, design: .monospaced))
@@ -535,12 +514,9 @@ struct MaerSyncSettingsView: View {
                 // ones who cannot get a certificate. The sentence says what
                 // is open on the wire, which since the sealed session is the
                 // first key fetch and the reachability check, not the token.
-                Label {
+                HintLine(systemImage: "exclamationmark.triangle") {
                     Text("This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key.")
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle")
                 }
-                .foregroundStyle(.orange)
                 .accessibilityIdentifier("feed-auth-plain-address")
             }
         } header: {

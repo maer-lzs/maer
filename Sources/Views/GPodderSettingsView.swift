@@ -104,9 +104,7 @@ struct GPodderSettingsView: View {
                     LabeledContent("Last Sync",
                                    value: stored.date.formatted(date: .abbreviated, time: .shortened))
                     if let warning = stored.warning {
-                        Label(warning, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .font(.footnote)
+                        HintLine(systemImage: "exclamationmark.triangle.fill") { Text(warning) }
                         // The guard blocks but doesn't resolve. Offer a manual
                         // merge screen so the divergence can be converged.
                         NavigationLink {

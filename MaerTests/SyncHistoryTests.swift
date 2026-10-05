@@ -30,6 +30,47 @@ struct SyncHistoryTests {
         #expect(!SyncHistoryEntry.Service.checkedOrder.contains(.statistics), "held writes are no clean run")
     }
 
+    /// The other direction: a case that answers nil builds and passes the
+    /// witness above, and that is how Mär Sync stamped unread. Every service
+    /// that a history entry, a stamp or a carrier names in `Sources` has its
+    /// place in the header; each exception stands here with its reason.
+    nonisolated static let unrankedStock: [String: String] = [
+        "statistics": "writes held writes only; its stamp says no clean run",
+    ]
+
+    /// The services named where the history is written: an entry's
+    /// service, a stamp, a carrier's history service.
+    nonisolated static func stampedServices(in code: String) -> Set<String> {
+        let flat = code.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        let forms = [#/SyncHistory\.entry\( ?service: \.(\w+)/#, #/noteChecked\(\.(\w+)/#,
+                     #/historyService: SyncHistoryEntry\.Service \{ \.(\w+)/#]
+        return Set(forms.flatMap { flat.matches(of: $0).map { String($0.1) } })
+    }
+
+    @Test("jeder Dienst, der den Verlauf schreibt, hat seinen Platz in der Kopfzeile, Ausnahmen mit Grund", .needsTheSources)
+    func everyStampedServiceHasItsRank() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        var named: Set<String> = []
+        for file in files {
+            named.formUnion(Self.stampedServices(in: SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))))
+        }
+        #expect(named.contains("maerSync") && named.contains("absProgress"), "the fence read the writers: \(named.sorted())")
+        for name in named.sorted() {
+            let service = try #require(SyncHistoryEntry.Service(rawValue: name), "no service \(name)")
+            if Self.unrankedStock[name] != nil {
+                #expect(service.checkedRank == nil, "\(name) stands as an exception and has a place")
+            } else {
+                #expect(service.checkedRank != nil, "\(name) writes the history and has no place in the header")
+            }
+        }
+        #expect(Set(Self.unrankedStock.keys).isSubset(of: named), "an exception nobody writes any more")
+        // Calibration: the three forms, across a line break.
+        let probe = "SyncHistory.entry(\n service: .gpodder, x)\nstore.noteChecked(.music)\nvar historyService: SyncHistoryEntry.Service { .iCloud }"
+        #expect(Self.stampedServices(in: probe) == ["gpodder", "music", "iCloud"])
+    }
+
     @Test("entry keeps only non-zero counters, in display order")
     func entryCounters() {
         let e = entry(minutesAgo: 0)

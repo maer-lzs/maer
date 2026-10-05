@@ -533,13 +533,9 @@ struct SettingsView: View {
             // Shown where the switch is, because that is where someone looks
             // when they wonder why the two do not match.
             if let quota = AppStorageKeys.cloudQuotaViolation() {
-                Label {
+                HintLine(systemImage: "exclamationmark.icloud") {
                     Text("iCloud refused a write on \(quota.formatted(date: .abbreviated, time: .shortened)). The shared space is full, so progress, playlists and statistics stopped syncing.")
-                        .font(.footnote)
-                } icon: {
-                    Image(systemName: "exclamationmark.icloud")
                 }
-                .foregroundStyle(.orange)
                 .accessibilityIdentifier("icloud-quota-warning")
             }
         } header: {
@@ -844,12 +840,9 @@ struct SettingsView: View {
                 notificationsDenied = await PodcastRefreshService.notificationStatus() == .denied
             }
             if newEpisodeNotifications, notificationsDenied {
-                Label {
+                HintLine(systemImage: "exclamationmark.triangle.fill") {
                     Text("This device does not allow notifications. Turn them on for Mär in the Settings app.")
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 }
-                .font(.caption)
                 .accessibilityIdentifier("notifications-denied-here")
             }
         } header: {

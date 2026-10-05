@@ -20,13 +20,9 @@ struct StatsView: View {
             // memory only; it is said where the numbers are read.
             if stats.rowsHeld {
                 Section {
-                    Label {
+                    HintLine(systemImage: "exclamationmark.triangle") {
                         Text("The listening statistics cannot be read, so the listening time of this session is not saved.")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle")
                     }
-                    .foregroundStyle(.orange)
                     .accessibilityIdentifier("stats-held-warning")
                 }
             }
