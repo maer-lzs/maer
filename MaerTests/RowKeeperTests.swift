@@ -38,6 +38,24 @@ struct RowKeeperTests {
         #expect(RowKeepers.count == before, "a dead keeper is forgotten")
     }
 
+    /// The totals keep a chain of their own; it writes to the rows, so the
+    /// app's two ends wait for it like for every row chain.
+    @Test("awaitAll wartet auch die eigene Kette der Statistik ab")
+    func awaitAllSettlesTheTotals() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let before = RowKeepers.count
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()), database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
+        #expect(RowKeepers.count == before + 1, "the totals register their chain on creation")
+        stats.addSeconds(120)
+        stats.flush()
+        await RowKeepers.awaitAll()
+        let reader = try #require(try database.readerNow())
+        let days = try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader).rows
+        #expect(days.values.reduce(0, +) == 120, "after awaitAll the totals' last write has landed")
+    }
+
     /// Rows with one row nobody can read: the start read leaves the base
     /// unknown with the rows it read.
     private func keeperOverUnreadableRows() async throws -> (RowKeeper<Int>, MaerDatabase, URL) {
@@ -267,25 +285,35 @@ struct RowKeeperTests {
     /// twice, one fault stood twice). The totals keep their own rule, by
     /// name: their rows are counters, and a read rebuilds them from the rows
     /// plus what the run counted (`ListeningStatsSync.rebuilt`).
+    ///
+    /// Held at the form, not at a log text: a base from a read
+    /// (`RowBase.afterLoad`) is reckoned in the chain, by the totals, and by
+    /// the podcast rows, whose start reads in stages and hands the base it
+    /// reckoned to its chain (`started(base:)`).
     @Test("die Mechanik lesen, uebernehmen, schreiben steht an einer Stelle", .needsTheSources)
     func theMechanismStandsInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
-        var holding: [String] = []
+        var reckoning: [String] = []
         var ownChains: [String] = []
+        var statsCode = ""
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            if code.contains("save held") { holding.append(file.lastPathComponent) }
+            if code.contains("RowBase.afterLoad(") { reckoning.append(file.lastPathComponent) }
             if !file.path.contains("/Sources/Storage/"),
                code.contains(#/pending\w*Write = Task/#) { ownChains.append(file.lastPathComponent) }
+            if file.lastPathComponent == "ListeningStats.swift" { statsCode = code }
         }
-        #expect(Set(holding) == ["RowChain.swift", "ListeningStats.swift"], "a second mechanism: \(holding.sorted())")
+        #expect(Set(reckoning) == ["RowChain.swift", "ListeningStats.swift", "PodcastSubscriptions.swift"],
+                "a base from a read reckoned in a second place: \(reckoning.sorted())")
         // A write chain of its own outside the storage layer: the totals
         // (their rule, above) and the stand carrier, which writes to a
         // carrier, not to rows.
         #expect(Set(ownChains) == ["ListeningStats.swift", "StandCarrier.swift"], "a chain of its own: \(ownChains.sorted())")
+        // The totals' chain writes to the rows: the app's two ends wait for it.
+        #expect(statsCode.contains("RowKeepers.register(owner: self)"), "the totals' chain is not waited on at the app's ends")
     }
 }
 #endif

@@ -46,7 +46,11 @@ final class RowChain<Snapshot> {
     var adopt: (@MainActor (Snapshot) -> Void)?
     /// The last handed-over write.
     private var pendingWrite: Task<Void, Never>?
-    /// Writes handed over and not yet begun.
+    /// Writes handed over and not yet begun. It drops as a write begins, so
+    /// `laterQueued` sees only the writes queued by then: a write queued
+    /// while this one awaits its read or its apply goes uncounted, and a
+    /// refused wipe can still be told although a later write takes the
+    /// memory anyway. A false alarm made smaller, not closed.
     private var waiting = 0
 
     init(label: String) {
@@ -59,6 +63,11 @@ final class RowChain<Snapshot> {
     func started(rows: Snapshot?, skipped: Int) {
         base = RowBase.afterLoad(rows: rows, skipped: skipped)
         startReadFailed = false
+        // The table's read names the table; this line names the owner and
+        // what follows: the base is unknown, no write removes an unread row.
+        if skipped > 0 {
+            Logger.library.error("\(self.label, privacy: .public) start: skipped=\(skipped) rows=\(rows == nil ? "none" : "some", privacy: .public) base=unknown")
+        }
     }
 
     /// The start read failed as a whole: nothing read, the mark set.

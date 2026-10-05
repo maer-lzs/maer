@@ -135,11 +135,14 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     }
 }
 
-/// Every row chain that exists (`RowChain`, under every keeper and every
-/// store with rows of its own), so the app's two ends (going to background,
-/// terminating) can wait for every chain with one call before the
-/// database's checkpoint. A chain registers itself on creation and is held
-/// weakly; the list forgets what died.
+/// Every write chain into the rows that exists, so the app's two ends
+/// (going to background, terminating) can wait for every chain with one
+/// call before the database's checkpoint: each `RowChain` (under every
+/// keeper, the podcast rows, the library rows) registers itself on
+/// creation, the totals register their own chain (`ListeningStatsStore`),
+/// and the chain of the stand rows is waited on by name (`StandMirror`,
+/// nonisolated). Held weakly; the list
+/// forgets what died.
 @MainActor
 enum RowKeepers {
     private struct Entry {
@@ -159,9 +162,9 @@ enum RowKeepers {
         entries.filter { $0.keeper != nil }.count
     }
 
-    /// Waits for every living keeper's chain, and the listening stock's row
-    /// chain, which lives in the rows as well; returns how many keepers were
-    /// waited on.
+    /// Waits for every registered chain that lives, and the chain of the
+    /// stand rows; returns how many registered
+    /// chains were waited on.
     @discardableResult
     static func awaitAll() async -> Int {
         entries.removeAll { $0.keeper == nil }
