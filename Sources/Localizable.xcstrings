@@ -5457,6 +5457,16 @@
         }
       }
     },
+    "Loads the logos of the stations you see, saved ones included." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lädt die Logos der Sender, die du siehst, auch der gespeicherten."
+          }
+        }
+      }
+    },
     "Local Files" : {
       "localizations" : {
         "de" : {

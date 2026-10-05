@@ -31,27 +31,57 @@ nonisolated struct AppRow: Identifiable, Sendable {
     /// The second line of a switchable row that draws from no foreign
     /// source: what it shows instead (`AppRows.subline`).
     var note: String? = nil
+    /// Why an entry carries no switch, said on the rows page. Every entry
+    /// without a switch names one; it is no longer guessed from the
+    /// sources, which called the logo chain a search.
+    var fixed: Fixed? = nil
     /// The library's working set (continue listening, the subscription
     /// grid, playlists, downloads) IS the library rather than a row over
     /// it. Those stay, and the rows page says so instead of offering a
     /// switch that would hide someone's own belongings.
     var toggleable: Bool { storageKey != nil }
 
+    enum Fixed: Sendable {
+        /// The person's own belongings.
+        case ownHoldings
+        /// Not a row: a search scope that asks on the person's own query.
+        case onSearch
+        /// Not a row: the logo chain, which also serves saved stations.
+        case stationLogos
+
+        var reason: String {
+            switch self {
+            case .ownHoldings: String(localized: "Your own holdings, always shown.")
+            case .onSearch: String(localized: "Asks only when you search.")
+            case .stationLogos: String(localized: "Loads the logos of the stations you see, saved ones included.")
+            }
+        }
+    }
+
     var id: String { key }
 }
 
-/// Every tile row, per tab, measured at the code on 30.08. The completeness
-/// question of the order is answered by this list plus the fence that every
-/// declared source key resolves.
+/// Every tile row, per tab, plus the askers that are no rows (the searches,
+/// the logo chain). Measured again at the tab roots on 05.10.;
+/// `AppRowsCompletenessFenceTests` holds it against the code in both
+/// directions and resolves every declared source key.
 nonisolated enum AppRows {
     static let all: [AppRow] = [
         // MARK: Start
         AppRow(key: "home.continue", tab: .home,
                title: String(localized: "Keep Listening"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "home.upNext", tab: .home,
                title: String(localized: "Up Next"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "home.listenAgain", tab: .home,
+               title: String(localized: "Listen Again"),
+               // Albums, stations and catalog tracks heard before; the station
+               // logos ride on `radio.stationLogos`.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "home.latestEpisodes", tab: .home,
+               title: String(localized: "Latest Episodes"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "home.discoverBooks", tab: .home,
                title: String(localized: "Discover · Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
@@ -84,26 +114,48 @@ nonisolated enum AppRows {
                // it keeps its sources ALIVE for the cleanup rule even when
                // every discover row is hidden.
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
-               storageKey: nil),
+               storageKey: nil, fixed: .onSearch),
         AppRow(key: "books.catalog", tab: .audiobooks,
                title: String(localized: "Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
                storageKey: AppStorageKeys.freeAudiobooksEnabled),
+        AppRow(key: "books.charts", tab: .audiobooks,
+               title: String(localized: "Popular Radio-Play Podcasts"),
+               // The chart row of the catalog page (signed out it is the
+               // tab itself): Apple's charts, under their own switch, so
+               // Apple stands where it is asked.
+               sourceKeys: ["appleCatalog"],
+               storageKey: AppStorageKeys.rowBooksChartsVisible),
         AppRow(key: "books.localFiles", tab: .audiobooks,
                title: String(localized: "Local Files"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "books.continue", tab: .audiobooks,
                title: String(localized: "Keep Listening"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "books.recentlyAdded", tab: .audiobooks,
                title: String(localized: "Recently Added"),
                sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible,
                note: String(localized: "From your own holdings.")),
+        AppRow(key: "books.downloaded", tab: .audiobooks,
+               title: String(localized: "Downloaded"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "books.allBooks", tab: .audiobooks,
+               title: String(localized: "All Books"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
 
         // MARK: Music
         AppRow(key: "music.listenAgain", tab: .music,
                title: String(localized: "Listen Again"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "music.playlists", tab: .music,
+               title: String(localized: "Playlists"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "music.recentlyPlayed", tab: .music,
+               title: String(localized: "Recently Played"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "music.recentlyAdded", tab: .music,
+               title: String(localized: "Recently Added"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "music.netlabels", tab: .music,
                title: String(localized: "Netlabels"),
                sourceKeys: ["internetArchive"],
@@ -120,7 +172,7 @@ nonisolated enum AppRows {
         // MARK: Podcasts
         AppRow(key: "podcasts.continue", tab: .podcasts,
                title: String(localized: "Keep Listening"),
-               sourceKeys: [], storageKey: nil),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.radioPlays", tab: .podcasts,
                title: String(localized: "Radio Plays to Subscribe"),
                // Curated public feeds: the row fetches CONTENT the list
@@ -136,30 +188,57 @@ nonisolated enum AppRows {
         AppRow(key: "podcasts.search", tab: .podcasts,
                title: String(localized: "Podcast Search"),
                sourceKeys: ["appleCatalog", "podcastIndex"],
-               storageKey: nil),
-        AppRow(key: "podcasts.recentEpisodes", tab: .podcasts,
+               storageKey: nil, fixed: .onSearch),
+        AppRow(key: "podcasts.subscriptions", tab: .podcasts,
                title: String(localized: "Recently Updated"),
-               sourceKeys: [], storageKey: nil),
+               // The subscription grid, newest updated show first.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.latestEpisodes", tab: .podcasts,
+               title: String(localized: "Latest Episodes"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.coListened", tab: .podcasts,
+               title: String(localized: "Co-listened"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.pinchflat", tab: .podcasts,
+               title: "Pinchflat",
+               // Shows of the person's own Pinchflat server, headed by its host.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.notFollowed", tab: .podcasts,
+               title: String(localized: "Not followed yet"),
+               // Shows from the other device that could not be followed here yet.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.premium", tab: .podcasts,
+               title: String(localized: "Premium"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.downloaded", tab: .podcasts,
+               title: String(localized: "Downloaded"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
 
         // MARK: Radio
+        AppRow(key: "radio.myStations", tab: .radio,
+               title: String(localized: "My Stations"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "radio.catalog", tab: .radio,
                title: String(localized: "Station Catalog"),
                sourceKeys: ["radioBrowser", "wikimedia"],
                storageKey: AppStorageKeys.rowRadioCatalogVisible),
+        AppRow(key: "radio.recentlyPlayed", tab: .radio,
+               title: String(localized: "Recently Played"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "radio.search", tab: .radio,
                title: String(localized: "Station Search"),
                // The radio scope of the search asks the catalog on the
                // user's own query. Hiding the browse ROW is a presentation
                // choice and must not cost the search its source.
                sourceKeys: ["radioBrowser"],
-               storageKey: nil),
+               storageKey: nil, fixed: .onSearch),
         AppRow(key: "radio.stationLogos", tab: .radio,
                title: String(localized: "Station Logos"),
                // The logo chain also feeds the SAVED tiles (favorites, my
                // stations). Hiding the catalog row must therefore not
                // switch wikimedia off with it.
                sourceKeys: ["wikimedia"],
-               storageKey: nil),
+               storageKey: nil, fixed: .stationLogos),
     ]
 
     static func row(key: String) -> AppRow? { all.first { $0.key == key } }

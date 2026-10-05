@@ -465,6 +465,9 @@ nonisolated enum AppStorageKeys {
     /// Rediscover on Start, apart from the recommendations (it shows only
     /// the person's own books); first value from `homeRecommendations`.
     static let rowHomeRediscoverVisible = "rowHomeRediscoverVisible"
+    /// The chart row of the catalog page (Apple's charts), apart from the
+    /// catalog row that holds the page.
+    static let rowBooksChartsVisible = "rowBooksChartsVisible"
 
     // Radio-Picker-Kuratierung
     /// ALL raw name variants of the chosen region (the by-state query runs

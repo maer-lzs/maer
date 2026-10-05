@@ -261,19 +261,6 @@ struct RadioView: View {
 
     // MARK: - Sections
 
-    private func listSection(title: String, stations: [RadioStation]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.title3).bold().padding(.horizontal)
-            LazyVStack(spacing: 0) {
-                ForEach(stations) { station in
-                    RadioStationRow(station: station, playerCoordinator: playerCoordinator,
-                                    onFavoriteToggled: reload)
-                    Divider().padding(.leading, 88)
-                }
-            }
-        }
-    }
-
     /// The row itself is the shared `RadioCardRow` (also on Home).
     private func cardRow(title: String, stations: [RadioStation]) -> some View {
         RadioCardRow(title: title, stations: stations,

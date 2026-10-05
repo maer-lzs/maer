@@ -74,14 +74,6 @@ private struct RowToggleRow: View {
         return String(localized: "Currently without a source. Switched off: \(titles.joined(separator: " · ")). See External Sources & Privacy.")
     }
 
-    /// Why a fixed entry carries no switch. The working set IS the
-    /// library; the search asks only on the user's own query.
-    private var fixedReason: LocalizedStringKey {
-        row.sourceKeys.isEmpty
-            ? "Your own holdings, always shown."
-            : "Asks only when you search."
-    }
-
     var body: some View {
         if row.toggleable {
             // The lines under the title stand in the switch's label, so
@@ -107,7 +99,8 @@ private struct RowToggleRow: View {
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: row.title)
-                Text(fixedReason)
+                // Why it carries no switch, named by the entry itself.
+                Text(verbatim: row.fixed?.reason ?? "")
                     .font(.caption).foregroundStyle(.secondary)
                 lines
             }

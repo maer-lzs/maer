@@ -111,6 +111,23 @@ struct AppRowsPageTests {
         #expect(code.contains("@AppStorage(AppStorageKeys.freeAudiobooksEnabled)privatevarcatalogRowVisible"))
     }
 
+    @Test("die Chart-Reihe hat ihre eigene Quelle und ihren eigenen Schalter, ausgeblendet fragt sie nicht", .needsTheSources)
+    func theChartRowStandsUnderItsOwnSwitch() throws {
+        let row = try #require(AppRows.row(key: "books.charts"))
+        #expect(row.sourceKeys == ["appleCatalog"])
+        #expect(row.storageKey == AppStorageKeys.rowBooksChartsVisible)
+        let catalog = try #require(AppRows.row(key: "books.catalog"))
+        #expect(!catalog.sourceKeys.contains("appleCatalog"), "the catalog row counts as carried by Apple alone")
+        let page = Self.squeezed(SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FreeAudiobooksPage.swift"), encoding: .utf8)))
+        #expect(page.contains("ifAppStorageKeys.appleCatalogEnabledValue&&chartsRowVisible{chartsSection}"),
+                "the chart row is drawn past its switch")
+        #expect(page.contains("guardAppStorageKeys.appleCatalogEnabledValue,chartsRowVisibleelse{"),
+                "a hidden chart row still asks Apple")
+        #expect(page.components(separatedBy: ".task(id:ChartsLoad(chip:selectedChip,visible:chartsRowVisible))").count == 3,
+                "showing the row again does not load its charts")
+    }
+
     /// Code with every whitespace removed, for a shape that spans lines.
     nonisolated static func squeezed(_ code: String) -> String {
         code.filter { !$0.isWhitespace }

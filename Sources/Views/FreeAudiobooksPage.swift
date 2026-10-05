@@ -53,6 +53,12 @@ extension EnvironmentValues {
     }
 }
 
+/// What the chart load hangs on: the chip in view and the row's switch.
+nonisolated struct ChartsLoad: Hashable {
+    let chip: String
+    let visible: Bool
+}
+
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Serverless, the audiobooks TAB shows this page's sections as
@@ -80,6 +86,9 @@ struct FreeAudiobooksPage: View {
     // a perfect filter would leave only the five readings that
     // LibriVox, Gutenberg and archive.org cover better anyway.
     @State private var selectedChip: String = CatalogGenreAxis.hoerspielChips[0].key
+    /// The chart row's own switch (`books.charts`). Hidden, Apple is not
+    /// asked; shown again, the charts load for the chip in view.
+    @AppStorage(AppStorageKeys.rowBooksChartsVisible) private var chartsRowVisible = true
     @State private var chartResults: [PodcastSearchResult] = []
     @State private var chartsLoading = false
     @State private var chartsFailed = false
@@ -103,7 +112,7 @@ struct FreeAudiobooksPage: View {
             sectionStack
                 .task { await store.ensureSourcesLoaded() }
                 .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
-                .task(id: selectedChip) { await loadCharts() }
+                .task(id: ChartsLoad(chip: selectedChip, visible: chartsRowVisible)) { await loadCharts() }
                 .onChange(of: isOnline) { _, connected in
                     if connected { Task { await store.ensureSourcesLoaded() } }
                 }
@@ -121,7 +130,7 @@ struct FreeAudiobooksPage: View {
         .navigationTitle(Text("Audiobooks and Radio Plays"))
         .task { await store.ensureSourcesLoaded() }
         .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
-        .task(id: selectedChip) { await loadCharts() }
+        .task(id: ChartsLoad(chip: selectedChip, visible: chartsRowVisible)) { await loadCharts() }
         // Connection returns while the page is open: load then.
         .onChange(of: isOnline) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
@@ -140,7 +149,7 @@ struct FreeAudiobooksPage: View {
                 // The feed rows are static curation and render instantly.
                 feedSection(.oerr)
                 feedSection(.independents)
-                if AppStorageKeys.appleCatalogEnabledValue { chartsSection }
+                if AppStorageKeys.appleCatalogEnabledValue && chartsRowVisible { chartsSection }
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
                 librivoxSection
@@ -380,8 +389,9 @@ struct FreeAudiobooksPage: View {
         #if DEBUG
         if UITestSeed.isActive { chartResults = []; return }
         #endif
-        guard AppStorageKeys.appleCatalogEnabledValue else {
-            // Apple off: the chart section falls away honestly. These charts
+        guard AppStorageKeys.appleCatalogEnabledValue, chartsRowVisible else {
+            // Apple off or the row hidden: the chart section falls away
+            // honestly, and nothing is asked. These charts
             // have no second source (measured in the PI pre-check: overlap ~0).
             chartResults = []
             chartsFailed = false
