@@ -10,7 +10,7 @@ import Foundation
 /// later stage can merge histories across devices (iCloud; Android via an
 /// alternative store). Deliberately NOT built now.
 nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable, Sendable {
-    enum Service: String, Codable, Sendable {
+    enum Service: String, Codable, Sendable, CaseIterable {
         case gpodder
         case absProgress
         case iCloud
@@ -25,6 +25,29 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable, Sendable 
         /// read and a write is held: local, no service. An older build
         /// skips the entry like `maerSync`.
         case statistics
+
+        /// The place in the history's "last checked" header, nil for a
+        /// service that reports no clean run there. Every service whose
+        /// clean run leaves a stamp stands in the header; a new case has to
+        /// answer here. `statistics` writes held writes only (its entry
+        /// stamps all the same, as every `append` does), so a stamp of it
+        /// says no clean run and stays out.
+        var checkedRank: Int? {
+            switch self {
+            case .absProgress: return 0
+            case .music: return 1
+            case .gpodder: return 2
+            case .iCloud: return 3
+            case .maerSync: return 4
+            case .statistics: return nil
+            }
+        }
+
+        /// The header's services, in their order.
+        static var checkedOrder: [Service] {
+            allCases.compactMap { service in service.checkedRank.map { (service, $0) } }
+                .sorted { $0.1 < $1.1 }.map(\.0)
+        }
     }
 
     enum Direction: String, Codable {

@@ -10,12 +10,10 @@ import SwiftUI
 struct SyncHistoryView: View {
     @ObservedObject private var store = SyncHistoryStore.shared
 
-    /// Fixed display order for the "last checked" header.
-    private static let checkedOrder: [SyncHistoryEntry.Service] =
-        [.absProgress, .music, .gpodder, .iCloud]
-
+    /// The "last checked" header: every service whose clean run leaves a
+    /// stamp, in the order the service says (`checkedOrder`).
     private var checkedRows: [(service: SyncHistoryEntry.Service, date: Date)] {
-        Self.checkedOrder.compactMap { service in
+        SyncHistoryEntry.Service.checkedOrder.compactMap { service in
             store.lastChecked[service.rawValue].map { (service, $0) }
         }
     }

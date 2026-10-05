@@ -21,6 +21,15 @@ struct SyncHistoryTests {
             startedAt: Date(timeIntervalSinceNow: -minutesAgo * 60))
     }
 
+    /// Every service whose clean run leaves a stamp stands in the "last
+    /// checked" header: Mär Sync does since the header comes from the
+    /// service; the statistics write held writes only and stay out.
+    @Test("die Kopfzeile des Verlaufs fuehrt jeden Dienst mit sauberem Lauf, Mär Sync dabei, die Statistik nicht")
+    func theHeaderListsEveryServiceWithACleanRun() {
+        #expect(SyncHistoryEntry.Service.checkedOrder == [.absProgress, .music, .gpodder, .iCloud, .maerSync])
+        #expect(!SyncHistoryEntry.Service.checkedOrder.contains(.statistics), "held writes are no clean run")
+    }
+
     @Test("entry keeps only non-zero counters, in display order")
     func entryCounters() {
         let e = entry(minutesAgo: 0)
