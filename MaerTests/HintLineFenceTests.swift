@@ -21,14 +21,18 @@ import Foundation
         "SyncHistoryView.swift": (1, "the guard note of a history entry, in the entry's caption rhythm"),
         "ShowAccessRefusedBanner.swift": (1, "the symbol of a banner title, not a sentence"),
         "PremiumBadge.swift": (1, "a badge, no sentence"),
+        "AbsSessionStateBanner.swift": (1, "the symbol of a banner title, orange only while a sign-in is asked for"),
+        "MediaType+Tint.swift": (1, "the audiobooks' type colour, no hint"),
     ]
 
+    /// Every `.orange` of a line that is no comment, each occurrence once:
+    /// a colour in a conditional or a return counts as well as one in
+    /// `foregroundStyle(.orange)`, and two on one line count two.
     nonisolated static func orangeSites(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
-            .filter { line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                return !trimmed.hasPrefix("//") && trimmed.contains(".orange)")
-            }.count
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .map { $0.matches(of: #/\.orange(?![A-Za-z0-9_])/#).count }
+            .reduce(0, +)
     }
 
     @Test("jede orange Stelle der Ansichten ist die Hinweis-Zeile oder steht mit Grund im Bestand", .needsTheSources)
@@ -45,8 +49,14 @@ import Foundation
         #expect(found["HintLine.swift"] == 1, "the fence read the views")
         #expect(found == Self.orangeStock.mapValues(\.count),
                 "an orange site by hand, or one that left its entry: \(found.sorted { $0.key < $1.key })")
-        // Calibration: a site counts, a comment that names it does not.
+        // Calibration: a site counts, a comment that names it does not; a
+        // conditional and a return count, each occurrence of a line, and a
+        // longer name does not.
         #expect(Self.orangeSites(in: "Label(x).foregroundStyle(.orange)\n// .foregroundStyle(.orange) here") == 1)
+        #expect(Self.orangeSites(in: ".foregroundStyle(flag ? .orange : .secondary)") == 1)
+        #expect(Self.orangeSites(in: "case .audiobooks: return .orange") == 1)
+        #expect(Self.orangeSites(in: "a ? .orange : b ? .orange.opacity(0.5) : .clear") == 2)
+        #expect(Self.orangeSites(in: "let x = Theme.orangeAccent") == 0)
     }
 }
 #endif
