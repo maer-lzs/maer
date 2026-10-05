@@ -231,15 +231,15 @@ struct FreeCatalogTests {
     func unsourcedRowIsNamed() throws {
         let reihe = try #require(AppRows.row(key: "music.jamendo"))
         // Every source off: the row stands unsourced and the titles come back.
-        #expect(AppRows.unsourcedTitles(reihe, isAllowed: { _ in false }) == ["Jamendo"])
+        #expect(AppRows.unsourcedTitles(reihe, podcastIndexConfigured: false, isAllowed: { _ in false }) == ["Jamendo"])
         // Any feeding source left: no line, fewer tiles are the answer.
-        #expect(AppRows.unsourcedTitles(reihe, isAllowed: { _ in true }) == nil)
+        #expect(AppRows.unsourcedTitles(reihe, podcastIndexConfigured: false, isAllowed: { _ in true }) == nil)
         let mehrquellig = try #require(AppRows.row(key: "home.discoverMusic"))
-        #expect(AppRows.unsourcedTitles(mehrquellig, isAllowed: { $0 == "internetArchive" }) == nil,
+        #expect(AppRows.unsourcedTitles(mehrquellig, podcastIndexConfigured: false, isAllowed: { $0 == "internetArchive" }) == nil,
                 "eine verbliebene Quelle traegt die Reihe weiter")
         // A row without foreign sources can never stand unsourced.
         let eigen = try #require(AppRows.row(key: "home.continue"))
-        #expect(AppRows.unsourcedTitles(eigen, isAllowed: { _ in false }) == nil)
+        #expect(AppRows.unsourcedTitles(eigen, podcastIndexConfigured: false, isAllowed: { _ in false }) == nil)
     }
 
     /// Der EINE Schreibweg fuehrt die Regel wirklich aus: Reihe

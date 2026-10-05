@@ -62,7 +62,10 @@ nonisolated enum AppRows {
                storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
         AppRow(key: "home.recommendations", tab: .home,
                title: String(localized: "Recommended"),
-               sourceKeys: ["appleCatalog"],
+               // The pool comes from the ONE directory selection
+               // (`PodcastDirectorySelection`): PodcastIndex where a key
+               // is configured, Apple otherwise.
+               sourceKeys: ["appleCatalog", "podcastIndex"],
                storageKey: AppStorageKeys.homeRecommendations),
         AppRow(key: "home.rediscover", tab: .home,
                title: String(localized: "Rediscover"),
@@ -127,7 +130,8 @@ nonisolated enum AppRows {
                note: String(localized: "Public radio play feeds, chosen by Mär.")),
         AppRow(key: "podcasts.recommended", tab: .podcasts,
                title: String(localized: "Recommended"),
-               sourceKeys: ["appleCatalog"],
+               // Same store and selection as the home row.
+               sourceKeys: ["appleCatalog", "podcastIndex"],
                storageKey: AppStorageKeys.rowPodcastsRecommendedVisible),
         AppRow(key: "podcasts.search", tab: .podcasts,
                title: String(localized: "Podcast Search"),
@@ -177,10 +181,20 @@ nonisolated enum AppRows {
         }
     }
 
+    /// The sources a row can reach on this device. PodcastIndex counts
+    /// only with a key: without one it is never asked, and naming it would
+    /// promise a source that does not exist here. The fact is handed in,
+    /// as on the sources page, so both sides stay testable.
+    static func reachableSources(_ row: AppRow,
+                                 podcastIndexConfigured: Bool) -> [ExternalSource] {
+        row.sourceKeys.compactMap { ExternalSources.source(key: $0) }
+            .filter { $0.isSwitchable(podcastIndexConfigured: podcastIndexConfigured) }
+    }
+
     /// The second line of a switchable row: the foreign sources it draws
     /// from, or, without any, what it shows. Every switchable row has one.
-    static func subline(_ row: AppRow) -> String? {
-        let titles = row.sourceKeys.compactMap { ExternalSources.source(key: $0)?.title }
+    static func subline(_ row: AppRow, podcastIndexConfigured: Bool) -> String? {
+        let titles = reachableSources(row, podcastIndexConfigured: podcastIndexConfigured).map(\.title)
         guard titles.isEmpty else { return String(localized: "Draws from: \(titles.joined(separator: " · "))") }
         return row.note
     }
@@ -248,10 +262,10 @@ nonisolated enum AppRows {
     /// "where is my row?" belongs HERE, beside the two switches. Returns
     /// the titles of the off sources when the row stands fully unsourced,
     /// nil while any source still feeds it (fewer tiles are an answer).
-    static func unsourcedTitles(_ row: AppRow,
+    static func unsourcedTitles(_ row: AppRow, podcastIndexConfigured: Bool,
                                 isAllowed: (String) -> Bool) -> [String]? {
         guard !row.sourceKeys.isEmpty else { return nil }
-        let sources = row.sourceKeys.compactMap { ExternalSources.source(key: $0) }
+        let sources = reachableSources(row, podcastIndexConfigured: podcastIndexConfigured)
         guard !sources.isEmpty, sources.allSatisfy({ !isAllowed($0.key) }) else { return nil }
         return sources.map(\.title)
     }

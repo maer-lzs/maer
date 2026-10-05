@@ -1221,8 +1221,12 @@ struct LibraryView: View {
                     // The page's sections, embedded (one parameterised
                     // version, no drifting copy), plus local files as their
                     // own section. No server sentence renders here: there is
-                    // no server to speak about.
-                    FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
+                    // no server to speak about. The catalog row's switch
+                    // holds here too: hidden, the tab keeps local files
+                    // and the books, and no catalog or chart is asked.
+                    if catalogRowVisible {
+                        FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
+                    }
                     localFilesSection
                     if !viewModel.entries.isEmpty {
                         allBooksSection

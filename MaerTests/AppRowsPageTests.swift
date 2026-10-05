@@ -14,8 +14,12 @@ import Foundation
 struct AppRowsPageTests {
     @Test("jede schaltbare Reihe hat eine Unterzeile")
     func everySwitchableRowHasASecondLine() {
-        let without = AppRows.all.filter { $0.toggleable && (AppRows.subline($0) ?? "").isEmpty }.map(\.key)
-        #expect(without.isEmpty, "rows without a second line: \(without)")
+        for configured in [false, true] {
+            let without = AppRows.all.filter {
+                $0.toggleable && (AppRows.subline($0, podcastIndexConfigured: configured) ?? "").isEmpty
+            }.map(\.key)
+            #expect(without.isEmpty, "rows without a second line: \(without)")
+        }
     }
 
     @Test("der Katalog der Hoerbuecher und Hoerspiele heisst am Start und im Reiter gleich")
@@ -75,6 +79,41 @@ struct AppRowsPageTests {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
         #expect(home.contains("if rediscoverRowVisible { rediscoverSection }"))
+    }
+
+    @Test("beide Empfohlen nennen jede Quelle, die ihr Vorrat fragen kann", .needsTheSources)
+    func bothRecommendedRowsNameEveryDirectory() throws {
+        let store = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastRecommendationsStore.swift"), encoding: .utf8))
+        #expect(store.contains("PodcastDirectorySelection.directory()"), "the pool left the one selection")
+        for key in ["home.recommendations", "podcasts.recommended"] {
+            let row = try #require(AppRows.row(key: key))
+            #expect(Set(row.sourceKeys) == ["appleCatalog", "podcastIndex"], "\(key) declares \(row.sourceKeys)")
+        }
+        let row = try #require(AppRows.row(key: "podcasts.recommended"))
+        // Without a key PodcastIndex is never asked, so the lines leave it out.
+        let without = try #require(AppRows.subline(row, podcastIndexConfigured: false))
+        let with = try #require(AppRows.subline(row, podcastIndexConfigured: true))
+        #expect(without.contains("Apple Podcasts") && !without.contains("Podcast Index"), "\(without)")
+        #expect(with.contains("Apple Podcasts") && with.contains("Podcast Index"), "\(with)")
+        #expect(AppRows.unsourcedTitles(row, podcastIndexConfigured: false, isAllowed: { $0 == "podcastIndex" })
+                == ["Apple Podcasts"], "a source without a key carried the row")
+        #expect(AppRows.unsourcedTitles(row, podcastIndexConfigured: true, isAllowed: { $0 == "podcastIndex" }) == nil)
+    }
+
+    @Test("ohne Anmeldung haelt der Schalter des Katalogs die eingebettete Seite", .needsTheSources)
+    func theEmbeddedCatalogFollowsTheRowSwitch() throws {
+        let code = Self.squeezed(SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)))
+        #expect(code.components(separatedBy: "embedded:true").count == 2, "a second embedded catalog page")
+        #expect(code.contains("ifcatalogRowVisible{FreeAudiobooksPage(playerCoordinator:playerCoordinator,embedded:true)"),
+                "the page without sign in stands past the row switch")
+        #expect(code.contains("@AppStorage(AppStorageKeys.freeAudiobooksEnabled)privatevarcatalogRowVisible"))
+    }
+
+    /// Code with every whitespace removed, for a shape that spans lines.
+    nonisolated static func squeezed(_ code: String) -> String {
+        code.filter { !$0.isWhitespace }
     }
 
     @Test("die Logo-Diagnose steht nur im Entwicklungsbau", .needsTheSources)

@@ -66,7 +66,9 @@ private struct RowToggleRow: View {
     /// with any feeding source left shows fewer tiles instead.
     private var unsourcedLine: String? {
         guard row.toggleable, visible,
-              let titles = AppRows.unsourcedTitles(row, isAllowed: { key in
+              let titles = AppRows.unsourcedTitles(row,
+                                                   podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured,
+                                                   isAllowed: { key in
                   ExternalSources.source(key: key).map { ExternalSources.isAllowed($0) } ?? false
               }) else { return nil }
         return String(localized: "Currently without a source. Switched off: \(titles.joined(separator: " · ")). See External Sources & Privacy.")
@@ -124,7 +126,7 @@ private struct RowToggleRow: View {
             Text(verbatim: unsourced)
                 .font(.caption).foregroundStyle(.orange)
         }
-        if let subline = AppRows.subline(row) {
+        if let subline = AppRows.subline(row, podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured) {
             Text(verbatim: subline)
                 .font(.caption).foregroundStyle(.secondary)
         }
