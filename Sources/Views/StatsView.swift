@@ -18,9 +18,18 @@ struct StatsView: View {
     /// Which bars carry their day under them: every other one, and at an
     /// accessibility size every third, so a two-digit day has the width of
     /// its empty neighbours and stands in one line (at AX3 it split into a
-    /// digit over a digit).
+    /// digit over a digit; at AX5 on a 375 pt screen it still stands in one
+    /// line). The count starts at the oldest day, the left end, so today,
+    /// the right end, carries no day: that is the form as it is, and
+    /// moving the anchor to today changes what the chart shows.
     nonisolated static func labelsDay(at index: Int, accessibilitySize: Bool) -> Bool {
         index % (accessibilitySize ? 3 : 2) == 0
+    }
+
+    /// What VoiceOver says for one bar: the day as its label, the listening
+    /// time as its value. The bars carry the numbers only in their height.
+    nonisolated static func barAccessibility(date: Date, seconds: Int) -> (label: String, value: String) {
+        (date.formatted(.dateTime.weekday(.wide).day().month(.wide)), DurationText.length(seconds: Double(seconds)))
     }
 
     var body: some View {
@@ -157,6 +166,9 @@ struct StatsView: View {
                         }
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(Self.barAccessibility(date: day.date, seconds: day.seconds).label))
+                .accessibilityValue(Text(Self.barAccessibility(date: day.date, seconds: day.seconds).value))
             }
         }
     }

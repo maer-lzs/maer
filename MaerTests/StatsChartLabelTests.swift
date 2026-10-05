@@ -18,6 +18,29 @@ struct StatsChartLabelTests {
         let large = (0..<14).filter { StatsView.labelsDay(at: $0, accessibilitySize: true) }
         #expect(normal == [0, 2, 4, 6, 8, 10, 12])
         #expect(large == [0, 3, 6, 9, 12])
+        #expect(!normal.contains(13) && !large.contains(13), "the anchor is the oldest day; today carries no day")
+    }
+
+    @Test("jede Saeule sagt VoiceOver ihren Tag und ihre Hoerzeit")
+    func eachBarSpeaksItsDayAndTime() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 5)))
+        let parts = StatsView.barAccessibility(date: date, seconds: 3_660)
+        #expect(parts.label == date.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+        #expect(parts.label.contains("5"), "the label names the day: \(parts.label)")
+        #expect(parts.value == DurationText.length(seconds: 3_660), "the value is the listening time")
+        #expect(StatsView.barAccessibility(date: date, seconds: 0).value == DurationText.length(seconds: 0))
+    }
+
+    @Test("die Saeulen sind je ein Element mit Tag und Hoerzeit", .needsTheSources)
+    func theBarsAreElements() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/StatsView.swift"), encoding: .utf8))
+        let chart = try #require(functionBody(of: "private var barChart: some View", in: code))
+        #expect(chart.contains(".accessibilityElement(children: .ignore)"), "a bar is no element of its own")
+        #expect(chart.contains(".accessibilityLabel(Text(Self.barAccessibility(") && chart.contains(".accessibilityValue(Text(Self.barAccessibility("),
+                "a bar says neither its day nor its time")
     }
 
     @Test("die Tagesbeschriftung steht in einer Zeile in eigener Breite ueber der Saeule", .needsTheSources)
