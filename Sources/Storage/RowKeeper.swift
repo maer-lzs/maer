@@ -6,19 +6,20 @@
 import Foundation
 import OSLog
 
-/// Keeps a store's rows in one table: the start read and the serial write
-/// chain that writes the diff against the last landed state. The store
-/// keeps its rule and its memory; the keeper keeps the rows, so the start
-/// read and the write chain are written once for every store.
+/// Keeps a store's rows in one keyed table: the start read and the write
+/// chain (`RowChain`, the one chain of every row store) with the diff of a
+/// keyed table. The store keeps its rule and its memory; the keeper keeps
+/// the rows, so the start read and the write are written once for every
+/// keyed store.
 ///
 /// A missing file is a fresh install and a missing table is empty, both
 /// leave a fresh base. A read that could not read every row leaves the base
 /// unknown with what it did read; a write then removes a row it read and
 /// that is gone, never one nobody could read. A read that failed as a whole
 /// read nothing: no write goes until the rows are read and the store took
-/// them (`write`, `adopt`). After the first landed write the base is known
-/// and later removals apply. A failed write is logged and leaves the base
-/// where it was, so the next write diffs against what really landed.
+/// them (`RowChain`, `adopt`). After the first landed write the base is
+/// known and later removals apply. A failed write is logged and leaves the
+/// base where it was, so the next write diffs against what really landed.
 @MainActor
 final class RowKeeper<Value: Codable & Equatable & Sendable> {
     typealias Rows = [String: Value]
@@ -27,29 +28,33 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     private let table: KeyedRowStore<Value>.Table
     /// The log prefix of the store, so a line names its owner.
     private let label: String
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read.
-    private(set) var base: RowBase<Rows> = .fresh
-    /// Whether the start read failed as a whole: the rows may hold any row
-    /// the store's memory lacks. No write changes it; only a read that
-    /// succeeds before a write (`write`) does. A pass that must reach every
-    /// row (the id move) waits while it holds.
-    private(set) var startReadFailed = false
-    /// The store's adoption of rows read after a failed start: it takes the
-    /// rows into its memory by its rule (`union` unless it has its own); the
-    /// write then takes the memory (`write`). Every store sets it at its
-    /// start; a keeper without it holds every write over unread rows.
-    var adopt: (@MainActor (Rows) -> Void)?
+    /// Whether a landed write that changed rows speaks a line (the stores
+    /// that logged their saves before they had a keeper).
+    private let logsSaves: Bool
+    /// The one write chain.
+    private let chain: RowChain<Rows>
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
-    /// The last handed-over write; each write waits for the one before it.
-    private var pendingWrite: Task<Void, Never>?
 
-    init(database: MaerDatabase, table: KeyedRowStore<Value>.Table, label: String) {
+    init(database: MaerDatabase, table: KeyedRowStore<Value>.Table, label: String, logsSaves: Bool = false) {
         self.database = database
         self.table = table
         self.label = label
-        RowKeepers.register(self)
+        self.logsSaves = logsSaves
+        self.chain = RowChain(label: label)
+    }
+
+    /// What the rows hold, as far as this run knows.
+    var base: RowBase<Rows> { chain.base }
+    /// Whether the start read failed as a whole (`RowChain.startReadFailed`).
+    var startReadFailed: Bool { chain.startReadFailed }
+    /// The store's adoption of rows read after a failed start: it takes the
+    /// rows into its memory by its rule (`union` unless it has its own).
+    /// Every store sets it at its start; a keeper without it holds every
+    /// write over unread rows.
+    var adopt: (@MainActor (Rows) -> Void)? {
+        get { chain.adopt }
+        set { chain.adopt = newValue }
     }
 
     /// The synchronous start read, once, before the store sets its memory:
@@ -61,68 +66,44 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             let reader = try database.readerNow()
             let load = try reader.map { try KeyedRowStore<Value>.loadNow(table: table, reader: $0) }
                 ?? KeyedRowStore<Value>.Load(rows: [:], skipped: 0)
-            guard !load.rows.isEmpty || load.skipped > 0 else {
-                base = .fresh
-                return nil
-            }
-            base = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
-            return load.rows
+            chain.started(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+            return load.rows.isEmpty ? nil : load.rows
         } catch {
-            base = .unknown(seen: nil)
-            startReadFailed = true
-            Logger.library.error("\(self.label, privacy: .public) rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
+            chain.startReadFailedAsAWhole(reason: String(describing: error))
             return nil
         }
     }
 
-    /// The store's memory, taken by `take` when the write runs; the rows get
-    /// the diff against the base (known rows, or the rows the start read
-    /// that are gone). `emptying` says whether an empty snapshot is the
-    /// action of this write; when it is not, an empty snapshot that would
-    /// remove rows is refused and logged. `take` answers nil once the store
-    /// is gone; then nothing is written.
-    ///
-    /// The memory is taken in the chain, after the write before and after an
-    /// adoption, never at the call: a picture frozen at the call would diff
-    /// against a base that changed under it since and remove what the base
-    /// now holds (two writes queued before an adoption: the second would
-    /// remove every row the first one read).
-    ///
-    /// Over rows the start could not read nothing is written: a write
-    /// replaces a row whole and nobody knows what an unread row holds. The
-    /// write reads the rows first; while they cannot be read it holds. Once
-    /// read, the store adopts them (`adopt`), the base is what was read, and
-    /// the store's memory after the adoption is written.
+    /// The store's memory, taken by `take` when the write runs in the chain;
+    /// the rows get the diff against the base (known rows, or the rows the
+    /// start read that are gone). `emptying` says whether an empty snapshot
+    /// is the action of this write; when it is not, an empty snapshot that
+    /// would remove rows is refused and logged, unless a later write is
+    /// already queued (it takes the memory anyway, so this is no wipe
+    /// attempt). `take` answers nil once the store is gone.
     func write(emptying: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
-        chain(what: "save", priority: .utility) { rows in
-            if self.startReadFailed {
-                guard let adopt = self.adopt else {
-                    Logger.library.error("\(self.label, privacy: .public) save held: rows not read and no adoption")
-                    return
-                }
-                let load: KeyedRowStore<Value>.Load
-                do {
-                    load = try await rows.load()
-                } catch {
-                    Logger.library.notice("\(self.label, privacy: .public) save held: rows still not read reason=\(String(describing: error), privacy: .public)")
-                    return
-                }
-                self.base = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
-                self.startReadFailed = false
-                adopt(load.rows)
-                Logger.library.notice("\(self.label, privacy: .public) rows read on save: rows=\(load.rows.count) skipped=\(load.skipped)")
-            }
-            guard let snapshot = take() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.base
+        chain.write(read: { [weak self] in
+            guard let self, let rows = await self.open() else { throw RowsNotOpen() }
+            let load = try await rows.load()
+            return (load.rows.isEmpty ? nil : load.rows, load.skipped)
+        }, take: take, apply: { [weak self] snapshot, base, laterQueued in
+            guard let self, let rows = await self.open() else { return .skipped }
             if base.refuses(snapshot, emptying) {
-                Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) rows plan=\(String(describing: base.plan), privacy: .public)")
-                return
+                if !laterQueued {
+                    Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) rows plan=\(String(describing: base.plan), privacy: .public)")
+                }
+                return .skipped
             }
-            _ = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
-            self.base = .known(snapshot)
-        }
+            let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
+            if self.logsSaves, base.plan != .diff || written.upserted + written.removed > 0 {
+                Logger.library.notice("\(self.label, privacy: .public) save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
+            }
+            return .landed
+        })
     }
+
+    /// The rows could not be opened; a read after a failed start holds.
+    private struct RowsNotOpen: Error {}
 
     /// The adoption most stores take: the rows read, with what this run holds
     /// over them, the run winning per key (it is the newer word). A key this
@@ -136,21 +117,7 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
 
     /// Waits for every queued write (tests, teardown).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
-    }
-
-    private func chain(what: String, priority: TaskPriority?,
-                       _ body: @escaping @MainActor (KeyedRowStore<Value>) async throws -> Void) {
-        let previous = pendingWrite
-        pendingWrite = Task(priority: priority) { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.open() else { return }
-            do {
-                try await body(rows)
-            } catch {
-                Logger.library.error("\(self.label, privacy: .public) \(what, privacy: .public) failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        await chain.awaitPendingWrites()
     }
 
     private func open() async -> KeyedRowStore<Value>? {
@@ -168,10 +135,11 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     }
 }
 
-/// Every keeper that exists, so the app's two ends (going to background,
+/// Every row chain that exists (`RowChain`, under every keeper and every
+/// store with rows of its own), so the app's two ends (going to background,
 /// terminating) can wait for every chain with one call before the
-/// database's checkpoint. A keeper registers itself on creation and is
-/// held weakly; the list forgets what died.
+/// database's checkpoint. A chain registers itself on creation and is held
+/// weakly; the list forgets what died.
 @MainActor
 enum RowKeepers {
     private struct Entry {
@@ -180,12 +148,7 @@ enum RowKeepers {
     }
     private static var entries: [Entry] = []
 
-    static func register<Value>(_ keeper: RowKeeper<Value>) {
-        register(owner: keeper) { [weak keeper] in await keeper?.awaitPendingWrites() }
-    }
-
-    /// A write chain of a store that keeps its rows without a keeper (the
-    /// listen log): waited on at the app's two ends like a keeper's.
+    /// A write chain, waited on at the app's two ends.
     static func register(owner: AnyObject, settle: @escaping () async -> Void) {
         entries.removeAll { $0.keeper == nil }
         entries.append(Entry(keeper: owner, settle: settle))

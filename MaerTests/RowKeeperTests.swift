@@ -192,6 +192,40 @@ struct RowKeeperTests {
         #expect(Set(rows.keys) == ["old", "new", "newer"], "rows: \(rows.keys.sorted())")
     }
 
+    /// The adoption of each store with rows of many keys, after a failed
+    /// start: the rows read stand in memory and on disk after the next
+    /// write, whichever write it is (here: a delete of nothing, a check).
+    @Test("Downloads und Sync-Verlauf nehmen nach gescheitertem Start die gelesenen Zeilen auf")
+    func eachStoreAdoptsTheRowsItRead() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for table in ["download_meta", "sync_history", "sync_last_checked"] {
+            try await unreadable(table, in: database)
+        }
+        let downloads = DownloadManager(documents: directory, database: database)
+        await downloads.ensureScanned()
+        let history = SyncHistoryStore(database: database)
+
+        let mark = NavidromeRekeyTests.detail("sub:album:read", songs: ["s"])
+        try await healed(.downloadMeta, rows: [mark.id: mark], in: database)
+        let ring = SyncHistory.entry(service: .gpodder, direction: .up, counters: [], duration: 1, deviceId: "read")
+        try await healed(.syncHistory, rows: [ring.id.uuidString: ring], in: database)
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        try await healed(.syncLastChecked, rows: ["gpodder": stamp], in: database)
+
+        downloads.deleteDownload(itemId: "sub:album:none")
+        history.append(SyncHistory.entry(service: .music, direction: .down, counters: [], duration: 1, deviceId: "run"))
+        await downloads.awaitPendingWrites()
+        await history.awaitPendingWrites()
+
+        let reader = try #require(try database.readerNow())
+        #expect(try KeyedRowStore<LibraryItemDetail>.loadNow(table: .downloadMeta, reader: reader).rows[mark.id] != nil,
+                "the download mark nobody read left the rows")
+        #expect(history.entries.contains { $0.id == ring.id } && history.entries.count == 2, "ring: \(history.entries.count)")
+        #expect(history.lastChecked["gpodder"] == stamp, "the stamp read is not in memory")
+        #expect(try KeyedRowStore<SyncHistoryEntry>.loadNow(table: .syncHistory, reader: reader).rows.count == 2)
+    }
+
     /// Every keeper in the sources has its store's adoption: a keeper
     /// without one holds every write over unread rows for good.
     @Test("jeder Keeper in den Quellen hat die Uebernahme seines Speichers", .needsTheSources)
@@ -207,7 +241,26 @@ struct RowKeeperTests {
             #expect(built == adopted, "\(file.lastPathComponent): \(built) keepers, \(adopted) adoptions")
             keepers += built
         }
-        #expect(keepers == 7, "the keepers counted: \(keepers)")
+        #expect(keepers == 9, "the keepers counted: \(keepers)")
+    }
+
+    /// The mechanism "read first over unread rows, adopt, then write" stands
+    /// in one place, the chain; no store holds a copy of it (where it stood
+    /// twice, one fault stood twice). The totals keep their own rule, by
+    /// name: their rows are counters, and a read rebuilds them from the rows
+    /// plus what the run counted (`ListeningStatsSync.rebuilt`).
+    @Test("die Mechanik lesen, uebernehmen, schreiben steht an einer Stelle", .needsTheSources)
+    func theMechanismStandsInOnePlace() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
+        var holding: [String] = []
+        for file in files {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("save held") { holding.append(file.lastPathComponent) }
+        }
+        #expect(Set(holding) == ["RowChain.swift", "ListeningStats.swift"], "a copy of the mechanism: \(holding.sorted())")
     }
 }
 #endif

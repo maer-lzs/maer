@@ -46,9 +46,9 @@ struct RowEmptyingFenceTests {
 
     /// The stores with a write chain of their own ask the same rule as the
     /// keeper (`previous(for:)`, `refuses`), and no source diffs against
-    /// nothing by hand any more: that form forgot what the start read.
-    nonisolated static let ownChains = ["RowKeeper.swift", "MaerPlaylists.swift", "PodcastListenLog.swift",
-                                        "ListeningStats.swift", "PodcastSubscriptions.swift"]
+    /// nothing by hand any more: that form forgot what the start read. The
+    /// playlists and the listen log write through a keeper now.
+    nonisolated static let ownChains = ["RowKeeper.swift", "ListeningStats.swift", "PodcastSubscriptions.swift"]
 
     nonisolated static func diffsAgainstNothing(_ code: String) -> Bool {
         code.contains(#/apply\(previous:\s*\[:\]|knownValue\s*\?\?\s*(?:\[:?\]|ListeningStatsData\(\)|removable|\(?base\.removable)/#)

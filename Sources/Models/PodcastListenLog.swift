@@ -50,17 +50,19 @@ final class PodcastListenLog {
     private var loaded = false
     /// Bulk passes (backfill/rescan) coalesce the per-hit file writes.
     private var suspendPersist = false
-    /// The database the rows live in; a witness hands in a file of its own.
-    private let database: MaerDatabase
-    /// Whether the start read failed as a whole: the rows may hold entries
-    /// (a tombstone too) this memory lacks. No write goes until they are
-    /// read and adopted (`persist`); only that read ends it.
-    private var startReadFailed = false
+    /// The rows, one per guid, and their one write chain (`RowKeeper`); a
+    /// witness hands in a database file of its own.
+    private let keeper: RowKeeper<Entry>
 
     init(database: MaerDatabase = .shared) {
-        self.database = database
-        // The app's two ends wait for this chain like a keeper's.
-        RowKeepers.register(owner: self) { [weak self] in await self?.awaitPendingWrites() }
+        keeper = RowKeeper(database: database, table: .listenLog, label: "LISTENLOG", logsSaves: true)
+        // Rows read after a failed start join the log by its own rule: a
+        // tombstone yields only to a newer play (`adopted`), never "the run
+        // wins", which would undo a tombstone nobody read.
+        keeper.adopt = { [weak self] read in
+            guard let self else { return }
+            self.entries = Self.adopted(read: read, run: self.entries)
+        }
     }
 
     // MARK: - Recording (the ONE hook; threshold logic stays in
@@ -100,7 +102,7 @@ final class PodcastListenLog {
         loadIfNeeded()
         let stamp = ts ?? Date().timeIntervalSince1970 * 1000
         guard var entry = entries[guid] else {
-            guard startReadFailed else {
+            guard keeper.startReadFailed else {
                 Logger.rss.notice("LISTENLOG mark unplayed: no entry, nothing played to mark")
                 return
             }
@@ -232,68 +234,24 @@ final class PodcastListenLog {
 
     // MARK: - Persistence
 
-    /// The one opening of the rows the log lives in: every caller awaits
-    /// the same task.
-    private var rowsOpening: Task<KeyedRowStore<Entry>?, Never>?
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. Advances only when a write landed; a start read
-    /// that could not read every row leaves it unknown, and then no write
-    /// removes a row nobody read.
-    private var rowBase: RowBase<[String: Entry]> = .fresh
-    private var pendingWrite: Task<Void, Never>?
-
-    private func openRows() async -> KeyedRowStore<Entry>? {
-        if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<KeyedRowStore<Entry>?, Never> {
-            do {
-                return try await KeyedRowStore<Entry>(connection: try self.database.connection(), table: .listenLog)
-            } catch {
-                Logger.rss.error("LISTENLOG rows open failed reason=\(String(describing: error), privacy: .public)")
-                return nil
-            }
-        }
-        rowsOpening = opening
-        return await opening.value
-    }
-
     /// The last handed-over write (tests).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
+        await keeper.awaitPendingWrites()
     }
 
-    /// The database file does not exist yet: a fresh install, no rows.
-    private struct NoRowsYet: Error {}
-
+    /// The rows, synchronously through the keeper (no async window here:
+    /// the load is lazy-synchronous before every mutation). A read that
+    /// failed as a whole leaves the log empty and the keeper holding every
+    /// write until the rows are read and adopted.
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
         let started = Date()
-        // Rows first, synchronously through a reader (no async window
-        // here: the load is lazy-synchronous before every mutation).
-        do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            guard let reader = try database.readerNow() else { throw NoRowsYet() }
-            let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
-            // Rows that did not decode make the rows unknown, never fresh:
-            // a write then removes only rows this read decoded.
-            rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
-            if !load.rows.isEmpty || load.skipped > 0 {
-                entries = load.rows
-                healBookkeepingDates()
-                let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.rss.notice("LISTENLOG start: entries=\(load.rows.count) skipped=\(load.skipped) ms=\(ms)")
-                return
-            }
-        } catch is NoRowsYet {
-            rowBase = .fresh
-        } catch {
-            // The rows could not be READ (not: hold nothing): they stay
-            // unknown with nothing read, so the first write upserts and
-            // removes nothing, and they heal on the next successful open.
-            rowBase = .unknown(seen: nil)
-            startReadFailed = true
-            Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
-        }
+        guard let rows = keeper.startNow() else { return }
+        entries = rows
+        healBookkeepingDates()
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        Logger.rss.notice("LISTENLOG start: entries=\(rows.count) ms=\(ms)")
     }
 
     /// The eighth `.last` occurrence booked `playedAt = duration`. Seconds
@@ -350,52 +308,12 @@ final class PodcastListenLog {
         // Only the entries that changed go to the rows, in order: each write
         // waits for the one before it and diffs against the log of the
         // write before. A lost write self-heals on the next transition (the
-        // log is derived from localPosition state). The log is taken HERE, in
-        // the chain after the write before and after an adoption, never at
-        // the call: a picture frozen at the call would diff against a base
-        // that changed under it since and remove what the base now holds.
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            var snapshot = self.entries
-            // Over rows the start could not read nothing is written: a write
-            // replaces an entry whole and would replace a tombstone nobody
-            // read. They are read first, then adopted by the log's own rule
-            // (`adopted`), and the memory after that is written.
-            if self.startReadFailed {
-                do {
-                    let load = try await rows.load()
-                    self.entries = Self.adopted(read: load.rows, run: self.entries)
-                    self.rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
-                    self.startReadFailed = false
-                    snapshot = self.entries
-                    Logger.rss.notice("LISTENLOG rows read on save: rows=\(load.rows.count) skipped=\(load.skipped) entries=\(snapshot.count)")
-                } catch {
-                    Logger.rss.notice("LISTENLOG save held: rows still not read reason=\(String(describing: error), privacy: .public)")
-                    return
-                }
-            }
-            // The base is read HERE, after the write before landed or
-            // failed: a failed write leaves it, so this diff still starts
-            // from what the rows really hold.
-            let base = self.rowBase
-            // The log never removes an entry (unplayed is a mark on it), so
-            // an empty snapshot is never what a write means.
-            if base.refuses(snapshot, .refused) {
-                Logger.rss.error("LISTENLOG wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) entries plan=\(String(describing: base.plan), privacy: .public)")
-                return
-            }
-            do {
-                let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
-                if base.plan != .diff || written.upserted + written.removed > 0 {
-                    Logger.rss.notice("LISTENLOG save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
-                }
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.rss.error("LISTENLOG save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        // log is derived from localPosition state). The keeper takes the
+        // log in its chain, reads first over rows the start could not read
+        // and adopts them by the log's rule (`init`). The log never removes
+        // an entry (unplayed is a mark on it), so an empty snapshot is never
+        // what a write means.
+        keeper.write(emptying: .refused) { [weak self] in self?.entries }
     }
 
     /// The rows read after a failed start with what this run holds, by guid

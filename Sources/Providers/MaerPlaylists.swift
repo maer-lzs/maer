@@ -122,21 +122,13 @@ final class MaerPlaylists: ObservableObject {
     /// to take anything away.
     static let entryLimit = 5_000
 
-    /// The lists live as rows (one per list, `maer_playlist`).
-    private let database: MaerDatabase
-    /// The one opening of the rows: every caller awaits the same task.
-    private var rowsOpening: Task<KeyedRowStore<Playlist>?, Never>?
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read. A failed start read leaves it unknown, and then
-    /// no write removes a row nobody saw.
-    private var rowBase: RowBase<[String: Playlist]> = .fresh
-    /// Whether the start read failed as a whole: the rows may hold lists
-    /// the memory lacks, and a later write does not change that.
-    private var startReadFailed = false
+    /// The lists live as rows (one per list, `maer_playlist`), with their
+    /// one write chain (`RowKeeper`).
+    private let keeper: RowKeeper<Playlist>
 
     /// The database is chosen once; a witness hands in a file of its own.
     init(database: MaerDatabase = MaerDatabase.shared) {
-        self.database = database
+        keeper = RowKeeper(database: database, table: .maerPlaylist, label: "PLAYLIST", logsSaves: true)
         load()
     }
 
@@ -379,7 +371,7 @@ final class MaerPlaylists: ObservableObject {
     /// start could not read the rows, which may hold lists with old ids.
     @discardableResult
     func rekey(_ map: (String) -> String) -> (changed: Int, total: Int)? {
-        if startReadFailed { return nil }
+        if keeper.startReadFailed { return nil }
         var changed = 0
         let next = playlists.map { list -> Playlist in
             let entry = NavidromeRekey.playlist(
@@ -419,30 +411,17 @@ final class MaerPlaylists: ObservableObject {
 
     // MARK: - Persistence: rows
 
-    /// The rows, synchronously through a reader (the store's load is
-    /// synchronous by contract: the music tab reads the lists at once).
-    /// A failed read starts empty with the base unknown.
+    /// The rows, synchronously through the keeper (the store's load is
+    /// synchronous by contract: the music tab reads the lists at once). A
+    /// read that failed as a whole starts empty, and the keeper holds every
+    /// write until the rows are read and joined; the lists of this run win
+    /// per list (`RowKeeper.union`).
     private func load() {
-        var loaded: [Playlist]?
-        var base: RowBase<[String: Playlist]> = .fresh
-        do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            let reader = try database.readerNow()
-            let rows = try reader.map { try KeyedRowStore<Playlist>.loadNow(table: .maerPlaylist, reader: $0) }
-                ?? KeyedRowStore<Playlist>.Load(rows: [:], skipped: 0)
-            if !rows.rows.isEmpty || rows.skipped > 0 {
-                loaded = Self.ordered(rows.rows)
-                // Rows that did not decode make the rows unknown, never
-                // fresh.
-                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
-            }
-        } catch {
-            base = .unknown(seen: nil)
-            startReadFailed = true
-            Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
+        playlists = Self.ordered(keeper.startNow() ?? [:])
+        keeper.adopt = { [weak self] read in
+            guard let self else { return }
+            self.playlists = Self.ordered(RowKeeper.union(read: read, run: Self.keyed(self.playlists)))
         }
-        playlists = loaded ?? []
-        rowBase = base
         Logger.library.notice("PLAYLIST start: lists=\(self.playlists.count) entries=\(self.totalEntries)")
     }
 
@@ -456,26 +435,9 @@ final class MaerPlaylists: ObservableObject {
         Dictionary(lists.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
     }
 
-    private func openRows() async -> KeyedRowStore<Playlist>? {
-        if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<KeyedRowStore<Playlist>?, Never> {
-            do {
-                return try await KeyedRowStore<Playlist>(connection: try database.connection(), table: .maerPlaylist)
-            } catch {
-                Logger.library.error("PLAYLIST rows open failed reason=\(String(describing: error), privacy: .public)")
-                return nil
-            }
-        }
-        rowsOpening = opening
-        return await opening.value
-    }
-
-    /// Each write waits for the one before it, so the last state lands last.
-    private var pendingWrite: Task<Void, Never>?
-
     /// The last handed-over write (witnesses).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
+        await keeper.awaitPendingWrites()
     }
 
     /// Only the lists that changed go to the rows, in order (the diff
@@ -485,26 +447,6 @@ final class MaerPlaylists: ObservableObject {
     /// only where removing lists is the action.
     private func save(emptying: RowEmptying) {
         changed?()
-        let snapshot = Self.keyed(playlists)
-        let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.rowBase
-            if base.refuses(snapshot, emptying) {
-                Logger.library.error("PLAYLIST wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) lists plan=\(String(describing: base.plan), privacy: .public)")
-                return
-            }
-            do {
-                let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
-                if base.plan != .diff || written.upserted + written.removed > 0 {
-                    Logger.library.notice("PLAYLIST save: lists=\(written.upserted)/-\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
-                }
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.library.error("PLAYLIST save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        keeper.write(emptying: emptying) { [weak self] in self.map { Self.keyed($0.playlists) } }
     }
 }
