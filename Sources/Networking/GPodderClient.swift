@@ -15,8 +15,12 @@ enum GPodderError: Error, LocalizedError {
     /// A 401 or 403 that survived the login retry: the credentials, or a
     /// block on this network. The number rides along.
     case signIn(Int)
+    /// Basic auth cannot carry a colon in the user name (RFC 7617): the
+    /// server would split the name there. Nothing is sent.
+    case colonInUserName
     var errorDescription: String? {
         switch self {
+        case .colonInUserName: return String(localized: "A gpodder user name cannot contain a colon.")
         case .badURL: return String(localized: "Invalid server URL.")
         case .network: return String(localized: "Cannot reach the gpodder server.")
         case .status(let c): return String(localized: "The server responded with HTTP \(c).")
@@ -130,12 +134,12 @@ final class GPodderClient {
     private func request(_ path: String, method: String,
                          query: [URLQueryItem] = [], body: Data? = nil) throws -> URLRequest {
         guard let url = Self.address(base: config.baseURL, path: path, query: query) else { throw GPodderError.badURL }
+        guard let authorization = Self.basicAuthorization(user: config.username, password: config.password) else {
+            throw GPodderError.colonInUserName
+        }
         var req = URLRequest(url: url)
         req.httpMethod = method
-        let cred = "\(config.username):\(config.password)"
-        if let data = cred.data(using: .utf8) {
-            req.setValue("Basic \(data.base64EncodedString())", forHTTPHeaderField: "Authorization")
-        }
+        req.setValue(authorization, forHTTPHeaderField: "Authorization")
         if let body {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -205,6 +209,21 @@ final class GPodderClient {
         s.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? s
     }
 
+    /// Whether `path` is a valid encoded path: only characters a path may
+    /// carry, and every `%` the start of a valid escape.
+    nonisolated static func isEncodedPath(_ path: String) -> Bool {
+        let allowed = CharacterSet.urlPathAllowed.union(CharacterSet(charactersIn: "%"))
+        guard path.unicodeScalars.allSatisfy({ allowed.contains($0) }) else { return false }
+        return path.removingPercentEncoding != nil
+    }
+
+    /// The Basic auth header, or nil when the user name holds a colon
+    /// (RFC 7617: the server reads the name up to the first colon).
+    nonisolated static func basicAuthorization(user: String, password: String) -> String? {
+        guard !user.contains(":") else { return nil }
+        return "Basic \(Data("\(user):\(password)".utf8).base64EncodedString())"
+    }
+
     nonisolated private static let segmentAllowed: CharacterSet = {
         var set = CharacterSet.urlPathAllowed
         set.remove(charactersIn: "/")
@@ -215,7 +234,11 @@ final class GPodderClient {
     /// segments already encoded by `segment`. Joined on the encoded path,
     /// never through `appendingPathComponent`, which would encode every `%`
     /// a second time (a name with a space reached the server as `%20`).
+    /// A path that is not encoded (a space, a stray `%`) gives nil: setting
+    /// it as the encoded path would end the process (`percentEncodedPath`
+    /// requires a valid encoding).
     nonisolated static func address(base: URL, path: String, query: [URLQueryItem] = []) -> URL? {
+        guard isEncodedPath(path) else { return nil }
         guard var comp = URLComponents(url: base, resolvingAgainstBaseURL: false) else { return nil }
         var basePath = comp.percentEncodedPath
         while basePath.hasSuffix("/") { basePath.removeLast() }

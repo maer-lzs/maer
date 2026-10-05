@@ -9,8 +9,10 @@ import Foundation
 @testable import Maer
 
 /// The user name and the device id go into the gpodder address as one path
-/// segment each, percent-encoded once: after one decoding the server reads
-/// exactly the name that was typed.
+/// segment each, percent-encoded once. A server that decodes the path once
+/// (gpodder.net, Nextcloud GPodder) reads exactly the name that was typed;
+/// oPodSync does not decode the path and reads the encoded form, which for
+/// a name of letters and digits is the same.
 struct GPodderAddressTests {
     private let base = URL(string: "https://gp.example.com")!
 
@@ -34,7 +36,7 @@ struct GPodderAddressTests {
             let url = try built(name)
             let encoded = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)).percentEncodedPath
             #expect(encoded == path, "\(name): \(encoded)")
-            // What the server reads after one decoding: the typed name.
+            // What a server that decodes once reads: the typed name.
             let last = try #require(encoded.split(separator: "/").last)
             #expect(String(last).removingPercentEncoding == name + ".json", "\(name): the server reads \(last)")
         }
@@ -46,6 +48,52 @@ struct GPodderAddressTests {
                                                      path: "api/2/episodes/\(GPodderClient.segment("anna smith")).json",
                                                      query: [URLQueryItem(name: "since", value: "0")]))
         #expect(url.absoluteString == "https://host.example/gpodder/api/2/episodes/anna%20smith.json?since=0")
+    }
+
+    /// A path that is not encoded gives no address instead of ending the
+    /// process in `percentEncodedPath`.
+    @Test("eine nicht kodierte Pfadangabe gibt keine Adresse, statt abzustuerzen")
+    func anUnencodedPathGivesNoAddress() {
+        #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/anna smith.json") == nil)
+        #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/50%.json") == nil)
+        #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/%zz.json") == nil)
+        #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/50%25.json") != nil)
+    }
+
+    /// Basic auth splits at the first colon (RFC 7617): a user name with one
+    /// is refused with its own sentence, before anything is sent.
+    @Test("ein Doppelpunkt im Benutzernamen wird abgelehnt, im Passwort nicht")
+    func aColonInTheUserNameIsRefused() {
+        #expect(GPodderClient.basicAuthorization(user: "anna", password: "p:w")
+                == "Basic \(Data("anna:p:w".utf8).base64EncodedString())")
+        #expect(GPodderClient.basicAuthorization(user: "an:na", password: "pw") == nil)
+        #expect(GPodderError.colonInUserName.errorDescription?.isEmpty == false)
+    }
+
+    /// Every value interpolated into a request path goes through `segment`,
+    /// counted per path, so one raw value among segmented ones is seen.
+    @Test("jeder eingesetzte Wert eines Anfragepfads geht durch segment", .needsTheSources)
+    func everyPathValueIsASegment() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderClient.swift"), encoding: .utf8))
+        let raw = Self.rawPathValues(in: code)
+        #expect(Self.pathValues(in: code) >= 6, "the fence read the paths")
+        #expect(raw.isEmpty, "a value goes into a path without segment: \(raw)")
+        // Calibration: a raw value beside a segmented one counts.
+        #expect(Self.rawPathValues(in: #"request("api/2/x/\(Self.segment(a))/\(b).json")"#) == [#"\(b)"#])
+    }
+
+    /// The interpolations in `"api/2/` path literals.
+    nonisolated static func pathValues(in code: String) -> Int {
+        code.split(separator: "\n").filter { $0.contains("\"api/2/") }
+            .map { $0.components(separatedBy: "\\(").count - 1 }.reduce(0, +)
+    }
+
+    /// The interpolations in path literals that are not `\(Self.segment(`.
+    nonisolated static func rawPathValues(in code: String) -> [String] {
+        code.split(separator: "\n").filter { $0.contains("\"api/2/") }.flatMap { line in
+            line.matches(of: #/\\\((?!Self\.segment\()[^)]*\)/#).map { String($0.output) }
+        }
     }
 
     /// The class, asked of the source: an encoded segment never passes

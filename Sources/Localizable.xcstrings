@@ -884,6 +884,16 @@
         }
       }
     },
+    "A gpodder user name cannot contain a colon." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein gpodder-Benutzername darf keinen Doppelpunkt enthalten."
+          }
+        }
+      }
+    },
     "A key changes when the service moved to another machine or was restored from a backup. If you did not do that, someone between you and the service may be answering in its place. Compare the offered key with what the service prints about itself before you accept it." : {
       "localizations" : {
         "de" : {
