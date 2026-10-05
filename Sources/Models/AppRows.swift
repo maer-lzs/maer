@@ -35,6 +35,10 @@ nonisolated struct AppRow: Identifiable, Sendable {
     /// without a switch names one; it is no longer guessed from the
     /// sources, which called the logo chain a search.
     var fixed: Fixed? = nil
+    /// The row this entry is a share of: the three shares of Start's
+    /// Browse row keep their own switches, sources and cleanup, and the
+    /// rows page draws them under one title (`AppRows.groupTitle`).
+    var group: String? = nil
     /// The library's working set (continue listening, the subscription
     /// grid, playlists, downloads) IS the library rather than a row over
     /// it. Those stay, and the rows page says so instead of offering a
@@ -98,15 +102,18 @@ nonisolated enum AppRows {
                // (`PodcastDirectorySelection`): PodcastIndex where a key
                // is configured, Apple otherwise.
                sourceKeys: ["appleCatalog", "podcastIndex"],
-               storageKey: AppStorageKeys.homeRecommendations),
+               storageKey: AppStorageKeys.homeRecommendations,
+               group: "home.browse"),
         AppRow(key: "home.discoverMusic", tab: .home,
                title: String(localized: "Discover · Music"),
                sourceKeys: ["jamendo", "internetArchive"],
-               storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
+               storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible,
+               group: "home.browse"),
         AppRow(key: "home.discoverBooks", tab: .home,
                title: String(localized: "Discover · Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
-               storageKey: AppStorageKeys.rowHomeDiscoverBooksVisible),
+               storageKey: AppStorageKeys.rowHomeDiscoverBooksVisible,
+               group: "home.browse"),
 
         // MARK: Audiobooks
         AppRow(key: "books.continue", tab: .audiobooks,
@@ -241,6 +248,11 @@ nonisolated enum AppRows {
     ]
 
     static func row(key: String) -> AppRow? { all.first { $0.key == key } }
+
+    /// The title a group of shares carries on the rows page.
+    static func groupTitle(_ group: String) -> String? {
+        group == "home.browse" ? String(localized: "Browse") : nil
+    }
 
     /// Row keys that took over one switch's meaning from a key two rows
     /// shared: new key, the old one it starts from.

@@ -19,11 +19,19 @@ struct RowsSettingsView: View {
         Form {
             ForEach(AppRow.Tab.allCases, id: \.rawValue) { tab in
                 Section {
-                    ForEach(AppRows.all.filter { $0.tab == tab }) { row in
+                    let rows = AppRows.all.filter { $0.tab == tab }
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                        // A group of shares (Browse) stands under its own
+                        // title, its switches indented beneath it.
+                        if let group = row.group, index == 0 || rows[index - 1].group != group,
+                           let title = AppRows.groupTitle(group) {
+                            Text(verbatim: title).font(.subheadline.weight(.semibold))
+                        }
                         RowToggleRow(row: row,
                                      note: cleanupNotes[row.key]) { turnedOff in
                             cleanupNotes[row.key] = turnedOff.isEmpty ? nil : turnedOff
                         }
+                        .padding(.leading, row.group == nil ? 0 : 16)
                     }
                 } header: {
                     Text(Self.title(for: tab))

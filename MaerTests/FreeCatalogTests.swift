@@ -91,19 +91,6 @@ struct FreeCatalogTests {
                 == "https://archive.org/services/img/abc")
     }
 
-    @Test("7edb21b: discover mix — moderate interleave, cap respected, leftovers trail")
-    func discoverMixing() {
-        let recs = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"]
-        let books = ["b1", "b2", "b3"]
-        let mixed = FreeCatalog.discoverMix(recommendations: recs, books: books)
-        // After every 4th recommendation one book; order preserved.
-        let flat = mixed.map { $0.rec ?? $0.book ?? "?" }
-        #expect(flat == ["r1", "r2", "r3", "r4", "b1", "r5", "r6", "r7", "r8", "b2", "b3"])
-        // No books → pure recommendations; no recommendations → books only.
-        #expect(FreeCatalog.discoverMix(recommendations: recs, books: [String]()).count == recs.count)
-        #expect(FreeCatalog.discoverMix(recommendations: [String](), books: books).count == books.count)
-    }
-
     @Test("b395e5f: itunes:image extraction — one tag scan, no full parse")
     func itunesImage() {
         let rss = """

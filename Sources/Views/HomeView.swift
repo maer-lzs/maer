@@ -145,8 +145,7 @@ struct HomeView: View {
                 // The order of the tabs: what you are hearing, what
                 // you heard, your stock, and the offer from outside at the
                 // bottom. Continue → Up Next → Listen Again → Latest
-                // Episodes → Recently Added → Rediscover → Recommended and
-                // the two Discover rows (Browse will fold those three together).
+                // Episodes → Recently Added → Rediscover → Browse.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     // The user's own PLAN directly under the continue
@@ -161,24 +160,12 @@ struct HomeView: View {
                     latestEpisodesSection
                     if recentlyAddedRowVisible { recentlyAddedSection }
                     if rediscoverRowVisible { rediscoverSection }
-                    // The offer from outside. Free-catalog data loads in
-                    // compute() (a lazy below-the-fold view never ran its
-                    // own task reliably), rows render dumb.
-                    if recommendationsEnabled { discoverSection }
-                    if discoverMusicRowVisible {
-                        // "Entdecken · Musik": one mixed row with an entry page.
-                        FreeCatalogRows(playerCoordinator: playerCoordinator,
-                                        freeMusic: freeCatalogStore.rows.freeMusic,
-                                        classical: freeCatalogStore.rows.classical,
-                                        freeMusicProblem: freeCatalogStore.rows.freeMusicProblem)
-                    }
-                    if discoverBooksRowVisible {
-                        // The discover row for audiobooks and radio plays:
-                        // the SAME mixed row and computation as the podcast
-                        // tab, with an entry chevron onto the existing area
-                        // page, built like the music row above.
-                        discoverAudiobooksSection
-                    }
+                    // The offer from outside, ONE double row of three shares
+                    // (recommendations, free music, free audiobooks and radio
+                    // plays). Free-catalog data loads in compute() (a lazy
+                    // below-the-fold view never ran its own task reliably),
+                    // the row renders dumb.
+                    if browseVisible { browseSection }
                     if isEmpty { emptyState }
                 }
                 .padding(.top, TabContentLayout.topInset)
@@ -214,6 +201,8 @@ struct HomeView: View {
                 RediscoverPoolPage(pool: rediscoverPool,
                                    playerCoordinator: playerCoordinator,
                                    libraryViewModel: libraryViewModel)
+            } else if route == .browse {
+                BrowsePage(freeCatalogStore: freeCatalogStore)
             } else {
                 MixedMediaPage(route: route,
                                continueIds: continueIdsAll, addedItems: recentlyAddedAll,
@@ -434,93 +423,63 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// subscribed shows never appear (filtered again at render time, the pool
     /// may predate a subscription). The corner control is the SAME subscribe
     /// flow as the podcast tab's Discover grid; the tile tap opens that grid.
+    /// Browse shows while any of its three shares is switched on.
+    private var browseVisible: Bool {
+        recommendationsEnabled || discoverMusicRowVisible || discoverBooksRowVisible
+    }
+
+    /// The three shares, each empty while its switch is off, mixed rank by
+    /// rank (`BrowseMix`). The music share interleaves classical and
+    /// Jamendo with Start's own seed, the book share is the catalog mix.
+    private var browseShares: [[BrowseTile]] {
+        let recommended = recommendationsEnabled ? discoverShown.map(BrowseTile.recommendation) : []
+        let rows = freeCatalogStore.rows
+        let music = discoverMusicRowVisible
+            ? HomeSections.interleave([CatalogMix.ordered(rows.classical, for: .musicHome),
+                                       CatalogMix.ordered(rows.freeMusic, for: .musicHome)],
+                                      limit: RowPreview.limit).map(BrowseTile.music)
+            : []
+        let books = discoverBooksRowVisible
+            ? CatalogMix.tiles(for: .home, rows: freeCatalogStore.sourceRows).map(BrowseTile.catalog)
+            : []
+        return [recommended, music, books]
+    }
+
+    /// A share that is on but stands empty says why in the log (the page
+    /// says it on screen; Start drops the share).
+    private var browseDropReasons: [String] {
+        let shares = browseShares
+        let failures = freeCatalogStore.sourcesFailures
+        return [
+            BrowseMix.dropReason(.recommended, enabled: recommendationsEnabled, isEmpty: shares[0].isEmpty,
+                                 failure: nil),
+            BrowseMix.dropReason(.music, enabled: discoverMusicRowVisible, isEmpty: shares[1].isEmpty,
+                                 failure: freeCatalogStore.rows.freeMusicProblem),
+            BrowseMix.dropReason(.books, enabled: discoverBooksRowVisible, isEmpty: shares[2].isEmpty,
+                                 failure: failures.isEmpty ? nil
+                                    : failures.keys.map(\.rawValue).sorted().joined(separator: ",")),
+        ].compactMap { $0 }
+    }
+
     @ViewBuilder
-    private var discoverSection: some View {
-        // The subscribed-Set + filter are computed off the body (discoverToken);
-        // the section only reads the result.
-        let shown = discoverShown
-        if !shown.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-// Welle 3: Discover's page is the SAME recommendation pool
-                // page as the podcast tab's. The book admixture is
-                // Discover's curation, the pool is the stock.
-                // The personal row gives the "Discover" name to the
-                // catalog family. It is computed FROM the listener, so it says
-                // so ("Empfohlen"; tab parity with the podcast tab). Reason
-                // subtitles and the shared pool page stay unchanged.
-                RowHeading(title: "Recommended",
-                           total: recommendations.results.count,
-                           shown: discoverShown.count,
-                           destination: PodcastRoute.recommendations)
-                // Horizontally scrollable, the FULL recommendation pool.
-                // One shared tile with the podcast tab (RecommendationTile);
-                // its tap opens the temporary show preview.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        // LibriVox books mix in at a moderate share
-                        // (pure discoverMix, cap 3) with the honest Discover-
-                        // style reason line; tap opens the detail sheet.
-                        let mixed = FreeCatalog.discoverMix(
-                            recommendations: shown,
-                            books: discoverBooksRowVisible ? freeCatalogStore.rows.discoverBooks : [])
-                        ForEach(Array(mixed.enumerated()), id: \.offset) { _, slot in
-                            Group {
-                                if let result = slot.rec {
-                                    RecommendationTile(
-                                        result: result,
-                                        subtitle: reasonText(recommendations.reason(for: result)))
-                                        .kindGlyph(.podcasts)
-                                        .recommendationHideMenu(result)
-                                } else if let book = slot.book {
-                                    // The SAME free-catalog tile
-                                    // as the audiobook rows. Tap plays. It used
-                                    // to open the detail sheet here and play
-                                    // there, for the identical content; the
-                                    // long-press menu keeps the detail path.
-                                    // Tap = detail, long-press = Play
-                                    // shortcut.
-                                    FreeCatalogBookTile(
-                                        item: book,
-                                        onTap: { pushFreeAudiobooksRoute(.catalogBook(itemId: book.id)) })
-                                    .kindGlyph(MediaFamily.kind(for: book.id, markedForm: ListeningStore.startedForm(book.id)))
-                                    .contextMenu {
-                                        Button {
-                                            Task { await playerCoordinator.open(item: book) }
-                                        } label: { Label("Play", systemImage: "play.fill") }
-                                    }
-                                }
-                            }
-                            // Screen-relative slots + peek.
-                            .cardRowSlot()
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
+    private var browseSection: some View {
+        let tiles = BrowseMix.interleave(browseShares, limit: RowPreview.limit * 2)
+        Group {
+            if !tiles.isEmpty {
+                BrowseRow(tiles: tiles,
+                          reason: { reasonText(recommendations.reason(for: $0)) },
+                          playerCoordinator: playerCoordinator)
+            }
+        }
+        .task(id: browseDropReasons) {
+            for reason in browseDropReasons {
+                Logger.library.notice("BROWSE share dropped \(reason, privacy: .public)")
             }
         }
     }
 
     private func reasonText(_ reason: PodcastRecommendationsStore.Reason) -> String {
         PodcastRecommendationsStore.reasonLine(reason)
-    }
-
-    /// Start's mixed free-audiobooks row. Tiles via the ONE shared
-    /// computation (`CatalogMix.hoerspieleTiles`), row via the ONE shared
-    /// `CatalogMixRow`. The store row loads in compute(). A lazy
-    /// below-the-fold .task never ran reliably); until the catalogs land the
-    /// mix shows the static feed curation, so the row is never empty.
-    @ViewBuilder
-    private var discoverAudiobooksSection: some View {
-        let tiles = CatalogMix.tiles(for: .home, rows: freeCatalogStore.sourceRows)
-        if !tiles.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                RowHeading.entry("Discover · Audiobooks and Radio Plays",
-                                 destination: FreeAudiobooksRoute.area)
-                    .accessibilityIdentifier("home-discover-audiobooks")
-                CatalogMixRow(tiles: tiles, marksKinds: true, playerCoordinator: playerCoordinator)
-            }
-        }
     }
 
     /// "Rediscover": daily-rotated local picks, horizontally

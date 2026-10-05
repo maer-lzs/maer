@@ -19,6 +19,8 @@ nonisolated enum MixedRowRoute: Hashable {
     /// The mixed "listen again" row, unabridged. The sources carry
     /// more than the row shows (radio MRU + album progress).
     case listenAgain
+    /// The Browse page: every foreign source as a section (`BrowsePage`).
+    case browse
 
     /// Same wording as the row. The page IS that row, unabridged.
     var title: String {
@@ -27,6 +29,7 @@ nonisolated enum MixedRowRoute: Hashable {
         case .recentlyAdded:     String(localized: "Recently Added")
         case .rediscoverPool:    String(localized: "Rediscover")
         case .listenAgain:       String(localized: "Listen Again")
+        case .browse:            String(localized: "Browse")
         }
     }
 }
@@ -137,8 +140,9 @@ struct MixedMediaPage: View {
                         hearTile(id)
                             .frame(width: cardWidth, alignment: .top)
                     }
-                case .rediscoverPool:
-                    // Registered separately (RediscoverPoolPage). Never here.
+                case .rediscoverPool, .browse:
+                    // Registered separately (RediscoverPoolPage, BrowsePage).
+                    // Never here.
                     EmptyView()
                 case .recentlyAdded:
                     ForEach(addedItems) { item in

@@ -729,28 +729,6 @@ nonisolated enum FreeCatalog {
         return out
     }
 
-    /// Mix LibriVox books into the Discover row at a MODERATE
-    /// share. After every `interval` recommendations one book, hard-capped
-    /// (pure, tested; the Fortsetzen-Deckel-Denke).
-    static func discoverMix<R, B>(recommendations: [R], books: [B],
-                                  interval: Int = 4) -> [(rec: R?, book: B?)] {
-        var out: [(rec: R?, book: B?)] = []
-        var bookIndex = 0
-        for (index, rec) in recommendations.enumerated() {
-            out.append((rec: rec, book: nil))
-            if (index + 1) % interval == 0, bookIndex < books.count {
-                out.append((rec: nil, book: books[bookIndex]))
-                bookIndex += 1
-            }
-        }
-        // Leftover books trail when recommendations run short (never lost).
-        while bookIndex < books.count {
-            out.append((rec: nil, book: books[bookIndex]))
-            bookIndex += 1
-        }
-        return out
-    }
-
     /// Pull the `itunes:image` href out of a book RSS WITHOUT a
     /// full feed parse (one tag scan; the hi-res cover behind it is a real
     /// archive.org scan, ~100 KB, reached via redirect. URLSession follows).

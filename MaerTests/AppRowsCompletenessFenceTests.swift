@@ -40,10 +40,11 @@ struct AppRowsCompletenessFenceTests {
         "home.upNext": [Site(owner: "HomeView", name: "upNextSection")],
         "home.listenAgain": [Site(owner: "HomeView", name: "recentlyPlayedSection")],
         "home.latestEpisodes": [Site(owner: "HomeView", name: "latestEpisodesSection")],
-        "home.recommendations": [Site(owner: "HomeView", name: "discoverSection")],
-        "home.discoverBooks": [Site(owner: "HomeView", name: "discoverAudiobooksSection")],
-        "home.discoverMusic": [Site(owner: "HomeView", name: "body", anchor: "FreeCatalogRows(")],
         "home.rediscover": [Site(owner: "HomeView", name: "rediscoverSection")],
+        // The three shares of the one Browse row.
+        "home.recommendations": [Site(owner: "HomeView", name: "browseSection")],
+        "home.discoverMusic": [Site(owner: "HomeView", name: "browseSection")],
+        "home.discoverBooks": [Site(owner: "HomeView", name: "browseSection")],
         "home.recentlyAdded": [Site(owner: "HomeView", name: "recentlyAddedSection")],
 
         "books.catalog": [Site(owner: "LibraryView", name: "freeAudiobooksSection"),
@@ -95,7 +96,7 @@ struct AppRowsCompletenessFenceTests {
     /// What heads a row: the shared heading, a heading set by hand, and
     /// the parts that carry their own heading.
     static let heading = try! NSRegularExpression(
-        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\("#)
+        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\("#)
     static let declaration = try! NSRegularExpression(
         pattern: #"^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|static|nonisolated)\s+)*(?:var|func)\s+(\w+)"#)
 
@@ -218,8 +219,7 @@ struct AppRowsCompletenessFenceTests {
                       ("recentlyPlayedSection", "home.listenAgain"), ("latestEpisodesSection", "home.latestEpisodes"),
                       ("if recentlyAddedRowVisible { recentlyAddedSection }", "home.recentlyAdded"),
                       ("if rediscoverRowVisible { rediscoverSection }", "home.rediscover"),
-                      ("if recommendationsEnabled { discoverSection }", "home.recommendations"),
-                      ("FreeCatalogRows(", "home.discoverMusic"), ("discoverAudiobooksSection", "home.discoverBooks")]),
+                      ("if browseVisible { browseSection }", "home.recommendations")]),
         Order(file: "Sources/Views/LibraryView.swift",
               from: "private var content: some View {",
               steps: [("continueFeaturedSection", "books.continue"),

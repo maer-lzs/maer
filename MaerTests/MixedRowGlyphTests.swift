@@ -31,8 +31,9 @@ struct MixedRowGlyphTests {
     /// mixed row and stands here with its marks.
     static let marks: [String: (count: Int, reason: String)] = [
         "Sources/Views/MixedMediaPage.swift": (9, "Continue card 2, Recently Added tile 2, Listen Again page 3, the continue page's tile 2"),
-        "Sources/Views/HomeView.swift": (8, "Listen Again row 3, Recommended 2, Rediscover tile 3"),
-        "Sources/Views/CatalogMixRow.swift": (2, "feed and catalog tile, on Start only"),
+        "Sources/Views/HomeView.swift": (6, "Listen Again row 3, Rediscover tile 3"),
+        "Sources/Views/CatalogMixRow.swift": (2, "feed and catalog tile, marked in the Browse row only"),
+        "Sources/Views/BrowseRow.swift": (2, "recommended show and free-music title; the catalog share marks through its tile"),
     ]
 
     static let mixers: [String: (callers: [String: Int], reason: String)] = [
@@ -40,10 +41,10 @@ struct MixedRowGlyphTests {
         "RecentlyPlayedRow.merged(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/MixedMediaPage.swift": 1,
                                        "Sources/Views/Music/MusicView.swift": 1],
                                       "Listen Again, row and page; the music tab's Recently Played holds music only and carries no marks"),
-        "FreeCatalog.discoverMix(": (["Sources/Views/HomeView.swift": 1], "Recommended with catalog books"),
+        "BrowseMix.interleave(": (["Sources/Views/HomeView.swift": 1], "the Browse row's three shares"),
         "computeRediscover(": (["Sources/Views/HomeView.swift": 1], "Rediscover, row and pool"),
         "CatalogMix.tiles(for: .home": (["Sources/Views/HomeView.swift": 1], "feeds and catalogs on Start"),
-        "marksKinds: true": (["Sources/Views/HomeView.swift": 1], "the one catalog row that mixes"),
+        "marksKind: true": (["Sources/Views/BrowseRow.swift": 1], "the catalog tile marks its kind in the Browse row only"),
     ]
 
     static func code(_ path: String) throws -> String {
@@ -95,7 +96,8 @@ struct MixedRowGlyphTests {
         #expect(settings.contains("Label(kind.label, systemImage: kind.glyphKind.systemImage)"),
                 "the storage lines lost their glyphs")
         #expect(!settings.contains("Text(kind.label).padding(.leading, 28)"))
-        let rows = try Self.code("Sources/Views/FreeCatalogRows.swift")
+        // The free music stands in the Browse row now.
+        let rows = try Self.code("Sources/Views/BrowseRow.swift")
         #expect(rows.contains("markedForm: ListeningStore.startedForm(item.id) ?? .album"),
                 "a classical work not started yet shows a book")
     }

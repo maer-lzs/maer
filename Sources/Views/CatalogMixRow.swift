@@ -7,28 +7,23 @@ import SwiftUI
 
 /// The ONE mixed catalog tile row. Radio-play feeds and
 /// catalog titles interleaved (`CatalogMix.row`), rendered as a horizontal
-/// tile row on screen-relative slots. Used by the podcast tab ("Freie
-/// Hörbücher & Hörspiele") and Start ("Entdecken · Hörbücher & Hörspiele").
-/// One component, not two mixers.
+/// tile row on screen-relative slots. Used by the podcast tab (the radio
+/// plays to subscribe) and the audiobooks tab (the catalog row); Start
+/// mixes the same tiles into its Browse row (`BrowseRow`). One tile
+/// component, not two.
 ///
 /// Tap convention: feed tiles push the show preview
 /// (subscribe lives there), catalog tiles open the detail sheet with the
 /// prominent Play; long-press keeps Play as the shortcut for catalog tiles.
 struct CatalogMixRow: View {
     let tiles: [CatalogMix.Tile]
-    /// Start mixes feeds (podcast shows) with catalog titles, and only
-    /// there do the tiles carry their kind mark; the tabs' rows hold one
-    /// kind each (`CatalogMix`: books no feeds, podcasts no catalogs).
-    var marksKinds = false
-    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    @Environment(\.catalogFacts) private var catalogFacts
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 12) {
                 ForEach(tiles) { tile in
-                    tileView(tile)
+                    CatalogMixTile(tile: tile, marksKind: false, playerCoordinator: playerCoordinator)
                         .cardRowSlot()
                 }
             }
@@ -36,9 +31,21 @@ struct CatalogMixRow: View {
         }
         .scrollClipDisabled()
     }
+}
 
-    @ViewBuilder
-    private func tileView(_ tile: CatalogMix.Tile) -> some View {
+/// One tile of the catalog mix: a feed tile pushes the show preview, a
+/// catalog tile its page (OTR bundles their show page). Shared by the
+/// tabs' rows and Start's Browse row, which mixes kinds and alone marks
+/// them; the tabs' rows hold one kind each (`CatalogMix`: books no feeds,
+/// podcasts no catalogs).
+struct CatalogMixTile: View {
+    let tile: CatalogMix.Tile
+    let marksKind: Bool
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
+
+    var body: some View {
         switch tile {
         case .feed(let entry):
             RecommendationTile(result: PodcastSearchResult(
@@ -46,7 +53,7 @@ struct CatalogMixRow: View {
                 artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                 subtitle: entry.form?.label,
                 badgeText: entry.ccLicense)
-                .kindGlyph(marksKinds ? .podcasts : nil)
+                .kindGlyph(marksKind ? .podcasts : nil)
         case .item(let item):
             FreeCatalogBookTile(
                 item: item,
@@ -57,7 +64,7 @@ struct CatalogMixRow: View {
                     pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                 }
             )
-            .kindGlyph(marksKinds ? MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)) : nil)
+            .kindGlyph(marksKind ? MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)) : nil)
             .contextMenu {
                 Button {
                     Task { await playerCoordinator.open(item: item) }
