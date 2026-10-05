@@ -89,13 +89,19 @@ struct PodcastsView: View {
     @State private var recommendationItems: [PodcastSearchResult] = []
     @AppStorage(AppStorageKeys.rowPodcastsRadioPlaysVisible) private var radioPlaysRowVisible = true
     @AppStorage(AppStorageKeys.rowPodcastsRecommendedVisible) private var recommendedRowVisible = true
+    /// The two folds: folded in, the mirror's and the premium shows stand
+    /// in the subscriptions and their own rows fall away.
+    @AppStorage(AppStorageKeys.podcastsPinchflatInSubscriptions) private var pinchflatFolded = false
+    @AppStorage(AppStorageKeys.podcastsPremiumInSubscriptions) private var premiumFolded = false
+    /// The sort chosen on the subscriptions page; the preview follows it.
+    @AppStorage(AppStorageKeys.podcastSortOption) private var subscriptionSort = PodcastSortOption.zuletztAktualisiert
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// What the tab adds to the podcast token: it recomputes when it becomes
     /// visible again (isActive gates the actual work) and when a show is
     /// hidden. The store part comes deduplicated from the scope.
     private var recomputeExtra: String {
-        "\(isActive)-\(hiddenRevision)"
+        "\(isActive)-\(hiddenRevision)-\(pinchflatFolded)-\(premiumFolded)-\(subscriptionSort.rawValue)"
     }
 
     var body: some View {
@@ -282,11 +288,11 @@ struct PodcastsView: View {
     private func computeSections() async -> PodcastSectionsResult {
         let shows = allShows
         let snapshot = PodcastSections.snapshot(shows: shows)
-        // The tab's show grid is a PREVIEW now. Newest-first, unfiltered
-        // (the sort/filter control moved to the full page, which computes with
-        // the persisted values itself).
+        // The tab's show grid is a PREVIEW of the subscriptions page: in
+        // the sort chosen there, unfiltered (the filter is the page's tool,
+        // and a filtered preview could stand empty with no control at hand).
         return await PodcastSections.computeDetached(
-            shows: shows, snapshot: snapshot, sort: .zuletztAktualisiert, filter: .alle
+            shows: shows, snapshot: snapshot, sort: subscriptionSort, filter: .alle
         )
     }
 
@@ -443,13 +449,13 @@ RowHeading(title: "Recommended",
         // A PREVIEW now. 12 tiles, newest first, unfiltered; the full
         // subscription grid (and the sort/filter control with it) lives on
         // the page behind the counted chevron. The count rule shows the total
-        // ("Recently Updated · 27 ›"); with ≤ 12 shows the chevron falls away
+        // ("Subscriptions · 27 ›"); with ≤ 12 shows the chevron falls away
         // by pure counting. The zero-hits trap dies with the filter's move:
         // the preview is unfiltered, and the page. Where the filter lives.
         // Always shows its own way back out.
         if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                RowHeading(title: "Recently Updated",
+                RowHeading(title: "Subscriptions",
                            total: recentShows.count,
                            shown: recentShowsPreview.count,
                            showsTotal: true,
@@ -583,7 +589,8 @@ RowHeading(title: "Recommended",
 
     @ViewBuilder
     private var premiumSection: some View {
-        let shows = allShows.filter { isPremium($0) }
+        // Folded into the subscriptions, the premium shows stand there.
+        let shows = premiumFolded ? [] : allShows.filter { isPremium($0) }
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 // DIE REGEL: every row has a page; the chevron is
@@ -1063,7 +1070,7 @@ struct ChartGenrePage: View {
 }
 
 
-/// The full subscription grid behind the "Recently Updated" preview.
+/// The full subscription grid behind the "Subscriptions" preview.
 /// The sort/filter control moved here with it. The control sits on the
 /// surface it acts on, with the same persisted AppStorage keys as before. The
 /// zero-hits rule lives ON this page: an active filter with no match shows the
@@ -1073,6 +1080,9 @@ struct PodcastSubscriptionsPage: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
     @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
+    /// The folds change which shows stand here; observed so the page follows.
+    @AppStorage(AppStorageKeys.podcastsPinchflatInSubscriptions) private var pinchflatFolded = false
+    @AppStorage(AppStorageKeys.podcastsPremiumInSubscriptions) private var premiumFolded = false
     @State private var infos: [RecentShowInfo] = []
 
     private var allShows: [PodcastShow] { PodcastShowSources.active() }
@@ -1118,7 +1128,7 @@ struct PodcastSubscriptionsPage: View {
             .bottomBarClearance()
         }
         .navigationTitle(Text(verbatim: FilteredHead.title(
-            String(localized: "Recently Updated"),
+            String(localized: "Subscriptions"),
             filterLabel: SortIndicator.part(podcastFilter.label,
                                             ifNot: podcastFilter == .alle))))
         .navigationBarTitleDisplayMode(.inline)
@@ -1133,7 +1143,7 @@ struct PodcastSubscriptionsPage: View {
             UserChoiceCloudSync.shared.noteScalar(
                 key: AppStorageKeys.podcastFilterOption, value: new.rawValue)
         }
-        .taskOnPodcastChange("\(podcastSort.rawValue)-\(podcastFilter.rawValue)") {
+        .taskOnPodcastChange("\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(pinchflatFolded)-\(premiumFolded)") {
             let shows = allShows
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(

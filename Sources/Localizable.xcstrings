@@ -7801,6 +7801,16 @@
         }
       }
     },
+    "Pinchflat like other feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinchflat wie normale Feeds"
+          }
+        }
+      }
+    },
     "Pinchflat Server" : {
       "localizations" : {
         "de" : {
@@ -8423,6 +8433,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Premium-Feeds tragen Zugangsdaten in ihrer Adresse. Aus heißt: sie bleiben nur auf diesem Gerät; Spiegel bleiben ohnehin außen vor."
+          }
+        }
+      }
+    },
+    "Premium like other feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium wie normale Feeds"
           }
         }
       }
@@ -10564,6 +10584,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf freien Feed umschalten"
+          }
+        }
+      }
+    },
+    "Switched on, these shows stand in your subscriptions with their glyph and count with them; their own row falls away." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingeschaltet stehen diese Sendungen mit ihrer Glyphe in deinen Abos und zählen mit; ihre eigene Reihe fällt weg."
           }
         }
       }

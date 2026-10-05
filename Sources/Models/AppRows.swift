@@ -187,8 +187,8 @@ nonisolated enum AppRows {
                title: String(localized: "Premium"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.subscriptions", tab: .podcasts,
-               title: String(localized: "Recently Updated"),
-               // The subscription grid, newest updated show first.
+               title: String(localized: "Subscriptions"),
+               // The subscription grid, in the sort chosen on its page.
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.downloaded", tab: .podcasts,
                title: String(localized: "Downloaded"),

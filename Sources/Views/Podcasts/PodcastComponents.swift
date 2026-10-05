@@ -210,6 +210,13 @@ struct RecentShowTile: View {
                 }
                 // THE premium badge (shared component).
                 .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL), refused: refused)
+                // The mirror's own glyph, the one its source carries in the
+                // settings: folded into the subscriptions, a Pinchflat show
+                // says where it comes from. Bottom-leading is the corner
+                // the tile leaves free.
+                .overlay(alignment: .bottomLeading) {
+                    if info.show.origin != nil { PinchflatGlyph() }
+                }
 
                 if let count = PodcastTileCount.mode(raw: tileCountMode)
                     .badge(unplayed: info.unplayedCount, newSinceLastPlayed: info.newCount) {
@@ -234,6 +241,22 @@ struct RecentShowTile: View {
     }
 }
 
+
+/// The cover glyph of a show from the Pinchflat mirror, in the form of
+/// the premium lock (`PremiumLockBadge`).
+struct PinchflatGlyph: View {
+    static let symbol = "play.rectangle.on.rectangle"
+
+    var body: some View {
+        Image(systemName: Self.symbol)
+            .font(.caption2)
+            .foregroundStyle(.white)
+            .padding(5)
+            .background(Circle().fill(.black.opacity(0.45)))
+            .padding(6)
+            .accessibilityLabel(Text(verbatim: "Pinchflat"))
+    }
+}
 
 /// Compact show tile for the browse row.
 struct ShowTile: View {

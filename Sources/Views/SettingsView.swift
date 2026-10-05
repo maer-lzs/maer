@@ -170,6 +170,8 @@ struct SettingsView: View {
                     // What every show follows unless it has its own, and
                     // the shows that do.
                     PodcastGeneralSection()
+                    // Where the mirror's and the premium shows stand.
+                    PodcastSubscriptionFoldSection()
                     recommendationsSection
                     // Premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()

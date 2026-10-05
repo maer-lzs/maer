@@ -16,6 +16,27 @@ nonisolated struct PodcastSectionsResult {
     var downloaded: [LibraryItem] = []
 }
 
+/// Whether the server mirror's shows and the premium feeds stand in the
+/// subscriptions like any feed, or in their own rows (the two switches in
+/// the podcast settings). Folded in, they count with the subscriptions and
+/// their own row falls away; not folded, they stand only in their row.
+nonisolated struct SubscriptionFold: Equatable, Sendable {
+    var pinchflat = false
+    var premium = false
+
+    /// Does a show with these marks stand in the subscriptions?
+    func admits(mirrored: Bool, premium isPremium: Bool) -> Bool {
+        (!mirrored || pinchflat) && (!isPremium || premium)
+    }
+
+    @MainActor
+    static var current: SubscriptionFold {
+        SubscriptionFold(
+            pinchflat: AppStorageKeys.boolValue(AppStorageKeys.podcastsPinchflatInSubscriptions, default: false),
+            premium: AppStorageKeys.boolValue(AppStorageKeys.podcastsPremiumInSubscriptions, default: false))
+    }
+}
+
 /// Pure one-pass computation of the podcast home sections. Extracted from
 /// `PodcastsView` so it is testable without UI/global state. All state lookups
 /// (play state, last-played timestamp, inbox mode) are injected.
@@ -42,6 +63,9 @@ enum PodcastSections {
         let equivalents: [String: [String]]
         let downloadedIds: Set<String>
         let inboxOff: Set<String>
+        /// Feed URLs of the premium shows (the one premium test).
+        var premiumFeeds: Set<String> = []
+        var fold = SubscriptionFold()
     }
 
     @MainActor
@@ -67,7 +91,9 @@ enum PodcastSections {
             serverProgress: ABSPodcastProvider.shared.episodeProgress,
             equivalents: equivalents,
             downloadedIds: DownloadManager.shared.downloadedItemIds,
-            inboxOff: inboxOff
+            inboxOff: inboxOff,
+            premiumFeeds: PodcastSubscriptions.premiumFeeds(among: shows.map(\.feedURL)),
+            fold: SubscriptionFold.current
         )
     }
 
@@ -137,6 +163,8 @@ enum PodcastSections {
                 inboxOff: { snapshot.inboxOff.contains($0) },
                 playState: { state(guid: $0.id, duration: $0.media?.duration ?? 0, snapshot: snapshot) },
                 lastPlayed: { lastPlayed(id: $0, snapshot: snapshot) },
+                isPremium: { snapshot.premiumFeeds.contains($0.feedURL) },
+                fold: snapshot.fold,
                 sort: sort, filter: filter
             )
         }.value
@@ -148,6 +176,8 @@ enum PodcastSections {
         inboxOff: (String) -> Bool,
         playState: (LibraryItem) -> EpisodePlayState,
         lastPlayed: (String) -> Double,
+        isPremium: (PodcastShow) -> Bool = { _ in false },
+        fold: SubscriptionFold = SubscriptionFold(),
         sort: PodcastSortOption = .zuletztAktualisiert,
         filter: PodcastFilterOption = .alle
     ) -> PodcastSectionsResult {
@@ -189,10 +219,13 @@ enum PodcastSections {
             }
         }
 
-        // Mirrored shows split into their own group (the group is
-        // their row); everything else stays in the general grid.
-        let mirrored = infos.filter { $0.show.origin != nil }
-        let regular = infos.filter { $0.show.origin == nil }
+        // Mirrored shows split into their own group (the group is their
+        // row), premium shows stand in theirs; folded in by a switch, they
+        // stand in the subscriptions like any feed and their row is empty.
+        let mirrored = fold.pinchflat ? [] : infos.filter { $0.show.origin != nil }
+        let regular = infos.filter {
+            fold.admits(mirrored: $0.show.origin != nil, premium: isPremium($0.show))
+        }
         return PodcastSectionsResult(
             // Welle 3 / C-Lehre: the SOURCE no longer culls. The row caps
             // its preview (RowPreview), the page shows the full stock. 200 is

@@ -654,6 +654,14 @@ final class PodcastSubscriptions: ObservableObject {
     /// OR a known members-only host OR a MANUAL user marking (the escape
     /// hatch for unknown patterns; one truth feeds management, tab
     /// grouping, badges, the replace dialog AND the OPML-export guard).
+    /// The premium feeds among these addresses, for the podcast sections'
+    /// snapshot. The snapshot is taken in `taskOnPodcastChange`, whose scope
+    /// observes this store, so a changed marking recomputes it.
+    nonisolated static func premiumFeeds(among feedURLs: [String],
+                                         defaults: UserDefaults = .standard) -> Set<String> {
+        Set(feedURLs.filter { isPremiumFeed($0, defaults: defaults) })
+    }
+
     nonisolated static func isPremiumFeed(_ feedURL: String,
                                           defaults: UserDefaults = .standard) -> Bool {
         // A mirrored feed is NEVER premium. Its host login is

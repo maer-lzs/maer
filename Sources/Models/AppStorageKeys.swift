@@ -468,6 +468,12 @@ nonisolated enum AppStorageKeys {
     /// The chart row of the catalog page (Apple's charts), apart from the
     /// catalog row that holds the page.
     static let rowBooksChartsVisible = "rowBooksChartsVisible"
+    /// The Pinchflat mirror's shows stand in the subscriptions like any
+    /// feed (with their glyph) instead of in their own row. Off by default.
+    static let podcastsPinchflatInSubscriptions = "podcastsPinchflatInSubscriptions"
+    /// The premium feeds stand in the subscriptions like any feed (with
+    /// their lock) instead of in their own row. Off by default.
+    static let podcastsPremiumInSubscriptions = "podcastsPremiumInSubscriptions"
 
     // Radio-Picker-Kuratierung
     /// ALL raw name variants of the chosen region (the by-state query runs
