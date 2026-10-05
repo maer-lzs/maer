@@ -138,7 +138,7 @@ struct ImageCachePersistentTests {
         // The move of a complete pass. `today` is not active: the move would
         // otherwise hand a name that the first step wrongly shortened back
         // to it, and hide that step.
-        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url])
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url])
         #expect(ImageCache.shared.testIsPersistent(url), "the kept foreign cover is not under today's name")
         #expect(!ImageCache.shared.testIsPersistent(named: old), "the old name stayed")
     }
@@ -161,13 +161,13 @@ struct ImageCachePersistentTests {
             ImageCache.shared.removePersistent(coverURL: episodeB)
         }
         // The move of a complete pass.
-        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
         #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B lost its kept cover")
         #expect(ImageCache.shared.testPersistentBytes(episodeA) == nil, "A carries B's picture")
         // A already kept: the move would have deleted B's file.
         let bytesA = png(64)
         #expect(ImageCache.shared.testPlacePersistent(bytesA, for: episodeA))
-        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [episodeA, episodeB])
         #expect(ImageCache.shared.testPersistentBytes(episodeB) == bytesB, "B's cover was deleted")
         #expect(ImageCache.shared.testPersistentBytes(episodeA) == bytesA)
     }
@@ -191,7 +191,7 @@ struct ImageCachePersistentTests {
             ImageCache.shared.removePersistent(coverURL: large)
             ImageCache.shared.testRemovePersistent(named: old)
         }
-        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [small, large])
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [small, large])
         #expect(ImageCache.shared.testPersistentBytes(small) == nil, "the small size inherited")
         #expect(ImageCache.shared.testPersistentBytes(large) == nil, "the large size inherited")
     }
@@ -436,16 +436,69 @@ struct ImageCachePersistentTests {
         }
         ImageCache.shared.invalidate(url: url)
         await ImageCache.shared.testDiskSettled(url)
-        ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url, free])
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url, free])
         #expect(await gate(url) == nil, "the old bytes landed under the name of a waiting address")
         #expect(await gate(free) != nil, "the control: an old name moves where no address waits")
     }
 
-    /// Every move of a file in the cover cache, counted: a new one has to
+    /// Fresh bytes of the new address in the cache: the carried copy from
+    /// before the old address's invalidation is the one too many and goes,
+    /// and the new address does not wait, so every reader finds the fresh
+    /// bytes (an invalidation would remove exactly those).
+    @Test("ein Umbenennen macht frische Bytes der neuen Adresse nie unsichtbar")
+    func renamingKeepsFreshBytesOfTheNewAddress() async {
+        let tag = UUID().uuidString
+        let old = navidromeCover("old-\(tag)")
+        let new = navidromeCover("new-\(tag)")
+        await keptAndWaiting(old)
+        let fresh = png(32)
+        #expect(ImageCache.shared.testPlaceInCache(fresh, for: new), "the precondition: fresh bytes under the new name")
+        defer {
+            ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: new))
+            ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: old))
+        }
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
+        #expect(ImageCache.shared.testCacheBytes(new) == fresh, "the fresh bytes of the new address went")
+        #expect(!ImageCache.shared.testIsRefreshing(new), "the new address waits although fresh bytes stand")
+        #expect(!ImageCache.shared.testIsPersistent(new), "the copy from before the invalidation took the new name")
+        #expect(!ImageCache.shared.testIsPersistent(old), "the carried copy stayed under the old name")
+    }
+
+    /// A file under a waiting name in the cache, as a rename of step 0 leaves
+    /// it after an invalidation during the step: the sweep clears it when it
+    /// is done, behind the disk work of that address.
+    @Test("nach den Umbenennungen raeumt der Fegelauf jede Cache-Datei unter einem wartenden Namen")
+    func theSweepClearsAWaitingNameFromTheCache() async {
+        let url = coverURL(UUID().uuidString)
+        await keptAndWaiting(url)
+        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)) }
+        #expect(ImageCache.shared.testPlaceInCache(png(64), for: url), "the precondition: bytes under the waiting name")
+        #expect(await gate(url) != nil, "the precondition: the gate would answer with them")
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [])
+        await ImageCache.shared.testDiskSettled(url)
+        #expect(ImageCache.shared.testCacheBytes(url) == nil, "the file under the waiting name stayed")
+        #expect(await gate(url) == nil, "the gate answers instead of the network")
+        #expect(ImageCache.shared.testIsPersistent(url), "the kept copy stays")
+    }
+
+    @Test("der Fegelauf laesst die geschuetzte Fassung einer wartenden Adresse stehen, auch wenn der Cache denselben Namen haelt")
+    func theSweepDropsNoWaitingCopy() async {
+        let url = coverURL(UUID().uuidString)
+        await keptAndWaiting(url)
+        defer { ImageCache.shared.testRemovePersistent(named: ImageCache.shared.testKey(for: url)) }
+        #expect(ImageCache.shared.testPlaceInCache(png(64), for: url), "the precondition: the cache holds the same name")
+        await ImageCache.shared.testApplyTierMoves([.drop(ImageCache.shared.testKey(for: url))])
+        #expect(ImageCache.shared.testIsPersistent(url), "the kept copy of a waiting address was dropped")
+    }
+
+    /// The `.moveItem(` sites in the cover cache, counted: a new one has to
     /// answer whether it puts bytes of a waiting address under a name the
     /// network gate answers (makePersistent, removePersistent,
     /// renamePersistent, the renames of step 0, up and down in the sweep).
-    @Test("jede Datei-Bewegung im Cover-Cache steht im Bestand", .needsTheSources)
+    /// What the count does not see: the writers of fresh bytes (`write(to:)`,
+    /// `copyItem` with `replaceItemAt`), which lay down a loaded picture.
+    @Test("jede moveItem-Stelle im Cover-Cache steht im Bestand", .needsTheSources)
     func everyMoveInTheCoverCacheIsCounted() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))

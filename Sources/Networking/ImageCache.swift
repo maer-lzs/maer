@@ -364,14 +364,11 @@ final class ImageCache {
         FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
     }
 
-    /// Test seam: the move of foreign names alone, as a complete pass would
-    /// run it, without demoting the covers of neighbouring witnesses.
-    func testMoveLegacyNames(activeCoverURLs: [URL]) {
+    /// Test seam: step 0 as a complete pass runs it, through the sweep's own
+    /// `renameStep`, without demoting the covers of neighbouring witnesses.
+    func testMoveLegacyNames(activeCoverURLs: [URL]) async {
         let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: true) { key(for: $0) }
-        let cache = diskDirectory, waiting = refreshing
-        Self.moveLegacyNames(in: [persistentDirectory, diskDirectory], listing: Self.fileNames, moves: moves) {
-            Self.gateOfWaitingReads($0, cache: cache, waiting: waiting)
-        }
+        await renameStep(persistent: persistentDirectory, cache: diskDirectory, moves: moves)
     }
 
     /// Test seam: the moves between the tiers for the given moves alone, as
@@ -940,8 +937,13 @@ final class ImageCache {
         let source = fm.fileExists(atPath: kept.path) ? kept : demoted
         guard source != target, fm.fileExists(atPath: source.path),
               source == kept || !oldWaits else { return }
+        // Fresh bytes of the new address in the cache make the carried copy
+        // from before the old address's invalidation the one too many: it
+        // goes, and the new address does not wait (`invalidate` would remove
+        // exactly those bytes).
+        let newCached = diskDirectory.appendingPathComponent(key(for: new))
         do {
-            if fm.fileExists(atPath: target.path) {
+            if fm.fileExists(atPath: target.path) || (oldWaits && fm.fileExists(atPath: newCached.path)) {
                 try fm.removeItem(at: source)
             } else {
                 try fm.moveItem(at: source, to: target)
@@ -966,6 +968,48 @@ final class ImageCache {
         case promote(String)
         case demote(String)
         case drop(String)
+    }
+
+    /// Step 0 of a sweep, run by the sweep and by its seam alike. A name an
+    /// older build wrote with a sign-in part in it takes the name without, in
+    /// both tiers and before anything compares names, so a kept cover stays
+    /// kept (a name already stored as a digest cannot be read; that cover
+    /// loads once more). A kept cover of a foreign address stands under the
+    /// name the earlier rule gave it; it takes today's name without the
+    /// network, so no offline cover of a downloaded episode is demoted. No
+    /// rename puts a file into the purgeable tier under the name of an
+    /// address that waits (`gateOfWaitingReads`, the names as the step
+    /// begins); an invalidation during the renames is met after them
+    /// (`clearWaitingFromCache`), so the rule holds when the sweep is done.
+    nonisolated func renameStep(persistent: URL, cache: URL, moves: [String: String]) async {
+        let names: (URL) -> Set<String> = Self.fileNames
+        let waiting = await MainActor.run { self.refreshing }
+        let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waiting) }
+        Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
+        Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
+        await MainActor.run { self.clearWaitingFromCache() }
+    }
+
+    /// Every file in the purgeable tier under the name of an address that
+    /// waits now goes, behind the disk work of that address and only if it
+    /// still waits then: a load that landed meanwhile ended the wait, and
+    /// its fresh bytes stay. Such a file can only be one a rename of step 0
+    /// put there after an invalidation that came during the step.
+    private func clearWaitingFromCache() {
+        for name in refreshing {
+            let target = diskDirectory.appendingPathComponent(name)
+            guard FileManager.default.fileExists(atPath: target.path) else { continue }
+            onDisk(name) { [self] in
+                guard await MainActor.run(body: { self.refreshing.contains(name) }),
+                      FileManager.default.fileExists(atPath: target.path) else { return }
+                do {
+                    try FileManager.default.removeItem(at: target)
+                    Logger.library.notice("COVERCACHE waiting name cleared from the cache after the renames")
+                } catch {
+                    Logger.library.error("COVERCACHE waiting name not cleared: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+        }
     }
 
     /// Runs the moves between the tiers. Neither way moves the name of an
@@ -1001,6 +1045,12 @@ final class ImageCache {
                     try fm.moveItem(at: persistent.appendingPathComponent(name), to: cache.appendingPathComponent(name))
                     demoted += 1
                 case .drop(let name):
+                    // The kept copy of a waiting address stays until the
+                    // load that answers replaces it (`removePersistent`).
+                    guard await !isWaiting(name) else {
+                        waiting += 1
+                        continue
+                    }
                     try fm.removeItem(at: persistent.appendingPathComponent(name))
                 }
             } catch {
@@ -1101,23 +1151,8 @@ final class ImageCache {
             let fm = FileManager.default
             let names: (URL) -> Set<String> = Self.fileNames
 
-            // 0) A name an older build wrote with a sign-in part in it takes
-            //    the name without, in both tiers and before anything compares
-            //    names, so a kept cover stays kept. A name already stored as a
-            //    digest cannot be read; that cover loads once more.
-            // No rename puts a file into the purgeable tier under the name of
-            // an address that waits for the network (`gateOfWaitingReads`).
-            // The waiting names are read once, here: an invalidation during
-            // these renames is not covered. They rename what an older build
-            // wrote and run once after an update; the window is one sweep.
-            let waitingNames = await MainActor.run { self.refreshing }
-            let holds: (URL) -> Bool = { Self.gateOfWaitingReads($0, cache: cache, waiting: waitingNames) }
-            Self.dropSignInFromNames(in: [persistent, cache], listing: names, holds: holds)
-            // A kept cover of a foreign address stands under the name the
-            // earlier rule gave it; it takes today's name before anything
-            // compares names, without the network, so no offline cover of a
-            // downloaded episode is demoted.
-            Self.moveLegacyNames(in: [persistent, cache], listing: names, moves: moves, holds: holds)
+            // 0) The renames within a tier (`renameStep`).
+            await self.renameStep(persistent: persistent, cache: cache, moves: moves)
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
             //    in the cache goes up, a persistent one without a download
