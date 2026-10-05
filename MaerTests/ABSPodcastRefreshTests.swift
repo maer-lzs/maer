@@ -83,7 +83,7 @@ struct ABSPodcastRefreshTests {
     func everyChangeCountsTheTokenAndOnlyAnAdoptionStampsTheThrottle() throws {
         let code = try Self.providerCode()
         let lines = code.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        #expect(lines.filter { $0.hasPrefix("shows = ") } == ["shows = next"], "the shows change outside replaceShows")
+        #expect(Self.showsWrites(in: code) == ["shows = next"], "the shows change outside replaceShows")
         let replace = try #require(Self.body(of: "private func replaceShows(", in: code))
         #expect(replace.contains("changeToken += 1"), "replaceShows does not count the token")
         let stamps = lines.indices.filter { lines[$0].hasPrefix("lastRefreshAt = ") }
@@ -91,6 +91,57 @@ struct ABSPodcastRefreshTests {
         for index in stamps {
             #expect(index > 0 && lines[index - 1].hasPrefix("replaceShows("), "a stamp without an adoption: \(lines[index - 1])")
         }
+    }
+
+    /// Every write to `shows`, whatever its spelling: an assignment with or
+    /// without `self.`, an index assignment, `+=` and the mutating calls.
+    /// A declaration is no write.
+    nonisolated static func showsWrites(in code: String) -> [String] {
+        code.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { line in
+            guard !line.hasPrefix("let ") && !line.hasPrefix("var ") && !line.contains(" var shows") else { return false }
+            return line.contains(#/(?:^|[^A-Za-z0-9_.])(?:self\.)?shows(?:\s*=(?!=)|\s*\+=|\.(?:append|insert|remove\w*)\(|\[[^\]]*\]\s*=(?!=))/#)
+        }
+    }
+
+    /// A refusal that can pass keeps a played mark queued; one that answers
+    /// the same every time drops it (the mark stays on the device).
+    @Test("die Schlange der Gehoert-Markierungen behaelt, was vorbeigeht, und laesst fallen, was immer gleich antwortet")
+    func theQueueKeepsWhatCanPass() {
+        for status in [nil, 401, 403, 429, 500, 503] as [Int?] {
+            #expect(ABSPlayedWriteRetry.keeps(status: status), "\(String(describing: status)) dropped a mark that can pass")
+        }
+        for status in [400, 404, 410, 422] {
+            #expect(!ABSPlayedWriteRetry.keeps(status: status), "\(status) is retried for ever")
+        }
+        #expect(ABSPodcastProvider.refusalStatus(APIError.http(404, "")) == 404)
+        #expect(ABSPodcastProvider.refusalStatus(URLError(.notConnectedToInternet)) == nil)
+    }
+
+    /// No call to the server in the whole file ends without a line, no catch
+    /// stands empty, and a failed progress pull does not count the token.
+    @Test("kein Abruf der Datei endet ohne Zeile, kein catch ist leer, ein Fehlschlag zaehlt das Token nicht", .needsTheSources)
+    func noCallOfTheFileEndsWithoutALine() throws {
+        let code = try Self.providerCode()
+        #expect(code.contains("client."), "the fence read the provider")
+        #expect(!Self.swallowsAFetch(code), "a call to the server swallows its error")
+        #expect(Self.emptyCatches(in: code) == 0, "a catch without a statement")
+        let progress = try #require(Self.body(of: "func refreshProgress() async {", in: code))
+        let fetch = try #require(progress.range(of: "try await client.fetchPodcastEpisodeProgress()"))
+        let token = try #require(progress.range(of: "changeToken += 1"))
+        let failure = try #require(progress.range(of: "} catch {"))
+        #expect(fetch.upperBound <= token.lowerBound && token.upperBound <= failure.lowerBound,
+                "the token is counted outside the success")
+        // Calibration: the empty catch of the queue as it stood, after the
+        // comment was stripped, and the old forms of a write to the shows.
+        #expect(Self.emptyCatches(in: "} catch {\n    \n}") == 1)
+        #expect(Self.emptyCatches(in: "} catch {\n    x()\n}") == 0)
+        #expect(Self.showsWrites(in: "self.shows = a\nshows.append(b)\nshows[0] = c\nshows += d\nif shows == e {}\nvar shows: [S] = []")
+                == ["self.shows = a", "shows.append(b)", "shows[0] = c", "shows += d"])
+    }
+
+    /// The catch blocks in `code` that hold no statement.
+    nonisolated static func emptyCatches(in code: String) -> Int {
+        code.matches(of: #/catch(?:\s+let\s+\w+)?\s*\{\s*\}/#).count
     }
 
     private static func providerCode() throws -> String {

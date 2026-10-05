@@ -329,22 +329,30 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                       .episodes.first(where: { $0.guid == absId }) else { continue }
             let duration = ep.duration
             let isFinished = ProgressMark.reachedEnd(stored: arr, currentDuration: duration)
-            try? await client.updateEpisodeProgress(
-                libraryItemId: showId, episodeId: episodeId,
-                currentTime: localTime, duration: duration, isFinished: isFinished
-            )
-            didPush = true
+            do {
+                try await client.updateEpisodeProgress(
+                    libraryItemId: showId, episodeId: episodeId,
+                    currentTime: localTime, duration: duration, isFinished: isFinished
+                )
+                didPush = true
+            } catch {
+                Logger.library.error("ABSPOD history push failed item=\(absId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+            }
         }
         if didPush { await refreshProgress() }
     }
 
     /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
-        // A failed request (offline!) must KEEP the cached server state.
-        // `?? [:]` wiped the progress of every episode right after a failed
-        // mark-played, with no automatic reload on reconnect.
-        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
-        changeToken += 1
+        // A failed request (offline!) KEEPS the cached server state and does
+        // not count the token: the surface would show the old state as a
+        // fresh one.
+        do {
+            episodeProgress = try await client.fetchPodcastEpisodeProgress()
+            changeToken += 1
+        } catch {
+            Logger.library.error("ABSPOD progress refresh failed, kept: \(FailureReason.of(error), privacy: .public)")
+        }
     }
 
     // MARK: - Pending played-writes (offline retry)
@@ -373,7 +381,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 )
                 remaining[itemId] = nil
             } catch {
-                // Still unreachable. Keep it queued.
+                // A network outage, a server error, a pause or a sign-in
+                // problem keeps the entry; a refusal for good (the episode is
+                // gone, the write is rejected) drops it, said in the log. The
+                // person's mark stays on this device either way.
+                if !ABSPlayedWriteRetry.keeps(status: Self.refusalStatus(error)) { remaining[itemId] = nil }
+                Logger.library.error("ABSPOD played write failed item=\(itemId, privacy: .public) kept=\(ABSPlayedWriteRetry.keeps(status: Self.refusalStatus(error)), privacy: .public): \(FailureReason.of(error), privacy: .public)")
             }
         }
         pendingPlayedWrites = remaining
@@ -396,13 +409,19 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
             let metadata: PodcastFeedMetadata
             do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
-            catch { return "Feed (podcasts/feed): \(Self.msg(error))" }
+            catch {
+                Logger.library.error("ABSPOD new show feed failed: \(FailureReason.of(error), privacy: .public)")
+                return "Feed (podcasts/feed): \(Self.msg(error))"
+            }
 
             // Folders usually come with the list endpoint; otherwise detail.
             var folders = library.folders ?? []
             if folders.isEmpty {
                 do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
-                catch { return "Ordner (libraries/id): \(Self.msg(error))" }
+                catch {
+                    Logger.library.error("ABSPOD new show folders failed: \(FailureReason.of(error), privacy: .public)")
+                    return "Ordner (libraries/id): \(Self.msg(error))"
+                }
             }
             guard let folder = folders.first, let folderPath = folder.fullPath else {
                 return "Kein Ordner in der Podcast-Bibliothek."
@@ -413,7 +432,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             do {
                 try await client.createPodcast(libraryId: library.id, folderId: folder.id,
                                                path: path, metadata: metadata, autoDownload: autoDownload)
-            } catch { return "Anlegen (POST podcasts): \(Self.msg(error))" }
+            } catch {
+                Logger.library.error("ABSPOD new show create failed: \(FailureReason.of(error), privacy: .public)")
+                return "Anlegen (POST podcasts): \(Self.msg(error))"
+            }
 
             await refresh()
             // Push the high-resolution feed cover (prefer our itunes:image;
@@ -421,6 +443,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.imageUrl)
             return nil
         } catch {
+            Logger.library.error("ABSPOD libraries for a new show failed: \(FailureReason.of(error), privacy: .public)")
             return "Bibliotheken: \(Self.msg(error))"
         }
     }
@@ -430,7 +453,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     func updateShowCover(showId: String, coverURL: String) async {
         guard showId.hasPrefix("abspod:"), !coverURL.isEmpty else { return }
         let itemId = String(showId.dropFirst("abspod:".count))
-        try? await client.updateItemCover(itemId: itemId, coverURL: coverURL)
+        do {
+            try await client.updateItemCover(itemId: itemId, coverURL: coverURL)
+        } catch {
+            Logger.library.notice("ABSPOD cover not lifted show=\(itemId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+        }
     }
 
     /// Apply the given cover to the freshly created show (found again by feed
@@ -442,18 +469,34 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm
         }) else { return }
         let itemId = String(show.id.dropFirst("abspod:".count))
-        try? await client.updateItemCover(itemId: itemId, coverURL: cover)
+        do {
+            try await client.updateItemCover(itemId: itemId, coverURL: cover)
+        } catch {
+            Logger.library.notice("ABSPOD cover not pushed show=\(itemId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+        }
     }
 
     private static func msg(_ error: Error) -> String {
         ErrorSentence.of(error)
     }
 
+    /// The HTTP status of a refusal by the server, nil when no answer came.
+    nonisolated static func refusalStatus(_ error: Error) -> Int? {
+        if case APIError.http(let status, _) = error { return status }
+        return nil
+    }
+
     /// Feed episodes of an ABS show that are NOT yet on the server (loadable).
     /// Matched by title (the library episodes carry the feed titles).
     func availableEpisodes(for show: PodcastShow) async -> [FeedEpisode] {
-        guard !show.feedURL.isEmpty,
-              let raw = try? await client.fetchFeedEpisodes(rssFeed: show.feedURL) else { return [] }
+        guard !show.feedURL.isEmpty else { return [] }
+        let raw: [[String: Any]]
+        do {
+            raw = try await client.fetchFeedEpisodes(rssFeed: show.feedURL)
+        } catch {
+            Logger.library.error("ABSPOD feed episodes failed: \(FailureReason.of(error), privacy: .public)")
+            return []
+        }
         let existing = Set(show.episodes.map { $0.title })
         return raw.compactMap { dict -> FeedEpisode? in
             let title = (dict["title"] as? String) ?? ""
@@ -476,6 +519,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             try await client.downloadEpisodes(libraryItemId: Self.split(showId).show, episodes: [episode.raw])
             return nil
         } catch {
+            Logger.library.error("ABSPOD episode download failed: \(FailureReason.of(error), privacy: .public)")
             return Self.msg(error)
         }
     }
@@ -496,6 +540,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             await refresh()
             return true
         } catch {
+            Logger.library.error("ABSPOD show delete failed: \(FailureReason.of(error), privacy: .public)")
             return false
         }
     }
@@ -520,9 +565,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             )
             pendingPlayedWrites[item.id] = nil
         } catch {
-            // Offline/server down: queue the intent. It is retried on the next
-            // refresh instead of silently disappearing.
-            pendingPlayedWrites[item.id] = played
+            // Offline or server down: the intent is queued and retried on the
+            // next refresh; a refusal for good is said and not queued. The
+            // mark itself stands on this device either way.
+            let keeps = ABSPlayedWriteRetry.keeps(status: Self.refusalStatus(error))
+            if keeps { pendingPlayedWrites[item.id] = played }
+            Logger.library.error("ABSPOD mark played failed item=\(item.id, privacy: .public) queued=\(keeps, privacy: .public): \(FailureReason.of(error), privacy: .public)")
         }
         await refreshProgress()
     }
