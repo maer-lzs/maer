@@ -233,7 +233,9 @@ final class ImageCache {
 
     /// The one answer to "which tier holds this file": its folder, compared
     /// as standardized paths (a trailing slash or a dot segment makes no
-    /// other folder).
+    /// other folder). Path against path, where two of the three askers
+    /// compared URLs before: a folder named without its trailing slash is
+    /// now the same folder (`theFolderQuestionHasOneAnswer`).
     nonisolated static func stands(_ file: URL, in directory: URL) -> Bool {
         file.deletingLastPathComponent().standardizedFileURL.path == directory.standardizedFileURL.path
     }
@@ -482,16 +484,24 @@ final class ImageCache {
     /// already has, so a write and an invalidation's removal land in the
     /// order the main actor asked for them.
     private func onDisk(_ fileKey: String, _ work: @escaping @Sendable () async -> Void) {
+        onDisk([fileKey], work)
+    }
+
+    /// The same for work that touches several addresses (a rename moves a
+    /// file from one name to another): it waits for the disk work of each,
+    /// and each later work of any of them waits for it.
+    private func onDisk(_ fileKeys: [String], _ work: @escaping @Sendable () async -> Void) {
         diskTurns += 1
         let turn = diskTurns
-        let previous = diskTail[fileKey]?.task
+        let keys = Array(Set(fileKeys))
+        let previous = keys.compactMap { diskTail[$0]?.task }
         // detached because the work is disk and CPU work off the MainActor and must finish once started
         let task = Task.detached(priority: .utility) {
-            await previous?.value
+            for earlier in previous { await earlier.value }
             await work()
-            await ImageCache.shared.leaveDisk(fileKey, turn: turn)
+            for key in keys { await ImageCache.shared.leaveDisk(key, turn: turn) }
         }
-        diskTail[fileKey] = (turn, task)
+        for key in keys { diskTail[key] = (turn, task) }
     }
 
     /// The last disk work of an address ended: its entry goes, unless newer
@@ -942,43 +952,58 @@ final class ImageCache {
     /// When the old address waits for the network, so does the new one: its
     /// kept copy is the picture from before the invalidation, and under a
     /// name that does not wait the network gate would answer with it.
+    ///
+    /// The files are asked and moved in the disk chain of both addresses,
+    /// after every disk work either already has (a removal an invalidation
+    /// queued lands first), never on the main actor: a server move renames
+    /// every moved download in one go. Waiting is asked at the move, as the
+    /// sweep asks it; an invalidation after that look ends as if it came
+    /// after the move.
     func renamePersistent(from old: URL?, to new: URL?) {
         guard let old, let new else { return }
-        let kept = persistentDirectory.appendingPathComponent(key(for: old))
-        let demoted = diskDirectory.appendingPathComponent(key(for: old))
-        let target = persistentDirectory.appendingPathComponent(key(for: new))
-        let fm = FileManager.default
-        // The demoted cache file of a waiting address may be the picture
-        // from before its invalidation; it does not go up (`makePersistent`).
-        let oldWaits = refreshing.contains(key(for: old))
-        let source = fm.fileExists(atPath: kept.path) ? kept : demoted
-        guard source != target, fm.fileExists(atPath: source.path),
-              source == kept || !oldWaits else { return }
-        // Fresh bytes of the new address in the cache make the carried copy
-        // from before the old address's invalidation the one too many: it
-        // goes, and the new address does not wait (`invalidate` would remove
-        // exactly those bytes). The fresh file goes up under the new name in
-        // the same step, so the moved download keeps a persistent copy; the
-        // new address does not wait, so its gate reads that tier too. Were
-        // the new address waiting itself, its cache file stays down.
-        let newCached = diskDirectory.appendingPathComponent(key(for: new))
-        do {
-            if fm.fileExists(atPath: target.path) {
-                try fm.removeItem(at: source)
-            } else if oldWaits && fm.fileExists(atPath: newCached.path) {
-                try fm.removeItem(at: source)
-                if !refreshing.contains(key(for: new)) {
-                    try fm.moveItem(at: newCached, to: target)
-                }
-            } else {
-                try fm.moveItem(at: source, to: target)
-                if oldWaits {
-                    invalidate(url: new)
-                    Logger.library.notice("COVERCACHE rename: the new address waits for the network like the old one")
-                }
+        let oldKey = key(for: old)
+        let newKey = key(for: new)
+        let kept = persistentDirectory.appendingPathComponent(oldKey)
+        let demoted = diskDirectory.appendingPathComponent(oldKey)
+        let target = persistentDirectory.appendingPathComponent(newKey)
+        let newCached = diskDirectory.appendingPathComponent(newKey)
+        onDisk([oldKey, newKey]) { [self] in
+            let fm = FileManager.default
+            let (oldWaits, newWaits) = await MainActor.run {
+                (self.refreshing.contains(oldKey), self.refreshing.contains(newKey))
             }
-        } catch {
-            Logger.library.error("COVERCACHE rename failed: \(FailureReason.of(error), privacy: .public)")
+            // The demoted cache file of a waiting address may be the picture
+            // from before its invalidation; it does not go up (`makePersistent`).
+            let source = fm.fileExists(atPath: kept.path) ? kept : demoted
+            guard source != target, fm.fileExists(atPath: source.path),
+                  source == kept || !oldWaits else { return }
+            // Fresh bytes of the new address in the cache make the carried
+            // copy from before the old address's invalidation the one too
+            // many: it goes, and the new address does not wait (`invalidate`
+            // would remove exactly those bytes). The fresh file goes up under
+            // the new name in the same step, so the moved download keeps a
+            // persistent copy; the new address does not wait, so its gate
+            // reads that tier too. Were the new address waiting itself, its
+            // cache file stays down.
+            do {
+                if fm.fileExists(atPath: target.path) {
+                    try fm.removeItem(at: source)
+                } else if oldWaits && fm.fileExists(atPath: newCached.path) {
+                    try fm.removeItem(at: source)
+                    if !newWaits {
+                        try fm.moveItem(at: newCached, to: target)
+                    }
+                } else {
+                    try fm.moveItem(at: source, to: target)
+                    if oldWaits {
+                        // Its removal queues behind this work, in the chain of the new address.
+                        await MainActor.run { self.invalidate(url: new) }
+                        Logger.library.notice("COVERCACHE rename: the new address waits for the network like the old one")
+                    }
+                }
+            } catch {
+                Logger.library.error("COVERCACHE rename failed: \(FailureReason.of(error), privacy: .public)")
+            }
         }
     }
 

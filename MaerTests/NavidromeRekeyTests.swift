@@ -609,6 +609,8 @@ struct NavidromeRekeyTests {
         #expect(music.renamed == ["\(album)>\(moved)"])
         #expect(manager.downloadedItemIds == [moved])
         #expect(defaults.bool(forKey: marker), "the pass is done once the covers could follow")
+        // The rename moves the file in the disk chain of the address.
+        await ImageCache.shared.testDiskSettled(cover(moved))
         #expect(ImageCache.shared.testIsPersistent(cover(moved)) && !ImageCache.shared.testIsPersistent(cover(album)),
                 "the cover stands kept under the new form")
 

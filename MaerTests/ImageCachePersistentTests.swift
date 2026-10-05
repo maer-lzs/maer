@@ -92,6 +92,7 @@ struct ImageCachePersistentTests {
         defer { ImageCache.shared.removePersistent(coverURL: new) }
         #expect(ImageCache.shared.testIsPersistent(old), "the precondition: kept under the old address")
         ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
         #expect(ImageCache.shared.testIsPersistent(new), "the cover stands under the new address")
         #expect(!ImageCache.shared.testIsPersistent(old))
         #expect(await ImageCache.shared.thumbnail(for: new) != nil, "the read paths find it under the new address")
@@ -224,7 +225,7 @@ struct ImageCachePersistentTests {
     /// A cover an earlier sweep already demoted stands in the cache under the
     /// old name. The move finds it there and puts it up under the new one.
     @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")
-    func aDemotedCoverOfAMovedDownloadIsRenamedToo() {
+    func aDemotedCoverOfAMovedDownloadIsRenamedToo() async {
         let tag = UUID().uuidString
         let old = navidromeCover("demoted-old-\(tag)")
         let new = navidromeCover("demoted-new-\(tag)")
@@ -232,6 +233,7 @@ struct ImageCachePersistentTests {
         defer { ImageCache.shared.removePersistent(coverURL: new) }
         #expect(!ImageCache.shared.testIsPersistent(old))
         ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
         #expect(ImageCache.shared.testIsPersistent(new), "the demoted cover went up under the new address")
     }
 
@@ -346,6 +348,7 @@ struct ImageCachePersistentTests {
         #expect(ImageCache.shared.testIsPersistent(old), "the sweep in the window demoted nothing")
 
         ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
         #expect(ImageCache.shared.testIsPersistent(new), "after the move the cover stands under the new form")
         #expect(ImageCache.tierMoves(persistent: ["new"], cache: [], active: ["new"], knowsAll: true).isEmpty,
                 "and a complete answer keeps it there")
@@ -560,6 +563,19 @@ struct ImageCachePersistentTests {
             .contains("FileManager"))
         #expect(Self.blocks(after: "MainActor.run", in: "await MainActor.run { if a { b() }; FileManager.default }")
             .first?.contains("FileManager") == true)
+    }
+
+    /// Rule 5 at the rename of a moved download: a server move renames every
+    /// moved download in one go, so the files are asked in the disk chain
+    /// of both addresses, never on the main actor.
+    @Test("Regel 5 beim Umbenennen eines Downloads: keine Datei auf dem Hauptstrang", .needsTheSources)
+    func theRenameAsksNoFileOnTheMainActor() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
+        let rename = try #require(functionBody(of: "func renamePersistent(from old: URL?, to new: URL?)", in: code))
+        #expect(rename.contains("onDisk("), "the rename left the disk chain")
+        #expect(!Self.withoutDiskChain(rename).contains("FileManager"),
+                "the rename asks a file on the main actor; ask it in onDisk")
     }
 
     /// The block in braces that follows `head`, brace-exact, with its braces.

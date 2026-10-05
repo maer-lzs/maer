@@ -363,7 +363,9 @@ struct ArtworkVerdictTests {
     }
 
     /// A download moved to a new id takes its demoted cover up under the new
-    /// name, but not the cache file of a waiting address.
+    /// name, but not the cache file of a waiting address. The rename runs in
+    /// the disk chain of both addresses, so it waits for the removal the
+    /// invalidation queued; nothing moves while that is held.
     @Test("ein Umbenennen hebt die Cache-Datei einer wartenden Adresse nicht unter den neuen Namen")
     func aRenameLeavesAWaitingCacheFileDown() async throws {
         let old = URL(string: "http://127.0.0.1:9/rename-old-\(UUID().uuidString).png")!
@@ -373,8 +375,10 @@ struct ArtworkVerdictTests {
         let release = try await Self.holdQueue(of: old)
         Artwork.invalidate(old)
         ImageCache.shared.renamePersistent(from: old, to: new)
-        #expect(!ImageCache.shared.testIsPersistent(new), "the old cache file went up under the new name")
+        #expect(!ImageCache.shared.testIsPersistent(new), "the rename ran past the held disk work of the old address")
         await release()
+        await ImageCache.shared.testDiskSettled(new)
+        #expect(!ImageCache.shared.testIsPersistent(new), "the old cache file went up under the new name")
     }
 
     /// Only the gates that go to the network next skip the kept copy.
