@@ -55,15 +55,19 @@ nonisolated enum AppRows {
         AppRow(key: "home.discoverBooks", tab: .home,
                title: String(localized: "Discover · Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
-               storageKey: AppStorageKeys.freeAudiobooksEnabled),
+               storageKey: AppStorageKeys.rowHomeDiscoverBooksVisible),
         AppRow(key: "home.discoverMusic", tab: .home,
                title: String(localized: "Discover · Music"),
                sourceKeys: ["jamendo", "internetArchive"],
                storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
         AppRow(key: "home.recommendations", tab: .home,
-               title: String(localized: "Recommended & Rediscover"),
+               title: String(localized: "Recommended"),
                sourceKeys: ["appleCatalog"],
                storageKey: AppStorageKeys.homeRecommendations),
+        AppRow(key: "home.rediscover", tab: .home,
+               title: String(localized: "Rediscover"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRediscoverVisible,
+               note: String(localized: "From your own holdings.")),
         AppRow(key: "home.recentlyAdded", tab: .home,
                title: String(localized: "Recently Added"),
                sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible,
@@ -155,6 +159,23 @@ nonisolated enum AppRows {
     ]
 
     static func row(key: String) -> AppRow? { all.first { $0.key == key } }
+
+    /// Row keys that took over one switch's meaning from a key two rows
+    /// shared: new key, the old one it starts from.
+    static let carried: [(new: String, old: String)] = [
+        (AppStorageKeys.rowHomeDiscoverBooksVisible, AppStorageKeys.freeAudiobooksEnabled),
+        (AppStorageKeys.rowHomeRediscoverVisible, AppStorageKeys.homeRecommendations),
+    ]
+
+    /// A new key starts from the person's old choice, once: a key nobody
+    /// set yet takes the old key's stored value. A key already set, or an
+    /// old key never set (the default stands for both), is left alone.
+    static func carryOldChoices(defaults: UserDefaults = .standard) {
+        for (new, old) in carried where defaults.object(forKey: new) == nil {
+            guard let value = defaults.object(forKey: old) as? Bool else { continue }
+            defaults.set(value, forKey: new)
+        }
+    }
 
     /// The second line of a switchable row: the foreign sources it draws
     /// from, or, without any, what it shows. Every switchable row has one.

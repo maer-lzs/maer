@@ -38,6 +38,45 @@ struct AppRowsPageTests {
         #expect(!code.contains(".tertiary"), "a second line in the grey that measured 1.7 to 1")
     }
 
+    @Test("ein Schalter, ein Wert: kein Schluessel schaltet zwei Reihen")
+    func oneSwitchOneValue() {
+        let keys = AppRows.all.compactMap(\.storageKey)
+        let shared = Dictionary(grouping: keys, by: { $0 }).filter { $0.value.count > 1 }.keys.sorted()
+        #expect(shared.isEmpty, "one key switches several rows: \(shared)")
+        #expect(AppRows.row(key: "home.rediscover")?.storageKey == AppStorageKeys.rowHomeRediscoverVisible,
+                "Rediscover hangs on another row's switch")
+    }
+
+    @Test("ein neuer Reihen-Schluessel beginnt einmal mit der alten Wahl")
+    func aNewRowKeyStartsFromTheOldChoice() throws {
+        let suite = "rows-carry-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(false, forKey: AppStorageKeys.freeAudiobooksEnabled)
+        AppRows.carryOldChoices(defaults: defaults)
+        #expect(defaults.object(forKey: AppStorageKeys.rowHomeDiscoverBooksVisible) as? Bool == false, "the old off was lost")
+        #expect(defaults.object(forKey: AppStorageKeys.rowHomeRediscoverVisible) == nil, "a key whose old one was never set stays unset")
+        defaults.set(true, forKey: AppStorageKeys.rowHomeDiscoverBooksVisible)
+        AppRows.carryOldChoices(defaults: defaults)
+        #expect(defaults.object(forKey: AppStorageKeys.rowHomeDiscoverBooksVisible) as? Bool == true, "a set key was overwritten")
+    }
+
+    @Test("jede Reihe hat einen Schreibweg, und Start-Klassik folgt ihrer eigenen Reihe", .needsTheSources)
+    func oneWritePathAndTheClassicalHalfFollowsItsRow() throws {
+        let settings = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8))
+        #expect(!settings.contains("isOn: $homeRecommendations"), "a second switch writes the row past the cleanup rule")
+        #expect(settings.contains("AppRows.setVisible(row, newValue)"))
+        let keys = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/AppStorageKeys.swift"), encoding: .utf8))
+        let classical = try #require(functionBody(of: "static var freeClassicalActive: Bool {", in: keys))
+        #expect(classical.contains("home.discoverMusic") && !classical.contains("shellac"),
+                "the classical half of Start hangs on the music tab's old records")
+        let home = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
+        #expect(home.contains("if rediscoverRowVisible { rediscoverSection }"))
+    }
+
     @Test("die Logo-Diagnose steht nur im Entwicklungsbau", .needsTheSources)
     func theLogoDiagnosisIsDebugOnly() throws {
         let code = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Radio/RadioView.swift"), encoding: .utf8)

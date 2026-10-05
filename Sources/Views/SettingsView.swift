@@ -721,7 +721,14 @@ struct SettingsView: View {
 
     private var recommendationsSection: some View {
         Section {
-            AppSwitch(isOn: $homeRecommendations) {
+            // The same row as on the rows page, written through the ONE
+            // path, so hiding it runs the cleanup rule there too.
+            AppSwitch(isOn: Binding(
+                get: { homeRecommendations },
+                set: { newValue in
+                    if let row = AppRows.row(key: "home.recommendations") { AppRows.setVisible(row, newValue) }
+                }
+            )) {
                 Label("Recommendations", systemImage: "sparkles")
             }
             // The release path. "not interested" is permanent, so
@@ -735,7 +742,7 @@ struct SettingsView: View {
         } header: {
             Text("Home")
         } footer: {
-            Text("Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it. Source: \(NetworkServiceNames.appleCatalog).")
+            Text("Shows Recommended on Home. Suggestions are computed on this device; no listening profile leaves it. Source: \(NetworkServiceNames.appleCatalog).")
         }
     }
 

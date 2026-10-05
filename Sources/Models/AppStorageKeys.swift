@@ -458,6 +458,13 @@ nonisolated enum AppStorageKeys {
     static let rowPodcastsRadioPlaysVisible = "rowPodcastsRadioPlaysVisible"
     static let rowPodcastsRecommendedVisible = "rowPodcastsRecommendedVisible"
     static let rowRadioCatalogVisible = "rowRadioCatalogVisible"
+    /// The Start row of free audiobooks and radio plays, apart from the
+    /// catalog row of the audiobooks tab (`freeAudiobooksEnabled`); its
+    /// first value is the old shared one (`AppRows.carryOldChoices`).
+    static let rowHomeDiscoverBooksVisible = "rowHomeDiscoverBooksVisible"
+    /// Rediscover on Start, apart from the recommendations (it shows only
+    /// the person's own books); first value from `homeRecommendations`.
+    static let rowHomeRediscoverVisible = "rowHomeRediscoverVisible"
 
     // Radio-Picker-Kuratierung
     /// ALL raw name variants of the chosen region (the by-state query runs
@@ -686,10 +693,14 @@ nonisolated enum AppStorageKeys {
     nonisolated static var jamendoActive: Bool {
         ExternalSources.isAllowed(ExternalSources.jamendo)
     }
-    /// Classical is a shelf of the 78rpm records now, not an area of its own.
-    /// It follows their switch. The old key stays declared but unread: a new
-    /// key would silently reset the setting of every user.
-    nonisolated static var freeClassicalActive: Bool { shellacActive }
+    /// The classical half of Start's music discovery. It is shown there
+    /// alone, so it follows that row's switch, not the music tab's old
+    /// records. The old key stays declared but unread: a new key would
+    /// silently reset the setting of every user.
+    nonisolated static var freeClassicalActive: Bool {
+        ExternalSources.isAllowed(ExternalSources.internetArchive)
+            && AppRows.row(key: "home.discoverMusic").map { AppRows.isVisible($0) } ?? true
+    }
     nonisolated static var netlabelsActive: Bool {
         ExternalSources.isAllowed(ExternalSources.internetArchive)
             && AppRows.row(key: "music.netlabels").map { AppRows.isVisible($0) } ?? true

@@ -14,7 +14,7 @@ struct HomeRecomputeTokenTests {
                       continuing: [(id: String, lastUpdate: Double)] = [("a", 1)]) -> String {
         HomeRecomputeToken.make(isActive: true, entryIds: entries, continueEntries: continuing,
                                 recentlyAddedIds: added, queueIds: queue, recommendationsEnabled: true,
-                                hiddenRevision: 0, showFeeds: [], revision: 0)
+                                rediscoverEnabled: true, hiddenRevision: 0, showFeeds: [], revision: 0)
     }
 
     @Test("eine Liste, die sich bei gleicher Laenge aendert, aendert das Zeichen")

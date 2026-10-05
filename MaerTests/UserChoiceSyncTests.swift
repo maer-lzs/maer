@@ -996,7 +996,7 @@ struct UserChoiceGateTests {
             "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
             "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
             "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
-            "rowRadioCatalogVisible",
+            "rowRadioCatalogVisible", "rowHomeDiscoverBooksVisible", "rowHomeRediscoverVisible",
             "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
             // The switch is the intent and travels; the iOS permission
             // stays with the device (ENTSCHIEDEN, question 1, 07.09.2026).

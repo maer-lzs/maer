@@ -43,8 +43,8 @@ struct HomeView: View {
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
     /// The full pool behind the daily row (page + counted chevron).
     @State private var rediscoverPool = RediscoverSections.Pool()
-    /// ONE opt-out for both recommendation sections (Rediscover +
-    /// Discover); the library-fact sections stay untouched.
+    /// The opt-out of Recommended (the foreign suggestions). Rediscover,
+    /// which shows only the person's own books, has its own switch.
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -69,7 +69,8 @@ struct HomeView: View {
     /// Row flips hide the Home surfaces live (loaded rows stay
     /// in the store; the render gate wins). Each row asks ITS switch.
     @AppStorage(AppStorageKeys.rowHomeDiscoverMusicVisible) private var discoverMusicRowVisible = true
-    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var discoverBooksRowVisible = true
+    @AppStorage(AppStorageKeys.rowHomeDiscoverBooksVisible) private var discoverBooksRowVisible = true
+    @AppStorage(AppStorageKeys.rowHomeRediscoverVisible) private var rediscoverRowVisible = true
     @AppStorage(AppStorageKeys.rowHomeRecentlyAddedVisible) private var recentlyAddedRowVisible = true
 
     /// Recently PLAYED music albums ("Zuletzt gehört (Musik)"). The
@@ -132,6 +133,7 @@ struct HomeView: View {
             recentlyAddedIds: libraryViewModel.recentlyAdded.map(\.id),
             queueIds: queue.ids,
             recommendationsEnabled: recommendationsEnabled,
+            rediscoverEnabled: rediscoverRowVisible,
             hiddenRevision: hiddenRevision,
             showFeeds: subs.shows.map(\.feedURL),
             revision: revision.value)
@@ -172,7 +174,7 @@ struct HomeView: View {
                         discoverAudiobooksSection
                     }
                     latestEpisodesSection
-                    if recommendationsEnabled { rediscoverSection }
+                    if rediscoverRowVisible { rediscoverSection }
                     if recentlyAddedRowVisible { recentlyAddedSection }
                     if isEmpty { emptyState }
                 }
@@ -806,13 +808,15 @@ RowHeading(title: "Rediscover",
         }
         let rediscover: [RediscoverSections.Pick]
         var pool = RediscoverSections.Pool()
-        if recommendationsEnabled {
+        if rediscoverRowVisible {
             (rediscover, pool) = computeRediscover(
                 bookContinue: pausedCandidates, episodeContinue: episodesShown,
                 visibleContinue: Set(rankedContinue))
-            await SourceBudget.run { await recommendations.refreshIfNeeded() }
         } else {
             rediscover = []
+        }
+        if recommendationsEnabled {
+            await SourceBudget.run { await recommendations.refreshIfNeeded() }
         }
         let episodeItems = episodeIds.compactMap(resolveItem)
         let addedItems = mergedIds.compactMap { byId[$0] }

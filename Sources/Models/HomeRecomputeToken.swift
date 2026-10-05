@@ -16,6 +16,7 @@ nonisolated enum HomeRecomputeToken {
                      recentlyAddedIds: [String],
                      queueIds: [String],
                      recommendationsEnabled: Bool,
+                     rediscoverEnabled: Bool,
                      hiddenRevision: Int,
                      showFeeds: [String],
                      revision: Int) -> String {
@@ -28,6 +29,6 @@ nonisolated enum HomeRecomputeToken {
         // content; the token alone would not see a reordering.
         let queue = ContentToken.of(queueIds.enumerated().map { "\($0.offset)|\($0.element)" })
         let shows = ContentToken.of(showFeeds)
-        return "\(isActive)-\(entries)-\(continuing)-\(added)-\(queue)-\(recommendationsEnabled)-\(hiddenRevision)-\(shows)-\(revision)"
+        return "\(isActive)-\(entries)-\(continuing)-\(added)-\(queue)-\(recommendationsEnabled)-\(rediscoverEnabled)-\(hiddenRevision)-\(shows)-\(revision)"
     }
 }
