@@ -435,11 +435,16 @@ final class PodcastSubscriptions: ObservableObject {
             // against the base the write really takes: an EMPTY snapshot
             // never removes rows unless the user explicitly emptied the
             // list. Refused loudly with a note, so the NEXT incident is
-            // diagnosable instead of traceless; not when a later write is
-            // already queued (it takes the list anyway).
+            // diagnosable instead of traceless. With a later write queued
+            // it says one notice line and leaves the note to the last: the
+            // later write takes the list as well, and is refused in turn
+            // unless it carries the intent to empty it.
             if base.refuses(snapshot, emptying) {
-                guard !laterQueued else { return .skipped }
                 let count = base.removable?.count ?? 0
+                guard !laterQueued else {
+                    Logger.rss.notice("SUBSTORE wipe refused, a later write is queued: empty snapshot over \(count) shows")
+                    return .skipped
+                }
                 Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
                 let note = "wipe refused at \(Date()): empty snapshot, \(count) shows, isLoaded=\(self.isLoaded)\n"
                 let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
@@ -1255,10 +1260,13 @@ final class PodcastSubscriptions: ObservableObject {
                     // round pushes THIS single remove at once instead of
                     // holding it as a derived one. Stands stay, here and on
                     // the server: an unsubscribe removes the feed, never
-                    // what was heard.
+                    // what was heard. Being the person's unsubscribe, it
+                    // may empty the list like `unsubscribe` does; refused,
+                    // every write would take the same empty list and the
+                    // shows came back at the next start.
                     Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL), defaults: defaults)
                     self.shows.removeAll { $0.id == show.id }
-                    self.save()
+                    self.save(emptying: .allowed)
                     removedTitles.append(show.title)
                     Logger.rss.notice("SUBSCRIBE cloud tombstone applied: \(feedKey, privacy: .private(mask: .hash))")
                 }

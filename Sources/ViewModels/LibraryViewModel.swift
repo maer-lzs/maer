@@ -214,7 +214,11 @@ final class LibraryViewModel: ObservableObject {
     /// them first, so the diff knows what stands there; adopted is nothing
     /// of them: the rows are an image of the servers and this run's fetch is
     /// the newer image.
-    private let rowChain = RowChain<LibraryDiskCache>(label: "LIBROWS")
+    private let rowChain: RowChain<LibraryDiskCache> = {
+        let chain = RowChain<LibraryDiskCache>(label: "LIBROWS")
+        chain.adopt = { _ in }
+        return chain
+    }()
     /// The cache the last save handed over, taken by the write when it runs.
     private var cacheToWrite: LibraryDiskCache?
 
@@ -1401,8 +1405,8 @@ final class LibraryViewModel: ObservableObject {
     /// no write replaces them whole.
     private func loadDiskCache() async -> LibraryDiskCache? {
         // Nothing of the rows goes into memory on a read after a failed
-        // start: this run's fetch is the newer image (`rowChain`).
-        rowChain.adopt = { _ in }
+        // start: this run's fetch is the newer image (`rowChain`, whose
+        // adoption is set where it is built).
         guard let rows = await openRows() else {
             rowChain.startReadFailedAsAWhole(reason: "rows not open")
             return nil

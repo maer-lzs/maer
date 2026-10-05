@@ -18,7 +18,7 @@ struct RowEmptyingFenceTests {
         "DownloadManager.swift": (1, "the marks leave with the deleted downloads, the last one too"),
         "LocalLibrary.swift": (1, "the user deleted the item"),
         "MaerPlaylists.swift": (2, "the user deleted the list; the merge carries the account's removal marks"),
-        "PodcastSubscriptions.swift": (1, "the person's own unsubscribe, the last one too"),
+        "PodcastSubscriptions.swift": (2, "the person's own unsubscribe, the last one too, here or as a tombstone from another device"),
     ]
 
     /// The writes in `code` that may empty, as written.

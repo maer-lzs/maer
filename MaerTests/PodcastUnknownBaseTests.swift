@@ -96,6 +96,31 @@ struct PodcastUnknownBaseTests {
         }
     }
 
+    /// The tombstones of the subscription family are the person's
+    /// unsubscribes made on another device: when they leave the list empty,
+    /// that empty list is the person's intent and lands.
+    @Test("Grabsteine aus der Wolke, die die Liste leer raeumen, bleiben nach dem Neustart weg")
+    func cloudTombstonesThatEmptyTheListSurvive() async throws {
+        try await withOwnStore { folder, defaults, database in
+            let run = UUID().uuidString.prefix(8)
+            let one = Self.show("https://feeds.example.org/\(run)/eins.xml")
+            let two = Self.show("https://feeds.example.org/\(run)/zwei.xml")
+            try await PodcastRowStore(connection: try database.connection()).replaceAll([one, two])
+            let first = make(folder, defaults, database)
+            await first.ensureLoaded()
+            #expect(first.shows.count == 2, "the precondition: both shows loaded")
+            first.adoptCloudSubscriptions(added: [], removed: [PodcastSubscriptions.feedKey(one.feedURL),
+                                                               PodcastSubscriptions.feedKey(two.feedURL)])
+            for _ in 0..<200 where !first.shows.isEmpty { await Task.yield() }
+            #expect(first.shows.isEmpty, "the precondition: the tombstones applied")
+            await first.awaitPendingWrites()
+            let second = make(folder, defaults, database)
+            await second.ensureLoaded()
+            #expect(second.shows.isEmpty, "after the restart: \(second.shows.map(\.id))")
+            #expect(!refusalNote(folder), "the person's unsubscribe was refused as a wipe")
+        }
+    }
+
     @Test("zwei eingereihte Schriebe bei unbekannter Grundlage, der zweite leer: der leere entfernt nichts")
     func twoQueuedWritesUnderAnUnknownBase() async throws {
         try await withOwnStore { folder, defaults, database in

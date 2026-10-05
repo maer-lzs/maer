@@ -88,8 +88,13 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             return (load.rows.isEmpty ? nil : load.rows, load.skipped)
         }, take: take, apply: { [weak self] snapshot, base, laterQueued in
             guard let self, let rows = await self.open() else { return .skipped }
+            // With a later write queued a refusal is a notice, not silence:
+            // the later write takes the memory as well and is refused in
+            // turn unless it carries the intent to empty.
             if base.refuses(snapshot, emptying) {
-                if !laterQueued {
+                if laterQueued {
+                    Logger.library.notice("\(self.label, privacy: .public) wipe refused, a later write is queued: empty snapshot over \(base.removable?.count ?? 0) rows")
+                } else {
                     Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) rows plan=\(String(describing: base.plan), privacy: .public)")
                 }
                 return .skipped
