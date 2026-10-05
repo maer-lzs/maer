@@ -139,6 +139,24 @@ struct RecentlyPlayedRowTests {
         #expect(times["alb-zero"] == nil)
     }
 
+    @Test("die Zeit eines Server-Albums kommt aus dem Bestand dieses Geraets, sonst bleibt es undatiert")
+    func deviceTimesComeFromTheStock() {
+        let positions: [String: [Double]] = [
+            "sub:album:a": [0, 2_000_000],
+            "sub:album:b": [12, 0],
+            "sub:album:c": [3],
+        ]
+        let times = RecentlyPlayedRow.deviceTimes(["sub:album:a", "sub:album:b", "sub:album:c", "sub:album:d"],
+                                                  positions: positions)
+        #expect(times == ["sub:album:a": 2000], "a zero stamp, a short entry or none is no time")
+        // Merged: the dated catalogue title and album by time, the
+        // undated albums behind them in the server's order.
+        let merged = RecentlyPlayedRow.merged(albums: ["sub:album:d", "sub:album:a"], albumTimes: times,
+                                              continued: [], stations: [], stationTimes: [:],
+                                              catalog: ["jam:1"], catalogTimes: ["jam:1": 3000], limit: 10)
+        #expect(merged == [.catalogTrack(id: "jam:1"), .album(id: "sub:album:a"), .album(id: "sub:album:d")])
+    }
+
     /// Die Regel selbst, in beide Richtungen. Eine negative Zeit ist so
     /// wenig eine Zeit wie eine Null.
     @Test("nicht-positiv heisst unbekannt, positiv bleibt unveraendert")
@@ -154,7 +172,7 @@ struct RecentlyPlayedRowTests {
     /// eine dritte nicht stumm danebenlaeuft.
     @Test("keine Flaeche beantwortet die Frage ein zweites Mal")
     func noSurfaceAnswersTheQuestionASecondTime() throws {
-        let surfaces = ["HomeView.swift", "MixedMediaPage.swift"]
+        let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "MusicView.swift"]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
@@ -163,11 +181,15 @@ struct RecentlyPlayedRowTests {
             seen.insert(leaf)
             #expect(surfaces.contains(leaf),
                     "eine dritte Flaeche baut die Reihe: \(leaf)")
-            #expect(text.contains("RecentlyPlayedRow.albumTimes("),
+            // The music tab holds no server progress: its album times
+            // come from the device's stock, through the one door for that.
+            #expect(text.contains("RecentlyPlayedRow.albumTimes(") || text.contains("RecentlyPlayedRow.deviceTimes("),
                     "\(leaf) baut die Album-Zeiten selbst")
             #expect(text.contains("RecentlyPlayedRow.catalogTimes("),
                     "\(leaf) baut die Katalog-Zeiten selbst")
-            #expect(text.contains("RadioStore.recentTimes("),
+            // Stations only where the row carries them; the music tab
+            // passes none.
+            #expect(text.contains("RadioStore.recentTimes(") || text.contains("stations: [], stationTimes: [:]"),
                     "\(leaf) holt die Sender-Zeiten nicht aus dem Speicher")
             // Die Handschrift, die es vorher war: eine Abbildung auf
             // `lastUpdate` oder `updatedAtMs` an der Aufrufstelle.

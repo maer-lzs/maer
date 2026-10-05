@@ -37,8 +37,9 @@ struct MixedRowGlyphTests {
 
     static let mixers: [String: (callers: [String: Int], reason: String)] = [
         "HomeSections.byRecency(": (["Sources/Views/HomeView.swift": 2], "Keep Listening, row and page ids"),
-        "RecentlyPlayedRow.merged(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/MixedMediaPage.swift": 1],
-                                      "Listen Again, row and page"),
+        "RecentlyPlayedRow.merged(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/MixedMediaPage.swift": 1,
+                                       "Sources/Views/Music/MusicView.swift": 1],
+                                      "Listen Again, row and page; the music tab's Recently Played holds music only and carries no marks"),
         "FreeCatalog.discoverMix(": (["Sources/Views/HomeView.swift": 1], "Recommended with catalog books"),
         "computeRediscover(": (["Sources/Views/HomeView.swift": 1], "Rediscover, row and pool"),
         "CatalogMix.tiles(for: .home": (["Sources/Views/HomeView.swift": 1], "feeds and catalogs on Start"),

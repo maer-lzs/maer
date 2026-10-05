@@ -56,7 +56,8 @@ struct MusicView: View {
     /// tab, and the stock below is read again.
     @ObservedObject private var revision = ListeningRevision.shared
     /// The catalogue titles started as album TRACKS. The same stock
-    /// Home's "Listen Again" reads (`positionless`), never a second source.
+    /// Home's "Listen Again" reads (`positionless`), never a second source;
+    /// here they stand in "Recently Played".
     private var catalogTracks: [ContinueSources.Extra] {
         _ = revision.value
         return ContinueSources.positionless(positions: ListeningStore.positions(),
@@ -139,6 +140,11 @@ struct MusicView: View {
 
     private var content: some View {
         LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+            // The order of the tabs: the playlist cards on top
+            // (shared card size), the notice when needed, what you heard,
+            // the library deck, your newest, and the free catalogs as the
+            // offer from outside. Empty shelves are omitted silently.
+            playlistRow
             // Inline hint when a refresh failed but content is still shown.
             if serverConfigured, let error = vm.errorText {
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -146,11 +152,7 @@ struct MusicView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             }
-            // Musik-Tab-Neuordnung (30.07): playlist cards on top (shared card
-            // size), then the library LIST (Apple-Music pattern. The five
-            // entries replace the old inline album grid/artists row), then the
-            // two server shelves. Empty shelves are omitted silently.
-            playlistRow
+            recentlyPlayedRow
 
             // The free-music row lives ONCE, further down next to the
             // other free areas. This spot used to carry a second one.
@@ -177,28 +179,6 @@ struct MusicView: View {
             // Welle 3: shelves have their page now. Chevron per COUNTING
             // (the row source loads 20, shows 12; a 20-album library shows
             // no chevron on the page-sized cut, which is the rule working).
-            if serverConfigured, !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
-            // Catalogue titles started as album tracks are MUSIC. Their
-            // home is this tab, not only Home. The server shelf above cannot
-            // carry them (it is fed by the server's history), and without a
-            // music server it does not exist at all; this row is independent
-            // of a server by construction. Same cell as Home, same
-            // stock (`positionless`). No second home, no second form.
-            if !catalogTracks.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.plain("Listen Again")
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: 16) {
-                            ForEach(catalogTracks.prefix(RowPreview.limit), id: \.id) { extra in
-                                CatalogTrackCell(itemId: extra.id, width: 128,
-                                                 playerCoordinator: playerCoordinator)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    .scrollClipDisabled()
-                }
-            }
             if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
             // The free-music areas are REACHABLE from the music
             // tab again (tab parity). Same store rows as Home, no second
@@ -311,6 +291,61 @@ struct MusicView: View {
             .padding(.horizontal)
         }
         .scrollClipDisabled()
+    }
+
+    /// ONE "Recently Played" row: the server's history and the
+    /// catalogue titles started as album tracks, merged by time through the
+    /// one rule. The catalogue titles are MUSIC and their home is this tab;
+    /// they carry their moment (`positionless`, the stock Home reads). A
+    /// server album carries the moment THIS device last heard it; one heard
+    /// only elsewhere stays undated and keeps the server's order behind the
+    /// dated ones. No stations: the radio has its own tab.
+    private var recentlyPlayedEntries: [RecentlyPlayedRow.Entry] {
+        let albums = serverConfigured ? vm.recent.map(\.id) : []
+        let tracks = catalogTracks
+        return RecentlyPlayedRow.merged(
+            albums: albums,
+            albumTimes: RecentlyPlayedRow.deviceTimes(albums, positions: ListeningStore.positions()),
+            continued: [], stations: [], stationTimes: [:],
+            catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
+            limit: Int.max)
+    }
+
+    @ViewBuilder
+    private var recentlyPlayedRow: some View {
+        let entries = recentlyPlayedEntries
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                // The chevron opens the server's history, where there is
+                // one; the catalogue titles have no page of their own.
+                if serverConfigured, !vm.recent.isEmpty {
+                    RowHeading(title: "Recently Played", total: entries.count,
+                               shown: RowPreview.cut(entries).count,
+                               destination: MusicRoute.shelfPage(.recent))
+                } else {
+                    RowHeading.plain("Recently Played")
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(RowPreview.cut(entries), id: \.self) { entry in
+                            switch entry {
+                            case .album(let id):
+                                if let item = vm.recent.first(where: { $0.id == id }) {
+                                    AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
+                                }
+                            case .catalogTrack(let id):
+                                CatalogTrackCell(itemId: id, width: 150,
+                                                 playerCoordinator: playerCoordinator)
+                            case .station:
+                                EmptyView()
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
+        }
     }
 
     private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem],

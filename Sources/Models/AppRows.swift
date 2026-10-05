@@ -64,7 +64,9 @@ nonisolated struct AppRow: Identifiable, Sendable {
 /// Every tile row, per tab, plus the askers that are no rows (the searches,
 /// the logo chain). Measured again at the tab roots on 05.10.;
 /// `AppRowsCompletenessFenceTests` holds it against the code in both
-/// directions and resolves every declared source key.
+/// directions and resolves every declared source key. Listed in the order
+/// each tab draws them, askers last, so the rows page shows a tab as
+/// it stands; the same fence holds that order.
 nonisolated enum AppRows {
     static let all: [AppRow] = [
         // MARK: Start
@@ -82,14 +84,14 @@ nonisolated enum AppRows {
         AppRow(key: "home.latestEpisodes", tab: .home,
                title: String(localized: "Latest Episodes"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "home.discoverBooks", tab: .home,
-               title: String(localized: "Discover · Audiobooks and Radio Plays"),
-               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
-               storageKey: AppStorageKeys.rowHomeDiscoverBooksVisible),
-        AppRow(key: "home.discoverMusic", tab: .home,
-               title: String(localized: "Discover · Music"),
-               sourceKeys: ["jamendo", "internetArchive"],
-               storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
+        AppRow(key: "home.recentlyAdded", tab: .home,
+               title: String(localized: "Recently Added"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible,
+               note: String(localized: "From your own holdings.")),
+        AppRow(key: "home.rediscover", tab: .home,
+               title: String(localized: "Rediscover"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRediscoverVisible,
+               note: String(localized: "From your own holdings.")),
         AppRow(key: "home.recommendations", tab: .home,
                title: String(localized: "Recommended"),
                // The pool comes from the ONE directory selection
@@ -97,24 +99,32 @@ nonisolated enum AppRows {
                // is configured, Apple otherwise.
                sourceKeys: ["appleCatalog", "podcastIndex"],
                storageKey: AppStorageKeys.homeRecommendations),
-        AppRow(key: "home.rediscover", tab: .home,
-               title: String(localized: "Rediscover"),
-               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRediscoverVisible,
-               note: String(localized: "From your own holdings.")),
-        AppRow(key: "home.recentlyAdded", tab: .home,
-               title: String(localized: "Recently Added"),
-               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible,
-               note: String(localized: "From your own holdings.")),
+        AppRow(key: "home.discoverMusic", tab: .home,
+               title: String(localized: "Discover · Music"),
+               sourceKeys: ["jamendo", "internetArchive"],
+               storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
+        AppRow(key: "home.discoverBooks", tab: .home,
+               title: String(localized: "Discover · Audiobooks and Radio Plays"),
+               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
+               storageKey: AppStorageKeys.rowHomeDiscoverBooksVisible),
 
         // MARK: Audiobooks
-        AppRow(key: "books.search", tab: .audiobooks,
-               title: String(localized: "Audiobook Search"),
-               // Not a row: the BOOK scope of the search fans out to the
-               // catalog clients. It asks only on the user's own query, so
-               // it keeps its sources ALIVE for the cleanup rule even when
-               // every discover row is hidden.
-               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
-               storageKey: nil, fixed: .onSearch),
+        AppRow(key: "books.continue", tab: .audiobooks,
+               title: String(localized: "Keep Listening"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "books.localFiles", tab: .audiobooks,
+               title: String(localized: "Local Files"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "books.downloaded", tab: .audiobooks,
+               title: String(localized: "Downloaded"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "books.recentlyAdded", tab: .audiobooks,
+               title: String(localized: "Recently Added"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible,
+               note: String(localized: "From your own holdings.")),
+        AppRow(key: "books.allBooks", tab: .audiobooks,
+               title: String(localized: "All Books"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "books.catalog", tab: .audiobooks,
                title: String(localized: "Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
@@ -126,27 +136,16 @@ nonisolated enum AppRows {
                // Apple stands where it is asked.
                sourceKeys: ["appleCatalog"],
                storageKey: AppStorageKeys.rowBooksChartsVisible),
-        AppRow(key: "books.localFiles", tab: .audiobooks,
-               title: String(localized: "Local Files"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "books.continue", tab: .audiobooks,
-               title: String(localized: "Keep Listening"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "books.recentlyAdded", tab: .audiobooks,
-               title: String(localized: "Recently Added"),
-               sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible,
-               note: String(localized: "From your own holdings.")),
-        AppRow(key: "books.downloaded", tab: .audiobooks,
-               title: String(localized: "Downloaded"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "books.allBooks", tab: .audiobooks,
-               title: String(localized: "All Books"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "books.search", tab: .audiobooks,
+               title: String(localized: "Audiobook Search"),
+               // Not a row: the BOOK scope of the search fans out to the
+               // catalog clients. It asks only on the user's own query, so
+               // it keeps its sources ALIVE for the cleanup rule even when
+               // every discover row is hidden.
+               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
+               storageKey: nil, fixed: .onSearch),
 
         // MARK: Music
-        AppRow(key: "music.listenAgain", tab: .music,
-               title: String(localized: "Listen Again"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "music.playlists", tab: .music,
                title: String(localized: "Playlists"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
@@ -173,6 +172,35 @@ nonisolated enum AppRows {
         AppRow(key: "podcasts.continue", tab: .podcasts,
                title: String(localized: "Keep Listening"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.notFollowed", tab: .podcasts,
+               title: String(localized: "Not followed yet"),
+               // Shows from the other device that could not be followed here yet.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.latestEpisodes", tab: .podcasts,
+               title: String(localized: "Latest Episodes"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.pinchflat", tab: .podcasts,
+               title: "Pinchflat",
+               // Shows of the person's own Pinchflat server, headed by its host.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.premium", tab: .podcasts,
+               title: String(localized: "Premium"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.subscriptions", tab: .podcasts,
+               title: String(localized: "Recently Updated"),
+               // The subscription grid, newest updated show first.
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.downloaded", tab: .podcasts,
+               title: String(localized: "Downloaded"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.coListened", tab: .podcasts,
+               title: String(localized: "Co-listened"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "podcasts.recommended", tab: .podcasts,
+               title: String(localized: "Recommended"),
+               // Same store and selection as the home row.
+               sourceKeys: ["appleCatalog", "podcastIndex"],
+               storageKey: AppStorageKeys.rowPodcastsRecommendedVisible),
         AppRow(key: "podcasts.radioPlays", tab: .podcasts,
                title: String(localized: "Radio Plays to Subscribe"),
                // Curated public feeds: the row fetches CONTENT the list
@@ -180,51 +208,22 @@ nonisolated enum AppRows {
                sourceKeys: [],
                storageKey: AppStorageKeys.rowPodcastsRadioPlaysVisible,
                note: String(localized: "Public radio play feeds, chosen by Mär.")),
-        AppRow(key: "podcasts.recommended", tab: .podcasts,
-               title: String(localized: "Recommended"),
-               // Same store and selection as the home row.
-               sourceKeys: ["appleCatalog", "podcastIndex"],
-               storageKey: AppStorageKeys.rowPodcastsRecommendedVisible),
         AppRow(key: "podcasts.search", tab: .podcasts,
                title: String(localized: "Podcast Search"),
                sourceKeys: ["appleCatalog", "podcastIndex"],
                storageKey: nil, fixed: .onSearch),
-        AppRow(key: "podcasts.subscriptions", tab: .podcasts,
-               title: String(localized: "Recently Updated"),
-               // The subscription grid, newest updated show first.
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.latestEpisodes", tab: .podcasts,
-               title: String(localized: "Latest Episodes"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.coListened", tab: .podcasts,
-               title: String(localized: "Co-listened"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.pinchflat", tab: .podcasts,
-               title: "Pinchflat",
-               // Shows of the person's own Pinchflat server, headed by its host.
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.notFollowed", tab: .podcasts,
-               title: String(localized: "Not followed yet"),
-               // Shows from the other device that could not be followed here yet.
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.premium", tab: .podcasts,
-               title: String(localized: "Premium"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        AppRow(key: "podcasts.downloaded", tab: .podcasts,
-               title: String(localized: "Downloaded"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
 
         // MARK: Radio
         AppRow(key: "radio.myStations", tab: .radio,
                title: String(localized: "My Stations"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        AppRow(key: "radio.recentlyPlayed", tab: .radio,
+               title: String(localized: "Recently Played"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "radio.catalog", tab: .radio,
                title: String(localized: "Station Catalog"),
                sourceKeys: ["radioBrowser", "wikimedia"],
                storageKey: AppStorageKeys.rowRadioCatalogVisible),
-        AppRow(key: "radio.recentlyPlayed", tab: .radio,
-               title: String(localized: "Recently Played"),
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "radio.search", tab: .radio,
                title: String(localized: "Station Search"),
                // The radio scope of the search asks the catalog on the

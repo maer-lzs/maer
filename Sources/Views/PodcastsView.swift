@@ -129,24 +129,26 @@ struct PodcastsView: View {
                         }
                         .padding(.horizontal)
                     }
+                    // The order of the tabs: what you are hearing,
+                    // the notice when needed, what you heard, your stock,
+                    // and the offer from outside at the bottom.
                     nextUpSection
-                    // Own stock before the shop window: the subscription
-                    // rows stand higher and the curation moves two rows down.
-                    // The podcast tab is the surface of SUBSCRIPTIONS, and
-                    // what stands here is feed curation, because feeds are
-                    // what one subscribes to.
-                    if recommendedRowVisible { recommendationsSection }
-                    latestEpisodesSection
-                    coListenedSection
-                    hoerspieleSection
-                    // The server group is daily stock like the
-                    // subscriptions. It sits right after Latest Episodes,
-                    // ABOVE Premium and the subscription grid, not trailing.
-                    pinchflatGroupSection
+                    // The notice: shows from the other device that could
+                    // not be followed here yet.
                     needsSignInSection
+                    latestEpisodesSection
+                    // The server group and Premium are daily stock like the
+                    // subscriptions and stand right above them (a switch to
+                    // come folds them into the subscriptions).
+                    pinchflatGroupSection
                     premiumSection
-                    downloadedShelf
                     recentlyUpdatedSection
+                    downloadedShelf
+                    coListenedSection
+                    // Own stock before the shop window: the curation of
+                    // feeds stands under everything the person holds.
+                    if recommendedRowVisible { recommendationsSection }
+                    hoerspieleSection
                     historyRow
                 }
                 .padding(.top, TabContentLayout.topInset)

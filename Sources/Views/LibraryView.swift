@@ -1194,64 +1194,75 @@ struct LibraryView: View {
         }
     }
 
+    /// The device's downloads and the newest of the library: the stock
+    /// rows both branches share, in one place.
+    @ViewBuilder
+    private var stockSections: some View {
+        if !viewModel.downloadedEntries.isEmpty {
+            downloadedSection
+        }
+        if recentRowVisible, !viewModel.recentlyAdded.isEmpty {
+            recentlyAddedGrid
+        }
+    }
+
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                // The order of the tabs: what you are hearing, the
+                // notice when needed, your stock, and the offer from
+                // outside at the bottom.
                 if !viewModel.continueListening.isEmpty {
-                        continueFeaturedSection
-                    }
-                    if !viewModel.downloadedEntries.isEmpty {
-                        downloadedSection
-                    }
-                    if recentRowVisible, !viewModel.recentlyAdded.isEmpty {
-                        recentlyAddedGrid
-                    }
-                // The Free-Audiobooks tile row sits ABOVE "All Books".
-                // Below it, the entry drowned behind the whole library
-                // scroll. Above the fold the row always materializes, so the
-                // lazy rule does not bite; the FILL still comes
-                // from the one central compute() pass (shared store).
-                // 🔴 A doubted session says so HERE. The tab keeps
-                // its content (the token is intact, the server is merely
-                // unreachable), and the line names the state instead of the
-                // library silently looking empty.
-                AbsSessionStateBanner()
+                    continueFeaturedSection
+                }
                 if !AppSession.shared.authViewModel.isLoggedIn {
-                    // Serverless: the free area IS the tab's core.
-                    // The page's sections, embedded (one parameterised
-                    // version, no drifting copy), plus local files as their
-                    // own section. No server sentence renders here: there is
-                    // no server to speak about. The catalog row's switch
-                    // holds here too: hidden, the tab keeps local files
-                    // and the books, and no catalog or chart is asked.
-                    if catalogRowVisible {
-                        FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
-                    }
+                    // Serverless: local files, then the downloads and the
+                    // device's own books, and the free area as the offer.
+                    // The page's sections are embedded (one parameterised
+                    // version, no drifting copy). No server sentence renders
+                    // here: there is no server to speak about. The catalog
+                    // row's switch holds here too: hidden, the tab keeps
+                    // local files and the books, and no catalog or chart is
+                    // asked.
                     localFilesSection
+                    stockSections
                     if !viewModel.entries.isEmpty {
                         allBooksSection
                     }
-                } else {
-                    if freeAudiobooksArea {
-                        freeAudiobooksSection
+                    if catalogRowVisible {
+                        FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
                     }
+                } else {
+                    // 🔴 A doubted session says so HERE, right under what
+                    // you are hearing. The tab keeps its content (the token
+                    // is intact, the server is merely unreachable), and the
+                    // line names the state instead of the library silently
+                    // looking empty.
+                    AbsSessionStateBanner()
+                    stockSections
                     // The library's loading/error/empty state sits WHERE the
-                    // library renders. The catalogue row above and the
-                    // sections below stay standing whatever the server says.
+                    // library renders.
                     librarySectionState
                     if !viewModel.entries.isEmpty {
                         allBooksSection
                     }
-                }
-                if viewModel.isLoadingMore {
-                    // Progressive loading is still running. Subtle hint that
-                    // more titles are on the way.
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("Loading more…").font(.footnote).foregroundStyle(.secondary)
+                    if viewModel.isLoadingMore {
+                        // Progressive loading is still running. Subtle hint that
+                        // more titles are on the way.
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Loading more…").font(.footnote).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    // The free-catalog row is the offer from outside and
+                    // stands under the library. Its FILL comes from the one
+                    // central compute() pass (shared store), so standing
+                    // below the fold in the lazy stack costs it nothing.
+                    if freeAudiobooksArea {
+                        freeAudiobooksSection
+                    }
                 }
             }
             // Force full width explicitly. Without it the stack's width follows

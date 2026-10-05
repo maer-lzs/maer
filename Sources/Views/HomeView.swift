@@ -142,8 +142,11 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             if ready {
-                // Continue → Up Next → Recently Played → Discover →
-                // Latest Episodes → Rediscover → Recently Added.
+                // The order of the tabs: what you are hearing, what
+                // you heard, your stock, and the offer from outside at the
+                // bottom. Continue → Up Next → Listen Again → Latest
+                // Episodes → Recently Added → Rediscover → Recommended and
+                // the two Discover rows (Browse will fold those three together).
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     // The user's own PLAN directly under the continue
@@ -153,12 +156,15 @@ struct HomeView: View {
                     // fold was a plan nobody saw.
                     upNextSection
                     // The HEARING BLOCK. First what has a position, directly
-                    // below what you start over. Discover/recommendation rows follow.
+                    // below what you start over.
                     recentlyPlayedSection
-                    if recommendationsEnabled { discoverSection }
-                    // Free-catalog rows. Data loads in
+                    latestEpisodesSection
+                    if recentlyAddedRowVisible { recentlyAddedSection }
+                    if rediscoverRowVisible { rediscoverSection }
+                    // The offer from outside. Free-catalog data loads in
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
+                    if recommendationsEnabled { discoverSection }
                     if discoverMusicRowVisible {
                         // "Entdecken · Musik": one mixed row with an entry page.
                         FreeCatalogRows(playerCoordinator: playerCoordinator,
@@ -173,9 +179,6 @@ struct HomeView: View {
                         // page, built like the music row above.
                         discoverAudiobooksSection
                     }
-                    latestEpisodesSection
-                    if rediscoverRowVisible { rediscoverSection }
-                    if recentlyAddedRowVisible { recentlyAddedSection }
                     if isEmpty { emptyState }
                 }
                 .padding(.top, TabContentLayout.topInset)

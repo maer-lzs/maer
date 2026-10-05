@@ -95,6 +95,20 @@ nonisolated enum RecentlyPlayedRow {
         progress.compactMapValues { knownTime($0.lastUpdate / 1000) }
     }
 
+    /// The `albumTimes` argument where the surface holds no server
+    /// progress (the music tab): the moment THIS device last heard each
+    /// album, from the listening stock (`[position, tsMs, …]`). An album
+    /// heard only elsewhere stays undated and keeps its source order.
+    static func deviceTimes(_ ids: [String], positions: [String: [Double]]) -> [String: Double] {
+        var times: [String: Double] = [:]
+        for id in ids {
+            guard let entry = positions[id], entry.count >= 2,
+                  let time = knownTime(entry[1] / 1000) else { continue }
+            times[id] = time
+        }
+        return times
+    }
+
     /// The `catalogTimes` argument. The first entry per id decides, exactly
     /// as the hand-written mapping did; whether that entry carries a time is
     /// then the one question above.

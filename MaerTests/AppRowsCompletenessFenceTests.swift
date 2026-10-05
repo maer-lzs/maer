@@ -57,13 +57,12 @@ struct AppRowsCompletenessFenceTests {
         "books.downloaded": [Site(owner: "LibraryView", name: "downloadedSection")],
         "books.allBooks": [Site(owner: "LibraryView", name: "allBooksSection")],
 
-        "music.listenAgain": [Site(owner: "MusicView", name: "content", anchor: "\"Listen Again\"")],
         "music.netlabels": [Site(owner: "MusicView", name: "content", anchor: "\"Netlabels\"")],
         "music.oldRecords": [Site(owner: "MusicView", name: "content", anchor: "ShellacSection(")],
         "music.jamendo": [Site(owner: "MusicView", name: "content", anchor: "\"Free Music (Jamendo)\"")],
         "music.playlists": [Site(owner: "MusicView", name: "playlistRow")],
-        // One shelf function draws both; the calls are counted below.
-        "music.recentlyPlayed": [Site(owner: "MusicView", name: "shelf")],
+        "music.recentlyPlayed": [Site(owner: "MusicView", name: "recentlyPlayedRow")],
+        // The shelf function draws only this row now; its call is counted below.
         "music.recentlyAdded": [Site(owner: "MusicView", name: "shelf")],
 
         "podcasts.continue": [Site(owner: "PodcastsView", name: "nextUpSection")],
@@ -176,11 +175,11 @@ struct AppRowsCompletenessFenceTests {
         for site in Self.notRows.keys {
             #expect(found.contains { Self.matches(site, $0) }, "\(site) is gone; take it out of the stock")
         }
-        // The one shelf draws exactly the two rows that name it.
+        // The one shelf draws exactly the row that names it.
         let music = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
-        #expect(music.components(separatedBy: "shelf(\"").count == 3)
-        #expect(music.contains("shelf(\"Recently Played\"") && music.contains("shelf(\"Recently Added\""))
+        #expect(music.components(separatedBy: "shelf(\"").count == 2)
+        #expect(music.contains("shelf(\"Recently Added\""))
         let radio = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Radio/RadioView.swift"), encoding: .utf8))
         #expect(radio.components(separatedBy: "cardRow(title: String(localized:").count == 2, "the recents card row draws a second row")
@@ -200,6 +199,95 @@ struct AppRowsCompletenessFenceTests {
         }
         #expect(AppRows.all.filter { $0.fixed == .onSearch || $0.fixed == .stationLogos }.allSatisfy { Self.askers.contains($0.key) })
         #expect(Set(AppRows.all.map(\.key)).count == AppRows.all.count, "a key stands twice")
+    }
+
+    /// The order of the tabs: per tab, the calls at the root in the
+    /// order they must render, each with the row it draws (nil for what
+    /// is no row: a notice, the library deck, a branch). Read in sequence,
+    /// each one after the one before.
+    struct Order {
+        let file: String
+        let from: String
+        let steps: [(call: String, key: String?)]
+    }
+
+    static let orders: [Order] = [
+        Order(file: "Sources/Views/HomeView.swift",
+              from: "LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",
+              steps: [("continueSection", "home.continue"), ("upNextSection", "home.upNext"),
+                      ("recentlyPlayedSection", "home.listenAgain"), ("latestEpisodesSection", "home.latestEpisodes"),
+                      ("if recentlyAddedRowVisible { recentlyAddedSection }", "home.recentlyAdded"),
+                      ("if rediscoverRowVisible { rediscoverSection }", "home.rediscover"),
+                      ("if recommendationsEnabled { discoverSection }", "home.recommendations"),
+                      ("FreeCatalogRows(", "home.discoverMusic"), ("discoverAudiobooksSection", "home.discoverBooks")]),
+        Order(file: "Sources/Views/LibraryView.swift",
+              from: "private var content: some View {",
+              steps: [("continueFeaturedSection", "books.continue"),
+                      ("if !AppSession.shared.authViewModel.isLoggedIn {", nil),
+                      ("localFilesSection", "books.localFiles"), ("stockSections", nil),
+                      ("allBooksSection", "books.allBooks"),
+                      ("FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)", "books.catalog"),
+                      ("} else {", nil), ("AbsSessionStateBanner()", nil), ("stockSections", nil),
+                      ("librarySectionState", nil), ("allBooksSection", "books.allBooks"),
+                      ("freeAudiobooksSection", "books.catalog")]),
+        Order(file: "Sources/Views/LibraryView.swift",
+              from: "private var stockSections: some View {",
+              steps: [("downloadedSection", "books.downloaded"), ("recentlyAddedGrid", "books.recentlyAdded")]),
+        Order(file: "Sources/Views/Music/MusicView.swift",
+              from: "private var content: some View {",
+              steps: [("playlistRow", "music.playlists"), ("vm.errorText", nil),
+                      ("recentlyPlayedRow", "music.recentlyPlayed"), ("libraryList", nil),
+                      ("shelf(\"Recently Added\"", "music.recentlyAdded"), ("\"Netlabels\"", "music.netlabels"),
+                      ("ShellacSection(", "music.oldRecords"), ("\"Free Music (Jamendo)\"", "music.jamendo")]),
+        Order(file: "Sources/Views/PodcastsView.swift",
+              from: "VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",
+              steps: [("nextUpSection", "podcasts.continue"), ("needsSignInSection", "podcasts.notFollowed"),
+                      ("latestEpisodesSection", "podcasts.latestEpisodes"), ("pinchflatGroupSection", "podcasts.pinchflat"),
+                      ("premiumSection", "podcasts.premium"), ("recentlyUpdatedSection", "podcasts.subscriptions"),
+                      ("downloadedShelf", "podcasts.downloaded"), ("coListenedSection", "podcasts.coListened"),
+                      ("if recommendedRowVisible { recommendationsSection }", "podcasts.recommended"),
+                      ("hoerspieleSection", "podcasts.radioPlays"), ("historyRow", nil)]),
+        Order(file: "Sources/Views/Radio/RadioView.swift",
+              from: "LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",
+              steps: [("RadioFeaturedCardRow(", "radio.myStations"),
+                      ("cardRow(title: String(localized: \"Recently Played\")", "radio.recentlyPlayed"),
+                      ("if showsPopular {", "radio.catalog"), ("if catalogRowVisible { regionSection }", "radio.catalog"),
+                      ("genreSection", "radio.catalog")]),
+    ]
+
+    /// Where each call stands, searched in sequence from `from`; nil for a
+    /// call that does not follow the one before it.
+    static func sequence(_ order: Order, in code: String) -> [Int?] {
+        guard let start = code.range(of: order.from) else { return order.steps.map { _ in nil } }
+        var cursor = start.upperBound
+        return order.steps.map { step in
+            guard let hit = code.range(of: step.call, range: cursor..<code.endIndex) else { return nil }
+            cursor = hit.upperBound
+            return code.distance(from: code.startIndex, to: hit.lowerBound)
+        }
+    }
+
+    @Test("jeder Reiter steht in seiner Reihenfolge, und die Liste der Reihen auch", .needsTheSources)
+    func everyTabStandsInItsOrder() throws {
+        for order in Self.orders {
+            let code = SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(order.file), encoding: .utf8))
+            let found = Self.sequence(order, in: code)
+            for (step, place) in zip(order.steps, found) {
+                #expect(place != nil, "\(order.file): \(step.call) does not follow the call before it")
+            }
+            // The list of rows reads in the same order, so the rows page
+            // shows each tab as it stands.
+            var keys: [String] = []
+            for key in order.steps.compactMap({ $0.key }) where keys.last != key { keys.append(key) }
+            let listed = AppRows.all.map(\.key).filter { keys.contains($0) }
+            var expected: [String] = []
+            for key in keys where !expected.contains(key) { expected.append(key) }
+            #expect(listed == expected, "\(order.file): AppRows lists \(listed), the tab draws \(expected)")
+        }
+        let probe = Order(file: "", from: "start", steps: [("a", nil), ("b", nil)])
+        #expect(Self.sequence(probe, in: "start a b") .allSatisfy { $0 != nil })
+        #expect(Self.sequence(probe, in: "start b a").last! == nil, "the reading sees no order")
     }
 
     @Test("die Lesung selbst: Ueberschrift, Deklaration, Anker und Bereich")

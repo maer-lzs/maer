@@ -121,8 +121,8 @@ struct RadioView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 // "My Stations" (favorites + most played) is the
-                // first row and a CARD; "Recently Played" sits below it as a
-                // small tile.
+                // first row and a CARD; "Recently Played" sits right below it
+                // as a small tile.
                 //
                 // The reason they stay apart is the user': recently played is a
                 // STATE, my stations is a PREFERENCE. Two truths do not
@@ -138,6 +138,15 @@ struct RadioView: View {
                                          seconds: radioSeconds,
                                          destination: .myStations,
                                          total: myStationsTotal)
+                }
+                if !recents.isEmpty {
+                    // Recently played sits right under My Stations: what
+                    // you heard comes before the offer from outside (the
+                    // order of the tabs). The whole recent list as the
+                    // plain tile row, small, no show line (stale for a
+                    // station that stopped). The exclusion rule holds:
+                    // "My Stations" leaves out the station this row shows.
+                    cardRow(title: String(localized: "Recently Played"), stations: recents)
                 }
                 if showsPopular {
                     VStack(alignment: .leading, spacing: 4) {
@@ -171,15 +180,6 @@ struct RadioView: View {
                     }
                 }
                 if catalogRowVisible { regionSection }
-                if !recents.isEmpty {
-                    // "Zuletzt gespielt" sits BELOW the
-                    // regional row. Place 4, under the two discovery rows.
-                    // The whole recent list as the plain tile row, small, no
-                    // show line (stale for a station that stopped). The
-                    // exclusion rule holds regardless of distance: "My
-                    // Stations" leaves out the station this row shows.
-                    cardRow(title: String(localized: "Recently Played"), stations: recents)
-                }
                 if showsGenres {
                     genreSection
                 }
