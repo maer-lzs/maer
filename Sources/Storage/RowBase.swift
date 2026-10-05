@@ -94,8 +94,32 @@ nonisolated enum RowEmptying: Equatable, Sendable {
     /// list only when the action itself left the memory empty. Granted
     /// while rows still stood, it does not ride along on a list a refused
     /// change emptied before the write ran.
+    ///
+    /// The bound of that rule: when the person's removal and a refused
+    /// change empty the list in one window, the row of the removal stays as
+    /// well, until a later write with rows lands. A tombstone of the
+    /// subscription family takes it again at the next round only where a
+    /// carrier (iCloud, the Mär sync service, gpodder) holds it; without
+    /// one the removal comes back at every start, and the person repeats it.
     nonisolated func atCall(memoryIsEmpty: Bool) -> RowEmptying {
         self == .allowed && memoryIsEmpty ? .allowed : .refused
+    }
+}
+
+/// How a refused empty write speaks. A later write already queued takes
+/// the memory too: a notice. A permission narrowed at its call (the
+/// person's removal, given while rows stood) means there was an intent,
+/// it only does not cover this empty list: a notice, and no note file,
+/// which stays for the real suspicion. Otherwise nobody meant to empty the
+/// list: an error, and where the store keeps one, the note.
+nonisolated enum WipeRefusal: Equatable, Sendable {
+    case laterQueued
+    case narrowedPermission
+    case suspected
+
+    static func of(laterQueued: Bool, narrowedPermission: Bool) -> WipeRefusal {
+        if laterQueued { return .laterQueued }
+        return narrowedPermission ? .narrowedPermission : .suspected
     }
 }
 

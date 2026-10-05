@@ -143,6 +143,9 @@ struct PodcastUnknownBaseTests {
             let rows = try await PodcastRowStore(connection: try database.connection()).loadAllCounted()
             #expect(rows.shows.map(\.id).contains(mirrored.id),
                     "the refused emptying rode along on the permission: \(rows.shows.map(\.id))")
+            // There was an intent, it only does not cover the empty list:
+            // the note stays for the real suspicion.
+            #expect(!refusalNote(folder), "a narrowed permission left the note of a suspected wipe")
         }
     }
 

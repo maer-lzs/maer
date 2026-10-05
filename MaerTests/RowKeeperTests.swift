@@ -64,6 +64,15 @@ struct RowKeeperTests {
         #expect(RowEmptying.refused.atCall(memoryIsEmpty: false) == .refused)
     }
 
+    @Test("eine verweigerte Leerung spricht nach ihrem Fall: spaeterer Schrieb, abgewertete Erlaubnis, Verdacht")
+    func aRefusedWipeSpeaksByItsCase() {
+        #expect(WipeRefusal.of(laterQueued: true, narrowedPermission: false) == .laterQueued)
+        #expect(WipeRefusal.of(laterQueued: true, narrowedPermission: true) == .laterQueued)
+        #expect(WipeRefusal.of(laterQueued: false, narrowedPermission: true) == .narrowedPermission,
+                "an intent that only does not cover the list is no suspicion")
+        #expect(WipeRefusal.of(laterQueued: false, narrowedPermission: false) == .suspected)
+    }
+
     /// The memory of a witness, shared by the calls and by the chain.
     @MainActor private final class ListMemory { var rows: [String: [String]] = [:] }
 

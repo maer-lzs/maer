@@ -35,6 +35,9 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     private let chain: RowChain<Rows>
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
+    /// A permission to empty was narrowed at its call since the last write
+    /// that got past the refusal (`WipeRefusal.narrowedPermission`).
+    private var narrowedPermission = false
 
     init(database: MaerDatabase, table: KeyedRowStore<Value>.Table, label: String, logsSaves: Bool = false) {
         self.database = database
@@ -78,28 +81,30 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// the rows get the diff against the base (known rows, or the rows the
     /// start read that are gone). `emptying` says whether an empty snapshot
     /// is the action of this write, fixed at the call (`atCall`); when it is
-    /// not, an empty snapshot that would remove rows is refused, with an
-    /// error line, or a notice when a later write is already queued.
-    /// `take` answers nil once the store is gone.
+    /// not, an empty snapshot that would remove rows is refused, and it
+    /// speaks as `WipeRefusal` says. `take` answers nil once the store is gone.
     func write(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
+        if requested == .allowed && emptying == .refused { narrowedPermission = true }
         chain.write(read: { [weak self] in
             guard let self, let rows = await self.open() else { throw RowsNotOpen() }
             let load = try await rows.load()
             return (load.rows.isEmpty ? nil : load.rows, load.skipped)
         }, take: take, apply: { [weak self] snapshot, base, laterQueued in
             guard let self, let rows = await self.open() else { return .skipped }
-            // With a later write queued a refusal is a notice, not silence:
-            // the later write takes the memory as well and is refused in
-            // turn unless it carries the intent to empty.
             if base.refuses(snapshot, emptying) {
-                if laterQueued {
-                    Logger.library.notice("\(self.label, privacy: .public) wipe refused, a later write is queued: empty snapshot over \(base.removable?.count ?? 0) rows")
-                } else {
-                    Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(base.removable?.count ?? 0) rows plan=\(String(describing: base.plan), privacy: .public)")
+                let count = base.removable?.count ?? 0
+                switch WipeRefusal.of(laterQueued: laterQueued, narrowedPermission: self.narrowedPermission) {
+                case .laterQueued:
+                    Logger.library.notice("\(self.label, privacy: .public) wipe refused, a later write is queued: empty snapshot over \(count) rows")
+                case .narrowedPermission:
+                    Logger.library.notice("\(self.label, privacy: .public) wipe refused: a removal given while rows stood does not cover this empty snapshot over \(count) rows")
+                case .suspected:
+                    Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(count) rows plan=\(String(describing: base.plan), privacy: .public)")
                 }
                 return .skipped
             }
+            self.narrowedPermission = false
             let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
             if self.logsSaves, base.plan != .diff || written.upserted + written.removed > 0 {
                 Logger.library.notice("\(self.label, privacy: .public) save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")

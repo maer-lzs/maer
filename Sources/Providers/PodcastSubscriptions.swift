@@ -224,6 +224,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// episode index (session restore, CarPlay) await `ensureLoaded()`.
     private var bootstrapTask: Task<Void, Never>?
 
+    /// An unsubscribe's permission to empty was narrowed at its call since
+    /// the last write that got past the refusal (`WipeRefusal`).
+    private var narrowedPermission = false
+
     /// True once the bootstrap disk load finished (EVERY path).
     /// Save() refuses to persist before that, so a cold-start mutation can
     /// never wipe the good file with the still-empty in-memory state.
@@ -424,6 +428,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// that moment, never a picture frozen at the call).
     private func persist(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> [PodcastShow]?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
+        if requested == .allowed && emptying == .refused { narrowedPermission = true }
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
         // and the diff is taken against the stock of the write before.
@@ -441,22 +446,25 @@ final class PodcastSubscriptions: ObservableObject {
             // against the base the write really takes: an EMPTY snapshot
             // never removes rows unless the user explicitly emptied the
             // list. Refused loudly with a note, so the NEXT incident is
-            // diagnosable instead of traceless. With a later write queued
-            // it says one notice line and leaves the note to the last: the
-            // later write takes the list as well, and is refused in turn
-            // unless it carries the intent to empty it.
+            // diagnosable instead of traceless; how it speaks says
+            // `WipeRefusal` (a later write queued, or a removal of the
+            // person's narrowed at its call: a notice and no note).
             if base.refuses(snapshot, emptying) {
                 let count = base.removable?.count ?? 0
-                guard !laterQueued else {
+                switch WipeRefusal.of(laterQueued: laterQueued, narrowedPermission: self.narrowedPermission) {
+                case .laterQueued:
                     Logger.rss.notice("SUBSTORE wipe refused, a later write is queued: empty snapshot over \(count) shows")
-                    return .skipped
+                case .narrowedPermission:
+                    Logger.rss.notice("SUBSTORE wipe refused: an unsubscribe given while shows stood does not cover this empty snapshot over \(count) shows")
+                case .suspected:
+                    Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
+                    let note = "wipe refused at \(Date()): empty snapshot, \(count) shows, isLoaded=\(self.isLoaded)\n"
+                    let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
+                    try? note.data(using: .utf8)?.write(to: tombstone)
                 }
-                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(count) shows without user intent plan=\(String(describing: base.plan), privacy: .public)")
-                let note = "wipe refused at \(Date()): empty snapshot, \(count) shows, isLoaded=\(self.isLoaded)\n"
-                let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
-                try? note.data(using: .utf8)?.write(to: tombstone)
                 return .skipped
             }
+            self.narrowedPermission = false
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             guard !diff.isEmpty else { return .skipped }
             let started = Date()
