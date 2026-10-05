@@ -54,8 +54,29 @@ struct SourceMapTests {
         var facts = SourceMapFacts()
         #expect(facts.state(of: .podcasts) == .ready)
         facts.gpodderConfigured = true
+        facts.gpodderEnabled = true
         facts.gpodderServer = "https://sync.example.com/"
         #expect(facts.state(of: .podcasts) == .readySynced(host: "sync.example.com"))
+    }
+
+    /// A gpodder switched off with its credentials still stored was named
+    /// as the sync (seen on a device); with the sync service carrying, the
+    /// line names the service.
+    @Test("die Podcast-Zeile nennt nur einen Abgleich, der an ist, und Mär Sync, wenn er traegt")
+    func thePodcastLineNamesOnlyASyncThatIsOn() {
+        var facts = SourceMapFacts()
+        facts.gpodderConfigured = true
+        facts.gpodderServer = "https://gpodder.maer.fm/"
+        facts.gpodderEnabled = false
+        #expect(facts.state(of: .podcasts) == .ready, "a switched-off gpodder is named as the sync")
+        facts.syncStanding = .carrying
+        facts.syncHost = "sync.maer.fm"
+        #expect(facts.state(of: .podcasts) == .readySynced(host: "sync.maer.fm"))
+        facts.syncHost = nil
+        #expect(facts.state(of: .podcasts) == .readySynced(host: "Mär Sync"))
+        facts.syncStanding = .switchedOff
+        facts.gpodderEnabled = true
+        #expect(facts.state(of: .podcasts) == .readySynced(host: "gpodder.maer.fm"), "a service that does not carry is not named")
     }
 
     @Test("the host line never carries credentials")

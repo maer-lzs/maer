@@ -52,6 +52,8 @@ nonisolated struct SourceMapFacts: Equatable, Sendable {
     var jellyfinConfigured = false
     var jellyfinServer = ""
     var gpodderConfigured = false
+    /// The gpodder switch: credentials alone are no sync.
+    var gpodderEnabled = false
     var gpodderServer = ""
     /// The Mär sync service: its standing and host, from the one reader the
     /// service's page reads too. Never credentials.
@@ -83,7 +85,7 @@ nonisolated enum SourceMapState: Equatable, Sendable {
     case needsServer
     /// Works right away, no account at all.
     case ready
-    /// Works right away AND is synced with an optional server (gpodder).
+    /// Works right away AND is synced (the Mär sync service, or gpodder).
     case readySynced(host: String)
 }
 
@@ -105,8 +107,12 @@ extension SourceMapFacts {
             }
             return .needsServer
         case .podcasts:
+            // The sync service, where it carries, carries the podcasts'
+            // subscriptions, positions and feed access: the line names it.
+            // Otherwise gpodder, only while its switch is on.
+            if syncStanding == .carrying { return .readySynced(host: syncHost ?? "Mär Sync") }
             let host = SourceMap.host(from: gpodderServer)
-            return gpodderConfigured && !host.isEmpty ? .readySynced(host: host) : .ready
+            return gpodderConfigured && gpodderEnabled && !host.isEmpty ? .readySynced(host: host) : .ready
         case .radio, .freeCatalogs:
             return .ready
         }

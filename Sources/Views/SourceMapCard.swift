@@ -132,6 +132,7 @@ extension SourceMapFacts {
             && !AppStorageKeys.jellyfinUsernameValue.isEmpty
         facts.jellyfinServer = AppStorageKeys.jellyfinServerURLValue
         facts.gpodderConfigured = AppStorageKeys.gpodderConfigured
+        facts.gpodderEnabled = AppStorageKeys.gpodderEnabledValue
         facts.gpodderServer = AppStorageKeys.gpodderServerURLValue
         let sync = MaerSyncStandingReader.current()
         facts.syncStanding = sync.standing
