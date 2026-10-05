@@ -505,7 +505,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         let tiles = CatalogMix.tiles(for: .home, rows: freeCatalogStore.sourceRows)
         if !tiles.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.entry("Discover · Radio Plays & Audiobooks",
+                RowHeading.entry("Discover · Audiobooks and Radio Plays",
                                  destination: FreeAudiobooksRoute.area)
                     .accessibilityIdentifier("home-discover-audiobooks")
                 CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)

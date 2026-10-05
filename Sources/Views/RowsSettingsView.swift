@@ -62,12 +62,6 @@ private struct RowToggleRow: View {
         return AppRows.isVisible(row)
     }
 
-    private var sourcesLine: String? {
-        let titles = row.sourceKeys.compactMap { ExternalSources.source(key: $0)?.title }
-        guard !titles.isEmpty else { return nil }
-        return String(localized: "Draws from: \(titles.joined(separator: " · "))")
-    }
-
     /// Named only while the switch is ON and every source is off; a row
     /// with any feeding source left shows fewer tiles instead.
     private var unsourcedLine: String? {
@@ -87,43 +81,58 @@ private struct RowToggleRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if row.toggleable {
-                AppSwitch(isOn: Binding(
-                    get: { visible },
-                    set: { newValue in
-                        // The ONE write path: hiding runs the cleanup rule
-                        // and hands back what went off with it.
-                        let turnedOff = AppRows.setVisible(row, newValue)
-                        generation += 1
-                        onCleanup(turnedOff.compactMap {
-                            ExternalSources.source(key: $0)?.title
-                        })
-                    }
-                )) { Text(verbatim: row.title) }
-                    .accessibilityIdentifier("row-toggle-\(row.key)")
-            } else {
+        if row.toggleable {
+            // The lines under the title stand in the switch's label, so
+            // they wrap before the switch instead of running under it.
+            AppSwitch(isOn: Binding(
+                get: { visible },
+                set: { newValue in
+                    // The ONE write path: hiding runs the cleanup rule
+                    // and hands back what went off with it.
+                    let turnedOff = AppRows.setVisible(row, newValue)
+                    generation += 1
+                    onCleanup(turnedOff.compactMap {
+                        ExternalSources.source(key: $0)?.title
+                    })
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: row.title)
+                    lines
+                }
+            }
+            .accessibilityIdentifier("row-toggle-\(row.key)")
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: row.title)
                 Text(fixedReason)
                     .font(.caption).foregroundStyle(.secondary)
+                lines
             }
-            if let unsourced = unsourcedLine {
-                // The visible row that CANNOT appear says so where its
-                // switch lives; the surfaces stay quiet on purpose (the
-                // absence is the user's own source choice).
-                Text(verbatim: unsourced)
-                    .font(.caption).foregroundStyle(.orange)
-            }
-            if let sourcesLine {
-                Text(verbatim: sourcesLine)
-                    .font(.caption2).foregroundStyle(.tertiary)
-            }
-            if let note, !note.isEmpty {
-                // The rule acted; it says so where it acted. Visible, with
-                // its reason, never silent.
-                Text("Turned off with it: \(note.joined(separator: " · ")). No visible row was using it.")
-                    .font(.caption).foregroundStyle(.orange)
-            }
+        }
+    }
+
+    /// The lines under a row's title. The sources line is in the same
+    /// grey and size as the other second lines: the tertiary grey measured
+    /// 1.7 to 1 against the cell (light) and 2.5 to 1 (dark).
+    @ViewBuilder
+    private var lines: some View {
+        if let unsourced = unsourcedLine {
+            // The visible row that CANNOT appear says so where its
+            // switch lives; the surfaces stay quiet on purpose (the
+            // absence is the user's own source choice).
+            Text(verbatim: unsourced)
+                .font(.caption).foregroundStyle(.orange)
+        }
+        if let subline = AppRows.subline(row) {
+            Text(verbatim: subline)
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        if let note, !note.isEmpty {
+            // The rule acted; it says so where it acted. Visible, with
+            // its reason, never silent.
+            Text("Turned off with it: \(note.joined(separator: " · ")). No visible row was using it.")
+                .font(.caption).foregroundStyle(.orange)
         }
     }
 }

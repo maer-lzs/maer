@@ -183,7 +183,11 @@ struct RadioView: View {
                 if showsGenres {
                     genreSection
                 }
+                #if DEBUG
+                // A diagnosis for development builds, not a control for
+                // the person.
                 logoDiagnosisSection
+                #endif
                 if !hasAnyContent {
                     if discoveryFailed {
                         // A failed load is not "no stations". The old advice
@@ -291,6 +295,7 @@ struct RadioView: View {
         }
     }
 
+    #if DEBUG
     /// The cover report is only reproducible on a device, and reading the
     /// device log needs a Mac, a cable and root. This makes the same answer
     /// copyable from the phone itself. It reads the STORED state and never
@@ -445,6 +450,7 @@ struct RadioView: View {
             .foregroundStyle(.secondary)
         }
     }
+    #endif
 
     private var genreSection: some View {
         VStack(alignment: .leading, spacing: 8) {

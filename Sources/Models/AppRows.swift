@@ -28,6 +28,9 @@ nonisolated struct AppRow: Identifiable, Sendable {
     /// fixed rows: a key nobody ever reads or writes would still demand a
     /// sync class, a phantom in the birth gate.
     let storageKey: String?
+    /// The second line of a switchable row that draws from no foreign
+    /// source: what it shows instead (`AppRows.subline`).
+    var note: String? = nil
     /// The library's working set (continue listening, the subscription
     /// grid, playlists, downloads) IS the library rather than a row over
     /// it. Those stay, and the rows page says so instead of offering a
@@ -50,7 +53,7 @@ nonisolated enum AppRows {
                title: String(localized: "Up Next"),
                sourceKeys: [], storageKey: nil),
         AppRow(key: "home.discoverBooks", tab: .home,
-               title: String(localized: "Discover · Radio Plays & Audiobooks"),
+               title: String(localized: "Discover · Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
                storageKey: AppStorageKeys.freeAudiobooksEnabled),
         AppRow(key: "home.discoverMusic", tab: .home,
@@ -63,7 +66,8 @@ nonisolated enum AppRows {
                storageKey: AppStorageKeys.homeRecommendations),
         AppRow(key: "home.recentlyAdded", tab: .home,
                title: String(localized: "Recently Added"),
-               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible),
+               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible,
+               note: String(localized: "From your own holdings.")),
 
         // MARK: Audiobooks
         AppRow(key: "books.search", tab: .audiobooks,
@@ -86,7 +90,8 @@ nonisolated enum AppRows {
                sourceKeys: [], storageKey: nil),
         AppRow(key: "books.recentlyAdded", tab: .audiobooks,
                title: String(localized: "Recently Added"),
-               sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible),
+               sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible,
+               note: String(localized: "From your own holdings.")),
 
         // MARK: Music
         AppRow(key: "music.listenAgain", tab: .music,
@@ -114,7 +119,8 @@ nonisolated enum AppRows {
                // Curated public feeds: the row fetches CONTENT the list
                // names, not a foreign directory.
                sourceKeys: [],
-               storageKey: AppStorageKeys.rowPodcastsRadioPlaysVisible),
+               storageKey: AppStorageKeys.rowPodcastsRadioPlaysVisible,
+               note: String(localized: "Public radio play feeds, chosen by Mär.")),
         AppRow(key: "podcasts.recommended", tab: .podcasts,
                title: String(localized: "Recommended"),
                sourceKeys: ["appleCatalog"],
@@ -149,6 +155,14 @@ nonisolated enum AppRows {
     ]
 
     static func row(key: String) -> AppRow? { all.first { $0.key == key } }
+
+    /// The second line of a switchable row: the foreign sources it draws
+    /// from, or, without any, what it shows. Every switchable row has one.
+    static func subline(_ row: AppRow) -> String? {
+        let titles = row.sourceKeys.compactMap { ExternalSources.source(key: $0)?.title }
+        guard titles.isEmpty else { return String(localized: "Draws from: \(titles.joined(separator: " · "))") }
+        return row.note
+    }
 
     /// Is this row shown? Only the row's own switch answers; there is no
     /// second, overriding level any more.

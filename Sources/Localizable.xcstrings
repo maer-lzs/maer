@@ -3345,22 +3345,22 @@
         }
       }
     },
+    "Discover · Audiobooks and Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entdecken · Hörbücher und Hörspiele"
+          }
+        }
+      }
+    },
     "Discover · Music" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entdecken · Musik"
-          }
-        }
-      }
-    },
-    "Discover · Radio Plays & Audiobooks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entdecken · Hörspiele & Hörbücher"
           }
         }
       }
@@ -4253,6 +4253,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vom selben Verlag wie %@"
+          }
+        }
+      }
+    },
+    "From your own holdings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus deinem eigenen Bestand."
           }
         }
       }
@@ -8504,6 +8514,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gemeinfrei (USA)"
+          }
+        }
+      }
+    },
+    "Public radio play feeds, chosen by Mär." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentliche Hörspiel-Feeds, von Mär ausgewählt."
           }
         }
       }
