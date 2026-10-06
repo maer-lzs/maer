@@ -31,6 +31,11 @@ nonisolated enum ListeningClasses {
 /// the device too. Every class, every source, downloaded or streamed. The
 /// server is a sync MEDIUM and a messenger between devices, never the sole
 /// owner, and no sync may ever remove a local state without replacement.
+/// One named exception, the second removal beside the user's deletion: when
+/// another sync account owns the device, the part of the stock that travels
+/// with the account rests on the shelf, read back, and the new account's
+/// part replaces it (`replaceForNewOwner`). It removes nothing that is not
+/// resting, and the way back brings it back.
 ///
 /// Every entry keeps the `[Double]` shape it had under the defaults keys,
 /// `[position, tsMs, duration?, form?]`, so the merge rules and the carriers
@@ -94,6 +99,9 @@ nonisolated enum ListeningStore {
     /// The defaults objects whose held stock came from a failed table read:
     /// the old keys answer, and the table may hold entries they lack.
     private static let readFailures = Mutex<Set<ObjectIdentifier>>([])
+    /// How often the travelling part of a stock went to another account,
+    /// per defaults object (`replaceForNewOwner`).
+    private static let ownerEpochs = Mutex<[ObjectIdentifier: Int]>([:])
 
     /// The defaults objects a stock is held for, kept alive so an identity
     /// is never reused by another object. `UserDefaults` is not `Sendable`
@@ -356,8 +364,11 @@ nonisolated enum ListeningStore {
     /// entry that knows its reference point never loses it to a caller that
     /// does not.
     static func record(_ itemId: String, position: Double, duration: Double,
-                       atMs: Double, in defaults: UserDefaults = .standard) {
+                       atMs: Double, epoch: Int? = nil, in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId) else { return }
+        // A playback that began under the account before writes nothing
+        // into the stock of the account now (`ownerEpoch`).
+        if let epoch, epoch != ownerEpoch(in: defaults) { return }
         // A position only comes into being while listening, so this is where a
         // not-subscribed episode is written down. Listened ones only, never
         // browsed ones: otherwise the position would outlive its resolution and
@@ -514,6 +525,71 @@ nonisolated enum ListeningStore {
             return ids
         }
         for id in gone { announce(id, nil, in: defaults) }
+    }
+
+    // MARK: - The owner of the stock
+
+    /// The travelling part of a stock as it rests for an account.
+    struct Resting: Codable, Equatable, Sendable {
+        var backups: [String: [Double]] = [:]
+        var flushed: [String: [Double]] = [:]
+    }
+
+    /// Counts the hand-overs of the stock to another account. A playback
+    /// takes it when it starts and hands it to every write, send and claim
+    /// (`record(epoch:)`): a playback that began under the account before
+    /// then writes nothing into the stock of the account now.
+    static func ownerEpoch(in defaults: UserDefaults = .standard) -> Int {
+        ownerEpochs.withLock { $0[ObjectIdentifier(defaults)] ?? 0 }
+    }
+
+    /// Whether the stock answered from the old keys after a failed table
+    /// read: then it is not whole, and nothing of it may rest or go.
+    static func readFailed(in defaults: UserDefaults = .standard) -> Bool {
+        _ = withStock(defaults) { _ in 0 }
+        return readFailures.withLock { $0.contains(ObjectIdentifier(defaults)) }
+    }
+
+    /// The part of the stock `travels` names, for the shelf.
+    static func resting(where travels: (String) -> Bool, in defaults: UserDefaults = .standard) -> Resting {
+        withStock(defaults) { stock in
+            Resting(backups: stock.backups.filter { travels($0.key) },
+                    flushed: stock.flushed.filter { travels($0.key) })
+        }
+    }
+
+    /// THE SECOND legitimate removal (see the invariant above): another
+    /// account owns the device. The part `travels` names leaves, after its
+    /// rest was laid and read back by the caller, and the new account's
+    /// rest takes its place (nil: none, its carrier fills it). Every change
+    /// is announced, so the rows follow; no side effect of `store` runs,
+    /// nothing here was heard. The epoch moves on.
+    static func replaceForNewOwner(with incoming: Resting?, where travels: (String) -> Bool,
+                                   in defaults: UserDefaults = .standard) {
+        let changes = withStock(defaults) { stock -> (backups: [(String, [Double]?)], flushed: [(String, [Double]?)]) in
+            var backups: [(String, [Double]?)] = []
+            var flushed: [(String, [Double]?)] = []
+            for id in stock.backups.keys where travels(id) && incoming?.backups[id] == nil {
+                stock.backups[id] = nil
+                backups.append((id, nil))
+            }
+            for (id, entry) in incoming?.backups ?? [:] where stock.backups[id] != entry {
+                stock.backups[id] = entry
+                backups.append((id, entry))
+            }
+            for id in stock.flushed.keys where travels(id) && incoming?.flushed[id] == nil {
+                stock.flushed[id] = nil
+                flushed.append((id, nil))
+            }
+            for (id, entry) in incoming?.flushed ?? [:] where stock.flushed[id] != entry {
+                stock.flushed[id] = entry
+                flushed.append((id, entry))
+            }
+            return (backups, flushed)
+        }
+        ownerEpochs.withLock { $0[ObjectIdentifier(defaults), default: 0] += 1 }
+        for (id, entry) in changes.backups { announce(id, entry, in: defaults) }
+        for (id, entry) in changes.flushed { announceFlushed(id, entry, in: defaults) }
     }
 
     // MARK: - Scanning

@@ -23,13 +23,89 @@ import OSLog
 /// purely locally as before (no crash, no data loss).
 @MainActor
 final class PodcastCloudSync {
-    static let shared = AccessFollowers.enrolled(PodcastCloudSync())
+    static let shared = AccessFollowers.enrolled(PodcastCloudSync(
+        identity: { AccessFollowers.identity },
+        shelf: MaerDatabase.restingShelf))
 
     private var carrier: any StandCarrier
     private var generation = CarrierGeneration()
+    /// The stock this runner reads and writes; a witness hands in its own.
+    private let defaults: UserDefaults
+    /// The account signed in now (`AccessFollowers.identity`), nil when none
+    /// is, and where the stands of another account rest. Only the app's
+    /// runner has them; every other one keeps no owner and never touches a
+    /// shelf.
+    private let identity: () -> String?
+    private let shelf: RestingShelf?
+    /// The account the stands were last handed to in this run, so a round
+    /// asks the shelf only when the account moved.
+    private var handedTo: String?
+    /// The replacement this run began; its holding says `replacing` until
+    /// the rows hold it, and the stands written meanwhile are the new owner's.
+    private var replacedInThisRun = false
 
-    init(carrier: any StandCarrier = StandCarriers.make()) {
+    init(carrier: any StandCarrier = StandCarriers.make(),
+         defaults: UserDefaults = .standard,
+         identity: @escaping () -> String? = { nil },
+         shelf: RestingShelf? = nil) {
         self.carrier = carrier
+        self.defaults = defaults
+        self.identity = identity
+        self.shelf = shelf
+    }
+
+    private static let shelfFamily = "stands"
+
+    /// Whether the stands belong to the account signed in now, handing the
+    /// travelling part over first by the shelf's one rule
+    /// (`RestingShelf.handOver`). False while it cannot (the stock not read
+    /// whole, a rest not laid or unreadable); nothing then is merged, taken
+    /// in or sent, since a round would carry the holder's stands to the
+    /// account and the account's into the holder's stock.
+    private func followsTheAccount() -> Bool {
+        guard let shelf, let scope = identity(), scope != handedTo else { return true }
+        let defaults = self.defaults
+        do {
+            let step = try shelf.handOver(
+                Self.shelfFamily, to: scope, unread: ListeningStore.readFailed(in: defaults),
+                begunHere: replacedInThisRun,
+                current: { ListeningStore.resting(where: Self.potCarries, in: defaults) },
+                replace: { rest, owner in
+                    ListeningStore.replaceForNewOwner(with: rest, where: Self.potCarries, in: defaults)
+                    replacedInThisRun = true
+                    Task {
+                        await RowKeepers.awaitAll()
+                        do {
+                            try shelf.settle(Self.shelfFamily, owner: owner)
+                        } catch {
+                            Logger.library.error("STAND owner holding not settled reason=\(String(describing: error), privacy: .public)")
+                        }
+                    }
+                })
+            switch step {
+            case .kept, .first: break
+            case .unread:
+                Logger.library.notice("STAND owner held: stock not read whole")
+                return false
+            case .moved:
+                Logger.library.notice("STAND owner moved")
+                PodcastProgressStore.shared.reload()
+            }
+            handedTo = scope
+            return true
+        } catch {
+            Logger.library.error("STAND owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// The feed keys of the subscribed shows, nil while the subscriptions
+    /// are not loaded (an empty store at cold start would read every show
+    /// as unsubscribed).
+    private func subscribedShowKeys() -> Set<String>? {
+        let subscriptions = PodcastSubscriptions.shared
+        guard subscriptions.isLoaded else { return nil }
+        return Set(subscriptions.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
     }
 
     /// Asks the carrier for the other side's changes now: the foreground
@@ -150,9 +226,13 @@ final class PodcastCloudSync {
     /// keep pushing.
     func reconcile(pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        guard followsTheAccount() else {
+            Logger.library.notice("STAND round held: the stands wait for their owner")
+            return
+        }
 
         // Collect local positions, from the store's stock.
-        let local = ListeningStore.positions().filter { Self.potCarries($0.key) }
+        let local = ListeningStore.positions(in: defaults).filter { Self.potCarries($0.key) }
         let signpost = PerfSignpost.standMerge(entries: local.count)
         defer { signpost.end() }
 
@@ -170,10 +250,7 @@ final class PodcastCloudSync {
         // everything, CloudKit holds a record per stand. In a roomy pot a
         // stand stays, because "unsubscribed here" is not "unsubscribed
         // anywhere".
-        if carrier.hasRoomLimit, PodcastSubscriptions.shared.isLoaded {
-            let keys = Set(PodcastSubscriptions.shared.shows.map {
-                PodcastSubscriptions.feedKey($0.feedURL)
-            })
+        if carrier.hasRoomLimit, let keys = subscribedShowKeys() {
             let cleanedResult = Self.cleaned(cloud: cloud,
                                              isSubscribedShow: { keys.contains($0) })
             removed = Set(cloud.keys).subtracting(cleanedResult.kept.keys)
@@ -189,16 +266,13 @@ final class PodcastCloudSync {
                 // iCloud newer → local, through the stock's door: a position
                 // written past it would escape the row copy and the rules
                 // every other write path carries.
-                ListeningStore.store(id, entry: value)
+                ListeningStore.store(id, entry: value, in: defaults)
             }
         }
         // What no longer travels is not written back either; otherwise
         // the very next merge would undo the cleanup from the local side.
         var toCloud = outcome.toCloud
-        if carrier.hasRoomLimit, PodcastSubscriptions.shared.isLoaded {
-            let keys = Set(PodcastSubscriptions.shared.shows.map {
-                PodcastSubscriptions.feedKey($0.feedURL)
-            })
+        if carrier.hasRoomLimit, let keys = subscribedShowKeys() {
             toCloud = toCloud.filter {
                 Self.travels(id: $0.key, entry: $0.value,
                              isSubscribedShow: { keys.contains($0) })
@@ -360,11 +434,12 @@ final class PodcastCloudSync {
     func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard Self.potCarries(id) else { return }
-        let localArr = ListeningStore.backup(id)
+        guard followsTheAccount() else { return }
+        let localArr = ListeningStore.backup(id, in: defaults)
         let cloudArr = carrier.stands()[id]
         switch Self.mergeSingle(local: localArr, cloud: cloudArr) {
         case .adoptCloud(let value):
-            ListeningStore.store(id, entry: value)
+            ListeningStore.store(id, entry: value, in: defaults)
             PodcastProgressStore.shared.reload()
             PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):
@@ -373,10 +448,7 @@ final class PodcastCloudSync {
             // would put a cleaned entry straight back into the pot and the
             // next full reconcile would remove it again (blob churn). With
             // the subscriptions not loaded the doubt travels, like before.
-            if PodcastSubscriptions.shared.isLoaded {
-                let keys = Set(PodcastSubscriptions.shared.shows.map {
-                    PodcastSubscriptions.feedKey($0.feedURL)
-                })
+            if let keys = subscribedShowKeys() {
                 guard Self.travels(id: id, entry: value,
                                    isSubscribedShow: { keys.contains($0) }) else { break }
             }

@@ -199,7 +199,7 @@ extension PlayerViewModel {
                 // reference point that is already there.
                 ListeningStore.record(item.id, position: currentTime,
                                       duration: duration,
-                                      atMs: Date().timeIntervalSince1970 * 1000)
+                                      atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
                 // gpodder: push the podcast position too (periodically + on
                 // pause/stop/seek). No-op without config; abspod: is mapped
                 // via the feed-guid bridge.

@@ -39,8 +39,13 @@ extension AccessFollower {
 /// the app's carrier by somebody else's sign-in. Entries are weak.
 @MainActor
 enum AccessFollowers {
+    /// The account signed in now (`MaerSyncIdentity.scope`), nil when none
+    /// is: the session's. Asked by the runners that must not know the
+    /// service.
+    static var identity: String? { MaerSyncCarriers.session.identity?.scope }
+
     /// The app's register; the account it follows is the session's.
-    private static let register = AccessRegister(identity: { MaerSyncCarriers.session.identity?.scope })
+    private static let register = AccessRegister(identity: { identity })
 
     /// Enrolls a shared runner as it is built and hands it back.
     static func enrolled<Follower: AccessFollower>(_ follower: Follower) -> Follower {

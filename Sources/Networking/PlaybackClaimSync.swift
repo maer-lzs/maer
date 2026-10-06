@@ -65,16 +65,21 @@ final class PlaybackClaimSync: ObservableObject {
     private let deviceId: () -> String
     private let deviceName: () -> String
     private let now: () -> Double
+    /// The owner epoch of the stock now (`ListeningStore.ownerEpoch`); a
+    /// witness hands in its own stock's.
+    private let ownerEpoch: () -> Int
     private var didStart = false
 
     init(carrier: any ClaimCarrier = ClaimCarriers.make(),
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
-         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
+         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
+         ownerEpoch: @escaping () -> Int = { ListeningStore.ownerEpoch() }) {
         self.carrier = carrier
         self.deviceId = deviceId
         self.deviceName = deviceName
         self.now = now
+        self.ownerEpoch = ownerEpoch
     }
 
     #if DEBUG
@@ -123,7 +128,10 @@ final class PlaybackClaimSync: ObservableObject {
     /// beat. The player calls this and knows no cadence.
     func claimIfDue(itemId: String, from writer: AnyObject? = nil,
                     position: Double? = nil, duration: Double? = nil, title: String? = nil,
-                    playAt: Double? = nil, forced: Bool) {
+                    playAt: Double? = nil, epoch: Int? = nil, forced: Bool) {
+        // A playback that began under the account before claims nothing at
+        // the account now (`ListeningStore.ownerEpoch`).
+        if let epoch, epoch != ownerEpoch() { return }
         let nowMs = now()
         guard PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: lastClaimAtMs, nowMs: nowMs,
                                                     forced: forced, heartbeatSeconds: carrier.heartbeatSeconds)
@@ -172,8 +180,9 @@ final class PlaybackClaimSync: ObservableObject {
     /// dies in delivery seconds instead of the 90-s ageing (which stays the
     /// fallback for crash/dead-zone/app-kill). Only the OWN key is written;
     /// another device's claim lives in its own key and is never touched.
-    func release(itemId: String, position: Double? = nil, duration: Double? = nil) {
+    func release(itemId: String, position: Double? = nil, duration: Double? = nil, epoch: Int? = nil) {
         if sharedMustStaySilent { return }
+        guard epoch == nil || epoch == ownerEpoch() else { return }
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         lastOwnClaim = nil
         lastWriter = nil

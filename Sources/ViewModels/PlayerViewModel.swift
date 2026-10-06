@@ -245,6 +245,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// rule compares a foreign play against it; against the last heartbeat
     /// the comparison would practically never fire.
     private(set) var playbackStartedAtMs: Double = 0
+    /// The owner epoch of the stock when THIS playback started
+    /// (`ListeningStore.ownerEpoch`). Every write and claim of the playback
+    /// carries it: one that began under the account before writes nothing
+    /// into the account's stock or claim after a change of account, so the
+    /// pot has nothing of it to send. A play under the new account takes
+    /// the new epoch.
+    private(set) var standEpoch = ListeningStore.ownerEpoch()
 
     /// lastUpdate timestamp of the last SEEN server entry (ms epoch). A newer
     /// entry comes from another device (or our own write). Basis for the device
@@ -806,6 +813,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Takeover contract: playing claims. The other device notices the
         // foreign claim and stands down by itself (no remote control).
         playbackStartedAtMs = Date().timeIntervalSince1970 * 1000
+        standEpoch = ListeningStore.ownerEpoch()
         refreshClaim(forced: true)
         activateAudioSession()
         applySmartRewindIfNeeded()
@@ -901,7 +909,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         PlaybackClaimSync.shared.claimIfDue(itemId: item.id, from: self,
                                             position: currentTime, duration: duration,
                                             title: nowPlayingTitle, playAt: playbackStartedAtMs,
-                                            forced: forced)
+                                            epoch: standEpoch, forced: forced)
     }
 
     /// The podcast state to the pot: at a deliberate occasion always, on
@@ -922,7 +930,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // paths without a clean pause.
         if let item {
             PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
-                                             duration: duration)
+                                             duration: duration, epoch: standEpoch)
         }
         updateNowPlayingInfo()
         updateWidgetSnapshot(force: true)
@@ -1202,7 +1210,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let tail = PlayedTail.seconds(forItemId: id)
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     ListeningStore.record(id, position: self.currentTime,
-                                                 duration: self.duration, atMs: now * 1000)
+                                          duration: self.duration, atMs: now * 1000, epoch: self.standEpoch)
                     if ItemNamespace.isPodcastEpisode(id),
                        ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
@@ -1349,7 +1357,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Session end withdraws the claim like a pause does.
         if isPlaying, let item {
             PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
-                                             duration: duration)
+                                             duration: duration, epoch: standEpoch)
         }
         Task { await syncProgress(.stop) }
         player?.pause()
