@@ -48,6 +48,60 @@ nonisolated struct RestingShelf: Sendable {
 
     struct NotLaid: Error {}
 
+    /// What a hand-over did, for the family's log line.
+    enum HandOver: Equatable {
+        /// The stock already belongs to the account.
+        case kept
+        /// No holder yet: the first account takes the stock that is here.
+        case first
+        /// The family's stock is not read whole; nothing moved, the family
+        /// holds its round.
+        case unread
+        /// The holder's stock rests, read back, and the account's replaced it.
+        case moved
+    }
+
+    /// THE hand-over of a family's stock to the account signed in now
+    /// (`scope`), the same for every family: the holder's stock is laid
+    /// down and read back, the holding says `replacing`, and only then the
+    /// family replaces its stock by the rest of `scope` (nil: none rests,
+    /// the family starts empty and its carrier fills it) for that owner.
+    ///
+    /// A holding that still says `replacing` from a run before ends that
+    /// replacement first, without laying the half replaced stock over the
+    /// rest. `begunHere`: the family began that replacement in this run
+    /// itself and its writes are still landing; its stock is the new
+    /// owner's. A family whose replacement lands at once calls `settle`
+    /// right after, one that writes later once its writes landed.
+    func handOver<Value: Codable & Equatable>(
+        _ family: String, to scope: String, unread: Bool, begunHere: Bool = false,
+        current: () -> Value, replace: (_ rest: Value?, _ owner: String) throws -> Void
+    ) throws -> HandOver {
+        guard let holding = try holding(of: family) else {
+            try setHolding(.init(owner: scope), of: family)
+            return .first
+        }
+        let unfinished = holding.replacing && !begunHere
+        guard unfinished || holding.owner != scope else { return .kept }
+        // An unread stock would join the replaced one once it is read.
+        if unread { return .unread }
+        if unfinished {
+            try replace(rest(Value.self, of: family, owner: holding.owner), holding.owner)
+        }
+        guard holding.owner != scope else { return .moved }
+        try lay(current(), of: family, owner: holding.owner)
+        try setHolding(.init(owner: scope, replacing: true), of: family)
+        try replace(rest(Value.self, of: family, owner: scope), scope)
+        return .moved
+    }
+
+    /// The replacement for `scope` landed: the holding says so, unless
+    /// another switch began meanwhile.
+    func settle(_ family: String, owner scope: String) throws {
+        guard try holding(of: family) == Holding(owner: scope, replacing: true) else { return }
+        try setHolding(.init(owner: scope), of: family)
+    }
+
     private func file(_ family: String, _ name: String) -> URL {
         directory.appendingPathComponent(family, isDirectory: true).appendingPathComponent("\(name).json")
     }

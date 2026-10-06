@@ -59,7 +59,7 @@ struct PlaylistOwnerTests {
     func theListsRestUnderTheirAccount() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
-        try await withSyncOn {
+        await withSyncOn {
             var scope: String? = "account-a"
             let carrier = AccountCarrier(scope: { scope })
             let store = MaerPlaylists(database: rig.database)

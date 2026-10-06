@@ -98,8 +98,13 @@ struct MaerSyncAddressTravelTests {
     func wiring() throws {
         let anmeldung = try sourceText("Sources/Networking/MaerSyncSignIn.swift")
         let store = try #require(anmeldung.range(of: "static func store(_ access: MaerSyncAccess"))
-        let body = String(anmeldung[store.upperBound...].prefix(600))
+        let body = String(anmeldung[store.upperBound...].prefix(900))
         #expect(body.contains("rememberAddress(access)"), "store merkt die Adresse nicht")
+        // After the runners followed, so a change of account puts the
+        // address into the new account's register, not into the resting one.
+        let followed = try #require(body.range(of: "AccessFollowers.followAll(by: \"sign-in\")"))
+        #expect(body[followed.upperBound...].contains("rememberAddress(access)"),
+                "store merkt die Adresse, bevor die Laeufer folgen")
         #expect(anmeldung.contains("KnownServers.remember(access.baseURL.absoluteString, service: .maerSync"))
         let seite = try sourceText("Sources/Views/MaerSyncSettingsView.swift")
         #expect(seite.contains("id: \"maer-sync-url\",\n                                          service: .maerSync)"))

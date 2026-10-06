@@ -341,13 +341,15 @@ enum MaerSyncSignIn {
         AppStorageKeys.maerSyncURLValue = access.baseURL.absoluteString
         AppStorageKeys.maerSyncOwnerValue = owner
         AppStorageKeys.setMaerSyncToken(access.token)
-        rememberAddress(access)
         MaerSyncCarriers.session.reloadAccess()
         // The feed credentials change their way with the access: from
         // here on they travel with the service, so the twins that sat in
         // Apple's iCloud keychain are written again as local items.
         PodcastFeedAuth.rewriteAll(by: "sign-in")
         AccessFollowers.followAll(by: "sign-in")
+        // After the runners followed: on a change of account the address
+        // belongs to the new account's register, not to the one that rests.
+        rememberAddress(access)
         // Feeds that waited for a sign-in get one fresh attempt now.
         NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
                                         userInfo: ["by": "maer-sync sign-in"])

@@ -36,7 +36,11 @@ extension Notification.Name {
 ///   posts ONE notification for the observed sources.
 @MainActor
 final class UserChoiceCloudSync {
-    static let shared = AccessFollowers.enrolled(UserChoiceCloudSync(carrier: ChoiceCarriers.make()))
+    static let shared = AccessFollowers.enrolled(UserChoiceCloudSync(
+        carrier: ChoiceCarriers.make(),
+        identity: { MaerSyncCarriers.session.identity?.scope },
+        serviceAddress: { MaerSyncCarriers.session.access?.baseURL.absoluteString },
+        shelf: MaerDatabase.restingShelf))
 
     /// The blob's key belongs to the key-value carrier; kept here by name
     /// for the witnesses that read the fake store directly.
@@ -58,6 +62,18 @@ final class UserChoiceCloudSync {
     /// ids); the identity where the rule does not hold. Injectable so two
     /// devices on different builds can share one document in a witness.
     private let itemIdMap: (String) -> String
+    /// The account signed in now (`MaerSyncIdentity.scope`), nil when none
+    /// is, and where the choices of another account rest. Only the app's
+    /// runner has them; a witness hands in its own, every other one keeps
+    /// no owner and never touches a shelf.
+    private let identity: () -> String?
+    /// The address of the sync service signed in now; it stays known across
+    /// a switch.
+    private let serviceAddress: () -> String?
+    private let shelf: RestingShelf?
+    /// The account the choices were last handed to in this run, so a note
+    /// asks the shelf only when the account moved.
+    private var handedTo: String?
     private var didStart = false
     /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
@@ -82,9 +98,15 @@ final class UserChoiceCloudSync {
          carrier: (any ChoiceCarrier)? = nil,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
-         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) }) {
+         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
+         identity: @escaping () -> String? = { nil },
+         serviceAddress: @escaping () -> String? = { nil },
+         shelf: RestingShelf? = nil) {
         self.defaults = defaults
         self.itemIdMap = itemIdMap
+        self.identity = identity
+        self.serviceAddress = serviceAddress
+        self.shelf = shelf
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
         // that reads its fake directly keeps seeing the same blob.
@@ -264,6 +286,9 @@ final class UserChoiceCloudSync {
 
     private func note(cloudKey: String, value: UserChoiceValue?) {
         if sharedMustStaySilent { return }
+        // A note right after a switch (the known servers of the sign-in)
+        // hands the choices over first, or it would stamp the holder's.
+        guard followsTheAccount() else { return }
         var stamps = localStamps()
         let now = now()
         guard syncEnabled() else {
@@ -307,11 +332,108 @@ final class UserChoiceCloudSync {
         saveBlob(blob)
     }
 
+    // MARK: - The owner of the choices
+
+    private static let shelfFamily = "choices"
+
+    /// What rests for an account: the stored value of every key the family
+    /// keeps (`restingKeys`) as property-list data, the bookkeeping of
+    /// stamps and recorded removals included. Without the stamps the next
+    /// round would derive the holder's keys as removals into the new
+    /// account's document.
+    nonisolated struct Resting: Codable, Equatable {
+        var values: [String: Data]
+    }
+
+    /// Every key the family keeps on this device: the travelling scalars,
+    /// the keys of the travelling families, the element-wise stores and the
+    /// bookkeeping. The subscriptions are rows and follow on their own.
+    func restingKeys() -> [String] {
+        let stores = [RadioStore.favoritesKey, RadioStore.manualKey, RadioStore.recentsKey,
+                      RadioStore.recentTimesKey, RadioStore.variantSelectionKey, RecentSearches.storageKey,
+                      AppStorageKeys.continueHiddenMarkers, AppStorageKeys.premiumMarkedFeeds,
+                      AppStorageKeys.blockedFeedKeys, KnownServers.storeKey,
+                      Self.stampsKey, Self.removalRecordKey]
+        let families = defaults.dictionaryRepresentation().keys.filter { key in
+            UserChoiceCatalog.travelingPrefixes.contains { key.hasPrefix($0) }
+        }
+        return Array(Set(UserChoiceCatalog.travelingScalars + stores + families)).sorted()
+    }
+
+    /// The choices as they lie, for the shelf.
+    func restingChoices() throws -> Resting {
+        var values: [String: Data] = [:]
+        for key in restingKeys() {
+            guard let raw = defaults.object(forKey: key) else { continue }
+            values[key] = try PropertyListSerialization.data(fromPropertyList: raw, format: .binary, options: 0)
+        }
+        return Resting(values: values)
+    }
+
+    /// Whether the choices belong to the account signed in now, handing
+    /// them over first by the shelf's one rule (`RestingShelf.handOver`).
+    /// False while they cannot be handed over; nothing then is noted or
+    /// sent, since it would carry the holder's choices to the account.
+    private func followsTheAccount() -> Bool {
+        guard let shelf, let scope = identity(), scope != handedTo else { return true }
+        // The document read before is the one of the account before: a note
+        // must not compare against it, nor write it on.
+        blobCache = nil
+        do {
+            let current = try restingChoices()
+            let step = try shelf.handOver(
+                Self.shelfFamily, to: scope, unread: false,
+                current: { current },
+                replace: { rest, owner in
+                    try replaceChoices(with: rest)
+                    try shelf.settle(Self.shelfFamily, owner: owner)
+                })
+            handedTo = scope
+            if step != .kept {
+                Logger.library.notice("CHOICE owner \(String(describing: step), privacy: .public) keys=\(current.values.count)")
+            }
+            return true
+        } catch {
+            Logger.library.error("CHOICE owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// The choices of the new owner replace the ones here, without a note:
+    /// every key of the family leaves, the rest of the owner is written (none:
+    /// every choice at its default). The address of the sync service just
+    /// signed in stays known (plan `e9d802f5`), no other of the holder's.
+    private func replaceChoices(with incoming: Resting?) throws {
+        let service = serviceAddress()
+        var restored: [(String, Any)] = []
+        for (key, data) in incoming?.values ?? [:] {
+            restored.append((key, try PropertyListSerialization.propertyList(from: data, format: nil)))
+        }
+        for key in restingKeys() { defaults.removeObject(forKey: key) }
+        for (key, raw) in restored { defaults.set(raw, forKey: key) }
+        if let service {
+            KnownServers.remember(service, service: .maerSync, defaults: defaults)
+        }
+        let keys = restingKeys()
+        isAdopting = true
+        NotificationCenter.default.post(name: PlayedTail.didChange, object: nil)
+        NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
+        NotificationCenter.default.post(name: .userChoicesAdopted, object: nil, userInfo: ["keys": keys])
+        if UserChoiceCatalog.touchesSources(keys) { sourcesAdopted() }
+        isAdopting = false
+    }
+
     // MARK: - Reconcile
 
     func reconcile() {
         if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
+        // Another account than the choices' owner: its choices replace the
+        // owner's first, or the round would carry them to it.
+        guard followsTheAccount() else {
+            Logger.library.notice("CHOICE round held: the choices wait for their owner")
+            return
+        }
         let signpost = PerfSignpost.syncRound(.userChoices, .local)
         defer { signpost.end() }
         // A reconcile asks the CLOUD, never the mirror. A foreign device may

@@ -497,7 +497,7 @@ nonisolated enum RadioStore {
         NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
     }
 
-    private static let recentTimesKey = "radioRecentTimes"
+    static let recentTimesKey = "radioRecentTimes"
 
     /// station id → last played (seconds). Missing for stations heard before
     /// this existed, and missing for an entry the ring kept without a

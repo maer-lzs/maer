@@ -69,15 +69,17 @@ nonisolated final class MaerDatabase: Sendable {
     /// (`RestingShelf`): beside the database file, so a witness's database
     /// brings its own shelf. Nil for a memory database, which has no place.
     var restingShelf: RestingShelf? {
-        let file: URL
-        if let path {
-            guard path != ":memory:" else { return nil }
-            file = URL(fileURLWithPath: path)
-        } else {
-            guard let url = Self.url else { return nil }
-            file = url
-        }
-        return RestingShelf(directory: file.deletingLastPathComponent().appendingPathComponent("resting", isDirectory: true))
+        guard let path else { return Self.restingShelf }
+        guard path != ":memory:" else { return nil }
+        return Self.shelf(beside: URL(fileURLWithPath: path))
+    }
+
+    /// The app's shelf, beside the app's database file; it needs no
+    /// connection.
+    static var restingShelf: RestingShelf? { url.map(shelf(beside:)) }
+
+    private static func shelf(beside file: URL) -> RestingShelf {
+        RestingShelf(directory: file.deletingLastPathComponent().appendingPathComponent("resting", isDirectory: true))
     }
 
     /// The library rows over the one connection, for a reader that lives
