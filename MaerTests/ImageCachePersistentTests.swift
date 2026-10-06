@@ -327,6 +327,42 @@ struct ImageCachePersistentTests {
         #expect(!booksAnswer.movePending && booksAnswer.knowsAll, "a book does not wait on Navidrome's move")
     }
 
+    /// A walk that could not list the folder, or a start that could not read
+    /// the marks, knows no downloads: that is a blind spot, not "none", and
+    /// the sweep must not demote every kept cover on it.
+    @Test("ein Scan, der nicht lesen konnte, ist keine leere Antwort")
+    func anUnreadableScanIsNoEmptyAnswer() async throws {
+        let address: (String) -> URL? = { URL(string: "https://example.lan/cover/\($0)") }
+        // The folder: a file stands where the download folder belongs.
+        let blocked = try NavidromeRekeyTests.temporaryDirectory("scan-blocked")
+        defer { try? FileManager.default.removeItem(at: blocked) }
+        try Data("x".utf8).write(to: blocked.appendingPathComponent("Downloads"))
+        #expect(!DownloadManager.scanDownloads(downloadsDir: blocked.appendingPathComponent("Downloads"),
+                                               marked: []).readable)
+        let manager = DownloadManager(documents: blocked,
+                                      database: MaerDatabase(path: blocked.appendingPathComponent("maer.sqlite").path))
+        let walked = await manager.activeCovers(address: address, idMovePending: { false })
+        #expect(walked.urls.isEmpty && walked.unreadable && !walked.knowsAll,
+                "an unlisted folder answered as no downloads")
+
+        // The marks: the start could not read its rows.
+        let unread = try NavidromeRekeyTests.temporaryDirectory("scan-unread")
+        defer { try? FileManager.default.removeItem(at: unread) }
+        let database = try await NavidromeRekeyTests.unreadableDatabase(
+            ["download_meta"], at: unread.appendingPathComponent("maer.sqlite").path)
+        let marks = await DownloadManager(documents: unread, database: database)
+            .activeCovers(address: address, idMovePending: { false })
+        #expect(marks.unreadable && !marks.knowsAll, "unread marks answered as no downloads")
+
+        // A readable empty folder is the honest "none".
+        let empty = try NavidromeRekeyTests.temporaryDirectory("scan-empty")
+        defer { try? FileManager.default.removeItem(at: empty) }
+        let none = await DownloadManager(documents: empty,
+                                         database: MaerDatabase(path: empty.appendingPathComponent("maer.sqlite").path))
+            .activeCovers(address: address, idMovePending: { false })
+        #expect(!none.unreadable && none.knowsAll, "an empty readable folder is a complete answer")
+    }
+
     /// The window itself: the kept cover under the old form, the active
     /// address in the new one, the move open. The sweep with that answer
     /// demotes nothing; the move's rename then puts the cover under the new

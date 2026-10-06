@@ -212,7 +212,7 @@ enum Artwork {
     static func sweep(over downloads: DownloadManager, onlyWhenOverCap: Bool) async {
         let covers = await downloads.activeCovers()
         if !covers.knowsAll {
-            Logger.library.notice("COVERCACHE tiers hold: unresolved=\(covers.unresolved) idMovePending=\(covers.movePending), nothing demoted, no old name moved")
+            Logger.library.notice("COVERCACHE tiers hold: unresolved=\(covers.unresolved) idMovePending=\(covers.movePending) unreadable=\(covers.unreadable), nothing demoted, no old name moved")
         }
         await tiers.performMaintenance(activeCoverURLs: covers.urls, knowsAll: covers.knowsAll,
                                        onlyWhenOverCap: onlyWhenOverCap).value

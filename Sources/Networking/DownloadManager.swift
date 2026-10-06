@@ -135,6 +135,9 @@ final class DownloadManager {
     /// survives a restart and needs nothing loaded. A download started
     /// without a kind has none, and no deletion per kind reaches it.
     private(set) var kinds: [String: DownloadKind] = [:]
+    /// The last walk could not list the download folder: what the manager
+    /// knows of its downloads is then incomplete.
+    private(set) var scanUnreadable = false
     /// The kinds are a document of the app, so they go through the seam.
     private let kindsAblage: Ablage
     nonisolated static let kindsDocument = "download-kinds.json"
@@ -157,6 +160,7 @@ final class DownloadManager {
                 Self.scanDownloads(downloadsDir: downloadsDir, marked: marked)
             }.value
             guard let self else { return }
+            self.scanUnreadable = !scan.readable
             // Merge: a download finished while scanning must not be dropped.
             // But a download DELETED while scanning must not come back either
             // (the stale scan still contains it). Re-check the mark, the
@@ -242,11 +246,19 @@ final class DownloadManager {
 
     /// Off-main startup scan: completed download ids (marked in the rows AND
     /// their folder present) plus the size of each in one walk.
-    private nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
-        -> (ids: Set<String>, sizes: [String: Int64]) {
-        guard let dirs = try? FileManager.default.contentsOfDirectory(
-            at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey]
-        ) else { return ([], [:]) }
+    /// The walk over the download folders. `readable` is false when the
+    /// folder itself could not be listed: then the empty answer means
+    /// "unknown", never "no downloads".
+    nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
+        -> (ids: Set<String>, sizes: [String: Int64], readable: Bool) {
+        let dirs: [URL]
+        do {
+            dirs = try FileManager.default.contentsOfDirectory(
+                at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey])
+        } catch {
+            Logger.library.error("DOWNLOADS scan unreadable reason=\(String(describing: error), privacy: .public)")
+            return ([], [:], false)
+        }
         var ids = Set<String>()
         var sizes: [String: Int64] = [:]
         for dir in dirs
@@ -262,7 +274,7 @@ final class DownloadManager {
                 sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
             }
         }
-        return (ids, sizes)
+        return (ids, sizes, true)
     }
 
     /// The size of every download, measured on the disk, and their sum. Run
@@ -797,12 +809,17 @@ final class DownloadManager {
     /// be demoted on it. The answer is incomplete as well while a music
     /// download waits for Navidrome's id move (`movePending`): the address
     /// built now names the new form, the kept cover still stands under the
-    /// old one until the move renames it.
+    /// old one until the move renames it. And it is incomplete when the walk
+    /// could not list the download folder or the start could not read the
+    /// marks: zero downloads then is no answer, it is a blind spot.
     struct ActiveCovers: Sendable {
         let urls: [URL]
         let unresolved: Int
         let movePending: Bool
-        var knowsAll: Bool { unresolved == 0 && !movePending }
+        /// The folder walk or the marks could not be read: zero downloads
+        /// then means "unknown", and nothing may be demoted on it.
+        var unreadable = false
+        var knowsAll: Bool { unresolved == 0 && !movePending && !unreadable }
     }
 
     func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) },
@@ -815,7 +832,8 @@ final class DownloadManager {
             if let url = address(itemId) { urls.append(url) } else { unresolved += 1 }
         }
         let movePending = itemIds.contains(where: SubsonicProvider.owns(itemId:)) && idMovePending()
-        return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending)
+        return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending,
+                            unreadable: scanUnreadable || keeper.startReadFailed)
     }
 
     /// Re-key a finished download from the old item id
