@@ -125,20 +125,7 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
         var cloud = MaerPlaylistMerge.Snapshot()
         if let raw = store.dictionary(forKey: blobKey) {
             for (id, value) in raw {
-                guard let dict = value as? [String: Any],
-                      let name = dict["name"] as? String,
-                      let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
-                      let items = dict["items"] as? [String] else { continue }
-                // Blobs written before the snapshots existed carry none.
-                // Tolerated, like every other added field.
-                let titles = (dict["titles"] as? [String: String]) ?? [:]
-                cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
-                                        titles: titles,
-                                        nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
-                                        snapshots: Self.snapshots(fromBlob: dict["snapshots"]),
-                                        removed: Self.moments(fromBlob: dict["removed"]),
-                                        added: Self.moments(fromBlob: dict["added"]),
-                                        device: dict["device"] as? String)
+                if let entry = Self.entry(from: value) { cloud.lists[id] = entry }
             }
         }
         if let raw = store.dictionary(forKey: tombKey) {
@@ -153,22 +140,47 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
         guard !stopped else { return }
         var blob: [String: Any] = [:]
         for (id, entry) in snapshot.lists {
-            var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                                          "items": entry.itemIds, "titles": entry.titles,
-                                          "snapshots": Self.blob(snapshots: entry.snapshots),
-                                          "device": entry.device ?? Self.deviceName]
-            // The name's clock travels with the list. Written only when it
-            // exists, so pre-clock devices read the blob unchanged.
-            if let nameUpdatedAt = entry.nameUpdatedAt {
-                payload["nameUpdatedAt"] = nameUpdatedAt
-            }
-            if !entry.removed.isEmpty { payload["removed"] = entry.removed }
-            if !entry.added.isEmpty { payload["added"] = entry.added }
-            blob[id] = payload
+            // The blob names this device for a list that carries no device.
+            blob[id] = Self.payload(of: entry, device: entry.device ?? Self.deviceName)
         }
         store.set(blob, forKey: blobKey)
         store.set(snapshot.tombstones, forKey: tombKey)
         _ = store.synchronize()
+    }
+
+    /// THE shape of one list on every wire (this blob, the service, the
+    /// CloudKit record): one pair, so a field written is a field read. The
+    /// device is the wire's own convention and comes in: the blob names
+    /// this device, the service writes an empty name, CloudKit leaves it
+    /// out. Optional fields are written only when they exist, so a device
+    /// from before reads the shape unchanged.
+    nonisolated static func payload(of entry: MaerPlaylistMerge.Entry, device: String?) -> [String: Any] {
+        var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
+                                      "items": entry.itemIds, "titles": entry.titles,
+                                      "snapshots": blob(snapshots: entry.snapshots)]
+        if let device { payload["device"] = device }
+        if let nameUpdatedAt = entry.nameUpdatedAt { payload["nameUpdatedAt"] = nameUpdatedAt }
+        if !entry.removed.isEmpty { payload["removed"] = entry.removed }
+        if !entry.added.isEmpty { payload["added"] = entry.added }
+        return payload
+    }
+
+    /// The list back from that shape, tolerant: a field from later or
+    /// missing from before reads as none, an empty device name as none.
+    /// nil when name, clock or items are missing.
+    nonisolated static func entry(from raw: Any?) -> MaerPlaylistMerge.Entry? {
+        guard let dict = raw as? [String: Any],
+              let name = dict["name"] as? String,
+              let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
+              let items = dict["items"] as? [String] else { return nil }
+        let device = dict["device"] as? String
+        return .init(name: name, updatedAt: updatedAt, itemIds: items,
+                     titles: (dict["titles"] as? [String: String]) ?? [:],
+                     nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
+                     snapshots: snapshots(fromBlob: dict["snapshots"]),
+                     removed: moments(fromBlob: dict["removed"]),
+                     added: moments(fromBlob: dict["added"]),
+                     device: (device?.isEmpty ?? true) ? nil : device)
     }
 
     /// Entry id → moment, from the blob. Blobs from before carry none.

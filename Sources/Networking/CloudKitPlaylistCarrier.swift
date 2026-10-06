@@ -59,30 +59,15 @@ typealias CKPlaylistDatabase = CKZoneDatabase<CloudPlaylistCodec>
 /// same bytes.
 nonisolated enum MaerPlaylistEntryWire {
     static func encode(_ entry: MaerPlaylistMerge.Entry) -> Data {
-        var dict: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                                   "items": entry.itemIds, "titles": entry.titles,
-                                   "snapshots": KeyValuePlaylistCarrier.blob(snapshots: entry.snapshots)]
-        if let nameUpdatedAt = entry.nameUpdatedAt { dict["nameUpdatedAt"] = nameUpdatedAt }
-        if let device = entry.device { dict["device"] = device }
-        if !entry.removed.isEmpty { dict["removed"] = entry.removed }
-        if !entry.added.isEmpty { dict["added"] = entry.added }
+        // CloudKit leaves the device out when the list carries none.
+        let dict = KeyValuePlaylistCarrier.payload(of: entry, device: entry.device)
         // bearable, because a dictionary of plist values always encodes; a failure would be an empty body, which the tombstone branch knows anyway
         return (try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys])) ?? Data()
     }
 
     static func decode(_ data: Data) -> MaerPlaylistMerge.Entry? {
         // bearable, because an unreadable entry is none: the carrier drops it, like half a line in the blob
-        guard let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let name = dict["name"] as? String,
-              let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
-              let items = dict["items"] as? [String] else { return nil }
-        return .init(name: name, updatedAt: updatedAt, itemIds: items,
-                     titles: (dict["titles"] as? [String: String]) ?? [:],
-                     nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
-                     snapshots: KeyValuePlaylistCarrier.snapshots(fromBlob: dict["snapshots"]),
-                     removed: KeyValuePlaylistCarrier.moments(fromBlob: dict["removed"]),
-                     added: KeyValuePlaylistCarrier.moments(fromBlob: dict["added"]),
-                     device: dict["device"] as? String)
+        KeyValuePlaylistCarrier.entry(from: try? JSONSerialization.jsonObject(with: data))
     }
 }
 

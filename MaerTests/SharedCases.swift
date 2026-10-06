@@ -82,13 +82,6 @@ nonisolated enum SharedCases {
 /// The form of every shared case file, so no file quietly takes a shape
 /// that only one side reads.
 struct SharedCasesFenceTests {
-    /// Measured server answers, kept byte for byte as a server sent them so
-    /// both sides decode the same bytes. They are no case files and carry
-    /// no head; each one is named here with what it answers.
-    static let serverAnswers: [String: String] = [
-        "abs/podcast_feed.json": "POST /api/podcasts/feed of Audiobookshelf 2.37.1, measured on the test server",
-    ]
-
     static func files() throws -> [URL] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/Shared")
         guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else { return [] }
@@ -101,8 +94,6 @@ struct SharedCasesFenceTests {
         #expect(files.count >= 4, "the shared files are not where the fence looks: \(files.count)")
         for url in files {
             let name = url.lastPathComponent
-            let relative = url.deletingLastPathComponent().lastPathComponent + "/" + name
-            if Self.serverAnswers[relative] != nil { continue }
             let data = try Data(contentsOf: url)
             let file = try JSONDecoder().decode(SharedCases.File.self, from: data)
             #expect(!file.regel.isEmpty, "\(name): regel missing")

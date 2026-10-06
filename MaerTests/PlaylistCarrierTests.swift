@@ -120,6 +120,40 @@ struct PlaylistCarrierTests {
         #expect(session.claims.isEmpty)
     }
 
+    @Test("der CloudKit-Draht traegt jedes Feld hin und zurueck, mit und ohne Geraet")
+    func theCloudKitWireRoundTrips() throws {
+        let entry = try #require(sample.lists["l1"])
+        let back = try #require(MaerPlaylistEntryWire.decode(MaerPlaylistEntryWire.encode(entry)))
+        #expect(MaerPlaylistMerge.isSameVersion(back, entry) && back.device == "phone", "a field written is not read")
+        var bare = entry
+        bare.device = nil
+        #expect(MaerPlaylistEntryWire.decode(MaerPlaylistEntryWire.encode(bare))?.device == nil)
+        #expect(MaerPlaylistEntryWire.decode(Data("nonsense".utf8)) == nil)
+    }
+
+    @Test("eine Form fuer drei Draehte: jeder huellt dasselbe Paar, jeder mit seiner Geraete-Gepflogenheit", .needsTheSources)
+    func oneShapeForThreeWires() throws {
+        // The pair itself: what it writes, it reads; an empty device reads as none.
+        let entry = try #require(sample.lists["l1"])
+        let roundTrip = try #require(KeyValuePlaylistCarrier.entry(from: KeyValuePlaylistCarrier.payload(of: entry, device: entry.device)))
+        #expect(MaerPlaylistMerge.isSameVersion(roundTrip, entry) && roundTrip.device == "phone")
+        #expect(KeyValuePlaylistCarrier.entry(from: KeyValuePlaylistCarrier.payload(of: entry, device: ""))?.device == nil)
+        #expect(KeyValuePlaylistCarrier.payload(of: entry, device: nil)["device"] == nil)
+        // Every wire wraps it, none spells the shape a second time.
+        var payloads = 0
+        var entries = 0
+        for name in ["PlaylistCarrier.swift", "MaerSyncCarriers.swift", "CloudKitPlaylistCarrier.swift"] {
+            let code = SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/\(name)"), encoding: .utf8))
+            payloads += code.components(separatedBy: "payload(of: entry, device:").count - 1
+            entries += code.components(separatedBy: "entry(from:").count - 1
+            #expect(name == "PlaylistCarrier.swift" || !code.contains("\"nameUpdatedAt\"]"),
+                    "\(name) spells the shape of a list again")
+        }
+        #expect(payloads == 3, "the three wires write through the pair: \(payloads)")
+        #expect(entries == 3, "the three wires read through the pair: \(entries)")
+    }
+
     @Test("der Draht traegt jedes Feld hin und zurueck; Unlesbares ist keine Momentaufnahme")
     func theServiceWireRoundTrips() throws {
         let data = try MaerSyncPlaylistWire.encode(sample)

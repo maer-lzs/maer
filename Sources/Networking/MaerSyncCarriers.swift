@@ -1415,14 +1415,8 @@ nonisolated enum MaerSyncPlaylistWire {
     static func encode(_ snapshot: MaerPlaylistMerge.Snapshot) throws -> Data {
         var lists: [String: Any] = [:]
         for (id, entry) in snapshot.lists {
-            var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                                          "items": entry.itemIds, "titles": entry.titles,
-                                          "snapshots": KeyValuePlaylistCarrier.blob(snapshots: entry.snapshots),
-                                          "device": entry.device ?? ""]
-            if let nameUpdatedAt = entry.nameUpdatedAt { payload["nameUpdatedAt"] = nameUpdatedAt }
-            if !entry.removed.isEmpty { payload["removed"] = entry.removed }
-            if !entry.added.isEmpty { payload["added"] = entry.added }
-            lists[id] = payload
+            // The service writes an empty name for a list without a device.
+            lists[id] = KeyValuePlaylistCarrier.payload(of: entry, device: entry.device ?? "")
         }
         let object: [String: Any] = ["lists": lists, "tombstones": snapshot.tombstones]
         return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
@@ -1433,18 +1427,7 @@ nonisolated enum MaerSyncPlaylistWire {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
         var snapshot = MaerPlaylistMerge.Snapshot()
         for (id, value) in (object["lists"] as? [String: Any]) ?? [:] {
-            guard let dict = value as? [String: Any],
-                  let name = dict["name"] as? String,
-                  let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
-                  let items = dict["items"] as? [String] else { continue }
-            let device = dict["device"] as? String
-            snapshot.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
-                                       titles: (dict["titles"] as? [String: String]) ?? [:],
-                                       nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
-                                       snapshots: KeyValuePlaylistCarrier.snapshots(fromBlob: dict["snapshots"]),
-                                       removed: KeyValuePlaylistCarrier.moments(fromBlob: dict["removed"]),
-                                       added: KeyValuePlaylistCarrier.moments(fromBlob: dict["added"]),
-                                       device: (device?.isEmpty ?? true) ? nil : device)
+            if let entry = KeyValuePlaylistCarrier.entry(from: value) { snapshot.lists[id] = entry }
         }
         for (id, value) in (object["tombstones"] as? [String: Any]) ?? [:] {
             if let stamp = (value as? NSNumber)?.doubleValue { snapshot.tombstones[id] = stamp }

@@ -30,7 +30,9 @@ struct ABSPodcastFeedTests {
 
     @Test("die gemessene Antwort des Servers traegt das Bild unter image")
     func theMeasuredAnswerCarriesThePicture() throws {
-        let data = try CorpusFixture.data("podcast_feed", ext: "json", subdirectory: "Shared/abs")
+        // A measured answer of the test server, byte for byte; it is no
+        // shared case file, so it lives beside them, not among them.
+        let data = try CorpusFixture.data("podcast_feed", ext: "json", subdirectory: "ServerAnswers/abs")
         let metadata = try JSONDecoder().decode(PodcastFeedResponse.self, from: data).podcast.metadata
         #expect(metadata.image == "http://host.docker.internal:13379/cover.jpg")
         #expect(metadata.title == "Stille-Funk")
