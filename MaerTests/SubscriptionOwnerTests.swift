@@ -132,6 +132,28 @@ struct SubscriptionOwnerTests {
         #expect(try shelf.holding(of: family) == .init(owner: "account-b"))
     }
 
+    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Abos und Wahlen ruhen unter A, B sieht keine davon")
+    func aSwitchWithSyncOffAndNoHolder() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([Self.show("moor", episodes: 2)])
+        let subs = await rig.store()
+        rig.defaults.set("title", forKey: "librarySortOption")
+        let shelf = try #require(rig.database.restingShelf)
+        let sync = UserChoiceCloudSync(defaults: rig.defaults, cloud: UserChoiceFakeCloud(), syncEnabled: { false },
+                                       identity: { "account-b" }, shelf: shelf)
+        sync.subscriptionsFollow = { subs.follow(owner: $0, previous: $1) }
+        sync.sourcesAdopted = {}
+        sync.followOwner(previous: "account-a")
+        let showsOfA = try shelf.rest(PodcastSubscriptions.Resting.self, of: PodcastSubscriptions.shelfFamily, owner: "account-a")
+        let choicesOfA = try shelf.rest(UserChoiceCloudSync.Resting.self, of: "choices", owner: "account-a")
+        #expect(showsOfA?.shows.map(\.title) == ["moor"], "A's shows do not rest under A")
+        #expect(subs.shows.isEmpty, "B sees A's shows")
+        #expect(choicesOfA?.values["librarySortOption"] != nil, "A's choice does not rest under A")
+        #expect(rig.defaults.object(forKey: "librarySortOption") == nil, "B sees A's choice")
+        await subs.awaitPendingWrites()
+    }
+
     @Test("solange der Bestand nicht geladen ist, ruht nichts und die Runde der Wahlen haelt an")
     func anUnloadedStockHoldsTheChoices() async throws {
         let rig = try rig()
@@ -148,7 +170,7 @@ struct SubscriptionOwnerTests {
         let sync = UserChoiceCloudSync(defaults: rig.defaults, cloud: cloud, syncEnabled: { true },
                                        identity: { scope }, shelf: RestingShelf(directory: rig.folder.appendingPathComponent("choices")))
         sync.sourcesAdopted = {}
-        sync.subscriptionsFollow = { subs.follow(owner: $0) }
+        sync.subscriptionsFollow = { subs.follow(owner: $0, previous: $1) }
         rig.defaults.set("title", forKey: "librarySortOption")
         scope = "account-b"
         sync.noteScalar(key: "librarySortOption", value: "title")

@@ -90,7 +90,7 @@ final class UserChoiceCloudSync {
     /// Hands the subscriptions to an account (`PodcastSubscriptions.follow`),
     /// false while it cannot. Set by the store; the choices follow only
     /// after the subscriptions did.
-    var subscriptionsFollow: (_ scope: String) -> Bool = { _ in true }
+    var subscriptionsFollow: (_ scope: String, _ previous: String?) -> Bool = { _, _ in true }
     /// The one door of the sources, taken when an adoption changed a tab or
     /// source switch (`UserChoiceCatalog.touchesSources`), as a change here
     /// takes it: the clients are built and the sources signal goes out.
@@ -390,7 +390,7 @@ final class UserChoiceCloudSync {
     /// them over first by the shelf's one rule (`RestingShelf.handOver`).
     /// False while they cannot be handed over; nothing then is noted or
     /// sent, since it would carry the holder's choices to the account.
-    private func followsTheAccount() -> Bool {
+    private func followsTheAccount(previous: String? = nil) -> Bool {
         guard let follower, let scope = identity() else { return true }
         if scope != follower.handedTo {
             // The document read before is the one of the account before: a
@@ -398,10 +398,10 @@ final class UserChoiceCloudSync {
             blobCache = nil
             // The subscriptions are rows of their store and read by this
             // family: they move first, or the round would read the holder's.
-            guard subscriptionsFollow(scope) else { return false }
+            guard subscriptionsFollow(scope, previous) else { return false }
         }
         guard let step = follower.follow(
-            to: scope, unread: false, landing: .now,
+            to: scope, previous: previous, unread: false, landing: .now,
             current: { try restingChoices() },
             replace: { rest, _, _ in try replaceChoices(with: rest) }) else { return false }
         if step != .kept {
@@ -1067,6 +1067,12 @@ final class UserChoiceCloudSync {
 
 extension UserChoiceCloudSync: AccessFollower {
     var followerName: String { "choices" }
+
+    /// The stock follows a change of account at the moment of the change,
+    /// with the sync switch off as well (`AccessFollower.followOwner`).
+    func followOwner(previous: String?) {
+        _ = followsTheAccount(previous: previous)
+    }
 
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         follow(ChoiceCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)

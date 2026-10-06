@@ -68,11 +68,11 @@ final class PodcastCloudSync {
     /// whole, a rest not laid or unreadable); nothing then is merged, taken
     /// in or sent, since a round would carry the holder's stands to the
     /// account and the account's into the holder's stock.
-    private func followsTheAccount() -> Bool {
+    private func followsTheAccount(previous: String? = nil) -> Bool {
         guard let follower, let scope = identity() else { return true }
         let defaults = self.defaults
         guard let step = follower.follow(
-            to: scope, unread: ListeningStore.readFailed(in: defaults), landing: .marked,
+            to: scope, previous: previous, unread: ListeningStore.readFailed(in: defaults), landing: .marked,
             landed: standsMarked,
             current: { ListeningStore.resting(where: Self.potCarries, in: defaults) },
             replace: { [weak follower] rest, _, name in
@@ -464,6 +464,12 @@ final class PodcastCloudSync {
 
 extension PodcastCloudSync: AccessFollower {
     var followerName: String { "stands" }
+
+    /// The stock follows a change of account at the moment of the change,
+    /// with the sync switch off as well (`AccessFollower.followOwner`).
+    func followOwner(previous: String?) {
+        _ = followsTheAccount(previous: previous)
+    }
 
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         follow(StandCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)

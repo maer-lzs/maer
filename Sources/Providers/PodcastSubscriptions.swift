@@ -249,7 +249,7 @@ final class PodcastSubscriptions: ObservableObject {
             choiceSync.subscriptionAdopter = { [weak self] added, removed in
                 self?.adoptCloudSubscriptions(added: added, removed: removed)
             }
-            choiceSync.subscriptionsFollow = { [weak self] scope in self?.follow(owner: scope) ?? true }
+            choiceSync.subscriptionsFollow = { [weak self] scope, previous in self?.follow(owner: scope, previous: previous) ?? true }
             accessObserver = NotificationCenter.default.addObserver(
                 forName: FeedAdoptionPending.accessArrived, object: nil, queue: .main) { [weak self] note in
                     let by = note.userInfo?["by"] as? String ?? "-"
@@ -1486,11 +1486,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// the choice runner then holds its round, since the round would carry
     /// the holder's shows to `scope`. The replacement unsubscribes nothing:
     /// no removal is told to the account, a gpodder server or the history.
-    func follow(owner scope: String) -> Bool {
+    func follow(owner scope: String, previous: String? = nil) -> Bool {
         guard let follower else { return true }
         let rested = shows.count
         guard let step = follower.follow(
-            to: scope, unread: !isLoaded || rowChain.startReadFailed, landing: .marked,
+            to: scope, previous: previous, unread: !isLoaded || rowChain.startReadFailed, landing: .marked,
             landed: { [database] name in
                 try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
             },

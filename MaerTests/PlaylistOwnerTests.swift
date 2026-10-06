@@ -214,6 +214,32 @@ struct PlaylistOwnerTests {
         }
     }
 
+    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Listen ruhen unter A, B sieht keine, B's Liste bleibt B's, auch wenn Sync wieder an ist")
+    func aSwitchWithSyncOffAndNoHolder() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
+            let shelf = rig.shelf
+            let store = MaerPlaylists(database: rig.database)
+            _ = store.create(name: "Von A")
+            let carrier = AccountCarrier(scope: { "account-b" })
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { "account-b" })
+            runner.followOwner(previous: "account-a")
+            let rested = try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a")
+            #expect(rested?.lists.map(\.name) == ["Von A"], "A's lists do not rest under A")
+            #expect(store.playlists.isEmpty, "B sees A's lists")
+            let ofB = store.create(name: "Von B")
+            UserDefaults.standard.set(true, forKey: AppStorageKeys.podcastICloudSync)
+            runner.reconcile()
+            #expect(store.playlists.map(\.id) == [ofB.id], "B's list left B")
+            let restedAfter = try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a")
+            #expect(restedAfter?.lists.map(\.name) == ["Von A"], "B's list went under A")
+            await store.awaitPendingWrites()
+            withExtendedLifetime(runner) {}
+        }
+    }
+
     @Test("ein Wechsel, dessen Ersetzen nicht ankam, wird beim naechsten Start beendet, ohne die Ruhe zu ueberschreiben")
     func aBrokenReplacementEndsWithoutTouchingTheRest() async throws {
         let rig = try rig()

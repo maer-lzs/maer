@@ -227,6 +227,27 @@ struct StandOwnerTests {
         }
     }
 
+    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Staende ruhen unter A, B sieht keinen")
+    func aSwitchWithSyncOffAndNoHolder() throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        defaults.set([600.0, 1_700_000_000_000, 3600], forKey: AppStorageKeys.localPosition("rss:a-1"))
+        let wasSync = UserDefaults.standard.object(forKey: AppStorageKeys.podcastICloudSync)
+        UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
+        defer {
+            if let wasSync { UserDefaults.standard.set(wasSync, forKey: AppStorageKeys.podcastICloudSync) }
+            else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
+        }
+        let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { "account-b" }), defaults: defaults,
+                                      identity: { "account-b" }, shelf: rig.shelf, standsMarked: { _ in false })
+        runner.followOwner(previous: "account-a")
+        let restOfA = try rig.shelf.rest(ListeningStore.Resting.self, of: "stands", owner: "account-a")
+        #expect(restOfA?.backups["rss:a-1"] != nil, "A's stand does not rest under A")
+        #expect(ListeningStore.backup("rss:a-1", in: defaults) == nil, "B sees A's stand")
+        withExtendedLifetime(runner) {}
+    }
+
     @Test("ist der Bestand nicht ganz gelesen, ruht nichts, nichts wird ersetzt und die Runde haelt an")
     func anUnreadStockHoldsTheRound() async throws {
         let rig = rig()

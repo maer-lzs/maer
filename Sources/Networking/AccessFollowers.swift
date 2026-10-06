@@ -19,9 +19,17 @@ protocol AccessFollower: AnyObject {
     /// `identityChanged`: signed in before and now, but with another
     /// account; the runner starts again as on a change of way.
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String)
+    /// Hands the family's stock to the account signed in now, whatever the
+    /// sync switch says: a change of account is one, synced or not.
+    /// `previous`: the owner of the device's stock before this account
+    /// (`StockOwner`), the holder where the family names none yet.
+    func followOwner(previous: String?)
 }
 
 extension AccessFollower {
+    /// A runner without a stock of its own on the shelf hands nothing over.
+    func followOwner(previous: String?) {}
+
     /// A change of way alone, the account staying what it was.
     func followAccess(signedIn: Bool, by caller: String) {
         followAccess(signedIn: signedIn, identityChanged: false, by: caller)
@@ -126,9 +134,16 @@ final class AccessRegister {
         let signedIn = now != nil
         // Against the stock's owner, not against the last account seen:
         // A, signed out, then B is a switch too.
-        let change = StockOwner.change(owner: StockOwner.owner(in: defaults), now: now)
+        let previous = StockOwner.owner(in: defaults)
+        let change = StockOwner.change(owner: previous, now: now)
         let identityChanged = (restart && signedIn) || change.isSwitch
         if let now { StockOwner.setOwner(now, in: defaults) }
+        // The stock follows the account before any carrier starts again,
+        // with the sync switch off as well; in the order the runners
+        // enrolled, the subscriptions inside the choices, before them.
+        if signedIn {
+            for entry in entries { entry.follower?.followOwner(previous: previous) }
+        }
         Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) stock=\(String(describing: change), privacy: .public) runners=\(self.names.joined(separator: ","), privacy: .public)")
         for entry in entries {
             entry.follower?.followAccess(signedIn: signedIn, identityChanged: identityChanged, by: caller)

@@ -285,9 +285,18 @@ struct MaerSyncIdentityTests {
         let followerName: String
         private(set) var changedCarrier = false
         private(set) var told: [(signedIn: Bool, identityChanged: Bool)] = []
+        /// The owner before, each time the stock was asked to follow.
+        private(set) var owners: [String?] = []
+        /// The order of the two questions, for the witness of the order.
+        private(set) var calls: [String] = []
         init(_ name: String) { followerName = name }
+        func followOwner(previous: String?) {
+            owners.append(previous)
+            calls.append("owner")
+        }
         func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
             told.append((signedIn, identityChanged))
+            calls.append("access")
             if CarrierWay.mustChange(holdsService: true, signedIn: signedIn, identityChanged: identityChanged) {
                 changedCarrier = true
             }
@@ -347,6 +356,29 @@ struct MaerSyncIdentityTests {
         restarted.followAll(by: "sign-in")
         #expect(fresh.told.last?.identityChanged == true, "B after A and a sign-out passed as a first sign-in")
         #expect(StockOwner.owner(in: defaults) == Self.identityB.scope)
+    }
+
+    @Test("ein Kontowechsel uebergibt jeden Bestand mit dem Eigentuemer davor, vor dem Neustart der Traeger und ohne den Sync-Schalter zu fragen; abgemeldet nichts")
+    func aSwitchHandsTheStockOverWithTheOwnerBefore() {
+        let suite = "maer-owner-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let wasSync = UserDefaults.standard.object(forKey: AppStorageKeys.podcastICloudSync)
+        UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
+        defer {
+            if let wasSync { UserDefaults.standard.set(wasSync, forKey: AppStorageKeys.podcastICloudSync) }
+            else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
+        }
+        var scope: String? = Self.identityA.scope
+        let register = AccessRegister(identity: { scope }, defaults: defaults)
+        let runner = register.enroll(RecordingFollower("playlists"))
+        scope = nil
+        register.followAll(by: "sign-out")
+        #expect(runner.owners.isEmpty, "a sign-out handed a stock over")
+        scope = Self.identityB.scope
+        register.followAll(by: "sign-in")
+        #expect(runner.owners == [Self.identityA.scope], "the switch to B did not hand A's stock over: \(runner.owners)")
+        #expect(runner.calls.suffix(2) == ["owner", "access"], "the carrier started before the stock followed")
     }
 
     @Test("die Laeufer fragen nach dem Konto die Sitzung und keinen zweiten Speicher", .needsTheSources)

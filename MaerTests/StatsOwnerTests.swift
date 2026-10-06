@@ -150,6 +150,22 @@ struct StatsOwnerTests {
         }
     }
 
+    @Test("ein Wechsel ohne Halter: A's Hoerzeit ruht unter A, B beginnt bei null")
+    func aSwitchWithoutAHolder() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.folder) }
+        let shelf = rig.shelf
+        let stats = ListeningStatsStore(carrier: AccountCarrier(scope: { "account-b" }), database: rig.database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        identity: { "account-b" }, shelf: shelf)
+        stats.addSeconds(100, itemId: "rss:a-1")
+        stats.followOwner(previous: "account-a")
+        let restOfA = try shelf.rest(ListeningStatsData.self, of: "stats", owner: "account-a")
+        #expect(restOfA?.secondsPerItem["rss:a-1"] == 100, "A's listening does not rest under A")
+        #expect(stats.totalSeconds() == 0, "B starts with A's listening")
+        await stats.awaitPendingWrites()
+    }
+
     @Test("die Rechnung: Mitgebrachtes plus was das Geraet seit der Uebernahme zaehlte, nie unter null")
     func theOwnedTotals() {
         let device = ListeningStatsData(secondsPerDay: ["d1": 130, "d2": 10], secondsPerItem: ["a": 100, "b": 30])

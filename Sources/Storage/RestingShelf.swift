@@ -97,15 +97,18 @@ nonisolated struct RestingShelf: Sendable {
         current: () throws -> Value,
         replace: (_ rest: Value?, _ owner: String, _ replacement: String) throws -> Void
     ) throws -> HandOver {
-        let found = try holding(of: family)
-        if found == nil, previous == nil || previous == scope {
-            // Naming the first holder moves nothing, so it stands even over
-            // an unread stock: a later account then meets a holder.
-            try setHolding(.init(owner: scope), of: family)
-            return unread ? .unread : .first
+        var found = try holding(of: family)
+        if found == nil {
+            // Naming the holder moves nothing, so it stands even over an
+            // unread stock: the account before this one when the device knew
+            // one, else this one. A later round then meets that holder.
+            let holder = previous.flatMap { $0 == scope ? nil : $0 } ?? scope
+            try setHolding(.init(owner: holder), of: family)
+            if holder == scope { return unread ? .unread : .first }
+            found = Holding(owner: holder)
         }
         if unread { return .unread }
-        let holding = found ?? Holding(owner: previous ?? scope)
+        guard let holding = found else { return .unread }
         let begunHere = holding.replacement.map(issuedHere.contains) ?? false
         let unfinished = holding.replacing && !begunHere
         guard unfinished || holding.owner != scope else { return .kept }

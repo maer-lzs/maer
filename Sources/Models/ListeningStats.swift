@@ -400,10 +400,10 @@ final class ListeningStatsStore: ObservableObject {
     /// of the device's rows is removed. False while it cannot (a table or
     /// the ledger unread, the shelf not writable); nothing is published
     /// then, since it would publish the holder's totals for the account.
-    private func followsTheAccount() -> Bool {
+    private func followsTheAccount(previous: String? = nil) -> Bool {
         guard let follower, let shelf, let scope = identity() else { return true }
         guard let step = follower.follow(
-            to: scope, unread: unreadDays || unreadItems || ledgerUnread, landing: .now,
+            to: scope, previous: previous, unread: unreadDays || unreadItems || ledgerUnread, landing: .now,
             current: { ownerPot },
             replace: { rest, _, _ in
                 let next = Ledger(carried: rest ?? ListeningStatsData(), since: ownData)
@@ -668,6 +668,12 @@ final class ListeningStatsStore: ObservableObject {
 
 extension ListeningStatsStore: AccessFollower {
     var followerName: String { "stats" }
+
+    /// The stock follows a change of account at the moment of the change,
+    /// with the sync switch off as well (`AccessFollower.followOwner`).
+    func followOwner(previous: String?) {
+        _ = followsTheAccount(previous: previous)
+    }
 
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         follow(StatsCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)

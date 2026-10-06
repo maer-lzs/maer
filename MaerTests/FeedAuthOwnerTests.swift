@@ -229,6 +229,20 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
+    @Test("ein Wechsel ohne Halter uebergibt die Zugaenge auch vor dem Start des Laeufers: A's ruht unter A, B haelt keinen")
+    func aSwitchWithoutAHolder() throws {
+        let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
+        defer { rig.cleanup() }
+        rig.keychain.signIn(Self.premium, user: "anna", at: 1000)
+        rig.box.identity = Self.identityB
+        rig.runner.followOwner(previous: Self.identityA.scope)
+        #expect(rig.keychain.keys.rested(Self.identityA.scope, [Self.premium])?[Self.premium]?.user == "anna",
+                "A's credential does not rest under A")
+        #expect(rig.keychain.live.isEmpty, "B holds A's credential")
+        #expect(try rig.shelf.holding(of: "feedAuth")?.owner == Self.identityB.scope)
+        withExtendedLifetime(rig.runner) {}
+    }
+
     @Test("liest ein ruhender Zugang nicht zurueck, wird nichts ersetzt und die Runde haelt")
     func anUnreadRestReplacesNothing() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)

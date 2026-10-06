@@ -195,6 +195,13 @@ final class MaerPlaylistCloudSync {
 extension MaerPlaylistCloudSync: AccessFollower {
     var followerName: String { "playlists" }
 
+    /// The stock follows a change of account at the moment of the change,
+    /// with the sync switch off as well (`AccessFollower.followOwner`).
+    func followOwner(previous: String?) {
+        guard let scope = identity() else { return }
+        _ = playlists.follow(owner: scope, previous: previous)
+    }
+
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         follow(PlaylistCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)
     }

@@ -114,7 +114,7 @@ final class FeedAuthSync: ObservableObject {
     /// False while that cannot happen (the keychain not listable, one
     /// credential not laid or not read back); the round then holds, since
     /// it would seal the holder's credentials for the account.
-    private func followsTheAccount() -> Bool {
+    private func followsTheAccount(previous: String? = nil) -> Bool {
         guard let follower, let scope = identity() else { return true }
         guard let held = keys.mine() else {
             Logger.library.notice("FEEDAUTH owner held: keychain not listable")
@@ -128,7 +128,7 @@ final class FeedAuthSync: ObservableObject {
             return mine
         }
         guard let step = follower.follow(
-            to: scope, unread: false, landing: .now,
+            to: scope, previous: previous, unread: false, landing: .now,
             before: { holder in
                 guard keys.rest(holder, try live()) else { throw NotRested() }
             },
@@ -323,6 +323,12 @@ extension FeedAuthSync: AccessFollower {
     /// The runner rides the session, which reads the access itself; a runner
     /// that found no access at its start starts now. Signing out needs
     /// nothing here: every round of the session ends at its missing access.
+    /// The stock follows a change of account at the moment of the change,
+    /// with the sync switch off as well (`AccessFollower.followOwner`).
+    func followOwner(previous: String?) {
+        _ = followsTheAccount(previous: previous)
+    }
+
     func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         guard signedIn else { return }
         startIfConfigured(by: caller)

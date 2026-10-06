@@ -158,13 +158,13 @@ final class MaerPlaylists: ObservableObject {
     /// holder's lists to `scope`. False while the hand-over cannot happen
     /// (rows unread, a rest not laid or unreadable); the runner then holds
     /// its round, since a round would carry the holder's lists to `scope`.
-    func follow(owner scope: String) -> Bool {
+    func follow(owner scope: String, previous: String? = nil) -> Bool {
         guard let follower else { return true }
         let rested = playlists.count
         // Unread rows join the lists of this run once they are read
         // (`RowKeeper.union`): the holder's would come back.
         guard let step = follower.follow(
-            to: scope, unread: keeper.startReadFailed, landing: .marked,
+            to: scope, previous: previous, unread: keeper.startReadFailed, landing: .marked,
             landed: { [database] name in
                 try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
             },
