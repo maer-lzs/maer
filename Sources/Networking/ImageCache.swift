@@ -1097,46 +1097,62 @@ final class ImageCache {
     /// answer with it instead of asking the server. An invalidation after
     /// the look ends as if it came after the move. Logged when anything
     /// moved, waited or failed.
-    nonisolated static func applyTierMoves(_ moves: [TierMove], persistent: URL, cache: URL,
-                                           isWaiting: (String) async -> Bool) async {
-        let fm = FileManager.default
+    /// What one pass between the folders did, in all four directions plus
+    /// the waits. The line speaks as soon as any of them is not zero.
+    nonisolated struct TierTally: Equatable, Sendable {
         var promoted = 0
         var demoted = 0
+        var dropped = 0
         var failed = 0
         var waiting = 0
+
+        var line: String? {
+            guard promoted + demoted + dropped + failed + waiting > 0 else { return nil }
+            return "COVERCACHE tiers promoted=\(promoted) demoted=\(demoted) dropped=\(dropped) failed=\(failed) waiting=\(waiting)"
+        }
+    }
+
+    @discardableResult
+    nonisolated static func applyTierMoves(_ moves: [TierMove], persistent: URL, cache: URL,
+                                           isWaiting: (String) async -> Bool) async -> TierTally {
+        let fm = FileManager.default
+        var tally = TierTally()
         for move in moves {
             do {
                 switch move {
                 case .promote(let name):
                     guard await !isWaiting(name) else {
-                        waiting += 1
+                        tally.waiting += 1
                         continue
                     }
                     try fm.moveItem(at: cache.appendingPathComponent(name), to: persistent.appendingPathComponent(name))
-                    promoted += 1
+                    tally.promoted += 1
                 case .demote(let name):
                     guard await !isWaiting(name) else {
-                        waiting += 1
+                        tally.waiting += 1
                         continue
                     }
                     try fm.moveItem(at: persistent.appendingPathComponent(name), to: cache.appendingPathComponent(name))
-                    demoted += 1
+                    tally.demoted += 1
                 case .drop(let name):
                     // The kept copy of a waiting address stays until the
                     // load that answers replaces it (`removePersistent`).
                     guard await !isWaiting(name) else {
-                        waiting += 1
+                        tally.waiting += 1
                         continue
                     }
                     try fm.removeItem(at: persistent.appendingPathComponent(name))
+                    tally.dropped += 1
                 }
             } catch {
-                failed += 1
+                tally.failed += 1
+                Logger.library.error("COVERCACHE tiers move failed: \(FailureReason.of(error), privacy: .public)")
             }
         }
-        if promoted > 0 || demoted > 0 || failed > 0 || waiting > 0 {
-            Logger.library.notice("COVERCACHE tiers promoted=\(promoted) demoted=\(demoted) failed=\(failed) waiting=\(waiting)")
+        if let line = tally.line {
+            Logger.library.notice("\(line, privacy: .public)")
         }
+        return tally
     }
 
     nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,

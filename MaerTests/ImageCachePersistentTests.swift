@@ -327,6 +327,30 @@ struct ImageCachePersistentTests {
         #expect(!booksAnswer.movePending && booksAnswer.knowsAll, "a book does not wait on Navidrome's move")
     }
 
+    /// One pass between the folders counts all four directions, a removal
+    /// too, and a failure carries its reason in its own line; the summary
+    /// speaks as soon as any count is not zero.
+    @Test("der Lauf zwischen den Ordnern zaehlt alle vier Richtungen")
+    func theTierPassCountsAllFourDirections() async throws {
+        let root = try NavidromeRekeyTests.temporaryDirectory("tiers-tally")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let persistent = root.appendingPathComponent("persistent", isDirectory: true)
+        let cache = root.appendingPathComponent("cache", isDirectory: true)
+        try FileManager.default.createDirectory(at: persistent, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+        try Data("kept".utf8).write(to: persistent.appendingPathComponent("gone"))
+        try Data("down".utf8).write(to: persistent.appendingPathComponent("down"))
+        try Data("up".utf8).write(to: cache.appendingPathComponent("up"))
+        let tally = await ImageCache.applyTierMoves(
+            [.drop("gone"), .demote("down"), .promote("up"), .demote("missing"), .promote("held")],
+            persistent: persistent, cache: cache, isWaiting: { $0 == "held" })
+        #expect(tally == ImageCache.TierTally(promoted: 1, demoted: 1, dropped: 1, failed: 1, waiting: 1))
+        #expect(!FileManager.default.fileExists(atPath: persistent.appendingPathComponent("gone").path))
+        #expect(ImageCache.TierTally().line == nil, "a pass that did nothing speaks")
+        #expect(ImageCache.TierTally(dropped: 1).line?.contains("dropped=1") == true,
+                "a pass that only removed stays silent")
+    }
+
     /// A walk that could not list the folder, or a start that could not read
     /// the marks, knows no downloads: that is a blind spot, not "none", and
     /// the sweep must not demote every kept cover on it.
