@@ -127,5 +127,23 @@ struct SubscriptionOwnerTests {
         #expect(head.contains("guard Self.followsTheSubscriptions(on: MaerDatabase.restingShelf) else { return report }"),
                 "the gpodder round does not ask whose subscriptions these are")
     }
+
+    @Test("auch der Einzel-Push einer Wiedergabe an gpodder ruht unter einem anderen Konto, still", .needsTheSources)
+    func gpodderPlaybackPushRestsToo() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("gpodder-push-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let shelf = RestingShelf(directory: folder)
+        try shelf.setHolding(.init(owner: "account-a"), of: PodcastSubscriptions.shelfFamily)
+        #expect(GPodderSync.followsTheSubscriptions(on: shelf, quietly: true))
+        try shelf.setHolding(.init(owner: "account-b"), of: PodcastSubscriptions.shelfFamily)
+        #expect(!GPodderSync.followsTheSubscriptions(on: shelf, quietly: true), "the quiet question answers otherwise")
+
+        let sync = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8))
+        let start = try #require(sync.range(of: "func notePlayback(itemId: String, position: Double, duration: Double) {"))
+        let head = sync[start.upperBound...].prefix(300)
+        #expect(head.contains("guard Self.followsTheSubscriptions(on: MaerDatabase.restingShelf, quietly: true) else { return }"),
+                "a playback under another account pushes to gpodder")
+    }
 }
 #endif

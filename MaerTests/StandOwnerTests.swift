@@ -210,5 +210,52 @@ struct StandOwnerTests {
         // Calibration.
         #expect(Self.removingFunctions(in: "static func a() {\n stock.backups[id] = nil\n}\nstatic func b() {\n stock.backups[id] = x\n}") == ["a"])
     }
+
+    /// The writes and claims of the player that may go without the epoch,
+    /// with the reason.
+    nonisolated static let epochExceptions: [String: String] = [
+        "toggleFinished": "the person marks the item played or unplayed by hand, under the account now",
+    ]
+
+    /// Every write and claim of the player: the function it stands in, and
+    /// whether the call carries the epoch.
+    nonisolated static func playerSites(in code: String) -> [(function: String, carriesEpoch: Bool)] {
+        var sites: [(String, Bool)] = []
+        for token in ["ListeningStore.record(", "PlaybackClaimSync.shared.claimIfDue(",
+                      "PlaybackClaimSync.shared.release(", "PlaybackClaimSync.shared.claim("] {
+            var from = code.startIndex
+            while let hit = code.range(of: token, range: from..<code.endIndex) {
+                // The call ends where its line closes with the parenthesis.
+                let call = code[hit.lowerBound...]
+                let end = call.range(of: ")\n")?.upperBound ?? call.endIndex
+                let function = code[..<hit.lowerBound].matches(of: #/func (\w+)/#).last.map { String($0.1) } ?? "?"
+                sites.append((function, code[hit.lowerBound..<end].contains("epoch:")))
+                from = hit.upperBound
+            }
+        }
+        return sites
+    }
+
+    @Test("jede Aufnahme und jeder Anspruch im Player traegt die Epoche, toggleFinished ist die benannte Ausnahme", .needsTheSources)
+    func everyPlayerWriteCarriesTheEpoch() throws {
+        let folder = SourceTree.root.appendingPathComponent("Sources/ViewModels")
+        let files = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            .filter { $0.hasPrefix("PlayerViewModel") && $0.hasSuffix(".swift") }
+        var sites: [(function: String, carriesEpoch: Bool)] = []
+        for file in files {
+            sites += Self.playerSites(in: SyncContractFenceTests.stripped(
+                try String(contentsOf: folder.appendingPathComponent(file), encoding: .utf8)))
+        }
+        #expect(sites.count == 6, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
+        for site in sites where !site.carriesEpoch {
+            #expect(Self.epochExceptions[site.function] != nil, "\(site.function) writes or claims without the epoch")
+        }
+        #expect(Set(sites.filter { !$0.carriesEpoch }.map(\.function)) == Set(Self.epochExceptions.keys),
+                "an exception without its site")
+        // Calibration.
+        let probe = "func a() {\n    ListeningStore.record(id, position: 1,\n        atMs: 2, epoch: e)\n}\nfunc b() {\n    ListeningStore.record(id, position: 1)\n}\n"
+        #expect(Self.playerSites(in: probe).map(\.function) == ["a", "b"])
+        #expect(Self.playerSites(in: probe).map(\.carriesEpoch) == [true, false])
+    }
 }
 #endif

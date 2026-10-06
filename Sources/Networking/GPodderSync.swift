@@ -203,11 +203,13 @@ final class GPodderSync {
     /// one it ran for (`RestingShelf.follows`). How the person sees and ends
     /// that rest is an open question; until then it rests silently, with a
     /// log line. A shelf that cannot be read rests it too.
-    static func followsTheSubscriptions(on shelf: RestingShelf?) -> Bool {
+    static func followsTheSubscriptions(on shelf: RestingShelf?, quietly: Bool = false) -> Bool {
         guard let shelf else { return true }
         do {
             guard try shelf.follows("gpodder", holderOf: PodcastSubscriptions.shelfFamily) else {
-                Logger.gpodder.notice("GPODDER rests: the subscriptions belong to another account than the one it ran for")
+                if !quietly {
+                    Logger.gpodder.notice("GPODDER rests: the subscriptions belong to another account than the one it ran for")
+                }
                 return false
             }
             return true
@@ -416,6 +418,10 @@ final class GPodderSync {
 
     func notePlayback(itemId: String, position: Double, duration: Double) {
         guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
+        // The same rest as the round: a playback under another account than
+        // the one gpodder ran for pushes nothing to its server. Quiet, the
+        // player asks on every tick.
+        guard Self.followsTheSubscriptions(on: MaerDatabase.restingShelf, quietly: true) else { return }
         let rssId: String?
         if ItemNamespace.isRSS(itemId) {
             rssId = itemId
