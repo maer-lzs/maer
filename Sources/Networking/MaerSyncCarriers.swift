@@ -64,8 +64,8 @@ final class MaerSyncSession {
     private(set) var identityGeneration = 0
     /// Every persisted key of the session, kept per identity.
     nonisolated static let identityKeys = [mirrorKey, versionKey, queueKey, removalsKey,
-                                           playlistsMirrorKey, playlistsVersionKey,
-                                           choicesMirrorKey, choicesVersionKey]
+                                           playlistsMirrorKey, playlistsVersionKey, playlistsPendingKey,
+                                           choicesMirrorKey, choicesVersionKey, choicesPendingKey]
 
     /// Read once and on `reloadAccess()`: the token lives in the keychain,
     /// and a round trip there per refresh is measurable load.
@@ -86,6 +86,11 @@ final class MaerSyncSession {
     /// again; the merge stays out of the session.
     nonisolated static let playlistsKind = "playlists"
     nonisolated static let playlistsMirrorKey = "maerSyncPlaylists"
+    /// The playlists body written but not yet taken by the service, kept
+    /// per identity: the mirror holds it optimistically, so without this a
+    /// restart or a round under another account and back left the runner
+    /// seeing no difference and the body never went out.
+    nonisolated static let playlistsPendingKey = "maerSyncPlaylistsPending"
     nonisolated static let playlistsVersionKey = "maerSyncPlaylistsVersion"
     private(set) var playlistsBody: Data?
     private var playlistsVersion: String?
@@ -99,6 +104,8 @@ final class MaerSyncSession {
     /// `UserChoiceMerge` decides per key. The merge stays out of the session.
     nonisolated static let choicesKind = "choices"
     nonisolated static let choicesMirrorKey = "maerSyncChoices"
+    /// The choices body not yet taken, kept per identity (see the playlists).
+    nonisolated static let choicesPendingKey = "maerSyncChoicesPending"
     nonisolated static let choicesVersionKey = "maerSyncChoicesVersion"
     private(set) var choicesBody: Data?
     private var choicesVersion: String?
@@ -260,8 +267,10 @@ final class MaerSyncSession {
         standsVersion = defaults.string(forKey: key(Self.versionKey))
         playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
         playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
+        playlistsPending = defaults.data(forKey: key(Self.playlistsPendingKey))
         choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
+        choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
     }
 
     /// The key a persisted value of the current identity lives under.
@@ -289,10 +298,10 @@ final class MaerSyncSession {
         standsVersion = defaults.string(forKey: key(Self.versionKey))
         playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
         playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
-        playlistsPending = nil
+        playlistsPending = defaults.data(forKey: key(Self.playlistsPendingKey))
         choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
-        choicesPending = nil
+        choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
         for family in families {
             family.bodies = [:]
             family.versions = [:]
@@ -821,6 +830,7 @@ final class MaerSyncSession {
                     // the playlists never).
                     attempt += 1
                     playlistsPending = nil
+                    persist()
                     _ = await takePlaylists(by: caller)
                     onPlaylistsChange?()
                 case .refused(let reason):
@@ -831,6 +841,7 @@ final class MaerSyncSession {
                     lastRefusal = MaerSyncRefusal(kind: Self.playlistsKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC playlists refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     playlistsPending = nil
+                    persist()
                     return
                 }
             } catch {
@@ -925,6 +936,7 @@ final class MaerSyncSession {
                     // re-read did report a change there.
                     attempt += 1
                     choicesPending = nil
+                    persist()
                     _ = await takeChoices(by: caller)
                     onChoicesChange?()
                 case .refused(let reason):
@@ -935,6 +947,7 @@ final class MaerSyncSession {
                     lastRefusal = MaerSyncRefusal(kind: Self.choicesKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC choices refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     choicesPending = nil
+                    persist()
                     return
                 }
             } catch {
@@ -1209,6 +1222,16 @@ final class MaerSyncSession {
             defaults.set(choicesBody, forKey: key(Self.choicesMirrorKey))
         } else {
             defaults.removeObject(forKey: key(Self.choicesMirrorKey))
+        }
+        if let playlistsPending {
+            defaults.set(playlistsPending, forKey: key(Self.playlistsPendingKey))
+        } else {
+            defaults.removeObject(forKey: key(Self.playlistsPendingKey))
+        }
+        if let choicesPending {
+            defaults.set(choicesPending, forKey: key(Self.choicesPendingKey))
+        } else {
+            defaults.removeObject(forKey: key(Self.choicesPendingKey))
         }
         if let choicesVersion {
             defaults.set(choicesVersion, forKey: key(Self.choicesVersionKey))

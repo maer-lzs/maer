@@ -164,6 +164,71 @@ struct MaerSyncIdentityTests {
                 "A holds what it held, and what waited for A arrived")
     }
 
+    /// The witness of the decision of 03.10.: what waited for A arrives at
+    /// A on the way back, for the playlists and the choices too, whose
+    /// body the mirror held before the service took it.
+    @Test("Rueckweg: ein ungesendeter Playlisten- und Wahlen-Koerper von A geht zu A, nie zu B")
+    func aBodyThatWaitedForAReachesA() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        var pots: [String: [String: FakeTransport.Stored]] = [:]
+        let lists = Data("lists of anna".utf8)
+        let choices = Data("choices of anna".utf8)
+        rig.transport.offline = true
+        rig.session.writePlaylists(lists, by: "witness")
+        rig.session.writeChoices(choices, by: "witness")
+        await settle { rig.session.refreshSettled }
+        await rig.session.refresh(by: "witness")
+        await settle { rig.session.refreshSettled }
+        rig.transport.offline = false
+        let playlists = FakeTransport.key(MaerSyncSession.playlistsKind, "")
+        let choiceKey = FakeTransport.key(MaerSyncSession.choicesKind, "")
+        #expect(rig.transport.documents[playlists] == nil, "the precondition: nothing reached A yet")
+
+        switchTo(rig, identity: Self.identityB, access: Self.accessB, pots: &pots)
+        await rig.session.refresh(by: "witness")
+        await settle { rig.session.refreshSettled }
+        #expect(rig.transport.documents[playlists] == nil && rig.transport.documents[choiceKey] == nil,
+                "A's bodies went to B")
+
+        switchTo(rig, identity: Self.identityA, access: Self.accessA, pots: &pots)
+        await rig.session.refresh(by: "witness")
+        await settle { rig.session.refreshSettled }
+        #expect(rig.transport.documents[playlists]?.body == lists, "A's playlists never reached A")
+        #expect(rig.transport.documents[choiceKey]?.body == choices, "A's choices never reached A")
+    }
+
+    @Test("ein ungesendeter Koerper ueberlebt den Neustart und geht danach hinaus")
+    func aWaitingBodySurvivesARestart() async throws {
+        let suite = "maer-identity-\(UUID().uuidString)"
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let transport = FakeTransport()
+        let box = Box()
+        box.access = Self.accessA
+        box.identity = Self.identityA
+        func session() -> MaerSyncSession {
+            MaerSyncSession(transport: transport, announcer: FakeAnnouncer(),
+                            access: { box.access }, identity: { box.identity },
+                            deviceId: { "dev-a" }, defaults: UserDefaults(suiteName: suite)!)
+        }
+        let first = session()
+        transport.offline = true
+        first.writePlaylists(Data("lists".utf8), by: "witness")
+        // The first session's own attempt ends offline before the restart,
+        // so only the kept body can bring the lists to the service.
+        await first.refresh(by: "witness")
+        await settle { first.refreshSettled }
+        let attempts = transport.writes.count
+        transport.offline = false
+
+        #expect(transport.writes.count == attempts, "the first session wrote after the restart")
+        let second = session()
+        await second.refresh(by: "witness")
+        await settle { second.refreshSettled }
+        #expect(transport.documents[FakeTransport.key(MaerSyncSession.playlistsKind, "")]?.body == Data("lists".utf8),
+                "a body written before the restart never went out")
+    }
+
     @Test("Ruhe nach dem Wechsel: danach schreibt keine Runde")
     func quietAfterTheSwitch() async throws {
         let rig = rig()
