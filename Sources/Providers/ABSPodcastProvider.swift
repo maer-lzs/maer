@@ -440,7 +440,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             await refresh()
             // Push the high-resolution feed cover (prefer our itunes:image;
             // otherwise the one from the server feed response).
-            await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.imageUrl)
+            await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.image)
             return nil
         } catch {
             Logger.library.error("ABSPOD libraries for a new show failed: \(FailureReason.of(error), privacy: .public)")

@@ -184,7 +184,11 @@ nonisolated struct PodcastFeedMetadata: Decodable {
     let title: String?
     let author: String?
     let description: String?
-    let imageUrl: String?
+    /// The feed's picture. The server reports it as `image`
+    /// (`podcastUtils.js` in Audiobookshelf 2.37); this model read
+    /// `imageUrl`, a name the server never sends, so every new show was
+    /// created without its picture.
+    let image: String?
     let feedUrl: String?
 }
 

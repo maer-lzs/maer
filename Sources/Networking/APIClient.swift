@@ -323,7 +323,7 @@ final class APIClient {
             "author": metadata.author ?? "",
             "description": metadata.description ?? "",
             "feedUrl": metadata.feedUrl ?? "",
-            "imageUrl": metadata.imageUrl ?? ""
+            "imageUrl": metadata.image ?? ""
         ]
         let body: [String: Any] = [
             "path": path,

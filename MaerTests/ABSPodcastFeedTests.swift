@@ -1,0 +1,41 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// The picture the server reports for a feed goes along when a show is
+/// created on Audiobookshelf.
+struct ABSPodcastFeedTests {
+    /// The answer of `POST /api/podcasts/feed` in the server's shape
+    /// (`podcastUtils.js`, Audiobookshelf 2.37): the picture is `image`.
+    static let serverAnswer = Data("""
+    {"podcast":{"metadata":{"title":"Ein Feed","author":"Jemand","description":"Worum es geht",
+    "releaseDate":"2026-01-01","genres":["Kunst"],"language":"de","explicit":"false",
+    "podcastType":"episodic","image":"https://feed.example.lan/cover.jpg",
+    "feedUrl":"https://feed.example.lan/rss","itunesPageUrl":"","itunesId":"","itunesArtistId":"",
+    "type":"episodic"},"episodes":[]}}
+    """.utf8)
+
+    @Test("das Bild aus der Antwort des Servers geht beim Anlegen mit")
+    func theServersPictureGoesAlong() throws {
+        let metadata = try JSONDecoder().decode(PodcastFeedResponse.self, from: Self.serverAnswer).podcast.metadata
+        #expect(metadata.image == "https://feed.example.lan/cover.jpg", "the picture under the server's name was not read")
+        #expect(metadata.title == "Ein Feed" && metadata.feedUrl == "https://feed.example.lan/rss")
+    }
+
+    @Test("das Anlegen und der Nachzug tragen dieses Bild", .needsTheSources)
+    func creationAndFollowUpCarryIt() throws {
+        let client = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/APIClient.swift"), encoding: .utf8))
+        #expect(client.contains(#""imageUrl": metadata.image ?? """#), "the creation sends another field")
+        let provider = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/ABSPodcastProvider.swift"), encoding: .utf8))
+        #expect(provider.contains("cover: coverURL ?? metadata.image)"), "the follow-up lost the server's picture")
+    }
+}
+#endif
