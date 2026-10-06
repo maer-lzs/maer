@@ -249,6 +249,7 @@ final class PodcastSubscriptions: ObservableObject {
             choiceSync.subscriptionAdopter = { [weak self] added, removed in
                 self?.adoptCloudSubscriptions(added: added, removed: removed)
             }
+            choiceSync.subscriptionsFollow = { [weak self] scope in self?.follow(owner: scope) ?? true }
             accessObserver = NotificationCenter.default.addObserver(
                 forName: FeedAdoptionPending.accessArrived, object: nil, queue: .main) { [weak self] note in
                     let by = note.userInfo?["by"] as? String ?? "-"
@@ -1454,6 +1455,77 @@ final class PodcastSubscriptions: ObservableObject {
             out[Self.feedKey(show.feedURL)] = show.feedURL
         }
         return out
+    }
+
+    // MARK: - The owner of the subscriptions
+
+    static let shelfFamily = "subscriptions"
+    /// The replacement this run began; its holding says `replacing` until
+    /// the rows hold it, and the shows subscribed meanwhile are the new owner's.
+    private var replacedInThisRun = false
+
+    /// What rests for an account: its whole shows with their episodes (the
+    /// way back needs no feed), and the feeds of its account still waiting
+    /// for a sign-in, as stored. Downloads are files of the device and stay.
+    nonisolated struct Resting: Codable, Equatable {
+        var shows: [PodcastShow]
+        var waiting: Data?
+    }
+
+    /// Hands the subscriptions to the account signed in now (`scope`) by the
+    /// shelf's one rule (`RestingShelf.handOver`). False while that cannot
+    /// happen (the stock not loaded or its rows unread, a rest not laid);
+    /// the choice runner then holds its round, since the round would carry
+    /// the holder's shows to `scope`. The replacement unsubscribes nothing:
+    /// no removal is told to the account, a gpodder server or the history.
+    func follow(owner scope: String) -> Bool {
+        guard let shelf = database.restingShelf else { return true }
+        do {
+            let rested = shows.count
+            let current = Resting(shows: shows, waiting: try waitingFeeds())
+            let step = try shelf.handOver(
+                Self.shelfFamily, to: scope, unread: !isLoaded || rowChain.startReadFailed,
+                begunHere: replacedInThisRun,
+                current: { current },
+                replace: { rest, owner in try replace(with: rest, for: owner, on: shelf) })
+            switch step {
+            case .kept: return true
+            case .first: Logger.rss.notice("SUBSTORE owner first shows=\(rested)")
+            case .unread: Logger.rss.notice("SUBSTORE owner held: stock not loaded")
+            case .moved: Logger.rss.notice("SUBSTORE owner moved rested=\(rested) shows=\(self.shows.count)")
+            }
+            return step != .unread
+        } catch {
+            Logger.rss.error("SUBSTORE owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// The feeds waiting for a sign-in, as stored.
+    private func waitingFeeds() throws -> Data? {
+        try defaults.object(forKey: AppStorageKeys.podcastFeedsNeedingSignIn).map {
+            try PropertyListSerialization.data(fromPropertyList: $0, format: .binary, options: 0)
+        }
+    }
+
+    /// The shows of `owner` replace the ones here; the holding settles once
+    /// the rows hold them.
+    private func replace(with incoming: Resting?, for owner: String, on shelf: RestingShelf) throws {
+        let waiting = try incoming?.waiting.map { try PropertyListSerialization.propertyList(from: $0, format: nil) }
+        defaults.set(waiting, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
+        feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
+        shows = incoming?.shows ?? []
+        replacedInThisRun = true
+        // The owner changed, and the shows before rest on the shelf.
+        save(emptying: .allowed)
+        Task { [weak self] in
+            await self?.awaitPendingWrites()
+            do {
+                try shelf.settle(Self.shelfFamily, owner: owner)
+            } catch {
+                Logger.rss.error("SUBSTORE owner holding not settled reason=\(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     /// Normalized URLs the USER unsubscribed. The only removes the

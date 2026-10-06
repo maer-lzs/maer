@@ -95,6 +95,20 @@ nonisolated struct RestingShelf: Sendable {
         return .moved
     }
 
+    /// Whether a family that follows the holder of another family may run
+    /// (gpodder follows the subscriptions: its account is the device's, not
+    /// the sync account's). It takes the holder it first meets and rests
+    /// while another account holds, so it never carries one account's stock
+    /// into another's.
+    func follows(_ family: String, holderOf other: String) throws -> Bool {
+        guard let holder = try holding(of: other)?.owner else { return true }
+        guard let own = try holding(of: family)?.owner else {
+            try setHolding(.init(owner: holder), of: family)
+            return true
+        }
+        return own == holder
+    }
+
     /// The replacement for `scope` landed: the holding says so, unless
     /// another switch began meanwhile.
     func settle(_ family: String, owner scope: String) throws {

@@ -196,12 +196,34 @@ final class GPodderSync {
         cleared.save()
     }
 
+    /// Whether gpodder may run: its account belongs to the device, not to
+    /// the sync account. After a change of account its round would take the
+    /// feeds of the account before from its server into the new account's
+    /// subscriptions, so it rests while another account holds them than the
+    /// one it ran for (`RestingShelf.follows`). How the person sees and ends
+    /// that rest is an open question; until then it rests silently, with a
+    /// log line. A shelf that cannot be read rests it too.
+    static func followsTheSubscriptions(on shelf: RestingShelf?) -> Bool {
+        guard let shelf else { return true }
+        do {
+            guard try shelf.follows("gpodder", holderOf: PodcastSubscriptions.shelfFamily) else {
+                Logger.gpodder.notice("GPODDER rests: the subscriptions belong to another account than the one it ran for")
+                return false
+            }
+            return true
+        } catch {
+            Logger.gpodder.error("GPODDER rests: owner unreadable reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
     /// Reconcile subscriptions (and history – part 2). Idempotent, never two at once.
     @discardableResult
     func reconcile() async -> Report {
         var report = Report()
         guard !isRunning else { return report }
         guard AppStorageKeys.gpodderEnabledValue, let config else { return report }
+        guard Self.followsTheSubscriptions(on: MaerDatabase.restingShelf) else { return report }
         let signpost = PerfSignpost.syncRound(.gpodder, .server)
         defer { signpost.end() }
         isRunning = true

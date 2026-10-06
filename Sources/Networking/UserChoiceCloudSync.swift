@@ -85,6 +85,10 @@ final class UserChoiceCloudSync {
     /// Applies adopted subscription statements: feeds to follow (with the
     /// moment of subscribing) and feed keys to leave. Set by the store.
     var subscriptionAdopter: ((_ added: [(feedURL: String, t: Double)], _ removed: [String]) -> Void)?
+    /// Hands the subscriptions to an account (`PodcastSubscriptions.follow`),
+    /// false while it cannot. Set by the store; the choices follow only
+    /// after the subscriptions did.
+    var subscriptionsFollow: (_ scope: String) -> Bool = { _ in true }
     /// The one door of the sources, taken when an adoption changed a tab or
     /// source switch (`UserChoiceCatalog.touchesSources`), as a change here
     /// takes it: the clients are built and the sources signal goes out.
@@ -379,6 +383,9 @@ final class UserChoiceCloudSync {
         // The document read before is the one of the account before: a note
         // must not compare against it, nor write it on.
         blobCache = nil
+        // The subscriptions are rows of their store and read by this family:
+        // they move first, or the round would read the holder's.
+        guard subscriptionsFollow(scope) else { return false }
         do {
             let current = try restingChoices()
             let step = try shelf.handOver(
