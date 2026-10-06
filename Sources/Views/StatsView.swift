@@ -44,6 +44,16 @@ struct StatsView: View {
                     .accessibilityIdentifier("stats-held-warning")
                 }
             }
+            // Without the ledger the device's own listening cannot be told
+            // from another account's; none of it is shown, and that is said.
+            if stats.ledgerUnread {
+                Section {
+                    HintLine(systemImage: "exclamationmark.triangle") {
+                        Text("The statistics of this account cannot be read on this device, so this device's listening time is not shown.")
+                    }
+                    .accessibilityIdentifier("stats-ledger-unread")
+                }
+            }
             Section("Listening Time") {
                 LabeledContent("Today") { Text(formatted(stats.seconds(on: Date()))) }
                 LabeledContent("Last 7 Days") { Text(formatted(stats.seconds(lastDays: 7))) }

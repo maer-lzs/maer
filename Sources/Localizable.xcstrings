@@ -11561,6 +11561,16 @@
         }
       }
     },
+    "The statistics of this account cannot be read on this device, so this device's listening time is not shown." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Statistik dieses Kontos ist auf diesem Gerät nicht lesbar, deshalb fehlt die Hörzeit dieses Geräts."
+          }
+        }
+      }
+    },
     "The subscription guard blocked an implausible mass removal. This warning stays until the next clean sync." : {
       "localizations" : {
         "de" : {

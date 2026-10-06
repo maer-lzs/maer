@@ -43,6 +43,17 @@ nonisolated struct RestingShelf: Sendable {
         try read(type, at: file(family, owner))
     }
 
+    /// Every owner something rests for in `family` (the holding is none).
+    /// No folder is no owner; a folder that cannot be listed throws.
+    func owners(of family: String) throws -> [String] {
+        let folder = directory.appendingPathComponent(family, isDirectory: true)
+        guard FileManager.default.fileExists(atPath: folder.path) else { return [] }
+        return try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            .filter { $0.hasSuffix(".json") && $0 != "holding.json" }
+            .map { String($0.dropLast(".json".count)) }
+            .sorted()
+    }
+
     /// Lays the stock down for `owner` and reads it back: it throws unless
     /// what stands in the file is what was handed in.
     func lay<Value: Codable & Equatable>(_ value: Value, of family: String, owner: String) throws {

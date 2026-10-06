@@ -66,6 +66,26 @@ nonisolated enum ListeningStatsSync {
             secondsPerItem: part(device.secondsPerItem, carried.secondsPerItem, since.secondsPerItem))
     }
 
+    /// The way back from `owned`: an account's published totals in the
+    /// space of the device's rows, so a pot taken back after a reset of the
+    /// rows counts neither the carried part twice nor what the device had
+    /// before the takeover too little. Per key the device's totals at the
+    /// takeover (`since`) plus what the pot holds above the carried part.
+    static func deviceSpace(pot: ListeningStatsData, carried: ListeningStatsData,
+                            since: ListeningStatsData) -> ListeningStatsData {
+        func part(_ pot: [String: Int], _ carried: [String: Int], _ since: [String: Int]) -> [String: Int] {
+            var out = since
+            for (key, value) in pot {
+                let grown = value - (carried[key] ?? 0)
+                if grown > 0 { out[key, default: 0] += grown }
+            }
+            return out
+        }
+        return ListeningStatsData(
+            secondsPerDay: part(pot.secondsPerDay, carried.secondsPerDay, since.secondsPerDay),
+            secondsPerItem: part(pot.secondsPerItem, carried.secondsPerItem, since.secondsPerItem))
+    }
+
     /// What a device publishes: its days, and of its item seconds ONLY the ones
     /// no other channel already carries, capped to `itemCap` when the carrier
     /// has a ceiling. Filtering and capping here rather than at the call site
