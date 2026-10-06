@@ -41,7 +41,8 @@ nonisolated struct ListeningStatsData: Codable, Equatable {
 /// background. Ticking must cost nothing.
 @MainActor
 final class ListeningStatsStore: ObservableObject {
-    static let shared = AccessFollowers.enrolled(ListeningStatsStore())
+    static let shared = AccessFollowers.enrolled(ListeningStatsStore(
+        identity: { AccessFollowers.identity }, shelf: MaerDatabase.restingShelf))
 
     /// THIS device's numbers. The file on disk. Every question about totals
     /// goes through `data` below, which adds the other devices.
@@ -105,14 +106,31 @@ final class ListeningStatsStore: ObservableObject {
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one.
-    convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared, history: any SyncHistoryStoring = SyncHistoryStore.shared) {
-        self.init(carrier: carrier, database: database, history: history, startReadFails: false)
+    convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared,
+                     history: any SyncHistoryStoring = SyncHistoryStore.shared,
+                     identity: @escaping () -> String? = { nil }, shelf: RestingShelf? = nil) {
+        self.init(carrier: carrier, database: database, history: history, startReadFails: false,
+                  identity: identity, shelf: shelf)
     }
 
-    private init(carrier: any StatsCarrier, database: MaerDatabase, history: any SyncHistoryStoring, startReadFails: Bool) {
+    private init(carrier: any StatsCarrier, database: MaerDatabase, history: any SyncHistoryStoring, startReadFails: Bool,
+                 identity: @escaping () -> String? = { nil }, shelf: RestingShelf? = nil) {
         self.carrier = carrier
         self.database = database
         self.history = history
+        self.identity = identity
+        self.shelf = shelf
+        // The ledger is the shelf's; an unreadable one holds every hand-over
+        // and publish, since without it the device's whole history would
+        // count as the account's.
+        var loadedLedger = Ledger()
+        do {
+            loadedLedger = try shelf?.rest(Ledger.self, of: Self.ledgerFamily, owner: Self.ledgerOwner) ?? Ledger()
+        } catch {
+            ledgerUnread = true
+            Logger.library.error("STATS ledger unreadable reason=\(String(describing: error), privacy: .public)")
+        }
+        ledger = loadedLedger
         // Rows first, synchronously through a reader (the init is
         // synchronous by contract: the first tick must find its pot).
         let started = Date()
@@ -120,7 +138,8 @@ final class ListeningStatsStore: ObservableObject {
         let (loaded, base) = Self.startBase(days: days, items: items)
         let stock = loaded ?? ListeningStatsData()
         ownData = stock
-        data = stock
+        // What is shown is the holding account's part from the first read.
+        data = ListeningStatsSync.owned(device: stock, carried: loadedLedger.carried, since: loadedLedger.since)
         rowBase = base
         unreadDays = days == nil
         unreadItems = items == nil
@@ -342,6 +361,71 @@ final class ListeningStatsStore: ObservableObject {
             deviceId: SyncHistoryStore.deviceId))
     }
 
+    // MARK: - The owner of the totals
+
+    /// The account signed in now (`AccessFollowers.identity`), nil when none
+    /// is, and where the totals of another account rest. Only the app's
+    /// store has them; every other one keeps no owner and shows the device.
+    private let identity: () -> String?
+    private let shelf: RestingShelf?
+    private var handedTo: String?
+    private static let shelfFamily = "stats"
+    private static let ledgerFamily = "statsLedger"
+    private static let ledgerOwner = "device"
+
+    /// The base of the account that holds the device: its rest when it
+    /// took the device over, and the device's totals at that moment
+    /// (`ListeningStatsSync.owned`). Empty before the first change of
+    /// account, so the first account owns the device's whole history.
+    nonisolated struct Ledger: Codable, Equatable {
+        var carried = ListeningStatsData()
+        var since = ListeningStatsData()
+    }
+    private var ledger = Ledger()
+    private var ledgerUnread = false
+
+    /// What the account that holds the device listened to here: what is
+    /// shown beside the other devices, and what is published.
+    var ownerPot: ListeningStatsData {
+        ListeningStatsSync.owned(device: ownData, carried: ledger.carried, since: ledger.since)
+    }
+
+    /// Whether the totals belong to the account signed in now, handing them
+    /// over first by the shelf's one rule (`RestingShelf.handOver`): the
+    /// holder's own totals rest on the shelf, and the new account's rest
+    /// becomes the base, counted from the device's totals of now. Nothing
+    /// of the device's rows is removed. False while it cannot (a table or
+    /// the ledger unread, the shelf not writable); nothing is published
+    /// then, since it would publish the holder's totals for the account.
+    private func followsTheAccount() -> Bool {
+        guard let shelf, let scope = identity(), scope != handedTo else { return true }
+        do {
+            let step = try shelf.handOver(
+                Self.shelfFamily, to: scope, unread: unreadDays || unreadItems || ledgerUnread,
+                current: { ownerPot },
+                replace: { rest, owner in
+                    let next = Ledger(carried: rest ?? ListeningStatsData(), since: ownData)
+                    try shelf.lay(next, of: Self.ledgerFamily, owner: Self.ledgerOwner)
+                    ledger = next
+                    try shelf.settle(Self.shelfFamily, owner: owner)
+                })
+            switch step {
+            case .kept, .first: break
+            case .unread:
+                Logger.library.notice("STATS owner held: rows or ledger unread")
+                return false
+            case .moved:
+                Logger.library.notice("STATS owner moved days=\(self.ownerPot.secondsPerDay.count)")
+                recompose()
+            }
+            handedTo = scope
+            return true
+        } catch {
+            Logger.library.error("STATS owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
     /// The carrier the access of this moment asks for, when it travels
     /// another way than the held one; see `PodcastCloudSync.follow`.
     func follow(_ next: @autoclosure () -> any StatsCarrier, signedIn: Bool, identityChanged: Bool = false, by caller: String) {
@@ -372,16 +456,21 @@ final class ListeningStatsStore: ObservableObject {
     /// channel that syncs); on a carrier with room the whole pot does.
     private func publish() {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        guard followsTheAccount() else {
+            Logger.library.notice("STATS publish held: the totals wait for their owner")
+            return
+        }
+        let owned = ownerPot
         let pot = carrier.hasRoomLimit
-            ? ListeningStatsSync.publishable(ownData, itemCap: ListeningStatsSync.itemPotCap)
-            : ownData
+            ? ListeningStatsSync.publishable(owned, itemCap: ListeningStatsSync.itemPotCap)
+            : owned
         carrier.publish(pot, deviceId: SyncHistoryStore.deviceId, by: "stats")
     }
 
     private func recompose() {
         let signpost = PerfSignpost.statsMerge()
         defer { signpost.end() }
-        data = ListeningStatsSync.merged(local: ownData,
+        data = ListeningStatsSync.merged(local: ownerPot,
                                          ownDeviceId: SyncHistoryStore.deviceId,
                                          foreign: foreign)
         objectWillChange.send()
@@ -434,6 +523,21 @@ final class ListeningStatsStore: ObservableObject {
         let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
         guard changed > 0 else { return (0, total) }
         ownData.secondsPerItem = NavidromeRekey.summed(ownData.secondsPerItem, map)
+        // The ledger's titles move with the device's, or the subtraction
+        // would meet them under two names.
+        let movedLedger = Ledger(
+            carried: ListeningStatsData(secondsPerDay: ledger.carried.secondsPerDay,
+                                        secondsPerItem: NavidromeRekey.summed(ledger.carried.secondsPerItem, map)),
+            since: ListeningStatsData(secondsPerDay: ledger.since.secondsPerDay,
+                                      secondsPerItem: NavidromeRekey.summed(ledger.since.secondsPerItem, map)))
+        if movedLedger != ledger, let shelf {
+            do {
+                try shelf.lay(movedLedger, of: Self.ledgerFamily, owner: Self.ledgerOwner)
+                ledger = movedLedger
+            } catch {
+                Logger.library.error("STATS ledger not moved reason=\(String(describing: error), privacy: .public)")
+            }
+        }
         // The held part moves with the keys, or the read that comes later
         // would count the pot as this run's listening under the new key.
         if let held = potHeld {

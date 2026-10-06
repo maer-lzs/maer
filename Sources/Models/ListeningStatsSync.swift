@@ -45,6 +45,27 @@ nonisolated enum ListeningStatsSync {
     /// throw seconds away for good that no other channel holds.
     static let itemPotCap = 500
 
+    /// The account's own totals on this device (the ledger of
+    /// `ListeningStatsStore`): what it brought along when it took the device
+    /// over (`carried`, its rest), plus what the device counted since
+    /// (`device` minus `since`, the device's totals at the takeover). The
+    /// device's rows only grow, so nothing is removed at a change of
+    /// account; per key never below zero.
+    static func owned(device: ListeningStatsData, carried: ListeningStatsData,
+                      since: ListeningStatsData) -> ListeningStatsData {
+        func part(_ device: [String: Int], _ carried: [String: Int], _ since: [String: Int]) -> [String: Int] {
+            var out = carried
+            for (key, value) in device {
+                let grown = value - (since[key] ?? 0)
+                if grown > 0 { out[key, default: 0] += grown }
+            }
+            return out
+        }
+        return ListeningStatsData(
+            secondsPerDay: part(device.secondsPerDay, carried.secondsPerDay, since.secondsPerDay),
+            secondsPerItem: part(device.secondsPerItem, carried.secondsPerItem, since.secondsPerItem))
+    }
+
     /// What a device publishes: its days, and of its item seconds ONLY the ones
     /// no other channel already carries, capped to `itemCap` when the carrier
     /// has a ceiling. Filtering and capping here rather than at the call site
