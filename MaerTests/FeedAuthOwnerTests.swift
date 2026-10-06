@@ -220,23 +220,31 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
-    @Test("entfernt die Person den Zugang eines Feeds, gehen seine ruhenden Eintraege mit, die anderer Feeds bleiben")
-    func thePersonsRemovalTakesTheRestingEntries() {
-        let suite = "feed-owner-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { UserDefaults().removePersistentDomain(forName: suite) }
-        let keychain = Keychain(defaults: defaults, feed: nil, code: nil)
-        keychain.signIn(Self.premium, user: "anna", at: 1000)
-        let other = PodcastSubscriptions.feedKey("https://other.example/feed.xml")
-        _ = PodcastFeedAuth.rest([Self.premium: FeedKeySealingTests.entry("bert", at: 2000),
-                                  other: FeedKeySealingTests.entry("bert", at: 2000)],
-                                 for: Self.identityB.scope, saving: keychain.save, loading: keychain.load)
-        PodcastFeedAuth.set(feedKey: Self.premium, user: "", password: "", defaults: defaults,
-                            listingRests: { keychain.items.mapValues(\.value) },
-                            deleting: { keychain.items[$0] = nil })
-        #expect(keychain.live[Self.premium] == nil)
-        #expect(Array(keychain.items.keys) == ["feedAuthRest.\(Self.identityB.scope).\(other)"],
-                "a resting copy of the removed feed stayed, or another feed's went: \(keychain.items.keys.sorted())")
+    @Test("entfernt die Person einen Zugang, beruehrt das nur das lebende Konto; der Wechsel zum anderen bringt dessen Zugang")
+    func thePersonsRemovalTouchesTheLiveAccountAlone() async throws {
+        let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
+        defer { rig.cleanup() }
+        var pots: [String: [String: FakeTransport.Stored]] = [:]
+        rig.keychain.signIn(Self.premium, user: "anna", at: 1000)
+        rig.runner.start(session: rig.session, by: "witness")
+        for _ in 0..<3 { await rig.session.refresh(by: "witness") }
+        await switchTo(rig, Self.identityB, pots: &pots)
+        rig.keychain.signIn(Self.premium, user: "bert", at: 2000)
+        _ = rig.runner.noteLocalChange(by: "witness")
+        await switchTo(rig, Self.identityA, pots: &pots)
+        #expect(rig.keychain.live[Self.premium]?.credentials.user == "anna")
+
+        // Under A the person removes the feed's sign-in.
+        var deleted: [String] = []
+        PodcastFeedAuth.set(feedKey: Self.premium, user: "", password: "", defaults: rig.keychain.defaults,
+                            deleting: { deleted.append($0); rig.keychain.items[$0] = nil })
+        #expect(deleted == ["feedAuth.\(Self.premium)"], "the removal reached past the live item: \(deleted)")
+        #expect(rig.keychain.live[Self.premium] == nil)
+
+        // B's credential still rests, and the way to B brings it.
+        await switchTo(rig, Self.identityB, pots: &pots)
+        #expect(rig.keychain.live[Self.premium]?.credentials.user == "bert", "B's hand-over held or lost B's credential")
+        withExtendedLifetime(rig.runner) {}
     }
 
     /// The credential store knows its named removals: the person's own,
@@ -244,7 +252,6 @@ struct FeedAuthOwnerTests {
     nonisolated static let removalStock: [String: String] = [
         "set": "the person cleared the sign-in",
         "clearRest": "the account's own credentials are live again and settled, its resting copies go",
-        "forgetRests": "the person cleared the sign-in, its resting copies go with it",
         "remove": "the person disconnected the feed",
         "replaceForNewOwner": "another account owns the device; the credential rests under the name of the account before, read back",
     ]

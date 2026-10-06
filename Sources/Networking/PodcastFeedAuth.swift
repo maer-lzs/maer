@@ -29,14 +29,15 @@ nonisolated enum PodcastFeedAuth {
     static func set(feedKey: String, user: String, password: String,
                     now: Date = Date(), defaults: UserDefaults = .standard,
                     writing: (String, String, String) -> Bool = write,
-                    listingRests: () -> [String: String]? = { KeychainStore.values(withPrefix: restPrefix) },
                     deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
         if user.isEmpty && password.isEmpty {
+            // The person removes the sign-in of the account signed in now,
+            // the live item alone. What rests belongs to another account,
+            // whose shelf still names it: removing it would hold that
+            // account's hand-over for ever (and the account's own copies
+            // are cleared once they are live again, `clearRest`).
             deleting(key(feedKey))
             stamp(feedKey: feedKey, at: nil, defaults: defaults)
-            // The person removes this feed's sign-in on this device: its
-            // resting copies go with it, whichever account they rest for.
-            forgetRests(feedKey: feedKey, listing: listingRests, deleting: deleting)
             return
         }
         // The moment, beside the secret and never inside it. Two devices
@@ -177,15 +178,6 @@ nonisolated enum PodcastFeedAuth {
     static func clearRest(of scope: String, feedKeys: [String],
                           deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
         for feedKey in feedKeys { deleting(restKey(scope, feedKey)) }
-    }
-
-    /// Every resting copy of one feed's sign-in, whichever account it rests
-    /// for (the person's removal, `set` with nothing).
-    static func forgetRests(feedKey: String, listing: () -> [String: String]?,
-                            deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
-        for account in (listing() ?? [:]).keys where account.hasPrefix(restPrefix) && account.hasSuffix(".\(feedKey)") {
-            deleting(account)
-        }
     }
 
     /// THE SECOND removal beside the person's own (`set` with nothing,
