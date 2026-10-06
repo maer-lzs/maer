@@ -71,11 +71,11 @@ enum Artwork {
         // This gate goes to the network next, so an invalidated address's
         // kept copy does not answer here; it answers after a failed load.
         if let maxPixel {
-            if let thumb = await ImageCache.shared.thumbnail(for: url, maxPixelSize: maxPixel, allowKept: false) {
+            if let thumb = await tiers.thumbnail(for: url, maxPixelSize: maxPixel, allowKept: false) {
                 CoverTraceLog.note(pot: .thumbnail, outcome: .hit, attempt: attempt, url: url)
                 return .picture(Answer(image: thumb, pot: "thumb"))
             }
-        } else if let cached = await ImageCache.shared.image(for: url, allowKept: false) {
+        } else if let cached = await tiers.image(for: url, allowKept: false) {
             CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
             return .picture(Answer(image: cached, pot: "full"))
         }
@@ -113,25 +113,25 @@ enum Artwork {
 
     /// The thumbnail from memory or disk, never the network.
     static func thumbnail(for url: URL, maxPixel: CGFloat? = nil) async -> UIImage? {
-        if let maxPixel { return await ImageCache.shared.thumbnail(for: url, maxPixelSize: maxPixel) }
-        return await ImageCache.shared.thumbnail(for: url)
+        if let maxPixel { return await tiers.thumbnail(for: url, maxPixelSize: maxPixel) }
+        return await tiers.thumbnail(for: url)
     }
 
     /// Synchronous warm peek: a display-ready thumbnail for the first frame.
     static func cachedThumbnail(for url: URL, maxPixel: CGFloat? = nil) -> UIImage? {
-        ImageCache.shared.cachedThumbnail(for: url, maxPixelSize: maxPixel)
+        tiers.cachedThumbnail(for: url, maxPixelSize: maxPixel)
     }
 
     /// The full image from memory or disk, never the network.
     static func full(for url: URL) async -> UIImage? {
-        await ImageCache.shared.image(for: url)
+        await tiers.image(for: url)
     }
 
     /// The picture WITH the size it arrived in, cache first, network second:
     /// the radio quality gate judges the source, not the thumbnail.
     static func loaded(for url: URL, maxPixel: CGFloat? = nil)
         async -> (image: UIImage, sourcePixels: CGSize)? {
-        await ImageCache.shared.loadedImage(for: url, maxPixelSize: maxPixel)
+        await tiers.loadedImage(for: url, maxPixelSize: maxPixel)
     }
 
     /// A picture as a file for a caller that hands it on whole (the
@@ -145,12 +145,13 @@ enum Artwork {
 
     /// Fetch a cover into the cache ahead of its first display.
     static func preload(_ url: URL) async {
-        await ImageCache.shared.preload(url)
+        await tiers.preload(url)
     }
 
     // MARK: - Keeping and forgetting
 
-    /// The one grip on the cache for keeping and forgetting.
+    /// The one grip on the cache: every way through this door reaches it
+    /// here, so the coupling to the singleton stands on one line.
     private static var tiers: ImageCache { ImageCache.shared }
 
     /// A downloaded item's cover leaves the purgeable tier for the
@@ -183,7 +184,7 @@ enum Artwork {
     /// Every cached representation of an address is dropped: the server may
     /// have replaced the artwork behind an unchanged id.
     static func invalidate(_ url: URL) {
-        ImageCache.shared.invalidate(url: url)
+        tiers.invalidate(url: url)
     }
 
     // MARK: - Sweeping
@@ -219,11 +220,11 @@ enum Artwork {
     }
 
     static func cacheSizeBytes() -> Int64 {
-        ImageCache.shared.cacheSizeBytes()
+        tiers.cacheSizeBytes()
     }
 
     static func clearCache() {
-        ImageCache.shared.clearCache()
+        tiers.clearCache()
         ServicePlaceholderCovers.forgetAll()
     }
 
@@ -277,7 +278,7 @@ enum Artwork {
                                url: url, bytes: data.count)
             return .unanswered
         }
-        ImageCache.shared.set(image, data: data, for: url, startedAt: startedAt)
+        tiers.set(image, data: data, for: url, startedAt: startedAt)
         CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
         return .picture(image)
     }
