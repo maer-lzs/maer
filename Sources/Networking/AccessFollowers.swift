@@ -85,18 +85,24 @@ final class AccessRegister {
     }
     private var entries: [Entry] = []
     private let identity: () -> String?
-    /// The account the enrolled runners hold; unknown before the first
-    /// runner enrolled or the first change was followed.
-    private var followed: String??
+    /// Where the owner of the device's stock is kept (`StockOwner`): it
+    /// outlives a sign-out and a restart, so a change of account counts
+    /// however it happened.
+    private let defaults: UserDefaults
 
-    init(identity: @escaping () -> String?) {
+    init(identity: @escaping () -> String?, defaults: UserDefaults = .standard) {
         self.identity = identity
+        self.defaults = defaults
     }
 
     func enroll<Follower: AccessFollower>(_ follower: Follower) -> Follower {
         entries.removeAll { $0.follower == nil || $0.follower === follower }
         entries.append(Entry(follower: follower))
-        if followed == nil { followed = .some(identity()) }
+        // A device signed in before the owner was kept: its stock is the
+        // account's it is signed in with, no switch.
+        if StockOwner.owner(in: defaults) == nil, let now = identity() {
+            StockOwner.setOwner(now, in: defaults)
+        }
         return follower
     }
 
@@ -113,17 +119,21 @@ final class AccessRegister {
         entries.removeAll { $0.follower == nil }
         let now = identity()
         let signedIn = now != nil
-        let identityChanged = (restart && signedIn)
-            || (followed.map { CarrierWay.identityChanged(held: $0, now: now) } ?? false)
-        followed = .some(now)
-        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) runners=\(self.names.joined(separator: ","), privacy: .public)")
+        // Against the stock's owner, not against the last account seen:
+        // A, signed out, then B is a switch too.
+        let change = StockOwner.change(owner: StockOwner.owner(in: defaults), now: now)
+        let identityChanged = (restart && signedIn) || change.isSwitch
+        if let now { StockOwner.setOwner(now, in: defaults) }
+        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) stock=\(String(describing: change), privacy: .public) runners=\(self.names.joined(separator: ","), privacy: .public)")
         for entry in entries {
             entry.follower?.followAccess(signedIn: signedIn, identityChanged: identityChanged, by: caller)
         }
     }
 
+    /// An accepted key change names the same account: the stock moves
+    /// with it, no switch.
     func carry(to scope: String) {
-        followed = .some(scope)
+        StockOwner.setOwner(scope, in: defaults)
     }
 }
 
@@ -143,12 +153,6 @@ nonisolated enum CarrierWay {
         holdsService != signedIn || (signedIn && identityChanged)
     }
 
-    /// Another account while signed in before and after. The first sign-in
-    /// and a sign-out are changes of way, not of account.
-    static func identityChanged(held: String?, now: String?) -> Bool {
-        guard let held, let now else { return false }
-        return held != now
-    }
 }
 
 /// A runner's carrier and its generation. Every change of carrier opens a

@@ -91,7 +91,7 @@ struct MaerSyncUnknownAccessTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let box = Box()
         let session = session(box, defaults: defaults, transport: FakeTransport())
-        let register = AccessRegister(identity: { session.identity?.scope })
+        let register = AccessRegister(identity: { session.identity?.scope }, defaults: defaults)
         let runner = register.enroll(RecordingFollower("stands"))
         session.enqueue(upserts: ["rss:u:1": [5, 5_000]], removing: [], by: "witness")
 
@@ -108,8 +108,11 @@ struct MaerSyncUnknownAccessTests {
 
     @Test("lesbar geworden: jeder Laeufer startet neu und liest, bevor er schreibt")
     func theRunnersStartAgainOnceTheAccessReads() {
+        let suite = "maer-unknown-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
         var scope: String?
-        let register = AccessRegister(identity: { scope })
+        let register = AccessRegister(identity: { scope }, defaults: defaults)
         let runner = register.enroll(RecordingFollower("stands"))
         scope = Self.identityA.scope
         register.followAll(by: "access read", restart: true)

@@ -67,9 +67,10 @@ struct MaerSyncIdentityTests {
         #expect(MaerSyncIdentity(service: "fp", owner: "anna").scope != MaerSyncIdentity(service: "fp", owner: "bert").scope)
         #expect(MaerSyncIdentity(service: "fp", owner: "anna").scope != MaerSyncIdentity(service: "fp2", owner: "anna").scope)
         #expect(Self.identityA.keyed("maerSyncStands") == "maerSyncStands.\(Self.identityA.scope)")
-        #expect(!CarrierWay.identityChanged(held: nil, now: "x"), "the first sign-in is a change of way")
-        #expect(!CarrierWay.identityChanged(held: "x", now: nil), "a sign-out is a change of way")
-        #expect(CarrierWay.identityChanged(held: "x", now: "y"))
+        #expect(StockOwner.change(owner: nil, now: "x") == .first("x"), "the first sign-in takes the stock over")
+        #expect(StockOwner.change(owner: "x", now: nil) == .none, "a sign-out keeps the owner")
+        #expect(StockOwner.change(owner: "x", now: "x") == .none)
+        #expect(StockOwner.change(owner: "x", now: "y") == .switched(from: "x", to: "y"))
         #expect(CarrierWay.mustChange(holdsService: true, signedIn: true, identityChanged: true))
         #expect(!CarrierWay.mustChange(holdsService: true, signedIn: true, identityChanged: false))
     }
@@ -301,7 +302,8 @@ struct MaerSyncIdentityTests {
     func theFirstSwitchOfAProcessReachesEveryRunner() async {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
-        let register = AccessRegister(identity: { rig.session.identity?.scope })
+        let register = AccessRegister(identity: { rig.session.identity?.scope },
+                                      defaults: UserDefaults(suiteName: rig.suite)!)
         let runners = [RecordingFollower("stands"), RecordingFollower("playlists"), RecordingFollower("claims")]
         for runner in runners { _ = register.enroll(runner) }
 
@@ -314,6 +316,37 @@ struct MaerSyncIdentityTests {
         }
         register.followAll(by: "sign-in")
         #expect(runners.allSatisfy { $0.told.last?.identityChanged == false }, "the same account again is no switch")
+    }
+
+    /// A, signed out, then B: the stock is A's, and B is another account.
+    /// The register held only the last account seen and lost it at the
+    /// sign-out, so B looked like a first sign-in.
+    @Test("A, abgemeldet, dann B ist ein Kontowechsel; A, abgemeldet, dann A keiner; auch ueber einen Neustart")
+    func aSwitchCountsAcrossASignOutAndARestart() {
+        let suite = "maer-owner-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var scope: String? = Self.identityA.scope
+        let register = AccessRegister(identity: { scope }, defaults: defaults)
+        let runner = register.enroll(RecordingFollower("stands"))
+        #expect(StockOwner.owner(in: defaults) == Self.identityA.scope, "a signed-in device owns its stock")
+
+        scope = nil
+        register.followAll(by: "sign-out")
+        #expect(runner.told.last?.identityChanged == false && runner.told.last?.signedIn == false)
+        scope = Self.identityA.scope
+        register.followAll(by: "sign-in")
+        #expect(runner.told.last?.identityChanged == false, "A again after a sign-out is no switch")
+
+        scope = nil
+        register.followAll(by: "sign-out")
+        // A restart while signed out: a new register on the same device.
+        let restarted = AccessRegister(identity: { scope }, defaults: defaults)
+        let fresh = restarted.enroll(RecordingFollower("stands"))
+        scope = Self.identityB.scope
+        restarted.followAll(by: "sign-in")
+        #expect(fresh.told.last?.identityChanged == true, "B after A and a sign-out passed as a first sign-in")
+        #expect(StockOwner.owner(in: defaults) == Self.identityB.scope)
     }
 
     @Test("die Laeufer fragen nach dem Konto die Sitzung und keinen zweiten Speicher", .needsTheSources)
