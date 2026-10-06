@@ -16,6 +16,14 @@ nonisolated enum MetricGate {
         case xcode, sandbox, production, unknown
     }
 
+    /// What the gate has said in this run. It is `undecided` until the
+    /// environment is read at start; a play from Siri or a shortcut on a
+    /// cold start can come first, and nothing waits for the answer. The raw
+    /// value is what a log line names.
+    enum Decision: String, Sendable, CaseIterable {
+        case undecided, open, closed
+    }
+
     /// A Debug build is on. A Release build is on where the environment is
     /// Xcode's or the sandbox, which is where TestFlight installs come
     /// from. An environment that could not be read is off: the gate fails

@@ -168,7 +168,23 @@ struct MetricGateTests {
         let ask = try #require(provider.range(of: "if MetricReceiver.isOn {"))
         let check = try #require(provider.range(of: "RadioDiagnostics.compareICYName("))
         #expect(ask.upperBound <= check.lowerBound, "the check asks the gate")
-        #expect(provider.contains("RADIO icy-check skipped gate=closed"), "a play without the check is silent")
+        #expect(provider.contains("RADIO icy-check skipped gate=\\(MetricReceiver.decision.rawValue"),
+                "a play without the check is silent, or does not say whether the gate is closed or undecided")
+        // The play never waits for the gate: nothing in the play path asks
+        // for the environment or awaits the receiver.
+        let play = try #require(provider.range(of: "func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {"))
+        let playBody = provider[play.upperBound...].prefix(2_400)
+        #expect(!playBody.contains("startIfAllowed") && !playBody.contains("await MetricReceiver"),
+                "a play waits for the gate")
+        // The decision is undecided until the start reads the environment,
+        // and set before the gate turns anything on.
+        let receiver = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        #expect(receiver.contains("static var decision: MetricGate.Decision = .undecided"))
+        let decided = try #require(receiver.range(of: "decision = on ? .open : .closed"))
+        let gate = try #require(receiver.range(of: "guard on else { return }"))
+        #expect(decided.upperBound <= gate.lowerBound, "a closed gate never says so")
+        #expect(MetricGate.Decision.allCases.map(\.rawValue) == ["undecided", "open", "closed"], "the words the line names")
         var calls = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
             calls += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

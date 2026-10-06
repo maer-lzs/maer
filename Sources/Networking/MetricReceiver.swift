@@ -24,6 +24,9 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     /// the App Store never shows it; the radio's check of a station's own
     /// name on each play runs only while it is true, too.
     private(set) static var isOn = false
+    /// What the gate has said so far: undecided until the start has read
+    /// the environment, then open or closed.
+    private(set) static var decision: MetricGate.Decision = .undecided
 
     init(log: MetricLog) {
         self.log = log
@@ -47,6 +50,7 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
         #endif
         let on = MetricGate.receives(environment: environment, isDebugBuild: isDebugBuild)
         Logger.library.notice("METRICS gate environment=\(environment.rawValue, privacy: .public) debug=\(isDebugBuild) on=\(on)")
+        decision = on ? .open : .closed
         guard on else { return }
         isOn = true
         MXMetricManager.shared.add(shared)

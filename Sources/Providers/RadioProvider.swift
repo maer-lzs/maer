@@ -66,8 +66,9 @@ final class RadioProvider: AudioProvider {
                                             stationID: station.id)
         } else {
             // The gate is closed, or not decided yet on a cold start from
-            // Siri or a shortcut: the check does not run, and says so.
-            Logger.library.notice("RADIO icy-check skipped gate=closed id=\(itemId, privacy: .public)")
+            // Siri or a shortcut: the check does not run, the play does not
+            // wait for the gate, and the line says which of the two it was.
+            Logger.library.notice("RADIO icy-check skipped gate=\(MetricReceiver.decision.rawValue, privacy: .public) id=\(itemId, privacy: .public)")
         }
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(
