@@ -327,6 +327,46 @@ struct ImageCachePersistentTests {
         #expect(!booksAnswer.movePending && booksAnswer.knowsAll, "a book does not wait on Navidrome's move")
     }
 
+    /// The sweeps of these witnesses run over the one shared cache, beside
+    /// the fixed covers of their neighbours. None of them may demote or drop:
+    /// every sweep of the shared cache in the tests runs with an incomplete
+    /// answer (the form chosen instead of a folder of its own, which the
+    /// singleton has no seam for). A complete one would move the
+    /// neighbours' covers in a serialized suite's order.
+    /// A sweep is incomplete when it says `knowsAll: false`, or when it
+    /// passes an answer's `knowsAll` that the lines just above assert false.
+    nonisolated static func sweepIsIncomplete(_ sweep: String, before: ArraySlice<String>) -> Bool {
+        if sweep.contains("knowsAll: false") { return true }
+        guard let range = sweep.range(of: #"knowsAll: (\w+)\.knowsAll"#, options: .regularExpression) else { return false }
+        let name = sweep[range].dropFirst("knowsAll: ".count).dropLast(".knowsAll".count)
+        return before.contains { $0.contains("#expect(!\(name).knowsAll") }
+    }
+
+    @Test("kein Zeuge fegt den geteilten Cache mit vollstaendiger Antwort", .needsTheSources)
+    func noWitnessSweepsTheSharedCacheWithACompleteAnswer() throws {
+        let tests = SourceTree.root.appendingPathComponent("MaerTests")
+        let walker = try #require(FileManager.default.enumerator(at: tests, includingPropertiesForKeys: nil))
+        var sweeps = 0
+        var complete: [String] = []
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let lines = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+                .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            for (index, line) in lines.enumerated() {
+                let code = line.trimmingCharacters(in: .whitespaces)
+                guard code.hasPrefix("await ImageCache.shared.performMaintenance(") else { continue }
+                sweeps += 1
+                if Self.sweepIsIncomplete(code, before: lines[max(0, index - 6)..<index]) { continue }
+                complete.append("\(url.lastPathComponent): \(code)")
+            }
+        }
+        #expect(sweeps >= 8, "the fence found only \(sweeps) sweeps")
+        #expect(complete.isEmpty, "a sweep of the shared cache that may demote the neighbours: \(complete)")
+        // Calibration: the asserted form passes, an unasserted one does not.
+        #expect(Self.sweepIsIncomplete("x(knowsAll: w.knowsAll)", before: ["#expect(!w.knowsAll)"]))
+        #expect(!Self.sweepIsIncomplete("x(knowsAll: w.knowsAll)", before: ["let w = y"]))
+        #expect(!Self.sweepIsIncomplete("x(knowsAll: true)", before: []))
+    }
+
     /// One pass between the folders counts all four directions, a removal
     /// too, and a failure carries its reason in its own line; the summary
     /// speaks as soon as any count is not zero.
