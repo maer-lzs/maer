@@ -84,8 +84,15 @@ nonisolated enum NavidromeRekey {
 
     /// A choice key with its item id in the new form; any other key unchanged.
     static func choiceKey(_ key: String, _ map: (String) -> String) -> String {
-        guard let prefix = itemKeyedChoicePrefixes.first(where: { key.hasPrefix($0) }) else { return key }
-        return prefix + map(String(key.dropFirst(prefix.count)))
+        guard let id = choiceItemId(key) else { return key }
+        return String(key.dropLast(id.count)) + map(id)
+    }
+
+    /// The item id an item-keyed choice key carries, or nil for any other
+    /// key. `choiceKey` moves exactly this id.
+    static func choiceItemId(_ key: String) -> String? {
+        guard let prefix = itemKeyedChoicePrefixes.first(where: { key.hasPrefix($0) }) else { return nil }
+        return String(key.dropFirst(prefix.count))
     }
 
     /// Choice statements read with their keys and ids in the new form. Where
@@ -146,6 +153,14 @@ nonisolated enum NavidromeRekey {
         return out
     }
 
+    /// Every item id a list carries, wherever `playlist` moves one: the
+    /// entries, the titles and carried items by key and inside, the
+    /// removal and add moments. What waits for the form asks the same set.
+    static func ids(of entry: MaerPlaylistMerge.Entry) -> [String] {
+        entry.itemIds + Array(entry.titles.keys) + Array(entry.snapshots.keys)
+            + entry.snapshots.values.map(\.id) + Array(entry.removed.keys) + Array(entry.added.keys)
+    }
+
     /// One Mär playlist with every entry in the new form: the entries by the
     /// list rule, titles and carried items by their keys (a carried item
     /// names its id inside too), removal and add moments the later one.
@@ -154,9 +169,7 @@ nonisolated enum NavidromeRekey {
     /// removal, stands out as removed here and is not compared as present.
     /// A list in which no id changes is handed back untouched.
     static func playlist(_ entry: MaerPlaylistMerge.Entry, _ map: (String) -> String) -> MaerPlaylistMerge.Entry {
-        let ids = entry.itemIds + Array(entry.titles.keys) + Array(entry.snapshots.keys)
-            + entry.snapshots.values.map(\.id) + Array(entry.removed.keys) + Array(entry.added.keys)
-        guard ids.contains(where: { map($0) != $0 }) else { return entry }
+        guard ids(of: entry).contains(where: { map($0) != $0 }) else { return entry }
         var mapped = entry
         mapped.itemIds = rekeyed(entry.itemIds, map)
         mapped.titles = keyed(entry.titles, map)

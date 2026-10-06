@@ -1167,14 +1167,27 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                                        version: SubsonicClient.reportedVersion(server: server))
     }
 
-    /// Whether the form of the music server's ids is known: no server set
-    /// up here (nothing to answer to), or the one set up here reported its
-    /// type. Unknown right after a new address until its first answer; the
-    /// rule of `idsAreCanonical` then reads "old ids" whatever the server is.
-    nonisolated static var idFormKnown: Bool {
+    /// Whether rounds that carry the music server's ids may run: no server
+    /// set up here (nothing to answer to), or the rule of `idsAreCanonical`
+    /// is decided (type, and for Navidrome the version), or the wait is
+    /// over (`NavidromeIDRule.formSettled`: a request ended without
+    /// teaching the form, or `idFormWaitLimit` seconds passed). Right after
+    /// a new address and before its first answer the rule reads "old ids"
+    /// whatever the server is; once the wait is over the form stands as it is.
+    nonisolated static func idFormSettled(now: Double = Date().timeIntervalSince1970) -> Bool {
         guard let server = configuredServerKey else { return true }
-        return SubsonicClient.reportedType(server: server) != nil
+        let decided = NavidromeIDRule.isDecided(type: SubsonicClient.reportedType(server: server),
+                                                version: SubsonicClient.reportedVersion(server: server))
+        if decided { return true }
+        let wait = SubsonicClient.formWait(server: server, now: now)
+        return NavidromeIDRule.formSettled(decided: false, attemptEnded: wait.attemptEnded,
+                                           waited: wait.waited, limit: idFormWaitLimit)
     }
+
+    /// How long rounds wait at most for a new address to name its form.
+    /// Chosen, not measured: long enough for the first answer of a slow
+    /// server, short enough that a family never waits for long.
+    nonisolated static let idFormWaitLimit: Double = 120
 
     /// The key of the server set up here (host and path), or nil without one.
     nonisolated static var configuredServerKey: String? {

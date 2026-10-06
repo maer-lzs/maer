@@ -71,8 +71,9 @@ final class UserChoiceCloudSync {
     /// a switch.
     private let serviceAddress: () -> String?
     private let shelf: RestingShelf?
-    /// Whether the music server's id form is known (`SubsonicProvider.idFormKnown`).
-    private let idFormKnown: () -> Bool
+    /// Whether statements that carry the music server's ids may travel
+    /// (`SubsonicProvider.idFormSettled`).
+    private let idFormSettled: () -> Bool
     /// The account the choices were last handed to in this run, so a note
     /// asks the shelf only when the account moved.
     private var handedTo: String?
@@ -108,13 +109,13 @@ final class UserChoiceCloudSync {
          identity: @escaping () -> String? = { nil },
          serviceAddress: @escaping () -> String? = { nil },
          shelf: RestingShelf? = nil,
-         idFormKnown: @escaping () -> Bool = { SubsonicProvider.idFormKnown }) {
+         idFormSettled: @escaping () -> Bool = { SubsonicProvider.idFormSettled() }) {
         self.defaults = defaults
         self.itemIdMap = itemIdMap
         self.identity = identity
         self.serviceAddress = serviceAddress
         self.shelf = shelf
-        self.idFormKnown = idFormKnown
+        self.idFormSettled = idFormSettled
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
         // that reads its fake directly keeps seeing the same blob.
@@ -299,7 +300,15 @@ final class UserChoiceCloudSync {
         guard followsTheAccount() else { return }
         var stamps = localStamps()
         let now = now()
-        guard syncEnabled() else {
+        // A statement that names an item of the music server waits for the
+        // form like a round does: it is stamped here and travels with the
+        // first round after the wait, rekeyed. Written now it would stand
+        // in the old form, and nothing folds it later.
+        let waitsForTheForm = !idFormSettled() && Self.namesServerMusic(cloudKey: cloudKey, value: value)
+        if waitsForTheForm {
+            Logger.library.notice("CHOICE note held: the music server's id form is not settled yet")
+        }
+        guard syncEnabled(), !waitsForTheForm else {
             // Event time survives for the day the switch turns on.
             stamps[cloudKey] = now
             saveStamps(stamps)
@@ -451,10 +460,11 @@ final class UserChoiceCloudSync {
         // have written since the last read (the mirror only spares the notes).
         blobCache = nil
         // Choices keyed by the music server's ids wait while the form of
-        // those ids is unknown (a new address before its first answer), or
-        // the old and the new form of one item would stand side by side.
-        if !idFormKnown(), holdsServerMusicIds() {
-            Logger.library.notice("CHOICE round held: the music server's id form is not known yet")
+        // those ids is undecided (a new address before its first answer),
+        // or the old and the new form of one item would stand side by side.
+        // The wait ends (`idFormSettled`).
+        if !idFormSettled(), holdsServerMusicIds() {
+            Logger.library.notice("CHOICE round held: the music server's id form is not settled yet")
             return
         }
         let map = itemIdMap
@@ -936,18 +946,42 @@ final class UserChoiceCloudSync {
 
     // MARK: - Navidrome's new ids
 
-    /// Whether a choice here names an item of the music server: the pointer
-    /// to the last item, or a key of an item-keyed family, stamps and hidden
-    /// markers included.
+    /// Whether a choice here names an item of the music server, in the set
+    /// `rekeyLocalChoices` moves: the pointer to the last item, and the
+    /// item-keyed choices with their stamps and hidden markers.
     func holdsServerMusicIds() -> Bool {
         if let last = defaults.string(forKey: AppStorageKeys.lastPlayedItemId), SubsonicProvider.owns(itemId: last) { return true }
+        let held = heldItemChoices(stamps: localStamps(), markers: ContinueHiddenStore.markers(defaults: defaults))
+        return held.keys.contains { NavidromeRekey.choiceItemId($0).map(SubsonicProvider.owns(itemId:)) == true }
+    }
+
+    /// Whether a statement names an item of the music server: by its key,
+    /// or as the pointer to the last item by its value.
+    private static func namesServerMusic(cloudKey: String, value: UserChoiceValue?) -> Bool {
+        if NavidromeRekey.choiceItemId(cloudKey).map(SubsonicProvider.owns(itemId:)) == true { return true }
+        guard NavidromeRekey.itemValuedChoices.contains(cloudKey), case .string(let id)? = value else { return false }
+        return SubsonicProvider.owns(itemId: id)
+    }
+
+    /// The item-keyed choices this device holds, by key: the values, the
+    /// hidden markers, and stamps of removed ones. What `rekeyLocalChoices`
+    /// moves, and what waits for the form.
+    private func heldItemChoices(stamps: [String: Double], markers: [String: Double]) -> [String: UserChoiceEntry] {
         let prefixes = NavidromeRekey.itemKeyedChoicePrefixes
-        func names(_ key: String) -> Bool {
-            prefixes.contains { key.hasPrefix($0) && SubsonicProvider.owns(itemId: String(key.dropFirst($0.count))) }
+        func isItemKeyed(_ key: String) -> Bool { prefixes.contains { key.hasPrefix($0) } }
+        var held: [String: UserChoiceEntry] = [:]
+        for (key, raw) in defaults.dictionaryRepresentation()
+        where isItemKeyed(key) && !key.hasPrefix(UserChoiceCatalog.hiddenPrefix) {
+            held[key] = UserChoiceEntry(value: UserChoiceValue.from(plist: raw), t: stamps[key] ?? 0)
         }
-        if defaults.dictionaryRepresentation().keys.contains(where: names) { return true }
-        if localStamps().keys.contains(where: names) { return true }
-        return ContinueHiddenStore.markers(defaults: defaults).keys.contains(where: SubsonicProvider.owns(itemId:))
+        for (id, marker) in markers {
+            let key = UserChoiceCatalog.hiddenPrefix + id
+            held[key] = UserChoiceEntry(value: .double(marker), t: stamps[key] ?? 0)
+        }
+        for (key, t) in stamps where held[key] == nil && isItemKeyed(key) {
+            held[key] = UserChoiceEntry(value: nil, t: t)
+        }
+        return held
     }
 
     /// This device's own choices with item ids in the form `map` gives:
@@ -965,20 +999,7 @@ final class UserChoiceCloudSync {
         }
         var stamps = localStamps()
         var markers = ContinueHiddenStore.markers(defaults: defaults)
-        let prefixes = NavidromeRekey.itemKeyedChoicePrefixes
-        func isItemKeyed(_ key: String) -> Bool { prefixes.contains { key.hasPrefix($0) } }
-        var held: [String: UserChoiceEntry] = [:]
-        for (key, raw) in defaults.dictionaryRepresentation()
-        where isItemKeyed(key) && !key.hasPrefix(UserChoiceCatalog.hiddenPrefix) {
-            held[key] = UserChoiceEntry(value: UserChoiceValue.from(plist: raw), t: stamps[key] ?? 0)
-        }
-        for (id, marker) in markers {
-            let key = UserChoiceCatalog.hiddenPrefix + id
-            held[key] = UserChoiceEntry(value: .double(marker), t: stamps[key] ?? 0)
-        }
-        for (key, t) in stamps where held[key] == nil && isItemKeyed(key) {
-            held[key] = UserChoiceEntry(value: nil, t: t)
-        }
+        let held = heldItemChoices(stamps: stamps, markers: markers)
         let moved = held.keys.filter { NavidromeRekey.choiceKey($0, map) != $0 }
         let total = held.count + (last == nil ? 0 : 1)
         guard !moved.isEmpty else { return (changed, total) }

@@ -6,6 +6,7 @@
 import Foundation
 import CryptoKit
 import OSLog
+import Synchronization
 
 /// Talks to a Subsonic-compatible server (Navidrome, Gonic, Airsonic,
 /// Nextcloud Music, …). Auth is per-request via query params: `u` (user), `t`
@@ -77,6 +78,34 @@ struct SubsonicClient {
     nonisolated static func learn(from body: SubsonicBody, server: String) {
         persistReportedType(body.type, server: server)
         persistReportedVersion(body.serverVersion, server: server)
+        if !NavidromeIDRule.isDecided(type: reportedType(server: server), version: reportedVersion(server: server)) {
+            noteAttemptEnded(server: server)
+        }
+    }
+
+    /// Per process: the servers a request to which ended without teaching
+    /// the form of their ids, and since when a round has waited for each.
+    private struct FormWait {
+        var ended: Set<String> = []
+        var since: [String: Double] = [:]
+    }
+    private nonisolated static let formWaits = Mutex(FormWait())
+
+    /// A request to `server` ended without teaching the form: no answer, a
+    /// failure, or an answer that does not name the type and version.
+    nonisolated static func noteAttemptEnded(server: String) {
+        formWaits.withLock { $0.ended.insert(server) }
+    }
+
+    /// Whether a request to `server` ended without teaching the form, and
+    /// how long rounds have waited for it; the first question starts the
+    /// clock.
+    nonisolated static func formWait(server: String, now: Double) -> (attemptEnded: Bool, waited: Double) {
+        formWaits.withLock { state in
+            let since = state.since[server] ?? now
+            state.since[server] = since
+            return (state.ended.contains(server), now - since)
+        }
     }
 
     nonisolated static func negotiatedSignIn(server: String) -> SubsonicSignIn.Mode? {
@@ -254,14 +283,17 @@ struct SubsonicClient {
                 // because the user scrolled away must not surface as a
                 // "network error" in the UI. Propagate it untranslated.
                 if Self.isCancellation(error) { throw error }
+                Self.noteAttemptEnded(server: signInServer)
                 throw SubsonicError.network
             }
             if redirects?.refused == true {
                 Logger.music.notice("subsonic redirect to an unencrypted address refused, key kept for \(self.baseURL.host ?? "?", privacy: .public)")
+                Self.noteAttemptEnded(server: signInServer)
                 throw SubsonicError.keySignInNeedsEncryption
             }
             if let status = http?.statusCode, !(200...299).contains(status) {
                 // Survived the policy (incl. the HTTP-401 probe). Final.
+                Self.noteAttemptEnded(server: signInServer)
                 throw Self.failure(forStatus: status)
             }
             // Decode off-main. Album catalogs are large and this used to run on
@@ -274,6 +306,7 @@ struct SubsonicClient {
                 #endif
                 return try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
             }).value else {
+                Self.noteAttemptEnded(server: signInServer)
                 throw SubsonicError.decoding
             }
             let body = env.subsonicResponse

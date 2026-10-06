@@ -438,10 +438,7 @@ final class MaerPlaylists: ObservableObject {
         if keeper.startReadFailed { return nil }
         var changed = 0
         let next = playlists.map { list -> Playlist in
-            let entry = NavidromeRekey.playlist(
-                .init(name: list.name, updatedAt: list.updatedAt, itemIds: list.itemIds, titles: list.titles,
-                      nameUpdatedAt: list.nameUpdatedAt, snapshots: list.snapshots, removed: list.removed,
-                      added: list.added), map)
+            let entry = NavidromeRekey.playlist(Self.entry(of: list), map)
             var moved = list
             moved.itemIds = entry.itemIds
             moved.titles = entry.titles
@@ -456,6 +453,18 @@ final class MaerPlaylists: ObservableObject {
             save(emptying: .refused)
         }
         return (changed, playlists.count)
+    }
+
+    /// Whether any list carries an id that `test` names, in the same set
+    /// `rekey` moves (`NavidromeRekey.ids(of:)`), rescue lists included.
+    func carriesId(where test: (String) -> Bool) -> Bool {
+        playlists.contains { NavidromeRekey.ids(of: Self.entry(of: $0)).contains(where: test) }
+    }
+
+    private static func entry(of list: Playlist) -> MaerPlaylistMerge.Entry {
+        .init(name: list.name, updatedAt: list.updatedAt, itemIds: list.itemIds, titles: list.titles,
+              nameUpdatedAt: list.nameUpdatedAt, snapshots: list.snapshots, removed: list.removed,
+              added: list.added)
     }
 
     /// Everything that may travel. Rescue copies stay here.

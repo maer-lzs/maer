@@ -130,6 +130,22 @@ nonisolated enum NavidromeIDRule {
         return parts.lexicographicallyPrecedes(firstVersion) == false
     }
 
+    /// Whether `applies` has what it needs to answer: the server's type, and
+    /// for Navidrome its version too. Before that its "no" means "not known".
+    static func isDecided(type: String?, version: String?) -> Bool {
+        guard let type, !type.isEmpty else { return false }
+        return type.lowercased() != "navidrome" || versionParts(version) != nil
+    }
+
+    /// Whether rounds that carry the server's ids may run. They wait while
+    /// the rule is undecided, but never without end: the wait is over once
+    /// a request to the server ended without teaching it (no answer, a
+    /// failure, an answer without the type), or after `limit` seconds of
+    /// waiting, whichever comes first. The form then stands as it is.
+    static func formSettled(decided: Bool, attemptEnded: Bool, waited: Double, limit: Double) -> Bool {
+        decided || attemptEnded || waited >= limit
+    }
+
     /// The leading numbers of a version text: "0.64.2 (38dc2727)" reads
     /// [0, 64, 2]. At least major and minor, or nil.
     static func versionParts(_ raw: String?) -> [Int]? {
