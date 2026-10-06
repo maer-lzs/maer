@@ -127,6 +127,40 @@ struct PlaylistOwnerTests {
         }
     }
 
+    @Test("sind die Zeilen beim Wechsel ungelesen, bleiben A's Listen unveraendert und die Runde haelt an")
+    func unreadRowsHoldTheSwitch() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            // A's lists on the rows, A holding them.
+            let before = MaerPlaylists(database: rig.database)
+            #expect(before.follow(owner: "account-a"))
+            let list = before.create(name: "Unterwegs")
+            _ = before.add(itemId: "rss:a", to: list.id)
+            await before.awaitPendingWrites()
+            let ofA = before.playlists
+
+            // The next start cannot read the rows.
+            let file = rig.directory.appendingPathComponent("maer.sqlite").path
+            try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+            var scope: String? = "account-b"
+            let carrier = AccountCarrier(scope: { scope })
+            let store = MaerPlaylists(database: rig.database)
+            try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope })
+            runner.start()
+            runner.reconcile()
+            #expect(carrier.pots["account-b"] == nil, "the round ran over unread rows")
+            #expect(try rig.shelf.holding(of: "playlists") == .init(owner: "account-a"), "the holder moved")
+            #expect(try rig.shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a") == nil,
+                    "a rest was laid without the rows")
+            await store.awaitPendingWrites()
+            #expect(MaerPlaylists(database: rig.database).playlists == ofA, "A's rows changed")
+            scope = nil
+            withExtendedLifetime(runner) {}
+        }
+    }
+
     @Test("ein Wechsel, dessen Ersetzen nicht ankam, wird beim naechsten Start beendet, ohne die Ruhe zu ueberschreiben")
     func aBrokenReplacementEndsWithoutTouchingTheRest() async throws {
         let rig = try rig()
