@@ -152,7 +152,6 @@ nonisolated enum CarrierWay {
     static func mustChange(holdsService: Bool, signedIn: Bool, identityChanged: Bool = false) -> Bool {
         holdsService != signedIn || (signedIn && identityChanged)
     }
-
 }
 
 /// A runner's carrier and its generation. Every change of carrier opens a

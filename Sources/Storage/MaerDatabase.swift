@@ -65,6 +65,21 @@ nonisolated final class MaerDatabase: Sendable {
         }
     }
 
+    /// Where the stock of an account that no longer owns the device rests
+    /// (`RestingShelf`): beside the database file, so a witness's database
+    /// brings its own shelf. Nil for a memory database, which has no place.
+    var restingShelf: RestingShelf? {
+        let file: URL
+        if let path {
+            guard path != ":memory:" else { return nil }
+            file = URL(fileURLWithPath: path)
+        } else {
+            guard let url = Self.url else { return nil }
+            file = url
+        }
+        return RestingShelf(directory: file.deletingLastPathComponent().appendingPathComponent("resting", isDirectory: true))
+    }
+
     /// The library rows over the one connection, for a reader that lives
     /// outside the view model (the Siri book query). A store per call is
     /// cheap: it only ensures the schema on the shared connection.

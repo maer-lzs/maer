@@ -129,7 +129,91 @@ final class MaerPlaylists: ObservableObject {
     /// The database is chosen once; a witness hands in a file of its own.
     init(database: MaerDatabase = MaerDatabase.shared) {
         keeper = RowKeeper(database: database, table: .maerPlaylist, label: "PLAYLIST", logsSaves: true)
+        shelf = database.restingShelf
         load()
+    }
+
+    // MARK: - The owner of the lists
+
+    /// Where the lists of another account rest (`RestingShelf`).
+    private let shelf: RestingShelf?
+    private static let shelfFamily = "playlists"
+    /// The replacement this run began; its holding says `replacing` until
+    /// the rows hold it, and the lists made meanwhile are the new owner's.
+    private var replacedInThisRun = false
+
+    /// What rests for an account: its lists, rescue copies included (they
+    /// never travel, so the shelf is their only place), and its deletion
+    /// marks.
+    nonisolated struct Resting: Codable, Equatable {
+        var lists: [Playlist]
+        var tombstones: [String: Double]
+    }
+
+    /// Hands the lists to the account signed in now (`scope`). The first
+    /// account takes the lists that are here. Another account than the
+    /// holder: the holder's lists rest on the shelf, read back, and only
+    /// then the lists of `scope` replace them, its own rest or none (its
+    /// carrier fills them on the next round). Nothing goes from the
+    /// holder's lists to `scope`. False while the hand-over cannot happen
+    /// (rows unread, a rest not laid or unreadable); the runner then holds
+    /// its round, since a round would carry the holder's lists to `scope`.
+    func follow(owner scope: String) -> Bool {
+        guard let shelf else { return true }
+        do {
+            guard let holding = try shelf.holding(of: Self.shelfFamily) else {
+                try shelf.setHolding(.init(owner: scope), of: Self.shelfFamily)
+                Logger.library.notice("PLAYLIST owner first lists=\(self.playlists.count)")
+                return true
+            }
+            let unfinished = holding.replacing && !replacedInThisRun
+            guard unfinished || holding.owner != scope else { return true }
+            // Unread rows join the lists of this run once they are read
+            // (`RowKeeper.union`): the holder's would come back.
+            if keeper.startReadFailed {
+                Logger.library.notice("PLAYLIST owner held: rows unread")
+                return false
+            }
+            if unfinished {
+                // A run before ended between rest and replacement: the rest
+                // of the one before stands, the replacement may not have
+                // landed. Laying the lists down again would lay half
+                // replaced ones over that rest.
+                try replace(with: holding.owner, on: shelf)
+            }
+            guard holding.owner != scope else { return true }
+            try shelf.lay(Resting(lists: playlists, tombstones: Self.tombstones),
+                          of: Self.shelfFamily, owner: holding.owner)
+            try shelf.setHolding(.init(owner: scope, replacing: true), of: Self.shelfFamily)
+            Logger.library.notice("PLAYLIST owner rested lists=\(self.playlists.count)")
+            try replace(with: scope, on: shelf)
+            return true
+        } catch {
+            Logger.library.error("PLAYLIST owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// The lists of `scope` replace the ones here; the holding says so once
+    /// the rows hold them, unless another switch began meanwhile.
+    private func replace(with scope: String, on shelf: RestingShelf) throws {
+        let incoming = try shelf.rest(Resting.self, of: Self.shelfFamily, owner: scope)
+        Self.tombstones = incoming?.tombstones ?? [:]
+        playlists = Self.ordered(Self.keyed(incoming?.lists ?? []))
+        replacedInThisRun = true
+        Logger.library.notice("PLAYLIST owner replaced lists=\(self.playlists.count)")
+        // The owner changed, and the lists before rest on the shelf.
+        save(emptying: .allowed)
+        let replacing = RestingShelf.Holding(owner: scope, replacing: true)
+        Task { [keeper] in
+            await keeper.awaitPendingWrites()
+            do {
+                guard try shelf.holding(of: Self.shelfFamily) == replacing else { return }
+                try shelf.setHolding(.init(owner: scope), of: Self.shelfFamily)
+            } catch {
+                Logger.library.error("PLAYLIST owner holding not settled reason=\(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     var totalEntries: Int { playlists.reduce(0) { $0 + $1.itemIds.count } }

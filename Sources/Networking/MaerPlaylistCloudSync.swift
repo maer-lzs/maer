@@ -29,6 +29,10 @@ final class MaerPlaylistCloudSync {
     /// Travels with every version, so a rescue copy can say where it came
     /// from. A witness hands in its own, so two devices can share one run.
     private let deviceName: () -> String
+    /// The account signed in now (`MaerSyncIdentity.scope`), nil when none
+    /// is: the lists follow it before a round (`MaerPlaylists.follow`).
+    /// A witness hands in its own.
+    private let identity: () -> String?
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
@@ -39,11 +43,13 @@ final class MaerPlaylistCloudSync {
     init(carrier: any PlaylistCarrier = PlaylistCarriers.make(),
          playlists: MaerPlaylists = .shared,
          itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
-         deviceName: @escaping () -> String = { DeviceIdentity.name }) {
+         deviceName: @escaping () -> String = { DeviceIdentity.name },
+         identity: @escaping () -> String? = { MaerSyncCarriers.session.identity?.scope }) {
         self.carrier = carrier
         self.playlists = playlists
         self.itemIdMap = itemIdMap
         self.deviceName = deviceName
+        self.identity = identity
     }
 
     func start() {
@@ -95,6 +101,12 @@ final class MaerPlaylistCloudSync {
         reconciling = true
         defer { reconciling = false }
         let playlists = self.playlists
+        // Another account than the lists' owner: its lists replace the
+        // owner's first, or the round would carry them to it.
+        if let scope = identity(), !playlists.follow(owner: scope) {
+            Logger.library.notice("PLAYLIST-SYNC round held: the lists wait for their owner")
+            return
+        }
         let map = itemIdMap
         playlists.rekey(map)
 
