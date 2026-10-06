@@ -55,7 +55,7 @@ final class FeedAuthSync: ObservableObject {
         /// false when one did not land.
         var rest: (_ scope: String, _ entries: [String: FeedAuthBlock.Entry]) -> Bool = { _, _ in false }
         /// The resting credentials of an account; nil when one is missing.
-        var rested: (_ scope: String, _ feedKeys: [String]) -> [String: FeedAuthBlock.Credentials]? = { _, _ in nil }
+        var rested: (_ scope: String, _ feedKeys: [String]) -> PodcastFeedAuth.Rested? = { _, _ in nil }
         /// The new account's credentials replace the live ones, the
         /// account before's leave; false when one did not land. A set of
         /// keys without them never hands over: its runner holds.
@@ -136,8 +136,16 @@ final class FeedAuthSync: ObservableObject {
             replace: { rest, owner, _ in
                 let moments = rest?.moments ?? [:]
                 guard let back = keys.rested(owner, Array(moments.keys)) else { throw NotRested() }
+                if !back.missing.isEmpty {
+                    // Not there at all: those credentials are entered again;
+                    // their names leave the shelf, the hand-over goes on.
+                    Logger.library.notice("FEEDAUTH rest missing count=\(back.missing.count), those credentials need a new sign-in")
+                    var kept = moments
+                    for feedKey in back.missing { kept[feedKey] = nil }
+                    try follower.shelf.lay(Resting(moments: kept), of: Self.shelfFamily, owner: owner)
+                }
                 var incoming: [String: FeedAuthBlock.Entry] = [:]
-                for (feedKey, credentials) in back {
+                for (feedKey, credentials) in back.credentials {
                     incoming[feedKey] = FeedAuthBlock.Entry(credentials: credentials, at: moments[feedKey] ?? 0)
                 }
                 guard keys.replace(incoming, Set(try live().keys)) else { throw NotRested() }

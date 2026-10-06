@@ -151,6 +151,34 @@ struct UserChoiceOwnerTests {
         #expect(defaults.object(forKey: "librarySortOption") == nil, "C sees a choice of another account")
     }
 
+    @Test("die Meldung der Uebernahme nennt auch die Schluessel, die beim Wechsel gingen")
+    func theAnnouncementNamesTheKeysThatLeft() throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        var scope: String? = "account-a"
+        let carrier = AccountCarrier(scope: { scope })
+        var clock = 1000.0
+        let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
+                                       now: { clock += 1; return clock }, identity: { scope },
+                                       serviceAddress: { nil }, shelf: rig.shelf)
+        sync.sourcesAdopted = {}
+        defaults.set(1.5, forKey: "playbackRate.krimi-buch")
+        sync.noteScalar(key: "playbackRate.krimi-buch", value: 1.5)
+        sync.reconcile()
+        @MainActor final class Heard { var keys: [String] = [] }
+        let heard = Heard()
+        let token = NotificationCenter.default.addObserver(forName: .userChoicesAdopted, object: nil, queue: nil) { note in
+            let keys = (note.userInfo?["keys"] as? [String]) ?? []
+            MainActor.assumeIsolated { heard.keys += keys }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        scope = "account-b"
+        sync.reconcile()
+        #expect(defaults.object(forKey: "playbackRate.krimi-buch") == nil, "the precondition: A's rate left")
+        #expect(heard.keys.contains("playbackRate.krimi-buch"), "the announcement left out a key that left")
+    }
+
     @Test("kann die Ruhe nicht gelegt werden, bleiben die Wahlen und nichts geht zu B")
     func anUnlaidRestHoldsTheChoices() throws {
         let rig = rig()

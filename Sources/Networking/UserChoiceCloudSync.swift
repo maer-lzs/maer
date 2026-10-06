@@ -420,12 +420,15 @@ final class UserChoiceCloudSync {
         for (key, data) in incoming?.values ?? [:] {
             restored.append((key, try PropertyListSerialization.propertyList(from: data, format: nil)))
         }
-        for key in restingKeys() { defaults.removeObject(forKey: key) }
+        // Every key that leaves is a change too: the announcement names the
+        // keys before and after, or a surface of a key that left keeps it.
+        let before = restingKeys()
+        for key in before { defaults.removeObject(forKey: key) }
         for (key, raw) in restored { defaults.set(raw, forKey: key) }
         if let service {
             KnownServers.remember(service, service: .maerSync, defaults: defaults)
         }
-        let keys = restingKeys()
+        let keys = Array(Set(before).union(restingKeys())).sorted()
         isAdopting = true
         NotificationCenter.default.post(name: PlayedTail.didChange, object: nil)
         NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)

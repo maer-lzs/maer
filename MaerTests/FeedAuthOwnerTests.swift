@@ -32,6 +32,8 @@ struct FeedAuthOwnerTests {
         var code: String?
         /// A resting item reads back otherwise than it was written.
         var restReadsBackWrong = false
+        /// Items that cannot be read (the device locked since it started).
+        var unreadable: Set<String> = []
         let defaults: UserDefaults
         init(defaults: UserDefaults, feed: Data?, code: String?) {
             self.defaults = defaults; self.feed = feed; self.code = code
@@ -44,6 +46,11 @@ struct FeedAuthOwnerTests {
         func load(_ account: String) -> String? {
             guard let value = items[account]?.value else { return nil }
             return restReadsBackWrong && account.hasPrefix("feedAuthRest.") ? value + "x" : value
+        }
+
+        func read(_ account: String) -> KeychainRead {
+            if unreadable.contains(account) { return .unreadable }
+            return load(account).map(KeychainRead.value) ?? .missing
         }
 
         /// The person's own sign-in for a feed, as `PodcastFeedAuth.set` writes it.
@@ -74,7 +81,7 @@ struct FeedAuthOwnerTests {
                                           writing: { self.save("feedAuth.\($0)", "\($1)\n\($2)", PodcastFeedAuth.travelsOverApple()) })
                 },
                 rest: { PodcastFeedAuth.rest($1, for: $0, saving: self.save, loading: self.load) },
-                rested: { PodcastFeedAuth.rested($1, of: $0, loading: self.load) },
+                rested: { PodcastFeedAuth.rested($1, of: $0, reading: self.read) },
                 replace: {
                     PodcastFeedAuth.replaceForNewOwner(with: $0, leaving: $1, defaults: self.defaults,
                                                        saving: self.save, loading: self.load,
@@ -173,8 +180,7 @@ struct FeedAuthOwnerTests {
         #expect(ofB != nil && ofB?[Self.premium] == nil, "B's block carries A's credential (or none went up)")
         let rested = rig.keychain.items.filter { $0.key.hasPrefix("feedAuthRest.") }
         #expect(rested.count == 1, "A's credential does not rest")
-        #expect(rested.values.allSatisfy { $0.synchronizable == PodcastFeedAuth.travelsOverApple() },
-                "the resting item sits elsewhere than the live one")
+        #expect(rested.values.allSatisfy { !$0.synchronizable }, "a resting credential travels off this device")
         #expect(!rested.keys.contains { $0.contains("anna") || $0.contains("premium") }, "the resting name says whose or which")
 
         // Nothing secret outside the keychain: the shelf and the settings.
@@ -222,9 +228,9 @@ struct FeedAuthOwnerTests {
         rig.runner.start(session: rig.session, by: "witness")
         for _ in 0..<3 { await rig.session.refresh(by: "witness") }
         _ = rig.runner.noteLocalChange(by: "witness")
-        #expect(rig.keychain.keys.rested(scopeB, [Self.premium]) == nil, "A's credential was laid as B's")
+        #expect(rig.keychain.keys.rested(scopeB, [Self.premium])?.credentials[Self.premium] == nil, "A's credential was laid as B's")
         #expect(try rig.shelf.rest(FeedAuthSync.Resting.self, of: "feedAuth", owner: scopeB)?.moments.keys.sorted() == [other])
-        #expect(rig.keychain.keys.rested(scopeA, [Self.premium])?[Self.premium]?.user == "anna")
+        #expect(rig.keychain.keys.rested(scopeA, [Self.premium])?.credentials[Self.premium]?.user == "anna")
         #expect(rig.keychain.live.isEmpty, "C holds a credential of another account")
         withExtendedLifetime(rig.runner) {}
     }
@@ -236,11 +242,64 @@ struct FeedAuthOwnerTests {
         rig.keychain.signIn(Self.premium, user: "anna", at: 1000)
         rig.box.identity = Self.identityB
         rig.runner.followOwner(previous: Self.identityA.scope)
-        #expect(rig.keychain.keys.rested(Self.identityA.scope, [Self.premium])?[Self.premium]?.user == "anna",
+        #expect(rig.keychain.keys.rested(Self.identityA.scope, [Self.premium])?.credentials[Self.premium]?.user == "anna",
                 "A's credential does not rest under A")
         #expect(rig.keychain.live.isEmpty, "B holds A's credential")
         #expect(try rig.shelf.holding(of: "feedAuth")?.owner == Self.identityB.scope)
         withExtendedLifetime(rig.runner) {}
+    }
+
+    @Test("ein ruhender Zugang, der fehlt, haelt nicht: Logzeile, der Name faellt vom Regal, die Uebergabe geht weiter; einer, der nicht lesbar ist, haelt")
+    func aMissingRestGoesOnAnUnreadableOneHolds() throws {
+        let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
+        defer { rig.cleanup() }
+        let other = PodcastSubscriptions.feedKey("https://other.example/feed.xml")
+        let scopeA = Self.identityA.scope
+        let scopeB = Self.identityB.scope
+        // B rests with two names, but only one credential is there.
+        #expect(rig.keychain.keys.rest(scopeB, [other: FeedKeySealingTests.entry("bert", at: 2000)]))
+        try rig.shelf.lay(FeedAuthSync.Resting(moments: [other: 2000, Self.premium: 2100]), of: "feedAuth", owner: scopeB)
+        try rig.shelf.setHolding(.init(owner: scopeA), of: "feedAuth")
+
+        // Unreadable: the hand-over holds, nothing replaced.
+        rig.keychain.signIn(Self.premium, user: "anna", at: 1000)
+        let restOfOther = "feedAuthRest.\(scopeB).\(other)"
+        rig.keychain.unreadable = [restOfOther]
+        rig.box.identity = Self.identityB
+        rig.runner.followOwner(previous: scopeA)
+        #expect(rig.keychain.live[Self.premium]?.credentials.user == "anna", "an unreadable rest replaced the live credential")
+        #expect(try rig.shelf.holding(of: "feedAuth")?.replacing == true, "the open replacement is not left to finish")
+        #expect(rig.keychain.keys.rested(scopeA, [Self.premium])?.credentials[Self.premium]?.user == "anna")
+
+        // Readable again, one name missing: it goes on without it.
+        rig.keychain.unreadable = []
+        let fresh = FeedAuthSync(syncEnabled: { true }, keys: rig.keychain.keys,
+                                 identity: { rig.box.identity?.scope }, shelf: rig.shelf)
+        fresh.followOwner(previous: scopeA)
+        #expect(rig.keychain.live[other]?.credentials.user == "bert", "the readable rest did not come in")
+        #expect(rig.keychain.live[Self.premium] == nil, "A's credential stayed live under B")
+        let shelfOfB = try rig.shelf.rest(FeedAuthSync.Resting.self, of: "feedAuth", owner: scopeB)
+        #expect(shelfOfB?.moments.keys.sorted() == [other], "the missing name stayed on the shelf")
+        #expect(try rig.shelf.holding(of: "feedAuth") == .init(owner: scopeB), "the hand-over held for a missing rest")
+        withExtendedLifetime(fresh) {}
+    }
+
+    @Test("bleibt beim Ersetzen ein Zugang des Kontos davor stehen, ersetzt nichts und die Runde haelt")
+    func aRemovalThatDidNotLandHolds() {
+        let suite = "feed-leave-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        var items: [String: String] = ["feedAuth.a-key": "anna\ngeheim"]
+        let replaced = PodcastFeedAuth.replaceForNewOwner(
+            with: [:], leaving: ["a-key"], defaults: defaults,
+            saving: { account, value, _ in items[account] = value; return true }, loading: { items[$0] },
+            deleting: { _ in })
+        #expect(!replaced, "a credential that did not leave counted as left")
+        items = ["feedAuth.a-key": "anna\ngeheim"]
+        #expect(PodcastFeedAuth.replaceForNewOwner(
+            with: [:], leaving: ["a-key"], defaults: defaults,
+            saving: { account, value, _ in items[account] = value; return true }, loading: { items[$0] },
+            deleting: { items[$0] = nil }))
     }
 
     @Test("liest ein ruhender Zugang nicht zurueck, wird nichts ersetzt und die Runde haelt")

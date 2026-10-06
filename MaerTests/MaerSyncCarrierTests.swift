@@ -62,6 +62,9 @@ struct MaerSyncCarrierTests {
         /// before it hands the answer back: the account changes while an
         /// answer is on its way.
         var answerHeld: (kind: String, then: () async -> Void)?
+        /// Runs once inside the next write, before it answers: a newer body
+        /// is queued while the one on its way is still out.
+        var duringWrite: (() -> Void)?
 
         nonisolated static func key(_ kind: String, _ scope: String) -> String { "\(kind)|\(scope)" }
 
@@ -81,6 +84,10 @@ struct MaerSyncCarrierTests {
                    declaredShrink: Bool, access: MaerSyncAccess) async throws -> MaerSyncWriteOutcome {
             try gate()
             writes.append(Write(kind: kind, scope: scope, ifMatch: ifMatch, declared: declaredShrink, bytes: body.count))
+            if let during = duringWrite {
+                duringWrite = nil
+                during()
+            }
             if let reason = refuseNextWrite {
                 refuseNextWrite = nil
                 return .refused(reason: reason)
@@ -733,6 +740,42 @@ struct MaerSyncCarrierTests {
     /// Nachlesen beantwortet „hat sich das Dokument bewegt", nicht „ist mein
     /// Schrieb gelandet". Hat ein anderer Weg die Fassung schon geholt,
     /// meldet es nichts Neues, und der eigene Stand war weg.
+    @Test("ein Koerper, der waehrend eines abgewiesenen Playlist-Schriebs dazukam, bleibt und geht hinaus")
+    func aBodyQueuedDuringARefusedPlaylistWriteStays() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport(), announcer = FakeAnnouncer()
+        transport.documents[FakeTransport.key("playlists", "")] =
+            .init(body: Data("cloud".utf8), format: MaerSyncPlaylistWire.format, version: 1)
+        let session = session(transport, announcer, defaults: defaults)
+        await session.refresh(by: "test")
+        transport.refuseNextWrite = "a newer format"
+        transport.duringWrite = { [weak session] in session?.writePlaylists(Data("newer".utf8), by: "runner") }
+        session.writePlaylists(Data("own".utf8), by: "test")
+        await session.refresh(by: "settle")
+        await session.refresh(by: "settle")
+        #expect(transport.documents[FakeTransport.key("playlists", "")]?.body == Data("newer".utf8),
+                "the body queued during the refused write was dropped with it")
+    }
+
+    @Test("ein Koerper, der waehrend eines veralteten Wahlen-Schriebs dazukam, bleibt und geht hinaus")
+    func aBodyQueuedDuringAStaleChoicesWriteStays() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport(), announcer = FakeAnnouncer()
+        transport.documents[FakeTransport.key("choices", "")] =
+            .init(body: Data("cloud".utf8), format: MaerSyncChoiceWire.format, version: 1)
+        let session = session(transport, announcer, defaults: defaults)
+        await session.refresh(by: "test")
+        transport.staleNextWrite = true
+        transport.duringWrite = { [weak session] in session?.writeChoices(Data("newer".utf8), by: "runner") }
+        session.writeChoices(Data("own".utf8), by: "test")
+        await session.refresh(by: "settle")
+        await session.refresh(by: "settle")
+        #expect(transport.documents[FakeTransport.key("choices", "")]?.body == Data("newer".utf8),
+                "the body queued during the stale write was dropped with it")
+    }
+
     @Test("ein abgewiesener Playlist-Schrieb wird wiederholt, auch wenn das Nachlesen nichts Neues meldet")
     func aRefusedPlaylistWriteIsRepeatedEvenWhenTheReReadFindsNothingNew() async throws {
         let (defaults, name) = suite()

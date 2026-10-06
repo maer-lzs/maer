@@ -829,7 +829,8 @@ final class MaerSyncSession {
                     // (measured at the service: four refusals, three repeated,
                     // the playlists never).
                     attempt += 1
-                    playlistsPending = nil
+                    // Only the body that was sent: a later one queued meanwhile stays.
+                    if playlistsPending == body { playlistsPending = nil }
                     persist()
                     _ = await takePlaylists(by: caller)
                     onPlaylistsChange?()
@@ -840,7 +841,7 @@ final class MaerSyncSession {
                     // runner keeps its lists, the write does not clobber.
                     lastRefusal = MaerSyncRefusal(kind: Self.playlistsKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC playlists refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    playlistsPending = nil
+                    if playlistsPending == body { playlistsPending = nil }
                     persist()
                     return
                 }
@@ -935,7 +936,8 @@ final class MaerSyncSession {
                     // path happened to work at the bench only because the
                     // re-read did report a change there.
                     attempt += 1
-                    choicesPending = nil
+                    // Only the body that was sent: a later one queued meanwhile stays.
+                    if choicesPending == body { choicesPending = nil }
                     persist()
                     _ = await takeChoices(by: caller)
                     onChoicesChange?()
@@ -946,7 +948,7 @@ final class MaerSyncSession {
                     // write does not clobber.
                     lastRefusal = MaerSyncRefusal(kind: Self.choicesKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC choices refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    choicesPending = nil
+                    if choicesPending == body { choicesPending = nil }
                     persist()
                     return
                 }
@@ -1091,7 +1093,7 @@ final class MaerSyncSession {
                 case .refused(let reason):
                     lastRefusal = MaerSyncRefusal(kind: family.kind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC \(family.kind, privacy: .public) refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    family.pending = nil
+                    if family.pending == body { family.pending = nil }
                     return
                 }
             } catch {

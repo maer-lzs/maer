@@ -145,28 +145,46 @@ nonisolated enum PodcastFeedAuth {
     private static let restPrefix = "feedAuthRest."
     private static func restKey(_ scope: String, _ feedKey: String) -> String { "\(restPrefix)\(scope).\(feedKey)" }
 
-    /// Lays the credentials down for `scope`, each under its resting name
-    /// with the attributes of the live item, and reads every one back.
-    /// False when one did not land as written: then nothing may be replaced.
+    /// Lays the credentials down for `scope`, each under its resting name,
+    /// on this device only (a resting credential never travels, whatever way
+    /// the live ones take), and reads every one back. False when one did not
+    /// land as written: then nothing may be replaced.
     static func rest(_ entries: [String: FeedAuthBlock.Entry], for scope: String,
                      saving: (String, String, Bool) -> Bool = save,
                      loading: (String) -> String? = KeychainStore.load(forKey:)) -> Bool {
         for (feedKey, entry) in entries {
             let value = "\(entry.credentials.user)\n\(entry.credentials.password)"
             let account = restKey(scope, feedKey)
-            guard saving(account, value, travelsOverApple()), loading(account) == value else { return false }
+            guard saving(account, value, false), loading(account) == value else { return false }
         }
         return true
     }
 
+    /// What rests for an account, as the keychain gave it: the credentials
+    /// read, and the names of those that are not there at all.
+    struct Rested: Equatable {
+        var credentials: [String: FeedAuthBlock.Credentials] = [:]
+        var missing: [String] = []
+    }
+
     /// The resting credentials of `scope` for `feedKeys`; nil when one of
-    /// them cannot be read.
+    /// them cannot be read (the device locked since it started), so the
+    /// hand-over holds. One that is not there is named in `missing`: holding
+    /// for it would hold for ever.
     static func rested(_ feedKeys: [String], of scope: String,
-                       loading: (String) -> String? = KeychainStore.load(forKey:)) -> [String: FeedAuthBlock.Credentials]? {
-        var out: [String: FeedAuthBlock.Credentials] = [:]
+                       reading: (String) -> KeychainRead = KeychainStore.read(forKey:)) -> Rested? {
+        var out = Rested()
         for feedKey in feedKeys {
-            guard let raw = loading(restKey(scope, feedKey)), let sep = raw.firstIndex(of: "\n") else { return nil }
-            out[feedKey] = FeedAuthBlock.Credentials(user: String(raw[..<sep]), password: String(raw[raw.index(after: sep)...]))
+            switch reading(restKey(scope, feedKey)) {
+            case .unreadable:
+                return nil
+            case .missing:
+                out.missing.append(feedKey)
+            case .value(let raw):
+                guard let sep = raw.firstIndex(of: "\n") else { out.missing.append(feedKey); continue }
+                out.credentials[feedKey] = FeedAuthBlock.Credentials(user: String(raw[..<sep]),
+                                                                     password: String(raw[raw.index(after: sep)...]))
+            }
         }
         return out
     }
@@ -197,6 +215,9 @@ nonisolated enum PodcastFeedAuth {
         }
         for feedKey in leaving where incoming[feedKey] == nil {
             deleting(key(feedKey))
+            // Read back like every write: a credential of the account before
+            // that stayed would be sealed for this one.
+            guard loading(key(feedKey)) == nil else { return false }
             stamp(feedKey: feedKey, atMs: nil, defaults: defaults)
         }
         return true
