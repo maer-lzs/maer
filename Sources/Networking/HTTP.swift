@@ -25,6 +25,9 @@ nonisolated enum HTTP {
         case cover
         /// Mass routes that compute (catalogue stock, gutendex): 120 s.
         case mass
+        /// Uploads (the importer's book): only the wait without movement
+        /// bounds them, never a total, which a large book outlasts.
+        case upload
         /// Live streams and HEAD checks on streams: 10 s, no retry.
         case stream
         /// gpodder: cookies for the session-based servers.
@@ -40,6 +43,7 @@ nonisolated enum HTTP {
         case .api, .feed, .stream: return .maer
         case .cover: return .coverImage
         case .mass: return .mass
+        case .upload: return .upload
         case .cookies: return .cookies
         case .socket: return .socket
         }
@@ -116,7 +120,7 @@ nonisolated enum HTTP {
     }
 
     /// An upload from a file (the importer's multipart body).
-    static func upload(for request: URLRequest, fromFile file: URL, lane: Lane = .api) async throws -> (Data, HTTPURLResponse?) {
+    static func upload(for request: URLRequest, fromFile file: URL, lane: Lane = .upload) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
             let (data, response) = try await courteously(prepared) {

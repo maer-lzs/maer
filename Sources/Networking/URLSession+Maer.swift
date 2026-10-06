@@ -47,6 +47,19 @@ extension URLSession {
         return URLSession(configuration: config)
     }()
 
+    /// Uploads. The API lane caps a whole request at 60 s, and a book of a
+    /// few hundred megabytes outlasts that on any home line (measured: the
+    /// cap ends an upload mid-stream with -1001). Here only the wait
+    /// without movement bounds an upload; the total is a week, which no
+    /// upload reaches.
+    nonisolated static let upload: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120
+        config.timeoutIntervalForResource = 604_800
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     /// Session-based servers (gpodder): cookies travel with the requests.
     nonisolated static let cookies: URLSession = {
         let config = URLSessionConfiguration.default
