@@ -389,7 +389,7 @@ struct SettingsView: View {
             LabeledContent {
                 Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
             } label: {
-                Label("Cover Cache", systemImage: "photo.on.rectangle")
+                Label("Cover Cache", systemImage: "photo")
             }
             // Toggles
             AppSwitch(isOn: $warnCellular) {
@@ -951,7 +951,9 @@ struct StorageDownloadSizes: View {
             LabeledContent {
                 Text(unassigned.count, format: .number)
             } label: {
-                Text("Not Assigned").padding(.leading, 28)
+                // On the text edge of the rows above: no symbol of its own,
+                // the column stays empty.
+                Label { Text("Not Assigned") } icon: { Image(systemName: "circle").hidden() }
             }
             .font(.subheadline)
         }
@@ -978,7 +980,9 @@ private struct StorageKindSize: View {
             if indented {
                 // The kind's glyph from the one table, so the three lines
                 // read at a glance like the pills above them.
-                Label(kind.label, systemImage: kind.glyphKind.systemImage).padding(.leading, 28)
+                // In the icon column with the kind's glyph, on the text edge
+                // of the rows above; no indent of its own.
+                Label(kind.label, systemImage: kind.glyphKind.systemImage)
             } else {
                 Label("Downloads", systemImage: "arrow.down.circle")
             }
