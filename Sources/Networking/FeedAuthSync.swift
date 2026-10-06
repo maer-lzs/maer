@@ -60,6 +60,8 @@ final class FeedAuthSync: ObservableObject {
         /// account before's leave; false when one did not land. A set of
         /// keys without them never hands over: its runner holds.
         var replace: (_ incoming: [String: FeedAuthBlock.Entry], _ leaving: Set<String>) -> Bool = { _, _ in false }
+        /// The resting copies of an account whose credentials are live again.
+        var clearRest: (_ scope: String, _ feedKeys: [String]) -> Void = { _, _ in }
 
         static let device = Keys(
             code: { DeviceLinkCodeStore.current() },
@@ -69,7 +71,8 @@ final class FeedAuthSync: ObservableObject {
             apply: { PodcastFeedAuth.apply($0, mine: $1) },
             rest: { PodcastFeedAuth.rest($1, for: $0) },
             rested: { PodcastFeedAuth.rested($1, of: $0) },
-            replace: { PodcastFeedAuth.replaceForNewOwner(with: $0, leaving: $1) })
+            replace: { PodcastFeedAuth.replaceForNewOwner(with: $0, leaving: $1) },
+            clearRest: { PodcastFeedAuth.clearRest(of: $0, feedKeys: $1) })
     }
     private let keys: Keys
     /// The envelope of the last block this runner put up, so the code is
@@ -134,6 +137,8 @@ final class FeedAuthSync: ObservableObject {
                     }
                     guard keys.replace(incoming, Set(mine.keys)) else { throw NotRested() }
                     try shelf.settle(Self.shelfFamily, owner: owner)
+                    // Live again and settled: the resting copies go.
+                    keys.clearRest(owner, Array(moments.keys))
                 })
             if step != .kept {
                 // Counting, never naming: how many credentials moved.

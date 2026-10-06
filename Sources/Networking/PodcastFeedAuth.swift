@@ -28,10 +28,15 @@ nonisolated enum PodcastFeedAuth {
     /// fail; the app passes nothing.
     static func set(feedKey: String, user: String, password: String,
                     now: Date = Date(), defaults: UserDefaults = .standard,
-                    writing: (String, String, String) -> Bool = write) {
+                    writing: (String, String, String) -> Bool = write,
+                    listingRests: () -> [String: String]? = { KeychainStore.values(withPrefix: restPrefix) },
+                    deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
         if user.isEmpty && password.isEmpty {
-            KeychainStore.delete(forKey: key(feedKey))
+            deleting(key(feedKey))
             stamp(feedKey: feedKey, at: nil, defaults: defaults)
+            // The person removes this feed's sign-in on this device: its
+            // resting copies go with it, whichever account they rest for.
+            forgetRests(feedKey: feedKey, listing: listingRests, deleting: deleting)
             return
         }
         // The moment, beside the secret and never inside it. Two devices
@@ -163,6 +168,24 @@ nonisolated enum PodcastFeedAuth {
             out[feedKey] = FeedAuthBlock.Credentials(user: String(raw[..<sep]), password: String(raw[raw.index(after: sep)...]))
         }
         return out
+    }
+
+    /// The resting copies of `scope` for `feedKeys` leave once its own
+    /// credentials are live again and the shelf says the replacement
+    /// landed: a copy kept beyond that would be a second secret on the
+    /// device that nothing uses.
+    static func clearRest(of scope: String, feedKeys: [String],
+                          deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
+        for feedKey in feedKeys { deleting(restKey(scope, feedKey)) }
+    }
+
+    /// Every resting copy of one feed's sign-in, whichever account it rests
+    /// for (the person's removal, `set` with nothing).
+    static func forgetRests(feedKey: String, listing: () -> [String: String]?,
+                            deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
+        for account in (listing() ?? [:]).keys where account.hasPrefix(restPrefix) && account.hasSuffix(".\(feedKey)") {
+            deleting(account)
+        }
     }
 
     /// THE SECOND removal beside the person's own (`set` with nothing,
