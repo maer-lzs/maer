@@ -23,7 +23,8 @@ import Combine
 /// lives in `FeedAuthMerge` and `FeedAuthStanding`, pure.
 @MainActor
 final class FeedAuthSync: ObservableObject {
-    static let shared = AccessFollowers.enrolled(FeedAuthSync())
+    static let shared = AccessFollowers.enrolled(FeedAuthSync(
+        identity: { AccessFollowers.identity }, shelf: MaerDatabase.restingShelf))
 
     private var session: MaerSyncSession?
     private(set) var started = false
@@ -50,23 +51,100 @@ final class FeedAuthSync: ObservableObject {
         var feed: (URL) -> Data?
         var mine: () -> [String: FeedAuthBlock.Entry]?
         var apply: (_ merged: [String: FeedAuthBlock.Entry], _ mine: [String: FeedAuthBlock.Entry]) -> Void
+        /// Lays the credentials down for an account and reads them back;
+        /// false when one did not land.
+        var rest: (_ scope: String, _ entries: [String: FeedAuthBlock.Entry]) -> Bool = { _, _ in false }
+        /// The resting credentials of an account; nil when one is missing.
+        var rested: (_ scope: String, _ feedKeys: [String]) -> [String: FeedAuthBlock.Credentials]? = { _, _ in nil }
+        /// The new account's credentials replace the live ones, the
+        /// account before's leave; false when one did not land. A set of
+        /// keys without them never hands over: its runner holds.
+        var replace: (_ incoming: [String: FeedAuthBlock.Entry], _ leaving: Set<String>) -> Bool = { _, _ in false }
 
         static let device = Keys(
             code: { DeviceLinkCodeStore.current() },
             forgetCode: { DeviceLinkCodeStore.forget() },
             feed: { FeedKeyStore.held(for: $0) },
             mine: { PodcastFeedAuth.all() },
-            apply: { PodcastFeedAuth.apply($0, mine: $1) })
+            apply: { PodcastFeedAuth.apply($0, mine: $1) },
+            rest: { PodcastFeedAuth.rest($1, for: $0) },
+            rested: { PodcastFeedAuth.rested($1, of: $0) },
+            replace: { PodcastFeedAuth.replaceForNewOwner(with: $0, leaving: $1) })
     }
     private let keys: Keys
     /// The envelope of the last block this runner put up, so the code is
     /// forgotten only after a block sealed with the feed key went out.
     private var lastPutUp: Int?
 
+    /// The account signed in now (`AccessFollowers.identity`), nil when
+    /// none is, and where the names and moments of another account's
+    /// credentials rest. Only the app's runner has them.
+    private let identity: () -> String?
+    private let shelf: RestingShelf?
+    private var handedTo: String?
+    private static let shelfFamily = "feedAuth"
+
     init(syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
-         keys: Keys = .device) {
+         keys: Keys = .device,
+         identity: @escaping () -> String? = { nil },
+         shelf: RestingShelf? = nil) {
         self.syncEnabled = syncEnabled
         self.keys = keys
+        self.identity = identity
+        self.shelf = shelf
+    }
+
+    /// What rests on the shelf for an account: the feed keys (hashes) with
+    /// the moments, never a user, a password or an address. The credentials
+    /// rest in the keychain (`Keys.rest`).
+    nonisolated struct Resting: Codable, Equatable {
+        var moments: [String: Double]
+    }
+
+    struct NotRested: Error {}
+
+    /// Whether the credentials on this device belong to the account signed
+    /// in now, handing them over first by the shelf's one rule
+    /// (`RestingShelf.handOver`): the holder's credentials rest in the
+    /// keychain under its name and are read back, their names and moments
+    /// rest on the shelf, and only then the account's own replace them.
+    /// False while that cannot happen (the keychain not listable, one
+    /// credential not laid or not read back); the round then holds, since
+    /// it would seal the holder's credentials for the account.
+    private func followsTheAccount() -> Bool {
+        guard let shelf, let scope = identity(), scope != handedTo else { return true }
+        guard let mine = keys.mine() else {
+            Logger.library.notice("FEEDAUTH owner held: keychain not listable")
+            return false
+        }
+        let keys = self.keys
+        do {
+            let step = try shelf.handOver(
+                Self.shelfFamily, to: scope, unread: false,
+                before: { holder in
+                    guard keys.rest(holder, mine) else { throw NotRested() }
+                },
+                current: { Resting(moments: mine.mapValues(\.at)) },
+                replace: { rest, owner in
+                    let moments = rest?.moments ?? [:]
+                    guard let back = keys.rested(owner, Array(moments.keys)) else { throw NotRested() }
+                    var incoming: [String: FeedAuthBlock.Entry] = [:]
+                    for (feedKey, credentials) in back {
+                        incoming[feedKey] = FeedAuthBlock.Entry(credentials: credentials, at: moments[feedKey] ?? 0)
+                    }
+                    guard keys.replace(incoming, Set(mine.keys)) else { throw NotRested() }
+                    try shelf.settle(Self.shelfFamily, owner: owner)
+                })
+            if step != .kept {
+                // Counting, never naming: how many credentials moved.
+                Logger.library.notice("FEEDAUTH owner \(String(describing: step), privacy: .public) held=\(mine.count)")
+            }
+            handedTo = scope
+            return true
+        } catch {
+            Logger.library.error("FEEDAUTH owner held reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
     }
 
     /// The start from the housekeeping and from the switch, beside the
@@ -125,6 +203,10 @@ final class FeedAuthSync: ObservableObject {
         }
         rounds += 1
         guard let session else { return }
+        guard followsTheAccount() else {
+            Logger.library.notice("FEEDAUTH round held: the credentials wait for their owner by=\(caller, privacy: .public)")
+            return
+        }
         // The account's feed key when this device signed in with the
         // password; the device code only where there is no feed key yet.
         let feed = session.access.flatMap { keys.feed($0.baseURL) }

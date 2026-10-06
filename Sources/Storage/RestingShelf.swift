@@ -69,12 +69,15 @@ nonisolated struct RestingShelf: Sendable {
     ///
     /// A holding that still says `replacing` from a run before ends that
     /// replacement first, without laying the half replaced stock over the
-    /// rest. `begunHere`: the family began that replacement in this run
+    /// rest. `before`: what the family lays down outside the shelf for the
+    /// holder, before the shelf's rest; it throws when that did not land.
+    /// `begunHere`: the family began that replacement in this run
     /// itself and its writes are still landing; its stock is the new
     /// owner's. A family whose replacement lands at once calls `settle`
     /// right after, one that writes later once its writes landed.
     func handOver<Value: Codable & Equatable>(
         _ family: String, to scope: String, unread: Bool, begunHere: Bool = false,
+        before: (_ holder: String) throws -> Void = { _ in },
         current: () -> Value, replace: (_ rest: Value?, _ owner: String) throws -> Void
     ) throws -> HandOver {
         guard let holding = try holding(of: family) else {
@@ -89,6 +92,9 @@ nonisolated struct RestingShelf: Sendable {
             try replace(rest(Value.self, of: family, owner: holding.owner), holding.owner)
         }
         guard holding.owner != scope else { return .moved }
+        // What a family keeps elsewhere (the credentials, which never touch
+        // a file) rests first; a failure there replaces nothing.
+        try before(holding.owner)
         try lay(current(), of: family, owner: holding.owner)
         try setHolding(.init(owner: scope, replacing: true), of: family)
         try replace(rest(Value.self, of: family, owner: scope), scope)

@@ -119,7 +119,72 @@ nonisolated enum PodcastFeedAuth {
     /// "which way does this class travel" has one answer and not two that
     /// can drift. Says whether the write landed.
     private static func write(feedKey: String, user: String, password: String) -> Bool {
-        KeychainStore.save("\(user)\n\(password)", forKey: key(feedKey), synchronizable: travelsOverApple())
+        save(key(feedKey), "\(user)\n\(password)", travelsOverApple())
+    }
+
+    /// The one keychain write of this class: name, value and place. The
+    /// live item and the resting one go through it, so both carry the same
+    /// attributes (`KeychainStore.save`'s accessibility, the place the way of
+    /// the moment gives).
+    static func save(_ account: String, _ value: String, _ synchronizable: Bool) -> Bool {
+        KeychainStore.save(value, forKey: account, synchronizable: synchronizable)
+    }
+
+    // MARK: - The owner of the credentials
+
+    /// Where the credentials of an account that no longer owns the device
+    /// rest: in the keychain, under a name per account. The name carries
+    /// the account's short scope (a hash) and the feed key (a hash), never
+    /// an address or a mail; the value is the same pair as the live item.
+    private static let restPrefix = "feedAuthRest."
+    private static func restKey(_ scope: String, _ feedKey: String) -> String { "\(restPrefix)\(scope).\(feedKey)" }
+
+    /// Lays the credentials down for `scope`, each under its resting name
+    /// with the attributes of the live item, and reads every one back.
+    /// False when one did not land as written: then nothing may be replaced.
+    static func rest(_ entries: [String: FeedAuthBlock.Entry], for scope: String,
+                     saving: (String, String, Bool) -> Bool = save,
+                     loading: (String) -> String? = KeychainStore.load(forKey:)) -> Bool {
+        for (feedKey, entry) in entries {
+            let value = "\(entry.credentials.user)\n\(entry.credentials.password)"
+            let account = restKey(scope, feedKey)
+            guard saving(account, value, travelsOverApple()), loading(account) == value else { return false }
+        }
+        return true
+    }
+
+    /// The resting credentials of `scope` for `feedKeys`; nil when one of
+    /// them cannot be read.
+    static func rested(_ feedKeys: [String], of scope: String,
+                       loading: (String) -> String? = KeychainStore.load(forKey:)) -> [String: FeedAuthBlock.Credentials]? {
+        var out: [String: FeedAuthBlock.Credentials] = [:]
+        for feedKey in feedKeys {
+            guard let raw = loading(restKey(scope, feedKey)), let sep = raw.firstIndex(of: "\n") else { return nil }
+            out[feedKey] = FeedAuthBlock.Credentials(user: String(raw[..<sep]), password: String(raw[raw.index(after: sep)...]))
+        }
+        return out
+    }
+
+    /// THE SECOND removal beside the person's own (`set` with nothing,
+    /// `remove`): another account owns the device. Its credentials replace
+    /// the live ones, each read back, and only then the live items of the
+    /// account before leave (`leaving`), which rest under its name already.
+    /// False when one did not land; the next round tries again.
+    static func replaceForNewOwner(with incoming: [String: FeedAuthBlock.Entry], leaving: Set<String>,
+                                   defaults: UserDefaults = .standard,
+                                   saving: (String, String, Bool) -> Bool = save,
+                                   loading: (String) -> String? = KeychainStore.load(forKey:),
+                                   deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) -> Bool {
+        for (feedKey, entry) in incoming {
+            let value = "\(entry.credentials.user)\n\(entry.credentials.password)"
+            guard saving(key(feedKey), value, travelsOverApple()), loading(key(feedKey)) == value else { return false }
+            stamp(feedKey: feedKey, atMs: entry.at, defaults: defaults)
+        }
+        for feedKey in leaving where incoming[feedKey] == nil {
+            deleting(key(feedKey))
+            stamp(feedKey: feedKey, atMs: nil, defaults: defaults)
+        }
+        return true
     }
 
     /// Every credential written again with the way of the moment. Called
