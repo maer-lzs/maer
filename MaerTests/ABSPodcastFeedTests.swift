@@ -28,6 +28,14 @@ struct ABSPodcastFeedTests {
         #expect(metadata.title == "Ein Feed" && metadata.feedUrl == "https://feed.example.lan/rss")
     }
 
+    @Test("die gemessene Antwort des Servers traegt das Bild unter image")
+    func theMeasuredAnswerCarriesThePicture() throws {
+        let data = try CorpusFixture.data("podcast_feed", ext: "json", subdirectory: "Shared/abs")
+        let metadata = try JSONDecoder().decode(PodcastFeedResponse.self, from: data).podcast.metadata
+        #expect(metadata.image == "http://host.docker.internal:13379/cover.jpg")
+        #expect(metadata.title == "Stille-Funk")
+    }
+
     @Test("das Anlegen und der Nachzug tragen dieses Bild", .needsTheSources)
     func creationAndFollowUpCarryIt() throws {
         let client = SyncContractFenceTests.stripped(try String(

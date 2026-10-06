@@ -806,7 +806,14 @@ final class LibraryViewModel: ObservableObject {
         let first = try await withRetry(attempts: entries.isEmpty ? 3 : 1) {
             try await self.provider.fetchLibraryItemsPage(libraryId: id, limit: pageSize, page: 0)
         }
-        let progress = (try? await progressTask) ?? [:]
+        let fetchedProgress: [String: BookProgress]?
+        do {
+            fetchedProgress = try await progressTask
+        } catch {
+            Logger.library.error("LIBRARY progress failed, last known kept: \(FailureReason.of(error), privacy: .public)")
+            fetchedProgress = nil
+        }
+        let progress = ProgressAnswer.of(fetchedProgress, known: lastProgress)
         librarySeed = (try? await seedTask) ?? LibrarySeed()
 
         libraryId = id
@@ -886,8 +893,12 @@ final class LibraryViewModel: ObservableObject {
 
     func refreshProgress() async {
         guard !cachedItems.isEmpty, !loadInFlight else { return }
-        guard let progress = try? await provider.fetchAllProgress() else {
+        let progress: [String: BookProgress]
+        do {
+            progress = ProgressAnswer.of(try await provider.fetchAllProgress(), known: lastProgress)
+        } catch {
             // Offline/error: keep the last known state instead of wiping it.
+            Logger.library.notice("LIBRARY progress refresh failed, last known kept: \(FailureReason.of(error), privacy: .public)")
             return
         }
         // Also refresh the item list itself (silently, no spinner): freshly
@@ -1245,11 +1256,22 @@ final class LibraryViewModel: ObservableObject {
         // user set to audiobooks. The core still knows no concrete provider
         // and no id namespace; the main (ABS) provider stays the primary path.
         let session = AppSession.shared
+        // What the secondary sources' books carried before: a source whose
+        // progress fetch fails keeps it.
+        var known: [String: BookProgress] = [:]
+        for entry in localCache { if let progress = entry.progress { known[entry.id] = progress } }
         var entries: [LibraryEntry] = []
         for provider in session.allProviders
         where provider !== session.provider && provider.mediaTypes.contains(.audiobooks) && provider.isAvailable {
             let items = (try? await provider.fetchLibraryItems(for: .audiobooks)) ?? []
-            let progress = (try? await provider.fetchAllProgress()) ?? [:]
+            let fetched: [String: BookProgress]?
+            do {
+                fetched = try await provider.fetchAllProgress()
+            } catch {
+                Logger.library.error("LIBRARY secondary progress failed, last known kept: \(FailureReason.of(error), privacy: .public)")
+                fetched = nil
+            }
+            let progress = ProgressAnswer.of(fetched, known: known)
             entries += items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
         }
         localCache = entries

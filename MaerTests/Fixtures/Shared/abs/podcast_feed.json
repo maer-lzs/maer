@@ -1,0 +1,68 @@
+{
+ "podcast": {
+  "metadata": {
+   "image": "http://host.docker.internal:13379/cover.jpg",
+   "categories": [],
+   "feedUrl": "http://host.docker.internal:13379/feed.xml",
+   "description": "Synthetische Stille fuer den Messserver",
+   "descriptionPlain": "Synthetische Stille fuer den Messserver",
+   "type": null,
+   "title": "Stille-Funk",
+   "language": "de",
+   "explicit": null,
+   "author": "Synthetische Stille",
+   "pubDate": null,
+   "link": "http://host.docker.internal:13379/"
+  },
+  "episodes": [
+   {
+    "title": "Folge 1",
+    "subtitle": "",
+    "description": "",
+    "descriptionPlain": "",
+    "pubDate": "Thu, 01 Oct 2026 08:00:00 +0000",
+    "episodeType": "",
+    "season": "",
+    "episode": "",
+    "author": "",
+    "duration": "",
+    "durationSeconds": null,
+    "explicit": "",
+    "publishedAt": 1790841600000,
+    "enclosure": {
+     "url": "http://host.docker.internal:13379/f1.mp3",
+     "length": "80539",
+     "type": "audio/mpeg"
+    },
+    "guid": "stille-funk-1",
+    "chaptersUrl": null,
+    "chaptersType": null,
+    "chapters": []
+   },
+   {
+    "title": "Folge 2",
+    "subtitle": "",
+    "description": "",
+    "descriptionPlain": "",
+    "pubDate": "Fri, 02 Oct 2026 08:00:00 +0000",
+    "episodeType": "",
+    "season": "",
+    "episode": "",
+    "author": "",
+    "duration": "",
+    "durationSeconds": null,
+    "explicit": "",
+    "publishedAt": 1790928000000,
+    "enclosure": {
+     "url": "http://host.docker.internal:13379/f2.mp3",
+     "length": "80539",
+     "type": "audio/mpeg"
+    },
+    "guid": "stille-funk-2",
+    "chaptersUrl": null,
+    "chaptersType": null,
+    "chapters": []
+   }
+  ]
+ }
+}
