@@ -33,6 +33,8 @@ final class MaerPlaylistCloudSync {
     /// is: the lists follow it before a round (`MaerPlaylists.follow`).
     /// A witness hands in its own.
     private let identity: () -> String?
+    /// Whether the music server's id form is known (`SubsonicProvider.idFormKnown`).
+    private let idFormKnown: () -> Bool
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
@@ -44,12 +46,14 @@ final class MaerPlaylistCloudSync {
          playlists: MaerPlaylists = .shared,
          itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
-         identity: @escaping () -> String? = { MaerSyncCarriers.session.identity?.scope }) {
+         identity: @escaping () -> String? = { MaerSyncCarriers.session.identity?.scope },
+         idFormKnown: @escaping () -> Bool = { SubsonicProvider.idFormKnown }) {
         self.carrier = carrier
         self.playlists = playlists
         self.itemIdMap = itemIdMap
         self.deviceName = deviceName
         self.identity = identity
+        self.idFormKnown = idFormKnown
     }
 
     func start() {
@@ -105,6 +109,14 @@ final class MaerPlaylistCloudSync {
         // owner's first, or the round would carry them to it.
         if let scope = identity(), !playlists.follow(owner: scope) {
             Logger.library.notice("PLAYLIST-SYNC round held: the lists wait for their owner")
+            return
+        }
+        // Lists holding the music server's ids wait while the form of those
+        // ids is unknown (a new address before its first answer): read as
+        // old ids they would meet the other devices' new ones as strangers,
+        // and every such entry would stand twice.
+        if !idFormKnown(), playlists.syncable.contains(where: { $0.itemIds.contains(where: SubsonicProvider.owns(itemId:)) }) {
+            Logger.library.notice("PLAYLIST-SYNC round held: the music server's id form is not known yet")
             return
         }
         let map = itemIdMap

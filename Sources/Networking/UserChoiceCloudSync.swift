@@ -71,6 +71,8 @@ final class UserChoiceCloudSync {
     /// a switch.
     private let serviceAddress: () -> String?
     private let shelf: RestingShelf?
+    /// Whether the music server's id form is known (`SubsonicProvider.idFormKnown`).
+    private let idFormKnown: () -> Bool
     /// The account the choices were last handed to in this run, so a note
     /// asks the shelf only when the account moved.
     private var handedTo: String?
@@ -105,12 +107,14 @@ final class UserChoiceCloudSync {
          itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
          identity: @escaping () -> String? = { nil },
          serviceAddress: @escaping () -> String? = { nil },
-         shelf: RestingShelf? = nil) {
+         shelf: RestingShelf? = nil,
+         idFormKnown: @escaping () -> Bool = { SubsonicProvider.idFormKnown }) {
         self.defaults = defaults
         self.itemIdMap = itemIdMap
         self.identity = identity
         self.serviceAddress = serviceAddress
         self.shelf = shelf
+        self.idFormKnown = idFormKnown
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
         // that reads its fake directly keeps seeing the same blob.
@@ -446,6 +450,13 @@ final class UserChoiceCloudSync {
         // A reconcile asks the CLOUD, never the mirror. A foreign device may
         // have written since the last read (the mirror only spares the notes).
         blobCache = nil
+        // Choices keyed by the music server's ids wait while the form of
+        // those ids is unknown (a new address before its first answer), or
+        // the old and the new form of one item would stand side by side.
+        if !idFormKnown(), holdsServerMusicIds() {
+            Logger.library.notice("CHOICE round held: the music server's id form is not known yet")
+            return
+        }
         let map = itemIdMap
         rekeyLocalChoices(map)
         var blob = cloudBlob()
@@ -924,6 +935,20 @@ final class UserChoiceCloudSync {
     }
 
     // MARK: - Navidrome's new ids
+
+    /// Whether a choice here names an item of the music server: the pointer
+    /// to the last item, or a key of an item-keyed family, stamps and hidden
+    /// markers included.
+    func holdsServerMusicIds() -> Bool {
+        if let last = defaults.string(forKey: AppStorageKeys.lastPlayedItemId), SubsonicProvider.owns(itemId: last) { return true }
+        let prefixes = NavidromeRekey.itemKeyedChoicePrefixes
+        func names(_ key: String) -> Bool {
+            prefixes.contains { key.hasPrefix($0) && SubsonicProvider.owns(itemId: String(key.dropFirst($0.count))) }
+        }
+        if defaults.dictionaryRepresentation().keys.contains(where: names) { return true }
+        if localStamps().keys.contains(where: names) { return true }
+        return ContinueHiddenStore.markers(defaults: defaults).keys.contains(where: SubsonicProvider.owns(itemId:))
+    }
 
     /// This device's own choices with item ids in the form `map` gives:
     /// the item-keyed families move with their stamps, the pointer to the

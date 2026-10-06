@@ -1167,6 +1167,15 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                                        version: SubsonicClient.reportedVersion(server: server))
     }
 
+    /// Whether the form of the music server's ids is known: no server set
+    /// up here (nothing to answer to), or the one set up here reported its
+    /// type. Unknown right after a new address until its first answer; the
+    /// rule of `idsAreCanonical` then reads "old ids" whatever the server is.
+    nonisolated static var idFormKnown: Bool {
+        guard let server = configuredServerKey else { return true }
+        return SubsonicClient.reportedType(server: server) != nil
+    }
+
     /// The key of the server set up here (host and path), or nil without one.
     nonisolated static var configuredServerKey: String? {
         let address = AppStorageKeys.subsonicServerURLValue.trimmingCharacters(in: .whitespaces)
