@@ -122,6 +122,35 @@ struct UserChoiceOwnerTests {
         #expect(text(carrier.pots["account-b"]).contains("author"))
     }
 
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Wahl von A, A's bleiben bei A")
+    func aThirdAccountAfterAnOpenReplacement() throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let shelf = rig.shelf
+        func plist(_ value: Any) throws -> Data {
+            try PropertyListSerialization.data(fromPropertyList: value, format: .binary, options: 0)
+        }
+        let restOfA = UserChoiceCloudSync.Resting(values: ["librarySortOption": try plist("title")])
+        let restOfB = UserChoiceCloudSync.Resting(values: ["librarySortOption": try plist("author")])
+        try shelf.lay(restOfA, of: "choices", owner: "account-a")
+        try shelf.lay(restOfB, of: "choices", owner: "account-b")
+        try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"), of: "choices")
+        // The replacement of a run before never landed: A's choice is live.
+        defaults.set("title", forKey: "librarySortOption")
+        let carrier = AccountCarrier(scope: { "account-c" })
+        var clock = 1000.0
+        let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
+                                       now: { clock += 1; return clock }, identity: { "account-c" },
+                                       serviceAddress: { nil }, shelf: shelf)
+        sync.sourcesAdopted = {}
+        sync.reconcile()
+        #expect(try shelf.rest(UserChoiceCloudSync.Resting.self, of: "choices", owner: "account-b") == restOfB,
+                "A's choices were laid as B's")
+        #expect(try shelf.rest(UserChoiceCloudSync.Resting.self, of: "choices", owner: "account-a") == restOfA)
+        #expect(defaults.object(forKey: "librarySortOption") == nil, "C sees a choice of another account")
+    }
+
     @Test("kann die Ruhe nicht gelegt werden, bleiben die Wahlen und nichts geht zu B")
     func anUnlaidRestHoldsTheChoices() throws {
         let rig = rig()

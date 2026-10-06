@@ -203,6 +203,32 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keinen Zugang von A, A's ruht weiter bei A")
+    func aThirdAccountAfterAnOpenReplacement() async throws {
+        let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
+        defer { rig.cleanup() }
+        let other = PodcastSubscriptions.feedKey("https://other.example/feed.xml")
+        let scopeA = Self.identityA.scope
+        let scopeB = Self.identityB.scope
+        // The replacement of a run before never landed: A's credential is
+        // live, and it rests for A as well.
+        rig.keychain.signIn(Self.premium, user: "anna", at: 1000)
+        #expect(rig.keychain.keys.rest(scopeA, [Self.premium: FeedKeySealingTests.entry("anna", at: 1000)]))
+        #expect(rig.keychain.keys.rest(scopeB, [other: FeedKeySealingTests.entry("bert", at: 2000)]))
+        try rig.shelf.lay(FeedAuthSync.Resting(moments: [Self.premium: 1000]), of: "feedAuth", owner: scopeA)
+        try rig.shelf.lay(FeedAuthSync.Resting(moments: [other: 2000]), of: "feedAuth", owner: scopeB)
+        try rig.shelf.setHolding(.init(owner: scopeB, replacing: true, from: scopeA, replacement: "open"), of: "feedAuth")
+        rig.box.identity = MaerSyncIdentity(service: "fp-service", owner: "carl")
+        rig.runner.start(session: rig.session, by: "witness")
+        for _ in 0..<3 { await rig.session.refresh(by: "witness") }
+        _ = rig.runner.noteLocalChange(by: "witness")
+        #expect(rig.keychain.keys.rested(scopeB, [Self.premium]) == nil, "A's credential was laid as B's")
+        #expect(try rig.shelf.rest(FeedAuthSync.Resting.self, of: "feedAuth", owner: scopeB)?.moments.keys.sorted() == [other])
+        #expect(rig.keychain.keys.rested(scopeA, [Self.premium])?[Self.premium]?.user == "anna")
+        #expect(rig.keychain.live.isEmpty, "C holds a credential of another account")
+        withExtendedLifetime(rig.runner) {}
+    }
+
     @Test("liest ein ruhender Zugang nicht zurueck, wird nichts ersetzt und die Runde haelt")
     func anUnreadRestReplacesNothing() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)

@@ -83,8 +83,8 @@ final class FeedAuthSync: ObservableObject {
     /// none is, and where the names and moments of another account's
     /// credentials rest. Only the app's runner has them.
     private let identity: () -> String?
-    private let shelf: RestingShelf?
-    private var handedTo: String?
+    /// The family's way through the shelf (`ShelfFollower`); nil without one.
+    private let follower: ShelfFollower?
     private static let shelfFamily = "feedAuth"
 
     init(syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
@@ -94,7 +94,7 @@ final class FeedAuthSync: ObservableObject {
         self.syncEnabled = syncEnabled
         self.keys = keys
         self.identity = identity
-        self.shelf = shelf
+        self.follower = shelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "FEEDAUTH") }
     }
 
     /// What rests on the shelf for an account: the feed keys (hashes) with
@@ -115,41 +115,47 @@ final class FeedAuthSync: ObservableObject {
     /// credential not laid or not read back); the round then holds, since
     /// it would seal the holder's credentials for the account.
     private func followsTheAccount() -> Bool {
-        guard let shelf, let scope = identity(), scope != handedTo else { return true }
-        guard let mine = keys.mine() else {
+        guard let follower, let scope = identity() else { return true }
+        guard let held = keys.mine() else {
             Logger.library.notice("FEEDAUTH owner held: keychain not listable")
             return false
         }
         let keys = self.keys
-        do {
-            let step = try shelf.handOver(
-                Self.shelfFamily, to: scope, unread: false,
-                before: { holder in
-                    guard keys.rest(holder, mine) else { throw NotRested() }
-                },
-                current: { Resting(moments: mine.mapValues(\.at)) },
-                replace: { rest, owner in
-                    let moments = rest?.moments ?? [:]
-                    guard let back = keys.rested(owner, Array(moments.keys)) else { throw NotRested() }
-                    var incoming: [String: FeedAuthBlock.Entry] = [:]
-                    for (feedKey, credentials) in back {
-                        incoming[feedKey] = FeedAuthBlock.Entry(credentials: credentials, at: moments[feedKey] ?? 0)
-                    }
-                    guard keys.replace(incoming, Set(mine.keys)) else { throw NotRested() }
-                    try shelf.settle(Self.shelfFamily, owner: owner)
-                    // Live again and settled: the resting copies go.
-                    keys.clearRest(owner, Array(moments.keys))
-                })
-            if step != .kept {
-                // Counting, never naming: how many credentials moved.
-                Logger.library.notice("FEEDAUTH owner \(String(describing: step), privacy: .public) held=\(mine.count)")
-            }
-            handedTo = scope
-            return true
-        } catch {
-            Logger.library.error("FEEDAUTH owner held reason=\(String(describing: error), privacy: .public)")
-            return false
+        // Read at the moment of use: a replacement of a run before may have
+        // changed what lives here since `held` was read.
+        func live() throws -> [String: FeedAuthBlock.Entry] {
+            guard let mine = keys.mine() else { throw NotRested() }
+            return mine
         }
+        guard let step = follower.follow(
+            to: scope, unread: false, landing: .now,
+            before: { holder in
+                guard keys.rest(holder, try live()) else { throw NotRested() }
+            },
+            current: { Resting(moments: try live().mapValues(\.at)) },
+            replace: { rest, owner, _ in
+                let moments = rest?.moments ?? [:]
+                guard let back = keys.rested(owner, Array(moments.keys)) else { throw NotRested() }
+                var incoming: [String: FeedAuthBlock.Entry] = [:]
+                for (feedKey, credentials) in back {
+                    incoming[feedKey] = FeedAuthBlock.Entry(credentials: credentials, at: moments[feedKey] ?? 0)
+                }
+                guard keys.replace(incoming, Set(try live().keys)) else { throw NotRested() }
+            },
+            settled: { [follower] owner in
+                // Live again and settled: the resting copies go.
+                do {
+                    let names = try follower.shelf.rest(Resting.self, of: Self.shelfFamily, owner: owner)?.moments.keys
+                    keys.clearRest(owner, Array(names ?? [String: Double]().keys))
+                } catch {
+                    Logger.library.error("FEEDAUTH resting copies kept, rest unread reason=\(String(describing: error), privacy: .public)")
+                }
+            }) else { return false }
+        if step != .kept {
+            // Counting, never naming: how many credentials moved.
+            Logger.library.notice("FEEDAUTH owner \(String(describing: step), privacy: .public) held=\(held.count)")
+        }
+        return true
     }
 
     /// The start from the housekeeping and from the switch, beside the

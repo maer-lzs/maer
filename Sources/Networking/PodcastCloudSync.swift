@@ -36,25 +36,31 @@ final class PodcastCloudSync {
     /// runner has them; every other one keeps no owner and never touches a
     /// shelf.
     private let identity: () -> String?
-    private let shelf: RestingShelf?
-    /// The account the stands were last handed to in this run, so a round
-    /// asks the shelf only when the account moved.
-    private var handedTo: String?
-    /// The replacement this run began; its holding says `replacing` until
-    /// the rows hold it, and the stands written meanwhile are the new owner's.
-    private var replacedInThisRun = false
+    /// The family's way through the shelf (`ShelfFollower`); nil without one.
+    private let follower: ShelfFollower?
+
+    /// Whether the rows of the stands carry the mark of a replacement
+    /// (`OwnerMark`); the app's rows by default, a witness hands in its own.
+    private let standsMarked: (_ replacement: String) throws -> Bool
 
     init(carrier: any StandCarrier = StandCarriers.make(),
          defaults: UserDefaults = .standard,
          identity: @escaping () -> String? = { nil },
-         shelf: RestingShelf? = nil) {
+         shelf: RestingShelf? = nil,
+         standsMarked: @escaping (_ replacement: String) throws -> Bool = {
+             try OwnerMark.stands(family: PodcastCloudSync.shelfFamily, replacement: $0, database: .shared)
+         }) {
         self.carrier = carrier
         self.defaults = defaults
         self.identity = identity
-        self.shelf = shelf
+        self.standsMarked = standsMarked
+        self.follower = shelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "STAND") }
     }
 
-    private static let shelfFamily = "stands"
+    static let shelfFamily = "stands"
+
+    /// The progress store re-reads the stock this runner changed.
+    private func reloadProgress() { PodcastProgressStore.shared.reload() }
 
     /// Whether the stands belong to the account signed in now, handing the
     /// travelling part over first by the shelf's one rule
@@ -63,40 +69,28 @@ final class PodcastCloudSync {
     /// in or sent, since a round would carry the holder's stands to the
     /// account and the account's into the holder's stock.
     private func followsTheAccount() -> Bool {
-        guard let shelf, let scope = identity(), scope != handedTo else { return true }
+        guard let follower, let scope = identity() else { return true }
         let defaults = self.defaults
-        do {
-            let step = try shelf.handOver(
-                Self.shelfFamily, to: scope, unread: ListeningStore.readFailed(in: defaults),
-                begunHere: replacedInThisRun,
-                current: { ListeningStore.resting(where: Self.potCarries, in: defaults) },
-                replace: { rest, owner in
-                    ListeningStore.replaceForNewOwner(with: rest, where: Self.potCarries, in: defaults)
-                    replacedInThisRun = true
-                    Task {
-                        await RowKeepers.awaitAll()
-                        do {
-                            try shelf.settle(Self.shelfFamily, owner: owner)
-                        } catch {
-                            Logger.library.error("STAND owner holding not settled reason=\(String(describing: error), privacy: .public)")
-                        }
-                    }
-                })
-            switch step {
-            case .kept, .first: break
-            case .unread:
-                Logger.library.notice("STAND owner held: stock not read whole")
-                return false
-            case .moved:
-                Logger.library.notice("STAND owner moved")
-                PodcastProgressStore.shared.reload()
-            }
-            handedTo = scope
-            return true
-        } catch {
-            Logger.library.error("STAND owner held reason=\(String(describing: error), privacy: .public)")
+        guard let step = follower.follow(
+            to: scope, unread: ListeningStore.readFailed(in: defaults), landing: .marked,
+            landed: standsMarked,
+            current: { ListeningStore.resting(where: Self.potCarries, in: defaults) },
+            replace: { [weak follower] rest, _, name in
+                let landed: @Sendable () -> Void = { Task { @MainActor in follower?.markLanded(name) } }
+                ListeningStore.replaceForNewOwner(
+                    with: rest, where: Self.potCarries, in: defaults,
+                    replacement: .init(family: Self.shelfFamily, name: name, travels: Self.potCarries, landed: landed))
+            }) else { return false }
+        switch step {
+        case .kept, .first: break
+        case .unread:
+            Logger.library.notice("STAND owner held: stock not read whole")
             return false
+        case .moved:
+            Logger.library.notice("STAND owner moved")
+            reloadProgress()
         }
+        return true
     }
 
     /// The feed keys of the subscribed shows, nil while the subscriptions
@@ -287,7 +281,7 @@ final class PodcastCloudSync {
         }
         if !outcome.toLocal.isEmpty {
             // Have the UI/sections and ABS provider display re-evaluate.
-            PodcastProgressStore.shared.reload()
+            reloadProgress()
             // Personen-Ebene: reconciled transitions land in the listen log.
             PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
         }
@@ -440,7 +434,7 @@ final class PodcastCloudSync {
         switch Self.mergeSingle(local: localArr, cloud: cloudArr) {
         case .adoptCloud(let value):
             ListeningStore.store(id, entry: value, in: defaults)
-            PodcastProgressStore.shared.reload()
+            reloadProgress()
             PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):
             guard pushing else { break }

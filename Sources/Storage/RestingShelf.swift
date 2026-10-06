@@ -22,6 +22,11 @@ nonisolated struct RestingShelf: Sendable {
     struct Holding: Codable, Equatable {
         var owner: String
         var replacing: Bool = false
+        /// While replacing: who held before, and the replacement's own name.
+        /// A family that writes later writes the name with the new stock as
+        /// its mark (`landed`); only that mark proves the replacement landed.
+        var from: String? = nil
+        var replacement: String? = nil
     }
 
     func holding(of family: String) throws -> Holding? {
@@ -63,41 +68,65 @@ nonisolated struct RestingShelf: Sendable {
 
     /// THE hand-over of a family's stock to the account signed in now
     /// (`scope`), the same for every family: the holder's stock is laid
-    /// down and read back, the holding says `replacing`, and only then the
-    /// family replaces its stock by the rest of `scope` (nil: none rests,
-    /// the family starts empty and its carrier fills it) for that owner.
+    /// down and read back, the holding says `replacing` with the
+    /// replacement's name, and only then the family replaces its stock by
+    /// the rest of `scope` (nil: none rests, the family starts empty and its
+    /// carrier fills it) for that owner, under that name.
+    ///
+    /// An unread stock holds every way out, also with the holder unchanged:
+    /// it would join the replaced stock once read, or be published as the
+    /// holder's; only the first holder is still named over it. No holding is
+    /// the first account only when the device knew no owner before
+    /// (`previous`); else that owner holds.
     ///
     /// A holding that still says `replacing` from a run before ends that
-    /// replacement first, without laying the half replaced stock over the
-    /// rest. `before`: what the family lays down outside the shelf for the
-    /// holder, before the shelf's rest; it throws when that did not land.
-    /// `begunHere`: the family began that replacement in this run
-    /// itself and its writes are still landing; its stock is the new
-    /// owner's. A family whose replacement lands at once calls `settle`
-    /// right after, one that writes later once its writes landed.
+    /// replacement first. It landed only where the family's own mark says
+    /// so (`landed` with the replacement's name); then what stands is the
+    /// new owner's and settles. Without the mark it is replaced again, and
+    /// never laid over the rest. `issuedHere`: the replacements begun in
+    /// this run, whose writes may still be landing; their stock is the new
+    /// owner's. `before`: what the family lays down outside the shelf for
+    /// the holder, before the shelf's rest; it throws when that did not
+    /// land. `current` is asked at the moment it is laid down, after any
+    /// replacement of a run before ended.
     func handOver<Value: Codable & Equatable>(
-        _ family: String, to scope: String, unread: Bool, begunHere: Bool = false,
+        _ family: String, to scope: String, previous: String? = nil, unread: Bool,
+        issuedHere: Set<String> = [],
+        landed: (_ replacement: String) throws -> Bool = { _ in false },
         before: (_ holder: String) throws -> Void = { _ in },
-        current: () -> Value, replace: (_ rest: Value?, _ owner: String) throws -> Void
+        current: () throws -> Value,
+        replace: (_ rest: Value?, _ owner: String, _ replacement: String) throws -> Void
     ) throws -> HandOver {
-        guard let holding = try holding(of: family) else {
+        let found = try holding(of: family)
+        if found == nil, previous == nil || previous == scope {
+            // Naming the first holder moves nothing, so it stands even over
+            // an unread stock: a later account then meets a holder.
             try setHolding(.init(owner: scope), of: family)
-            return .first
+            return unread ? .unread : .first
         }
+        if unread { return .unread }
+        let holding = found ?? Holding(owner: previous ?? scope)
+        let begunHere = holding.replacement.map(issuedHere.contains) ?? false
         let unfinished = holding.replacing && !begunHere
         guard unfinished || holding.owner != scope else { return .kept }
-        // An unread stock would join the replaced one once it is read.
-        if unread { return .unread }
         if unfinished {
-            try replace(rest(Value.self, of: family, owner: holding.owner), holding.owner)
+            if let name = holding.replacement, try landed(name) {
+                try settle(family, owner: holding.owner, replacement: name)
+            } else {
+                let name = UUID().uuidString
+                try setHolding(.init(owner: holding.owner, replacing: true, from: holding.from, replacement: name),
+                               of: family)
+                try replace(rest(Value.self, of: family, owner: holding.owner), holding.owner, name)
+            }
         }
         guard holding.owner != scope else { return .moved }
         // What a family keeps elsewhere (the credentials, which never touch
         // a file) rests first; a failure there replaces nothing.
         try before(holding.owner)
         try lay(current(), of: family, owner: holding.owner)
-        try setHolding(.init(owner: scope, replacing: true), of: family)
-        try replace(rest(Value.self, of: family, owner: scope), scope)
+        let name = UUID().uuidString
+        try setHolding(.init(owner: scope, replacing: true, from: holding.owner, replacement: name), of: family)
+        try replace(rest(Value.self, of: family, owner: scope), scope, name)
         return .moved
     }
 
@@ -116,9 +145,11 @@ nonisolated struct RestingShelf: Sendable {
     }
 
     /// The replacement for `scope` landed: the holding says so, unless
-    /// another switch began meanwhile.
-    func settle(_ family: String, owner scope: String) throws {
-        guard try holding(of: family) == Holding(owner: scope, replacing: true) else { return }
+    /// another switch or replacement began meanwhile (`replacement`: the
+    /// name of the one that landed; nil settles any for `scope`).
+    func settle(_ family: String, owner scope: String, replacement: String? = nil) throws {
+        guard let holding = try holding(of: family), holding.owner == scope, holding.replacing,
+              replacement == nil || holding.replacement == replacement else { return }
         try setHolding(.init(owner: scope), of: family)
     }
 

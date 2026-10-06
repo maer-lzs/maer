@@ -123,6 +123,33 @@ struct StatsOwnerTests {
         }
     }
 
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Hoerzeit von A, A's bleibt bei A")
+    func aThirdAccountAfterAnOpenReplacement() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.folder) }
+        try await withSyncOn {
+            let shelf = rig.shelf
+            let restOfA = ListeningStatsData(secondsPerDay: ["d1": 100], secondsPerItem: ["rss:a-1": 100])
+            let restOfB = ListeningStatsData(secondsPerDay: ["d0": 7], secondsPerItem: ["rss:b-1": 7])
+            try shelf.lay(restOfA, of: "stats", owner: "account-a")
+            try shelf.lay(restOfB, of: "stats", owner: "account-b")
+            try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"), of: "stats")
+            let carrier = AccountCarrier(scope: { "account-c" })
+            let stats = ListeningStatsStore(carrier: carrier, database: rig.database,
+                                            history: ListeningStatsSyncTests.RecordingHistory(),
+                                            identity: { "account-c" }, shelf: shelf)
+            // The device holds A's listening from before the switch.
+            stats.addSeconds(100, itemId: "rss:a-1")
+            stats.start()
+            stats.flush()
+            #expect(try shelf.rest(ListeningStatsData.self, of: "stats", owner: "account-b") == restOfB,
+                    "A's listening was laid as B's")
+            #expect(try shelf.rest(ListeningStatsData.self, of: "stats", owner: "account-a") == restOfA)
+            #expect(carrier.byAccount["account-c"]?[device]?.secondsPerItem["rss:a-1"] == nil, "C published A's listening")
+            await stats.awaitPendingWrites()
+        }
+    }
+
     @Test("die Rechnung: Mitgebrachtes plus was das Geraet seit der Uebernahme zaehlte, nie unter null")
     func theOwnedTotals() {
         let device = ListeningStatsData(secondsPerDay: ["d1": 130, "d2": 10], secondsPerItem: ["a": 100, "b": 30])

@@ -30,6 +30,9 @@ nonisolated final class StandMirror: Sendable {
         /// The defaults this mirror follows, by identity. A write into another
         /// instance (a test suite of its own) is not this stock.
         var followed: ObjectIdentifier?
+        /// A replacement of the stock whose write with its mark has not
+        /// landed: every write until then is that whole write.
+        var replacement: ListeningStore.Replacement?
     }
 
     private let state = Mutex(State())
@@ -75,6 +78,9 @@ nonisolated final class StandMirror: Sendable {
         ListeningStore.onWrite = { [weak self] itemId, entry, written in
             self?.note(itemId: itemId, entry: entry, in: written)
         }
+        ListeningStore.installReplacementHook { [weak self] replacement, written in
+            self?.replace(replacement, in: written) ?? false
+        }
         ListeningStore.onFlushedWrite = { [weak self] itemId, entry, written in
             self?.noteFlushed(itemId: itemId, entry: entry, in: written)
         }
@@ -105,6 +111,34 @@ nonisolated final class StandMirror: Sendable {
                 Logger.library.error("STAND old keys kept missing=\(check.missing.count) of=\(legacy.backups.count + legacy.flushed.count)")
             }
         }
+    }
+
+    /// A replacement of the stock at a change of account: one write of the
+    /// travelling part with the replacement's mark, and every write after it
+    /// is that write until it landed (`OwnerMark`).
+    @discardableResult
+    func replace(_ replacement: ListeningStore.Replacement, in written: ObjectIdentifier) -> Bool {
+        guard state.withLock({ $0.followed }) == written else { return false }
+        state.withLock { $0.replacement = replacement }
+        enqueue { _ in }
+        return true
+    }
+
+    /// The open replacement written whole, if one is open; true when it was.
+    private func writeOpenReplacement(_ store: StandStore) async throws -> Bool {
+        guard let pending = state.withLock({ state in
+            state.replacement.flatMap { open in state.followed.map { (open, $0) } }
+        }) else { return false }
+        let (open, followed) = pending
+        guard let stock = ListeningStore.resting(where: open.travels, of: followed) else {
+            Logger.library.error("STAND replacement held: the stock is not loaded")
+            return true
+        }
+        try await store.replaceTravelling(backups: stock.backups, flushed: stock.flushed, travels: open.travels,
+                                          also: OwnerMark.statements(family: open.family, replacement: open.name))
+        state.withLock { if $0.replacement?.name == open.name { $0.replacement = nil } }
+        open.landed()
+        return true
     }
 
     /// One write of what this device last pushed: an entry, or nil for a removal.
@@ -150,6 +184,8 @@ nonisolated final class StandMirror: Sendable {
                 await previous?.value
                 guard let store = await openIfNeeded() else { return }
                 do {
+                    // While a replacement is open, this write is the whole one.
+                    if try await self.writeOpenReplacement(store) { return }
                     try await work(store)
                 } catch {
                     Logger.library.error("STAND mirror failed reason=\(String(describing: error), privacy: .public)")

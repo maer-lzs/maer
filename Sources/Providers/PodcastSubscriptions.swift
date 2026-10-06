@@ -467,9 +467,12 @@ final class PodcastSubscriptions: ObservableObject {
             }
             self.narrowedPermission = false
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
-            guard !diff.isEmpty else { return .skipped }
+            // While a replacement is open, every write carries its mark.
+            let mark = self.follower?.mark()
+            guard !diff.isEmpty || mark != nil else { return .skipped }
             let started = Date()
-            let counts = try await rows.apply(diff)
+            let counts = try await rows.apply(diff, also: mark?.statements ?? [])
+            mark?.landed()
             let ms = Int(Date().timeIntervalSince(started) * 1000)
             Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
             return .landed
@@ -1463,9 +1466,11 @@ final class PodcastSubscriptions: ObservableObject {
     // MARK: - The owner of the subscriptions
 
     static let shelfFamily = "subscriptions"
-    /// The replacement this run began; its holding says `replacing` until
-    /// the rows hold it, and the shows subscribed meanwhile are the new owner's.
-    private var replacedInThisRun = false
+    /// The subscriptions' way through the shelf (`ShelfFollower`); nil
+    /// without a shelf.
+    private lazy var follower: ShelfFollower? = database.restingShelf.map {
+        ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "SUBSTORE")
+    }
 
     /// What rests for an account: its whole shows with their episodes (the
     /// way back needs no feed), and the feeds of its account still waiting
@@ -1482,26 +1487,22 @@ final class PodcastSubscriptions: ObservableObject {
     /// the holder's shows to `scope`. The replacement unsubscribes nothing:
     /// no removal is told to the account, a gpodder server or the history.
     func follow(owner scope: String) -> Bool {
-        guard let shelf = database.restingShelf else { return true }
-        do {
-            let rested = shows.count
-            let current = Resting(shows: shows, waiting: try waitingFeeds())
-            let step = try shelf.handOver(
-                Self.shelfFamily, to: scope, unread: !isLoaded || rowChain.startReadFailed,
-                begunHere: replacedInThisRun,
-                current: { current },
-                replace: { rest, owner in try replace(with: rest, for: owner, on: shelf) })
-            switch step {
-            case .kept: return true
-            case .first: Logger.rss.notice("SUBSTORE owner first shows=\(rested)")
-            case .unread: Logger.rss.notice("SUBSTORE owner held: stock not loaded")
-            case .moved: Logger.rss.notice("SUBSTORE owner moved rested=\(rested) shows=\(self.shows.count)")
-            }
-            return step != .unread
-        } catch {
-            Logger.rss.error("SUBSTORE owner held reason=\(String(describing: error), privacy: .public)")
-            return false
+        guard let follower else { return true }
+        let rested = shows.count
+        guard let step = follower.follow(
+            to: scope, unread: !isLoaded || rowChain.startReadFailed, landing: .marked,
+            landed: { [database] name in
+                try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
+            },
+            current: { Resting(shows: shows, waiting: try waitingFeeds()) },
+            replace: { rest, _, _ in try replace(with: rest) }) else { return false }
+        switch step {
+        case .kept: return true
+        case .first: Logger.rss.notice("SUBSTORE owner first shows=\(rested)")
+        case .unread: Logger.rss.notice("SUBSTORE owner held: stock not loaded")
+        case .moved: Logger.rss.notice("SUBSTORE owner moved rested=\(rested) shows=\(self.shows.count)")
         }
+        return step != .unread
     }
 
     /// The feeds waiting for a sign-in, as stored.
@@ -1511,24 +1512,15 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
-    /// The shows of `owner` replace the ones here; the holding settles once
-    /// the rows hold them.
-    private func replace(with incoming: Resting?, for owner: String, on shelf: RestingShelf) throws {
+    /// The shows of the new owner replace the ones here; the holding settles
+    /// once the rows hold them.
+    private func replace(with incoming: Resting?) throws {
         let waiting = try incoming?.waiting.map { try PropertyListSerialization.propertyList(from: $0, format: nil) }
         defaults.set(waiting, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         shows = incoming?.shows ?? []
-        replacedInThisRun = true
         // The owner changed, and the shows before rest on the shelf.
         save(emptying: .allowed)
-        Task { [weak self] in
-            await self?.awaitPendingWrites()
-            do {
-                try shelf.settle(Self.shelfFamily, owner: owner)
-            } catch {
-                Logger.rss.error("SUBSTORE owner holding not settled reason=\(String(describing: error), privacy: .public)")
-            }
-        }
     }
 
     /// Normalized URLs the USER unsubscribed. The only removes the

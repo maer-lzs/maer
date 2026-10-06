@@ -94,6 +94,44 @@ actor StandStore {
                           stand.form.map { .real($0) } ?? .null])
     }
 
+    /// The travelling part of the rows made exactly `backups` and `flushed`
+    /// (what `travels` names and they lack goes), with `also` in the same
+    /// transaction: the replacement of the stock at a change of account and
+    /// its mark (`OwnerMark`), landing together or not at all.
+    func replaceTravelling(backups: [String: [Double]], flushed: [String: [Double]],
+                           travels: @Sendable (String) -> Bool,
+                           also: [SQLiteConnection.Statement]) async throws {
+        let standIds = try await connection.query("SELECT item_id FROM stand").compactMap { $0["item_id"]?.string }
+        let flushedIds = try await connection.query("SELECT item_id FROM stand_flushed").compactMap { $0["item_id"]?.string }
+        var statements: [SQLiteConnection.Statement] = []
+        for id in standIds where travels(id) && backups[id].flatMap({ Stand(itemId: id, entry: $0) }) == nil {
+            statements.append(.init("DELETE FROM stand WHERE item_id = ?", [.text(id)]))
+        }
+        for (id, entry) in backups {
+            guard let stand = Stand(itemId: id, entry: entry) else { continue }
+            let duration: SQLiteValue = stand.duration.map { .real($0) } ?? .null
+            let form: SQLiteValue = stand.form.map { .real($0) } ?? .null
+            let values: [SQLiteValue] = [.text(stand.itemId), .real(stand.position), .real(stand.updatedAtMs),
+                                         duration, form]
+            statements.append(.init("""
+                INSERT INTO stand (item_id, position, updated_at_ms, duration, started_form) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(item_id) DO UPDATE SET position = excluded.position,
+                    updated_at_ms = excluded.updated_at_ms, duration = excluded.duration,
+                    started_form = excluded.started_form
+                """, values))
+        }
+        for id in flushedIds where travels(id) && (flushed[id]?.count ?? 0) < 2 {
+            statements.append(.init("DELETE FROM stand_flushed WHERE item_id = ?", [.text(id)]))
+        }
+        for (id, entry) in flushed where entry.count >= 2 {
+            statements.append(.init("""
+                INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
+                ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+                """, [.text(id), .real(entry[0]), .real(entry[1])]))
+        }
+        _ = try await connection.transaction(statements + also)
+    }
+
     func stand(for itemId: String) async throws -> Stand? {
         try await connection.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand WHERE item_id = ?",
                                    [.text(itemId)]).first.flatMap(Self.stand(from:))

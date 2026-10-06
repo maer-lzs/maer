@@ -551,6 +551,17 @@ nonisolated enum ListeningStore {
     }
 
     /// The part of the stock `travels` names, for the shelf.
+    /// The same for the stock of the defaults `owner` names, as far as it is
+    /// loaded; nil before it is (the rows' side, which holds no defaults).
+    static func resting(where travels: (String) -> Bool, of owner: ObjectIdentifier) -> Resting? {
+        stocks.withLock { all in
+            all[owner].map { stock in
+                Resting(backups: stock.backups.filter { travels($0.key) },
+                        flushed: stock.flushed.filter { travels($0.key) })
+            }
+        }
+    }
+
     static func resting(where travels: (String) -> Bool, in defaults: UserDefaults = .standard) -> Resting {
         withStock(defaults) { stock in
             Resting(backups: stock.backups.filter { travels($0.key) },
@@ -561,11 +572,32 @@ nonisolated enum ListeningStore {
     /// THE SECOND legitimate removal (see the invariant above): another
     /// account owns the device. The part `travels` names leaves, after its
     /// rest was laid and read back by the caller, and the new account's
-    /// rest takes its place (nil: none, its carrier fills it). Every change
-    /// is announced, so the rows follow; no side effect of `store` runs,
-    /// nothing here was heard. The epoch moves on.
+    /// rest takes its place (nil: none, its carrier fills it). The rows
+    /// follow, as one write with the replacement's mark where one is given
+    /// and the rows take it, else change by change; no side effect of
+    /// `store` runs, nothing here was heard. The epoch moves on.
+    /// A replacement of the stock that must land as one with its mark
+    /// (`OwnerMark`): the rows take the travelling part as it stands when
+    /// their write runs, and `landed` hears that it landed with the mark.
+    struct Replacement: Sendable {
+        let family: String
+        let name: String
+        let travels: @Sendable (String) -> Bool
+        let landed: @Sendable () -> Void
+    }
+
+    /// Where a replacement goes instead of one write per entry: the rows
+    /// (`StandMirror`), installed with the other hooks; it answers whether
+    /// it took the replacement. Behind a lock, so its setting at start and
+    /// in witnesses needs no promise of order.
+    private static let replacementHook = Mutex<(@Sendable (Replacement, ObjectIdentifier) -> Bool)?>(nil)
+
+    static func installReplacementHook(_ hook: (@Sendable (Replacement, ObjectIdentifier) -> Bool)?) {
+        replacementHook.withLock { $0 = hook }
+    }
+
     static func replaceForNewOwner(with incoming: Resting?, where travels: (String) -> Bool,
-                                   in defaults: UserDefaults = .standard) {
+                                   in defaults: UserDefaults = .standard, replacement: Replacement? = nil) {
         let changes = withStock(defaults) { stock -> (backups: [(String, [Double]?)], flushed: [(String, [Double]?)]) in
             var backups: [(String, [Double]?)] = []
             var flushed: [(String, [Double]?)] = []
@@ -588,6 +620,15 @@ nonisolated enum ListeningStore {
             return (backups, flushed)
         }
         ownerEpochs.withLock { $0[ObjectIdentifier(defaults), default: 0] += 1 }
+        // With rows that take a replacement whole, it goes as one write with
+        // its mark; else every change is announced as before.
+        if let replacement {
+            if let hook = replacementHook.withLock({ $0 }), hook(replacement, ObjectIdentifier(defaults)) {
+                return
+            }
+            // No rows take the stock here: the replacement has landed.
+            replacement.landed()
+        }
         for (id, entry) in changes.backups { announce(id, entry, in: defaults) }
         for (id, entry) in changes.flushed { announceFlushed(id, entry, in: defaults) }
     }

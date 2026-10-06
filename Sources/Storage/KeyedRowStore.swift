@@ -113,12 +113,15 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     }
 
     /// Writes what changed from `previous` to `current`, in one
-    /// transaction. Returns the upserted and removed counts.
+    /// transaction, with `also` in the same transaction (a mark that must
+    /// land with these rows, `OwnerMark`); `also` alone is written too.
+    /// Returns the upserted and removed counts.
     @discardableResult
-    func apply(previous: [String: Value], current: [String: Value]) async throws -> (upserted: Int, removed: Int) {
+    func apply(previous: [String: Value], current: [String: Value],
+               also: [SQLiteConnection.Statement] = []) async throws -> (upserted: Int, removed: Int) {
         let diff = KeyedRowDiff.compute(previous: previous, current: current)
-        guard !diff.isEmpty else { return (0, 0) }
-        try await connection.transaction(try Self.statements(table: table, upserted: diff.upserted, removed: diff.removed))
+        guard !diff.isEmpty || !also.isEmpty else { return (0, 0) }
+        try await connection.transaction(try Self.statements(table: table, upserted: diff.upserted, removed: diff.removed) + also)
         return (diff.upserted.count, diff.removed.count)
     }
 

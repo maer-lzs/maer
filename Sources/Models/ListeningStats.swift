@@ -368,7 +368,10 @@ final class ListeningStatsStore: ObservableObject {
     /// store has them; every other one keeps no owner and shows the device.
     private let identity: () -> String?
     private let shelf: RestingShelf?
-    private var handedTo: String?
+    /// The family's way through the shelf (`ShelfFollower`); nil without one.
+    private lazy var follower: ShelfFollower? = shelf.map {
+        ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "STATS")
+    }
     private static let shelfFamily = "stats"
     private static let ledgerFamily = "statsLedger"
     private static let ledgerOwner = "device"
@@ -398,32 +401,25 @@ final class ListeningStatsStore: ObservableObject {
     /// the ledger unread, the shelf not writable); nothing is published
     /// then, since it would publish the holder's totals for the account.
     private func followsTheAccount() -> Bool {
-        guard let shelf, let scope = identity(), scope != handedTo else { return true }
-        do {
-            let step = try shelf.handOver(
-                Self.shelfFamily, to: scope, unread: unreadDays || unreadItems || ledgerUnread,
-                current: { ownerPot },
-                replace: { rest, owner in
-                    let next = Ledger(carried: rest ?? ListeningStatsData(), since: ownData)
-                    try shelf.lay(next, of: Self.ledgerFamily, owner: Self.ledgerOwner)
-                    ledger = next
-                    try shelf.settle(Self.shelfFamily, owner: owner)
-                })
-            switch step {
-            case .kept, .first: break
-            case .unread:
-                Logger.library.notice("STATS owner held: rows or ledger unread")
-                return false
-            case .moved:
-                Logger.library.notice("STATS owner moved days=\(self.ownerPot.secondsPerDay.count)")
-                recompose()
-            }
-            handedTo = scope
-            return true
-        } catch {
-            Logger.library.error("STATS owner held reason=\(String(describing: error), privacy: .public)")
+        guard let follower, let shelf, let scope = identity() else { return true }
+        guard let step = follower.follow(
+            to: scope, unread: unreadDays || unreadItems || ledgerUnread, landing: .now,
+            current: { ownerPot },
+            replace: { rest, _, _ in
+                let next = Ledger(carried: rest ?? ListeningStatsData(), since: ownData)
+                try shelf.lay(next, of: Self.ledgerFamily, owner: Self.ledgerOwner)
+                ledger = next
+            }) else { return false }
+        switch step {
+        case .kept, .first: break
+        case .unread:
+            Logger.library.notice("STATS owner held: rows or ledger unread")
             return false
+        case .moved:
+            Logger.library.notice("STATS owner moved days=\(self.ownerPot.secondsPerDay.count)")
+            recompose()
         }
+        return true
     }
 
     /// The carrier the access of this moment asks for, when it travels

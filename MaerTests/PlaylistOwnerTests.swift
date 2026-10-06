@@ -161,6 +161,59 @@ struct PlaylistOwnerTests {
         }
     }
 
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Liste von A, A's bleiben bei A")
+    func aThirdAccountAfterAnOpenReplacement() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            let shelf = rig.shelf
+            let restOfA = MaerPlaylists.Resting(
+                lists: [.init(id: "a1", name: "Von A", updatedAt: 1, itemIds: ["rss:a"])], tombstones: [:])
+            let restOfB = MaerPlaylists.Resting(
+                lists: [.init(id: "b1", name: "Von B", updatedAt: 2, itemIds: ["rss:b"])], tombstones: [:])
+            try shelf.lay(restOfA, of: "playlists", owner: "account-a")
+            try shelf.lay(restOfB, of: "playlists", owner: "account-b")
+            try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"),
+                                 of: "playlists")
+            // The replacement of a run before never landed: A's list is live.
+            let store = MaerPlaylists(database: rig.database)
+            _ = store.create(name: "A lebend")
+            #expect(store.follow(owner: "account-c"))
+            #expect(try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-b") == restOfB,
+                    "A's lists were laid as B's")
+            #expect(try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a") == restOfA)
+            #expect(store.playlists.isEmpty, "C sees a list of another account")
+            await store.awaitPendingWrites()
+        }
+    }
+
+    @Test("das Ersetzen der Listen landet mit seiner Marke, erst dann settled der Halter; ein Neustart davor ersetzt nicht noch einmal, was B danach anlegte")
+    func theReplacementLandsWithItsMark() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            let shelf = rig.shelf
+            let store = MaerPlaylists(database: rig.database)
+            #expect(store.follow(owner: "account-a"))
+            _ = store.create(name: "Von A")
+            #expect(store.follow(owner: "account-b"))
+            let name = try #require(try shelf.holding(of: "playlists")?.replacement)
+            await store.awaitPendingWrites()
+            #expect(try OwnerMark.stands(family: "playlists", replacement: name, database: rig.database),
+                    "the rows of the replacement landed without its mark")
+            #expect(try shelf.holding(of: "playlists") == .init(owner: "account-b"), "the holding did not settle with the mark")
+
+            let ofB = store.create(name: "Von B")
+            await store.awaitPendingWrites()
+            try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: name),
+                                 of: "playlists")
+            let restarted = MaerPlaylists(database: rig.database)
+            #expect(restarted.follow(owner: "account-b"))
+            #expect(restarted.playlists.map(\.id) == [ofB.id], "a landed replacement was done again over B's list")
+            #expect(try shelf.holding(of: "playlists") == .init(owner: "account-b"))
+        }
+    }
+
     @Test("ein Wechsel, dessen Ersetzen nicht ankam, wird beim naechsten Start beendet, ohne die Ruhe zu ueberschreiben")
     func aBrokenReplacementEndsWithoutTouchingTheRest() async throws {
         let rig = try rig()

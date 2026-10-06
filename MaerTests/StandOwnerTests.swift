@@ -85,7 +85,11 @@ struct StandOwnerTests {
         let defaults = rig.defaults
         let rows = try await StandStore(connection: try SQLiteConnection(path: ":memory:"))
         let mirror = StandMirror(store: rows)
-        defer { ListeningStore.onWrite = nil; ListeningStore.onFlushedWrite = nil }
+        defer {
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+            ListeningStore.installReplacementHook(nil)
+        }
         mirror.start(defaults: defaults)
         try await withSyncOn {
             var scope: String? = "account-a"
@@ -143,6 +147,83 @@ struct StandOwnerTests {
             #expect(try await rows.stand(for: "rss:b-2") == nil)
             #expect(try await rows.stand(for: "abs-book") != nil)
             withExtendedLifetime(runner) {}
+        }
+    }
+
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keinen Stand von A, A's bleiben bei A")
+    func aThirdAccountAfterAnOpenReplacement() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let t = 1_700_000_000_000.0
+        // The replacement of a run before never landed: A's stand is live.
+        defaults.set([600.0, t, 3600], forKey: AppStorageKeys.localPosition("rss:a-1"))
+        let restOfA = ListeningStore.Resting(backups: ["rss:a-1": [600.0, t, 3600]])
+        let restOfB = ListeningStore.Resting(backups: ["rss:b-1": [120.0, t, 1800]])
+        let shelf = rig.shelf
+        try shelf.lay(restOfA, of: "stands", owner: "account-a")
+        try shelf.lay(restOfB, of: "stands", owner: "account-b")
+        try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"), of: "stands")
+        try await withSyncOn {
+            let carrier = AccountCarrier(scope: { "account-c" })
+            let runner = PodcastCloudSync(carrier: carrier, defaults: defaults, identity: { "account-c" }, shelf: shelf,
+                                          standsMarked: { _ in false })
+            #expect(ListeningStore.backup("rss:a-1", in: defaults) != nil, "the precondition: A's stand is live")
+            runner.reconcile(pushing: false)
+            let restedB = try shelf.rest(ListeningStore.Resting.self, of: "stands", owner: "account-b")
+            let restedA = try shelf.rest(ListeningStore.Resting.self, of: "stands", owner: "account-a")
+            #expect(restedB == restOfB, "A's stand was laid as B's")
+            #expect(restedA == restOfA)
+            #expect(ListeningStore.backup("rss:a-1", in: defaults) == nil, "C sees a stand of another account")
+            withExtendedLifetime(runner) {}
+        }
+    }
+
+    @Test("das Ersetzen der Staende landet in einer Transaktion mit seiner Marke; ein Neustart davor ersetzt nicht noch einmal, was B danach hoerte")
+    func theReplacementLandsWithItsMark() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let connection = try SQLiteConnection(path: ":memory:")
+        let rows = try await StandStore(connection: connection)
+        let mirror = StandMirror(store: rows)
+        defer {
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+            ListeningStore.installReplacementHook(nil)
+        }
+        mirror.start(defaults: defaults)
+        let shelf = rig.shelf
+        try await withSyncOn {
+            var scope = "account-a"
+            let carrier = AccountCarrier(scope: { scope })
+            let runner = PodcastCloudSync(carrier: carrier, defaults: defaults, identity: { scope }, shelf: shelf,
+                                          standsMarked: { _ in false })
+            runner.reconcile(pushing: false)
+            let t = 1_700_000_100_000.0
+            ListeningStore.record("rss:a-1", position: 600, duration: 3600, atMs: t,
+                                  epoch: ListeningStore.ownerEpoch(in: defaults), in: defaults)
+            scope = "account-b"
+            runner.reconcile(pushing: false)
+            let name = try #require(try shelf.holding(of: "stands")?.replacement)
+            await mirror.awaitPendingWrites()
+            try await Task.sleep(for: .milliseconds(50))
+            let mark = try await connection.query("SELECT replacement FROM owner_mark WHERE family = ?", [.text("stands")])
+            #expect(mark.first?["replacement"]?.string == name, "the rows of the replacement landed without its mark")
+            #expect(try await rows.stand(for: "rss:a-1") == nil, "the rows still hold A's stand")
+            #expect(try shelf.holding(of: "stands") == .init(owner: "account-b"), "the holding did not settle with the mark")
+
+            ListeningStore.record("rss:b-1", position: 30, duration: 600, atMs: t + 60_000,
+                                  epoch: ListeningStore.ownerEpoch(in: defaults), in: defaults)
+            await mirror.awaitPendingWrites()
+            try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: name), of: "stands")
+            let restarted = PodcastCloudSync(carrier: carrier, defaults: defaults, identity: { scope }, shelf: shelf,
+                                             standsMarked: { $0 == name })
+            restarted.reconcile(pushing: false)
+            #expect(ListeningStore.backup("rss:b-1", in: defaults) != nil, "a landed replacement was done again over B's stand")
+            #expect(try shelf.holding(of: "stands") == .init(owner: "account-b"))
+            withExtendedLifetime(runner) {}
+            withExtendedLifetime(restarted) {}
         }
     }
 

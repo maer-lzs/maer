@@ -117,11 +117,13 @@ actor PodcastRowStore {
     }
 
     /// Applies a diff in one transaction. Removed shows take their episodes
-    /// with them (cascade).
+    /// with them (cascade). `also` lands in the same transaction (a mark
+    /// that must land with these rows, `OwnerMark`); `also` alone is
+    /// written too.
     @discardableResult
-    func apply(_ diff: PodcastRowDiff) async throws -> Counts {
-        guard !diff.isEmpty else { return Counts(shows: 0, episodes: 0) }
-        try await connection.transaction(try Self.statements(diff))
+    func apply(_ diff: PodcastRowDiff, also: [SQLiteConnection.Statement] = []) async throws -> Counts {
+        guard !diff.isEmpty || !also.isEmpty else { return Counts(shows: 0, episodes: 0) }
+        try await connection.transaction(try Self.statements(diff) + also)
         return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
     }
 

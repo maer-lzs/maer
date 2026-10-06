@@ -83,6 +83,55 @@ struct SubscriptionOwnerTests {
         #expect(sorted(await rig.store().shows) == ofA)
     }
 
+    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Sendung von A, A's bleiben bei A")
+    func aThirdAccountAfterAnOpenReplacement() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let family = PodcastSubscriptions.shelfFamily
+        // The replacement of a run before never landed: the rows hold A's.
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([Self.show("moor", episodes: 2)])
+        let shelf = try #require(rig.database.restingShelf)
+        let restOfA = PodcastSubscriptions.Resting(shows: [Self.show("moor", episodes: 2)], waiting: nil)
+        let restOfB = PodcastSubscriptions.Resting(shows: [Self.show("deich", episodes: 1)], waiting: nil)
+        try shelf.lay(restOfA, of: family, owner: "account-a")
+        try shelf.lay(restOfB, of: family, owner: "account-b")
+        try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"), of: family)
+        let subs = await rig.store()
+        #expect(subs.shows.map(\.title) == ["moor"], "the precondition: A's shows are live")
+        #expect(subs.follow(owner: "account-c"))
+        #expect(try shelf.rest(PodcastSubscriptions.Resting.self, of: family, owner: "account-b") == restOfB,
+                "A's shows were laid as B's")
+        #expect(try shelf.rest(PodcastSubscriptions.Resting.self, of: family, owner: "account-a") == restOfA)
+        #expect(subs.shows.isEmpty, "C sees a show of another account")
+    }
+
+    @Test("das Ersetzen der Abos landet mit seiner Marke, erst dann settled der Halter; ein Neustart davor ersetzt nicht noch einmal, was B danach abonnierte")
+    func theReplacementLandsWithItsMark() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let family = PodcastSubscriptions.shelfFamily
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([Self.show("moor", episodes: 2)])
+        let shelf = try #require(rig.database.restingShelf)
+        let subs = await rig.store()
+        #expect(subs.follow(owner: "account-a"))
+        #expect(subs.follow(owner: "account-b"))
+        let name = try #require(try shelf.holding(of: family)?.replacement)
+        await subs.awaitPendingWrites()
+        #expect(try OwnerMark.stands(family: family, replacement: name, database: rig.database),
+                "the rows of the replacement landed without its mark")
+        #expect(try shelf.holding(of: family) == .init(owner: "account-b"), "the holding did not settle with the mark")
+
+        // B subscribes; then a restart finds the holding unsettled.
+        subs._testFeedFetcher = { _ in .show(Self.show("deich", episodes: 1)) }
+        try #require(await subs.subscribe(urlString: "https://feeds.example/deich.xml", notesCloud: false))
+        await subs.awaitPendingWrites()
+        try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: name), of: family)
+        let restarted = await rig.store()
+        #expect(restarted.follow(owner: "account-b"))
+        #expect(restarted.shows.map(\.title) == ["deich"], "a landed replacement was done again over B's subscription")
+        #expect(try shelf.holding(of: family) == .init(owner: "account-b"))
+    }
+
     @Test("solange der Bestand nicht geladen ist, ruht nichts und die Runde der Wahlen haelt an")
     func anUnloadedStockHoldsTheChoices() async throws {
         let rig = try rig()

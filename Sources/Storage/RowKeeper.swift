@@ -59,6 +59,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         get { chain.adopt }
         set { chain.adopt = newValue }
     }
+    /// What must land with the write that runs, in its transaction, and
+    /// what hears that it landed (`ShelfFollower.mark` while a replacement
+    /// of the stock is open); asked when the write runs.
+    var mark: (@MainActor () -> (statements: [SQLiteConnection.Statement], landed: @MainActor () -> Void)?)?
 
     /// The synchronous start read, once, before the store sets its memory:
     /// the rows, or nil when the table holds nothing or the read failed.
@@ -105,7 +109,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
                 return .skipped
             }
             self.narrowedPermission = false
-            let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot)
+            let mark = self.mark?()
+            let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot,
+                                               also: mark?.statements ?? [])
+            mark?.landed()
             if self.logsSaves, base.plan != .diff || written.upserted + written.removed > 0 {
                 Logger.library.notice("\(self.label, privacy: .public) save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")
             }

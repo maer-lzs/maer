@@ -70,13 +70,12 @@ final class UserChoiceCloudSync {
     /// The address of the sync service signed in now; it stays known across
     /// a switch.
     private let serviceAddress: () -> String?
-    private let shelf: RestingShelf?
+    /// The family's way through the shelf (`ShelfFollower`); nil without a
+    /// shelf, which is the case of every witness that does not hand one in.
+    private let follower: ShelfFollower?
     /// Whether statements that carry the music server's ids may travel
     /// (`SubsonicProvider.idFormSettled`).
     private let idFormSettled: () -> Bool
-    /// The account the choices were last handed to in this run, so a note
-    /// asks the shelf only when the account moved.
-    private var handedTo: String?
     private var didStart = false
     /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
@@ -114,7 +113,7 @@ final class UserChoiceCloudSync {
         self.itemIdMap = itemIdMap
         self.identity = identity
         self.serviceAddress = serviceAddress
-        self.shelf = shelf
+        self.follower = shelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "CHOICE") }
         self.idFormSettled = idFormSettled
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
@@ -392,31 +391,23 @@ final class UserChoiceCloudSync {
     /// False while they cannot be handed over; nothing then is noted or
     /// sent, since it would carry the holder's choices to the account.
     private func followsTheAccount() -> Bool {
-        guard let shelf, let scope = identity(), scope != handedTo else { return true }
-        // The document read before is the one of the account before: a note
-        // must not compare against it, nor write it on.
-        blobCache = nil
-        // The subscriptions are rows of their store and read by this family:
-        // they move first, or the round would read the holder's.
-        guard subscriptionsFollow(scope) else { return false }
-        do {
-            let current = try restingChoices()
-            let step = try shelf.handOver(
-                Self.shelfFamily, to: scope, unread: false,
-                current: { current },
-                replace: { rest, owner in
-                    try replaceChoices(with: rest)
-                    try shelf.settle(Self.shelfFamily, owner: owner)
-                })
-            handedTo = scope
-            if step != .kept {
-                Logger.library.notice("CHOICE owner \(String(describing: step), privacy: .public) keys=\(current.values.count)")
-            }
-            return true
-        } catch {
-            Logger.library.error("CHOICE owner held reason=\(String(describing: error), privacy: .public)")
-            return false
+        guard let follower, let scope = identity() else { return true }
+        if scope != follower.handedTo {
+            // The document read before is the one of the account before: a
+            // note must not compare against it, nor write it on.
+            blobCache = nil
+            // The subscriptions are rows of their store and read by this
+            // family: they move first, or the round would read the holder's.
+            guard subscriptionsFollow(scope) else { return false }
         }
+        guard let step = follower.follow(
+            to: scope, unread: false, landing: .now,
+            current: { try restingChoices() },
+            replace: { rest, _, _ in try replaceChoices(with: rest) }) else { return false }
+        if step != .kept {
+            Logger.library.notice("CHOICE owner \(String(describing: step), privacy: .public) keys=\(self.restingKeys().count)")
+        }
+        return true
     }
 
     /// The choices of the new owner replace the ones here, without a note:
