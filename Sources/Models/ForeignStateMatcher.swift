@@ -202,6 +202,8 @@ nonisolated enum ForeignStateMatcher {
 nonisolated struct ForeignImportPreview: Sendable, Equatable {
     var shows = 0
     var alreadySubscribed = 0
+    /// Shows subscribed on Audiobookshelf and not here.
+    var onServer = 0
     var states = 0
     var finished = 0
     var inProgress = 0
@@ -224,11 +226,18 @@ nonisolated struct ForeignImportPreview: Sendable, Equatable {
 
     /// `subscribedFeedKeys` are the keys of the shows this device already
     /// follows, computed with the same `feedKeyOf` the caller passes.
+    /// `serverFeedKeys` are those of the shows subscribed on Audiobookshelf
+    /// and not here: the import subscribes none of them locally.
     static func make(_ library: ForeignLibrary, subscribedFeedKeys: Set<String>,
+                     serverFeedKeys: Set<String> = [],
                      feedKeyOf: (String) -> String) -> ForeignImportPreview {
         var preview = ForeignImportPreview()
         preview.shows = library.feedURLs.count
         preview.alreadySubscribed = library.feedURLs.filter { subscribedFeedKeys.contains(feedKeyOf($0)) }.count
+        preview.onServer = library.feedURLs.filter {
+            let key = feedKeyOf($0)
+            return serverFeedKeys.contains(key) && !subscribedFeedKeys.contains(key)
+        }.count
         preview.states = library.states.count
         preview.finished = library.states.filter(\.finished).count
         preview.inProgress = library.states.filter { !$0.finished && $0.position > 0 }.count

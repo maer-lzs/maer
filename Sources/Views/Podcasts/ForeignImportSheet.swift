@@ -126,8 +126,10 @@ struct ForeignImportSheet: View {
 
     private var preview: ForeignImportPreview? {
         guard let library else { return nil }
-        let subscribed = Set(PodcastSubscriptions.shared.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
+        let subs = PodcastSubscriptions.shared
+        let subscribed = Set(subs.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
         return ForeignImportPreview.make(library, subscribedFeedKeys: subscribed,
+                                         serverFeedKeys: Set(subs.serverOnlyShows().keys),
                                          feedKeyOf: PodcastSubscriptions.feedKey)
     }
 
@@ -240,6 +242,9 @@ struct ForeignImportSheet: View {
             if p.alreadySubscribed > 0 {
                 LabeledContent("Already subscribed", value: "\(p.alreadySubscribed)")
             }
+            if p.onServer > 0 {
+                LabeledContent("Subscribed on Audiobookshelf", value: "\(p.onServer)")
+            }
             if p.unimportablePaid > 0 {
                 LabeledContent("Paid, no public feed", value: "\(p.unimportablePaid)")
             }
@@ -338,6 +343,9 @@ struct ForeignImportSheet: View {
             LabeledContent("Subscriptions imported", value: "\(r.subscribed)")
             if r.alreadySubscribed > 0 {
                 LabeledContent("Already subscribed", value: "\(r.alreadySubscribed)")
+            }
+            if r.onServer > 0 {
+                LabeledContent("Subscribed on Audiobookshelf", value: "\(r.onServer)")
             }
             if r.failed > 0 {
                 LabeledContent("Feeds not loadable", value: "\(r.failed)")

@@ -10496,6 +10496,16 @@
         }
       }
     },
+    "Subscribed on Audiobookshelf" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Audiobookshelf abonniert"
+          }
+        }
+      }
+    },
     "Subscribed, no episodes yet" : {
       "localizations" : {
         "de" : {

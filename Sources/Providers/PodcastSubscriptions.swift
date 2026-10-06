@@ -1006,6 +1006,9 @@ final class PodcastSubscriptions: ObservableObject {
         /// progress moved onto the premium episodes.
         case freeTwin(title: String, redirected: Int)
         case notFollowed(FeedAdoptionPending.Reason, status: Int?)
+        /// Subscribed on Audiobookshelf and not here: an import follows it
+        /// there and subscribes nothing locally.
+        case onServer(title: String)
 
         /// What `subscribe` has always answered: yes for a held show and
         /// for a twin that was deliberately skipped.
@@ -1665,6 +1668,10 @@ final class PodcastSubscriptions: ObservableObject {
         var freeTwinsSkipped = 0
         /// Shows the import named that this device already followed.
         var alreadySubscribed = 0
+        /// Shows the import named that are subscribed on Audiobookshelf and
+        /// not here; none of them was subscribed locally.
+        var onServer = 0
+        var onServerTitles: [String] = []
         /// Feeds that parsed into a valid show but brought no episode. They
         /// ARE subscribed. Counted here instead of raising an alert per feed:
         /// a run over hundreds would have shown the last empty one by name
@@ -1739,8 +1746,12 @@ final class PodcastSubscriptions: ObservableObject {
     /// `answered` hears each feed as it is done, on the main actor.
     /// `shouldStop` is asked before each new fetch: once it says yes, the
     /// feeds in flight finish and no new one starts. A feed never asked
-    /// stays nil, which is not an answer.
+    /// stays nil, which is not an answer. A show subscribed on
+    /// Audiobookshelf and not here (`onServer`, by feed key) is answered
+    /// as such without a fetch and is not subscribed locally: the two
+    /// sources hold a show exclusively.
     private func followAll(_ feeds: [String],
+                           onServer: [String: PodcastShow] = [:],
                            shouldStop: @MainActor () -> Bool = { false },
                            answered: @MainActor (Int, FollowOutcome) -> Void) async -> [FollowOutcome?] {
         var outcomes = [FollowOutcome?](repeating: nil, count: feeds.count)
@@ -1749,6 +1760,10 @@ final class PodcastSubscriptions: ObservableObject {
             let key = Self.feedKey(feed)
             if let held = shows.first(where: { Self.feedKey($0.feedURL) == key }) {
                 let outcome = FollowOutcome.followed(title: held.title, wasNew: false, episodes: held.episodes.count)
+                outcomes[index] = outcome
+                answered(index, outcome)
+            } else if let server = onServer[key] {
+                let outcome = FollowOutcome.onServer(title: server.title)
                 outcomes[index] = outcome
                 answered(index, outcome)
             } else {
@@ -1828,6 +1843,22 @@ final class PodcastSubscriptions: ObservableObject {
     /// "over" when it chooses.
     var backgroundWork: any BackgroundWork = SystemBackgroundWork.app
 
+    /// The shows subscribed on Audiobookshelf as this device holds them
+    /// (source switch on, not archived). An import subscribes none of them
+    /// locally. A witness hands in its own.
+    var serverShows: () -> [PodcastShow] = { PodcastShowSources.absShows() }
+
+    /// The shows of `serverShows` that are not subscribed here, by feed key.
+    func serverOnlyShows() -> [String: PodcastShow] {
+        let local = Set(shows.map { Self.feedKey($0.feedURL) })
+        var byKey: [String: PodcastShow] = [:]
+        for show in serverShows() where !show.feedURL.isEmpty {
+            let key = Self.feedKey(show.feedURL)
+            if !local.contains(key), byKey[key] == nil { byKey[key] = show }
+        }
+        return byKey
+    }
+
     /// The one import for every foreign source: subscribe to each feed,
     /// then hand the states to the one adopter. The caller has already
     /// read and previewed the library.
@@ -1853,7 +1884,8 @@ final class PodcastSubscriptions: ObservableObject {
         let work = backgroundWork.begin("Podcast import") { run.stopped = true }
         defer { backgroundWork.end(work) }
         progress(ImportProgress(done: 0, total: feeds.count))
-        let outcomes = await followAll(feeds, shouldStop: { run.stopped }) { [self] index, outcome in
+        let onServer = serverOnlyShows()
+        let outcomes = await followAll(feeds, onServer: onServer, shouldStop: { run.stopped }) { [self] index, outcome in
             run.done += 1
             progress(ImportProgress(done: run.done, total: feeds.count))
             guard case .followed = outcome else { return }
@@ -1878,6 +1910,9 @@ final class PodcastSubscriptions: ObservableObject {
                 result.notAsked += 1
             case .freeTwin?:
                 result.freeTwinsSkipped += 1
+            case .onServer(let title)?:
+                result.onServer += 1
+                result.onServerTitles.append(title)
             case .followed(let title, let wasNew, let episodes)?:
                 // A show already followed is refreshed, not imported: the
                 // summary must not count it as new. The empty ones are
