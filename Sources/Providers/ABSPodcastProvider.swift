@@ -55,6 +55,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// listening history (display bridge + server push).
     private var absToRSS: [String: String] = [:]
     private var rssToABS: [String: String] = [:]
+    /// The feed's own handles of each episode (guid and enclosure as the
+    /// feed carries them), by `abspod:` id. A foreign import matches its
+    /// states on them; the episode's own fields are the server's.
+    private(set) var episodeHandles: [String: ServerEpisodeHandle] = [:]
     /// Counts changes (shows/progress). Used as a `.task` id in the UI so
     /// "Up Next"/"Downloaded" recompute after an ABS load or "played".
     @Published private(set) var changeToken = 0
@@ -160,10 +164,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// The ONE way the shows change: the bridge with them, and the token the
     /// podcast tab recomputes on.
-    private func replaceShows(_ next: [PodcastShow], absToRSS: [String: String], rssToABS: [String: String]) {
+    private func replaceShows(_ next: [PodcastShow], absToRSS: [String: String], rssToABS: [String: String],
+                              handles: [String: ServerEpisodeHandle] = [:]) {
         shows = next
         self.absToRSS = absToRSS
         self.rssToABS = rssToABS
+        episodeHandles = handles
         changeToken += 1
     }
 
@@ -224,6 +230,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         var loaded: [PodcastShow] = []
         var newAbsToRSS: [String: String] = [:]
         var newRSSToABS: [String: String] = [:]
+        var newHandles: [String: ServerEpisodeHandle] = [:]
         for detail in fetched.details {
             loaded.append(podcastShow(from: detail))
             // Build the feed-guid bridge → both ids (for shared history).
@@ -231,6 +238,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             guard !feedURL.isEmpty else { continue }
             let feedKey = PodcastSubscriptions.feedKey(feedURL)
             for ep in detail.media.episodes ?? [] {
+                newHandles["abspod:\(detail.id):\(ep.id)"] = ServerEpisodeHandle(guid: ep.guid, enclosure: ep.enclosure?.url)
                 guard let orig = ep.guid ?? ep.enclosure?.url, !orig.isEmpty else { continue }
                 let rssId = "rss:\(feedKey):\(orig)"
                 let absId = "abspod:\(detail.id):\(ep.id)"
@@ -241,7 +249,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
         if ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0,
                                         loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
-            replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS)
+            replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS, handles: newHandles)
             lastRefreshAt = Date()
         }
     }
@@ -344,15 +352,29 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
-        // A failed request (offline!) KEEPS the cached server state and does
-        // not count the token: the surface would show the old state as a
-        // fresh one.
+        _ = await freshEpisodeProgress()
+    }
+
+    /// The server progress read now, or nil when the read failed. A failed
+    /// request (offline!) KEEPS the cached server state and does not count
+    /// the token: the surface would show the old state as a fresh one.
+    func freshEpisodeProgress() async -> [String: BookProgress]? {
         do {
             episodeProgress = try await client.fetchPodcastEpisodeProgress()
             changeToken += 1
+            return episodeProgress
         } catch {
             Logger.library.error("ABSPOD progress refresh failed, kept: \(FailureReason.of(error), privacy: .public)")
+            return nil
         }
+    }
+
+    /// Writes one episode's progress, for a foreign import.
+    func writeEpisodeProgress(_ itemId: String, time: Double, duration: Double, finished: Bool) async throws {
+        let (showId, episodeId) = Self.split(itemId)
+        guard let episodeId else { throw ForeignServerSideError.notAServerEpisode }
+        try await client.updateEpisodeProgress(libraryItemId: showId, episodeId: episodeId,
+                                               currentTime: time, duration: duration, isFinished: finished)
     }
 
     // MARK: - Pending played-writes (offline retry)

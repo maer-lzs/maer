@@ -416,8 +416,27 @@ struct ForeignImportSheet: View {
                     LabeledContent("Nothing to take over (under a second played)", value: "\(r.nothingToAdopt)")
                         .accessibilityIdentifier("foreign-import-nothing")
                 }
+                if r.sentToServer > 0 {
+                    LabeledContent("Sent to Audiobookshelf", value: "\(r.sentToServer)")
+                        .accessibilityIdentifier("foreign-import-sent-to-server")
+                }
             } header: {
                 Text("Listening states")
+            }
+            if !r.notSent.isEmpty {
+                // States of shows on Audiobookshelf the server did not
+                // take, by show; a second run sends them again.
+                Section {
+                    ForEach(r.notSent) { group in
+                        Text("\(group.show): \(group.count) states")
+                            .font(.subheadline.weight(.medium))
+                            .accessibilityIdentifier("foreign-import-not-sent-group")
+                    }
+                } header: {
+                    Text("Not sent to Audiobookshelf")
+                } footer: {
+                    Text("Audiobookshelf did not take these states. Start the import again to send them.")
+                }
             }
             if !r.lookupGroups.isEmpty {
                 // What asking Pocket Casts for the episode itself gained,

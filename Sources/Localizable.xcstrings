@@ -1798,6 +1798,16 @@
         }
       }
     },
+    "Audiobookshelf did not take these states. Start the import again to send them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf hat diese Stände nicht angenommen. Starte den Import erneut, um sie zu senden."
+          }
+        }
+      }
+    },
     "Audiobookshelf podcasts" : {
       "localizations" : {
         "de" : {
@@ -7004,6 +7014,16 @@
         }
       }
     },
+    "Not sent to Audiobookshelf" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht an Audiobookshelf gesendet"
+          }
+        }
+      }
+    },
     "Not set up · tap to set up" : {
       "localizations" : {
         "de" : {
@@ -9341,6 +9361,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sichere Verbindung fehlgeschlagen (Zertifikatsproblem). Ist HTTPS auf dem Server korrekt eingerichtet?"
+          }
+        }
+      }
+    },
+    "Sent to Audiobookshelf" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An Audiobookshelf gesendet"
           }
         }
       }

@@ -125,7 +125,10 @@ struct ABSPodcastRefreshTests {
         #expect(code.contains("client."), "the fence read the provider")
         #expect(!Self.swallowsAFetch(code), "a call to the server swallows its error")
         #expect(Self.emptyCatches(in: code) == 0, "a catch without a statement")
-        let progress = try #require(Self.body(of: "func refreshProgress() async {", in: code))
+        // The pull lives in the one read path; the refresh goes through it.
+        let refresh = try #require(Self.body(of: "func refreshProgress() async {", in: code))
+        #expect(refresh.contains("await freshEpisodeProgress()"), "the refresh pulls on its own path")
+        let progress = try #require(Self.body(of: "func freshEpisodeProgress() async -> [String: BookProgress]? {", in: code))
         let fetch = try #require(progress.range(of: "try await client.fetchPodcastEpisodeProgress()"))
         let token = try #require(progress.range(of: "changeToken += 1"))
         let failure = try #require(progress.range(of: "} catch {"))

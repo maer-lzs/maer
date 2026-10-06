@@ -1672,6 +1672,15 @@ final class PodcastSubscriptions: ObservableObject {
         /// not here; none of them was subscribed locally.
         var onServer = 0
         var onServerTitles: [String] = []
+        /// Of the states of those shows: sent to the server, of them the
+        /// finished ones, and kept because the server knew as much or more.
+        var sentToServer = 0
+        var sentFinished = 0
+        var keptOnServer = 0
+        /// States the server did not take (its progress could not be read,
+        /// or the write failed), by the source's show. A second run sends
+        /// them again; what was sent is then the server's and stays out.
+        var notSent: [NotSentGroup] = []
         /// Feeds that parsed into a valid show but brought no episode. They
         /// ARE subscribed. Counted here instead of raising an alert per feed:
         /// a run over hundreds would have shown the last empty one by name
@@ -1719,6 +1728,12 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     struct LookupGroup: Identifiable {
+        var show: String
+        var id: String { show }
+        var count = 0
+    }
+
+    struct NotSentGroup: Identifiable, Equatable {
         var show: String
         var id: String { show }
         var count = 0
@@ -1848,6 +1863,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// locally. A witness hands in its own.
     var serverShows: () -> [PodcastShow] = { PodcastShowSources.absShows() }
 
+    /// The server those shows live on, for their states. A witness hands
+    /// in its own.
+    var serverSide: () -> any ForeignServerSide = { ABSPodcastProvider.shared }
+
     /// The shows of `serverShows` that are not subscribed here, by feed key.
     func serverOnlyShows() -> [String: PodcastShow] {
         let local = Set(shows.map { Self.feedKey($0.feedURL) })
@@ -1949,7 +1968,8 @@ final class PodcastSubscriptions: ObservableObject {
         } else {
             guard !library.states.isEmpty else { return result }
             progress(ImportProgress(done: feeds.count, total: feeds.count, matching: true))
-            applyTheRest(library, run: run, into: &result)
+            let serverPlan = await applyToServer(library, onServer: onServer, run: run, into: &result)
+            applyTheRest(library, run: run, serverPlan: serverPlan, into: &result)
         }
         // Listen log: the import wrote positions past the played threshold.
         // Re-scan the (now-subscribed) shows with full metadata. A
@@ -1962,10 +1982,83 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
+    /// The states of the shows subscribed on Audiobookshelf go to its
+    /// progress. Matched on the feed's guid and enclosure alone, where a
+    /// handle names exactly one episode of the show (the ladder's rule on
+    /// every rung); judged by the one conflict rule against the progress
+    /// read now; written where the import wins. Every one of these states
+    /// is decided here; the returned plan names what found no episode.
+    private func applyToServer(_ library: ForeignLibrary, onServer: [String: PodcastShow],
+                               run: ForeignRun, into result: inout ImportResult) async -> ForeignStateMatcher.Plan {
+        let indices = library.states.indices.filter { index in
+            guard !run.decided.contains(index), let feed = library.states[index].feedURL else { return false }
+            return onServer[Self.feedKey(feed)] != nil
+        }
+        guard !indices.isEmpty else { return .init() }
+        for index in indices { run.decided.insert(index) }
+        // An empty handle is no handle: it would meet every episode
+        // without one.
+        let states = indices.map { index -> ForeignListeningState in
+            var state = library.states[index]
+            if state.episodeGUID?.isEmpty == true { state.episodeGUID = nil }
+            if state.enclosureURL?.isEmpty == true { state.enclosureURL = nil }
+            return state
+        }
+        let server = serverSide()
+        let targets = ForeignServerProgress.targets(shows: Array(onServer.values), handles: server.episodeHandles,
+                                                    feedKeyOf: Self.feedKey)
+        let plan = ForeignStateMatcher.plan(states: states, targets: targets, steps: [.guid, .enclosure],
+                                            feedKeyOf: Self.feedKey)
+        guard !plan.matches.isEmpty else { return plan }
+        var notSent: [String: Int] = [:]
+        var order: [String] = []
+        func missed(_ state: ForeignListeningState) {
+            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
+            if notSent[name] == nil { order.append(name) }
+            notSent[name, default: 0] += 1
+        }
+        defer { result.notSent = order.map { NotSentGroup(show: $0, count: notSent[$0] ?? 0) } }
+        guard let progress = await server.freshEpisodeProgress() else {
+            plan.matches.forEach { missed($0.state) }
+            Logger.rss.notice("FOREIGN server progress not read, not sent=\(plan.matches.count)")
+            return plan
+        }
+        var durations: [String: Double] = [:]
+        for show in onServer.values { for episode in show.episodes { durations[episode.guid] = episode.duration } }
+        for match in plan.matches {
+            let held = durations[match.targetID] ?? 0
+            let duration = held > 0 ? held : (match.state.duration ?? 0)
+            let local = progress[match.targetID].map { ForeignServerProgress.entry($0, duration: duration) }
+            switch ForeignStateMerge.verdict(local: local, foreign: match.state, duration: duration) {
+            case .keep:
+                result.keptOnServer += 1
+            case .adopt(let entry, _):
+                let write = ForeignServerProgress.write(entry, duration: duration)
+                do {
+                    try await server.writeEpisodeProgress(match.targetID, time: write.time, duration: duration,
+                                                          finished: write.finished)
+                    result.sentToServer += 1
+                    if write.finished { result.sentFinished += 1 }
+                } catch {
+                    missed(match.state)
+                    Logger.rss.error("FOREIGN server write failed: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+        }
+        if result.sentToServer > 0 { _ = await server.freshEpisodeProgress() }
+        let (sent, finished, kept) = (result.sentToServer, result.sentFinished, result.keptOnServer)
+        Logger.rss.notice("FOREIGN server sent=\(sent) finished=\(finished) kept=\(kept) notSent=\(notSent.values.reduce(0, +)) unmatched=\(plan.unmatched.count)")
+        return plan
+    }
+
     /// The plan over everything the per-show steps left, and the summary.
-    private func applyTheRest(_ library: ForeignLibrary, run: ForeignRun, into result: inout ImportResult) {
+    /// `serverPlan` adds what the server's shows left unplaced.
+    private func applyTheRest(_ library: ForeignLibrary, run: ForeignRun, serverPlan: ForeignStateMatcher.Plan,
+                              into result: inout ImportResult) {
         let rest = library.states.indices.filter { !run.decided.contains($0) }.map { library.states[$0] }
-        let finalPlan = applyForeignStates(rest, titleStates: library.states, tally: &run.tally)
+        var finalPlan = applyForeignStates(rest, titleStates: library.states, tally: &run.tally)
+        finalPlan.unmatched += serverPlan.unmatched
+        finalPlan.whyUnmatched += serverPlan.whyUnmatched
         let outcome = summarizeForeignStates(final: finalPlan, tally: run.tally)
         result.progressApplied = outcome.applied
         result.finishedApplied = outcome.finished
