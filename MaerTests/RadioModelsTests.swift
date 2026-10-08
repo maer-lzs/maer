@@ -600,6 +600,27 @@ struct RadioStateQueryTests {
         #expect(deduped.contains { $0.id == "4" } && deduped.contains { $0.id == "5" })
     }
 
+    /// Three variants of one station, the last one best: it wins the bundle
+    /// and carries the two others, each once. Measured W-Sammel 11a: the
+    /// earlier loser stands twice, because the new winner takes the old
+    /// winner's variants and adds them again with the old winner. A named
+    /// finding until the form is decided; the case turns red once it holds.
+    @Test("ein spaeterer Gewinner traegt jede Variante einmal (Befund W-Sammel 11a)")
+    func aLaterWinnerCarriesEachVariantOnce() {
+        func st(_ id: String, bitrate: Int) -> RadioStation {
+            RadioStation(id: id, name: "ROCK ANTENNE", streamURL: "https://cdn\(id).example/stream",
+                         faviconURL: nil, homepage: "https://www.rockantenne.de", countryCode: "DE",
+                         tags: [], bitrate: bitrate, codec: "MP3")
+        }
+        let deduped = RadioMapping.dedupeForDisplay([st("a", bitrate: 64), st("b", bitrate: 96), st("c", bitrate: 192)])
+        let winner = deduped.first
+        let variants = winner?.variants?.map(\.id) ?? []
+        #expect(deduped.count == 1 && winner?.id == "c", "the precondition: one bundle, the best wins")
+        withKnownIssue("the earlier loser stands twice among the variants; the form is open") {
+            #expect(variants.sorted() == ["a", "b"], "variants: \(variants)")
+        }
+    }
+
     @Test("e4bd910: rotation — socket constant, same seed identical, new day differs")
     func rotation() {
         func st(_ id: String) -> RadioStation {
