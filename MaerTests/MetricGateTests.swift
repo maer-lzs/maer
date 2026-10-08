@@ -114,6 +114,11 @@ struct MetricGateTests {
         await log.add([Self.record(daysAgo: 400)], now: Self.now)
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent(MetricLog.documentName).path),
                 "an empty list was written over the unreadable file")
+        #expect(await log.records() == .unreadable, "the second read said none yet")
+        // A real delivery is a recovery: the page reads records again.
+        let fresh = Self.record(daysAgo: 1)
+        await log.add([fresh], now: Self.now)
+        #expect(await log.records() == .records([fresh]), "the log stayed unreadable after a real delivery")
     }
 
     @Test("der Empfang abonniert einmal je Prozess", .needsTheSources)

@@ -43,9 +43,15 @@ struct MetricRecordsView: View {
             }
         }
         .task {
+            // Every load sets both, so a file that reads again after a new
+            // delivery takes the note away.
             switch await load() {
-            case .records(let kept): records = kept
-            case .unreadable: unreadable = true
+            case .records(let kept):
+                records = kept
+                unreadable = false
+            case .unreadable:
+                records = []
+                unreadable = true
             }
             loaded = true
         }

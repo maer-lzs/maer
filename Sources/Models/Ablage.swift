@@ -60,7 +60,8 @@ actor Ablage {
     }
 
     /// Read and decode a document. Missing is `.fresh`; unreadable is
-    /// `.corrupt` (file preserved aside, saves of emptiness blocked).
+    /// `.corrupt` (file preserved aside, saves of emptiness blocked), and
+    /// stays `.corrupt` on later reads until a readable file or a real save.
     func load<T: Decodable & Sendable>(_ type: T.Type, name: String) async -> Outcome<T> {
         await flush(name)
         switch CorruptStore.load(type, from: url(for: name), label: "ABLAGE \(name)") {
@@ -71,7 +72,9 @@ actor Ablage {
             corruptNames.remove(name)
             return .loaded(value)
         case .fresh:
-            return .fresh
+            // The unreadable file lies aside and nothing readable was saved
+            // since: the name is still unreadable, not "none yet".
+            return corruptNames.contains(name) ? .corrupt : .fresh
         }
     }
 

@@ -96,7 +96,7 @@ struct MusicViewModelTests {
         #expect(!vm.serverMissingHere, "the page still says no server after the sources changed")
         #expect(controls.pageRequests == [0])
         await vm.sourcesChanged()
-        #expect(controls.pageRequests == [0], "a page with its server must not be asked again on the next change")
+        #expect(controls.pageRequests == [0], "a page with its server was asked again on the next change")
     }
 
     /// The server goes away while a full page stands: the change asks the

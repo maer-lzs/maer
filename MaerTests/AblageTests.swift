@@ -50,6 +50,8 @@ struct AblageTests {
             try await ablage.save(Doc(items: []), name: "doc.json", isEmpty: true)
         }
         #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("doc.json.corrupt").path))
+        // The second read finds no file, and it is still not "none yet".
+        if case .corrupt = await ablage.load(Doc.self, name: "doc.json") {} else { Issue.record("the second read after setting aside said fresh") }
         // A real state is a genuine recovery and passes; the block lifts.
         try await ablage.save(Doc(items: [1]), name: "doc.json")
         #expect(await ablage.load(Doc.self, name: "doc.json").value == Doc(items: [1]))
