@@ -94,6 +94,28 @@ struct SourceLibrariesTests {
         #expect(SourceLibraries.separability(modes: both, known: two) == .possible)
     }
 
+    /// An unreadable stored list is not silently "none": its bytes rest
+    /// under `.corrupt`, it reads as not fetched yet, and only once.
+    @Test("eine unlesbare Bibliotheksliste wird beiseitegelegt und liest sich als noch nicht geholt")
+    func anUnreadableListIsKeptAside() {
+        let key = AppStorageKeys.subsonicLibraries
+        let defaults = UserDefaults.standard
+        let was = defaults.object(forKey: key), aside = defaults.object(forKey: key + ".corrupt")
+        defer {
+            if let was { defaults.set(was, forKey: key) } else { defaults.removeObject(forKey: key) }
+            if let aside { defaults.set(aside, forKey: key + ".corrupt") } else { defaults.removeObject(forKey: key + ".corrupt") }
+        }
+        let broken = Data("not a list".utf8)
+        defaults.set(broken, forKey: key)
+        #expect(AppStorageKeys.subsonicKnownLibraries.isEmpty)
+        #expect(defaults.data(forKey: key + ".corrupt") == broken, "the unreadable list was not kept aside")
+        #expect(defaults.data(forKey: key) == nil, "the key stayed, so every read sets aside and logs again")
+        #expect(AppStorageKeys.subsonicKnownLibraries.isEmpty)
+        // A list the server answers later is read as written.
+        AppStorageKeys.subsonicKnownLibraries = two
+        #expect(AppStorageKeys.subsonicKnownLibraries == two)
+    }
+
     @Test("verschwundene Bibliotheken verlieren ihre Zuordnung")
     func vanishedLibrariesArePruned() {
         let full = SourceLibraryAssignment(byLibrary: ["1": .music, "2": .audiobooks])

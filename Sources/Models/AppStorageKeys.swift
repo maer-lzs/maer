@@ -343,14 +343,22 @@ nonisolated enum AppStorageKeys {
     nonisolated static let subsonicLibraries = "subsonicLibraries"
     nonisolated static let subsonicLibraryAssignment = "subsonicLibraryAssignment"
 
+    /// The libraries the Subsonic server answered last. An unreadable list
+    /// is kept aside (`CorruptStore`, under `.corrupt`) with its line and
+    /// reads as "not fetched yet", like an empty one: the next refresh of
+    /// the server writes it again, and the line says why a tab was missing.
     nonisolated static var subsonicKnownLibraries: [SourceLibrary] {
         get {
-            guard let data = UserDefaults.standard.data(forKey: subsonicLibraries),
-                  let list = try? JSONDecoder().decode([SourceLibrary].self, from: data)
-            else { return [] }
-            return list
+            let outcome = CorruptStore.load([SourceLibrary].self, defaultsKey: subsonicLibraries,
+                                            label: "SUBSONIC known libraries")
+            // The bytes rest under `.corrupt` now; the key goes, so the many
+            // readers of this list do not set aside and log again on every read.
+            if case .corrupt = outcome { UserDefaults.standard.removeObject(forKey: subsonicLibraries) }
+            return outcome.value ?? []
         }
         set {
+            // bearable, because a list of names and ids always encodes; and if
+            // it did not, the next refresh of the server writes it again.
             guard let data = try? JSONEncoder().encode(newValue) else { return }
             UserDefaults.standard.set(data, forKey: subsonicLibraries)
         }

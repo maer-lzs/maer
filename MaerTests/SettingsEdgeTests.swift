@@ -142,5 +142,56 @@ struct SettingsEdgeTests {
         #expect(toggle.contains(".labelStyle(RowLabelStyle())"), "the switch leaves its label to the system")
         #expect(try code("Sources/Views/HintLine.swift").contains(".labelStyle(RowLabelStyle())"), "the hint line leaves its label to the system")
     }
+
+    /// The stacks that host a settings page outside the settings sheet, each
+    /// with where. A stack inside a settings file is presented from the sheet
+    /// and takes the style from there. Both ways: a host missing here, or one
+    /// named here that is gone, turns the fence red.
+    static let stackHosts: [String: String] = [
+        "LibraryView.swift": "the settings sheet",
+        "PodcastsView.swift": "the podcast sources and the access editor of a private feed, opened from the podcast tab",
+        "PodcastShowView.swift": "the access editor of a private feed, opened from its show",
+        "SetupView.swift": "the first screen before any server, with the map of areas and the guides",
+    ]
+
+    /// The first screens: a settings file whose own stack is a root, shown
+    /// before and outside the settings sheet.
+    static let firstScreens = ["SetupView.swift"]
+
+    /// The first view a stack builds, by name; nil without one.
+    nonisolated static func stackRoot(_ body: Substring) -> String? {
+        guard let open = body.firstIndex(of: "{") else { return nil }
+        return body[body.index(after: open)...].firstMatch(of: #/([A-Z][A-Za-z0-9_]*)\s*[({]/#).map { String($0.output.1) }
+    }
+
+    @Test("jeder Stapel ausserhalb des Einstellungsblatts, der eine Seite der Einstellungen zeigt, setzt den Zeilen-Stil", .needsTheSources)
+    func everyStackOfASettingsPageSetsTheStyle() throws {
+        let code = try Self.sources()
+        let settings = try Self.reached(from: "Sources/Views/SettingsView.swift", in: code)
+        var settingsViews: Set<String> = []
+        for path in settings {
+            for match in (code[path] ?? "").matches(of: #/(?:struct|class|enum)\s+([A-Z][A-Za-z0-9_]*)[^{\n]*:[^{\n]*\bView\b/#) {
+                settingsViews.insert(String(match.output.1))
+            }
+        }
+        var hosts: [String: Bool] = [:]
+        for (path, text) in code where path.hasPrefix("Sources/Views/") {
+            let name = (path as NSString).lastPathComponent
+            let first = Self.firstScreens.contains(name)
+            guard first || !settings.contains(path) else { continue }
+            for range in text.ranges(of: "NavigationStack") {
+                guard let body = ABSPodcastRefreshTests.body(of: "NavigationStack", in: String(text[range.lowerBound...])) else { continue }
+                guard first || Self.stackRoot(Substring(body)).map(settingsViews.contains) == true else { continue }
+                let after = text[range.lowerBound...].dropFirst(body.count).prefix(400)
+                hosts[name] = (hosts[name] ?? true) && after.contains(".labelStyle(RowLabelStyle())")
+            }
+        }
+        #expect(Set(hosts.keys) == Set(Self.stackHosts.keys), "the hosts of settings pages outside the sheet changed: \(hosts.keys.sorted())")
+        #expect(hosts.filter { !$0.value }.isEmpty, "a stack of a settings page leaves the label to the system: \(hosts.filter { !$0.value }.keys.sorted())")
+        // Calibration: the root is the first view built, not a modifier.
+        #expect(Self.stackRoot("NavigationStack { PodcastSourceView() }") == "PodcastSourceView")
+        #expect(Self.stackRoot("NavigationStack {\n  SettingsView(coordinator: c)\n}") == "SettingsView")
+        #expect(Self.stackRoot("NavigationStack { Form { Section {} } }") == "Form")
+    }
 }
 #endif

@@ -58,6 +58,10 @@ struct SetupView: View {
                 .accessibilityIdentifier("start-serverless")
             }
         }
+        // The first screen carries the rows of the settings (the map of
+        // areas, the guides) outside the settings sheet: they keep the
+        // title's edge at an accessibility size, as there.
+        .labelStyle(RowLabelStyle())
     }
 }
 

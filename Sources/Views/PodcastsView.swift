@@ -171,6 +171,9 @@ struct PodcastsView: View {
 
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
+                // A settings page outside the settings sheet: its rows keep
+                // the title's edge at an accessibility size, as there.
+                .labelStyle(RowLabelStyle())
                 .followsAppearanceChoice()
         }
         .alert("Enter new link", isPresented: Binding(
@@ -190,6 +193,7 @@ struct PodcastsView: View {
         }
         .sheet(item: $signInTarget) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
+                .labelStyle(RowLabelStyle())
                 .followsAppearanceChoice()
         }
         .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
