@@ -83,6 +83,55 @@ struct SubscriptionOwnerTests {
         #expect(sorted(await rig.store().shows) == ofA)
     }
 
+    @Test("Zeilen, die dieser Bau nicht liest, ruhen mit A, stehen nie unter B und kommen auf dem Rueckweg ungelesen zurueck")
+    func unreadRowsRestWithTheirAccount() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let moor = Self.show("moor", episodes: 2)
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([moor])
+        // A show of a later form with its episode, and an episode of a later
+        // form under a show this build reads.
+        let later = Data("a show in a form of a later build".utf8)
+        let laterEpisode = Data("an episode in a form of a later build".utf8)
+        let connection = try rig.database.connection()
+        _ = try await connection.run("INSERT INTO show (id, position, payload) VALUES (?, ?, ?)",
+                                     [.text("feed:later"), .integer(9), .blob(later)])
+        _ = try await connection.run("INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, ?, ?, ?, ?)",
+                                     [.text("later-1"), .text("feed:later"), .integer(0), .real(1), .blob(laterEpisode)])
+        _ = try await connection.run("INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, ?, ?, ?, ?)",
+                                     [.text("later-2"), .text(moor.id), .integer(5), .real(2), .blob(laterEpisode)])
+        func undecoded() throws -> PodcastRowStore.RawRows {
+            try PodcastRowStore.undecodedNow(reader: try #require(try rig.database.readerNow()))
+        }
+        let before = try undecoded()
+        #expect(before.shows.map(\.id) == ["feed:later"] && before.episodes.map(\.guid) == ["later-1", "later-2"],
+                "the precondition: one show and two episodes unread")
+        let subs = await rig.store()
+        #expect(subs.shows.map(\.title) == ["moor"])
+        #expect(subs.follow(owner: "account-a"))
+        // The unread rows are read off the main actor: the first round holds,
+        // a later one hands over.
+        #expect(!subs.follow(owner: "account-b"), "the hand-over read every episode on the main actor")
+        var handed = false
+        for _ in 0..<100 where !handed {
+            try await Task.sleep(for: .milliseconds(20))
+            handed = subs.follow(owner: "account-b")
+        }
+        #expect(handed, "the hand-over never came after the read")
+        await subs.awaitPendingWrites()
+        let shelf = try #require(rig.database.restingShelf)
+        let rest = try #require(try shelf.rest(PodcastSubscriptions.Resting.self, of: PodcastSubscriptions.shelfFamily, owner: "account-a"))
+        #expect(rest.unread == before, "A's unread rows did not rest with A")
+        #expect(try undecoded().isEmpty, "A's unread rows stand under B")
+        #expect(subs.shows.isEmpty)
+
+        #expect(subs.follow(owner: "account-a"))
+        await subs.awaitPendingWrites()
+        #expect(try undecoded() == before, "A's unread rows did not come back as they were")
+        #expect(subs.startIncomplete, "this process takes its rows for whole after rows came back unread")
+        #expect(sorted(await rig.store().shows) == [moor], "the way back lost A's show")
+    }
+
     @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Sendung von A, A's bleiben bei A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = try rig()

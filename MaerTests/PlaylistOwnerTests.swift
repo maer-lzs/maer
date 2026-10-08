@@ -298,11 +298,16 @@ struct PlaylistOwnerTests {
             // The rest is one file per account: no second file reads as an owner.
             #expect(try rig.shelf.owners(of: "playlists") == ["account-a"])
 
-            // The way back: the row comes back as it was, read as skipped.
-            #expect(store.follow(owner: "account-a"))
-            await store.awaitPendingWrites()
+            // The way back, from a run that started under B and read every
+            // row: the row comes back as it was, and this run knows its rows
+            // hold more than it read.
+            let underB = MaerPlaylists(database: database)
+            #expect(!underB.startIncomplete, "the precondition: the run under B read every row")
+            #expect(underB.follow(owner: "account-a"))
+            await underB.awaitPendingWrites()
             try await Task.sleep(for: .milliseconds(100))
             #expect(try undecoded(database) == ["later-form": Self.laterForm], "A's unread row did not come back")
+            #expect(underB.startIncomplete, "this run takes its rows for whole after a row came back unread")
             let again = MaerPlaylists(database: database)
             #expect(again.startIncomplete && again.playlists.map(\.name) == ["Von A"], "the way back lost A's list or its unread row")
         }

@@ -46,6 +46,14 @@ final class RowChain<Snapshot> {
     /// later read that sees every row does. A question that needs every
     /// row known asks this, not `startReadFailed`.
     private(set) var startIncomplete = false
+
+    /// Rows came back to the table that this build does not read (a
+    /// hand-over brought an account's rows back as they were): the rows
+    /// hold more than the memory, as after a start that missed some.
+    func noteRowsNotRead() {
+        startIncomplete = true
+    }
+
     /// The store's adoption of rows read after a failed start: it takes the
     /// rows into its memory by its rule. A chain without it holds every
     /// write over unread rows.

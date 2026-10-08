@@ -79,6 +79,8 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     var startReadFailed: Bool { chain.startReadFailed }
     /// Whether the start missed rows (`RowChain.startIncomplete`).
     var startIncomplete: Bool { chain.startIncomplete }
+    /// Rows came back that this build does not read (`RowChain.noteRowsNotRead`).
+    func noteRowsNotRead() { chain.noteRowsNotRead() }
     /// The store's adoption of rows read after a failed start: it takes the
     /// rows into its memory by its rule (`union` unless it has its own).
     /// Every store sets it at its start; a keeper without it holds every

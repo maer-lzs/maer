@@ -432,7 +432,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// it covers an empty list only when the unsubscribe left it empty.
     /// `take` gives the list when the write runs in the chain (the stock of
     /// that moment, never a picture frozen at the call).
-    private func persist(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> [PodcastShow]?) {
+    private func persist(emptying requested: RowEmptying, also: [SQLiteConnection.Statement] = [],
+                         _ take: @escaping @MainActor () -> [PodcastShow]?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
         if requested == .allowed && emptying == .refused { narrowedPermission = true }
         // Only the rows a change touched go to the database, in the order
@@ -474,9 +475,11 @@ final class PodcastSubscriptions: ObservableObject {
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             // While a replacement is open, every write carries its mark.
             let mark = self.follower?.mark()
-            guard !diff.isEmpty || mark != nil else { return .skipped }
+            guard !diff.isEmpty || mark != nil || !also.isEmpty else { return .skipped }
             let started = Date()
-            let counts = try await rows.apply(diff, also: mark?.statements ?? [])
+            // `also`: rows carried as they are at a hand-over, in the same
+            // transaction as the diff and the mark.
+            let counts = try await rows.apply(diff, also: also + (mark?.statements ?? []))
             mark?.landed()
             let ms = Int(Date().timeIntervalSince(started) * 1000)
             Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
@@ -514,6 +517,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// Where this store's rows and settings keys live, so a test can show
     /// that the app's store takes the app's.
     var _testDatabase: MaerDatabase { database }
+
+    /// Whether the rows hold more than this run read (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { rowChain.startIncomplete }
     var _testDefaults: UserDefaults { defaults }
     /// What the rows hold, after `awaitPendingWrites`.
     func _testRowCounts() async -> PodcastRowStore.Counts? {
@@ -1500,7 +1506,51 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated struct Resting: Codable, Equatable {
         var shows: [PodcastShow]
         var waiting: Data?
+        /// Rows of the account this build could not decode, as stored. They
+        /// rest with the account and come back to its rows unread.
+        var unread: PodcastRowStore.RawRows? = nil
     }
+
+    /// The rows this build cannot decode, as stored; nil when there are
+    /// none. Only a start that missed rows, or rows that came back, can
+    /// leave such rows. Reading them decodes every episode, so it runs off
+    /// the main actor: until it has run, this throws and the hand-over
+    /// holds, and the next round finds them read.
+    private func undecodedRows() throws -> PodcastRowStore.RawRows? {
+        guard rowChain.startIncomplete else { return nil }
+        if let rawRows { return rawRows.isEmpty ? nil : rawRows }
+        if rawReading == nil {
+            let database = self.database
+            rawReading = Task { [weak self] in
+                let read = await Self.readUndecoded(database)
+                guard let self else { return }
+                self.rawReading = nil
+                switch read {
+                case .success(let raw): self.rawRows = raw
+                case .failure(let error):
+                    Logger.rss.error("SUBSTORE unread rows not read: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+        }
+        Logger.rss.notice("SUBSTORE owner held: the unread rows are being read")
+        throw RawRowsNotReadYet()
+    }
+
+    /// The read itself, off the caller's executor (`@concurrent`): it
+    /// decodes every episode.
+    @concurrent nonisolated private static func readUndecoded(_ database: MaerDatabase) async -> Result<PodcastRowStore.RawRows, Error> {
+        do {
+            guard let reader = try database.readerNow() else { return .success(.init()) }
+            return .success(try PodcastRowStore.undecodedNow(reader: reader))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// The undecodable rows as read off the main actor; nil until read.
+    private var rawRows: PodcastRowStore.RawRows?
+    private var rawReading: Task<Void, Never>?
+    private struct RawRowsNotReadYet: Error {}
 
     /// Hands the subscriptions to the account signed in now (`scope`) by the
     /// shelf's one rule (`RestingShelf.handOver`). False while that cannot
@@ -1516,7 +1566,13 @@ final class PodcastSubscriptions: ObservableObject {
             landed: { [database] name in
                 try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
             },
-            current: { Resting(shows: shows, waiting: try waitingFeeds()) },
+            current: {
+                // The picture of the holder's stock is taken here, at the
+                // lay, with the rows this build cannot read.
+                let unread = try undecodedRows()
+                Logger.rss.notice("SUBSTORE owner rest taken at=\(Date().timeIntervalSince1970, privacy: .public) shows=\(self.shows.count) unreadShows=\(unread?.shows.count ?? 0) unreadEpisodes=\(unread?.episodes.count ?? 0)")
+                return Resting(shows: shows, waiting: try waitingFeeds(), unread: unread)
+            },
             replace: { rest, _, _ in try replace(with: rest) }) else { return false }
         switch step {
         case .kept: return true
@@ -1541,8 +1597,18 @@ final class PodcastSubscriptions: ObservableObject {
         defaults.set(waiting, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         shows = incoming?.shows ?? []
-        // The owner changed, and the shows before rest on the shelf.
-        save(emptying: .allowed)
+        // The owner changed, and the shows before rest on the shelf, the
+        // rows this build cannot read with them. In the same transaction as
+        // the new shows and the mark: those rows leave the tables, and the
+        // unread rows of the incoming account come back as they are.
+        let carried = PodcastRowStore.carriedRows(leaving: try undecodedRows() ?? .init(), coming: incoming?.unread ?? .init(),
+                                                  keptShows: Set(shows.map(\.id)),
+                                                  keptEpisodes: Set(shows.flatMap { $0.episodes.map(\.guid) }))
+        save(emptying: .allowed, also: carried)
+        // What stands unread in the rows now is what came back; those are
+        // rows this build does not read.
+        rawRows = incoming?.unread ?? .init()
+        if !(incoming?.unread?.isEmpty ?? true) { rowChain.noteRowsNotRead() }
     }
 
     /// Normalized URLs the USER unsubscribed. The only removes the
@@ -2537,7 +2603,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// main actor: a visible hitch on subscribe/refresh/import.
     /// `emptying` is `.refused` for every path but the person's own
     /// unsubscribe.
-    private func save(emptying: RowEmptying = .refused) {
+    private func save(emptying: RowEmptying = .refused, also: [SQLiteConnection.Statement] = []) {
         // The central funnel. Persisting before the bootstrap
         // finished would write the still-empty RAM state over the good file
         // (the cold-start BGAppRefresh race). The mutation stays in RAM; the
@@ -2547,7 +2613,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.error("SUBSTORE save SKIPPED before bootstrap (cold-start race trapped)")
             return
         }
-        persist(emptying: emptying) { [weak self] in self?.shows }
+        persist(emptying: emptying, also: also) { [weak self] in self?.shows }
     }
 
     private func normalizedFeedURL(_ raw: String) -> URL? {

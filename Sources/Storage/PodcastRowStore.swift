@@ -106,6 +106,86 @@ actor PodcastRowStore {
         return (shows, skipped)
     }
 
+    /// Rows this build cannot decode, as stored: a show row whose payload
+    /// does not decode, every episode row of such a show, and an episode row
+    /// whose own payload does not decode. A hand-over carries them as they
+    /// are, so a later build reads them under the account they belong to.
+    nonisolated struct RawRows: Codable, Equatable, Sendable {
+        struct Show: Codable, Equatable, Sendable { var id: String; var position: Int; var payload: Data }
+        struct Episode: Codable, Equatable, Sendable {
+            var guid: String; var showId: String; var position: Int; var pubDate: Double; var payload: Data
+        }
+        var shows: [Show] = []
+        var episodes: [Episode] = []
+        var isEmpty: Bool { shows.isEmpty && episodes.isEmpty }
+    }
+
+    /// The undecodable rows at this moment, through a reader of its own.
+    /// EMPTY when the tables do not exist; THROWS when the read fails.
+    nonisolated static func undecodedNow(reader: SQLiteReader) throws -> RawRows {
+        let tables = Set(try reader.query("SELECT name FROM sqlite_master WHERE type = 'table'").compactMap { $0["name"]?.string })
+        guard tables.contains("show") else { return RawRows() }
+        let decoder = JSONDecoder()
+        var raw = RawRows()
+        var rawShows: Set<String> = []
+        for row in try reader.query("SELECT id, position, payload FROM show") {
+            guard let id = row["id"]?.string, let data = row["payload"]?.data else { continue }
+            do {
+                _ = try decoder.decode(PodcastShow.self, from: data)
+            } catch {
+                raw.shows.append(.init(id: id, position: Int(row["position"]?.int64 ?? 0), payload: data))
+                rawShows.insert(id)
+            }
+        }
+        guard tables.contains("episode") else { return raw }
+        for row in try reader.query("SELECT guid, show_id, position, pub_date, payload FROM episode") {
+            guard let guid = row["guid"]?.string, let showId = row["show_id"]?.string,
+                  let data = row["payload"]?.data else { continue }
+            let episode = RawRows.Episode(guid: guid, showId: showId, position: Int(row["position"]?.int64 ?? 0),
+                                          pubDate: row["pub_date"]?.double ?? 0, payload: data)
+            if rawShows.contains(showId) {
+                raw.episodes.append(episode)
+                continue
+            }
+            do {
+                _ = try decoder.decode(PodcastEpisode.self, from: data)
+            } catch {
+                raw.episodes.append(episode)
+            }
+        }
+        raw.shows.sort { $0.id < $1.id }
+        raw.episodes.sort { $0.guid < $1.guid }
+        return raw
+    }
+
+    /// The statements that carry raw rows at a hand-over, after the diff of
+    /// the same write: `leaving` leave the tables, `coming` come back as
+    /// they were (shows before their episodes), never over a show or an
+    /// episode the new stock holds (`keptShows`, `keptEpisodes`). An
+    /// unread episode may stand under a show that is read: it moves by its
+    /// own guid, not by its show.
+    nonisolated static func carriedRows(leaving: RawRows, coming: RawRows, keptShows: Set<String>,
+                                        keptEpisodes: Set<String>) -> [SQLiteConnection.Statement] {
+        var out: [SQLiteConnection.Statement] = []
+        for episode in leaving.episodes where !keptEpisodes.contains(episode.guid) {
+            out.append(.init("DELETE FROM episode WHERE guid = ?", [.text(episode.guid)]))
+        }
+        for show in leaving.shows where !keptShows.contains(show.id) {
+            out.append(.init("DELETE FROM show WHERE id = ?", [.text(show.id)]))
+        }
+        for show in coming.shows where !keptShows.contains(show.id) {
+            out.append(.init("INSERT OR REPLACE INTO show (id, position, payload) VALUES (?, ?, ?)",
+                             [.text(show.id), .integer(Int64(show.position)), .blob(show.payload)]))
+        }
+        for episode in coming.episodes where !keptEpisodes.contains(episode.guid) {
+            out.append(.init("""
+                INSERT OR REPLACE INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, ?, ?, ?, ?)
+                """, [.text(episode.guid), .text(episode.showId), .integer(Int64(episode.position)),
+                      .real(episode.pubDate), .blob(episode.payload)]))
+        }
+        return out
+    }
+
     /// Replaces the stock: the import from the document, in one transaction.
     @discardableResult
     func replaceAll(_ shows: [PodcastShow]) async throws -> Counts {

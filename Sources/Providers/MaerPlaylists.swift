@@ -163,6 +163,9 @@ final class MaerPlaylists: ObservableObject {
     /// none. Throws when the read fails, so a hand-over holds instead of
     /// leaving them under the next account.
     private func undecodedRows() throws -> [String: Data]? {
+        // Only a start that missed rows, or rows that came back, can leave
+        // such rows; otherwise there is nothing to read.
+        guard keeper.startIncomplete else { return nil }
         let rows = try keeper.undecodedNow()
         return rows.isEmpty ? nil : rows
     }
@@ -211,6 +214,8 @@ final class MaerPlaylists: ObservableObject {
         let carried = keeper.carriedRows(leaving: try undecodedRows() ?? [:], coming: incoming?.unread ?? [:],
                                          kept: Set(playlists.map(\.id)))
         save(emptying: .allowed, also: carried)
+        // The rows that came back are rows this build does not read.
+        if !(incoming?.unread ?? [:]).isEmpty { keeper.noteRowsNotRead() }
     }
 
     var totalEntries: Int { playlists.reduce(0) { $0 + $1.itemIds.count } }
