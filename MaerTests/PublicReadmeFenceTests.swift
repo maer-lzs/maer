@@ -528,29 +528,6 @@ struct PublicReadmeFenceTests {
     /// end user licence names its licensor under its own heading.
     static let licenceDocuments = ["docs/EULA.md"]
 
-    /// The path below the repository root, built from the path COMPONENTS
-    /// after both sides are resolved.
-    ///
-    /// **Measured at another machine's gate, not here:** the first version
-    /// cut the root off with a string replacement. In a worktree under
-    /// `/private/tmp` the file's own path carries the resolved `/private`
-    /// while the root from `#filePath` carries the symlink form, so the
-    /// replacement matched in the MIDDLE and produced `/privatedocs/EULA.md`.
-    /// A name nobody has means the licence exception does not match it, and
-    /// the fence then reports the one name that has to stand there. The fence
-    /// was green in the tree it was written in and red where releases are
-    /// measured.
-    static func relativePath(of url: URL) -> String {
-        let root = SourceTree.root.resolvingSymlinksInPath().pathComponents
-        let file = url.resolvingSymlinksInPath().pathComponents
-        guard file.count > root.count, Array(file.prefix(root.count)) == root else {
-            // Not below the root: say the whole path rather than a plausible
-            // fragment, because a wrong name is worse than a long one.
-            return url.path
-        }
-        return file.dropFirst(root.count).joined(separator: "/")
-    }
-
     static func workshopTexts() throws -> [(name: String, text: String)] {
         var found: [(String, String)] = []
         for folder in ["docs", "tools", "scripts", "MaerTests"] {
@@ -569,7 +546,7 @@ struct PublicReadmeFenceTests {
                           .contains(url.pathExtension),
                       let text = try? String(contentsOf: url, encoding: .utf8)
                 else { continue }
-                found.append((relativePath(of: url), text))
+                found.append((SourceTree.relativePath(of: url), text))
             }
         }
         return found

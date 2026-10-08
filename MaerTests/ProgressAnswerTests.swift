@@ -59,8 +59,17 @@ struct ProgressAnswerTests {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/LibraryViewModel.swift"), encoding: .utf8))
         let squeezed = code.filter { !$0.isWhitespace }
-        #expect(!squeezed.contains("fetchAllProgress())??[:]"), "a load path answers a failure with an empty map")
         #expect(!squeezed.contains("progressTask)??[:]"))
+        // Every caller of the question, not one file: a failure answered with
+        // an empty map wipes the progress wherever it lands (the start page's
+        // music rows had exactly this form).
+        let callers = ProjectFileIntegrityTests.sourceTexts().filter { $0.text.contains("fetchAllProgress()") }
+        #expect(Set(["LibraryViewModel.swift", "HomeView.swift"]).isSubset(of: callers.map(\.name)),
+                "the fence does not read the callers it is about: \(callers.map(\.name))")
+        let empty = callers.filter { file in
+            SyncContractFenceTests.stripped(file.text).filter { !$0.isWhitespace }.contains("fetchAllProgress())??[:]")
+        }.map(\.name)
+        #expect(empty.isEmpty, "a caller answers a failure with an empty map: \(empty)")
         #expect(code.components(separatedBy: "ProgressAnswer.of(").count - 1 == 3, "the three load paths ask the one rule")
         // The secondary sources keep what their entries carried.
         #expect(code.contains("ProgressAnswer.of(fetched, known: known)"))

@@ -348,18 +348,24 @@ struct ImageCachePersistentTests {
         let walker = try #require(FileManager.default.enumerator(at: tests, includingPropertiesForKeys: nil))
         var sweeps = 0
         var complete: [String] = []
+        // Every call, with or without `await`: the sweep returns a task and
+        // discards it quietly, so `_ = …` or a bare call sweeps just the same.
+        // The name is joined here so this line does not count itself.
+        let call = "ImageCache.shared." + "performMaintenance("
         for case let url as URL in walker where url.pathExtension == "swift" {
             let lines = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
                 .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
             for (index, line) in lines.enumerated() {
                 let code = line.trimmingCharacters(in: .whitespaces)
-                guard code.hasPrefix("await ImageCache.shared.performMaintenance(") else { continue }
+                guard code.contains(call) else { continue }
                 sweeps += 1
                 if Self.sweepIsIncomplete(code, before: lines[max(0, index - 6)..<index]) { continue }
                 complete.append("\(url.lastPathComponent): \(code)")
             }
         }
-        #expect(sweeps >= 8, "the fence found only \(sweeps) sweeps")
+        // Exact, not a floor: a new sweep names itself here, and a lost one
+        // is a witness that stopped sweeping.
+        #expect(sweeps == 9, "the fence counts \(sweeps) sweeps of the shared cache, the stock is 9")
         #expect(complete.isEmpty, "a sweep of the shared cache that may demote the neighbours: \(complete)")
         // Calibration: the asserted form passes, an unasserted one does not.
         #expect(Self.sweepIsIncomplete("x(knowsAll: w.knowsAll)", before: ["#expect(!w.knowsAll)"]))

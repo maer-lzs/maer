@@ -53,6 +53,30 @@ nonisolated enum SourceTree {
     static var hasTests: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("MaerTests").path)
     }
+
+    /// The path below the repository root, built from the path COMPONENTS
+    /// after both sides are resolved. The one way the tests name a walked
+    /// file; `RelativePathFenceTests` holds that no test cuts a path by text.
+    ///
+    /// **Measured at another machine's gate, not here:** the first version
+    /// cut the root off with a string replacement. In a worktree under
+    /// `/private/tmp` the file's own path carries the resolved `/private`
+    /// while the root from `#filePath` carries the symlink form, so the
+    /// replacement matched in the MIDDLE and produced `/privatedocs/EULA.md`.
+    /// A name nobody has means the licence exception does not match it, and
+    /// the fence then reports the one name that has to stand there. The fence
+    /// was green in the tree it was written in and red where releases are
+    /// measured.
+    static func relativePath(of url: URL) -> String {
+        let root = Self.root.resolvingSymlinksInPath().pathComponents
+        let file = url.resolvingSymlinksInPath().pathComponents
+        guard file.count > root.count, Array(file.prefix(root.count)) == root else {
+            // Not below the root: say the whole path rather than a plausible
+            // fragment, because a wrong name is worse than a long one.
+            return url.path
+        }
+        return file.dropFirst(root.count).joined(separator: "/")
+    }
 }
 
 extension Trait where Self == ConditionTrait {

@@ -88,10 +88,32 @@ struct SharedCasesFenceTests {
         return walk.compactMap { $0 as? URL }.filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
     }
 
+    /// `area/name.json` of every `SharedCases.cases("name", area: …)` in the
+    /// witnesses; the area defaults to `abos`, as in `cases`.
+    static func namedFiles() throws -> Set<String> {
+        let tests = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        guard let walk = FileManager.default.enumerator(at: tests, includingPropertiesForKeys: nil) else { return [] }
+        var named: Set<String> = []
+        for case let url as URL in walk where url.pathExtension == "swift" {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            for match in code.matches(of: #/SharedCases\.cases\("([^"]+)"(?:, area: "([^"]+)")?\)/#) {
+                named.insert("\(match.output.2.map(String.init) ?? "abos")/\(match.output.1).json")
+            }
+        }
+        return named
+    }
+
     @Test("Zaun: jede gemeinsame Falldatei traegt Kopf (regel, pin, form) und Faelle mit slug und expect, slugs einmalig, Zahlen ganz", .needsTheTests)
     func everySharedFileKeepsTheForm() throws {
         let files = try Self.files()
-        #expect(files.count >= 4, "the shared files are not where the fence looks: \(files.count)")
+        // The precondition names what the fence must see: exactly the files
+        // the witnesses ask for, both ways. A floor (it was `>= 4` with 13
+        // files) let twelve vanish unseen.
+        let found = Set(files.map { "\($0.deletingLastPathComponent().lastPathComponent)/\($0.lastPathComponent)" })
+        let named = try Self.namedFiles()
+        #expect(!named.isEmpty, "the fence found no witness that asks for a shared file")
+        #expect(named.subtracting(found).isEmpty, "a witness asks for a file that is not there: \(named.subtracting(found).sorted())")
+        #expect(found.subtracting(named).isEmpty, "a shared file no witness reads: \(found.subtracting(named).sorted())")
         for url in files {
             let name = url.lastPathComponent
             let data = try Data(contentsOf: url)

@@ -59,9 +59,9 @@ struct MixedRowGlyphTests {
         let walker = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
         while let url = walker?.nextObject() as? URL {
             guard url.pathExtension == "swift" else { continue }
-            // Both sides resolved: the walker hands out /private/tmp where
-            // the root says /tmp, and the bare replace then kept the whole path.
-            let path = "Sources/" + url.resolvingSymlinksInPath().path.replacingOccurrences(of: root.resolvingSymlinksInPath().path + "/", with: "")
+            // The one way to name a walked file (`SourceTree.relativePath`):
+            // the walker hands out /private/tmp where the root says /tmp.
+            let path = SourceTree.relativePath(of: url)
             files[path] = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
         }
         return files

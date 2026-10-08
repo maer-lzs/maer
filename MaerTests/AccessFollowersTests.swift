@@ -571,7 +571,7 @@ struct AccessFollowersTests {
                     || $0.contains("AppStorageKeys.maerSyncURL,")
             }.count
             if count > 0 {
-                found[url.resolvingSymlinksInPath().path.replacingOccurrences(of: root.resolvingSymlinksInPath().path + "/", with: "")] = count
+                found[SourceTree.relativePath(of: url)] = count
             }
         }
         return found
