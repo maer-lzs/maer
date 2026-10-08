@@ -180,13 +180,7 @@ actor Ablage {
             if FileManager.default.fileExists(atPath: target.path) {
                 try FileManager.default.removeItem(at: target)
             }
-            if liesAside(name) {
-                let retired = asideURL(for: name).appendingPathExtension("removed")
-                if FileManager.default.fileExists(atPath: retired.path) {
-                    try FileManager.default.removeItem(at: retired)
-                }
-                try FileManager.default.moveItem(at: asideURL(for: name), to: retired)
-            }
+            try retireAside(name)
         } catch {
             Logger.library.error("ABLAGE remove failed name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
             throw AblageError.write(name: name, reason: String(describing: error))
@@ -229,10 +223,29 @@ actor Ablage {
         try handle.write(contentsOf: bytes)
     }
 
-    /// Removes a grown file; a missing one is already the goal.
+    /// Removes a grown file; a missing one is already the goal. Its file
+    /// aside goes with it, so the synchronous readers (`loadNow`, which ask
+    /// the file aside) read the name as none yet, not as unreadable.
     nonisolated func removeNow(name: String) {
         // bearable, because a missing file already is the goal
         try? FileManager.default.removeItem(at: url(for: name))
+        do {
+            try retireAside(name)
+        } catch {
+            Logger.library.error("ABLAGE aside not retired name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// The file aside of a name moves to `.corrupt.removed` (an older one
+    /// there is replaced): kept for forensics, no longer the sign that the
+    /// name is unreadable. The one way a removal retires it.
+    nonisolated func retireAside(_ name: String) throws {
+        guard liesAside(name) else { return }
+        let retired = asideURL(for: name).appendingPathExtension("removed")
+        if FileManager.default.fileExists(atPath: retired.path) {
+            try FileManager.default.removeItem(at: retired)
+        }
+        try FileManager.default.moveItem(at: asideURL(for: name), to: retired)
     }
 
     /// Temporary file beside the target, then a rename: a reader never

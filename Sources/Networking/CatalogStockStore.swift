@@ -89,14 +89,25 @@ nonisolated struct CatalogStockStore: Sendable {
     }
 
     /// Removes every kept stock. Returns how many files went, so the lever
-    /// can say what it emptied instead of claiming success.
+    /// can say what it emptied instead of claiming success. A stock's file
+    /// aside goes with it (`Ablage.retireAside`), else the surface read
+    /// "undecodable" for ever after the lever, not "missing".
     @discardableResult
-    func clear() -> Int {
+    func clear(in directory: URL = CatalogStockStore.directory) -> Int {
         let files = (try? FileManager.default.contentsOfDirectory(
-            at: Self.directory, includingPropertiesForKeys: nil)) ?? []
+            at: directory, includingPropertiesForKeys: nil)) ?? []
         var gone = 0
         for file in files where file.pathExtension == "json" {
             if (try? FileManager.default.removeItem(at: file)) != nil { gone += 1 }
+        }
+        let ablage = Ablage(directory: directory)
+        for file in files where file.pathExtension == "corrupt" {
+            let name = file.deletingPathExtension().lastPathComponent
+            do {
+                try ablage.retireAside(name)
+            } catch {
+                Logger.library.error("CATALOG stock aside not retired name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
+            }
         }
         return gone
     }

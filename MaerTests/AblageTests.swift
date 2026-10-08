@@ -88,6 +88,28 @@ struct AblageTests {
         #expect(await Ablage(directory: dir).load(Doc.self, name: "doc.json").value == Doc(items: [2]))
     }
 
+    /// The synchronous removal and the lever that empties the catalog stocks
+    /// retire the file aside as `remove` does: the name reads as none yet
+    /// afterwards, not as unreadable for ever.
+    @Test("removeNow und das Leeren der Katalog-Bestaende nehmen die Beiseite-Datei mit, der Name liest sich danach als neu")
+    func theSynchronousRemovalsRetireTheFileAside() async throws {
+        let dir = scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try "not json".write(to: dir.appendingPathComponent("grown.json"), atomically: true, encoding: .utf8)
+        if case .corrupt = Ablage(directory: dir).loadNow(Doc.self, name: "grown.json") {} else { Issue.record("the precondition: unreadable") }
+        Ablage(directory: dir).removeNow(name: "grown.json")
+        if case .fresh = Ablage(directory: dir).loadNow(Doc.self, name: "grown.json") {} else { Issue.record("after removeNow the name stayed unreadable") }
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("grown.json.corrupt.removed").path),
+                "the file aside was not kept for forensics")
+        // The lever over a folder of stocks: a stock and its file aside.
+        try "not json".write(to: dir.appendingPathComponent("librivox.json"), atomically: true, encoding: .utf8)
+        if case .corrupt = Ablage(directory: dir).loadNow(CatalogStock.self, name: "librivox.json") {} else { Issue.record("the precondition: unreadable stock") }
+        try "{}".write(to: dir.appendingPathComponent("archive.json"), atomically: true, encoding: .utf8)
+        #expect(CatalogStockStore.shared.clear(in: dir) == 1, "the lever counts the stock files it removed")
+        if case .fresh = Ablage(directory: dir).loadNow(CatalogStock.self, name: "librivox.json") {} else { Issue.record("after the lever the stock stayed unreadable") }
+    }
+
     @Test("Ein Schreibfehler wirft und verschwindet nicht")
     func writeFailureThrows() async throws {
         // A FILE where the store's directory should be: no temporary file
