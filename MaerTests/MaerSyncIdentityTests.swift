@@ -455,6 +455,98 @@ struct MaerSyncIdentityTests {
         #expect(transport.fetches.count > before, "the control: an announcement of B's line fetches")
     }
 
+    /// The line's history (failed opens, the last try, the paths that
+    /// failed) belongs to the account it was opened for: B does not wait
+    /// out A's failures.
+    @Test("ein Kontowechsel faengt die Geschichte der Leitung neu an, B wartet nicht auf die Fehlschlaege von A")
+    func aNewAccountDoesNotWaitOutTheOldLine() async throws {
+        let suite = "maer-identity-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        announcer.failOpens = true
+        let box = Box()
+        box.access = Self.accessA
+        box.identity = Self.identityA
+        let session = MaerSyncSession(transport: transport, announcer: announcer,
+                                      access: { box.access }, identity: { box.identity },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        await session.refresh(by: "witness")
+        await settle { session.refreshSettled }
+        #expect(session.openFailures >= 1, "the precondition: A's line never stood")
+        let opensAsA = announcer.opens
+        await session.refresh(by: "witness")
+        await settle { session.refreshSettled }
+        #expect(announcer.opens == opensAsA, "the precondition: A waits after its failure")
+
+        box.identity = Self.identityB
+        box.access = Self.accessB
+        session.reloadAccess()
+        #expect(session.openFailures == 0, "B starts with A's failures")
+        await session.refresh(by: "witness")
+        await settle { session.refreshSettled }
+        #expect(announcer.opens > opensAsA, "B waited out A's failures instead of opening its own line")
+    }
+
+    /// The fields of the line live in one value, and the switch resets the
+    /// value, so a field added later cannot be forgotten in the reset.
+    @Test("der Kontowechsel setzt die ganze Geschichte der Leitung zurueck, nicht einzelne Felder", .needsTheSources)
+    func theSwitchResetsTheWholeLine() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
+        let start = try #require(code.range(of: "private func switchIdentity("))
+        let end = try #require(code[start.upperBound...].range(of: "private func "))
+        let body = code[start.lowerBound..<end.lowerBound]
+        #expect(body.contains("lineHistory = LineHistory()"), "the switch leaves the old line's history standing")
+        for field in ["openFailures", "lastOpenAttempt", "waitSaidAt", "failedPaths"] {
+            // Inside the value the fields are plain `var`; on the carrier
+            // they are read through it (`{ get … }`). A `private` declaration
+            // without that brace is a stored copy beside the value.
+            let stored = code.split(separator: "\n").filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return trimmed.hasPrefix("private") && trimmed.contains("var \(field)") && !trimmed.contains("{")
+            }
+            #expect(stored.isEmpty, "\(field) is stored beside the line's history again: \(stored)")
+        }
+    }
+
+    /// The pending bodies a write loop clears. Only the body that was sent
+    /// may go: a later one queued while the write was on its way stays.
+    nonisolated static let pendingNames = ["playlistsPending", "choicesPending", "family.pending"]
+
+    /// Clearings of a pending body in `text`: those that ask whether it is
+    /// still the sent one, and those that do not.
+    nonisolated static func pendingClearings(in text: Substring) -> (guarded: Int, bare: Int) {
+        var guarded = 0
+        var bare = 0
+        for line in text.split(separator: "\n") {
+            for name in pendingNames where line.contains("\(name) = nil") {
+                if line.contains("if \(name) == body { \(name) = nil }") { guarded += 1 } else { bare += 1 }
+            }
+        }
+        return (guarded, bare)
+    }
+
+    /// The rule stands at eight assignments in three write loops; a
+    /// ninth without the question, or one that lost it, turns this red.
+    @Test("die Schreibschleifen raeumen nur den gesendeten Koerper ab, an jeder Stelle", .needsTheSources)
+    func onlyTheSentBodyIsCleared() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
+        let loops = ["private func sendPlaylists(": 3, "private func sendChoices(": 3, "private func send(_ family:": 2]
+        for (head, expected) in loops {
+            let start = try #require(code.range(of: head), "\(head) is gone, the witness measures nothing")
+            let end = code[start.upperBound...].range(of: "\n    private func ")?.lowerBound ?? code.endIndex
+            let found = Self.pendingClearings(in: code[start.lowerBound..<end])
+            #expect(found.bare == 0, "\(head) clears a pending body without asking whether it was the sent one")
+            #expect(found.guarded == expected, "\(head): \(found.guarded) guarded clearings, the rule counts \(expected)")
+        }
+        // Calibration: both forms are seen.
+        let calibration = Self.pendingClearings(in: "if choicesPending == body { choicesPending = nil }\nchoicesPending = nil")
+        #expect(calibration.guarded == 1 && calibration.bare == 1)
+    }
+
     @Test("auf jede Antwort des Dienstes folgt die Frage, ob sie noch dem Konto gilt, auch auf Ansagen der Leitung", .needsTheSources)
     func everyAnswerAsksForItsAccount() throws {
         let code = SyncContractFenceTests.stripped(try String(

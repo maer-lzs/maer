@@ -179,11 +179,37 @@ final class MaerSyncSession {
     /// The last version the socket announced, by kind and scope, for an echo
     /// that arrives before the write's answer.
     private var announced: [String: String] = [:]
-    /// Opens in a row that never stood, and when the last one was tried.
-    private(set) var openFailures = 0
-    private var lastOpenAttempt: Double?
-    /// The failure count at which the wait was last said, so it is said once.
-    private var waitSaidAt: Int?
+    /// What the line has been through: its history belongs to the line of
+    /// ONE account, and a change of account starts it over
+    /// (`switchIdentity`), so account B never waits out A's failures. A
+    /// field added here is reset with the others.
+    struct LineHistory {
+        /// Opens in a row that never stood, and when the last one was tried.
+        var openFailures = 0
+        var lastOpenAttempt: Double?
+        /// The failure count at which the wait was last said, so it is said once.
+        var waitSaidAt: Int?
+        /// Paths on which an open failed since the last one that stood. A
+        /// return to one of them does not lift the wait (`MaerSyncReopen`).
+        var failedPaths: Set<MaerSyncPath> = []
+    }
+    private var lineHistory = LineHistory()
+    private(set) var openFailures: Int {
+        get { lineHistory.openFailures }
+        set { lineHistory.openFailures = newValue }
+    }
+    private var lastOpenAttempt: Double? {
+        get { lineHistory.lastOpenAttempt }
+        set { lineHistory.lastOpenAttempt = newValue }
+    }
+    private var waitSaidAt: Int? {
+        get { lineHistory.waitSaidAt }
+        set { lineHistory.waitSaidAt = newValue }
+    }
+    private var failedPaths: Set<MaerSyncPath> {
+        get { lineHistory.failedPaths }
+        set { lineHistory.failedPaths = newValue }
+    }
     private let path: (any MaerSyncPathSource)?
     private let clock: () -> Double
     /// Rounds asked for and not finished, counted from the moment they are
@@ -197,9 +223,6 @@ final class MaerSyncSession {
     private var activeRounds = 0
     /// The most rounds that ever stood at once, for the witness.
     private(set) var peakRounds = 0
-    /// Paths on which an open failed since the last one that stood. A
-    /// return to one of them does not lift the wait (`MaerSyncReopen`).
-    private var failedPaths: Set<MaerSyncPath> = []
     private var standsRun: Task<Void, Never>?
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
@@ -319,6 +342,8 @@ final class MaerSyncSession {
         let from = identity?.scope ?? "none"
         identityGeneration += 1
         identity = next
+        // The old line is closed below; its failures were A's, not B's.
+        lineHistory = LineHistory()
         loadIdentityState()
         unreadKinds = next == nil ? [] : [Self.standsKind, Self.playlistsKind, Self.choicesKind,
                                           Self.claimKind, Self.statsKind, Self.feedAuthKind]
