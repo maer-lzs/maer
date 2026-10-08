@@ -144,6 +144,12 @@ struct PublicReadmeFenceTests {
     /// `names` picks the scope: the public READMEs measure every role, the
     /// workshop files measure the agents only.
     static func roleNameHits(in line: String, names: [String]? = nil) -> [String] {
+        // Every form searched below contains its name in some case: the
+        // endings, the capitals, the channel identifiers and the tail behind
+        // a copyright notice. A line that holds none of the names in any case
+        // has no hit, and almost every line of the sources is such a line.
+        let lowered = line.lowercased()
+        guard (names ?? roleNames).contains(where: { lowered.contains($0.lowercased()) }) else { return [] }
         var text = line
         var hits: [String] = []
         if isCopyrightNotice(line), let start = text.lowercased().range(of: "copyright") {

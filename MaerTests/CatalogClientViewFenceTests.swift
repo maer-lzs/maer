@@ -24,6 +24,9 @@ struct CatalogClientViewFenceTests {
     /// line sits in: a type declared and CLOSED before a call does not own
     /// it, and a call inside a helper type nested in a view is the view's.
     nonisolated static func viewCalls(in text: String) -> [String: Int] {
+        // Every hit carries a client's name, and the joining below never
+        // forms one, so a file without any of them has none.
+        guard clients.contains(where: text.contains) else { return [:] }
         let call = #/\b(LibriVoxClient|ArchiveOrgClient|GutenbergClient|JamendoClient)\.(\w+)\s*\(/#
         return viewHits(in: text) { line in
             line.matches(of: call).filter { !offline.contains(String($0.output.2)) }.count

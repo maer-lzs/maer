@@ -43,6 +43,11 @@ struct CatalogFactsDoorTests {
     /// anything else. Counting the literal `.shared` form let a bound name
     /// through. The door asks without argument labels and does not count.
     nonisolated static func registerReads(in text: String) -> [String: Int] {
+        // Every hit carries one of these names right before its bracket, and
+        // the joining in `viewHits` never touches that spot.
+        let signatures = ["hasPartsList(", "licence(", "readingVersion(", "archiveForm(",
+                          "librivoxBook(", "jamendoTrack(", "sourceURL("]
+        guard signatures.contains(where: text.contains) else { return [:] }
         let read = #/\.(?:hasPartsList\(\s*itemId:|licence\(\s*forItemId:|readingVersion\(\s*forItemId:|archiveForm\(\s*itemId:|librivoxBook\(\s*forId:|jamendoTrack\(\s*forId:|sourceURL\(\s*forItemId:)/#
         return CatalogClientViewFenceTests.viewHits(in: text) { line in line.matches(of: read).count }
     }
@@ -73,6 +78,7 @@ struct CatalogFactsDoorTests {
     /// receiver is. The radio's and the known servers' `remember` carry no
     /// such label and do not count.
     nonisolated static func registerWrites(in text: String) -> [String: Int] {
+        guard text.contains("remember(") else { return [:] }
         let write = #/\.remember\(\s*(?:popular|gutenberg|book|track)\s*:/#
         return CatalogClientViewFenceTests.viewHits(in: text) { line in line.matches(of: write).count }
     }
@@ -103,6 +109,9 @@ struct CatalogFactsDoorTests {
     /// file. What a view waits for is a network question, and those belong
     /// to a loader. A break after `await` is closed first.
     nonisolated static func providerAwaits(in text: String) -> [String: Int] {
+        // Both receivers, the provider itself and a name bound to it, need
+        // the provider's name in the file, and every hit needs an `await`.
+        guard text.contains("FreeCatalogProvider"), text.contains("await") else { return [:] }
         let binding = #/\b(?:let|var)\s+(\w+)\s*(?::\s*\w+\s*)?=\s*FreeCatalogProvider\s*\.\s*shared\b/#
         let names = ["FreeCatalogProvider.shared"] + text.matches(of: binding).map { String($0.output.1) }
         let receiver = names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
