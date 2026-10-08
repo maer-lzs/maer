@@ -139,19 +139,72 @@ struct PlaylistCarrierTests {
         #expect(MaerPlaylistMerge.isSameVersion(roundTrip, entry) && roundTrip.device == "phone")
         #expect(KeyValuePlaylistCarrier.entry(from: KeyValuePlaylistCarrier.payload(of: entry, device: ""))?.device == nil)
         #expect(KeyValuePlaylistCarrier.payload(of: entry, device: nil)["device"] == nil)
-        // Every wire wraps it, none spells the shape a second time.
-        var payloads = 0
-        var entries = 0
-        for name in ["PlaylistCarrier.swift", "MaerSyncCarriers.swift", "CloudKitPlaylistCarrier.swift"] {
-            let code = SyncContractFenceTests.stripped(try String(
-                contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/\(name)"), encoding: .utf8))
-            payloads += code.components(separatedBy: "payload(of: entry, device:").count - 1
-            entries += code.components(separatedBy: "entry(from:").count - 1
-            #expect(name == "PlaylistCarrier.swift" || !code.contains("\"nameUpdatedAt\"]"),
-                    "\(name) spells the shape of a list again")
+        // Every wire wraps it, none spells the shape a second time, read over
+        // all of the app's sources.
+        var calls: [String: [Int]] = [:]
+        var spelled: [String: Set<String>] = [:]
+        for file in ProjectFileIntegrityTests.sourceTexts() {
+            let code = SyncContractFenceTests.stripped(file.text)
+            let pair = try Self.pairCalls(in: code, ownFile: file.name == "PlaylistCarrier.swift")
+            if pair != [0, 0] { calls[file.name] = zip(calls[file.name] ?? [0, 0], pair).map(+) }
+            for key in try Self.keysSpelled(in: code) { spelled[key, default: []].insert(file.name) }
         }
-        #expect(payloads == 3, "the three wires write through the pair: \(payloads)")
-        #expect(entries == 3, "the three wires read through the pair: \(entries)")
+        #expect(calls == ["PlaylistCarrier.swift": [1, 1], "MaerSyncCarriers.swift": [1, 1],
+                          "CloudKitPlaylistCarrier.swift": [1, 1]],
+                "each of the three wires writes once and reads once through the pair: \(calls)")
+        for key in Self.shapeKeys {
+            let files = spelled[key] ?? []
+            let others = files.subtracting(["PlaylistCarrier.swift"])
+            #expect(files.contains("PlaylistCarrier.swift"), "the pair no longer spells \(key)")
+            if Self.sharedWords[key] != nil {
+                #expect(!others.isEmpty, "no other source uses \(key) any more, so it belongs to the list alone")
+            } else {
+                #expect(others.isEmpty, "\(others.sorted()) spell the list's \(key) again")
+            }
+        }
+        // Calibration: a call from a fourth wire, a call inside the pair's own
+        // type, the declarations (no call), a function of the same name on
+        // another type, and a key in both spellings.
+        #expect(try Self.pairCalls(in: "KeyValuePlaylistCarrier.payload(of: e, device: nil)", ownFile: false) == [1, 0])
+        #expect(try Self.pairCalls(in: "if let e = Self.entry(from: v) {}", ownFile: true) == [0, 1])
+        #expect(try Self.pairCalls(in: "x = payload(of: e, device: d)", ownFile: true) == [1, 0])
+        #expect(try Self.pairCalls(in: "static func entry(from raw: Any?)\nstatic func payload(of e: E, device: String?)", ownFile: true) == [0, 0])
+        #expect(try Self.pairCalls(in: "items.compactMap(entry(from:))", ownFile: false) == [0, 0])
+        #expect(try Self.keysSpelled(in: "d[\"titles\"] = t; let p = [\"snapshots\": s]") == ["snapshots", "titles"])
+    }
+
+    /// The keys of a list on the key-value and record wires, as the pair
+    /// writes them.
+    nonisolated static let shapeKeys = ["added", "device", "items", "name", "nameUpdatedAt", "removed", "snapshots", "titles", "updatedAt"]
+
+    /// Shape keys other sources also use for a field of their own, each with
+    /// where. Every other key of the shape is spelled by the pair alone.
+    static let sharedWords: [String: String] = [
+        "device": "the device of a playback claim, a statistics record, a gpodder request and a sync service request",
+        "name": "the device name of a playback claim, a Subsonic playlist request, a table name read from SQLite",
+        "removed": "the removed address in the notice of known servers and its reader",
+    ]
+
+    /// How often a source writes and reads through the pair: [payload, entry].
+    /// Outside the pair's own file only the qualified call counts, so a
+    /// function of the same name on another type is not taken for it.
+    nonisolated static func pairCalls(in code: String, ownFile: Bool) throws -> [Int] {
+        let owner = ownFile ? #"(?:KeyValuePlaylistCarrier\.|Self\.|^|[^A-Za-z0-9_.])"# : #"KeyValuePlaylistCarrier\."#
+        return try ["payload(of", "entry(from"].map { name in
+            let found = code.matches(of: try Regex(owner + NSRegularExpression.escapedPattern(for: name))
+                .anchorsMatchLineEndings()).count
+            // In its own file the declaration reads like an unqualified call.
+            return ownFile ? found - (code.components(separatedBy: "func \(name)").count - 1) : found
+        }
+    }
+
+    /// The shape keys a source spells as a dictionary key, by subscript or
+    /// in a literal.
+    nonisolated static func keysSpelled(in code: String) throws -> Set<String> {
+        Set(try Self.shapeKeys.filter { key in
+            let literal = try Regex("\"\(key)\"\\s*:")
+            return code.contains("[\"\(key)\"]") || code.contains(literal)
+        })
     }
 
     @Test("der Draht traegt jedes Feld hin und zurueck; Unlesbares ist keine Momentaufnahme")
