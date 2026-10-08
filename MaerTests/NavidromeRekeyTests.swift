@@ -34,19 +34,27 @@ struct NavidromeRekeyTests {
 
     /// The stats step of the pass: this device's seconds of a title under
     /// the old and the new key add up under the new one, the store saves,
-    /// and a second pass changes nothing. Relative to what the store already
-    /// held, because it reads the app's database.
+    /// and a second pass changes nothing. On a database of its own, and its
+    /// writes land before the witness ends: on the app's database it read
+    /// and wrote the host's rows.
     @Test("die Statistik zieht um: alt und neu eines Titels addieren sich, ein zweiter Lauf aendert nichts")
-    func theStatsMove() async {
-        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
+    func theStatsMove() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-stats-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()),
+                                        database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
+                                        history: ListeningStatsSyncTests.RecordingHistory())
         let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
-        let before = stats.ownData.secondsPerItem
+        #expect(stats.ownData.secondsPerItem.isEmpty, "the precondition: a database of its own")
         stats.addSeconds(5, itemId: old)
         stats.addSeconds(7, itemId: new)
         #expect((await stats.rekeyItems(Self.map)?.changed ?? 0) >= 1)
         #expect(stats.ownData.secondsPerItem[old] == nil, "the old key stayed")
-        #expect(stats.ownData.secondsPerItem[new] == (before[new] ?? 0) + (before[old] ?? 0) + 12)
+        #expect(stats.ownData.secondsPerItem[new] == 12)
         #expect(await stats.rekeyItems(Self.map)?.changed == 0, "a second pass changes nothing")
+        await stats.awaitPendingWrites()
     }
 
     @Test("die Regel: Reihenfolge bleibt, alt und neu eines Titels bleiben einmal an der ersten Stelle")

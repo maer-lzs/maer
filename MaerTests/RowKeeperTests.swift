@@ -56,6 +56,42 @@ struct RowKeeperTests {
         #expect(days.values.reduce(0, +) == 120, "after awaitAll the totals' last write has landed")
     }
 
+    /// Who opens the database's one connection, and how the app's two ends
+    /// wait for what that writes: every row chain registers itself, the
+    /// totals register their own chain, the stand rows are waited on by
+    /// name, and one reader writes nothing. Both directions: a new opener is
+    /// a chain nobody waits for until it is named here.
+    static let openers: [String: String] = [
+        "RowKeeper.swift": "the keepers write through `RowChain`, which registers itself",
+        "LibraryViewModel.swift": "the library rows write through `RowChain` (LIBROWS)",
+        "PodcastSubscriptions.swift": "the podcast rows write through `RowChain` (SUBROWS)",
+        "ListeningStats.swift": "the totals' own chain registers itself (`RowKeepers.register`)",
+        "StandMirror.swift": "the stand rows, waited on by name in `awaitAll`",
+        "MaerDatabase.swift": "the Siri book query reads the library rows and writes nothing",
+    ]
+
+    @Test("jede Schreibkette in die Datenbank ist angemeldet oder namentlich gewartet, bevor der Checkpoint laeuft", .needsTheSources)
+    func everyWriterIsWaitedForBeforeTheCheckpoint() throws {
+        var found: Set<String> = []
+        var codeOf: [String: String] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            codeOf[file.lastPathComponent] = code
+            if code.contains(".connection()") { found.insert(file.lastPathComponent) }
+        }
+        #expect(found.contains("RowKeeper.swift"), "the fence read the sources")
+        #expect(found == Set(Self.openers.keys), "an opener of the connection nobody waits for, or a named one gone: \(found.symmetricDifference(Set(Self.openers.keys)).sorted())")
+        #expect(codeOf["RowChain.swift"]?.contains("RowKeepers.register(owner: self)") == true, "a row chain no longer registers")
+        #expect(codeOf["ListeningStats.swift"]?.contains("RowKeepers.register(owner: self)") == true, "the totals no longer register")
+        let keepers = try #require(codeOf["RowKeeper.swift"])
+        let awaitAll = try #require(keepers.range(of: "static func awaitAll()").map { String(keepers[$0.upperBound...].prefix(500)) })
+        #expect(awaitAll.contains("StandMirror.shared.awaitPendingWrites()"), "the stand rows are no longer waited on")
+        let app = try #require(codeOf["MaerApp.swift"])
+        let ends = try #require(app.range(of: "await RowKeepers.awaitAll()"))
+        let checkpoint = try #require(app.range(of: "await MaerDatabase.shared.checkpoint()"))
+        #expect(ends.upperBound <= checkpoint.lowerBound, "the checkpoint runs before the chains landed")
+    }
+
     @Test("die Erlaubnis zum Leeren gilt im Moment des Aufrufs: nur wenn die Handlung selbst leer liess")
     func thePermissionIsFixedAtTheCall() {
         #expect(RowEmptying.allowed.atCall(memoryIsEmpty: true) == .allowed)
