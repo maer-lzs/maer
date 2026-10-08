@@ -155,6 +155,7 @@ struct CatalogSourcePage: View {
                 await load()
             }
             await shelvesTask
+            logOverlap(by: "open")
         }
         // The stock landing re-opens the shelves: they deferred to the
         // first fetch above and now answer from the fresh local stock.
@@ -162,6 +163,7 @@ struct CatalogSourcePage: View {
             guard stockService.stock(source.rawValue) != nil else { return }
             shelvesLoaded = false
             await loadShelves()
+            logOverlap(by: "stock")
         }
     }
 
@@ -298,6 +300,30 @@ struct CatalogSourcePage: View {
         return CatalogGenreAxis.decadeShelves.filter {
             !(decadeStock[$0.key]?.items.isEmpty ?? true)
         }
+    }
+
+    /// The ids each row of the page shows, in page order: the same cut the
+    /// rows draw (`RowPreview.cut`).
+    private var shownRows: [[String]] {
+        var rows = [RowPreview.cut(items).map(\.id)]
+        if source == .librivox {
+            rows.append(RowPreview.cut(store.sourceRows.librivoxNew).map(\.id))
+        }
+        for slot in shelfSlots where slot.ready {
+            rows.append(RowPreview.cut(shelfStock[slot.key]?.items ?? []).map(\.id))
+        }
+        for decade in decadeRows {
+            rows.append(RowPreview.cut(decadeStock[decade.key]?.items ?? []).map(\.id))
+        }
+        return rows
+    }
+
+    /// One line per finished pass: how many titles stand in more than one
+    /// row. Only once the shelves answered; a pass cut short says nothing.
+    private func logOverlap(by caller: String) {
+        guard shelvesLoaded || !hasChips else { return }
+        let count = CatalogPageOverlap.count(rows: shownRows)
+        Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) examples=\(count.examples.joined(separator: ","), privacy: .public)")
     }
 
     private func decadeRow(_ decade: (key: String, title: String)) -> some View {

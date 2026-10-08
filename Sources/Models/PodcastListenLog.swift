@@ -322,11 +322,6 @@ final class PodcastListenLog {
         read.merging(run) { fromRows, fromRun in merged(read: fromRows, run: fromRun) }
     }
 
-    /// One guid held by the rows and by this run, by the log's own rule: the
-    /// later play and the later tombstone both stand, so a tombstone yields
-    /// only to a newer play (`isPlayed`), whichever side holds what. The
-    /// side with the later play carries its stamp kind; an empty title or
-    /// feed and a missing duration are filled from the other side.
     /// Whether a newer play leaves the entry synthesized: a stamped
     /// transition upgrades a synthesized one (never back), and an entry that
     /// does not say counts as synthesized, the side that claims no when.
@@ -334,6 +329,11 @@ final class PodcastListenLog {
         (existing ?? true) && synthesized
     }
 
+    /// One guid held by the rows and by this run, by the log's own rule: the
+    /// later play and the later tombstone both stand, so a tombstone yields
+    /// only to a newer play (`isPlayed`), whichever side holds what. The
+    /// side with the later play carries its stamp kind; an empty title or
+    /// feed and a missing duration are filled from the other side.
     nonisolated static func merged(read: Entry, run: Entry) -> Entry {
         let (later, other) = run.playedAt >= read.playedAt ? (run, read) : (read, run)
         var out = later
