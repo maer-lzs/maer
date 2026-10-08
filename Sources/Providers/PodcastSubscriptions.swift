@@ -1569,8 +1569,13 @@ final class PodcastSubscriptions: ObservableObject {
             current: {
                 // The picture of the holder's stock is taken here, at the
                 // lay, with the rows this build cannot read.
-                let unread = try undecodedRows()
-                Logger.rss.notice("SUBSTORE owner rest taken at=\(Date().timeIntervalSince1970, privacy: .public) shows=\(self.shows.count) unreadShows=\(unread?.shows.count ?? 0) unreadEpisodes=\(unread?.episodes.count ?? 0)")
+                // An unread episode whose show was unsubscribed since left
+                // the rows with it (cascade); the rows read before still name
+                // it, and it does not rest.
+                let read = try undecodedRows()
+                let unread = read?.standing(under: Set(shows.map(\.id)))
+                let gone = (read?.episodes.count ?? 0) - (unread?.episodes.count ?? 0)
+                Logger.rss.notice("SUBSTORE owner rest taken at=\(Date().timeIntervalSince1970, privacy: .public) shows=\(self.shows.count) unreadShows=\(unread?.shows.count ?? 0) unreadEpisodes=\(unread?.episodes.count ?? 0) gone=\(gone)")
                 return Resting(shows: shows, waiting: try waitingFeeds(), unread: unread)
             },
             replace: { rest, _, _ in try replace(with: rest) }) else { return false }

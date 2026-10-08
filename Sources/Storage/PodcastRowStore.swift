@@ -118,6 +118,15 @@ actor PodcastRowStore {
         var shows: [Show] = []
         var episodes: [Episode] = []
         var isEmpty: Bool { shows.isEmpty && episodes.isEmpty }
+
+        /// The rows whose show stands: a raw show of these rows, or one of
+        /// `shows`. An episode whose show is gone (unsubscribed since) has
+        /// no place; inserted, it breaks the foreign key and with it the
+        /// whole write.
+        func standing(under shows: Set<String>) -> RawRows {
+            let present = shows.union(self.shows.map(\.id))
+            return RawRows(shows: self.shows, episodes: episodes.filter { present.contains($0.showId) })
+        }
     }
 
     /// The undecodable rows at this moment, through a reader of its own.
@@ -177,7 +186,9 @@ actor PodcastRowStore {
             out.append(.init("INSERT OR REPLACE INTO show (id, position, payload) VALUES (?, ?, ?)",
                              [.text(show.id), .integer(Int64(show.position)), .blob(show.payload)]))
         }
-        for episode in coming.episodes where !keptEpisodes.contains(episode.guid) {
+        // Only an episode whose show stands after this write: one of the new
+        // stock or a raw show that comes back with it.
+        for episode in coming.standing(under: keptShows).episodes where !keptEpisodes.contains(episode.guid) {
             out.append(.init("""
                 INSERT OR REPLACE INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, ?, ?, ?, ?)
                 """, [.text(episode.guid), .text(episode.showId), .integer(Int64(episode.position)),

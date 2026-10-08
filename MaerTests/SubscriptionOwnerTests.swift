@@ -130,6 +130,38 @@ struct SubscriptionOwnerTests {
         #expect(try undecoded() == before, "A's unread rows did not come back as they were")
         #expect(subs.startIncomplete, "this process takes its rows for whole after rows came back unread")
         #expect(sorted(await rig.store().shows) == [moor], "the way back lost A's show")
+
+        // The rows read before still name the unread episode under moor.
+        // Unsubscribed, moor takes it out of the rows (cascade); a switch and
+        // the way back must not try to put it back under a show that is gone,
+        // or the foreign key fails the whole replacement at every start.
+        subs.unsubscribe(id: moor.id, notesCloud: false)
+        await subs.awaitPendingWrites()
+        #expect(try undecoded().episodes.map(\.guid) == ["later-1"], "the precondition: the cascade took the episode under moor")
+        #expect(subs.follow(owner: "account-b"))
+        await subs.awaitPendingWrites()
+        let restAgain = try #require(try shelf.rest(PodcastSubscriptions.Resting.self, of: PodcastSubscriptions.shelfFamily, owner: "account-a"))
+        #expect(restAgain.unread?.episodes.map(\.guid) == ["later-1"], "an episode whose show is gone rested with A")
+        #expect(subs.follow(owner: "account-a"))
+        await subs.awaitPendingWrites()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(try shelf.holding(of: PodcastSubscriptions.shelfFamily) == .init(owner: "account-a"),
+                "the replacement of the way back did not land")
+        #expect(try undecoded().shows.map(\.id) == ["feed:later"] && undecoded().episodes.map(\.guid) == ["later-1"],
+                "the unread rows of the way back did not land")
+    }
+
+    @Test("ein ungelesenes Folgen-Paket setzt nur Folgen ein, deren Sendung steht")
+    func carriedEpisodesNeedTheirShow() {
+        let raw = PodcastRowStore.RawRows(
+            shows: [.init(id: "feed:raw", position: 0, payload: Data("x".utf8))],
+            episodes: [.init(guid: "under-raw", showId: "feed:raw", position: 0, pubDate: 1, payload: Data("y".utf8)),
+                       .init(guid: "under-kept", showId: "feed:kept", position: 0, pubDate: 1, payload: Data("y".utf8)),
+                       .init(guid: "under-gone", showId: "feed:gone", position: 0, pubDate: 1, payload: Data("y".utf8))])
+        let statements = PodcastRowStore.carriedRows(leaving: .init(), coming: raw, keptShows: ["feed:kept"], keptEpisodes: [])
+        let inserted = statements.filter { $0.sql.contains("INTO episode") }.compactMap { $0.params.first?.string }
+        #expect(inserted == ["under-raw", "under-kept"], "an episode without its show was inserted: \(inserted)")
+        #expect(raw.standing(under: ["feed:kept"]).episodes.map(\.guid) == ["under-raw", "under-kept"])
     }
 
     @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Sendung von A, A's bleiben bei A")
