@@ -703,6 +703,9 @@ struct LibraryView: View {
             NavigationStack {
                 SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
             }
+            // The list rows of the settings keep their title's edge at an
+            // accessibility size (`RowLabelStyle`).
+            .labelStyle(RowLabelStyle())
             .environment(\.bottomBarInset, 0)
             .followsAppearanceChoice()
         }

@@ -45,7 +45,9 @@ struct AppSwitch<Label: View>: View {
 
     var body: some View {
         Toggle(isOn: isOn) {
+            // A toggle does not hand a style from outside to its label.
             label.foregroundStyle(isEnabled ? .primary : .secondary)
+                .labelStyle(RowLabelStyle())
         }
         .tint(AppTheme.switchOn)
         .opacity(isEnabled ? 1 : AppSwitch.lockedOpacity)

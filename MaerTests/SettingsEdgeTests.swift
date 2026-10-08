@@ -38,5 +38,25 @@ struct SettingsEdgeTests {
         #expect(indents.isEmpty, "a row indents itself off the text edge: \(indents)")
         #expect(wide.isEmpty, "a symbol wider than the icon column: \(wide)")
     }
+
+    /// At an accessibility size the system lets a wrapped title flow under
+    /// the symbol while the separator stays at the title's edge (AX3,
+    /// measured); `RowLabelStyle` keeps the title's edge. The settings sheet
+    /// sets it for its rows, and the two components whose label a style
+    /// from outside does not reach set it on their own.
+    @Test("bei Bedienungshilfen-Groessen behalten Titel ihre Kante: das Einstellungsblatt, der Schalter und die Hinweiszeile tragen den Stil", .needsTheSources)
+    func titlesKeepTheirEdgeAtAccessibilitySizes() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let library = try code("Sources/Views/LibraryView.swift")
+        let sheet = try #require(library.range(of: "SettingsView(coordinator:"))
+        let afterSheet = String(library[sheet.upperBound...].prefix(400))
+        #expect(afterSheet.contains(".labelStyle(RowLabelStyle())"), "the settings sheet does not set the row label")
+        let toggle = try #require(ABSPodcastRefreshTests.body(of: "Toggle(isOn: isOn) {", in: try code("Sources/Views/AppSwitch.swift")))
+        #expect(toggle.contains(".labelStyle(RowLabelStyle())"), "the switch leaves its label to the system")
+        #expect(try code("Sources/Views/HintLine.swift").contains(".labelStyle(RowLabelStyle())"), "the hint line leaves its label to the system")
+    }
 }
 #endif

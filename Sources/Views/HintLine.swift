@@ -31,6 +31,7 @@ struct HintLine<Content: View>: View {
         } icon: {
             Image(systemName: systemImage)
         }
+        .labelStyle(RowLabelStyle())
         .foregroundStyle(.orange)
     }
 }
