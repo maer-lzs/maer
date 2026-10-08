@@ -565,10 +565,16 @@ final class MaerSyncSession {
         }
         lastOpenAttempt = now
         awaited = [:]
+        // The line belongs to the account it was opened for: an announcement
+        // or a close that arrives after a change of account (the switch
+        // closes the line, what was on its way still comes) is not this
+        // account's news.
+        let generation = identityGeneration
         announcer.open(access: access, onAnnouncement: { [weak self] announcement in
-            self?.took(announcement)
+            guard let self, self.stillAsked(generation, "announcement", by: "socket") else { return }
+            self.took(announcement)
         }, onClose: { [weak self] established in
-            guard let self else { return }
+            guard let self, self.stillAsked(generation, "socket close", by: "socket") else { return }
             // A line that never stood is a failed open and makes the next one
             // wait, and its path is one on which opening failed; one that
             // stood and ended starts the count over.

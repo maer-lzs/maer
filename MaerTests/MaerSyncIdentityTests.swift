@@ -420,5 +420,63 @@ struct MaerSyncIdentityTests {
         #expect(try rig.transport.stands() == ["rss:x:9": [9, 9_999], "rss:b:1": [5, 9_000]],
                 "B keeps its own, nothing of A arrives")
     }
+
+    /// The switch closes A's line, but what was on its way still comes: an
+    /// announcement of A's account would fetch A's document under B.
+    @Test("eine Ansage der Leitung von A, die nach dem Wechsel eintrifft, holt nichts; die Leitung von B holt")
+    func anAnnouncementOfTheOldLineDoesNothing() async throws {
+        let suite = "maer-identity-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        let box = Box()
+        box.access = Self.accessA
+        box.identity = Self.identityA
+        let session = MaerSyncSession(transport: transport, announcer: announcer,
+                                      access: { box.access }, identity: { box.identity },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        await session.refresh(by: "witness")
+        await settle { session.refreshSettled }
+        let lineOfA = try #require(announcer.onAnnouncement, "the precondition: A's line stood")
+
+        box.identity = Self.identityB
+        box.access = Self.accessB
+        session.reloadAccess()
+        await session.refresh(by: "witness")
+        await settle { session.refreshSettled }
+        let before = transport.fetches.count
+        lineOfA(MaerSyncAnnouncement(kind: MaerSyncSession.playlistsKind, scope: "", version: "99"))
+        await settle { false }
+        #expect(transport.fetches.count == before, "an announcement of A's line fetched for B")
+
+        announcer.announce(MaerSyncAnnouncement(kind: MaerSyncSession.playlistsKind, scope: "", version: "99"))
+        await settle { transport.fetches.count > before }
+        #expect(transport.fetches.count > before, "the control: an announcement of B's line fetches")
+    }
+
+    @Test("auf jede Antwort des Dienstes folgt die Frage, ob sie noch dem Konto gilt, auch auf Ansagen der Leitung", .needsTheSources)
+    func everyAnswerAsksForItsAccount() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "await transport.").count - 1 == 10, "the fence counts the ten answers of the service")
+        #expect(Self.answersWithoutCheck(in: code) == 0, "an answer of the service acts without asking for its account")
+        #expect(code.contains("self.stillAsked(generation, \"announcement\""), "an announcement acts without asking for its account")
+        #expect(code.contains("self.stillAsked(generation, \"socket close\""), "a close acts without asking for its account")
+        // Calibration: an answer without the question, and one with it.
+        #expect(Self.answersWithoutCheck(in: "let a = try await transport.fetch(kind: k)\nstands = a") == 1)
+        #expect(Self.answersWithoutCheck(in: "let a = try await transport.fetch(kind: k)\nguard stillAsked(g, \"x\", by: c) else { return }") == 0)
+    }
+
+    /// Every `await transport.` whose next six lines, up to the next such
+    /// call, do not ask `stillAsked(`.
+    nonisolated static func answersWithoutCheck(in code: String) -> Int {
+        let lines = code.split(separator: "\n", omittingEmptySubsequences: false)
+        let calls = lines.indices.filter { lines[$0].contains("await transport.") }
+        return calls.enumerated().filter { index, call in
+            let end = min(index + 1 < calls.count ? calls[index + 1] : lines.count, call + 7)
+            return !lines[call..<end].contains { $0.contains("stillAsked(") }
+        }.count
+    }
 }
 #endif
