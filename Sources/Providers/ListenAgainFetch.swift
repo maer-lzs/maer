@@ -43,11 +43,12 @@ final class ListenAgainFetch {
     /// surface budget. `one` answers whether an id resolves afterwards;
     /// `onLate` gets the ids that resolved after the budget ran out.
     func fetch(_ ids: [String], label: StaticString = #function,
+               budget: Double = SourceBudget.seconds,
                onLate: @escaping @Sendable ([String]) async -> Void,
                _ one: @escaping @Sendable (String) async -> Bool) async {
         guard !ids.isEmpty else { return }
         inFlight.formUnion(ids)
-        _ = await SourceBudget.value(default: [String](), label: label, onLate: onLate) { [weak self] in
+        _ = await SourceBudget.value(default: [String](), label: label, budget: budget, onLate: onLate) { [weak self] in
             var resolved: [String] = []
             for id in ids {
                 let answered = await one(id)

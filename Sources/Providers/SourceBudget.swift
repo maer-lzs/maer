@@ -40,7 +40,12 @@ nonisolated enum SourceBudget {
     /// stayed empty until a tab switch. `onLate` closes that: a late result
     /// applies ITSELF. The contract now reads: **no result expires, no user
     /// action needed.**
+    ///
+    /// `budget` is the app's `seconds` for every caller in the app; only the
+    /// witnesses shorten it, because what they tell apart is the value that
+    /// arrives, not how long the wait was.
     static func value<T: Sendable>(default fallback: T, label: StaticString = #function,
+                                   budget: Double = seconds,
                                    onLate: (@Sendable (T) async -> Void)? = nil,
                                    _ work: @escaping @Sendable () async -> T) async -> T {
         // Deliberately NOT a TaskGroup: a group awaits ALL its children when
@@ -60,7 +65,7 @@ nonisolated enum SourceBudget {
             }
         }
         Task {
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(budget * 1_000_000_000))
             if await gate.claim(fallback) {
                 Logger.library.notice("SOURCE budget exceeded (\(String(describing: label), privacy: .public)) — rendering without it; the late result applies itself")
             }

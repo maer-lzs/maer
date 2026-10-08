@@ -92,12 +92,12 @@ struct HomeSectionsTests {
     func aHangingFetchWaitsAtMostTheBudget() async {
         let fetcher = ListenAgainFetch()
         let started = Date()
-        await fetcher.fetch(["sub:playlist:hang"], onLate: { _ in }) { _ in
-            try? await Task.sleep(nanoseconds: 30_000_000_000)
+        await fetcher.fetch(["sub:playlist:hang"], budget: SourceBudgetTests.budget, onLate: { _ in }) { _ in
+            try? await Task.sleep(for: .seconds(SourceBudgetTests.hanging))
             return false
         }
         let waited = Date().timeIntervalSince(started)
-        #expect(waited < SourceBudget.seconds + 2, "waited \(waited) s for a hanging fetch")
+        #expect(waited < SourceBudgetTests.budget + 2, "waited \(waited) s for a hanging fetch")
         #expect(fetcher.plan(["sub:playlist:hang"]).isEmpty, "an id on its way is not asked twice")
     }
 
@@ -108,10 +108,10 @@ struct HomeSectionsTests {
     func aLateAnswerJoinsTheRow() async {
         let fetcher = ListenAgainFetch()
         let cache = ItemCache([:])
-        await fetcher.fetch(["sub:playlist:late"], onLate: { ids in
+        await fetcher.fetch(["sub:playlist:late"], budget: SourceBudgetTests.budget, onLate: { ids in
             await MainActor.run { cache.late += ids }
         }) { id in
-            try? await Task.sleep(nanoseconds: UInt64((SourceBudget.seconds + 1) * 1_000_000_000))
+            try? await Task.sleep(for: .seconds(SourceBudgetTests.late))
             return true
         }
         #expect(cache.late.isEmpty, "the page stopped waiting before the answer")
