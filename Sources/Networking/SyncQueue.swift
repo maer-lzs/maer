@@ -233,6 +233,7 @@ final class SyncQueue {
                     // Offline, or this one server is down. Its entries stay
                     // and the next call retries THEM; the other servers are
                     // not held up by it.
+                    Logger.library.notice("SYNCQUEUE fetch failed, entries stay queued: \(FailureReason.of(error), privacy: .public)")
                     unreachable.insert(target.key)
                 }
             }

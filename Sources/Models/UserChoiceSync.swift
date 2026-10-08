@@ -115,7 +115,6 @@ nonisolated enum UserChoiceCatalog {
         "freeClassicalEnabled": .travels,
         "netlabelsRowEnabled": .travels,
         "shellacRowsEnabled": .travels,
-        "freeCatalogsMasterEnabled": .travels,
         "freeAudiobooksEnabled": .travels,
         // The two-question rebuild (source allowed x row visible): both
         // halves are choices and travel with the rest.
@@ -320,7 +319,7 @@ nonisolated enum UserChoiceCatalog {
         "radioLogoChainEnabled", "musicArtistImagesOnline", "musicLyricsOnlineLookup",
         "musicHighResCovers", "librivoxRowsEnabled", "archivePopularEnabled",
         "jamendoRowEnabled", "freeClassicalEnabled", "netlabelsRowEnabled",
-        "shellacRowsEnabled", "freeCatalogsMasterEnabled", "freeAudiobooksEnabled",
+        "shellacRowsEnabled", "freeAudiobooksEnabled",
         "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
         "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
         "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
@@ -344,8 +343,9 @@ nonisolated enum UserChoiceCatalog {
     /// of rates goes (removed, never a tombstone), and the device forgets
     /// them locally. Nothing is written for them that could travel.
     /// The episode limit per show and for all shows: no count takes an
-    /// episode out of a show any more.
-    static let retiredScalars: [String] = ["podcastEpisodeLimitAll"]
+    /// episode out of a show any more. The master switch of the free
+    /// catalogues: each catalogue has its own switch, and nothing reads it.
+    static let retiredScalars: [String] = ["podcastEpisodeLimitAll", "freeCatalogsMasterEnabled"]
     static let retiredPrefixes: [String] = ["podcastEpisodeLimit."]
 
     static func isRetired(_ key: String) -> Bool {

@@ -34,12 +34,14 @@ nonisolated enum GPodderConflictResolution {
 
     /// Turn per-feed choices into apply actions + the converged set. A feed with
     /// NO explicit choice defaults to UNION (keep whichever side has it → nothing
-    /// is lost), the safe pre-selection.
+    /// is lost), the safe pre-selection. The feeds it decides are the ones the
+    /// page shows: both come from `conflictingFeeds`, the one root.
     static func resolve(local: Set<String>, server: Set<String>,
                         choices: [String: Choice]) -> Actions {
         var actions = Actions()
         actions.converged = local.intersection(server)   // agreed feeds always stay
-        for feed in local.symmetricDifference(server) {
+        let sides = conflictingFeeds(local: local, server: server)
+        for feed in sides.localOnly + sides.serverOnly {
             let onLocal = local.contains(feed)
             let choice = choices[feed] ?? (onLocal ? .keepLocal : .takeServer)   // union default
             let include = (choice == .keepLocal) ? onLocal : !onLocal

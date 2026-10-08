@@ -65,6 +65,8 @@ struct EpisodeLimitRetiredTests {
         var document = blob(cloud)
         document[showKey] = UserChoiceEntry(value: .int(5), t: t).plist
         document["podcastEpisodeLimitAll"] = UserChoiceEntry(value: .int(5), t: t).plist
+        // The master switch of the free catalogues, retired beside the limit.
+        document["freeCatalogsMasterEnabled"] = UserChoiceEntry(value: .bool(false), t: t).plist
         cloud.storage[UserChoiceCloudSync.blobKey] = document
     }
 
@@ -152,7 +154,7 @@ struct EpisodeLimitRetiredTests {
             side.sync.reconcile()
         }
 
-        for key in [showKey, "podcastEpisodeLimitAll"] {
+        for key in [showKey, "podcastEpisodeLimitAll", "freeCatalogsMasterEnabled"] {
             #expect(blob(cloud)[key] == nil, "\(key) left the document, no tombstone stays behind")
             #expect(a.defaults.object(forKey: key) == nil, "A forgot \(key)")
             #expect(b.defaults.object(forKey: key) == nil, "B did not adopt \(key)")
@@ -179,12 +181,14 @@ struct EpisodeLimitRetiredTests {
         a.sync.reconcile()
         #expect(cloud.writes == 1, "A finds nothing to do")
         #expect(blob(cloud)[showKey] == nil && blob(cloud)["podcastEpisodeLimitAll"] == nil)
+        #expect(blob(cloud)["freeCatalogsMasterEnabled"] == nil, "the retired master switch came back")
     }
 
     @Test("I1: die Schluessel der Grenze stehen nur noch im Ruhestand des Katalogs, kein Pfad schneidet", .needsTheSources)
     func nothingTrimsAnyMore() throws {
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimit.feed:x"))
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimitAll"))
+        #expect(UserChoiceCatalog.isRetired("freeCatalogsMasterEnabled"))
         #expect(!UserChoiceCatalog.travelingScalars.contains(where: UserChoiceCatalog.isRetired))
         #expect(!UserChoiceCatalog.travelingPrefixes.contains(where: UserChoiceCatalog.isRetired))
         #expect(!PodcastShowPreferences.travellingKeys(showId: "feed:x").contains(where: UserChoiceCatalog.isRetired))

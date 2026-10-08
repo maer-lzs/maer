@@ -6272,6 +6272,16 @@
         }
       }
     },
+    "New service key · tap to decide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Schlüssel des Dienstes · zum Entscheiden tippen"
+          }
+        }
+      }
+    },
     "New Shows" : {
       "localizations" : {
         "de" : {
@@ -11511,6 +11521,16 @@
         }
       }
     },
+    "The service shows a new key, so nothing travels until you decide below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst zeigt einen neuen Schlüssel, deshalb reist nichts, bis du unten entscheidest."
+          }
+        }
+      }
+    },
     "The service's key has changed. Nothing was sent." : {
       "localizations" : {
         "de" : {
@@ -13023,6 +13043,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Bibliothek ist leer. Füge Hörbücher über die Audiobookshelf-Weboberfläche hinzu."
+          }
+        }
+      }
+    },
+    "Your Mär sync service is set up, but nothing travels over it now. Its page says why." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Mär-Sync-Dienst ist eingerichtet, aber gerade reist nichts über ihn. Seine Seite sagt, warum."
           }
         }
       }

@@ -108,7 +108,13 @@ struct MaerSyncSettingsView: View {
                 switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
                                                  signedIn: signedIn,
                                                  tokenRefused: tokenRefused,
-                                                 serviceOlder: serviceOlder) {
+                                                 serviceOlder: serviceOlder,
+                                                 keyChangeOpen: keyChange != nil) {
+                case .keyChangeOpen:
+                    HintLine(systemImage: "key") {
+                        Text("The service shows a new key, so nothing travels until you decide below.")
+                    }
+                    .accessibilityIdentifier("maer-sync-key-change-open")
                 case .serviceOlder:
                     HintLine(systemImage: "clock.arrow.circlepath") {
                         Text("The sync service is older than this app, so nothing travels. It works again once the service is updated.")

@@ -316,6 +316,11 @@ struct SyncQueueFlushTests {
         let caught = try #require(after.range(of: "} catch {"))
         let block = after[caught.upperBound...].prefix(400)
         #expect(block.contains("FailureReason.of(error), privacy: .public"), "the failed send is silent")
+        // The fetch of the server's state one step before is the same rule.
+        let fetch = try #require(code.range(of: "try await target.client.fetchAllProgress()"))
+        let fetchCaught = try #require(code[fetch.upperBound...].range(of: "} catch {"))
+        let fetchBlock = code[fetchCaught.upperBound...].prefix(400)
+        #expect(fetchBlock.contains("FailureReason.of(error), privacy: .public"), "the failed fetch is silent")
     }
 }
 #endif

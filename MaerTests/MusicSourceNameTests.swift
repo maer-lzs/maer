@@ -37,6 +37,11 @@ struct MusicSourceNameTests {
                 "AlbumCell zeigt auch Katalog-Titel; ohne die Pruefung truegen sie den Namen des Geraete-Servers")
         #expect(MusicSourceName.capsule(forItemId: "abs-book", serving: .both, name: "Navidrome") == nil)
         #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .one(.subsonic), name: "Navidrome") == nil)
+        // A Jellyfin audiobook shares the music server's namespace and is no
+        // music: the capsule tells music servers apart, a book wears none.
+        #expect(MusicSourceName.capsule(forItemId: JellyfinProvider.itemId(bookId: "2"), serving: .both, name: "Jellyfin") == nil,
+                "a Jellyfin audiobook wore the music server's capsule")
+        #expect(MusicSourceName.capsule(forItemId: "jf:song:2", serving: .both, name: "Jellyfin") == "Jellyfin")
     }
 
     @Test("F5b-4b: Zelle, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)

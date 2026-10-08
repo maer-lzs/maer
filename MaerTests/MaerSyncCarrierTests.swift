@@ -1017,6 +1017,28 @@ struct MaerSyncCarrierTests {
         #expect(standing(true, false) == .notInUse)
     }
 
+    /// The rounds stop on an open key change, and the page said "in use";
+    /// the settings' footer said the choices travel over the service with
+    /// the switch off, a refused token or an older service. Both now ask
+    /// what the service does.
+    @Test("ein offener Schluesselwechsel ist kein Tragen, und die Fusszeile sagt das Reisen nur, solange der Dienst traegt")
+    func anOpenKeyChangeIsNoCarrying() {
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true, keyChangeOpen: true) == .keyChangeOpen,
+                "an open key change read as carrying")
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, signedIn: true, keyChangeOpen: true) == .switchedOff)
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true, tokenRefused: true,
+                                          keyChangeOpen: true) == .tokenRefused)
+        #expect(SourceMapSyncLine.of(.keyChangeOpen, host: nil).connected == false, "the map ticked an open key change")
+
+        #expect(MaerSyncStanding.footer(standing: .carrying, signedIn: true) == .travelsOverService)
+        for halted in [MaerSyncStanding.switchedOff, .tokenRefused, .serviceOlder, .keyChangeOpen] {
+            #expect(MaerSyncStanding.footer(standing: halted, signedIn: true) == .serviceStands,
+                    "the footer said the service carries while it stood: \(halted)")
+        }
+        #expect(MaerSyncStanding.footer(standing: .switchedOff, signedIn: false) == .iCloud)
+        #expect(MaerSyncStanding.footer(standing: .notInUse, signedIn: false) == .iCloud)
+    }
+
     /// The dead end the answer to the position chain named: a refused token
     /// stops every round, the token stays in the keychain, and the page read
     /// "signed in" off the keychain while nothing travelled. The state is a

@@ -31,11 +31,16 @@ nonisolated enum MaerSyncStanding: Equatable {
     /// instead of retrying on every occasion; the remedy is on the service,
     /// not on this device.
     case serviceOlder
+    /// **The service shows a key other than the one this device holds.**
+    /// The rounds stop until the person decides on the page; signed in
+    /// with the switch on read as carrying while nothing travelled.
+    case keyChangeOpen
 
     static func standing(syncAcrossDevices: Bool,
                          signedIn: Bool,
                          tokenRefused: Bool = false,
-                         serviceOlder: Bool = false) -> MaerSyncStanding {
+                         serviceOlder: Bool = false,
+                         keyChangeOpen: Bool = false) -> MaerSyncStanding {
         // The switch stands above everything, as everywhere else.
         guard syncAcrossDevices else { return .switchedOff }
         // An older service answers nothing this app can use, token or not.
@@ -44,6 +49,22 @@ nonisolated enum MaerSyncStanding: Equatable {
         // whatever a runner holds, the session runs nothing until the
         // person signs in again.
         if tokenRefused { return .tokenRefused }
+        if keyChangeOpen { return .keyChangeOpen }
         return signedIn ? .carrying : .notInUse
+    }
+
+    /// The sentence under the settings' sync switch.
+    enum Footer: Equatable {
+        /// What travels over the service, said only while it carries.
+        case travelsOverService
+        /// The service is set up and travels nothing now; its page says why.
+        case serviceStands
+        /// No service here: iCloud's budget and what it covers.
+        case iCloud
+    }
+
+    static func footer(standing: MaerSyncStanding, signedIn: Bool) -> Footer {
+        guard signedIn else { return .iCloud }
+        return standing == .carrying ? .travelsOverService : .serviceStands
     }
 }

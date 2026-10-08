@@ -992,7 +992,7 @@ struct UserChoiceGateTests {
             "radioLogoChainEnabled", "musicArtistImagesOnline", "musicLyricsOnlineLookup",
             "musicHighResCovers", "librivoxRowsEnabled", "archivePopularEnabled",
             "jamendoRowEnabled", "freeClassicalEnabled", "netlabelsRowEnabled",
-            "shellacRowsEnabled", "freeCatalogsMasterEnabled", "freeAudiobooksEnabled",
+            "shellacRowsEnabled", "freeAudiobooksEnabled",
             "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
             "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
             "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",

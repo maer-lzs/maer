@@ -19,6 +19,21 @@ struct ListenLogUnreadRowsTests {
               playedAt: playedAt, unplayedAt: unplayedAt, synthesizedAt: false)
     }
 
+    /// An entry of the older stored shape does not say whether its time was
+    /// observed; in doubt it answers no when, and a later bulk pass keeps it
+    /// so, while a stamped play makes it observed.
+    @Test("ein Eintrag ohne Angabe zur Zeit gilt als nicht beobachtet, bis ein gestempeltes Hoeren kommt")
+    func anEntryWithoutTheMarkHasNoObservedTime() {
+        var old = entry("g", playedAt: 1_000)
+        old.synthesizedAt = nil
+        #expect(!old.hasObservedTime, "an entry that does not say was taken as an observed time")
+        #expect(entry("g", playedAt: 1_000).hasObservedTime, "the precondition: a stamped entry is observed")
+        #expect(PodcastListenLog.synthesized(nil, then: true), "a bulk pass made an unknown entry observed")
+        #expect(!PodcastListenLog.synthesized(nil, then: false), "a stamped play left the entry synthesized")
+        #expect(PodcastListenLog.synthesized(true, then: true))
+        #expect(!PodcastListenLog.synthesized(false, then: true), "a bulk pass took the observed time back")
+    }
+
     @Test("die Regel: das spaetere Hoeren und der spaetere Grabstein stehen beide, Leeres fuellt die andere Seite")
     func theMergeRule() {
         let row = entry("g", playedAt: 1_000, unplayedAt: 2_000, title: "Folge")

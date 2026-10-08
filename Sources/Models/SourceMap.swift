@@ -73,6 +73,7 @@ nonisolated enum SourceMapSyncLine {
         case .notInUse: return (String(localized: "Not set up · tap to set up"), false)
         case .tokenRefused: return (String(localized: "Sign-in refused · tap to fix"), false)
         case .serviceOlder: return (String(localized: "The service is older than this app"), false)
+        case .keyChangeOpen: return (String(localized: "New service key · tap to decide"), false)
         case .switchedOff: return (String(localized: "Syncing between devices is off"), false)
         }
     }

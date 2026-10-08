@@ -116,6 +116,9 @@ struct SettingsView: View {
     /// Whether a Mär sync service is set up (address and token). Read on
     /// appearance, not per render: the token lives in the keychain.
     @State private var maerSyncConfigured = false
+    /// What the service does now, for the footer: read with the line above
+    /// and again when the switch moves.
+    @State private var maerSyncStanding: MaerSyncStanding = .notInUse
     /// This device refuses notifications while the switch is on: said at
     /// the switch, never silently swallowed.
     @State private var notificationsDenied = false
@@ -543,14 +546,24 @@ struct SettingsView: View {
         } header: {
             Text("Sync")
         } footer: {
-            if maerSyncConfigured {
+            // What travels over the service is said only while it carries:
+            // set up with the switch off, a refused token, an older service
+            // or an open key change carries nothing.
+            switch MaerSyncStanding.footer(standing: maerSyncStanding, signedIn: maerSyncConfigured) {
+            case .travelsOverService:
                 Text("Progress, the playback claim, the listening statistics, the playlists and your choices travel over your Mär sync service.")
-            } else {
+            case .serviceStands:
+                Text("Your Mär sync service is set up, but nothing travels over it now. Its page says why.")
+            case .iCloud:
                 Text("Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
             }
         }
-        .onAppear { maerSyncConfigured = MaerSyncAccess.stored() != nil }
+        .onAppear {
+            maerSyncConfigured = MaerSyncAccess.stored() != nil
+            maerSyncStanding = MaerSyncStandingReader.current().standing
+        }
         .onChange(of: podcastICloudSync) { _, on in
+            maerSyncStanding = MaerSyncStandingReader.current().standing
             if on {
                 PodcastCloudSync.shared.start()
                 ListeningStatsStore.shared.start()

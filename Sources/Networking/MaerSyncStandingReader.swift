@@ -24,7 +24,8 @@ enum MaerSyncStandingReader {
             syncAcrossDevices: AppStorageKeys.syncAcrossDevicesEnabled,
             signedIn: access != nil,
             tokenRefused: session.unauthorized,
-            serviceOlder: session.serviceOlder)
+            serviceOlder: session.serviceOlder,
+            keyChangeOpen: session.keyChange != nil)
         return Now(standing: standing, host: access?.baseURL.host())
     }
 }

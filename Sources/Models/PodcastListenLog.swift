@@ -41,8 +41,9 @@ final class PodcastListenLog {
         var isPlayed: Bool { unplayedAt.map { playedAt > $0 } ?? true }
 
         /// Does `playedAt` answer "when"? Only stamped transitions do.
-        /// Dormancy ranking asks THIS, never `playedAt > 0`.
-        var hasObservedTime: Bool { !(synthesizedAt ?? false) }
+        /// Dormancy ranking asks THIS, never `playedAt > 0`. An entry that
+        /// does not say (an older stored shape) answers no honest when.
+        var hasObservedTime: Bool { synthesizedAt == false }
     }
 
     /// guid → entry (dedup; the latest transition wins).
@@ -198,8 +199,7 @@ final class PodcastListenLog {
             }
             if let unplayedAt = existing.unplayedAt, playedAt <= unplayedAt { return }
             existing.playedAt = max(existing.playedAt, playedAt)
-            // A stamped transition upgrades a synthesized one (never back).
-            existing.synthesizedAt = (existing.synthesizedAt ?? false) && synthesized
+            existing.synthesizedAt = Self.synthesized(existing.synthesizedAt, then: synthesized)
             existing.episodeTitle = episodeTitle.isEmpty ? existing.episodeTitle : episodeTitle
             existing.showTitle = showTitle.isEmpty ? existing.showTitle : showTitle
             existing.feedURL = feedURL.isEmpty ? existing.feedURL : feedURL
@@ -327,6 +327,13 @@ final class PodcastListenLog {
     /// only to a newer play (`isPlayed`), whichever side holds what. The
     /// side with the later play carries its stamp kind; an empty title or
     /// feed and a missing duration are filled from the other side.
+    /// Whether a newer play leaves the entry synthesized: a stamped
+    /// transition upgrades a synthesized one (never back), and an entry that
+    /// does not say counts as synthesized, the side that claims no when.
+    nonisolated static func synthesized(_ existing: Bool?, then synthesized: Bool) -> Bool {
+        (existing ?? true) && synthesized
+    }
+
     nonisolated static func merged(read: Entry, run: Entry) -> Entry {
         let (later, other) = run.playedAt >= read.playedAt ? (run, read) : (read, run)
         var out = later

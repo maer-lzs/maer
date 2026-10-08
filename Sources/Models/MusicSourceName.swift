@@ -29,11 +29,13 @@ nonisolated enum MusicSourceName {
         return nil
     }
 
-    /// The capsule of one entry: only an id a music server holds carries
-    /// one. A catalogue or book id would otherwise fall back to the device's
-    /// server and wear its name (`AlbumCell` shows catalogue tracks too).
+    /// The capsule of one entry: only MUSIC of a music server carries one,
+    /// because the capsule tells two music servers apart. A catalogue or
+    /// book id would otherwise fall back to the device's server and wear its
+    /// name (`AlbumCell` shows catalogue tracks too), and a Jellyfin
+    /// audiobook shares the music namespace but is no music.
     static func capsule(forItemId itemId: String, serving: MusicSourceRule.Serving, name: String) -> String? {
-        guard MusicSourceRule.owner(itemId) != nil else { return nil }
+        guard MusicSourceRule.isServerMusic(itemId) else { return nil }
         return capsule(serving: serving, name: name)
     }
 

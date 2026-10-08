@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// gpodder conflict resolution: per-feed keep-local / take-server / union
@@ -21,6 +22,24 @@ struct GPodderConflictResolutionTests {
         // there stay apart, whatever their order.
         let apart = GPodderConflictResolution.conflictingFeeds(local: ["c", "d"], server: ["a"])
         #expect(apart.localOnly == ["c", "d"] && apart.serverOnly == ["a"])
+    }
+
+    /// The page shows the feeds of `conflictingFeeds`, and the apply decides
+    /// the same feeds: one root for both sets, so a feed can never be
+    /// decided that the page did not show, or shown and then not decided.
+    @Test("die Seite und das Anwenden nehmen die Konflikte aus einer Wurzel", .needsTheSources)
+    func oneRootForTheConflicts() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderConflictResolution.swift"),
+            encoding: .utf8))
+        let resolve = try #require(code.range(of: "static func resolve("), "the precondition: resolve was read")
+        let body = code[resolve.upperBound...]
+        #expect(body.contains("conflictingFeeds(local: local, server: server)"), "the apply computes its own conflicts")
+        #expect(!code.contains("symmetricDifference"), "a second form of the conflict set is back")
+        let view = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/GPodderConflictResolutionView.swift"),
+            encoding: .utf8))
+        #expect(view.contains("GPodderConflictResolution.conflictingFeeds("), "the page computes its own conflicts")
     }
 
     @Test("union default (no choices) keeps everything — nothing lost")
