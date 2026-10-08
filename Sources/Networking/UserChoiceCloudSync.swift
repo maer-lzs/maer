@@ -299,16 +299,9 @@ final class UserChoiceCloudSync {
         guard followsTheAccount() else { return }
         var stamps = localStamps()
         let now = now()
-        // A statement that names an item of the music server waits for the
-        // form like a round does: it is stamped here and travels with the
-        // first round after the wait, rekeyed. Written now it would stand
-        // in the old form, and nothing folds it later.
-        let waitsForTheForm = !idFormSettled() && Self.namesServerMusic(cloudKey: cloudKey, value: value)
-        if waitsForTheForm {
-            Logger.library.notice("CHOICE note held: the music server's id form is not settled yet")
-        }
-        guard syncEnabled(), !waitsForTheForm else {
-            // Event time survives for the day the switch turns on.
+        /// The statement kept for a later round: its event time survives,
+        /// and a subscription removal is recorded.
+        func keepForLater() {
             stamps[cloudKey] = now
             saveStamps(stamps)
             // For every other family the statement can be rebuilt from local
@@ -320,6 +313,9 @@ final class UserChoiceCloudSync {
                 recorded[String(cloudKey.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = now
                 saveRemovalRecords(recorded)
             }
+        }
+        guard syncEnabled() else {
+            keepForLater()
             return
         }
         var blob = cloudBlob()
@@ -335,6 +331,18 @@ final class UserChoiceCloudSync {
         guard !isAdopting else {
             // A group echo during adoption (value differs only because the
             // echo raced the write): never stamp mechanics.
+            return
+        }
+        // A statement that names an item of the music server waits for the
+        // form like a round does, behind the echo and the adoption, which
+        // stamp nothing: it is stamped here and travels with the first round
+        // after the wait, rekeyed. Written now it would stand in the old
+        // form, and nothing folds it later. The form is asked only when the
+        // statement names such an item, so no other statement starts the
+        // wait's clock.
+        if Self.namesServerMusic(cloudKey: cloudKey, value: value), !idFormSettled() {
+            Logger.library.notice("CHOICE note held: the music server's id form is not settled yet")
+            keepForLater()
             return
         }
         stamps[cloudKey] = now
@@ -456,8 +464,9 @@ final class UserChoiceCloudSync {
         // Choices keyed by the music server's ids wait while the form of
         // those ids is undecided (a new address before its first answer),
         // or the old and the new form of one item would stand side by side.
-        // The wait ends (`idFormSettled`).
-        if !idFormSettled(), holdsServerMusicIds() {
+        // The wait ends (`idFormSettled`); it is asked only when such ids
+        // are here, so a round without them starts no clock.
+        if holdsServerMusicIds(), !idFormSettled() {
             Logger.library.notice("CHOICE round held: the music server's id form is not settled yet")
             return
         }

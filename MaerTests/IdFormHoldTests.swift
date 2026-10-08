@@ -148,6 +148,77 @@ struct IdFormHoldTests {
                 "the held rate did not travel after the wait")
     }
 
+    @Test("die Uhr des Wartens laeuft erst, wenn eine Kennung des Musikservers wartet: Runden und Aussagen ohne sie fragen die Form nicht")
+    func theClockStartsOnlyWhereAServerIdWaits() async throws {
+        let suite = "id-form-clock-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        var asked = 0
+        var clock = 1000.0
+        let cloud = UserChoiceFakeCloud()
+        let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
+                                       now: { clock += 1; return clock }, itemIdMap: { $0 },
+                                       idFormSettled: { asked += 1; return false })
+        sync.sourcesAdopted = {}
+        defaults.set("title", forKey: "librarySortOption")
+        sync.noteScalar(key: "librarySortOption", value: "title")
+        sync.reconcile()
+        #expect(asked == 0, "a statement or a round without the server's ids asked the form")
+        let rate = "playbackRate.sub:song:alt-4"
+        defaults.set(1.5, forKey: rate)
+        sync.noteScalar(key: rate, value: 1.5)
+        #expect(asked == 1, "the statement with the server's id did not ask the form")
+
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("id-form-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try await withSyncOn {
+            var listsAsked = 0
+            let store = MaerPlaylists(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path))
+            let runner = MaerPlaylistCloudSync(carrier: RecordingCarrier(), playlists: store, identity: { nil },
+                                               idFormSettled: { listsAsked += 1; return false })
+            let feeds = store.create(name: "Unterwegs")
+            _ = store.add(itemId: "rss:a", to: feeds.id)
+            runner.reconcile()
+            #expect(listsAsked == 0, "a round of lists without the server's ids asked the form")
+            let music = store.create(name: "Musik")
+            _ = store.add(itemId: "sub:song:alt-5", to: music.id)
+            runner.reconcile()
+            #expect(listsAsked == 1, "the round with the server's ids did not ask the form")
+            withExtendedLifetime(runner) {}
+        }
+    }
+
+    @Test("eine Aussage mit einer Kennung des Musikservers waehrend einer Uebernahme wird auch im Warten nicht als eigenes Wort gestempelt")
+    func aHeldNoteDuringAnAdoptionStampsNothing() {
+        let suite = "id-form-adopt-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        var clock = 1000.0
+        let cloud = UserChoiceFakeCloud()
+        let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
+                                       now: { clock += 1; return clock }, itemIdMap: { $0 },
+                                       idFormSettled: { false })
+        sync.sourcesAdopted = {}
+        let rate = "playbackRate.sub:song:alt-6"
+        let token = NotificationCenter.default.addObserver(forName: .userChoicesAdopted, object: nil, queue: nil) { _ in
+            MainActor.assumeIsolated {
+                // The same domain by its name: the observer may not take the
+                // witness's defaults across.
+                let same = UserDefaults(suiteName: suite)!
+                if sync.isAdopting, same.object(forKey: rate) == nil {
+                    same.set(1.5, forKey: rate)
+                    sync.noteScalar(key: rate, value: 1.5)
+                }
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        cloud.storage[UserChoiceCloudSync.blobKey] = ["librarySortOption": UserChoiceEntry(value: .string("author"), t: 9e12).plist]
+        sync.reconcile()
+        #expect(defaults.object(forKey: rate) != nil, "the precondition: the note ran during the adoption")
+        #expect(sync.localStamps()[rate] == nil, "a note during an adoption was stamped as this device's word")
+    }
+
     @Test("die Form steht fest ohne Server, mit Typ und Fassung, nach einem Versuch, der nichts lehrte, oder nach der Frist; die Runden laufen dann wieder")
     func theWaitEnds() async throws {
         let previous = AppStorageKeys.subsonicServerURLValue

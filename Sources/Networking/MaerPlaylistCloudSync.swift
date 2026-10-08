@@ -116,8 +116,9 @@ final class MaerPlaylistCloudSync {
         // them (entries, titles, carried items, removals, adds), wait while
         // the form of those ids is undecided (a new address before its first
         // answer): read as old ids they would meet the other devices' new
-        // ones as strangers. The wait ends (`idFormSettled`).
-        if !idFormSettled(), playlists.carriesId(where: SubsonicProvider.owns(itemId:)) {
+        // ones as strangers. The wait ends (`idFormSettled`); it is asked
+        // only when such ids are here, so a round without them starts no clock.
+        if playlists.carriesId(where: SubsonicProvider.owns(itemId:)), !idFormSettled() {
             Logger.library.notice("PLAYLIST-SYNC round held: the music server's id form is not settled yet")
             return
         }
