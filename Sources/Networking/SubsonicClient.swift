@@ -141,11 +141,19 @@ struct SubsonicClient {
         AppStorageKeys.set(type, for: "subsonicType.\(server)")
     }
 
+    /// THE reading of a typed server address: trimmed, with a scheme and a
+    /// host. The client, the key of the server set up here and the address
+    /// of its kept song list read it here, so a setting one of them takes
+    /// the others take too (a "//host/rest" gave a key without a client).
+    nonisolated static func address(_ setting: String) -> URL? {
+        let trimmed = setting.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: trimmed), url.scheme != nil, url.host != nil else { return nil }
+        return url
+    }
+
     init?(serverURL: String, username: String, password: String,
           keyTransportIsSafe: @escaping @Sendable (URL) -> Bool = SubsonicSignIn.keyTransportIsSafe) {
-        let trimmed = serverURL.trimmingCharacters(in: .whitespaces)
-        guard let url = URL(string: trimmed), url.scheme != nil, url.host != nil,
-              !username.isEmpty else { return nil }
+        guard let url = Self.address(serverURL), !username.isEmpty else { return nil }
         self.baseURL = url
         self.username = username
         self.password = password

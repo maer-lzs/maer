@@ -281,8 +281,13 @@ final class DownloadManager {
     /// after every way that changes a download's files, so `sizeByItem` is
     /// the disk's answer and no view has to walk a folder while it renders.
     private func recalculateTotalSize() {
+        sizeMeasurements += 1
         stock.setSizes(Dictionary(uniqueKeysWithValues: downloadedItemIds.map { ($0, downloadSize(forItemId: $0)) }))
     }
+
+    /// How often the sizes were measured, for the witnesses: a pass that
+    /// moved no complete download measures nothing.
+    private(set) var sizeMeasurements = 0
 
     /// Free space iOS would grant for user-important data (more generous
     /// than plain free space. Includes purgeable caches).
@@ -924,13 +929,17 @@ final class DownloadManager {
             if newId != oldId || rekeyed != detail { changed += 1 }
         }
         let remnants = rekeyRemnants(map)
-        if remnants.moved > 0 { moved = true }
         if marksChanged {
             keeper.write(emptying: .refused) { [weak self] in self?.details }
             songIndexFor = nil
         }
         if kindsChanged { writeKinds() }
+        // Only a complete download is measured: an interrupted one is no
+        // download (`downloadedItemIds`), so its move changes no size.
         if moved { recalculateTotalSize() }
+        // A folder that could not be listed is "not now": the pass stays
+        // open and runs again, what moved above stays moved.
+        guard let remnants else { return nil }
         if remnants.found > 0 {
             Logger.library.notice("REKEY interrupted downloads moved=\(remnants.moved) stayed=\(remnants.found - remnants.moved)")
         }
@@ -939,18 +948,32 @@ final class DownloadManager {
 
     /// The folders without a mark (interrupted downloads, kept for resume)
     /// move to the ids `map` gives, so a resume under the new id finds its
-    /// parts. One that is downloading right now, or whose new folder exists,
-    /// stays. Returns how many such folders there were and how many moved.
-    private func rekeyRemnants(_ map: (String) -> String) -> (found: Int, moved: Int) {
+    /// parts. One that is downloading or held for a resume right now
+    /// (`phase` or `controls`: a resume clears the phase before its download
+    /// runs), or whose new folder exists, stays. Returns how many such
+    /// folders there were and how many moved; nil when the folder of the
+    /// downloads exists but could not be listed. A missing one holds none.
+    private func rekeyRemnants(_ map: (String) -> String) -> (found: Int, moved: Int)? {
         let fm = FileManager.default
-        let folders = (try? fm.contentsOfDirectory(atPath: downloadsDirectory.path)) ?? []   // bearable, because a missing directory holds no remnant
+        let folders: [String]
+        if fm.fileExists(atPath: downloadsDirectory.path) {
+            do {
+                folders = try fm.contentsOfDirectory(atPath: downloadsDirectory.path)
+            } catch {
+                Logger.library.error("REKEY interrupted downloads not listed, the pass runs again: \(FailureReason.of(error), privacy: .public)")
+                return nil
+            }
+        } else {
+            folders = []
+        }
         var found = 0
         var moved = 0
         for oldId in folders.sorted() where details[oldId] == nil && !downloadedItemIds.contains(oldId) {
             let newId = map(oldId)
             guard newId != oldId else { continue }
             found += 1
-            guard phase[oldId] == nil, !fm.fileExists(atPath: itemDirectory(newId).path) else { continue }
+            guard phase[oldId] == nil, controls[oldId] == nil,
+                  !fm.fileExists(atPath: itemDirectory(newId).path) else { continue }
             do {
                 try fm.moveItem(at: itemDirectory(oldId), to: itemDirectory(newId))
                 moved += 1

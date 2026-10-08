@@ -17,12 +17,35 @@ import OSLog
 /// the table alone would be undone by their next save.
 @MainActor
 enum NavidromeRekeyRun {
-    /// One store: its name for the log line, and its work, which returns how
-    /// many entries changed and how many it looked at, or nil when it could
-    /// not do its work now (then the pass is not done and runs again).
+    /// What one store's step did.
+    enum Outcome: Equatable {
+        /// Its work is done: how many entries changed, how many it looked at.
+        case done(changed: Int, total: Int)
+        /// Not now: the pass is not done and runs again.
+        case notNow
+        /// Not possible here, for good: skipped with its reason, and the
+        /// pass may still be done (a waiting pass would run for ever).
+        case notHere(reason: String)
+    }
+
+    /// One store: its name for the log line, and its work.
     struct Step {
         let name: String
-        let run: @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)?
+        let run: @MainActor (_ map: @escaping (String) -> String) async -> Outcome
+
+        init(name: String, outcome: @escaping @MainActor (_ map: @escaping (String) -> String) async -> Outcome) {
+            self.name = name
+            self.run = outcome
+        }
+
+        /// A step whose work answers nil when it cannot be done now.
+        init(name: String, _ work: @escaping @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)?) {
+            self.name = name
+            self.run = { map in
+                guard let result = await work(map) else { return .notNow }
+                return .done(changed: result.changed, total: result.total)
+            }
+        }
     }
 
     private static var running = false
@@ -117,12 +140,15 @@ enum NavidromeRekeyRun {
         let map: (String) -> String = { SubsonicProvider.canonicalItemId($0, canonical: true) }
         var complete = true
         for step in steps ?? appSteps {
-            guard let result = await step.run(map) else {
+            switch await step.run(map) {
+            case .done(let changed, let total):
+                Logger.library.notice("REKEY \(step.name, privacy: .public) rewritten=\(changed) unchanged=\(total - changed) by=\(caller, privacy: .public)")
+            case .notNow:
                 complete = false
                 Logger.library.notice("REKEY \(step.name, privacy: .public) not possible now by=\(caller, privacy: .public); the pass runs again")
-                continue
+            case .notHere(let reason):
+                Logger.library.notice("REKEY \(step.name, privacy: .public) skipped, not possible here reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
             }
-            Logger.library.notice("REKEY \(step.name, privacy: .public) rewritten=\(result.changed) unchanged=\(result.total - result.changed) by=\(caller, privacy: .public)")
         }
         // The marker only after a whole pass: a step that could not do its
         // work leaves it unset, and the next occasion runs the pass again;

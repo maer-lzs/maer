@@ -544,9 +544,9 @@ struct NavidromeRekeyTests {
                                                  defaults: defaults, steps: steps), "another server address has its own pass")
     }
 
-    /// A step that cannot do its work now (the kept song list with no
-    /// address to find it by, a list that stayed on the disk) keeps the pass
-    /// open: no marker, and the next occasion runs it again.
+    /// A step that cannot do its work now (a kept song list that stayed on
+    /// the disk) keeps the pass open: no marker, and the next occasion runs
+    /// it again.
     @Test("ein Schritt, der nicht kann, haelt den Lauf offen; der naechste Lauf setzt die Marke")
     func aStepThatCannotKeepsThePassOpen() async throws {
         let suite = "rekey-open-\(UUID().uuidString)"
@@ -565,6 +565,60 @@ struct NavidromeRekeyTests {
         #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: steps),
                 "the pass runs again")
         #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)))
+    }
+
+    /// "Not now" keeps the pass open; "not possible here" is skipped with
+    /// its reason and the marker may come, or the pass would run for ever.
+    @Test("jetzt nicht haelt den Lauf offen, hier nicht moeglich wird mit Grund uebersprungen und die Marke kommt")
+    func notHereIsSkippedNotNowWaits() async throws {
+        let suite = "rekey-here-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let server = "music.example/rest"
+        var ran: [String] = []
+        let steps = [
+            NavidromeRekeyRun.Step(name: "never here", outcome: { _ in ran.append("never here"); return .notHere(reason: "witness") }),
+            NavidromeRekeyRun.Step(name: "other") { _ in ran.append("other"); return (1, 1) },
+        ]
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: steps))
+        #expect(ran == ["never here", "other"], "a step after the skipped one did not run")
+        #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)), "a step not possible here kept the pass open")
+    }
+
+    /// The kept song list: no address is "not possible here" (nothing on
+    /// this device to drop), a list that stayed on the disk is "not now".
+    @Test("die Songliste: ohne Adresse hier nicht moeglich, eine gebliebene Liste jetzt nicht, eine entfernte erledigt")
+    func theSongListAnswersBothWays() async throws {
+        let provider = SubsonicProvider.shared
+        let none = await provider.forgetSongCatalog(at: nil, removing: { _ in Issue.record("removed without an address") })
+        #expect(none == .noAddress)
+        #expect(SubsonicProvider.songListOutcome(none) == .notHere(reason: "no server address"))
+        let address = try #require(URL(string: "https://songlist-witness-\(UUID().uuidString.prefix(6)).example/rest"))
+        let stayed = await provider.forgetSongCatalog(at: address, removing: { _ in throw CocoaError(.fileWriteNoPermission) })
+        #expect(stayed == .stayed)
+        #expect(SubsonicProvider.songListOutcome(stayed) == .notNow)
+        let gone = await provider.forgetSongCatalog(at: address, removing: { _ in })
+        #expect(gone == .dropped(held: false))
+        #expect(SubsonicProvider.songListOutcome(gone) == .done(changed: 0, total: 1))
+    }
+
+    /// One reading of the typed address: a setting the client cannot take
+    /// gives no server key and no list address either.
+    @Test("eine Lesung der Server-Adresse: was der Klient nicht nimmt, gibt auch keinen Server-Schluessel und keine Listen-Adresse")
+    func oneReadingOfTheServerAddress() {
+        let previous = AppStorageKeys.subsonicServerURLValue
+        defer { AppStorageKeys.subsonicServerURLValue = previous }
+        for setting in ["//music.example/rest", "music.example/rest", "  "] {
+            AppStorageKeys.subsonicServerURLValue = setting
+            #expect(SubsonicClient(serverURL: setting, username: "hoerer", password: "geheim-42") == nil)
+            #expect(SubsonicProvider.serverAddress(setting) == nil)
+            #expect(SubsonicProvider.configuredServerKey == nil, "a key without a client for \(setting)")
+        }
+        let setting = " https://music.example/rest "
+        AppStorageKeys.subsonicServerURLValue = setting
+        let client = SubsonicClient(serverURL: setting, username: "hoerer", password: "geheim-42")
+        #expect(client?.baseURL == SubsonicProvider.serverAddress(setting))
+        #expect(SubsonicProvider.configuredServerKey == "music.example/rest")
     }
 
     /// Music off here at the update: the cover addresses need the client, so
@@ -708,14 +762,52 @@ struct NavidromeRekeyTests {
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds.isEmpty, "the precondition: no folder carries a mark")
+        let measured = manager.sizeMeasurements
 
         let result = try #require(manager.rekey(Self.map))
+        #expect(manager.sizeMeasurements == measured, "a pass that moved only interrupted downloads measured the sizes")
         let moved = downloads.appendingPathComponent(Self.map(old)).appendingPathComponent("0.mp3").path
         #expect(FileManager.default.fileExists(atPath: moved), "the interrupted download stayed under its old id")
         #expect(!FileManager.default.fileExists(atPath: downloads.appendingPathComponent(old).path))
         #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(taken).path), "a taken target is left alone")
         #expect(result.changed == 1)
         #expect(manager.rekey(Self.map)?.changed == 0, "a second pass changes nothing")
+    }
+
+    /// A folder of downloads that exists but cannot be listed is "not now",
+    /// with a line: no answer is no "no interrupted download". A missing
+    /// folder holds none.
+    @Test("ein unlesbarer Download-Ordner haelt den Schritt offen, ein fehlender ist leer")
+    func anUnreadableDownloadsFolderIsNotNow() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-unreadable-\(UUID().uuidString)", isDirectory: true)
+        let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: downloads.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        try FileManager.default.createDirectory(at: downloads.appendingPathComponent("sub:album:\(Self.hexAlbum)"),
+                                                withIntermediateDirectories: true)
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        await manager.ensureScanned()
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: downloads.path)
+        let listable = (try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) != nil
+        try #require(!listable, "the precondition: the folder cannot be listed here")
+        #expect(manager.rekey(Self.map) == nil, "an unreadable folder read as no interrupted download")
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: downloads.path)
+        try FileManager.default.removeItem(at: downloads)
+        #expect(manager.rekey(Self.map) != nil, "a missing folder held the step")
+    }
+
+    /// A folder held for a resume moves not: a resume clears the phase
+    /// before its download runs, the control stands throughout.
+    @Test("der Waechter der abgebrochenen Downloads fragt die Steuerung mit", .needsTheSources)
+    func theRemnantGuardAsksTheControls() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
+        let body = try #require(code.range(of: "private func rekeyRemnants(").map { String(code[$0.upperBound...].prefix(1800)) })
+        #expect(body.contains("phase[oldId] == nil, controls[oldId] == nil"), "a folder held for a resume can move")
     }
 
     /// A pass over many downloads writes the marks and the kinds and

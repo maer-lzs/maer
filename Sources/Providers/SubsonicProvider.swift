@@ -636,22 +636,34 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         serverAddress(AppStorageKeys.subsonicServerURLValue)
     }
 
-    /// A typed server address read the way `SubsonicClient` reads it.
+    /// A typed server address, by the client's one reading.
     nonisolated static func serverAddress(_ setting: String) -> URL? {
-        let trimmed = setting.trimmingCharacters(in: .whitespaces)
-        guard let url = URL(string: trimmed), url.scheme != nil, url.host != nil else { return nil }
-        return url
+        SubsonicClient.address(setting)
     }
 
     /// The kept song list holds raw song ids. After the server gave its songs
     /// new ids it would hand out old ones for up to a week, so it goes, and
     /// the next opening loads it whole. The list is found by the stored
-    /// address, so this works while music is off here. Returns whether a list
-    /// was dropped, or nil when it could not be: no address, or a list that
-    /// stayed on the disk.
+    /// address, so this works while music is off here.
+    enum SongListDrop: Equatable {
+        /// The list is gone; whether one was held.
+        case dropped(held: Bool)
+        /// No address to find a list by: nothing this device can drop.
+        case noAddress
+        /// The list stayed on the disk.
+        case stayed
+    }
+
     @discardableResult
-    func forgetSongCatalog() async -> Bool? {
-        guard let address = client?.baseURL ?? Self.storedServerAddress else { return nil }
+    func forgetSongCatalog() async -> SongListDrop {
+        await forgetSongCatalog(at: client?.baseURL ?? Self.storedServerAddress)
+    }
+
+    /// The same for a given address; a witness hands in its own removal
+    /// (nil: the documents store).
+    func forgetSongCatalog(at address: URL?,
+                           removing: ((String) async throws -> Void)? = nil) async -> SongListDrop {
+        guard let address else { return .noAddress }
         let name = Self.songCatalogName(forAddress: address)
         let held = songCatalogKept != nil || FileManager.default.fileExists(atPath: Ablage.documents.url(for: name).path)
         songCatalogKept = nil
@@ -659,21 +671,33 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         songCatalogCheckedAt = nil
         sortedSongs = [:]
         do {
-            try await Ablage.documents.remove(name: name)
+            if let removing {
+                try await removing(name)
+            } else {
+                try await Ablage.documents.remove(name: name)
+            }
         } catch {
             Logger.music.error("SONGS kept list not removed reason=\(FailureReason.of(error), privacy: .public)")
-            return nil
+            return .stayed
         }
-        return held
+        return .dropped(held: held)
     }
 
     /// The kept song list's step in the Navidrome rekey pass: the list is this
-    /// provider's own cache, so the provider names it. A list that could not
-    /// be dropped keeps the pass open.
+    /// provider's own cache, so the provider names it. A list that stayed
+    /// keeps the pass open; without an address there is no list to drop.
     static var songListRekeyStep: NavidromeRekeyRun.Step {
-        NavidromeRekeyRun.Step(name: "songlist") { _ in
-            guard let dropped = await Self.shared.forgetSongCatalog() else { return nil }
-            return (dropped ? 1 : 0, 1)
+        NavidromeRekeyRun.Step(name: "songlist", outcome: { _ in
+            Self.songListOutcome(await Self.shared.forgetSongCatalog())
+        })
+    }
+
+    /// What the song list's answer means for the pass.
+    nonisolated static func songListOutcome(_ drop: SongListDrop) -> NavidromeRekeyRun.Outcome {
+        switch drop {
+        case .dropped(let held): .done(changed: held ? 1 : 0, total: 1)
+        case .noAddress: .notHere(reason: "no server address")
+        case .stayed: .notNow
         }
     }
 
@@ -1189,11 +1213,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// server, short enough that a family never waits for long.
     nonisolated static let idFormWaitLimit: Double = 120
 
-    /// The key of the server set up here (host and path), or nil without one.
+    /// The key of the server set up here (host and path), or nil without one
+    /// the client could take.
     nonisolated static var configuredServerKey: String? {
-        let address = AppStorageKeys.subsonicServerURLValue.trimmingCharacters(in: .whitespaces)
-        guard let url = URL(string: address), url.host != nil else { return nil }
-        return SubsonicClient.serverKey(for: url)
+        storedServerAddress.map(SubsonicClient.serverKey(for:))
     }
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
