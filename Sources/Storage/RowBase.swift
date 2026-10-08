@@ -32,6 +32,19 @@ nonisolated enum RowBase<Value> {
         case removeSeen
     }
 
+    /// What the base is, for a start line: `fresh`, `known`, or `unknown`
+    /// with what the start read (`unknown(seen)`) or nothing (`unknown(none)`).
+    /// The plan alone does not tell `fresh` from a read that failed as a
+    /// whole: both upsert only.
+    var basis: String {
+        switch self {
+        case .known: return "known"
+        case .fresh: return "fresh"
+        case .unknown(seen: nil): return "unknown(none)"
+        case .unknown: return "unknown(seen)"
+        }
+    }
+
     var plan: Plan {
         switch self {
         case .known: return .diff

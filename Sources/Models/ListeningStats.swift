@@ -150,9 +150,10 @@ final class ListeningStatsStore: ObservableObject {
         unreadItems = items == nil
         if unreadDays || unreadItems { readAtStart = (days, items) }
         let ms = Int(Date().timeIntervalSince(started) * 1000)
-        // The plan says what the base is: rows that did not decode leave
-        // it unknown, as a later read line says too.
-        Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
+        // The base and its plan: rows that did not decode leave the base
+        // unknown, as a later read line says too; the plan alone reads the
+        // same for a fresh table and one nobody could read.
+        Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) base=\(base.basis, privacy: .public) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
         // The totals keep a chain of their own (their rule, `save`); the
         // app's two ends wait for it with every row chain.
         RowKeepers.register(owner: self) { [weak self] in await self?.awaitPendingWrites() }

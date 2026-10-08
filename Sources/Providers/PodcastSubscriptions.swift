@@ -229,7 +229,6 @@ final class PodcastSubscriptions: ObservableObject {
     /// episode index (session restore, CarPlay) await `ensureLoaded()`.
     private var bootstrapTask: Task<Void, Never>?
 
-
     /// True once the bootstrap disk load finished (EVERY path).
     /// Save() refuses to persist before that, so a cold-start mutation can
     /// never wipe the good file with the still-empty in-memory state.

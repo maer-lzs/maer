@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// The one rule every row store follows: what the rows are known to hold
@@ -18,6 +19,26 @@ struct RowBaseTests {
         #expect(RowBase<[String: Int]>.unknown(seen: ["a": 1]).plan == .removeSeen)
         #expect(RowBase<[String: Int]>.known(["a": 1]).knownValue == ["a": 1])
         #expect(RowBase<[String: Int]>.unknown(seen: ["a": 1]).knownValue == nil)
+    }
+
+    /// The plan reads the same for a fresh table and one nobody could read;
+    /// the start line names the base itself.
+    @Test("Die Startzeile nennt die Grundlage: frisch, bekannt, unbekannt mit Gelesenem und ganz ungelesen sind vier Namen")
+    func theBasisNamesWhatThePlanCannot() {
+        #expect(RowBase<[String: Int]>.known(["a": 1]).basis == "known")
+        #expect(RowBase<[String: Int]>.fresh.basis == "fresh")
+        #expect(RowBase<[String: Int]>.unknown(seen: nil).basis == "unknown(none)")
+        #expect(RowBase<[String: Int]>.unknown(seen: ["a": 1]).basis == "unknown(seen)")
+        #expect(RowBase<[String: Int]>.fresh.plan == RowBase<[String: Int]>.unknown(seen: nil).plan,
+                "the precondition: the plan alone does not tell them apart")
+    }
+
+    @Test("die Startzeile der Statistik nennt die Grundlage, nicht nur den Plan", .needsTheSources)
+    func theStatsStartLineNamesTheBase() throws {
+        let stats = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStats.swift"), encoding: .utf8))
+        let line = try #require(stats.split(separator: "\n").first { $0.contains("STATS start:") }, "the start line is gone")
+        #expect(line.contains("base=\\(base.basis"), "the start line names the plan, not the base")
     }
 
     @Test("Uebersprungene Zeilen machen die Basis unbekannt, nie frisch, und sie behaelt das Gelesene")
