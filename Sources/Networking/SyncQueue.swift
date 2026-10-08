@@ -15,6 +15,14 @@ protocol SyncQueueStorage {
     /// Whether the start could not read the stored entries: then the store
     /// may hold entries `load()` lacks.
     var startReadFailed: Bool { get }
+    /// Whether the start missed entries, also single ones that did not
+    /// decode (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { get }
+}
+
+extension SyncQueueStorage {
+    /// A storage without rows misses nothing.
+    var startIncomplete: Bool { false }
 }
 
 /// Narrow API view the flush needs. APIClient satisfies it; tests can inject a
@@ -71,6 +79,7 @@ final class SyncQueueRowStorage: SyncQueueStorage {
     }
 
     var startReadFailed: Bool { keeper.startReadFailed }
+    var startIncomplete: Bool { keeper.startIncomplete }
 
     /// The memory is the truth at once; the rows get the diff in the chain,
     /// and a failed write keeps the entries queued in memory. Emptying is
@@ -147,6 +156,9 @@ final class SyncQueue {
     func allPending() -> [String: PendingUpdate] {
         loadAll()
     }
+
+    /// Whether the start missed entries (named by the move, not waited for).
+    var startIncomplete: Bool { storage.startIncomplete }
 
     /// Every waiting update under the id in the form the server answers to
     /// (`NavidromeRekey`); where an old and a new id of one title meet, the

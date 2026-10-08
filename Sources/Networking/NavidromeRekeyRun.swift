@@ -32,20 +32,36 @@ enum NavidromeRekeyRun {
     struct Step {
         let name: String
         let run: @MainActor (_ map: @escaping (String) -> String) async -> Outcome
+        /// Whether the store's start missed rows (rows that did not decode
+        /// in this build). The move runs over them and does not wait: they
+        /// keep their old ids, and the line of the step says so.
+        let missedRows: @MainActor () -> Bool
 
-        init(name: String, outcome: @escaping @MainActor (_ map: @escaping (String) -> String) async -> Outcome) {
+        init(name: String, missedRows: @escaping @MainActor () -> Bool = { false },
+             outcome: @escaping @MainActor (_ map: @escaping (String) -> String) async -> Outcome) {
             self.name = name
             self.run = outcome
+            self.missedRows = missedRows
         }
 
         /// A step whose work answers nil when it cannot be done now.
-        init(name: String, _ work: @escaping @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)?) {
+        init(name: String, missedRows: @escaping @MainActor () -> Bool = { false },
+             _ work: @escaping @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)?) {
             self.name = name
             self.run = { map in
                 guard let result = await work(map) else { return .notNow }
                 return .done(changed: result.changed, total: result.total)
             }
+            self.missedRows = missedRows
         }
+    }
+
+    /// The line of a step that did its work. Rows its start could not read
+    /// are named: they keep their old ids, and the pass does not wait for
+    /// them, because they do not decode in this build at any later start.
+    nonisolated static func doneLine(_ name: String, changed: Int, total: Int, missedRows: Bool, by caller: String) -> String {
+        "REKEY \(name) rewritten=\(changed) unchanged=\(total - changed) by=\(caller)"
+            + (missedRows ? "; rows not read at start keep their old ids" : "")
     }
 
     private static var running = false
@@ -62,19 +78,19 @@ enum NavidromeRekeyRun {
             // Every store answers nil while its start could not read its
             // rows: they may hold old ids its memory lacks, and a marker set
             // over them would leave them under the old id for good.
-            Step(name: "queue") { map in
+            Step(name: "queue", missedRows: { PlayQueue.shared.startIncomplete }) { map in
                 let queue = PlayQueue.shared
                 let total = queue.ids.count
                 return queue.rekey(map).map { ($0, total) }
             },
-            Step(name: "context") { map in
+            Step(name: "context", missedRows: { PlaybackContext.shared.startIncomplete }) { map in
                 let context = PlaybackContext.shared
                 let total = context.ids.count
                 return context.rekey(map).map { ($0, total) }
             },
             Step(name: "stands") { map in ListeningStore.rekey(map) },
-            Step(name: "stats") { map in await ListeningStatsStore.shared.rekeyItems(map) },
-            Step(name: "pending") { map in
+            Step(name: "stats", missedRows: { ListeningStatsStore.shared.startMissedRows }) { await ListeningStatsStore.shared.rekeyItems($0) },
+            Step(name: "pending", missedRows: { SyncQueue.shared.startIncomplete }) { map in
                 let queue = SyncQueue.shared
                 let total = queue.allPending().count
                 return await queue.rekey(map).map { ($0, total) }
@@ -82,7 +98,7 @@ enum NavidromeRekeyRun {
             // These two also run in every reconcile of their carrier; here
             // for a device whose sync is off.
             Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
-            Step(name: "playlists") { map in MaerPlaylists.shared.rekey(map) },
+            Step(name: "playlists", missedRows: { MaerPlaylists.shared.startIncomplete }) { MaerPlaylists.shared.rekey($0) },
             downloadsStep(),
         ]
     }
@@ -102,7 +118,7 @@ enum NavidromeRekeyRun {
                               canRename: @escaping @MainActor () -> Bool = { SubsonicProvider.canRenameCovers },
                               rename: @escaping @MainActor (String, String) -> Void = SubsonicProvider.renameCover,
                               settle: @escaping @MainActor () async -> Void = { await Artwork.settleDisk() }) -> Step {
-        Step(name: "downloads") { map in
+        Step(name: "downloads", missedRows: { manager().startIncomplete }) { map in
             let downloads = manager()
             await downloads.ensureScanned()
             guard canRename() || !downloads.wouldMove(map) else { return nil }
@@ -142,7 +158,8 @@ enum NavidromeRekeyRun {
         for step in steps ?? appSteps {
             switch await step.run(map) {
             case .done(let changed, let total):
-                Logger.library.notice("REKEY \(step.name, privacy: .public) rewritten=\(changed) unchanged=\(total - changed) by=\(caller, privacy: .public)")
+                let line = doneLine(step.name, changed: changed, total: total, missedRows: step.missedRows(), by: caller)
+                Logger.library.notice("\(line, privacy: .public)")
             case .notNow:
                 complete = false
                 Logger.library.notice("REKEY \(step.name, privacy: .public) not possible now by=\(caller, privacy: .public); the pass runs again")

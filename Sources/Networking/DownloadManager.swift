@@ -123,6 +123,8 @@ final class DownloadManager {
     /// The one directory of the audio files, created and marked once.
     private let downloadsDirectory: URL
     private let keeper: RowKeeper<LibraryItemDetail>
+    /// Whether the start missed marks (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { keeper.startIncomplete }
     /// The details of every complete download, keyed by item id: the rows
     /// in memory, the mark of completion, and the offline start source.
     private var details: [String: LibraryItemDetail] = [:]

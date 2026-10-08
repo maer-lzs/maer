@@ -87,6 +87,10 @@ final class ListeningStatsStore: ObservableObject {
     /// a write replaces a row's value whole (`rowsReadForWrite`).
     private var unreadDays = false
     private var unreadItems = false
+    /// Whether the start missed rows: a table it could not read, or rows that
+    /// did not decode in this build. A write does not clear it, only a read
+    /// of both tables that sees every row (the move names it, `rekeyItems`).
+    private(set) var startMissedRows = false
     /// The two tables as one read leaves them (nil = could not be read).
     typealias Loads = (days: StatsTable.Load?, items: StatsTable.Load?)
     /// What the start read of each table found, kept while another table is
@@ -141,6 +145,7 @@ final class ListeningStatsStore: ObservableObject {
         // What is shown is the holding account's part from the first read.
         data = ListeningStatsSync.owned(device: stock, carried: loadedLedger.carried, since: loadedLedger.since)
         rowBase = base
+        if case .unknown = base { startMissedRows = true } else { startMissedRows = false }
         unreadDays = days == nil
         unreadItems = items == nil
         if unreadDays || unreadItems { readAtStart = (days, items) }
@@ -347,6 +352,7 @@ final class ListeningStatsStore: ObservableObject {
                                              readDays: unreadDays ? days.rows : nil,
                                              readItems: unreadItems ? items.rows : nil)
         rowBase = Self.startBase(days: days, items: items).base
+        if case .unknown = rowBase { startMissedRows = true } else { startMissedRows = false }
         Logger.library.notice("STATS rows read on save: days=\(days.rows.count) items=\(items.rows.count) plan=\(String(describing: self.rowBase.plan), privacy: .public)")
         potHeld = nil
         unreadDays = false

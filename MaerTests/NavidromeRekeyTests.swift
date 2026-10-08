@@ -593,6 +593,33 @@ struct NavidromeRekeyTests {
         #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)), "a step not possible here kept the pass open")
     }
 
+    /// Rows that do not decode in this build do not decode at a later start
+    /// either: the move does not wait for them, it names them, and they
+    /// keep their old ids.
+    @Test("ein Bestand mit nicht dekodierten Zeilen haelt den Umzug nicht auf; die Zeile des Schritts nennt sie")
+    func rowsNotReadDoNotHoldThePass() async throws {
+        let suite = "rekey-missed-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let server = "music.example/rest"
+        let steps = [NavidromeRekeyRun.Step(name: "missed", missedRows: { true }) { _ in (1, 2) }]
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: steps))
+        #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)), "rows not read held the pass open")
+        #expect(NavidromeRekeyRun.doneLine("missed", changed: 1, total: 2, missedRows: true, by: "w")
+                == "REKEY missed rewritten=1 unchanged=1 by=w; rows not read at start keep their old ids")
+        #expect(NavidromeRekeyRun.doneLine("whole", changed: 1, total: 2, missedRows: false, by: "w")
+                == "REKEY whole rewritten=1 unchanged=1 by=w")
+        // A store's answer comes from its chain: a playlist row that does
+        // not decode makes the start incomplete.
+        let folder = try Self.temporaryDirectory("rekey-missed-rows")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let database = MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path)
+        _ = try await KeyedRowStore<MaerPlaylists.Playlist>(connection: try database.connection(), table: .maerPlaylist)
+        _ = try await database.connection().run("INSERT INTO maer_playlist (key, payload) VALUES (?, ?)",
+                                                [.text("later-form"), .blob(Data("not a list".utf8))])
+        #expect(MaerPlaylists(database: database).startIncomplete, "a row that did not decode left the start complete")
+    }
+
     /// The kept song list: no address is "not possible here" (nothing on
     /// this device to drop), a list that stayed on the disk is "not now".
     @Test("die Songliste: ohne Adresse hier nicht moeglich, eine gebliebene Liste jetzt nicht, eine entfernte erledigt")
@@ -999,7 +1026,12 @@ struct NavidromeRekeyTests {
         let run = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/NavidromeRekeyRun.swift"), encoding: .utf8))
         for name in ["queue", "context", "stands", "stats", "pending", "choices", "playlists", "downloads"] {
-            #expect(run.contains("Step(name: \"\(name)\")"), "the pass leaves out \(name)")
+            #expect(run.contains("Step(name: \"\(name)\""), "the pass leaves out \(name)")
+        }
+        // Every store with rows says whether its start missed some, so the
+        // line of its step names the rows that keep their old ids.
+        for name in ["queue", "context", "stats", "pending", "playlists", "downloads"] {
+            #expect(run.contains("Step(name: \"\(name)\", missedRows: {"), "\(name) does not say which rows it missed")
         }
         #expect(run.contains("SubsonicProvider.songListRekeyStep,"), "the pass leaves out the kept song list")
         #expect(run.contains("await downloads.ensureScanned()"), "before the scan, no download is known yet")

@@ -125,6 +125,8 @@ final class MaerPlaylists: ObservableObject {
     /// The lists live as rows (one per list, `maer_playlist`), with their
     /// one write chain (`RowKeeper`).
     private let keeper: RowKeeper<Playlist>
+    /// Whether the start missed rows (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { keeper.startIncomplete }
 
     /// The database is chosen once; a witness hands in a file of its own.
     init(database: MaerDatabase = MaerDatabase.shared) {

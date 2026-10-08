@@ -42,6 +42,8 @@ final class PlaybackContext: ObservableObject {
     /// touch neither disk nor database.
     private let persists: Bool
     private let keeper: RowKeeper<Stored>?
+    /// Whether the start missed the row (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { keeper?.startIncomplete == true }
 
     init(persists: Bool = false, database: MaerDatabase? = nil) {
         self.persists = persists

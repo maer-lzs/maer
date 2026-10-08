@@ -36,6 +36,8 @@ final class PlayQueue: ObservableObject {
     /// stay in memory and touch neither disk nor database.
     private let persists: Bool
     private let keeper: RowKeeper<[String]>?
+    /// Whether the start missed the row (`RowChain.startIncomplete`).
+    var startIncomplete: Bool { keeper?.startIncomplete == true }
     /// An id → all its equivalent ids (podcast rss/abspod twins), so a removal
     /// takes out BOTH faces of the same episode. Injected → the core stays
     /// testable and uncoupled from ABSPodcastProvider.
