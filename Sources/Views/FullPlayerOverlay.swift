@@ -23,8 +23,8 @@ struct FullPlayerOverlay: View {
     /// interruptible offset source instead of view transitions.
     @State private var releaseOffset: CGFloat
     /// Frame of the player's controls column (reported by PlayerView). The
-    /// dismiss zones are capped against it so they never cover the chapter
-    /// buttons or the scrubber.
+    /// top and bottom zones are capped against it so they never cover the
+    /// chapter buttons or the scrubber; the side strips stay clear by width.
     @State private var controlsFrame: CGRect?
     private let dismissThreshold: CGFloat = 180
 

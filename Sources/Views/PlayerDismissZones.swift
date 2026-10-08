@@ -6,10 +6,11 @@
 import CoreGraphics
 import SwiftUI
 
-/// Pure geometry for the full-player dismiss zones: the side rails and
-/// the top strip must never cover the player's interactive controls (chapter
-/// buttons, scrubber). Instead of a fixed bottom inset, each zone is capped
-/// against the REPORTED controls frame. Audited failure cases: chapter
+/// Pure geometry for the full-player dismiss zones: no zone may cover the
+/// player's interactive controls (chapter buttons, scrubber). The top and
+/// bottom zones are capped against the REPORTED controls frame; the side
+/// strips have a fixed narrow width, and the row in the scrubber's place is
+/// inset past them (`scrubberInset`). Audited failure cases: chapter
 /// buttons dead on 375pt, slider thumb not grabbable at position 0 on any
 /// iPhone, scrubber fully covered by the top strip in iPhone landscape.
 nonisolated enum PlayerDismissZones {

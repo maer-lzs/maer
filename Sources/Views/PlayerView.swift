@@ -89,7 +89,7 @@ struct PlayerView: View {
                     cover
                     VStack(spacing: 20) { controlsColumn }
                         // Report the interactive controls' frame to the overlay:
-                        // its dismiss zones are capped against it so the
+                        // its top and bottom zones are capped against it so the
                         // chapter buttons and the scrubber stay tappable.
                         .background(GeometryReader { controls in
                             Color.clear.preference(
@@ -598,7 +598,9 @@ struct PlayerView: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.8))
         }
-        .padding(.horizontal, 24)
+        // The row stands where the scrubber stands, with the quality menu at
+        // its edge: the same inset keeps it clear of the side strips.
+        .padding(.horizontal, PlayerDismissZones.scrubberInset)
         .frame(minHeight: 44)
     }
 

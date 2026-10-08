@@ -10,11 +10,13 @@ import Foundation
 /// timestamp (no heuristics). This core merges id/timestamp pairs from several
 /// sources; the view resolves the ids back to items via AppSession.
 nonisolated enum HomeSections {
-    /// Music never stands in "Continue": an album, a playlist, a song or a
-    /// catalogue title that is not a reading lives in "Listen Again", with
-    /// or without a position, so a title cannot flip between the two rows
-    /// while its position travels. Spoken word stays. The ONE form question
-    /// decides (`MediaFamily.isMusicByForm`).
+    /// Music never stands in "Continue": a server album, playlist or song
+    /// lives in "Listen Again", with or without a position, so a title
+    /// cannot flip between the two rows while its position travels. Spoken
+    /// word stays. The ONE form question decides (`MediaFamily.isMusicByForm`)
+    /// by the id alone. An archive album whose form only its stored mark
+    /// knows counts as a reading here; the catalogue titles of "Continue"
+    /// are decided where the mark is read (`ContinueSources.started`).
     static func continueAccepts(_ id: String) -> Bool {
         !MediaFamily.isMusicByForm(id, markedForm: nil)
     }

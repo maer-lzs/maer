@@ -240,15 +240,19 @@ Sources/
 ├── AppSession.swift                Process-wide session (player coordinator, library, providers;
 │                                   shared with CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (continue listening, play a specific book;
-│                                   rows first, the older cache file as fallback)
+│                                   the books come from the library rows)
 ├── Storage/                        The one database file (maer.sqlite) and every row store
 │   ├── MaerDatabase.swift          The one file and the one connection; checkpoint on the way out
 │   ├── SQLiteConnection.swift      Actor over the system SQLite3, one statement at a time, WAL
+│   ├── SQLiteStatements.swift      The statement mechanics both connections share
 │   ├── SQLiteReader.swift          Read-only reader for the synchronous start of a store
 │   ├── KeyedRowStore.swift         A dictionary as rows (key + JSON payload), diff writes
-│   ├── RowKeeper.swift             Start read, one-time pour of the old document, serial write chain
+│   ├── RowChain.swift              The one write chain of a row store, awaited before the checkpoint
+│   ├── RowKeeper.swift             Start read of a store's rows and its serial write chain
 │   ├── RowBase.swift               Pure: what a store knows about its rows before a write
-│   ├── DocumentMigration.swift     Sets a moved document aside (.migrated, out of the backup)
+│   ├── OwnerMark.swift             Which account a family's rows belong to, written with them
+│   ├── RestingShelf.swift          Where a family's rows rest while another account owns the device
+│   ├── ShelfFollower.swift         The one way a family follows the account through the shelf
 │   ├── PodcastRowStore.swift       Shows and episodes as rows
 │   ├── LibraryRowStore.swift       Library items and progress as rows
 │   └── StandStore.swift, StandMirror.swift   Listening positions as rows, mirrored from the defaults

@@ -33,6 +33,22 @@ struct RetiredDocumentsFenceTests {
         #expect(found.isEmpty, "a retired document is read again: \(found.sorted())")
     }
 
+    /// The public file trees describe the stores as they are: a retired
+    /// document or its migration named there tells a reader of a step the
+    /// app no longer takes.
+    @Test("die READMEs nennen kein Dokument und keinen Umzug von vor den Zeilen", .needsTheSources)
+    func theReadmesNameNoRetiredDocument() throws {
+        let readmes = try PublicReadmeFenceTests.readmeTexts()
+        #expect(readmes.map(\.name) == ["README.md", "README.de.md"], "the precondition: both READMEs were read")
+        var found: [String] = []
+        for (name, text) in readmes {
+            for retired in Self.retired + Self.retiredSteps where text.contains(retired) {
+                found.append("\(name): \(retired)")
+            }
+        }
+        #expect(found.isEmpty, "a README names a retired document or step: \(found.sorted())")
+    }
+
     /// The one-time steps whose source form every device left long ago:
     /// the catalog master's translation, the two keychain passes, the logo
     /// and feed picture generations, the two download repairs, the listen

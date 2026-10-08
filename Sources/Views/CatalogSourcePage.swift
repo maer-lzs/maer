@@ -331,13 +331,11 @@ struct CatalogSourcePage: View {
         ShelfPlaceholderRow(title: title)
     }
 
-    /// One shelf's preview row (filter over `items`).
+    /// One shelf's preview row, from the shelf's own stock.
     ///
-    /// On THIS page a title belongs to exactly one shelf. Its
-    /// FIRST in browse order. A title that carries Philosophy AND Religion
-    /// otherwise stands twice on one screen, which reads as a
-    /// bug rather than as the truth of its subjects. On the shelf FULL pages
-    /// it may appear in both. There it is the truth.
+    /// Each row asks its source for its own shelf, and no row leaves out
+    /// what another row shows: a title that carries two subjects can stand
+    /// in both rows, and in the popular row or a decade row besides.
     @ViewBuilder
     private func genreRow(_ shelf: (key: String, title: String)) -> some View {
         if let stock = shelfStock[shelf.key], !stock.items.isEmpty {

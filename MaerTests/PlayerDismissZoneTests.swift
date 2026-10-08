@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import CoreGraphics
+import Foundation
 @testable import Maer
 
 /// Pure geometry of the full-player dismiss zones. The audited failure
@@ -17,6 +18,18 @@ struct PlayerDismissZoneTests {
     @Test func theScrubberLiesPastTheSideStrips() {
         #expect(PlayerDismissZones.sideStripWidth == 20)
         #expect(PlayerDismissZones.scrubberInset > PlayerDismissZones.sideStripWidth)
+    }
+
+    /// The live row stands where the scrubber stands, with a menu at its
+    /// edge: both take the one inset, so neither lies under a strip.
+    @Test("die Live-Zeile nimmt den Rand des Scrubbers", .needsTheSources)
+    func theLiveRowTakesTheScrubbersInset() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
+        let live = try #require(code.range(of: "private var liveRow: some View {"), "the precondition: the live row was read")
+        let body = code[live.upperBound...].prefix(600)
+        #expect(body.contains(".padding(.horizontal, PlayerDismissZones.scrubberInset)"),
+                "the live row has its own number for the inset")
     }
 
 
