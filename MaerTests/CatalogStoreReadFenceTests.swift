@@ -307,7 +307,7 @@ struct CatalogStoreReadFenceTests {
     func theShelfGateBooksAfterwardsAndFailuresAreVisible() throws {
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
-        let body = try #require(functionBody(of: "private func loadShelves()", in: text))
+        let body = try #require(functionBody(of: "private func loadShelves(by caller: String)", in: text))
         let gate = try #require(body.range(of: "shelvesLoaded = true"))
         let work = try #require(body.range(of: "withTaskGroup"))
         #expect(gate.lowerBound > work.upperBound,
@@ -363,7 +363,7 @@ struct CatalogStoreReadFenceTests {
     func everyShelfPathGoesThroughTheOneDoor() throws {
         let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
-        let dekaden = try #require(functionBody(of: "private func loadDecades() async {", in: seite))
+        let dekaden = try #require(functionBody(of: "private func loadDecades() async -> [CatalogShelfSource.Way] {", in: seite))
         #expect(dekaden.contains("decadePreview("),
                 "die Jahrzehnte fragen wieder ohne Speicher")
         #expect(!dekaden.contains("CatalogShelfSource.decadePage("),
@@ -451,8 +451,11 @@ struct CatalogStoreReadFenceTests {
                                      downloads: nil, runtime: nil, licenseurl: nil,
                                      year: nil, subject: nil)])
         // Jahrzehnt: der gespeicherte Tag traegt die Antwort.
-        let jahrzehnt = try await CatalogShelfSource.decadePreview(
+        let (jahrzehnt, weg) = try await CatalogShelfSource.decadePreview(
             source: .oldTimeRadio, decade: "1950s", rows: 12, storedDay: ["1950s": stock])
+        #expect(weg == .day, "das Jahrzehnt fragte am gespeicherten Tag vorbei")
+        // Die Zeile eines Durchgangs nennt jeden Weg, auch den mit null.
+        #expect(CatalogShelfSource.Way.tally([.stock, .day, .stock]) == "stock=2 day=1 network=0")
         guard case .archive(let docs, let total) = jahrzehnt else {
             Issue.record("das Jahrzehnt antwortet nicht mit Archive-Kacheln"); return
         }

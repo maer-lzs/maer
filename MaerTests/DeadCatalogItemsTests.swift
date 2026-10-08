@@ -28,6 +28,7 @@ struct DeadCatalogItemsTests {
         // Dienst-Ausfall sagt NICHTS ueber das Item.
         #expect(DeadCatalogItems.liveness(httpStatus: nil, body: nil) == .unknown)
         #expect(DeadCatalogItems.liveness(httpStatus: 503, body: nil) == .unknown)
+        #expect(DeadCatalogItems.liveness(httpStatus: 403, body: nil) == .unknown, "eine Abweisung galt als tot")
         #expect(DeadCatalogItems.liveness(httpStatus: 200, body: Data("nonsense".utf8)) == .unknown)
     }
 

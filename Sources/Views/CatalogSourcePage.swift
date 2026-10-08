@@ -147,7 +147,7 @@ struct CatalogSourcePage: View {
                 surface: source.rawValue,
                 archiveQuery: ArchiveOrgClient.archiveBaseQuery(for: source))
             knownShelfKeys = CatalogShelfSource.knownShelfKeys(for: source)
-            async let shelvesTask: Void = loadShelves()
+            async let shelvesTask: Void = loadShelves(by: "open")
             if items.isEmpty {
                 // Seed from the overview's already-loaded preview so the page
                 // opens filled, then page onward from the network.
@@ -162,7 +162,7 @@ struct CatalogSourcePage: View {
         .task(id: stockService.stock(source.rawValue)?.entries.count ?? -1) {
             guard stockService.stock(source.rawValue) != nil else { return }
             shelvesLoaded = false
-            await loadShelves()
+            await loadShelves(by: "stock")
             logOverlap(by: "stock")
         }
     }
@@ -254,7 +254,7 @@ struct CatalogSourcePage: View {
                 if ShelvesFailedLine.isShown(arrived: shelves.count, failed: shelfFailures.count) {
                     ShelvesFailedLine {
                         shelfFailures = [:]
-                        Task { await loadShelves() }
+                        Task { await loadShelves(by: "retry") }
                     }
                 }
             }
@@ -410,7 +410,11 @@ struct CatalogSourcePage: View {
     /// And a failure is an ANSWER: a shelf that could not be asked is counted
     /// and named, so a source without stock here and a shelf that could not
     /// be asked stop looking the same.
-    private func loadShelves() async {
+    /// One pass over the shelves. `caller` names what started it (the
+    /// first visit, a landing of the stock, the retry line); the pass's line
+    /// says it with how each answer came, so a pass that asks the network is
+    /// told from one that only redraws.
+    private func loadShelves(by caller: String) async {
         guard hasChips, !shelvesLoaded, !shelvesLoading else { return }
         shelvesLoading = true
         defer { shelvesLoading = false }
@@ -449,7 +453,8 @@ struct CatalogSourcePage: View {
         // topic, so it keeps the tighter cap.
         let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
         var failures: [String: String] = [:]
-        await withTaskGroup(of: (String, CatalogShelfSource.Answer?, String?).self) { group in
+        var ways: [CatalogShelfSource.Way] = []
+        await withTaskGroup(of: (String, CatalogShelfSource.Answer?, String?, CatalogShelfSource.Way?).self) { group in
             var started = 0
             for key in keys {
                 // Eighteen at once are neither faster nor polite: measured,
@@ -458,26 +463,31 @@ struct CatalogSourcePage: View {
                 // had the endpoint refuse the connection. The shelves publish
                 // as they come, so the cap costs no visible order either.
                 if started >= cap {
-                    for await answered in group {
-                        applyShelf(answered, failures: &failures)
+                    for await (key, answer, reason, way) in group {
+                        if let way { ways.append(way) }
+                        applyShelf((key, answer, reason), failures: &failures)
                         break
                     }
                     started -= 1
                 }
                 group.addTask {
                     do {
-                        return (key, try await CatalogShelfSource.preview(
+                        let (answer, way) = try await CatalogShelfSource.preview(
                             source: source, shelf: key, languages: languages,
                             rows: RowPreview.limit, storedDay: storedDay,
-                            keptStock: keptStock, keptIndex: keptIndex), nil)
+                            keptStock: keptStock, keptIndex: keptIndex)
+                        return (key, answer, nil, way)
                     } catch {
-                        return (key, nil, FreeCatalog.failureReason(error))
+                        // A throw came from the network: the stock and the day
+                        // store answer without one.
+                        return (key, nil, FreeCatalog.failureReason(error), .network)
                     }
                 }
                 started += 1
             }
-            for await answered in group {
-                applyShelf(answered, failures: &failures)
+            for await (key, answer, reason, way) in group {
+                if let way { ways.append(way) }
+                applyShelf((key, answer, reason), failures: &failures)
             }
         }
         // The order is decided ONCE, over the browse order, after everything
@@ -486,7 +496,7 @@ struct CatalogSourcePage: View {
         shelfStock = twinFree(shelfStock)
         shelfFailures = failures
         // A cancelled pass is not a finished pass. It must be allowed again.
-        await loadDecades()
+        ways += await loadDecades()
         // Neither is a pass that brought NOTHING and reported NOTHING.
         //
         // A shelf whose request was cancelled answers with no content and no
@@ -504,34 +514,38 @@ struct CatalogSourcePage: View {
         // on: whether a stock was there, and whether the pass was cancelled.
         // Twice on the device the line said 0 and 0 and nothing else.
         let stockCount = keptStock.map { String($0.entries.count) } ?? "none"
-        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled && !leerUndStumm) stock=\(stockCount, privacy: .public) cancelled=\(Task.isCancelled)")
+        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled && !leerUndStumm) stock=\(stockCount, privacy: .public) cancelled=\(Task.isCancelled) by=\(caller, privacy: .public) \(CatalogShelfSource.Way.tally(ways), privacy: .public)")
     }
 
     /// The decades, concurrent and in the same shape as the genres. A
     /// failure is named, an empty decade gets no row.
-    private func loadDecades() async {
-        guard source == .oldTimeRadio else { return }
+    /// The decades' ways, for the line of the pass that ran them.
+    private func loadDecades() async -> [CatalogShelfSource.Way] {
+        guard source == .oldTimeRadio else { return [] }
         let source = source
         // The decades are shelves of the same surface, so they take the same
         // day store. Four queries, so they need no cap of their own.
         let storedDay = CatalogShelfSource.storedDay(surface: source.rawValue)
-        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
+        var ways: [CatalogShelfSource.Way] = []
+        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?, CatalogShelfSource.Way).self) { group in
             for decade in CatalogGenreAxis.decadeShelves {
                 let key = decade.key
                 group.addTask {
                     do {
-                        switch try await CatalogShelfSource.decadePreview(
+                        let (answer, way) = try await CatalogShelfSource.decadePreview(
                             source: source, decade: key, rows: RowPreview.limit,
-                            storedDay: storedDay) {
-                        case .archive(let docs, let total): return (key, docs, total, nil)
-                        default: return (key, [], nil, nil)
+                            storedDay: storedDay)
+                        switch answer {
+                        case .archive(let docs, let total): return (key, docs, total, nil, way)
+                        default: return (key, [], nil, nil, way)
                         }
                     } catch {
-                        return (key, [], nil, FreeCatalog.failureReason(error))
+                        return (key, [], nil, FreeCatalog.failureReason(error), .network)
                     }
                 }
             }
-            for await (key, docs, total, reason) in group {
+            for await (key, docs, total, reason, way) in group {
+                ways.append(way)
                 if let reason {
                     Logger.library.error("FREECAT decade=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
                     continue
@@ -542,6 +556,7 @@ struct CatalogSourcePage: View {
             }
         }
         Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
+        return ways
     }
 
     /// The shared twin rule over this page's browse order; the rule itself

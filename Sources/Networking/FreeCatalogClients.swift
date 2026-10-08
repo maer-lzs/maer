@@ -486,13 +486,26 @@ nonisolated enum CatalogShelfSource {
             : .archive(docs: stock?.docs ?? [], total: stock?.total)
     }
 
+    /// Where a preview's answer came from: the kept stock (or nothing to
+    /// ask without one), the day store, or a question on the network. A
+    /// page's pass names the count of each, so a pass that asks the network
+    /// can be told from one that only redraws.
+    enum Way: String, Sendable, CaseIterable {
+        case stock, day, network
+
+        /// The counts of a pass, every way named, zero included.
+        static func tally(_ ways: [Way]) -> String {
+            allCases.map { way in "\(way.rawValue)=\(ways.filter { $0 == way }.count)" }.joined(separator: " ")
+        }
+    }
+
     /// The OVERVIEW's shelf preview. Same query as the full page, plus the
     /// day store. A throw propagates and stores NOTHING, so a bad minute
     /// cannot freeze the page for the rest of the day.
     static func preview(source: CatalogSource, shelf: String, languages: [String],
                         rows: Int, storedDay: [String: ShelfStock?] = [:],
                         keptStock: CatalogStock? = nil,
-                        keptIndex: CatalogStockIndex? = nil) async throws -> Answer {
+                        keptIndex: CatalogStockIndex? = nil) async throws -> (answer: Answer, way: Way) {
         // The kept stock answers first: it holds what the query would fetch
         // and orders it by the same popularity. No network at all.
         if shelf == CatalogGenreAxis.browseAllKey {
@@ -500,33 +513,33 @@ nonisolated enum CatalogShelfSource {
             // waits for the first fetch (no service query spans it).
             guard let keptStock,
                   let local = localBrowse(rows: rows, stock: keptStock, source: source) else {
-                return .archive(docs: [], total: nil)
+                return (.archive(docs: [], total: nil), .stock)
             }
-            return local
+            return (local, .stock)
         }
         if let keptStock,
            let local = localShelf(surface: source.rawValue, shelf: shelf,
                                   rows: rows, stock: keptStock, index: keptIndex) {
-            return local
+            return (local, .stock)
         }
-        if let stored = storedDay[shelf] { return answer(from: stored, source: source) }
+        if let stored = storedDay[shelf] { return (answer(from: stored, source: source), .day) }
         let answer = try await page(source: source, shelf: shelf,
                                     languages: languages, rows: rows)
         remember(answer, surface: source.rawValue, shelf: shelf, rows: rows)
-        return answer
+        return (answer, .network)
     }
 
     /// A DECADE shelf through the day store. Its query is fully determined by
     /// the base query and the decade in the id, so the fingerprint needs no
     /// term list.
     static func decadePreview(source: CatalogSource, decade: String, rows: Int,
-                              storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+                              storedDay: [String: ShelfStock?] = [:]) async throws -> (answer: Answer, way: Way) {
         if let stored = storedDay[decade] {
-            return .archive(docs: stored?.docs ?? [], total: stored?.total)
+            return (.archive(docs: stored?.docs ?? [], total: stored?.total), .day)
         }
         let answer = try await decadePage(source: source, decade: decade, rows: rows)
         remember(answer, surface: source.rawValue, shelf: decade, rows: rows)
-        return answer
+        return (answer, .network)
     }
 
     /// The POPULAR row of a music area, through the same day store. The

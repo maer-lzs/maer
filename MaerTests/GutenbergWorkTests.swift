@@ -332,8 +332,9 @@ struct GutenbergRightsTests {
                               downloads: $0, licenseurl: nil, year: nil)
         })
         stock.popularityComplete = true
-        let answer = try await CatalogShelfSource.preview(source: .gutenberg, shelf: CatalogGenreAxis.browseAllKey,
-                                                          languages: [], rows: 12, keptStock: stock)
+        let (answer, way) = try await CatalogShelfSource.preview(source: .gutenberg, shelf: CatalogGenreAxis.browseAllKey,
+                                                                 languages: [], rows: 12, keptStock: stock)
+        #expect(way == .stock, "the browse row asked past the kept stock")
         let items = try #require(CatalogShelfEntries.shelf(answer, source: .gutenberg, collectionsLast: true)).items
         #expect(items.count == 5 && items.allSatisfy { $0.id.hasPrefix("gut:") }, "titles without a genre are reachable")
         let page = SyncContractFenceTests.stripped(try String(
