@@ -40,6 +40,12 @@ final class RowChain<Snapshot> {
     /// succeeds before a write does. A pass that must reach every row (the
     /// id move) waits while it holds.
     private(set) var startReadFailed = false
+    /// Whether the start missed rows: it failed as a whole, or rows were
+    /// there that did not decode. A landed write does not clear it, unlike
+    /// `base`: the rows it could not read are still in the table. Only a
+    /// later read that sees every row does. A question that needs every
+    /// row known asks this, not `startReadFailed`.
+    private(set) var startIncomplete = false
     /// The store's adoption of rows read after a failed start: it takes the
     /// rows into its memory by its rule. A chain without it holds every
     /// write over unread rows.
@@ -63,6 +69,7 @@ final class RowChain<Snapshot> {
     func started(rows: Snapshot?, skipped: Int) {
         base = RowBase.afterLoad(rows: rows, skipped: skipped)
         startReadFailed = false
+        startIncomplete = skipped > 0
         logSkippedStart(skipped, rowsSeen: rows != nil)
     }
 
@@ -78,6 +85,7 @@ final class RowChain<Snapshot> {
     func startReadFailedAsAWhole(reason: String) {
         base = .unknown(seen: nil)
         startReadFailed = true
+        startIncomplete = true
         Logger.library.error("\(self.label, privacy: .public) rows read failed reason=\(reason, privacy: .public) base=unknown")
     }
 
@@ -89,7 +97,12 @@ final class RowChain<Snapshot> {
     func started(base: RowBase<Snapshot>, skipped: Int) {
         self.base = base
         startReadFailed = false
-        if case .unknown(let seen) = base { logSkippedStart(skipped, rowsSeen: seen != nil) }
+        if case .unknown(let seen) = base {
+            startIncomplete = true
+            logSkippedStart(skipped, rowsSeen: seen != nil)
+        } else {
+            startIncomplete = false
+        }
     }
 
     /// Hands one write to the chain. `read` reads the rows again (the rows,
@@ -117,6 +130,7 @@ final class RowChain<Snapshot> {
                     let load = try await read()
                     self.base = RowBase.afterLoad(rows: load.rows, skipped: load.skipped)
                     self.startReadFailed = false
+                    self.startIncomplete = load.skipped > 0
                     if let rows = load.rows { adopt(rows) }
                     Logger.library.notice("\(self.label, privacy: .public) rows read on save: skipped=\(load.skipped)")
                 } catch {

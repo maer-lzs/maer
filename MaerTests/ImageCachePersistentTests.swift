@@ -374,8 +374,8 @@ struct ImageCachePersistentTests {
     }
 
     /// One pass between the folders counts all four directions, a removal
-    /// too, and a failure carries its reason in its own line; the summary
-    /// speaks as soon as any count is not zero.
+    /// too; failures are counted with the first reason in the one summary
+    /// line, which speaks as soon as any count is not zero.
     @Test("der Lauf zwischen den Ordnern zaehlt alle vier Richtungen")
     func theTierPassCountsAllFourDirections() async throws {
         let root = try NavidromeRekeyTests.temporaryDirectory("tiers-tally")
@@ -390,11 +390,23 @@ struct ImageCachePersistentTests {
         let tally = await ImageCache.applyTierMoves(
             [.drop("gone"), .demote("down"), .promote("up"), .demote("missing"), .promote("held")],
             persistent: persistent, cache: cache, isWaiting: { $0 == "held" })
-        #expect(tally == ImageCache.TierTally(promoted: 1, demoted: 1, dropped: 1, failed: 1, waiting: 1))
+        let counts: [Int] = [tally.promoted, tally.demoted, tally.dropped, tally.failed, tally.waiting]
+        #expect(counts == [1, 1, 1, 1, 1])
+        #expect(tally.firstFailure != nil, "a failure without its reason")
         #expect(!FileManager.default.fileExists(atPath: persistent.appendingPathComponent("gone").path))
         #expect(ImageCache.TierTally().line == nil, "a pass that did nothing speaks")
         #expect(ImageCache.TierTally(dropped: 1).line?.contains("dropped=1") == true,
                 "a pass that only removed stays silent")
+        // Two failures in one pass: one count, the first reason, one line.
+        let twice = await ImageCache.applyTierMoves([.demote("missing-a"), .demote("missing-b")],
+                                                    persistent: persistent, cache: cache, isWaiting: { _ in false })
+        #expect(twice.failed == 2)
+        let line = try #require(twice.line)
+        let first = try #require(twice.firstFailure)
+        #expect(line.contains("failed=2") && line.hasSuffix(" first=\(first)"), "line: \(line)")
+        #expect(ImageCache.renameLine("foreign names moved", renamed: 1, failed: 2, held: 0, firstFailure: "full")
+                == "COVERCACHE foreign names moved=1 failed=2 waiting=0 first=full")
+        #expect(ImageCache.renameLine("foreign names moved", renamed: 0, failed: 0, held: 0, firstFailure: nil) == nil)
     }
 
     /// A walk that could not list the folder, or a start that could not read
@@ -423,6 +435,17 @@ struct ImageCachePersistentTests {
         let marks = await DownloadManager(documents: unread, database: database)
             .activeCovers(address: address, idMovePending: { false })
         #expect(marks.unreadable && !marks.knowsAll, "unread marks answered as no downloads")
+
+        // The marks: the start read them, but one row did not decode.
+        let half = try NavidromeRekeyTests.temporaryDirectory("scan-half")
+        defer { try? FileManager.default.removeItem(at: half) }
+        let halfBase = MaerDatabase(path: half.appendingPathComponent("maer.sqlite").path)
+        _ = try await KeyedRowStore<LibraryItemDetail>(connection: try halfBase.connection(), table: .downloadMeta)
+        _ = try await halfBase.connection().run("INSERT INTO download_meta (key, payload) VALUES (?, ?)",
+                                                [.text("later-form"), .blob(Data("not a mark".utf8))])
+        let halfRead = await DownloadManager(documents: half, database: halfBase)
+            .activeCovers(address: address, idMovePending: { false })
+        #expect(halfRead.unreadable && !halfRead.knowsAll, "a start with a mark that did not decode answered as all known")
 
         // A readable empty folder is the honest "none".
         let empty = try NavidromeRekeyTests.temporaryDirectory("scan-empty")

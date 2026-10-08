@@ -263,6 +263,7 @@ final class ImageCache {
         let fm = FileManager.default
         var renamed = 0
         var failed = 0
+        var firstFailure: String?
         var held = 0
         var placed: [URL] = []
         for directory in directories {
@@ -284,12 +285,16 @@ final class ImageCache {
                     renamed += 1
                 } catch {
                     failed += 1
-                    Logger.library.error("COVERCACHE \(what, privacy: .public) failed for a name: \(FailureReason.of(error), privacy: .public)")
+                    if firstFailure == nil { firstFailure = FailureReason.of(error) }
                 }
             }
         }
-        if renamed > 0 || failed > 0 || held > 0 {
-            Logger.library.notice("COVERCACHE \(what, privacy: .public)=\(renamed) failed=\(failed) waiting=\(held)")
+        if let line = renameLine(what, renamed: renamed, failed: failed, held: held, firstFailure: firstFailure) {
+            if failed > 0 {
+                Logger.library.error("\(line, privacy: .public)")
+            } else {
+                Logger.library.notice("\(line, privacy: .public)")
+            }
         }
         return placed
     }
@@ -1096,17 +1101,34 @@ final class ImageCache {
     /// moved, waited or failed.
     /// What one pass between the folders did, in all four directions plus
     /// the waits. The line speaks as soon as any of them is not zero.
+    /// A failure is counted and the first reason kept: a full disk fails
+    /// every move for the same reason, and one line with the count says it
+    /// without a line per file.
     nonisolated struct TierTally: Equatable, Sendable {
         var promoted = 0
         var demoted = 0
         var dropped = 0
         var failed = 0
         var waiting = 0
+        var firstFailure: String?
+
+        mutating func fail(_ reason: String) {
+            failed += 1
+            if firstFailure == nil { firstFailure = reason }
+        }
 
         var line: String? {
             guard promoted + demoted + dropped + failed + waiting > 0 else { return nil }
             return "COVERCACHE tiers promoted=\(promoted) demoted=\(demoted) dropped=\(dropped) failed=\(failed) waiting=\(waiting)"
+                + (firstFailure.map { " first=\($0)" } ?? "")
         }
+    }
+
+    /// The one line of a renaming pass, the first reason beside the count of
+    /// failures; nil when nothing was renamed, held or failed.
+    nonisolated static func renameLine(_ what: String, renamed: Int, failed: Int, held: Int, firstFailure: String?) -> String? {
+        guard renamed > 0 || failed > 0 || held > 0 else { return nil }
+        return "COVERCACHE \(what)=\(renamed) failed=\(failed) waiting=\(held)" + (firstFailure.map { " first=\($0)" } ?? "")
     }
 
     @discardableResult
@@ -1142,12 +1164,15 @@ final class ImageCache {
                     tally.dropped += 1
                 }
             } catch {
-                tally.failed += 1
-                Logger.library.error("COVERCACHE tiers move failed: \(FailureReason.of(error), privacy: .public)")
+                tally.fail(FailureReason.of(error))
             }
         }
         if let line = tally.line {
-            Logger.library.notice("\(line, privacy: .public)")
+            if tally.failed > 0 {
+                Logger.library.error("\(line, privacy: .public)")
+            } else {
+                Logger.library.notice("\(line, privacy: .public)")
+            }
         }
         return tally
     }

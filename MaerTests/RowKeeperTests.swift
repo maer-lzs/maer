@@ -164,6 +164,24 @@ struct RowKeeperTests {
         #expect(after.skipped == 1, "the row nobody could read was buried")
     }
 
+    @Test("ein Start, der eine Zeile nicht lesen konnte, bleibt unvollstaendig, auch nach einem gelandeten Schrieb")
+    func aStartThatMissedARowStaysIncomplete() async throws {
+        let (keeper, database, directory) = try await keeperOverUnreadableRows()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        #expect(keeper.startIncomplete && !keeper.startReadFailed,
+                "a row that did not decode is a start that missed a row, and no failed read")
+        keeper.write(emptying: .refused) { ["kept": 3] }
+        await keeper.awaitPendingWrites()
+        #expect(try rows(database).skipped == 1, "the precondition: the unread row is still in the table")
+        #expect(keeper.startIncomplete, "a landed write took the unread row for read")
+        // A start that read every row is complete.
+        let (whole, wholeDirectory) = try self.database()
+        defer { try? FileManager.default.removeItem(at: wholeDirectory) }
+        try await KeyedRowStore<Int>(connection: try whole.connection(), table: .statsDay).replaceAll(["a": 1])
+        let complete = RowKeeper<Int>(database: whole, table: .statsDay, label: "PROBE")
+        #expect(complete.startNow() == ["a": 1] && !complete.startIncomplete)
+    }
+
     @Test("ein leerer Schnappschuss ohne Absicht entfernt im Keeper nichts, mit Absicht die gelesenen Zeilen")
     func anEmptySnapshotWithoutIntentLeavesTheRows() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()

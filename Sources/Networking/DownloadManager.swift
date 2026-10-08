@@ -819,8 +819,9 @@ final class DownloadManager {
         let urls: [URL]
         let unresolved: Int
         let movePending: Bool
-        /// The folder walk or the marks could not be read: zero downloads
-        /// then means "unknown", and nothing may be demoted on it.
+        /// The folder walk or the marks could not be read, all of them or a
+        /// row that did not decode: the downloads then are "unknown", and
+        /// nothing may be demoted on it.
         var unreadable = false
         var knowsAll: Bool { unresolved == 0 && !movePending && !unreadable }
     }
@@ -836,7 +837,7 @@ final class DownloadManager {
         }
         let movePending = itemIds.contains(where: SubsonicProvider.owns(itemId:)) && idMovePending()
         return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending,
-                            unreadable: scanUnreadable || keeper.startReadFailed)
+                            unreadable: scanUnreadable || keeper.startIncomplete)
     }
 
     /// Re-key a finished download from the old item id
