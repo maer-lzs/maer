@@ -38,4 +38,9 @@ nonisolated enum StatusMeaning: Equatable, Sendable {
     /// down as a clean no; a refusal, a pause and a server error are not
     /// findings about the thing that was asked for.
     var isAbsence: Bool { self == .notFound }
+
+    /// Whether a status is the host failing (5xx), as against any other
+    /// refusal of the request that `server` also carries. Asking again can
+    /// get another answer from a failing host, never from a refusal.
+    static func isServerFailure(status: Int) -> Bool { (500...599).contains(status) }
 }

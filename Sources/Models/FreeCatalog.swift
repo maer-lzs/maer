@@ -610,7 +610,7 @@ nonisolated enum FreeCatalog {
 
     static func isGone(_ error: Error) -> Bool {
         if let url = error as? URLError { return url.code == .resourceUnavailable }
-        if let api = error as? APIError, case .http(let code, _) = api { return code == 404 }
+        if let api = error as? APIError, case .http(let code, _) = api { return StatusMeaning.from(status: code).isAbsence }
         return false
     }
 

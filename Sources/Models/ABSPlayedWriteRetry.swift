@@ -16,6 +16,10 @@ nonisolated enum ABSPlayedWriteRetry {
     /// `status` is the HTTP status of the refusal, nil without an answer.
     static func keeps(status: Int?) -> Bool {
         guard let status else { return true }
-        return status == 401 || status == 403 || status == 429 || status >= 500
+        switch StatusMeaning.from(status: status) {
+        case .signIn, .throttled: return true
+        case .notFound: return false
+        case .server: return StatusMeaning.isServerFailure(status: status)
+        }
     }
 }

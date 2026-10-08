@@ -979,6 +979,7 @@ struct CatalogStoreReadFenceTests {
     func onlyAClearGoneIsRecorded() {
         #expect(FreeCatalog.isGone(URLError(.resourceUnavailable)))
         #expect(FreeCatalog.isGone(APIError.http(404, "")))
+        #expect(FreeCatalog.isGone(APIError.http(410, "")), "ein endgueltiges Weg (410) vermerkte nicht")
         // Das Funkloch, der Abbruch, das ueberlastete Netz: kein Urteil.
         #expect(!FreeCatalog.isGone(URLError(.notConnectedToInternet)))
         #expect(!FreeCatalog.isGone(URLError(.timedOut)))

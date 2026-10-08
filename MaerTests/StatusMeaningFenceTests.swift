@@ -34,6 +34,8 @@ struct StatusMeaningFenceTests {
         "FeedRefusal.swift": "a subscribed feed's refresh counts only what means sign in; every other answer says nothing about the access",
         "GutenbergWorks.swift": "only an absence is kept as no record of the work; a refusal, a pause or a server error keeps nothing",
         "PodcastTranscript.swift": "a document or an absence stands for the session as the transcript's answer; a failure is asked again",
+        "ABSPlayedWriteRetry.swift": "a played mark stays queued on a sign-in problem, a pause or a failing host; an absence or another refusal answers the same every time",
+        "FreeCatalog.swift": "only an absence marks a catalog item as gone; every other answer is no verdict",
     ]
 
     /// The files that read the number themselves, each with the reason the
@@ -53,15 +55,29 @@ struct StatusMeaningFenceTests {
         "RadioLogoReport.swift": "the diagnosis label names the status on purpose, for the clipboard",
         "RadioView.swift": "the diagnosis probe hands the status to the label and books nothing",
         "Lyrics.swift": "everything but 200 is a failed outcome that the lyrics cache already refuses to remember",
+        "HostCourtesyRule.swift": "429 and 503 both tell the whole host to rest; for the rule 503 is a failing server, here it is a pause",
+        "HostCourtesy.swift": "any answer below 400 ends a host's rest; a range of the courtesy, not a meaning of a refusal",
+        "PodcastFeedLiveness.swift": "the status a directory saw last, not an answer to us: 0 never reached and 400 up stuck are gone, which only orders a row",
+        "MaerSyncFrame.swift": "a frame's status is checked to be a status at all (100 to 599) before the answer reads it",
+        "MaerSyncSignIn.swift": "the sign-in probe of the service: 200 reached, 403 blocked on this network, the service's own sentences",
+        "DeadCatalogItems.swift": "the dead-item ladder reads a 200 body too (a withdrawn item answers 200 with an error); 404 dead, any other non-2xx unknown",
     ]
 
-    /// Non-comment lines that read a status.
+    /// Non-comment lines that read a status: the word `statusCode`, or a
+    /// status number compared, whatever the value is called (a name with
+    /// status in it, `code`, `$0`), a range of status numbers asked, or a
+    /// status number as a switch case. The question, not the word.
     nonisolated static func statusSites(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                return !trimmed.hasPrefix("//") && trimmed.contains("statusCode")
+                return !trimmed.hasPrefix("//")
+                    && (trimmed.contains("statusCode") || trimmed.contains(Self.statusComparison))
             }.count
+    }
+
+    nonisolated static var statusComparison: Regex<Substring> {
+        #/(?:\b\w*[sS]tatus\w*|\bcode|\$0)\s*(?:==|!=|>=|<=|>|<)\s*[1-5]\d\d\b|\(\s*[1-5]\d\d\s*\.\.[.<]\s*[1-5]\d\d\s*\)\.contains\(|^case\s+[1-5]\d\d\b/#
     }
 
     /// Whether the text names the rule outside comments.
@@ -110,6 +126,15 @@ struct StatusMeaningFenceTests {
         #expect(Self.callers.values.allSatisfy { !$0.isEmpty } && Self.ownSentence.values.allSatisfy { !$0.isEmpty })
         // The helpers themselves, in both directions.
         #expect(Self.statusSites(in: "if http.statusCode == 401 {\n// statusCode in a comment") == 1)
+        // The question without the word, as it stood in the played-mark queue,
+        // the courtesy and the clients; numbers that are no status stay out.
+        #expect(Self.statusSites(in: "return status == 401 || status >= 500") == 1)
+        #expect(Self.statusSites(in: "if httpStatus == 404 { return .dead }") == 1)
+        #expect(Self.statusSites(in: "case .http(let code, _) = api { return code == 404 }") == 1)
+        #expect(Self.statusSites(in: "status.map { $0 == 429 || (500...599).contains($0) }") == 1)
+        #expect(Self.statusSites(in: "guard (200...299).contains(status) else {") == 1)
+        #expect(Self.statusSites(in: "    case 404: return nil") == 1)
+        #expect(Self.statusSites(in: "if frames % 300 == 0 {\nuseThumbnail: size <= 200\nif items.count > 256 {\ncase ..<120: return") == 0)
         #expect(Self.callsTheRule("let m = StatusMeaning\n    .from(status:\n code)"))
         #expect(!Self.callsTheRule("// StatusMeaning.from(status: 404) in prose only"))
         #expect(Self.namesTheRule("let m = StatusMeaning.notFound"))
