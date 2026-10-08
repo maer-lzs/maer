@@ -12,26 +12,20 @@ import Foundation
 /// indents itself by a number of its own, and no symbol is wider than the
 /// column the list gives it (seen on the device at 375 pt).
 struct SettingsEdgeTests {
-    /// The settings files the name rule does not find (every file under
-    /// `Sources/Views` with "Settings" or "SourceView" in its name counts by
-    /// itself), each with what it is in the settings.
-    static let alsoSettings: [String: String] = [
-        "SourceMapCard.swift": "the map of areas and its pages",
-        "MediaTypeSourcesSection.swift": "the sources of a media type",
-        "SourceLibraryAssignmentSection.swift": "which library a server's titles land in",
-        "ServerGuidesSection.swift": "the guides to the servers",
-        "SyncHistoryView.swift": "the sync history",
-        "NextStepsView.swift": "the next steps, also reached from the settings",
-    ]
-
-    /// Lines that move a row off the text edge by a value of their own but
-    /// are no row indent, each with its reason. An entry whose line is gone
-    /// turns the fence red, so the list only holds what still stands.
+    /// Lines that move something off the text edge but are no row indent,
+    /// each with its reason. An entry whose line is gone turns the fence
+    /// red, so the list only holds what still stands.
     static let notRowIndents: [String: String] = [
         "SettingsView.swift: .padding(.horizontal, 12)":
             "the inner padding of a tab choice capsule, measured to fit five text pills at 430 pt; no row",
+        "SettingsView.swift: .padding(.horizontal)":
+            "the strip of tab choices above the list keeps the system margin; no row",
+        "PremiumFeedsSection.swift: .padding(.horizontal, 6).padding(.vertical, 2)":
+            "the inner padding of the capsule that names a feed's class beside its title; no row",
+        "SetupView.swift: .padding(.horizontal)":
+            "the button pinned below the setup form keeps the system margin; no row",
         "RowsSettingsView.swift: .padding(.leading, row.group == nil ? 0 : 16)":
-            "the switches of a group of shares stand under the group's title; whether they indent is a visible choice, put to the review",
+            "the switches of a group of shares stand under the group's title; whether they indent is a visible choice, open",
     ]
 
     /// Symbols measured wider than the list's icon column, each with its
@@ -39,40 +33,63 @@ struct SettingsEdgeTests {
     /// something about nothing, so the fence turns red on it.
     static let wideSymbols: [String: String] = [:]
 
-    /// Every settings file, relative to `Sources/Views`.
-    static func settingsFiles() throws -> [String] {
-        let views = SourceTree.root.appendingPathComponent("Sources/Views")
-        let walker = try #require(FileManager.default.enumerator(at: views, includingPropertiesForKeys: nil))
-        var found: [String] = []
+    /// Every source of the app, comments cut, by its path below the root.
+    static func sources() throws -> [String: String] {
+        let folder = SourceTree.root.appendingPathComponent("Sources")
+        let walker = try #require(FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil))
+        var code: [String: String] = [:]
         for case let url as URL in walker where url.pathExtension == "swift" {
-            let name = url.lastPathComponent
-            guard name.contains("Settings") || name.contains("SourceView") || alsoSettings[name] != nil else { continue }
-            found.append(String(SourceTree.relativePath(of: url).dropFirst("Sources/Views/".count)))
+            code[SourceTree.relativePath(of: url)] = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
         }
-        return found.sorted()
+        return code
     }
 
-    /// A row's own indent: a leading or horizontal padding or an inset, by
-    /// any value, not only a written number.
+    /// The settings files: the file of the settings sheet and every file
+    /// whose view it builds, embedded or as a page, followed through all
+    /// views they build in turn. Found from the calls, not from file names,
+    /// so a section the settings embed counts whatever it is called.
+    nonisolated static func reached(from root: String, in code: [String: String]) throws -> Set<String> {
+        var declared: [String: Set<String>] = [:]
+        let declaration = #/(?:struct|class|enum)\s+([A-Z][A-Za-z0-9_]*)[^{\n]*:[^{\n]*\bView\b/#
+        for (path, text) in code {
+            for match in text.matches(of: declaration) { declared[String(match.output.1), default: []].insert(path) }
+        }
+        let builds = try declared.map { name, paths in
+            (try Regex("(?:^|[^A-Za-z0-9_.])\(name)\\s*\\(").anchorsMatchLineEndings(), paths)
+        }
+        var seen: Set<String> = [root]
+        var todo = [root]
+        while let path = todo.popLast() {
+            let text = code[path] ?? ""
+            for (build, paths) in builds where paths.contains(where: { !seen.contains($0) }) && text.contains(build) {
+                for next in paths where seen.insert(next).inserted { todo.append(next) }
+            }
+        }
+        return seen
+    }
+
+    /// A row's own indent: a leading or horizontal padding, with any value or
+    /// none (the system margin is an indent too), alone or in a set, or an
+    /// inset.
     nonisolated static func ownIndent(_ line: Substring) -> Bool {
-        line.range(of: #"\.padding\(\s*\.(leading|horizontal)\s*,|EdgeInsets\("#, options: .regularExpression) != nil
+        line.range(of: #"\.padding\(\s*(\.(leading|horizontal)\s*[,)]|\[[^\]]*\.(leading|horizontal))|EdgeInsets\("#,
+                   options: .regularExpression) != nil
     }
 
     @Test("keine Zeile der Einstellungen rueckt sich um eine eigene Zahl ein, kein Symbol ist breiter als die Spalte", .needsTheSources)
     func everyRowStandsOnOneEdge() throws {
-        let files = try Self.settingsFiles()
-        #expect(files.contains("RowsSettingsView.swift") && files.contains("SourcesSettingsView.swift")
-                && files.contains("SettingsView.swift"), "the fence does not find the settings: \(files)")
-        let names = Set(files.map { ($0 as NSString).lastPathComponent })
-        #expect(Set(Self.alsoSettings.keys).subtracting(names).isEmpty,
-                "a named settings file is gone: \(Set(Self.alsoSettings.keys).subtracting(names).sorted())")
+        let code = try Self.sources()
+        let files = try Self.reached(from: "Sources/Views/SettingsView.swift", in: code)
+        // The precondition names what the fence must see: the pages it opens
+        // and a section it only embeds.
+        #expect(["Sources/Views/RowsSettingsView.swift", "Sources/Views/SourcesSettingsView.swift",
+                 "Sources/Views/Podcasts/PremiumFeedsSection.swift"].allSatisfy(files.contains),
+                "the fence does not find the settings: \(files.sorted())")
         var indents: [String] = []
         var wide: [String] = []
         var used: Set<String> = []
-        for name in files {
-            let code = SyncContractFenceTests.stripped(try String(
-                contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/\(name)"), encoding: .utf8))
-            for line in code.split(separator: "\n") {
+        for name in files.sorted() {
+            for line in (code[name] ?? "").split(separator: "\n") {
                 let entry = "\((name as NSString).lastPathComponent): \(line.trimmingCharacters(in: .whitespaces))"
                 if Self.ownIndent(line) {
                     if Self.notRowIndents[entry] != nil { used.insert(entry) } else { indents.append(entry) }
@@ -89,11 +106,21 @@ struct SettingsEdgeTests {
         let sources = ProjectFileIntegrityTests.sourceTexts()
         let unused = Self.wideSymbols.keys.filter { symbol in !sources.contains { $0.text.contains("\"\(symbol)\"") } }
         #expect(unused.isEmpty, "a wide symbol no file uses: \(unused.sorted())")
-        // Calibration: a computed indent and an inset count, a vertical one does not.
+        // Calibration: a computed indent, the system margin, a set and an
+        // inset count, a vertical one does not.
         #expect(Self.ownIndent(".padding(.leading, row.group == nil ? 0 : 16)"))
         #expect(Self.ownIndent(".padding(.horizontal, inset)"))
+        #expect(Self.ownIndent(".padding(.horizontal)"))
+        #expect(Self.ownIndent(".padding([.leading, .top], 4)"))
         #expect(Self.ownIndent(".padding(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 0))"))
         #expect(!Self.ownIndent(".padding(.vertical, 4)"))
+        #expect(!Self.ownIndent(".padding([.top, .bottom], 4)"))
+        // Calibration of the reach: a view built by a reached view counts,
+        // one nobody builds there does not, a member call is no build.
+        let fake = ["A.swift": "struct A: View { var body: some View { B(x: 1); c.D() } }",
+                    "B.swift": "struct B: View { let x: Int }",
+                    "C.swift": "struct C: View {}", "D.swift": "struct D: View {}"]
+        #expect(try Self.reached(from: "A.swift", in: fake) == ["A.swift", "B.swift"])
     }
 
     /// At an accessibility size the system lets a wrapped title flow under
