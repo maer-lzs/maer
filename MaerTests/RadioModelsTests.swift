@@ -600,25 +600,43 @@ struct RadioStateQueryTests {
         #expect(deduped.contains { $0.id == "4" } && deduped.contains { $0.id == "5" })
     }
 
-    /// Three variants of one station, the last one best: it wins the bundle
-    /// and carries the two others, each once. Measured W-Sammel 11a: the
-    /// earlier loser stands twice, because the new winner takes the old
-    /// winner's variants and adds them again with the old winner. A named
+    /// The variant choice shows `variantList`, and the station itself is one
+    /// of its streams (the house rule: self included). Measured W-Sammel 11a:
+    /// three entries of one station, the last best, give `a, b, a`: the earlier
+    /// loser stands twice and the winner is missing from its own list. A named
     /// finding until the form is decided; the case turns red once it holds.
-    @Test("ein spaeterer Gewinner traegt jede Variante einmal (Befund W-Sammel 11a)")
+    @Test("die Auswahl eines gefalteten Senders zeigt jeden Strom einmal, den Gewinner eingeschlossen (Befund W-Sammel 11a)")
     func aLaterWinnerCarriesEachVariantOnce() {
-        func st(_ id: String, bitrate: Int) -> RadioStation {
-            RadioStation(id: id, name: "ROCK ANTENNE", streamURL: "https://cdn\(id).example/stream",
-                         faviconURL: nil, homepage: "https://www.rockantenne.de", countryCode: "DE",
-                         tags: [], bitrate: bitrate, codec: "MP3")
-        }
-        let deduped = RadioMapping.dedupeForDisplay([st("a", bitrate: 64), st("b", bitrate: 96), st("c", bitrate: 192)])
+        let deduped = RadioMapping.dedupeForDisplay([Self.rock("a", 64), Self.rock("b", 96), Self.rock("c", 192)])
         let winner = deduped.first
-        let variants = winner?.variants?.map(\.id) ?? []
+        let streams = winner?.variantList.map(\.id) ?? []
         #expect(deduped.count == 1 && winner?.id == "c", "the precondition: one bundle, the best wins")
-        withKnownIssue("the earlier loser stands twice among the variants; the form is open") {
-            #expect(variants.sorted() == ["a", "b"], "variants: \(variants)")
+        withKnownIssue("the earlier loser stands twice and the winner is missing from its own list; the form is open") {
+            #expect(streams.sorted() == ["a", "b", "c"], "streams: \(streams)")
         }
+    }
+
+    /// An entry that already brings variants keeps them in the bundle,
+    /// whether it wins or loses. Read at the code, held here as a finding.
+    @Test("mitgebrachte Varianten bleiben in der Faltung erhalten (Befund W-Sammel 11a)")
+    func broughtVariantsStayInTheBundle() {
+        var winning = Self.rock("c", 192)
+        winning.variants = [Self.rock("x", 32)]
+        var losing = Self.rock("b", 96)
+        losing.variants = [Self.rock("y", 48)]
+        let deduped = RadioMapping.dedupeForDisplay([losing, winning])
+        let streams = deduped.first?.variantList.map(\.id) ?? []
+        #expect(deduped.count == 1 && deduped.first?.id == "c", "the precondition: one bundle, the best wins")
+        withKnownIssue("an entry's own variants fall away in the fold; the form is open") {
+            #expect(streams.sorted() == ["b", "c", "x", "y"], "streams: \(streams)")
+        }
+    }
+
+    /// One entry of the station of these findings.
+    private static func rock(_ id: String, _ bitrate: Int) -> RadioStation {
+        RadioStation(id: id, name: "ROCK ANTENNE", streamURL: "https://cdn\(id).example/stream",
+                     faviconURL: nil, homepage: "https://www.rockantenne.de", countryCode: "DE",
+                     tags: [], bitrate: bitrate, codec: "MP3")
     }
 
     @Test("e4bd910: rotation — socket constant, same seed identical, new day differs")

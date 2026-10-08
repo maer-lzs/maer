@@ -79,6 +79,9 @@ nonisolated enum ListeningStore {
     struct Stock: Sendable, Equatable {
         var backups: [String: [Double]] = [:]
         var flushed: [String: [Double]] = [:]
+        /// Rows of the table that did not read (no id, no position, no
+        /// moment); zero for the old keys.
+        var skippedRows = 0
     }
 
     /// Set in the defaults once the table holds the whole stock.
@@ -99,6 +102,9 @@ nonisolated enum ListeningStore {
     /// The defaults objects whose held stock came from a failed table read:
     /// the old keys answer, and the table may hold entries they lack.
     private static let readFailures = Mutex<Set<ObjectIdentifier>>([])
+    /// The defaults objects whose table read left rows unread: the stock
+    /// answers without them, and the table still holds them.
+    private static let rowsMissed = Mutex<Set<ObjectIdentifier>>([])
     /// How often the travelling part of a stock went to another account,
     /// per defaults object (`replaceForNewOwner`).
     private static let ownerEpochs = Mutex<[ObjectIdentifier: Int]>([:])
@@ -135,6 +141,7 @@ nonisolated enum ListeningStore {
                 Logger.library.error("STAND load: no database; the old keys answer")
                 return legacy
             }
+            if rows.skippedRows > 0 { rowsMissed.withLock { _ = $0.insert(ObjectIdentifier(defaults)) } }
             return moved ? rows : merged(legacy, rows)
         } catch {
             readFailures.withLock { _ = $0.insert(ObjectIdentifier(defaults)) }
@@ -165,6 +172,7 @@ nonisolated enum ListeningStore {
         tables.withLock { $0[ObjectIdentifier(defaults)] = Table(read: load, resumes: resumes) }
         stocks.withLock { $0[ObjectIdentifier(defaults)] = nil }
         readFailures.withLock { _ = $0.remove(ObjectIdentifier(defaults)) }
+        rowsMissed.withLock { _ = $0.remove(ObjectIdentifier(defaults)) }
     }
 
     /// Every stand under the id `map` gives (Navidrome's new ids), by the
@@ -541,6 +549,15 @@ nonisolated enum ListeningStore {
     /// then writes nothing into the stock of the account now.
     static func ownerEpoch(in defaults: UserDefaults = .standard) -> Int {
         ownerEpochs.withLock { $0[ObjectIdentifier(defaults)] ?? 0 }
+    }
+
+    /// Whether the table read at the start left rows unread (a failed read
+    /// as a whole, or rows that did not read): a pass that must reach every
+    /// stand names it (the id move), and nothing holds on it.
+    static func startMissedRows(in defaults: UserDefaults = .standard) -> Bool {
+        _ = withStock(defaults) { _ in 0 }
+        let id = ObjectIdentifier(defaults)
+        return readFailures.withLock { $0.contains(id) } || rowsMissed.withLock { $0.contains(id) }
     }
 
     /// Whether the stock answered from the old keys after a failed table

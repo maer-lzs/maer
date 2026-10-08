@@ -50,6 +50,32 @@ struct PositionStockTests {
         return (store, { try StandStore.loadNow(reader: try SQLiteReader(path: path)) }, file)
     }
 
+    /// A row the build cannot read (text in the position column) is counted
+    /// at the start, not dropped silently, and the id move names the stands
+    /// as a step that missed rows; a whole table misses none.
+    @Test("eine Zeile, die nicht liest, wird gezaehlt statt still verworfen, und der Umzug nennt die Hoerstaende")
+    func anUnreadStandRowIsCounted() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let (_, loadNow, file) = try await fileTable()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let connection = try SQLiteConnection(path: file.path)
+        try await connection.run("INSERT INTO stand (item_id, position, updated_at_ms) VALUES (?, ?, ?)",
+                                 [.text("rss:a"), .real(12), .real(1)])
+        try await connection.run("INSERT INTO stand (item_id, position, updated_at_ms) VALUES (?, ?, ?)",
+                                 [.text("rss:b"), .text("nicht"), .real(1)])
+        let stock = try #require(try loadNow())
+        #expect(stock.backups.keys.sorted() == ["rss:a"], "what reads is loaded as before")
+        #expect(stock.skippedRows == 1, "the unread row was dropped silently")
+        defaults.set(true, forKey: ListeningStore.movedKey)
+        ListeningStore.installTable(for: defaults, load: loadNow)
+        #expect(ListeningStore.startMissedRows(in: defaults), "the move does not name the stands")
+        // The same table without the unread row: nothing missed.
+        try await connection.run("DELETE FROM stand WHERE item_id = ?", [.text("rss:b")])
+        ListeningStore.installTable(for: defaults, load: loadNow)
+        #expect(!ListeningStore.startMissedRows(in: defaults))
+    }
+
     @Test("Schritt 2: der erste Start zieht den Altbestand in die Tabelle, setzt die Marke und raeumt die alten Schluessel erst nach voller Deckung")
     func theFirstStartMovesTheStock() async throws {
         let (defaults, name) = suite()

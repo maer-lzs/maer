@@ -139,10 +139,20 @@ actor StandStore {
 
     func all() async throws -> [String: Stand] {
         var out: [String: Stand] = [:]
+        var skipped = 0
         for row in try await connection.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand") {
-            if let stand = Self.stand(from: row) { out[stand.itemId] = stand }
+            if let stand = Self.stand(from: row) { out[stand.itemId] = stand } else { skipped += 1 }
         }
+        Self.sayRowsSkipped(skipped, by: "all")
         return out
+    }
+
+    /// A row that does not read (SQLite keeps text in a `REAL` column, and a
+    /// `TEXT` key may be NULL) is counted and said, never dropped silently;
+    /// what is loaded stays the same.
+    private nonisolated static func sayRowsSkipped(_ skipped: Int, by caller: String) {
+        guard skipped > 0 else { return }
+        Logger.library.error("STAND rows skipped=\(skipped) by=\(caller, privacy: .public)")
     }
 
     func count() async throws -> Int {
@@ -193,7 +203,7 @@ actor StandStore {
             .compactMap { $0["name"]?.string })
         if tables.contains("stand") {
             for row in try reader.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand") {
-                if let stand = stand(from: row) { stock.backups[stand.itemId] = stand.entry }
+                if let stand = stand(from: row) { stock.backups[stand.itemId] = stand.entry } else { stock.skippedRows += 1 }
             }
         }
         if tables.contains("stand_flushed") {
@@ -201,9 +211,12 @@ actor StandStore {
                 if let id = row["item_id"]?.string, let position = row["position"]?.double,
                    let at = row["flushed_at_ms"]?.double {
                     stock.flushed[id] = [position, at]
+                } else {
+                    stock.skippedRows += 1
                 }
             }
         }
+        sayRowsSkipped(stock.skippedRows, by: "start")
         return stock
     }
 

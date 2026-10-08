@@ -88,7 +88,7 @@ enum NavidromeRekeyRun {
                 let total = context.ids.count
                 return context.rekey(map).map { ($0, total) }
             },
-            Step(name: "stands") { map in ListeningStore.rekey(map) },
+            Step(name: "stands", missedRows: { ListeningStore.startMissedRows() }) { map in ListeningStore.rekey(map) },
             Step(name: "stats", missedRows: { ListeningStatsStore.shared.startMissedRows }) { await ListeningStatsStore.shared.rekeyItems($0) },
             Step(name: "pending", missedRows: { SyncQueue.shared.startIncomplete }) { map in
                 let queue = SyncQueue.shared
