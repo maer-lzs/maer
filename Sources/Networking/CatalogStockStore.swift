@@ -68,6 +68,10 @@ nonisolated struct CatalogStockStore: Sendable {
         do {
             try Ablage(directory: target.deletingLastPathComponent())
                 .saveNow(stock, name: target.lastPathComponent)
+            // The stocks can be fetched again, and they are the largest part
+            // of the app's own data: they stay out of backups. Marked on
+            // every write, so a directory from before carries it too.
+            BackupExclusion.mark(Self.directory, label: "catalog stock")
             return true
         } catch {
             return false

@@ -108,6 +108,19 @@ actor SQLiteConnection {
                           busy: (row["busy"]?.int64 ?? 0) != 0)
     }
 
+    /// The pages of the file and the free ones among them. Without
+    /// `auto_vacuum` a deletion leaves its pages in the file as free pages;
+    /// this is the number that says whether that matters.
+    struct Pages: Sendable, Equatable {
+        let total: Int
+        let free: Int
+    }
+
+    func pages() throws -> Pages {
+        Pages(total: Int(try query("PRAGMA page_count").first?["page_count"]?.int64 ?? 0),
+              free: Int(try query("PRAGMA freelist_count").first?["freelist_count"]?.int64 ?? 0))
+    }
+
     /// A statement with its bound parameters, for a batch.
     struct Statement: Sendable {
         let sql: String

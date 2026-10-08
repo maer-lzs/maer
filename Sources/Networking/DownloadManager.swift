@@ -230,14 +230,12 @@ final class DownloadManager {
     /// written into it later. Set on every start, so installs from before
     /// (which marked file by file) carry it too. A failure is logged.
     private nonisolated static func prepareDownloadsDirectory(in documents: URL) -> URL {
-        var dir = documents.appendingPathComponent("Downloads", isDirectory: true)
+        let dir = documents.appendingPathComponent("Downloads", isDirectory: true)
         do {
             if !FileManager.default.fileExists(atPath: dir.path) {
                 try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             }
-            var values = URLResourceValues()
-            values.isExcludedFromBackup = true
-            try dir.setResourceValues(values)
+            BackupExclusion.mark(dir, label: "downloads")
         } catch {
             Logger.library.error("DOWNLOADS directory prepare failed reason=\(String(describing: error), privacy: .public)")
         }

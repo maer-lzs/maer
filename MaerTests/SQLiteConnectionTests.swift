@@ -77,6 +77,28 @@ struct SQLiteConnectionTests {
         }
     }
 
+    /// The page count the checkpoint line carries: a deletion leaves the
+    /// file its pages and makes them free pages, which is what the line
+    /// is there to show.
+    @Test("Die Seitenzahl nennt die freien Seiten, die ein Loeschen in der Datei laesst")
+    func pagesNameTheFreeOnes() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("pages-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let db = try MaerDatabase(path: path).connection()
+        try await db.execute("CREATE TABLE big(x TEXT)")
+        let text = String(repeating: "x", count: 4000)
+        _ = try await db.transaction((0..<100).map { _ in SQLiteConnection.Statement("INSERT INTO big(x) VALUES (?)", [.text(text)]) })
+        _ = try await db.checkpoint()
+        let full = try await db.pages()
+        #expect(full.total >= 100, "a hundred rows of four kilobytes take at least a hundred pages: \(full)")
+        #expect(full.free < 10)
+        _ = try await db.run("DELETE FROM big")
+        _ = try await db.checkpoint()
+        let after = try await db.pages()
+        #expect(after.total == full.total, "a deletion leaves the file its pages")
+        #expect(after.free >= 90, "the deleted rows' pages are free pages: \(after)")
+    }
+
     /// Several stores share the one connection; their transactions must
     /// never nest. Measured in the simulator before the batch form: two
     /// writes at once ended in "cannot start a transaction within a

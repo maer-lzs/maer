@@ -117,10 +117,7 @@ final class ImageCache {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         // Keep persistent covers out of backups (can be re-downloaded anytime).
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        var dir = persistentDirectory
-        try? dir.setResourceValues(values)
+        BackupExclusion.mark(persistentDirectory, label: "covers")
     }
 
     /// The query names that sign a request in or describe the client, never

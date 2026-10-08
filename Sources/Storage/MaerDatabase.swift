@@ -32,14 +32,16 @@ nonisolated final class MaerDatabase: Sendable {
     var isOpen: Bool { connectionState.withLock { $0 != nil } }
 
     /// The journal written back into the file, on the way to the
-    /// background and at termination: `DB checkpoint ms= pages=`.
+    /// background and at termination: `DB checkpoint ms= pages= busy=
+    /// file= free=`, the last two the file's pages and its free pages.
     func checkpoint() async {
         guard isOpen else { return }
         let started = Date()
         do {
             let done = try await connection().checkpoint()
             let ms = Int(Date().timeIntervalSince(started) * 1000)
-            Logger.library.notice("DB checkpoint ms=\(ms) pages=\(done.framesCheckpointed)/\(done.framesInLog) busy=\(done.busy)")
+            let pages = try await connection().pages()
+            Logger.library.notice("DB checkpoint ms=\(ms) pages=\(done.framesCheckpointed)/\(done.framesInLog) busy=\(done.busy) file=\(pages.total) free=\(pages.free)")
         } catch {
             Logger.library.error("DB checkpoint failed reason=\(String(describing: error), privacy: .public)")
         }
