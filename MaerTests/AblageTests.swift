@@ -59,6 +59,35 @@ struct AblageTests {
         #expect(await ablage.load(Doc.self, name: "doc.json").value == Doc(items: []))
     }
 
+    @Test("unlesbar bleibt unlesbar ueber einen Neustart, bis ein echter Schrieb oder eine Entfernung kommt")
+    func unreadableOutlivesARestart() async throws {
+        let dir = scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Nothing aside: fresh, and an empty save stays allowed.
+        let first = Ablage(directory: dir)
+        if case .fresh = await first.load(Doc.self, name: "other.json") {} else { Issue.record("missing must read as fresh") }
+        try await first.save(Doc(items: []), name: "other.json", isEmpty: true)
+        try "not json".write(to: dir.appendingPathComponent("doc.json"), atomically: true, encoding: .utf8)
+        if case .corrupt = await Ablage(directory: dir).load(Doc.self, name: "doc.json") {} else { Issue.record("unreadable must read as corrupt") }
+        // A new process: a new seam on the same folder, nothing in memory.
+        let restarted = Ablage(directory: dir)
+        if case .corrupt = await restarted.load(Doc.self, name: "doc.json") {} else { Issue.record("after a restart the name read as none yet") }
+        if case .corrupt = Ablage(directory: dir).loadNow(Doc.self, name: "doc.json") {} else { Issue.record("the init-time read said none yet") }
+        await #expect(throws: AblageError.blockedByCorruptFile(name: "doc.json")) {
+            try await restarted.save(Doc(items: []), name: "doc.json", isEmpty: true)
+        }
+        // A removal retires the sign and keeps the file for forensics.
+        try await restarted.remove(name: "doc.json")
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("doc.json.corrupt.removed").path))
+        if case .fresh = await Ablage(directory: dir).load(Doc.self, name: "doc.json") {} else { Issue.record("after a removal the name stayed unreadable") }
+        // A real save after a restart is a recovery, as in one process.
+        try "not json".write(to: dir.appendingPathComponent("doc.json"), atomically: true, encoding: .utf8)
+        _ = await Ablage(directory: dir).load(Doc.self, name: "doc.json")
+        let again = Ablage(directory: dir)
+        try await again.save(Doc(items: [2]), name: "doc.json")
+        #expect(await Ablage(directory: dir).load(Doc.self, name: "doc.json").value == Doc(items: [2]))
+    }
+
     @Test("Ein Schreibfehler wirft und verschwindet nicht")
     func writeFailureThrows() async throws {
         // A FILE where the store's directory should be: no temporary file

@@ -24,8 +24,12 @@ struct SignInAccessTests {
         #expect(KeychainRead.of(status: errSecInteractionNotAllowed, data: nil) == .unreadable,
                 "a locked device is no missing access")
         #expect(KeychainRead.of(status: errSecSuccess, data: Data("token".utf8)) == .value("token"))
-        #expect(KeychainRead.of(status: errSecSuccess, data: Data([0xFF, 0xFE])) == .missing,
-                "bytes that do not decode stay no access")
+        #expect(KeychainRead.of(status: errSecSuccess, data: Data([0xFF, 0xFE])) == .undecodable,
+                "bytes that do not decode are there, so no read back takes them for gone")
+        // To a reader of values they stay no access, as before.
+        #expect(KeychainRead.undecodable.value == nil)
+        #expect(MaerSyncAccessRead.of(url: "https://sync.example.lan", token: .undecodable) == .absent)
+        #expect(PodcastFeedAuth.rested(["k"], of: "s", reading: { _ in .undecodable })?.missing == ["k"])
     }
 
     /// The rule's answer as one text, so a witness compares both halves.

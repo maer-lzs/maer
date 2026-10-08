@@ -173,13 +173,15 @@ nonisolated enum KeychainRead: Equatable, Sendable {
     case value(String)
     case missing
     case unreadable
+    /// The item is there, but its bytes do not decode. No access to a
+    /// reader of values, and reading again does not change that; but it is
+    /// not gone, so a read back after a removal must not take it for gone.
+    case undecodable
 
-    /// Bytes that do not decode are no access, and reading them again does
-    /// not change that: missing, as the plain read always answered.
     static func of(status: OSStatus, data: Data?) -> KeychainRead {
         if status == errSecItemNotFound { return .missing }
         guard status == errSecSuccess else { return .unreadable }
-        guard let data, let text = String(data: data, encoding: .utf8) else { return .missing }
+        guard let data, let text = String(data: data, encoding: .utf8) else { return .undecodable }
         return .value(text)
     }
 

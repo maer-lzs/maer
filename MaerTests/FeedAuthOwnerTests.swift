@@ -304,6 +304,19 @@ struct FeedAuthOwnerTests {
             deleting: { items[$0] = nil }))
     }
 
+    @Test("bleibt beim Ersetzen ein Eintrag stehen, dessen Bytes nicht dekodieren, gilt er nicht als gegangen")
+    func anUndecodableReadBackAfterARemovalHolds() {
+        let suite = "feed-leave-undecodable-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let replaced = PodcastFeedAuth.replaceForNewOwner(
+            with: [:], leaving: ["a-key"], defaults: defaults,
+            saving: { _, _, _ in true },
+            reading: { _ in .undecodable },
+            deleting: { _ in })
+        #expect(!replaced, "an item still there counted as left because its bytes do not decode")
+    }
+
     @Test("liest die Ruecklese nach dem Entfernen nicht lesbar, gilt der Zugang nicht als gegangen: nichts ersetzt, kein Moment abgeraeumt")
     func anUnreadableReadBackAfterARemovalHolds() {
         let suite = "feed-leave-unreadable-\(UUID().uuidString)"

@@ -412,11 +412,13 @@ struct StandOwnerTests {
             #expect(aAfter == nil, "A's stand stays in B's rows after the restart")
             let settled = try rig.shelf.holding(of: "stands")
             #expect(settled == .init(owner: "account-b"), "the replacement after the restart did not land")
-            // Measured: B's write from the window is not in B's rest, so the
-            // replacement after the restart takes it with A's.
-            #expect(ListeningStore.backup("rss:b-1", in: defaults) == nil, "measured otherwise: B's write from the window survives")
+            // An open state, held until it is decided, not a property: B's
+            // write from the window is not in B's rest, so the replacement
+            // after the restart takes it with A's.
+            #expect(ListeningStore.backup("rss:b-1", in: defaults) == nil,
+                    "the open state moved: B's write from the window survives now, the decision is due")
             let bAfter = try await rows.stand(for: "rss:b-1")
-            #expect(bAfter == nil, "measured otherwise: B's row from the window survives")
+            #expect(bAfter == nil, "the open state moved: B's row from the window survives now, the decision is due")
             withExtendedLifetime(runner) {}
             withExtendedLifetime(restarted) {}
         }

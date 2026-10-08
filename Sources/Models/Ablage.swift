@@ -59,9 +59,23 @@ actor Ablage {
         directory.appendingPathComponent(name)
     }
 
+    /// Where an unreadable document lies aside (`CorruptStore.preserve`).
+    nonisolated func asideURL(for name: String) -> URL {
+        url(for: name).appendingPathExtension("corrupt")
+    }
+
+    /// No document, but its unreadable file lies aside: the name is still
+    /// unreadable, not "none yet". The file aside is the sign that outlives
+    /// the process; nothing readable was saved since, or the document
+    /// would be there.
+    private nonisolated func liesAside(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: asideURL(for: name).path)
+    }
+
     /// Read and decode a document. Missing is `.fresh`; unreadable is
     /// `.corrupt` (file preserved aside, saves of emptiness blocked), and
-    /// stays `.corrupt` on later reads until a readable file or a real save.
+    /// stays `.corrupt` on later reads, also after a restart, until a
+    /// readable file, a real save or a removal.
     func load<T: Decodable & Sendable>(_ type: T.Type, name: String) async -> Outcome<T> {
         await flush(name)
         switch CorruptStore.load(type, from: url(for: name), label: "ABLAGE \(name)") {
@@ -72,9 +86,9 @@ actor Ablage {
             corruptNames.remove(name)
             return .loaded(value)
         case .fresh:
-            // The unreadable file lies aside and nothing readable was saved
-            // since: the name is still unreadable, not "none yet".
-            return corruptNames.contains(name) ? .corrupt : .fresh
+            guard corruptNames.contains(name) || liesAside(name) else { return .fresh }
+            corruptNames.insert(name)
+            return .corrupt
         }
     }
 
@@ -87,7 +101,7 @@ actor Ablage {
         switch CorruptStore.load(type, from: url(for: name), label: "ABLAGE \(name)") {
         case .corrupt: outcome = .corrupt
         case .loaded(let value): outcome = .loaded(value)
-        case .fresh: outcome = .fresh
+        case .fresh: outcome = liesAside(name) ? .corrupt : .fresh
         }
         if case .corrupt = outcome {
             Task { await self.noteCorrupt(name) }
@@ -156,18 +170,28 @@ actor Ablage {
         }
     }
 
-    /// Remove a document (and nothing else: a `.corrupt` sibling stays for
-    /// forensics).
+    /// Remove a document. Its unreadable file aside, if any, stays for
+    /// forensics under `.corrupt.removed`: after a removal the name is "none
+    /// yet", and the file aside would otherwise say "unreadable" for ever.
     func remove(name: String) async throws {
         await flush(name)
         let target = url(for: name)
-        guard FileManager.default.fileExists(atPath: target.path) else { return }
         do {
-            try FileManager.default.removeItem(at: target)
+            if FileManager.default.fileExists(atPath: target.path) {
+                try FileManager.default.removeItem(at: target)
+            }
+            if liesAside(name) {
+                let retired = asideURL(for: name).appendingPathExtension("removed")
+                if FileManager.default.fileExists(atPath: retired.path) {
+                    try FileManager.default.removeItem(at: retired)
+                }
+                try FileManager.default.moveItem(at: asideURL(for: name), to: retired)
+            }
         } catch {
             Logger.library.error("ABLAGE remove failed name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
             throw AblageError.write(name: name, reason: String(describing: error))
         }
+        corruptNames.remove(name)
     }
 
     /// Wait for every queued write of a name (tests, teardown, a load

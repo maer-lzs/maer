@@ -45,7 +45,7 @@ nonisolated enum MaerSyncAccessRead: Equatable, Sendable {
         guard let base = MaerSyncPaths.normalized(url) else { return .absent }
         switch token {
         case .unreadable: return .unknown
-        case .missing: return .absent
+        case .missing, .undecodable: return .absent
         case .value(let text): return text.isEmpty ? .absent : .access(MaerSyncAccess(baseURL: base, token: text))
         }
     }

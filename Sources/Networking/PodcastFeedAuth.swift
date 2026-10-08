@@ -178,7 +178,9 @@ nonisolated enum PodcastFeedAuth {
             switch reading(restKey(scope, feedKey)) {
             case .unreadable:
                 return nil
-            case .missing:
+            case .missing, .undecodable:
+                // Bytes that do not decode are no credentials, and holding
+                // for them would hold for ever, as for one not there.
                 out.missing.append(feedKey)
             case .value(let raw):
                 guard let sep = raw.firstIndex(of: "\n") else { out.missing.append(feedKey); continue }
