@@ -62,9 +62,9 @@ final class LateMusicValues: ObservableObject {
 
     /// Started music that resolved only after the surface stopped waiting
     /// joins the row it belongs to, once. Without a pass on purpose: it only
-    /// adds, and while its fetch is in flight no newer pass asks for the same
-    /// id (`ListenAgainFetch.plan`), so dropping the answer of an older pass
-    /// would lose the album until a later one.
+    /// adds, and an album a newer pass already carries is not added twice;
+    /// dropping the late answer of an older pass would lose an album that
+    /// pass asked for until a later pass resolves it.
     func addRecentAlbums(_ value: [LibraryItem]) {
         apply { values in
             let known = Set(values.started.map(\.id))

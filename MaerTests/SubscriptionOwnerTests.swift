@@ -164,6 +164,30 @@ struct SubscriptionOwnerTests {
         #expect(raw.standing(under: ["feed:kept"]).episodes.map(\.guid) == ["under-raw", "under-kept"])
     }
 
+    /// Why both filters stand: the database refuses an episode whose show
+    /// is not there (`foreign_keys=ON`, `REFERENCES show(id)`), and the whole
+    /// transaction with it, so an unfiltered carry would break the
+    /// replacement on every start.
+    @Test("eine Folge ohne ihre Sendung in apply(also:) wirft, und nichts aus derselben Transaktion landet")
+    func anEpisodeWithoutItsShowBreaksTheTransaction() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let rows = try await PodcastRowStore(connection: try rig.database.connection())
+        try await rows.replaceAll([Self.show("moor", episodes: 2)])
+        let before = try await rows.counts()
+        // Told the show is kept, the carry inserts the episode as it stands.
+        let orphan = PodcastRowStore.RawRows(shows: [], episodes: [
+            .init(guid: "under-gone", showId: "feed:gone", position: 0, pubDate: 1, payload: Data("y".utf8))])
+        let carried = PodcastRowStore.carriedRows(leaving: .init(), coming: orphan, keptShows: ["feed:gone"], keptEpisodes: [])
+        let fresh = PodcastRowStore.RawRows(shows: [.init(id: "feed:fresh", position: 9, payload: Data("x".utf8))], episodes: [])
+        let alongside = PodcastRowStore.carriedRows(leaving: .init(), coming: fresh, keptShows: [], keptEpisodes: [])
+        #expect(carried.contains { $0.sql.contains("INTO episode") }, "the precondition: the episode is inserted")
+        await #expect(throws: (any Error).self, "an episode without its show was written") {
+            try await rows.apply(PodcastRowDiff(), also: alongside + carried)
+        }
+        #expect(try await rows.counts() == before, "a statement of the broken transaction landed")
+    }
+
     @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Sendung von A, A's bleiben bei A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = try rig()

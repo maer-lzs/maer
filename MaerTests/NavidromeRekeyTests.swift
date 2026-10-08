@@ -812,7 +812,8 @@ struct NavidromeRekeyTests {
     /// A folder of downloads that exists but cannot be listed is "not now",
     /// with a line: no answer is no "no interrupted download". A missing
     /// folder holds none.
-    @Test("ein unlesbarer Download-Ordner haelt den Schritt offen, ein fehlender ist leer")
+    @Test("ein unlesbarer Download-Ordner haelt den Schritt offen, ein fehlender ist leer",
+          .enabled(if: NavidromeRekeyTests.aShutFolderStaysShut, "a shut folder can be listed here, so there is nothing to measure"))
     func anUnreadableDownloadsFolderIsNotNow() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-unreadable-\(UUID().uuidString)", isDirectory: true)
@@ -827,12 +828,26 @@ struct NavidromeRekeyTests {
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         await manager.ensureScanned()
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: downloads.path)
-        let listable = (try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) != nil
-        try #require(!listable, "the precondition: the folder cannot be listed here")
         #expect(manager.rekey(Self.map) == nil, "an unreadable folder read as no interrupted download")
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: downloads.path)
         try FileManager.default.removeItem(at: downloads)
         #expect(manager.rekey(Self.map) != nil, "a missing folder held the step")
+    }
+
+    /// Whether a folder shut to everyone cannot be listed where the suite
+    /// runs. Run with the rights to read anyway, the unreadable folder
+    /// cannot be made, and the case is skipped, not passed.
+    nonisolated static var aShutFolderStaysShut: Bool {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("shut-probe-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil,
+              (try? FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: folder.path)) != nil
+        else { return false }
+        return (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) == nil
     }
 
     /// A folder held for a resume moves not: a resume clears the phase

@@ -8,10 +8,13 @@ import Foundation
 import Testing
 @testable import Maer
 
-/// Loads corpus fixture files from the test bundle. The corpora live in
-/// `Fixtures/OPMLCorpus` / `Fixtures/RSSEdgeCorpus`; depending on how the
-/// synced folder bundles resources they may land flat or with their
-/// subdirectory, so both locations are tried.
+/// Loads fixture files from the test bundle. They live under
+/// `MaerTests/Fixtures/<subdirectory>`, but the synced folder bundles them
+/// flat (measured 08.10.2026: every fixture at the bundle's root), so the
+/// bundle is asked by name, and the subdirectory says nothing there. Where
+/// the tests folder lies beside, the file must stand under the subdirectory
+/// the caller names, with the same bytes: a caller naming a folder that
+/// does not hold the file is red, not read by its name alone.
 final class CorpusFixtureToken {}
 enum CorpusFixture {
     nonisolated static func data(_ name: String, ext: String, subdirectory: String) throws -> Data {
@@ -19,7 +22,14 @@ enum CorpusFixture {
         let url = bundle.url(forResource: name, withExtension: ext, subdirectory: "Fixtures/\(subdirectory)")
             ?? bundle.url(forResource: name, withExtension: ext, subdirectory: subdirectory)
             ?? bundle.url(forResource: name, withExtension: ext)
-        return try Data(contentsOf: try #require(url, "fixture \(name).\(ext) not in test bundle"))
+        let data = try Data(contentsOf: try #require(url, "fixture \(name).\(ext) not in test bundle"))
+        if SourceTree.hasTests {
+            let named = SourceTree.root.appendingPathComponent("MaerTests/Fixtures/\(subdirectory)/\(name).\(ext)")
+            let source = try #require(try? Data(contentsOf: named),
+                                      "fixture \(name).\(ext) is not under Fixtures/\(subdirectory)")
+            try #require(source == data, "fixture \(name).\(ext) in the bundle is another file than under Fixtures/\(subdirectory)")
+        }
+        return data
     }
 }
 
