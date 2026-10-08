@@ -239,6 +239,68 @@ struct StatsOwnerTests {
         await stats.awaitPendingWrites()
     }
 
+    @Test("wirft der Umzug an einer ruhenden Summe, bleiben Hauptbuch und Geraete-Summen im selben Raum und nichts vom Konto davor zaehlt fuer das jetzige; ein zweiter Lauf zieht alles um")
+    func aMoveThatThrowsKeepsTheLedgerWithTheDevice() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.folder) }
+        let shelf = rig.shelf
+        try shelf.setHolding(.init(owner: "account-b"), of: "stats")
+        // B took the device over at old:100 and brought old:5.
+        let ledger = ListeningStatsStore.Ledger(carried: ListeningStatsData(secondsPerItem: ["sub:song:old": 5]),
+                                                since: ListeningStatsData(secondsPerItem: ["sub:song:old": 100]))
+        try shelf.lay(ledger, of: "statsLedger", owner: "device")
+        // A's resting totals cannot be read.
+        let restOfA = shelf.directory.appendingPathComponent("stats").appendingPathComponent("account-a.json")
+        try FileManager.default.createDirectory(at: restOfA.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not a rest".utf8).write(to: restOfA)
+        let stats = ListeningStatsStore(carrier: AccountCarrier(scope: { "account-b" }), database: rig.database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        identity: { "account-b" }, shelf: shelf)
+        stats.addSeconds(130, itemId: "sub:song:old")
+        #expect(stats.ownerPot.secondsPerItem == ["sub:song:old": 35], "the precondition: B's totals before the move")
+        let map: (String) -> String = { $0 == "sub:song:old" ? "sub:song:new" : $0 }
+
+        let held = await stats.rekeyItems(map)
+        #expect(held == nil, "a move over an unreadable rest went on")
+        let ledgerAfterThrow = try shelf.rest(ListeningStatsStore.Ledger.self, of: "statsLedger", owner: "device")
+        #expect(ledgerAfterThrow == ledger, "the ledger moved without the device's totals")
+        #expect(stats.ownData.secondsPerItem == ["sub:song:old": 130])
+        #expect(stats.ownerPot.secondsPerItem == ["sub:song:old": 35], "A's listening counted for B")
+
+        try shelf.lay(ListeningStatsData(secondsPerItem: ["sub:song:old": 100]), of: "stats", owner: "account-a")
+        let moved = await stats.rekeyItems(map)
+        #expect(moved != nil, "the second run held")
+        let ledgerMoved = try shelf.rest(ListeningStatsStore.Ledger.self, of: "statsLedger", owner: "device")
+        #expect(ledgerMoved?.since.secondsPerItem == ["sub:song:new": 100])
+        #expect(stats.ownerPot.secondsPerItem == ["sub:song:new": 35], "B's totals changed by the move")
+        let restMoved = try shelf.rest(ListeningStatsData.self, of: "stats", owner: "account-a")
+        #expect(restMoved?.secondsPerItem == ["sub:song:new": 100])
+        await stats.awaitPendingWrites()
+    }
+
+    @Test("ist das Hauptbuch nicht lesbar und keine Identitaet da, geht kein Topf hinaus, auch kein leerer")
+    func anUnreadLedgerHoldsThePublishWithoutAnIdentity() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.folder) }
+        try await withSyncOn {
+            let shelf = rig.shelf
+            try shelf.setHolding(.init(owner: "account-a"), of: "stats")
+            let ledger = shelf.directory.appendingPathComponent("statsLedger").appendingPathComponent("device.json")
+            try FileManager.default.createDirectory(at: ledger.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("not a ledger".utf8).write(to: ledger)
+            let carrier = AccountCarrier(scope: { nil })
+            let stats = ListeningStatsStore(carrier: carrier, database: rig.database,
+                                            history: ListeningStatsSyncTests.RecordingHistory(),
+                                            identity: { nil }, shelf: shelf)
+            stats.addSeconds(50, itemId: "rss:a-1")
+            stats.start()
+            stats.flush()
+            #expect(stats.ledgerUnread, "the precondition: the ledger is unread")
+            #expect(carrier.byAccount.isEmpty, "a pot went up without its ledger")
+            await stats.awaitPendingWrites()
+        }
+    }
+
     @Test("der Weg zurueck: aus den Summen des Kontos die des Geraets, so dass owned wieder dasselbe Konto ergibt")
     func theWayBackToTheDevice() {
         let carried = ListeningStatsData(secondsPerDay: ["d0": 7], secondsPerItem: ["b": 7])

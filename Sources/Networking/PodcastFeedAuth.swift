@@ -202,22 +202,27 @@ nonisolated enum PodcastFeedAuth {
     /// `remove`): another account owns the device. Its credentials replace
     /// the live ones, each read back, and only then the live items of the
     /// account before leave (`leaving`), which rest under its name already.
-    /// False when one did not land; the next round tries again.
+    /// False when one did not land; the next round tries again. The reads
+    /// back tell "not there" from "not readable", as `rested` does.
     static func replaceForNewOwner(with incoming: [String: FeedAuthBlock.Entry], leaving: Set<String>,
                                    defaults: UserDefaults = .standard,
                                    saving: (String, String, Bool) -> Bool = save,
-                                   loading: (String) -> String? = KeychainStore.load(forKey:),
+                                   reading: (String) -> KeychainRead = KeychainStore.read(forKey:),
                                    deleting: (String) -> Void = { KeychainStore.delete(forKey: $0) }) -> Bool {
         for (feedKey, entry) in incoming {
             let value = "\(entry.credentials.user)\n\(entry.credentials.password)"
-            guard saving(key(feedKey), value, travelsOverApple()), loading(key(feedKey)) == value else { return false }
+            guard saving(key(feedKey), value, travelsOverApple()), reading(key(feedKey)) == .value(value) else { return false }
             stamp(feedKey: feedKey, atMs: entry.at, defaults: defaults)
         }
         for feedKey in leaving where incoming[feedKey] == nil {
             deleting(key(feedKey))
             // Read back like every write: a credential of the account before
-            // that stayed would be sealed for this one.
-            guard loading(key(feedKey)) == nil else { return false }
+            // that stayed would be sealed for this one, and one that cannot
+            // be read may still be there. Only "not there" has left.
+            guard reading(key(feedKey)) == .missing else {
+                Logger.library.notice("FEEDAUTH removal not read back as gone")
+                return false
+            }
             stamp(feedKey: feedKey, atMs: nil, defaults: defaults)
         }
         return true

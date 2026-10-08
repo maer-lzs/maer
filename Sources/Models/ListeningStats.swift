@@ -399,7 +399,8 @@ final class ListeningStatsStore: ObservableObject {
 
     /// What the account that holds the device listened to here: what is
     /// shown beside the other devices, and what is published. Nothing while
-    /// the ledger is unread: no number of another account.
+    /// the ledger is unread: no number of another account, and `publish`
+    /// holds then, with or without an identity, so no empty pot goes up.
     var ownerPot: ListeningStatsData {
         guard !ledgerUnread else { return ListeningStatsData() }
         return ListeningStatsSync.owned(device: ownData, carried: ledger.carried, since: ledger.since)
@@ -485,6 +486,12 @@ final class ListeningStatsStore: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard followsTheAccount() else {
             Logger.library.notice("STATS publish held: the totals wait for their owner")
+            return
+        }
+        // Not only behind an identity: signed out of the service, the pot
+        // would go up empty over the other carrier and zero this device.
+        guard rereadLedgerIfUnread() else {
+            Logger.library.notice("STATS publish held: the ledger is unread")
             return
         }
         let owned = ownerPot
@@ -573,17 +580,22 @@ final class ListeningStatsStore: ObservableObject {
                                secondsPerItem: NavidromeRekey.summed(data.secondsPerItem, map))
         }
         do {
-            // The ledger's titles move with the device's, or the subtraction
-            // would meet them under two names.
-            let movedLedger = Ledger(carried: moved(ledger.carried), since: moved(ledger.since))
-            if movedLedger != ledger {
-                try shelf.lay(movedLedger, of: Self.ledgerFamily, owner: Self.ledgerOwner)
-                ledger = movedLedger
-            }
+            // The other accounts' totals first: they never meet this
+            // account's numbers, and moving one twice changes nothing, so a
+            // throw here leaves the ledger and the device's totals together
+            // in the old space and a later run moves the rest.
             for owner in try shelf.owners(of: Self.shelfFamily) {
                 guard let rest = try shelf.rest(ListeningStatsData.self, of: Self.shelfFamily, owner: owner) else { continue }
                 let next = moved(rest)
                 if next != rest { try shelf.lay(next, of: Self.shelfFamily, owner: owner) }
+            }
+            // The ledger last, right before the device's totals: its titles
+            // move with the device's, or the subtraction would meet them
+            // under two names.
+            let movedLedger = Ledger(carried: moved(ledger.carried), since: moved(ledger.since))
+            if movedLedger != ledger {
+                try shelf.lay(movedLedger, of: Self.ledgerFamily, owner: Self.ledgerOwner)
+                ledger = movedLedger
             }
             return true
         } catch {

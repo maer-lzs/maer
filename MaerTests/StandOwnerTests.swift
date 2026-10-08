@@ -364,6 +364,64 @@ struct StandOwnerTests {
         }
     }
 
+    @Test("ein Neustart im gehaltenen Fenster: danach steht kein wandernder Stand des Kontos davor unter dem jetzigen; gemessen, was aus dem Schrieb des neuen Kontos aus dem Fenster wird")
+    func aRestartInTheHeldWindow() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let (rows, connection, mirror) = try await mirrored(defaults)
+        defer { unhook() }
+        try await withSyncOn {
+            var scope = "account-a"
+            let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
+                                          identity: { scope }, shelf: rig.shelf, standsMarked: { _ in false })
+            runner.reconcile(pushing: false)
+            let t = 1_700_000_100_000.0
+            ListeningStore.record("rss:a-1", position: 600, duration: 3600, atMs: t, in: defaults)
+            await mirror.awaitPendingWrites()
+            // The whole write throws, so the window stays open; in it B
+            // writes a travelling stand, which goes into the rows beside A's.
+            let schema = try await connection.query("SELECT sql FROM sqlite_master WHERE name = 'stand_flushed'")
+            let createFlushed = try #require(schema.first?["sql"]?.string)
+            _ = try await connection.execute("DROP TABLE stand_flushed")
+            scope = "account-b"
+            runner.reconcile(pushing: false)
+            ListeningStore.record("rss:b-1", position: 30, duration: 600, atMs: t + 60_000, in: defaults)
+            await mirror.awaitPendingWrites()
+            let aInTheWindow = try await rows.stand(for: "rss:a-1")
+            let bInTheWindow = try await rows.stand(for: "rss:b-1")
+            #expect(aInTheWindow != nil && bInTheWindow != nil, "the precondition: both stand in the rows, unmarked")
+
+            // The process ends here. The next start finds the rows whole,
+            // and they are the stock; the open replacement of the mirror is gone.
+            _ = try await connection.execute(createFlushed)
+            let table = ListeningStore.Stock(backups: try await rows.all().mapValues(\.entry),
+                                             flushed: try await rows.allFlushed())
+            ListeningStore.markMoved(for: ObjectIdentifier(defaults))
+            ListeningStore.installTable(for: defaults) { table }
+            #expect(ListeningStore.backup("rss:a-1", in: defaults) != nil, "the precondition: A's stand is in the stock after the start")
+            let started = StandMirror(store: rows)
+            started.start(defaults: defaults)
+            let restarted = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
+                                             identity: { scope }, shelf: rig.shelf, standsMarked: { _ in false })
+            restarted.reconcile(pushing: false)
+            await started.awaitPendingWrites()
+
+            #expect(ListeningStore.backup("rss:a-1", in: defaults) == nil, "A's stand stands under B after the restart")
+            let aAfter = try await rows.stand(for: "rss:a-1")
+            #expect(aAfter == nil, "A's stand stays in B's rows after the restart")
+            let settled = try rig.shelf.holding(of: "stands")
+            #expect(settled == .init(owner: "account-b"), "the replacement after the restart did not land")
+            // Measured: B's write from the window is not in B's rest, so the
+            // replacement after the restart takes it with A's.
+            #expect(ListeningStore.backup("rss:b-1", in: defaults) == nil, "measured otherwise: B's write from the window survives")
+            let bAfter = try await rows.stand(for: "rss:b-1")
+            #expect(bAfter == nil, "measured otherwise: B's row from the window survives")
+            withExtendedLifetime(runner) {}
+            withExtendedLifetime(restarted) {}
+        }
+    }
+
     @Test("ist der Bestand nicht ganz gelesen, ruht nichts, nichts wird ersetzt und die Runde haelt an")
     func anUnreadStockHoldsTheRound() async throws {
         let rig = rig()

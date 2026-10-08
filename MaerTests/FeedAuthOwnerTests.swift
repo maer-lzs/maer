@@ -84,7 +84,7 @@ struct FeedAuthOwnerTests {
                 rested: { PodcastFeedAuth.rested($1, of: $0, reading: self.read) },
                 replace: {
                     PodcastFeedAuth.replaceForNewOwner(with: $0, leaving: $1, defaults: self.defaults,
-                                                       saving: self.save, loading: self.load,
+                                                       saving: self.save, reading: self.read,
                                                        deleting: { self.items[$0] = nil })
                 },
                 clearRest: { PodcastFeedAuth.clearRest(of: $0, feedKeys: $1, deleting: { self.items[$0] = nil }) })
@@ -292,14 +292,29 @@ struct FeedAuthOwnerTests {
         var items: [String: String] = ["feedAuth.a-key": "anna\ngeheim"]
         let replaced = PodcastFeedAuth.replaceForNewOwner(
             with: [:], leaving: ["a-key"], defaults: defaults,
-            saving: { account, value, _ in items[account] = value; return true }, loading: { items[$0] },
+            saving: { account, value, _ in items[account] = value; return true },
+            reading: { items[$0].map(KeychainRead.value) ?? .missing },
             deleting: { _ in })
         #expect(!replaced, "a credential that did not leave counted as left")
         items = ["feedAuth.a-key": "anna\ngeheim"]
         #expect(PodcastFeedAuth.replaceForNewOwner(
             with: [:], leaving: ["a-key"], defaults: defaults,
-            saving: { account, value, _ in items[account] = value; return true }, loading: { items[$0] },
+            saving: { account, value, _ in items[account] = value; return true },
+            reading: { items[$0].map(KeychainRead.value) ?? .missing },
             deleting: { items[$0] = nil }))
+    }
+
+    @Test("liest die Ruecklese nach dem Entfernen nicht lesbar, gilt der Zugang nicht als gegangen: nichts ersetzt, kein Moment abgeraeumt")
+    func anUnreadableReadBackAfterARemovalHolds() {
+        let suite = "feed-leave-unreadable-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        defaults.set(["a-key": 1000.0], forKey: PodcastFeedAuth.stampsKey)
+        let replaced = PodcastFeedAuth.replaceForNewOwner(
+            with: [:], leaving: ["a-key"], defaults: defaults,
+            saving: { _, _, _ in true }, reading: { _ in .unreadable }, deleting: { _ in })
+        #expect(!replaced, "an unreadable read back counted as gone")
+        #expect(PodcastFeedAuth.moment(feedKey: "a-key", defaults: defaults) == 1000, "the moment was cleared")
     }
 
     @Test("liest ein ruhender Zugang nicht zurueck, wird nichts ersetzt und die Runde haelt")
