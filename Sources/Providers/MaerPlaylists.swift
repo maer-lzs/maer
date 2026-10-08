@@ -153,6 +153,18 @@ final class MaerPlaylists: ObservableObject {
     nonisolated struct Resting: Codable, Equatable {
         var lists: [Playlist]
         var tombstones: [String: Double]
+        /// Rows of the account that this build could not decode, as stored
+        /// (key and payload). They rest with the account and come back to
+        /// its rows unread, so they never stand under another account.
+        var unread: [String: Data]? = nil
+    }
+
+    /// The rows this build cannot decode, as stored; nil when there are
+    /// none. Throws when the read fails, so a hand-over holds instead of
+    /// leaving them under the next account.
+    private func undecodedRows() throws -> [String: Data]? {
+        let rows = try keeper.undecodedNow()
+        return rows.isEmpty ? nil : rows
     }
 
     /// Hands the lists to the account signed in now (`scope`) by the
@@ -170,8 +182,14 @@ final class MaerPlaylists: ObservableObject {
             landed: { [database] name in
                 try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
             },
-            current: { Resting(lists: playlists, tombstones: Self.tombstones) },
-            replace: { rest, _, _ in replace(with: rest) }) else { return false }
+            current: {
+                // The picture of the holder's stock is taken here, at the
+                // lay, with the rows this build cannot read.
+                let unread = try undecodedRows()
+                Logger.library.notice("PLAYLIST owner rest taken at=\(Date().timeIntervalSince1970, privacy: .public) lists=\(self.playlists.count) unread=\(unread?.count ?? 0)")
+                return Resting(lists: playlists, tombstones: Self.tombstones, unread: unread)
+            },
+            replace: { rest, _, _ in try replace(with: rest) }) else { return false }
         switch step {
         case .kept: return true
         case .first: Logger.library.notice("PLAYLIST owner first lists=\(rested)")
@@ -183,11 +201,16 @@ final class MaerPlaylists: ObservableObject {
 
     /// The lists of the new owner replace the ones here; the holding settles
     /// once the rows hold them.
-    private func replace(with incoming: Resting?) {
+    private func replace(with incoming: Resting?) throws {
         Self.tombstones = incoming?.tombstones ?? [:]
         playlists = Self.ordered(Self.keyed(incoming?.lists ?? []))
-        // The owner changed, and the lists before rest on the shelf.
-        save(emptying: .allowed)
+        // The owner changed, and the lists before rest on the shelf, the
+        // rows this build cannot read with them. In the same transaction as
+        // the new lists and the mark: those rows leave the table, and the
+        // unread rows of the incoming account come back as they are.
+        let carried = keeper.carriedRows(leaving: try undecodedRows() ?? [:], coming: incoming?.unread ?? [:],
+                                         kept: Set(playlists.map(\.id)))
+        save(emptying: .allowed, also: carried)
     }
 
     var totalEntries: Int { playlists.reduce(0) { $0 + $1.itemIds.count } }
@@ -512,8 +535,8 @@ final class MaerPlaylists: ObservableObject {
     /// A failure is logged; the lists live on in memory and the next change
     /// writes again (the carrier holds them too). `emptying` is `.allowed`
     /// only where removing lists is the action.
-    private func save(emptying: RowEmptying) {
+    private func save(emptying: RowEmptying, also: [SQLiteConnection.Statement] = []) {
         changed?()
-        keeper.write(emptying: emptying) { [weak self] in self.map { Self.keyed($0.playlists) } }
+        keeper.write(emptying: emptying, also: also) { [weak self] in self.map { Self.keyed($0.playlists) } }
     }
 }

@@ -86,6 +86,27 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         return decode(try reader.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
     }
 
+    /// The rows that do not decode in this build, as stored: key and
+    /// payload. A hand-over to another account carries them as they are,
+    /// so a later build may read them under the account they belong to.
+    /// EMPTY when the table does not exist; THROWS when the read fails.
+    nonisolated static func undecodedNow(table: Table, reader: SQLiteReader) throws -> [String: Data] {
+        let exists = try reader.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                                      [.text(table.rawValue)])
+        guard !exists.isEmpty else { return [:] }
+        let decoder = JSONDecoder()
+        var out: [String: Data] = [:]
+        for row in try reader.query("SELECT key, payload FROM \(table.rawValue)") {
+            guard let key = row["key"]?.string, let data = row["payload"]?.data else { continue }
+            do {
+                _ = try decoder.decode(Value.self, from: data)
+            } catch {
+                out[key] = data
+            }
+        }
+        return out
+    }
+
     private nonisolated static func decode(_ rows: [[String: SQLiteValue]], table: Table) -> Load {
         let decoder = JSONDecoder()
         var out: [String: Value] = [:]

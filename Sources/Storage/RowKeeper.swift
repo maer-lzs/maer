@@ -47,6 +47,32 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         self.chain = RowChain(label: label)
     }
 
+    /// The rows this build cannot decode, as stored (key and payload);
+    /// empty without a file. Throws when the read fails.
+    func undecodedNow() throws -> [String: Data] {
+        guard let reader = try database.readerNow() else { return [:] }
+        return try KeyedRowStore<Value>.undecodedNow(table: table, reader: reader)
+    }
+
+    /// The statements that carry rows as stored at a hand-over, for a write
+    /// of this keeper (`write(…also:)`): `leaving` leave the table, `coming`
+    /// come back unread, never over a row the new stock holds (`kept`).
+    nonisolated static func carriedRows(table: KeyedRowStore<Value>.Table, leaving: [String: Data],
+                                        coming: [String: Data], kept: Set<String>) -> [SQLiteConnection.Statement] {
+        let name = table.rawValue
+        let gone = leaving.keys.filter { !kept.contains($0) }.sorted()
+            .map { SQLiteConnection.Statement("DELETE FROM \(name) WHERE key = ?", [.text($0)]) }
+        let back = coming.filter { !kept.contains($0.key) }.sorted { $0.key < $1.key }
+            .map { SQLiteConnection.Statement("INSERT OR REPLACE INTO \(name) (key, payload) VALUES (?, ?)",
+                                              [.text($0.key), .blob($0.value)]) }
+        return gone + back
+    }
+
+    /// The same, for this keeper's table.
+    func carriedRows(leaving: [String: Data], coming: [String: Data], kept: Set<String>) -> [SQLiteConnection.Statement] {
+        Self.carriedRows(table: table, leaving: leaving, coming: coming, kept: kept)
+    }
+
     /// What the rows hold, as far as this run knows.
     var base: RowBase<Rows> { chain.base }
     /// Whether the start read failed as a whole (`RowChain.startReadFailed`).
@@ -89,7 +115,8 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// is the action of this write, fixed at the call (`atCall`); when it is
     /// not, an empty snapshot that would remove rows is refused, and it
     /// speaks as `WipeRefusal` says. `take` answers nil once the store is gone.
-    func write(emptying requested: RowEmptying, _ take: @escaping @MainActor () -> Rows?) {
+    func write(emptying requested: RowEmptying, also: [SQLiteConnection.Statement] = [],
+               _ take: @escaping @MainActor () -> Rows?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
         if requested == .allowed && emptying == .refused { narrowedPermission = true }
         chain.write(read: { [weak self] in
@@ -112,8 +139,10 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             }
             self.narrowedPermission = false
             let mark = self.mark?()
+            // `also`: statements of the store that land in the same
+            // transaction (rows carried as they are at a hand-over).
             let written = try await rows.apply(previous: base.previous(for: snapshot), current: snapshot,
-                                               also: mark?.statements ?? [])
+                                               also: also + (mark?.statements ?? []))
             mark?.landed()
             if self.logsSaves, base.plan != .diff || written.upserted + written.removed > 0 {
                 Logger.library.notice("\(self.label, privacy: .public) save: upserted=\(written.upserted) removed=\(written.removed) plan=\(String(describing: base.plan), privacy: .public)")

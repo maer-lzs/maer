@@ -266,5 +266,80 @@ struct PlaylistOwnerTests {
             #expect(try shelf.holding(of: "playlists") == .init(owner: "account-b"))
         }
     }
+
+    private static let laterForm = Data("a list in a form of a later build".utf8)
+
+    private func undecoded(_ database: MaerDatabase) throws -> [String: Data] {
+        try KeyedRowStore<MaerPlaylists.Playlist>.undecodedNow(table: .maerPlaylist, reader: try #require(try database.readerNow()))
+    }
+
+    @Test("eine Zeile, die dieser Bau nicht liest, ruht mit A, steht nie unter B und kommt auf dem Rueckweg ungelesen zurueck")
+    func anUnreadRowRestsWithItsAccount() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            let database = rig.database
+            let first = MaerPlaylists(database: database)
+            _ = first.create(name: "Von A")
+            await first.awaitPendingWrites()
+            _ = try await database.connection().run("INSERT INTO maer_playlist (key, payload) VALUES (?, ?)",
+                                                    [.text("later-form"), .blob(Self.laterForm)])
+            // A new start reads the list and skips the row.
+            let store = MaerPlaylists(database: database)
+            #expect(store.startIncomplete && store.playlists.map(\.name) == ["Von A"], "the precondition: one row unread")
+            #expect(store.follow(owner: "account-a"))
+            #expect(store.follow(owner: "account-b"))
+            await store.awaitPendingWrites()
+            try await Task.sleep(for: .milliseconds(100))
+            let rest = try #require(try rig.shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a"))
+            #expect(rest.unread == ["later-form": Self.laterForm], "A's unread row did not rest with A")
+            #expect(try undecoded(database).isEmpty, "A's unread row stands under B")
+            #expect(store.playlists.isEmpty)
+            // The rest is one file per account: no second file reads as an owner.
+            #expect(try rig.shelf.owners(of: "playlists") == ["account-a"])
+
+            // The way back: the row comes back as it was, read as skipped.
+            #expect(store.follow(owner: "account-a"))
+            await store.awaitPendingWrites()
+            try await Task.sleep(for: .milliseconds(100))
+            #expect(try undecoded(database) == ["later-form": Self.laterForm], "A's unread row did not come back")
+            let again = MaerPlaylists(database: database)
+            #expect(again.startIncomplete && again.playlists.map(\.name) == ["Von A"], "the way back lost A's list or its unread row")
+        }
+    }
+
+    @Test("bricht die Uebergabe nach dem Ablegen und vor dem Ersetzen ab, geht die ungelesene Zeile nicht verloren und steht nicht doppelt")
+    func anUnreadRowSurvivesABrokenReplacement() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            let shelf = rig.shelf
+            let database = rig.database
+            // A's rest is laid with its unread row; the replacement did not
+            // land, so the row still stands in the table.
+            let restOfA = MaerPlaylists.Resting(
+                lists: [.init(id: "a1", name: "Von A", updatedAt: 1, itemIds: ["rss:a"])], tombstones: [:],
+                unread: ["later-form": Self.laterForm])
+            let restOfB = MaerPlaylists.Resting(
+                lists: [.init(id: "b1", name: "Von B", updatedAt: 2, itemIds: ["rss:b"])], tombstones: [:])
+            try shelf.lay(restOfA, of: "playlists", owner: "account-a")
+            try shelf.lay(restOfB, of: "playlists", owner: "account-b")
+            try shelf.setHolding(.init(owner: "account-b", replacing: true), of: "playlists")
+            let seed = MaerPlaylists(database: database)
+            _ = seed.create(name: "Halb")
+            await seed.awaitPendingWrites()
+            _ = try await database.connection().run("INSERT INTO maer_playlist (key, payload) VALUES (?, ?)",
+                                                    [.text("later-form"), .blob(Self.laterForm)])
+
+            let store = MaerPlaylists(database: database)
+            #expect(store.follow(owner: "account-b"))
+            await store.awaitPendingWrites()
+            try await Task.sleep(for: .milliseconds(100))
+            #expect(try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a") == restOfA,
+                    "A's rest with its unread row was lost or overwritten")
+            #expect(try undecoded(database).isEmpty, "the unread row stands twice: on A's shelf and under B")
+            #expect(store.playlists.map(\.id) == ["b1"])
+        }
+    }
 }
 #endif
