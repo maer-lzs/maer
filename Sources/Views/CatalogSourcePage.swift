@@ -319,9 +319,10 @@ struct CatalogSourcePage: View {
     }
 
     /// One line per finished pass: how many titles stand in more than one
-    /// row. Only once the shelves answered; a pass cut short says nothing.
+    /// row (`CatalogPageOverlap.speaks` says when).
     private func logOverlap(by caller: String) {
-        guard shelvesLoaded || !hasChips else { return }
+        guard CatalogPageOverlap.speaks(feedBased: source.isFeedBased, hasShelves: hasChips,
+                                        shelvesLoaded: shelvesLoaded) else { return }
         let count = CatalogPageOverlap.count(rows: shownRows)
         Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) examples=\(count.examples.joined(separator: ","), privacy: .public)")
     }

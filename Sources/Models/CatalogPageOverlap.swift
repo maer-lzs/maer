@@ -32,4 +32,11 @@ nonisolated enum CatalogPageOverlap {
         return Count(rows: rows.filter { !$0.isEmpty }.count, titles: seenIn.count,
                      duplicates: twice.count, examples: Array(twice.prefix(3)))
     }
+
+    /// Whether a pass may write the line. A feed source draws a list, not
+    /// rows, so there is nothing to count; a page with shelves speaks only
+    /// once they answered, a pass cut short says nothing.
+    static func speaks(feedBased: Bool, hasShelves: Bool, shelvesLoaded: Bool) -> Bool {
+        !feedBased && (shelvesLoaded || !hasShelves)
+    }
 }

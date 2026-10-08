@@ -25,6 +25,18 @@ struct CatalogPageOverlapTests {
                 "the line carries at most three examples")
     }
 
+    @Test("eine Feed-Seite schweigt, eine Seite mit Regalen spricht erst, wenn sie geantwortet haben")
+    func onlyRowsThePageShowsSpeak() {
+        #expect(!CatalogPageOverlap.speaks(feedBased: true, hasShelves: false, shelvesLoaded: false),
+                "a feed page draws a list, its items are no row")
+        #expect(!CatalogPageOverlap.speaks(feedBased: true, hasShelves: false, shelvesLoaded: true))
+        #expect(!CatalogPageOverlap.speaks(feedBased: false, hasShelves: true, shelvesLoaded: false),
+                "a pass cut short before the shelves answered")
+        #expect(CatalogPageOverlap.speaks(feedBased: false, hasShelves: true, shelvesLoaded: true))
+        #expect(CatalogPageOverlap.speaks(feedBased: false, hasShelves: false, shelvesLoaded: false),
+                "a catalogue page without shelves speaks after its rows")
+    }
+
     @Test("die Quellen-Seite schreibt die Zeile nach jedem Durchgang der Regale", .needsTheSources)
     func thePageSaysItAfterEachPass() throws {
         let code = SyncContractFenceTests.stripped(try String(
@@ -32,6 +44,8 @@ struct CatalogPageOverlapTests {
         #expect(code.contains("logOverlap(by: \"open\")") && code.contains("logOverlap(by: \"stock\")"),
                 "a pass of the shelves ends without the line")
         #expect(code.contains("CatalogPageOverlap.count(rows: shownRows)"))
+        #expect(code.contains("CatalogPageOverlap.speaks(feedBased: source.isFeedBased"),
+                "the line asks the rule whether this page has rows to count")
     }
 }
 #endif
