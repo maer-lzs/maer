@@ -57,11 +57,14 @@ nonisolated enum GPodderConflictResolution {
         return actions
     }
 
-    /// The synced set after applying: the converged feeds, less every feed
-    /// whose local subscription was set out because Audiobookshelf could not
-    /// be read. Such a feed is on the server and not here; counted as synced,
-    /// the next round would take its absence here for a removal.
-    static func synced(_ actions: Actions, setOut: Set<String>) -> Set<String> {
-        actions.converged.subtracting(setOut)
+    /// The synced set after applying, built from what landed: the feeds both
+    /// sides agreed on and those kept from here, plus every feed taken from
+    /// the server that was subscribed here. A feed taken from the server and
+    /// not subscribed (set out, held on Audiobookshelf, a failed fetch) is on
+    /// the server and not here; counted as synced, the next round would take
+    /// its absence here for a removal and send it to the server.
+    static func synced(_ actions: Actions, subscribed: Set<String>) -> Set<String> {
+        actions.converged.subtracting(actions.subscribeLocally)
+            .union(subscribed.intersection(actions.subscribeLocally))
     }
 }

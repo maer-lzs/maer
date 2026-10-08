@@ -42,23 +42,74 @@ struct GPodderConflictResolutionTests {
         #expect(view.contains("GPodderConflictResolution.conflictingFeeds("), "the page computes its own conflicts")
     }
 
-    /// A feed taken from the server whose local subscription was set out
-    /// (Audiobookshelf unread) is not here: the person hears it, and it does
-    /// not count as synced, or the next round would read its absence here as
-    /// a removal.
-    @Test("ein beim Aufloesen beiseitegelegtes Abo wird gesagt und gilt nicht als abgeglichen", .needsTheSources)
-    func aSetOutSubscriptionIsSaidAndNotSynced() throws {
+    /// The synced set is built from what landed: a feed taken from the
+    /// server counts only once it was subscribed here, as in the ordinary
+    /// round.
+    @Test("der abgeglichene Satz nimmt vom Server nur, was hier abonniert wurde")
+    func theSyncedSetTakesOnlyWhatWasSubscribed() {
         let actions = GPodderConflictResolution.resolve(local: local, server: server, choices: [:])
         #expect(actions.subscribeLocally == ["c"], "the precondition: c is taken from the server")
-        #expect(GPodderConflictResolution.synced(actions, setOut: ["c"]) == ["a", "b"])
-        #expect(GPodderConflictResolution.synced(actions, setOut: []) == actions.converged)
-        let code = SyncContractFenceTests.stripped(try String(
-            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8))
-        let apply = try #require(ABSPodcastRefreshTests.body(of: "func applyConflictResolution(", in: code))
-        #expect(!apply.contains("_ = await subs.subscribeUnlessOnServer("), "the answer of the door is dropped again")
-        #expect(apply.contains("== .setOut") && apply.contains("subs.serverUnreadNotice = true"), "a set out subscription is silent")
-        #expect(apply.contains("GPodderConflictResolution.synced(actions, setOut: setOut)"), "the synced set counts a set out feed")
-        #expect(!apply.contains("Array(actions.converged)"), "the synced set counts a set out feed")
+        #expect(GPodderConflictResolution.synced(actions, subscribed: []) == ["a", "b"])
+        #expect(GPodderConflictResolution.synced(actions, subscribed: ["c"]) == actions.converged)
+        #expect(GPodderConflictResolution.synced(actions, subscribed: ["z"]) == ["a", "b"], "a feed nobody took counted")
+    }
+
+    /// The three ways a feed taken from the server does not land here (set
+    /// out, held on Audiobookshelf, a failed fetch), each through the sheet
+    /// and then three ordinary rounds: the server keeps every feed and gets
+    /// no removal from this device. A set out one is said.
+    @Test("nach dem Aufloesen bekommt der gpodder-Server keine Entfernung fuer ein Abo, das hier nicht ankam")
+    @MainActor
+    func aFeedThatDidNotLandHereIsNotRemovedFromTheServer() async throws {
+        let subs = PodcastSubscriptions.shared
+        await subs.ensureLoaded()
+        subs._testSetLoaded(true)
+        let run = UUID().uuidString.prefix(8)
+        let held = "https://resolve-held.example/\(run)/feed.xml"
+        let failed = "https://resolve-failed.example/\(run)/feed.xml"
+        let setOut = "https://resolve-setout.example/\(run)/feed.xml"
+        let keys = [AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
+                    AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderUserRemovedFeeds]
+        let kept = keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
+        let shows = subs.serverShows, read = subs.serverShowsRead, reader = subs.readServerShows
+        let notice = subs.serverUnreadNotice
+        defer {
+            subs.serverShows = shows
+            subs.serverShowsRead = read
+            subs.readServerShows = reader
+            subs._testFeedFetcher = nil
+            subs.serverUnreadNotice = notice
+            for (key, value) in kept { UserDefaults.standard.set(value, forKey: key) }
+        }
+        func pass(_ feeds: [String], serverRead: Bool) async throws {
+            for key in keys { UserDefaults.standard.removeObject(forKey: key) }
+            subs.serverShowsRead = { serverRead }
+            subs.serverShows = { [ServerHeldImportTests.serverShow(feedURL: held, title: "Server Show")] }
+            subs.readServerShows = {}
+            subs._testFeedFetcher = { _ in .failed(.timeout) }
+            let raw = Dictionary(uniqueKeysWithValues: feeds.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) })
+            let snapshot = GPodderSync.ConflictSnapshot(localNorms: [], serverNorms: Set(raw.keys), localRaw: [:], serverRaw: raw)
+            let actions = GPodderConflictResolution.resolve(local: [], server: Set(raw.keys), choices: [:])
+            #expect(actions.subscribeLocally == Set(raw.keys), "the precondition: every feed is taken from the server")
+            let error = await GPodderSync.shared.applyConflictResolution(actions, snapshot: snapshot) { _, _ in }
+            #expect(error == nil)
+            let synced = Set(UserDefaults.standard.stringArray(forKey: AppStorageKeys.gpodderLastSyncedFeeds) ?? [])
+            #expect(synced.isDisjoint(with: raw.keys), "a feed that did not land here counts as synced: \(synced)")
+            // Three ordinary rounds: a removal toward the server waits for a
+            // second confirming round, so only the third could send one.
+            let gpodder = SubscriptionFamilyServerTests.FakeGPodder(Set(feeds))
+            for _ in 0..<3 { _ = try await GPodderSync.shared.syncSubscriptions(gpodder) }
+            // The shared store may push its own shows up; none of these leaves.
+            #expect(Set(feeds).isSubset(of: gpodder.server), "the server lost a feed: \(gpodder.server)")
+            #expect(gpodder.uploads.allSatisfy { $0.remove.isEmpty }, "this device sent the server a removal: \(gpodder.uploads)")
+            #expect(!subs.shows.contains { feeds.contains($0.feedURL) }, "the precondition: none of them landed here")
+        }
+        // Held on Audiobookshelf and a failed fetch: the server was read.
+        try await pass([held, failed], serverRead: true)
+        // Set out: Audiobookshelf could not be read, and the person hears it.
+        subs.serverUnreadNotice = false
+        try await pass([setOut], serverRead: false)
+        #expect(subs.serverUnreadNotice, "a set out subscription was silent")
     }
 
     @Test("union default (no choices) keeps everything — nothing lost")
