@@ -15,4 +15,14 @@ nonisolated enum ABSPodcastRefreshRule {
     static func adopts(everyFetchAnswered: Bool, loadedAny: Bool, holdsShows: Bool) -> Bool {
         everyFetchAnswered || loadedAny || !holdsShows
     }
+
+    /// Whether an implicit caller (a mount, a subscription that asks what
+    /// the server holds) may start a refresh now: the last adopted answer is
+    /// older than `maxAge`, and the last failed run is out of its holdback
+    /// (`FetchHoldback`). Without the second half a server that could not be
+    /// read was asked again for every feed of a loop.
+    static func mayRefresh(lastRefreshAt: Date?, failedAt: Date?, now: Date, maxAge: TimeInterval) -> Bool {
+        if let lastRefreshAt, now.timeIntervalSince(lastRefreshAt) < maxAge { return false }
+        return FetchHoldback.mayAsk(failedAt: failedAt, now: now)
+    }
 }

@@ -171,10 +171,20 @@ final class GPodderSync {
             catch { return ErrorSentence.of(error) }
         }
         // Local side.
+        var setOut: Set<String> = []
         for norm in actions.subscribeLocally {
             // The person resolved the conflict, and what stays is noted to
             // the family like every other applied change of the round.
-            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) }
+            guard let raw = snapshot.serverRaw[norm] else { continue }
+            if await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) == .setOut {
+                setOut.insert(norm)
+            }
+        }
+        // Audiobookshelf could not be read: those shows were not added here,
+        // and the person hears it through the one notice the badge uses.
+        if !setOut.isEmpty {
+            Logger.rss.notice("GPODDER resolution: subscriptions set out, Audiobookshelf unread count=\(setOut.count)")
+            subs.serverUnreadNotice = true
         }
         for norm in actions.unsubscribeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
@@ -183,7 +193,8 @@ final class GPodderSync {
                 subs.unsubscribe(id: show.id, notesCloud: true)
             }
         }
-        AppStorageKeys.set(Array(actions.converged), for: AppStorageKeys.gpodderLastSyncedFeeds)
+        AppStorageKeys.set(Array(GPodderConflictResolution.synced(actions, setOut: setOut)),
+                           for: AppStorageKeys.gpodderLastSyncedFeeds)
         clearGuardWarning()
         return nil
     }

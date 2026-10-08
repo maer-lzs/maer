@@ -161,6 +161,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Basis for the throttle below: a run that kept the stock because a
     /// fetch failed does not stamp it, so the next mount asks again.
     private var lastRefreshAt: Date?
+    /// When the last refresh failed without adopting an answer: the
+    /// implicit callers wait out its holdback instead of asking again.
+    private var failedAt: Date?
 
     /// Whether the server's answer about its shows was adopted in this
     /// session. The shows are not stored, so before that an empty list
@@ -183,7 +186,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// mount task): skips when the catalog was loaded recently. Pull-to-refresh
     /// keeps calling `refresh()` directly for an unconditional reload.
     func refreshIfStale(maxAge: TimeInterval = 300) async {
-        if let last = lastRefreshAt, Date().timeIntervalSince(last) < maxAge { return }
+        guard ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: lastRefreshAt, failedAt: failedAt,
+                                               now: Date(), maxAge: maxAge) else { return }
         await refresh()
     }
 
@@ -210,6 +214,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             libraries = try await client.fetchPodcastLibraries()
         } catch {
             Logger.library.error("ABSPOD libraries failed, shows kept: \(FailureReason.of(error), privacy: .public)")
+            if FetchHoldback.starts(after: error) { failedAt = Date() }
             return
         }
         guard !libraries.isEmpty else {
@@ -257,6 +262,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                                         loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
             replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS, handles: newHandles)
             lastRefreshAt = Date()
+            failedAt = nil
+        } else if !Task.isCancelled {
+            // Fetches failed and nothing came back: the stock stays, and the
+            // loops that ask per feed wait out the holdback.
+            failedAt = Date()
         }
     }
 

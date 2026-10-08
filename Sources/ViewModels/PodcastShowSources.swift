@@ -54,16 +54,18 @@ enum PodcastShowSources {
 
     /// The same as normalised feed addresses: the one set every surface
     /// keeps out of its recommendations and co-listened shows.
-    static func ownedFeedKeys() -> Set<String> {
-        PodcastShowMerge.normalizedFeeds(ownedShows())
+    static func ownedFeedKeys(of owned: [PodcastShow] = ownedShows()) -> Set<String> {
+        PodcastShowMerge.normalizedFeeds(owned)
     }
 
     /// A list of found shows without the ones we own, by feed and by
     /// title: the one door for every catalog, chart and recommendation.
     static func excludingOwned(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {
-        PodcastRecommendationsStore.excludingSubscribed(
-            list, subscribedNormalizedFeeds: ownedFeedKeys(),
-            subscribedTitles: ownedShows().map(\.title))
+        // One gathering of the owned shows serves both sets.
+        let owned = ownedShows()
+        return PodcastRecommendationsStore.excludingSubscribed(
+            list, subscribedNormalizedFeeds: ownedFeedKeys(of: owned),
+            subscribedTitles: owned.map(\.title))
     }
 
     /// A show's name from every stock on this device: what we own, then the

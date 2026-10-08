@@ -42,6 +42,25 @@ struct GPodderConflictResolutionTests {
         #expect(view.contains("GPodderConflictResolution.conflictingFeeds("), "the page computes its own conflicts")
     }
 
+    /// A feed taken from the server whose local subscription was set out
+    /// (Audiobookshelf unread) is not here: the person hears it, and it does
+    /// not count as synced, or the next round would read its absence here as
+    /// a removal.
+    @Test("ein beim Aufloesen beiseitegelegtes Abo wird gesagt und gilt nicht als abgeglichen", .needsTheSources)
+    func aSetOutSubscriptionIsSaidAndNotSynced() throws {
+        let actions = GPodderConflictResolution.resolve(local: local, server: server, choices: [:])
+        #expect(actions.subscribeLocally == ["c"], "the precondition: c is taken from the server")
+        #expect(GPodderConflictResolution.synced(actions, setOut: ["c"]) == ["a", "b"])
+        #expect(GPodderConflictResolution.synced(actions, setOut: []) == actions.converged)
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8))
+        let apply = try #require(ABSPodcastRefreshTests.body(of: "func applyConflictResolution(", in: code))
+        #expect(!apply.contains("_ = await subs.subscribeUnlessOnServer("), "the answer of the door is dropped again")
+        #expect(apply.contains("== .setOut") && apply.contains("subs.serverUnreadNotice = true"), "a set out subscription is silent")
+        #expect(apply.contains("GPodderConflictResolution.synced(actions, setOut: setOut)"), "the synced set counts a set out feed")
+        #expect(!apply.contains("Array(actions.converged)"), "the synced set counts a set out feed")
+    }
+
     @Test("union default (no choices) keeps everything — nothing lost")
     func unionDefault() {
         let a = GPodderConflictResolution.resolve(local: local, server: server, choices: [:])

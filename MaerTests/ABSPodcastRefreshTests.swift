@@ -93,6 +93,28 @@ struct ABSPodcastRefreshTests {
         }
     }
 
+    /// A refresh that failed holds the implicit callers for the holdback:
+    /// the loops of gpodder, Pinchflat and the cloud adoption ask per feed,
+    /// and an unread server was asked again for every one of them.
+    @Test("nach einem gescheiterten Lauf fragt kein impliziter Rufer vor dem Ende der Sperrfrist", .needsTheSources)
+    func aFailedRunHoldsTheImplicitCallers() throws {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: nil, failedAt: nil, now: now, maxAge: 300))
+        #expect(!ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: nil, failedAt: now.addingTimeInterval(-60), now: now, maxAge: 300),
+                "a run that failed a minute ago is asked again")
+        #expect(ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: nil, failedAt: now.addingTimeInterval(-FetchHoldback.seconds), now: now, maxAge: 300))
+        #expect(!ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: now.addingTimeInterval(-60), failedAt: nil, now: now, maxAge: 300))
+        // Wiring: the throttle asks the rule with the failure, both ways a
+        // run keeps the stock set it, an adoption clears it.
+        let code = try Self.providerCode()
+        let stale = try #require(Self.body(of: "func refreshIfStale(", in: code))
+        #expect(stale.contains("ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: lastRefreshAt, failedAt: failedAt"))
+        let refresh = try #require(Self.body(of: "func refresh() async {", in: code))
+        #expect(refresh.contains("if FetchHoldback.starts(after: error) { failedAt = Date() }"), "a failed library list holds nothing")
+        #expect(refresh.contains("} else if !Task.isCancelled {") && refresh.contains("failedAt = nil"),
+                "a run without adoption holds nothing, or an adoption keeps the hold")
+    }
+
     /// Every write to `shows`, whatever its spelling: an assignment with or
     /// without `self.`, an index assignment, `+=` and the mutating calls.
     /// A declaration is no write.

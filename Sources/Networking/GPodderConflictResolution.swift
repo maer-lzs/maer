@@ -56,4 +56,12 @@ nonisolated enum GPodderConflictResolution {
         }
         return actions
     }
+
+    /// The synced set after applying: the converged feeds, less every feed
+    /// whose local subscription was set out because Audiobookshelf could not
+    /// be read. Such a feed is on the server and not here; counted as synced,
+    /// the next round would take its absence here for a removal.
+    static func synced(_ actions: Actions, setOut: Set<String>) -> Set<String> {
+        actions.converged.subtracting(setOut)
+    }
 }
