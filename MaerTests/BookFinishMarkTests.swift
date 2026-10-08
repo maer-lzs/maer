@@ -48,6 +48,32 @@ struct BookFinishMarkTests {
         #expect(ListeningStore.mark(id)?.position == 600, "the mark went where the catalogue writes nothing")
     }
 
+    @Test("nach einer eingereihten Marke zeigt die Liste sie sofort, ohne Netz und ohne weiteren Anlass")
+    func theListShowsAQueuedMarkAtOnce() async {
+        let id = "finish-witness-\(UUID().uuidString)"
+        let provider = MockProvider()
+        provider.failDetailOffline = true
+        let library = LibraryViewModel(provider: provider)
+        let item = LibraryItem(id: id, media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: id, authorName: nil, narratorName: nil,
+                                          seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+            duration: 100, chapters: nil, tracks: nil), addedAt: nil)
+        let started = BookProgress(fraction: 0.5, isFinished: false,
+                                   lastUpdate: Date().timeIntervalSince1970 * 1000, currentTime: 50)
+        library._seedForUITest([LibraryEntry(item: item, progress: started)])
+        defer {
+            let pending = SyncQueue.shared.pendingUpdate(itemId: id)
+            Task { await SyncQueue.shared.remove(itemId: id, ifStill: pending) }
+        }
+        #expect(library.continueAll.contains { $0.id == id }, "the started book is not in the list, the case measures nothing")
+        let outcome = await BookFinishMark.apply(LibraryEntry(item: item, progress: started), target: true,
+                                                 progress: started, provider: provider,
+                                                 coordinator: PlayerCoordinator(provider: provider),
+                                                 libraryViewModel: library)
+        #expect(outcome.step == .queue(currentTime: 100, duration: 100), "offline the mark is queued")
+        #expect(!library.continueAll.contains { $0.id == id }, "the finished book still stands in the list")
+    }
+
     @Test("die Buch-Geste schreibt nur noch die Tuer, beide Flaechen rufen sie", .needsTheSources)
     func onlyTheDoorWritesTheGesture() throws {
         let views = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])

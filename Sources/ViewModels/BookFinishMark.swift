@@ -101,15 +101,22 @@ enum BookFinishMark {
                 await SyncQueue.shared.enqueue(itemId: entry.id, currentTime: currentTime,
                                                duration: duration, isFinished: target)
             }
-            // Without this the library list keeps showing the old state
-            // until the app next comes to the foreground.
-            await libraryViewModel?.refreshProgress()
+            libraryViewModel?.noteLocalProgress(itemId: entry.id, currentTime: currentTime,
+                                                duration: duration, isFinished: target)
         case .queue(let currentTime, let duration):
             await SyncQueue.shared.enqueue(itemId: entry.id, currentTime: currentTime,
                                            duration: duration, isFinished: target)
+            libraryViewModel?.noteLocalProgress(itemId: entry.id, currentTime: currentTime,
+                                                duration: duration, isFinished: target)
         case .refuse:
             return Outcome(step: step, reason: reason)
         }
+        // The list shows the mark at once, from what it already holds and
+        // without the network: a catalogue mark is read from the device, a
+        // server mark was just noted. The server's own answer follows when
+        // it can be asked; offline that refresh gives up and the list stands.
+        await libraryViewModel?.refreshContinueRows()
+        if case .send = step { await libraryViewModel?.refreshProgress() }
         if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
         return Outcome(step: step, reason: nil)
     }

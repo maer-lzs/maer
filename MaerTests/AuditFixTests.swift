@@ -190,7 +190,10 @@ final class MockProvider: AudioProvider {
         if failForLibraryIds.contains(libraryId) { throw NSError(domain: "mock", code: 404) }
         return items
     }
+    /// The detail fetch fails as if the device were offline, not with a 404.
+    var failDetailOffline = false
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+        if failDetailOffline { throw URLError(.notConnectedToInternet) }
         throw NSError(domain: "mock", code: 404)
     }
     func coverURL(forItemId itemId: String) -> URL? { nil }
