@@ -51,6 +51,9 @@ struct BulkImportTests {
             database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
             defaults: defaults, isTheApp: false)
         await subs.ensureLoaded()
+        // The server's shows count as read, whatever the host's switch says;
+        // a witness of the unread server sets its own.
+        subs.serverShowsRead = { true }
         return (subs, defaults, {
             defaults.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: folder)

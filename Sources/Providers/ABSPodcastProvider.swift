@@ -162,6 +162,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// fetch failed does not stamp it, so the next mount asks again.
     private var lastRefreshAt: Date?
 
+    /// Whether the server's answer about its shows was adopted in this
+    /// session. The shows are not stored, so before that an empty list
+    /// says nothing about the server (`ServerHolding.unread`).
+    var showsRead: Bool { lastRefreshAt != nil }
+
     /// The ONE way the shows change: the bridge with them, the episode
     /// handles, and the token the podcast tab recomputes on. Every caller
     /// names the handles, so shows and handles never part.

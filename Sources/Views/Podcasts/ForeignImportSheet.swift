@@ -331,6 +331,13 @@ struct ForeignImportSheet: View {
 
     @ViewBuilder
     private func resultSection(_ r: PodcastSubscriptions.ImportResult) -> some View {
+        // Audiobookshelf could not be read: the import set out, said first.
+        if r.serverUnread {
+            Section {
+                Text("Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
+                    .accessibilityIdentifier("foreign-import-server-unread")
+            }
+        }
         // The system ended the time while the app was in the background:
         // said first, with where, and that starting again continues.
         if let stoppedAt = r.stoppedAt {

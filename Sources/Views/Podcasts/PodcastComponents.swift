@@ -644,7 +644,9 @@ struct PodcastSubscribeBadge: View {
         if AppStorageKeys.absPodcastsEnabledValue, ABSPodcastProvider.shared.hasPodcasts {
             _ = await ABSPodcastProvider.shared.subscribeOnServer(feedURL: feedURL)
         } else {
-            _ = await PodcastSubscriptions.shared.subscribe(urlString: feedURL)
+            // The door logs onServer and setOut; the badge keeps offering
+            // the subscription when nothing was subscribed here.
+            _ = await PodcastSubscriptions.shared.subscribeUnlessOnServer(urlString: feedURL)
             await GPodderSync.shared.reconcile()   // push the new subscription to the server
         }
         PodcastRecommendationsStore.shared.remove(feedURL: feedURL)

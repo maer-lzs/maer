@@ -1798,6 +1798,16 @@
         }
       }
     },
+    "Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf war nicht lesbar, deshalb wurden Sendungen, die dort abonniert sein können, hier nicht hinzugefügt. Versuche es erneut, wenn der Server erreichbar ist."
+          }
+        }
+      }
+    },
     "Audiobookshelf did not take these states. Start the import again to send them." : {
       "localizations" : {
         "de" : {

@@ -118,7 +118,11 @@ struct PodcastSubscribeNoticeTests {
             // Detektor-Falle derselben Sorte an einem Tag (die erste zaehlte
             // eine `var`-Deklaration als Lesen): ein Quelltext-Sucher muss
             // sagen, ob er die Sache oder ihre Benutzung zaehlt.
+            // The door before `subscribe` (`subscribeUnlessOnServer`) is the
+            // same call with the same parameters and counts as it.
             let calls = flat.replacingOccurrences(of: "func subscribe(urlString:", with: "func subscribe(DECL:")
+                .replacingOccurrences(of: "func subscribeUnlessOnServer(urlString:", with: "func subscribeUnlessOnServer(DECL:")
+                .replacingOccurrences(of: "subscribeUnlessOnServer(urlString:", with: "subscribe(urlString:")
             for range in calls.ranges(of: "subscribe(urlString:") {
                 let to = calls.index(range.upperBound, offsetBy: 200, limitedBy: calls.endIndex) ?? calls.endIndex
                 let call = String(calls[range.upperBound..<to])

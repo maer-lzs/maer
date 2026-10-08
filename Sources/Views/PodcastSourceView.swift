@@ -282,7 +282,16 @@ struct PodcastSourceView: View {
             }
             return true
         }
-        return await subs.subscribe(urlString: feedURL)
+        switch await subs.subscribeUnlessOnServer(urlString: feedURL) {
+        case .subscribed, .onServer:
+            // Held on Audiobookshelf counts as subscribed: the show is there.
+            return true
+        case .notSubscribed:
+            return false
+        case .setOut:
+            subscribeError = String(localized: "Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
+            return false
+        }
     }
 
     // MARK: - Subscriptions / URL
@@ -549,7 +558,8 @@ struct PodcastSourceView: View {
                         let ok = await performSubscribe(feedURL: url)
                         if ok {
                             feedURL = ""; feedUser = ""; feedPassword = ""; showAddByURL = false
-                        } else {
+                        } else if subscribeError == nil {
+                            // The alert already says why when the subscription was set out.
                             urlError = String(localized: "Could not load this feed. Check the URL or login.")
                         }
                     }

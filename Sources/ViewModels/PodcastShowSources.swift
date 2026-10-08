@@ -24,8 +24,23 @@ enum PodcastShowSources {
     /// `activeShows` means „not archived" and knows nothing about the switch,
     /// which is exactly the gap the three un-gated copies fell into.
     static func absShows() -> [PodcastShow] {
-        AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
+        AppStorageKeys.absPodcastsActive ? abs.activeShows : []
     }
+
+    /// Whether `absShows` answers for this session: the source is off, or
+    /// the server's shows were read. They are not stored, so before the
+    /// first read an empty list says nothing (`ServerHolding.unread`).
+    static func absShowsRead() -> Bool {
+        !AppStorageKeys.absPodcastsActive || abs.showsRead
+    }
+
+    /// Reads the server's shows unless this session already did.
+    static func readAbsShows() async {
+        await abs.refreshIfStale()
+    }
+
+    /// The one grip on the Audiobookshelf podcasts in this file.
+    private static var abs: ABSPodcastProvider { ABSPodcastProvider.shared }
 
     /// Everything we OWN, from both sources, full lists.
     ///
@@ -34,7 +49,7 @@ enum PodcastShowSources {
     /// hand, every one of them to answer „which shows must NOT appear in the
     /// recommendations".
     static func ownedShows() -> [PodcastShow] {
-        PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+        PodcastSubscriptions.shared.shows + abs.shows
     }
 
     /// The same as normalised feed addresses: the one set every surface
@@ -73,7 +88,7 @@ enum PodcastShowSources {
     static func show(forEpisodeId id: String) -> PodcastShow? {
         show(forEpisodeId: id,
              subscribed: { PodcastSubscriptions.shared.episode(guid: $0)?.show },
-             absShows: ABSPodcastProvider.shared.shows)
+             absShows: abs.shows)
     }
 
     /// The rule: the episode's id names its source, and the source is asked.
