@@ -23,6 +23,7 @@ struct DeadCatalogItemsTests {
         // Der gemessene Fall: HTTP 200 MIT Fehlerobjekt.
         #expect(DeadCatalogItems.liveness(httpStatus: 200, body: error) == .dead)
         #expect(DeadCatalogItems.liveness(httpStatus: 404, body: nil) == .dead)
+        #expect(DeadCatalogItems.liveness(httpStatus: 410, body: nil) == .dead, "ein endgueltiges Weg (410) blieb ungemessen")
         #expect(DeadCatalogItems.liveness(httpStatus: 200, body: healthy) == .alive)
         // Dienst-Ausfall sagt NICHTS ueber das Item.
         #expect(DeadCatalogItems.liveness(httpStatus: nil, body: nil) == .unknown)

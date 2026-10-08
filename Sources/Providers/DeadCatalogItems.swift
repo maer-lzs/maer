@@ -79,7 +79,8 @@ nonisolated enum DeadCatalogItems {
     /// the distinction that matters is testable.
     static func liveness(httpStatus: Int?, body: Data?) -> Liveness {
         guard let httpStatus else { return .unknown }          // transport failure
-        if httpStatus == 404 { return .dead }
+        // 404 and 410 alike: the one clean "there is none" of the rule.
+        if StatusMeaning.from(status: httpStatus).isAbsence { return .dead }
         guard (200...299).contains(httpStatus) else { return .unknown }  // 5xx = service
         guard let body else { return .unknown }
         // archive.org answers a withdrawn item with HTTP 200 and an error

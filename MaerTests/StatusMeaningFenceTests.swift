@@ -36,6 +36,7 @@ struct StatusMeaningFenceTests {
         "PodcastTranscript.swift": "a document or an absence stands for the session as the transcript's answer; a failure is asked again",
         "ABSPlayedWriteRetry.swift": "a played mark stays queued on a sign-in problem, a pause or a failing host; an absence or another refusal answers the same every time",
         "FreeCatalog.swift": "only an absence marks a catalog item as gone; every other answer is no verdict",
+        "DeadCatalogItems.swift": "an absence is a dead item; the body of a 200 is read on its own (a withdrawn item answers 200 with an error), any other answer is unknown",
     ]
 
     /// The files that read the number themselves, each with the reason the
@@ -60,7 +61,6 @@ struct StatusMeaningFenceTests {
         "PodcastFeedLiveness.swift": "the status a directory saw last, not an answer to us: 0 never reached and 400 up stuck are gone, which only orders a row",
         "MaerSyncFrame.swift": "a frame's status is checked to be a status at all (100 to 599) before the answer reads it",
         "MaerSyncSignIn.swift": "the sign-in probe of the service: 200 reached, 403 blocked on this network, the service's own sentences",
-        "DeadCatalogItems.swift": "the dead-item ladder reads a 200 body too (a withdrawn item answers 200 with an error); 404 dead, any other non-2xx unknown",
     ]
 
     /// Non-comment lines that read a status: the word `statusCode`, or a
