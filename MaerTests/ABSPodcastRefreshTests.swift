@@ -142,6 +142,42 @@ struct ABSPodcastRefreshTests {
                 == ["self.shows = a", "shows.append(b)", "shows[0] = c", "shows += d"])
     }
 
+    /// A write to the server from a stored entry takes the one form
+    /// (`ForeignServerProgress.write`), the history push included, and the
+    /// shows are only replaced together with their episode handles.
+    @Test("ein Schrieb an den Server aus einem gespeicherten Stand nimmt die eine Ausgangsform, und Sendungen werden nur mit ihren Handles gesetzt", .needsTheSources)
+    func oneFormOfAWriteAndShowsWithTheirHandles() throws {
+        let code = try Self.providerCode()
+        #expect(code.contains("client.updateEpisodeProgress("), "the fence read the provider")
+        #expect(Self.ownWriteForms(in: code) == 0, "a second form of a write from a stored entry")
+        let push = try #require(Self.body(of: "func pushLocalHistoryToServer() async {", in: code))
+        #expect(push.contains("ForeignServerProgress.write("), "the history push writes without the one form")
+        #expect(Self.replacesWithoutHandles(in: code) == 0, "shows replaced without naming their handles")
+        // Calibration: the push as it stood, a call without handles, and the
+        // signature with its default.
+        #expect(Self.ownWriteForms(in: "let f = ProgressMark.reachedEnd(stored: arr, currentDuration: d)") == 1)
+        #expect(Self.replacesWithoutHandles(in: """
+            replaceShows([], absToRSS: [:], rssToABS: [:])
+            replaceShows(a, absToRSS: b, rssToABS: c, handles: d)
+            private func replaceShows(_ next: [S], absToRSS: [S: S], rssToABS: [S: S],
+                                      handles: [S: H] = [:]) {
+            """) == 2)
+    }
+
+    /// The places in `code` that turn a stored entry into a write themselves.
+    nonisolated static func ownWriteForms(in code: String) -> Int {
+        code.matches(of: #/reachedEnd\(\s*stored:/#).count
+    }
+
+    /// Calls of `replaceShows` that leave the handles out, and a default
+    /// that would let them.
+    nonisolated static func replacesWithoutHandles(in code: String) -> Int {
+        code.matches(of: #/replaceShows\([^)]*\)/#).filter { match in
+            let text = String(match.output)
+            return !text.contains("handles:") || text.contains("= [:]")
+        }.count
+    }
+
     /// The catch blocks in `code` that hold no statement.
     nonisolated static func emptyCatches(in code: String) -> Int {
         code.matches(of: #/catch(?:\s+let\s+\w+)?\s*\{\s*\}/#).count

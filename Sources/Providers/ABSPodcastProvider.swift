@@ -162,10 +162,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// fetch failed does not stamp it, so the next mount asks again.
     private var lastRefreshAt: Date?
 
-    /// The ONE way the shows change: the bridge with them, and the token the
-    /// podcast tab recomputes on.
+    /// The ONE way the shows change: the bridge with them, the episode
+    /// handles, and the token the podcast tab recomputes on. Every caller
+    /// names the handles, so shows and handles never part.
     private func replaceShows(_ next: [PodcastShow], absToRSS: [String: String], rssToABS: [String: String],
-                              handles: [String: ServerEpisodeHandle] = [:]) {
+                              handles: [String: ServerEpisodeHandle]) {
         shows = next
         self.absToRSS = absToRSS
         self.rssToABS = rssToABS
@@ -189,7 +190,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         guard AppStorageKeys.absPodcastsActive else {
             if hasPodcasts || !shows.isEmpty {
                 hasPodcasts = false
-                replaceShows([], absToRSS: [:], rssToABS: [:])
+                replaceShows([], absToRSS: [:], rssToABS: [:], handles: [:])
             }
             return
         }
@@ -209,7 +210,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         guard !libraries.isEmpty else {
             // The server really has no podcast library: an answer, adopted.
             hasPodcasts = false
-            replaceShows([], absToRSS: [:], rssToABS: [:])
+            replaceShows([], absToRSS: [:], rssToABS: [:], handles: [:])
             lastRefreshAt = Date()
             return
         }
@@ -327,7 +328,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         for (absId, rssId) in absToRSS {
             guard let arr = ListeningStore.backup(rssId),
                   arr.count >= 2 else { continue }
-            let localTime = arr[0], localTs = arr[1]
+            let localTs = arr[1]
             let serverTs = episodeProgress[absId]?.lastUpdate ?? -1
             guard localTs > serverTs else { continue }
 
@@ -336,11 +337,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                   let ep = shows.first(where: { $0.id == "abspod:\(showId)" })?
                       .episodes.first(where: { $0.guid == absId }) else { continue }
             let duration = ep.duration
-            let isFinished = ProgressMark.reachedEnd(stored: arr, currentDuration: duration)
+            // The one form of a write to the server, as the import sends it.
+            let write = ForeignServerProgress.write(arr, duration: duration)
             do {
                 try await client.updateEpisodeProgress(
                     libraryItemId: showId, episodeId: episodeId,
-                    currentTime: localTime, duration: duration, isFinished: isFinished
+                    currentTime: write.time, duration: duration, isFinished: write.finished
                 )
                 didPush = true
             } catch {
