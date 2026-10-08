@@ -229,9 +229,6 @@ final class PodcastSubscriptions: ObservableObject {
     /// episode index (session restore, CarPlay) await `ensureLoaded()`.
     private var bootstrapTask: Task<Void, Never>?
 
-    /// An unsubscribe's permission to empty was narrowed at its call since
-    /// the last write that got past the refusal (`WipeRefusal`).
-    private var narrowedPermission = false
 
     /// True once the bootstrap disk load finished (EVERY path).
     /// Save() refuses to persist before that, so a cold-start mutation can
@@ -427,6 +424,9 @@ final class PodcastSubscriptions: ObservableObject {
         return out
     }
 
+    /// How the last refused wipe of the rows spoke (`RowChain.lastRefusal`).
+    var lastWipeRefusal: WipeRefusal? { rowChain.lastRefusal }
+
     /// `emptying` belongs to this write: `.allowed` only where the person's
     /// own unsubscribe may empty the list, and fixed at the call (`atCall`):
     /// it covers an empty list only when the unsubscribe left it empty.
@@ -435,15 +435,14 @@ final class PodcastSubscriptions: ObservableObject {
     private func persist(emptying requested: RowEmptying, also: [SQLiteConnection.Statement] = [],
                          _ take: @escaping @MainActor () -> [PodcastShow]?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
-        if requested == .allowed && emptying == .refused { narrowedPermission = true }
         // Only the rows a change touched go to the database, in the order
         // the changes were made: each write waits for the one before it,
         // and the diff is taken against the stock of the write before.
-        rowChain.write(read: { [weak self] in
+        rowChain.write(narrowing: requested == .allowed && emptying == .refused, read: { [weak self] in
             guard let self, let rows = await self.openRows() else { throw RowsNotOpen() }
             let (loaded, skipped) = try await rows.loadAllCounted()
             return (loaded.isEmpty ? nil : loaded, skipped)
-        }, take: take, apply: { [weak self] snapshot, base, laterQueued in
+        }, take: take, apply: { [weak self] snapshot, base, refusal in
             guard let self, let rows = await self.openRows() else { return .skipped }
             // Known rows: the diff against them. Fresh rows: the diff
             // against nothing is the whole stock. Unknown rows: the diff
@@ -458,7 +457,7 @@ final class PodcastSubscriptions: ObservableObject {
             // person's narrowed at its call: a notice and no note).
             if base.refuses(snapshot, emptying) {
                 let count = base.removable?.count ?? 0
-                switch WipeRefusal.of(laterQueued: laterQueued, narrowedPermission: self.narrowedPermission) {
+                switch refusal {
                 case .laterQueued:
                     Logger.rss.notice("SUBSTORE wipe refused, a later write is queued: empty snapshot over \(count) shows")
                 case .narrowedPermission:
@@ -469,9 +468,8 @@ final class PodcastSubscriptions: ObservableObject {
                     let tombstone = self.fileURL.appendingPathExtension("wipe-refused.txt")
                     try? note.data(using: .utf8)?.write(to: tombstone)
                 }
-                return .skipped
+                return .refused(refusal)
             }
-            self.narrowedPermission = false
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             // While a replacement is open, every write carries its mark.
             let mark = self.follower?.mark()

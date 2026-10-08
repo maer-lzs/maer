@@ -164,6 +164,29 @@ struct SubscriptionOwnerTests {
         #expect(raw.standing(under: ["feed:kept"]).episodes.map(\.guid) == ["under-raw", "under-kept"])
     }
 
+    /// An unsubscribe given while a show stood narrows its own write; a save
+    /// queued afterwards that is refused empty speaks as a suspicion and
+    /// leaves its note.
+    @Test("bei den Abos deckt eine abgewertete Erlaubnis nur ihren eigenen Schrieb")
+    func aNarrowedUnsubscribeCoversItsOwnWrite() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        try await PodcastRowStore(connection: try rig.database.connection())
+            .replaceAll([Self.show("moor", episodes: 1), Self.show("deich", episodes: 1)])
+        let subs = await rig.store()
+        #expect(subs.shows.count == 2, "the precondition: two shows stand")
+        let note = rig.folder.appendingPathComponent("podcast_subscriptions.json").appendingPathExtension("wipe-refused.txt")
+        subs.unsubscribe(id: try #require(subs.shows.first).id, notesCloud: false)
+        subs._seedForUITest([])
+        _ = await RowKeepers.awaitAll()
+        #expect(subs.lastWipeRefusal == .narrowedPermission, "\(String(describing: subs.lastWipeRefusal))")
+        #expect(!FileManager.default.fileExists(atPath: note.path), "the narrowed refusal left a note")
+        subs._testSave()
+        _ = await RowKeepers.awaitAll()
+        #expect(subs.lastWipeRefusal == .suspected, "a later save rode on the narrowing: \(String(describing: subs.lastWipeRefusal))")
+        #expect(FileManager.default.fileExists(atPath: note.path), "the suspicion left no note")
+    }
+
     /// Why both filters stand: the database refuses an episode whose show
     /// is not there (`foreign_keys=ON`, `REFERENCES show(id)`), and the whole
     /// transaction with it, so an unfiltered carry would break the

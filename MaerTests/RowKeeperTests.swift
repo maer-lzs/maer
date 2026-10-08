@@ -135,6 +135,80 @@ struct RowKeeperTests {
         #expect(rows["a"] == ["1"], "the refused emptying rode along on the permission: \(rows.keys.sorted())")
     }
 
+    /// What the chain handed to each apply, in order.
+    @MainActor private final class Heard { var refusals: [WipeRefusal] = [] }
+
+    /// The narrowing lives in the chain alone: it covers the write that
+    /// narrows and the writes queued by then, never one queued later, and a
+    /// second narrowing moves the bound forward with its own write.
+    @Test("eine Abwertung gilt fuer ihren Schrieb und die schon eingereihten, nie fuer einen spaeteren; eine zweite schiebt die Grenze nach vorn")
+    func aNarrowingCoversOnlyTheWritesQueuedByThen() async {
+        let chain = RowChain<[String: Int]>(label: "PROBE")
+        let heard = Heard()
+        func write(narrowing: Bool) {
+            chain.write(narrowing: narrowing, read: { (nil, 0) }, take: { [:] }, apply: { _, _, refusal in
+                heard.refusals.append(refusal)
+                return .refused(refusal)
+            })
+        }
+        // Queued together: the first sees the later one, the narrowing one is covered.
+        write(narrowing: false)
+        write(narrowing: true)
+        await chain.awaitPendingWrites()
+        // Queued after the narrowing: a suspicion again.
+        write(narrowing: false)
+        await chain.awaitPendingWrites()
+        // A second narrowing covers its own write, and again not the next.
+        write(narrowing: true)
+        await chain.awaitPendingWrites()
+        write(narrowing: false)
+        await chain.awaitPendingWrites()
+        #expect(heard.refusals == [.laterQueued, .narrowedPermission, .suspected, .narrowedPermission, .suspected],
+                "\(heard.refusals)")
+        #expect(chain.lastRefusal == .suspected)
+    }
+
+    /// A removal given while rows stood narrows its own write; a write
+    /// queued afterwards that is refused empty speaks as a suspicion.
+    @Test("im Keeper deckt eine abgewertete Erlaubnis nur ihren eigenen Schrieb")
+    func aNarrowedPermissionCoversItsOwnWriteInTheKeeper() async throws {
+        let (database, directory) = try database()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let memory = ListMemory()
+        memory.rows = ["a": ["1"], "b": ["2"]]
+        let keeper = RowKeeper<[String]>(database: database, table: .playQueue, label: "PROBE")
+        keeper.write(emptying: .refused) { memory.rows }
+        await keeper.awaitPendingWrites()
+        memory.rows.removeValue(forKey: "b")
+        keeper.write(emptying: .allowed) { memory.rows }
+        memory.rows = [:]
+        await keeper.awaitPendingWrites()
+        #expect(keeper.lastRefusal == .narrowedPermission, "the narrowing write: \(String(describing: keeper.lastRefusal))")
+        keeper.write(emptying: .refused) { memory.rows }
+        await keeper.awaitPendingWrites()
+        #expect(keeper.lastRefusal == .suspected, "a later write rode on the narrowing: \(String(describing: keeper.lastRefusal))")
+    }
+
+    @Test("ausserhalb der Kette haelt niemand eine Abwertung als Zustand", .needsTheSources)
+    func noStoreKeepsANarrowingOfItsOwn() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
+        let keepers = try files.filter { $0.lastPathComponent != "RowChain.swift" }.filter {
+            SyncContractFenceTests.stripped(try String(contentsOf: $0, encoding: .utf8)).contains(Self.storedNarrowing)
+        }.map(\.lastPathComponent)
+        #expect(keepers.isEmpty, "a narrowing kept outside the chain: \(keepers.sorted())")
+        // Calibration: the form as it stood, and the chain's call is no state.
+        #expect("    private var narrowedPermission = false".contains(Self.storedNarrowing))
+        #expect(!"chain.write(narrowing: requested == .allowed".contains(Self.storedNarrowing))
+        #expect(!"private var narrowedServer: MusicSourceRule.Server? {".contains(Self.storedNarrowing))
+    }
+
+    /// A stored flag or bound named after a narrowing; a computed value of
+    /// another kind (the search's narrowed server) is no permission.
+    nonisolated static var storedNarrowing: Regex<Substring> { #/\bvar\s+narrowed\w*\s*(?:=|:\s*(?:Bool|Int)\b)/# }
+
     /// Rows with one row nobody can read: the start read leaves the base
     /// unknown with the rows it read.
     private func keeperOverUnreadableRows() async throws -> (RowKeeper<Int>, MaerDatabase, URL) {

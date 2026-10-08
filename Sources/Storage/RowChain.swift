@@ -23,11 +23,13 @@ import OSLog
 @MainActor
 final class RowChain<Snapshot> {
     /// What one write did with the rows.
-    enum Outcome {
+    enum Outcome: Equatable {
         /// The rows hold the snapshot now; the base becomes it.
         case landed
-        /// Nothing was written on purpose (no change, a refused wipe).
+        /// Nothing was written on purpose (no change).
         case skipped
+        /// An empty snapshot over rows was refused, and how it spoke.
+        case refused(WipeRefusal)
     }
 
     /// The log prefix of the store, so a line names its owner.
@@ -66,6 +68,14 @@ final class RowChain<Snapshot> {
     /// refused wipe can still be told although a later write takes the
     /// memory anyway. A false alarm made smaller, not closed.
     private var waiting = 0
+    /// The number the next handed-over write gets.
+    private var issued = 0
+    /// The last write a narrowed permission covers: a permission to empty
+    /// narrowed at its call covers the writes queued by then and its own,
+    /// never a write queued later. It only grows, as the numbers do.
+    private var narrowedThrough: Int?
+    /// How the last refused wipe spoke (a witness reads it).
+    private(set) var lastRefusal: WipeRefusal?
 
     init(label: String) {
         self.label = label
@@ -113,17 +123,23 @@ final class RowChain<Snapshot> {
         }
     }
 
-    /// Hands one write to the chain. `read` reads the rows again (the rows,
-    /// nil when there are none, and how many did not decode); `take` gives
-    /// the store's memory, nil once the store is gone; `apply` writes the
-    /// snapshot against the base and says whether it landed, and learns
-    /// whether a later write is already queued (then a refused wipe of this
-    /// one is no wipe attempt: the later write takes the memory anyway).
-    func write(read: @escaping @MainActor () async throws -> (rows: Snapshot?, skipped: Int),
+    /// Hands one write to the chain. `narrowing` says that this call's
+    /// permission to empty was narrowed at the call (`RowEmptying.atCall`).
+    /// `read` reads the rows again (the rows, nil when there are none, and
+    /// how many did not decode); `take` gives the store's memory, nil once
+    /// the store is gone; `apply` writes the snapshot against the base and
+    /// says whether it landed, and gets how a refused wipe of this write
+    /// speaks (`WipeRefusal`: a later write already queued takes the memory
+    /// anyway; a permission narrowed for this write; otherwise a suspicion).
+    func write(narrowing: Bool = false,
+               read: @escaping @MainActor () async throws -> (rows: Snapshot?, skipped: Int),
                take: @escaping @MainActor () -> Snapshot?,
                apply: @escaping @MainActor (_ snapshot: Snapshot, _ base: RowBase<Snapshot>,
-                                            _ laterQueued: Bool) async throws -> Outcome) {
+                                            _ refusal: WipeRefusal) async throws -> Outcome) {
         let previous = pendingWrite
+        let number = issued
+        issued += 1
+        if narrowing { narrowedThrough = number }
         waiting += 1
         pendingWrite = Task(priority: .utility) { [weak self] in
             await previous?.value
@@ -152,8 +168,12 @@ final class RowChain<Snapshot> {
             }
             do {
                 // The base is read HERE, after the write before landed or failed.
-                if try await apply(snapshot, self.base, self.waiting > 0) == .landed {
-                    self.base = .known(snapshot)
+                let narrowed = self.narrowedThrough.map { number <= $0 } ?? false
+                let refusal = WipeRefusal.of(laterQueued: self.waiting > 0, narrowedPermission: narrowed)
+                switch try await apply(snapshot, self.base, refusal) {
+                case .landed: self.base = .known(snapshot)
+                case .refused(let spoke): self.lastRefusal = spoke
+                case .skipped: break
                 }
             } catch {
                 Logger.library.error("\(self.label, privacy: .public) save failed reason=\(String(describing: error), privacy: .public) base kept")

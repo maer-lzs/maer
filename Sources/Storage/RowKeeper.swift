@@ -35,9 +35,6 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     private let chain: RowChain<Rows>
     /// The one opening of the rows: every caller awaits the same task.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
-    /// A permission to empty was narrowed at its call since the last write
-    /// that got past the refusal (`WipeRefusal.narrowedPermission`).
-    private var narrowedPermission = false
 
     init(database: MaerDatabase, table: KeyedRowStore<Value>.Table, label: String, logsSaves: Bool = false) {
         self.database = database
@@ -77,6 +74,8 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     var base: RowBase<Rows> { chain.base }
     /// Whether the start read failed as a whole (`RowChain.startReadFailed`).
     var startReadFailed: Bool { chain.startReadFailed }
+    /// How the last refused wipe spoke (`RowChain.lastRefusal`).
+    var lastRefusal: WipeRefusal? { chain.lastRefusal }
     /// Whether the start missed rows (`RowChain.startIncomplete`).
     var startIncomplete: Bool { chain.startIncomplete }
     /// Rows came back that this build does not read (`RowChain.noteRowsNotRead`).
@@ -120,16 +119,15 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     func write(emptying requested: RowEmptying, also: [SQLiteConnection.Statement] = [],
                _ take: @escaping @MainActor () -> Rows?) {
         let emptying = requested.atCall(memoryIsEmpty: take()?.isEmpty ?? true)
-        if requested == .allowed && emptying == .refused { narrowedPermission = true }
-        chain.write(read: { [weak self] in
+        chain.write(narrowing: requested == .allowed && emptying == .refused, read: { [weak self] in
             guard let self, let rows = await self.open() else { throw RowsNotOpen() }
             let load = try await rows.load()
             return (load.rows.isEmpty ? nil : load.rows, load.skipped)
-        }, take: take, apply: { [weak self] snapshot, base, laterQueued in
+        }, take: take, apply: { [weak self] snapshot, base, refusal in
             guard let self, let rows = await self.open() else { return .skipped }
             if base.refuses(snapshot, emptying) {
                 let count = base.removable?.count ?? 0
-                switch WipeRefusal.of(laterQueued: laterQueued, narrowedPermission: self.narrowedPermission) {
+                switch refusal {
                 case .laterQueued:
                     Logger.library.notice("\(self.label, privacy: .public) wipe refused, a later write is queued: empty snapshot over \(count) rows")
                 case .narrowedPermission:
@@ -137,9 +135,8 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
                 case .suspected:
                     Logger.library.error("\(self.label, privacy: .public) wipe REFUSED: empty snapshot over \(count) rows plan=\(String(describing: base.plan), privacy: .public)")
                 }
-                return .skipped
+                return .refused(refusal)
             }
-            self.narrowedPermission = false
             let mark = self.mark?()
             // `also`: statements of the store that land in the same
             // transaction (rows carried as they are at a hand-over).
