@@ -70,10 +70,15 @@ struct ProgressAnswerTests {
             SyncContractFenceTests.stripped(file.text).filter { !$0.isWhitespace }.contains("fetchAllProgress())??[:]")
         }.map(\.name)
         #expect(empty.isEmpty, "a caller answers a failure with an empty map: \(empty)")
-        #expect(code.components(separatedBy: "ProgressAnswer.of(").count - 1 == 3, "the three load paths ask the one rule")
-        // The secondary sources keep what their entries carried.
-        #expect(code.contains("ProgressAnswer.of(fetched, known: known)"))
-        #expect(code.contains("for entry in localCache { if let progress = entry.progress { known[entry.id] = progress } }"))
+        // The secondary sources keep what their entries carried, in their
+        // own round; with the two of the main library, three load paths ask
+        // the one rule.
+        let shelf = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/SecondaryShelf.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "ProgressAnswer.of(").count - 1 == 2, "the main library's two load paths ask the one rule")
+        #expect(shelf.contains("ProgressAnswer.of(fetched, known: known)"))
+        #expect(shelf.contains("for entry in previous { if let progress = entry.progress { known[entry.id] = progress } }"))
+        #expect(code.contains("SecondaryShelf.entries(of: sources, previous: localCache"), "the secondary round left the one rule")
     }
 }
 #endif

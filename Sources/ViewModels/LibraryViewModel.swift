@@ -1256,25 +1256,19 @@ final class LibraryViewModel: ObservableObject {
         // user set to audiobooks. The core still knows no concrete provider
         // and no id namespace; the main (ABS) provider stays the primary path.
         let session = AppSession.shared
-        // What the secondary sources' books carried before: a source whose
-        // progress fetch fails keeps it.
-        var known: [String: BookProgress] = [:]
-        for entry in localCache { if let progress = entry.progress { known[entry.id] = progress } }
-        var entries: [LibraryEntry] = []
-        for provider in session.allProviders
-        where provider !== session.provider && provider.mediaTypes.contains(.audiobooks) && provider.isAvailable {
-            let items = (try? await provider.fetchLibraryItems(for: .audiobooks)) ?? []
-            let fetched: [String: BookProgress]?
-            do {
-                fetched = try await provider.fetchAllProgress()
-            } catch {
-                Logger.library.error("LIBRARY secondary progress failed, last known kept: \(FailureReason.of(error), privacy: .public)")
-                fetched = nil
+        let sources = session.allProviders
+            .filter { provider in
+                provider !== session.provider && provider.mediaTypes.contains(.audiobooks) && provider.isAvailable
             }
-            let progress = ProgressAnswer.of(fetched, known: known)
-            entries += items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
-        }
-        localCache = entries
+            .map { provider in
+                SecondaryShelf.Source(key: provider.providerId,
+                                      items: { try await provider.fetchLibraryItems(for: .audiobooks) },
+                                      progress: { try await provider.fetchAllProgress() })
+            }
+        // What a source failed to answer, it keeps from the round before.
+        let owners = Dictionary(localCache.map { ($0.id, session.provider(for: $0.id).providerId) },
+                                uniquingKeysWith: { first, _ in first })
+        localCache = await SecondaryShelf.entries(of: sources, previous: localCache, owners: owners)
         secondarySignature = Self.signature(of: session.allProviders)
     }
 
