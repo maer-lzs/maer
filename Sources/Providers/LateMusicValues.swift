@@ -55,12 +55,16 @@ final class LateMusicValues: ObservableObject {
     func setProgress(_ value: [String: BookProgress]?, pass: Int) { land(\.progress, value, pass: pass) }
 
     /// The started albums of a pass, resolved from the progress it holds.
-    func setStartedAlbums(_ value: [LibraryItem]) {
-        apply { $0.started = value }
-    }
+    /// Always an answer (empty is "nothing started"), and it carries its pass
+    /// like the other halves: an older pass that ends last does not set the
+    /// row back to its older state.
+    func setStartedAlbums(_ value: [LibraryItem], pass: Int) { land(\.started, value, pass: pass) }
 
     /// Started music that resolved only after the surface stopped waiting
-    /// joins the row it belongs to, once.
+    /// joins the row it belongs to, once. Without a pass on purpose: it only
+    /// adds, and while its fetch is in flight no newer pass asks for the same
+    /// id (`ListenAgainFetch.plan`), so dropping the answer of an older pass
+    /// would lose the album until a later one.
     func addRecentAlbums(_ value: [LibraryItem]) {
         apply { values in
             let known = Set(values.started.map(\.id))

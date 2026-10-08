@@ -58,7 +58,7 @@ struct LateMusicValuesTests {
     @Test("Zuletzt gespielt in zwei Haelften: ein spaetes Regal laesst die angefangenen Alben stehen und umgekehrt")
     func theTwoHalvesKeepEachOther() {
         let values = LateMusicValues()
-        values.setStartedAlbums(items("s"))
+        values.setStartedAlbums(items("s"), pass: values.beginPass())
         let pass = values.beginPass()
         values.setShelf(items("a", "s"), pass: pass)
         #expect(values.recentAlbums.map(\.id) == ["a", "s"], "the shelf dropped a started album or doubled it")
@@ -66,6 +66,18 @@ struct LateMusicValuesTests {
         #expect(values.recentAlbums.map(\.id) == ["a", "s", "t"])
         values.setShelf(items("c"), pass: values.beginPass())
         #expect(values.recentAlbums.map(\.id) == ["c", "s", "t"], "a later shelf dropped the started albums")
+    }
+
+    @Test("die angefangenen Alben tragen ihren Durchgang: ein aelterer, der zuletzt endet, setzt sie nicht zurueck")
+    func startedAlbumsCarryTheirPass() {
+        let values = LateMusicValues()
+        let first = values.beginPass(), second = values.beginPass()
+        values.setStartedAlbums(items("new"), pass: second)
+        values.setStartedAlbums(items("old"), pass: first)
+        #expect(values.recentAlbums.map(\.id) == ["new"], "the older pass set the started albums back")
+        // A later pass with nothing started empties the half: it is an answer.
+        values.setStartedAlbums([], pass: values.beginPass())
+        #expect(values.recentAlbums.isEmpty, "nothing started did not empty the half")
     }
 
     @Test("die Startseite reicht keine fehlgeschlagene Musikquelle als leere Reihe weiter, und jede Antwort traegt ihren Durchgang", .needsTheSources)
@@ -78,6 +90,7 @@ struct LateMusicValuesTests {
         // Calibration: the forms as they stood.
         #expect(Self.failuresAsEmpty(in: "(try? await musicProvider.fetchAllProgress()) ?? [:]") == 1)
         #expect(Self.settersWithoutPass(in: "LateMusicValues.shared.setProgress(late)\nlateMusic.setShelf(x, pass: p)") == 1)
+        #expect(Self.settersWithoutPass(in: "lateMusic.setStartedAlbums(startedAlbums)") == 1)
     }
 
     nonisolated static func failuresAsEmpty(in code: String) -> Int {
@@ -87,6 +100,7 @@ struct LateMusicValuesTests {
     nonisolated static func settersWithoutPass(in code: String) -> Int {
         code.split(separator: "\n").filter { line in
             line.contains(".setProgress(") || line.contains(".setNewAlbums(") || line.contains(".setShelf(")
+                || line.contains(".setStartedAlbums(")
         }.filter { !$0.contains("pass:") }.count
     }
 }

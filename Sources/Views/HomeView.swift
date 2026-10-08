@@ -801,7 +801,7 @@ RowHeading(title: "Rediscover",
             lateMusic.setProgress(musicProgressAnswer, pass: pass)
             lateMusic.setNewAlbums(newAlbumsAnswer, pass: pass)
             lateMusic.setShelf(recentMusicAnswer, pass: pass)
-            lateMusic.setStartedAlbums(startedAlbums)
+            lateMusic.setStartedAlbums(startedAlbums, pass: pass)
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems
             rediscoverPicks = rediscover
