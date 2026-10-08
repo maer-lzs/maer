@@ -124,27 +124,44 @@ nonisolated final class StandMirror: Sendable {
         return true
     }
 
-    /// The open replacement written whole, if one is open; true when it was.
-    private func writeOpenReplacement(_ store: StandStore) async throws -> Bool {
+    /// What the whole write of an open replacement did before a write ran.
+    private enum Whole {
+        /// No replacement was open.
+        case none
+        /// It landed now, with the travelling part as it stands: a write of
+        /// a travelling id is in it already.
+        case landed(travels: @Sendable (String) -> Bool)
+        /// It could not land; it stays open, is tried again with the next
+        /// write, and every write runs as it is.
+        case held
+    }
+
+    /// The open replacement written whole, if one is open.
+    private func writeOpenReplacement(_ store: StandStore) async -> Whole {
         guard let pending = state.withLock({ state in
             state.replacement.flatMap { open in state.followed.map { (open, $0) } }
-        }) else { return false }
+        }) else { return .none }
         let (open, followed) = pending
         guard let stock = ListeningStore.resting(where: open.travels, of: followed) else {
-            Logger.library.error("STAND replacement held: the stock is not loaded")
-            return true
+            Logger.library.error("STAND replacement held, tried again with the next write: the stock is not loaded")
+            return .held
         }
-        try await store.replaceTravelling(backups: stock.backups, flushed: stock.flushed, travels: open.travels,
-                                          also: OwnerMark.statements(family: open.family, replacement: open.name))
+        do {
+            try await store.replaceTravelling(backups: stock.backups, flushed: stock.flushed, travels: open.travels,
+                                              also: OwnerMark.statements(family: open.family, replacement: open.name))
+        } catch {
+            Logger.library.error("STAND replacement held, tried again with the next write reason=\(String(describing: error), privacy: .public)")
+            return .held
+        }
         state.withLock { if $0.replacement?.name == open.name { $0.replacement = nil } }
         open.landed()
-        return true
+        return .landed(travels: open.travels)
     }
 
     /// One write of what this device last pushed: an entry, or nil for a removal.
     func noteFlushed(itemId: String, entry: [Double]?, in written: ObjectIdentifier) {
         guard state.withLock({ $0.followed }) == written else { return }
-        enqueue { store in
+        enqueue(itemId: itemId) { store in
             if let entry {
                 try await store.upsertFlushed(itemId: itemId, entry: entry)
             } else {
@@ -156,7 +173,7 @@ nonisolated final class StandMirror: Sendable {
     /// One write of the stock: an entry, or nil for a removal.
     func note(itemId: String, entry: [Double]?, in written: ObjectIdentifier) {
         guard state.withLock({ $0.followed }) == written else { return }
-        enqueue { store in
+        enqueue(itemId: itemId) { store in
             if let entry, let stand = Stand(itemId: itemId, entry: entry) {
                 try await store.upsert(stand)
             } else {
@@ -177,15 +194,18 @@ nonisolated final class StandMirror: Sendable {
         await openIfNeeded()
     }
 
-    private func enqueue(_ work: @escaping @Sendable (StandStore) async throws -> Void) {
+    /// One write in the chain. While a replacement is open its whole write
+    /// goes first; the write itself then runs, unless it is of a travelling
+    /// id (`itemId`) the whole write just carried as it stands now.
+    private func enqueue(itemId: String? = nil, _ work: @escaping @Sendable (StandStore) async throws -> Void) {
         state.withLock { state in
             let previous = state.pendingWrite
             state.pendingWrite = Task { [self] in
                 await previous?.value
                 guard let store = await openIfNeeded() else { return }
+                if case .landed(let travels) = await self.writeOpenReplacement(store),
+                   let itemId, travels(itemId) { return }
                 do {
-                    // While a replacement is open, this write is the whole one.
-                    if try await self.writeOpenReplacement(store) { return }
                     try await work(store)
                 } catch {
                     Logger.library.error("STAND mirror failed reason=\(String(describing: error), privacy: .public)")

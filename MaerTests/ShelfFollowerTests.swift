@@ -115,7 +115,7 @@ struct ShelfFollowerTests {
                              of: "made-up")
         let marked = Family(shelf: shelf)
         marked.live = Stock(items: ["b", "b-later"])
-        #expect(marked.follow("account-b", landing: .marked, landed: { $0 == "y" }) == .moved)
+        #expect(marked.follow("account-b", landing: .marked, landed: { $0 == "y" }) == .kept, "settling what landed reports a move")
         #expect(marked.live == Stock(items: ["b", "b-later"]), "a landed replacement was done again over B's writes")
         #expect(try shelf.holding(of: "made-up") == .init(owner: "account-b"))
     }

@@ -248,6 +248,122 @@ struct StandOwnerTests {
         withExtendedLifetime(runner) {}
     }
 
+    /// The rows of a witness, with the mirror installed on its own defaults.
+    private func mirrored(_ defaults: UserDefaults) async throws -> (StandStore, SQLiteConnection, StandMirror) {
+        let connection = try SQLiteConnection(path: ":memory:")
+        let rows = try await StandStore(connection: connection)
+        let mirror = StandMirror(store: rows)
+        mirror.start(defaults: defaults)
+        return (rows, connection, mirror)
+    }
+
+    private func unhook() {
+        ListeningStore.onWrite = nil
+        ListeningStore.onFlushedWrite = nil
+        ListeningStore.installReplacementHook(nil)
+    }
+
+    @Test("Schriebe nicht wandernder Kennungen, die eine offene Ersetzung landen, gehen nicht verloren: das Loeschen eines Hoerbuch-Stands und ein Musik-Stand stehen danach richtig in der Tabelle")
+    func writesOfIdsThatDoNotTravelSurviveAReplacement() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let (rows, connection, mirror) = try await mirrored(defaults)
+        defer { unhook() }
+        try await withSyncOn {
+            var scope = "account-a"
+            let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
+                                          identity: { scope }, shelf: rig.shelf, standsMarked: { _ in false })
+            runner.reconcile(pushing: false)
+            let t = 1_700_000_100_000.0
+            ListeningStore.record("abs-book", position: 50, duration: 9000, atMs: t, in: defaults)
+            await mirror.awaitPendingWrites()
+            let bookBefore = try await rows.stand(for: "abs-book")
+            #expect(bookBefore != nil, "the precondition: the book's stand is in the table")
+            let schema = try await connection.query("SELECT sql FROM sqlite_master WHERE name = 'stand_flushed'")
+            let createFlushed = try #require(schema.first?["sql"]?.string)
+
+            /// A switch whose own whole write throws, so the replacement
+            /// stays open until `write` runs with the rows whole again:
+            /// the chain runs at once, a queued write would race the switch.
+            @MainActor func switchAndLand(to next: String, by write: () -> Void) async throws {
+                _ = try await connection.execute("DROP TABLE stand_flushed")
+                scope = next
+                runner.reconcile(pushing: false)
+                await mirror.awaitPendingWrites()
+                let open = try rig.shelf.holding(of: "stands")
+                #expect(open?.replacing == true, "the precondition: the replacement is open")
+                _ = try await connection.execute(createFlushed)
+                write()
+                await mirror.awaitPendingWrites()
+                let landed = try rig.shelf.holding(of: "stands")
+                #expect(landed == .init(owner: next), "the precondition: this write landed the replacement")
+            }
+
+            try await switchAndLand(to: "account-b") { ListeningStore.clearBackup("abs-book", in: defaults) }
+            let bookAfter = try await rows.stand(for: "abs-book")
+            #expect(bookAfter == nil, "the cleared book stand came back")
+
+            try await switchAndLand(to: "account-c") {
+                ListeningStore.record("sub:song:1", position: 30, duration: 200, atMs: t + 1_000, in: defaults)
+            }
+            let song = try await rows.stand(for: "sub:song:1")
+            #expect(song != nil, "the music stand was dropped")
+            withExtendedLifetime(runner) {}
+        }
+    }
+
+    @Test("kann der ganze Schrieb nicht landen, Bestand nicht geladen oder ein Wurf, laeuft jeder andere Schrieb trotzdem, und das Ersetzen wird wieder versucht")
+    func aHeldWholeWriteDropsNoOtherWrite() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let (rows, connection, mirror) = try await mirrored(defaults)
+        defer { unhook() }
+        try await withSyncOn {
+            var scope = "account-a"
+            let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
+                                          identity: { scope }, shelf: rig.shelf, standsMarked: { _ in false })
+            runner.reconcile(pushing: false)
+            let t = 1_700_000_100_000.0
+            await mirror.awaitPendingWrites()
+            // The whole write throws: the table it writes into is gone
+            // before the switch opens the replacement, whenever it runs.
+            let schema = try await connection.query("SELECT sql FROM sqlite_master WHERE name = 'stand_flushed'")
+            let createFlushed = try #require(schema.first?["sql"]?.string)
+            _ = try await connection.execute("DROP TABLE stand_flushed")
+            scope = "account-b"
+            runner.reconcile(pushing: false)
+            ListeningStore.record("sub:song:1", position: 30, duration: 200, atMs: t, in: defaults)
+            await mirror.awaitPendingWrites()
+            let afterThrow = try await rows.stand(for: "sub:song:1")
+            #expect(afterThrow != nil, "a write was dropped after the whole write threw")
+            let heldAfterThrow = try rig.shelf.holding(of: "stands")
+            #expect(heldAfterThrow?.replacing == true, "the replacement settled without its rows")
+
+            // The stock not loaded: a write that reaches the rows without
+            // asking the stock, so nothing loads it before the whole write.
+            _ = try await connection.execute(createFlushed)
+            let backups = ListeningStore.positions(in: defaults)
+            ListeningStore.installTable(for: defaults) { ListeningStore.Stock(backups: backups, flushed: [:]) }
+            mirror.note(itemId: "sub:song:2", entry: [40, t + 1_000, 200], in: ObjectIdentifier(defaults))
+            await mirror.awaitPendingWrites()
+            let afterUnloaded = try await rows.stand(for: "sub:song:2")
+            #expect(afterUnloaded != nil, "a write was dropped while the stock was not loaded")
+            let heldAfterUnloaded = try rig.shelf.holding(of: "stands")
+            #expect(heldAfterUnloaded?.replacing == true, "the replacement settled without its rows")
+
+            // The next write with the stock loaded lands the replacement.
+            ListeningStore.record("sub:song:3", position: 50, duration: 200, atMs: t + 2_000, in: defaults)
+            await mirror.awaitPendingWrites()
+            let afterLanding = try await rows.stand(for: "sub:song:3")
+            #expect(afterLanding != nil, "the write after the landing was dropped")
+            let settled = try rig.shelf.holding(of: "stands")
+            #expect(settled == .init(owner: "account-b"), "the replacement was not tried again")
+            withExtendedLifetime(runner) {}
+        }
+    }
+
     @Test("ist der Bestand nicht ganz gelesen, ruht nichts, nichts wird ersetzt und die Runde haelt an")
     func anUnreadStockHoldsTheRound() async throws {
         let rig = rig()

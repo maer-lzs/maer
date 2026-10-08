@@ -123,17 +123,20 @@ nonisolated struct RestingShelf: Sendable {
         let begunHere = holding.replacement.map(issuedHere.contains) ?? false
         let unfinished = holding.replacing && !begunHere
         guard unfinished || holding.owner != scope else { return .kept }
+        var replaced = false
         if unfinished {
             if let name = holding.replacement, try landed(name) {
                 try settle(family, owner: holding.owner, replacement: name)
             } else {
+                replaced = true
                 let name = UUID().uuidString
                 try setHolding(.init(owner: holding.owner, replacing: true, from: holding.from, replacement: name),
                                of: family)
                 try replace(rest(Value.self, of: family, owner: holding.owner), holding.owner, name)
             }
         }
-        guard holding.owner != scope else { return .moved }
+        // Settling what had landed moves nothing.
+        guard holding.owner != scope else { return replaced ? .moved : .kept }
         // What a family keeps elsewhere (the credentials, which never touch
         // a file) rests first; a failure there replaces nothing.
         try before(holding.owner)

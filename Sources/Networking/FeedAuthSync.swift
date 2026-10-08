@@ -105,6 +105,8 @@ final class FeedAuthSync: ObservableObject {
     }
 
     struct NotRested: Error {}
+    /// The keychain could not be listed; the hand-over holds.
+    struct NotListable: Error {}
 
     /// Whether the credentials on this device belong to the account signed
     /// in now, handing them over first by the shelf's one rule
@@ -116,15 +118,11 @@ final class FeedAuthSync: ObservableObject {
     /// it would seal the holder's credentials for the account.
     private func followsTheAccount(previous: String? = nil) -> Bool {
         guard let follower, let scope = identity() else { return true }
-        guard let held = keys.mine() else {
-            Logger.library.notice("FEEDAUTH owner held: keychain not listable")
-            return false
-        }
         let keys = self.keys
-        // Read at the moment of use: a replacement of a run before may have
-        // changed what lives here since `held` was read.
+        // Read at the moment of use, once each: a replacement of a run
+        // before may have changed what lives here.
         func live() throws -> [String: FeedAuthBlock.Entry] {
-            guard let mine = keys.mine() else { throw NotRested() }
+            guard let mine = keys.mine() else { throw NotListable() }
             return mine
         }
         guard let step = follower.follow(
@@ -160,8 +158,7 @@ final class FeedAuthSync: ObservableObject {
                 }
             }) else { return false }
         if step != .kept {
-            // Counting, never naming: how many credentials moved.
-            Logger.library.notice("FEEDAUTH owner \(String(describing: step), privacy: .public) held=\(held.count)")
+            Logger.library.notice("FEEDAUTH owner \(String(describing: step), privacy: .public)")
         }
         return true
     }
