@@ -55,7 +55,7 @@ struct ScrollCalmFenceTests {
         "FreeCatalogStore":
             (3, "der Katalog-Speicher setzt seine geladenen Reihen selbst, aus demselben Grund"),
         "LateMusicValues":
-            (3, "die nachlaufenden Musikwerte setzen sich selbst, sobald sie eintreffen"),
+            (1, "die nachlaufenden Musikwerte setzen sich selbst, sobald sie eintreffen, durch eine Tuer"),
         "OERRLiveStore":
             (1, "der Hoerspiel-Speicher setzt seine Eintraege selbst"),
         "LibraryViewModel":

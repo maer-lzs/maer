@@ -595,23 +595,27 @@ RowHeading(title: "Rediscover",
         // A LATE result does not expire. It applies itself through
         // the same calm gate, so the row fills up by itself instead of
         // waiting for a tab switch (the recompute token only changes there).
+        // No answer (a failure, or the budget ran out) is nil, never an
+        // empty row: it keeps what landed, and the pass number keeps a late
+        // answer of an older pass from replacing a newer one.
+        let pass = lateMusic.beginPass()
         async let musicProgressTask = SourceBudget.value(
-            default: [String: BookProgress](),
-            onLate: { late in await MainActor.run { LateMusicValues.shared.setProgress(late) } }
+            default: [String: BookProgress]?.none,
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setProgress(late, pass: pass) } }
         ) {
-            (try? await musicProvider.fetchAllProgress()) ?? [:]
+            await Self.answer("progress") { try await musicProvider.fetchAllProgress() }
         }
         async let newAlbumsTask = SourceBudget.value(
-            default: [LibraryItem](),
-            onLate: { late in await MainActor.run { LateMusicValues.shared.setNewAlbums(late) } }
+            default: [LibraryItem]?.none,
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setNewAlbums(late, pass: pass) } }
         ) {
-            (try? await musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
+            await Self.answer("newest") { try await musicProvider.albumShelf(shelf: .newest, size: 12) }
         }
         async let recentMusicTask = SourceBudget.value(
-            default: [LibraryItem](),
-            onLate: { late in await MainActor.run { LateMusicValues.shared.setRecentAlbums(late) } }
+            default: [LibraryItem]?.none,
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setShelf(late, pass: pass) } }
         ) {
-            (try? await musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
+            await Self.answer("recent") { try await musicProvider.albumShelf(shelf: .recent, size: 12) }
         }
         async let freeRowsTask: Void = SourceBudget.run { await freeCatalogStore.ensureLoaded() }
         async let freeSourcesTask: Void = SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
@@ -662,7 +666,8 @@ RowHeading(title: "Rediscover",
         }
         // The music server is the source that vanished with the Tiny. Its
         // absence must cost the start page nothing but the music rows.
-        let musicProgress = await musicProgressTask
+        let musicProgressAnswer = await musicProgressTask
+        let musicProgress = musicProgressAnswer ?? lateMusic.progress
         // Music never stands in Continue: a started album or playlist goes
         // to "Listen Again" (with its position, the resume is unchanged; the
         // one form question, asked once here).
@@ -715,12 +720,14 @@ RowHeading(title: "Rediscover",
         // present (a pure time sort let the music library's fresher timestamps take
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
-        let newAlbums = await newAlbumsTask
+        let newAlbumsAnswer = await newAlbumsTask
+        let newAlbums = newAlbumsAnswer ?? lateMusic.newAlbums
         // Recently played music. The ONE provider access point again. The
         // started albums and playlists, which never stand in Continue, join
         // it here, so "Listen Again"
         // carries every album with a position too, ranked by that moment.
-        let recentMusicShelf = await recentMusicTask
+        let recentMusicAnswer = await recentMusicTask
+        let recentMusicShelf = recentMusicAnswer ?? lateMusic.shelf
         let knownAlbumIds = Set(recentMusicShelf.map(\.id))
         // The ONE resolver of this pass, for the albums and the episodes.
         let resolveItem = router.item
@@ -748,7 +755,6 @@ RowHeading(title: "Rediscover",
             asked=\(toFetch.count, privacy: .public) \
             missing=\(started.missing.count, privacy: .public)
             """)
-        let recentMusic = recentMusicShelf + startedAlbums
         // Free-catalog rows load HERE (compute always runs). Once
         // per session, but retried while empty (a failed first pass heals on
         // the next recompute instead of deciding forever).
@@ -793,10 +799,13 @@ RowHeading(title: "Rediscover",
             continueIds = rankedContinue
             continueIdsAll = allContinue
             recentlyAddedAll = allAddedItems
-            LateMusicValues.shared.setProgress(musicProgress)
+            // Each answer of this pass, or nil to keep what landed.
+            lateMusic.setProgress(musicProgressAnswer, pass: pass)
+            lateMusic.setNewAlbums(newAlbumsAnswer, pass: pass)
+            lateMusic.setShelf(recentMusicAnswer, pass: pass)
+            lateMusic.setStartedAlbums(startedAlbums)
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems
-            LateMusicValues.shared.setRecentAlbums(recentMusic)
             rediscoverPicks = rediscover
             rediscoverPool = pool
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
@@ -804,6 +813,18 @@ RowHeading(title: "Rediscover",
         // Layout-shift fix: same calm gate as the other libraries. A landed
         // recompute never reshapes Home mid-scroll.
         if initialFill { apply() } else { ScrollCalm.run(apply) }
+    }
+
+    /// A music source of the start page as an answer: nil when it failed,
+    /// with a line, so a failure never stands in for an empty row.
+    nonisolated private static func answer<T: Sendable>(_ label: StaticString,
+                                                         _ work: () async throws -> T) async -> T? {
+        do {
+            return try await work()
+        } catch {
+            Logger.library.notice("HOME music \(String(describing: label), privacy: .public) no answer reason=\(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
     }
 
     /// Teil 3: assemble the three candidate sources (mixed media types) and let

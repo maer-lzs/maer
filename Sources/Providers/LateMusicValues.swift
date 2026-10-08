@@ -17,47 +17,81 @@ import Combine
 ///
 /// One truth: `compute()` writes the punctual values here too, the view only
 /// reads. No second copy in the view's state.
+///
+/// What landed stays until an answer replaces it (`LandedValue`): a pass
+/// whose source failed or ran out of time hands in nil and keeps the row,
+/// and a late answer of an older pass does not replace a newer one.
 @MainActor
 final class LateMusicValues: ObservableObject {
     static let shared = LateMusicValues()
-    private init() {}
+    /// The app holds one; a witness builds its own.
+    init() {}
 
-    /// Recently PLAYED albums (the "Recently Played" row).
+    /// Recently PLAYED albums (the "Recently Played" row): the server's
+    /// shelf, then the started albums and playlists it lacks. Two halves,
+    /// so a late shelf never drops the started ones and the other way round.
     @Published private(set) var recentAlbums: [LibraryItem] = []
-    /// Recently ADDED albums (mixed with books in "Recently Added").
+    /// Recently ADDED albums as last answered. The next pass whose fetch
+    /// gives no answer takes these for "Recently Added".
     @Published private(set) var newAlbums: [LibraryItem] = []
     /// Album progress. Carries the Continue boundary of the mixed row.
     @Published private(set) var progress: [String: BookProgress] = [:]
 
-    /// Apply through the shared calm gate: a landing value never reshapes a
-    /// surface mid-scroll (same rule as every other late arrival).
-    func setRecentAlbums(_ value: [LibraryItem]) {
-        updateRecentAlbums { _ in value }
+    /// The server's shelf of recently played albums as last answered.
+    private(set) var shelf: [LibraryItem] = []
+    private var started: [LibraryItem] = []
+    private var landedPass: [PartialKeyPath<LateMusicValues>: Int] = [:]
+    private var passes = 0
+
+    /// A new pass of the start page; its answers carry this number.
+    func beginPass() -> Int {
+        passes += 1
+        return passes
+    }
+
+    /// One answer of a pass for one source; nil is no answer.
+    func setShelf(_ value: [LibraryItem]?, pass: Int) { land(\.shelf, value, pass: pass) }
+    func setNewAlbums(_ value: [LibraryItem]?, pass: Int) { land(\.newAlbums, value, pass: pass) }
+    func setProgress(_ value: [String: BookProgress]?, pass: Int) { land(\.progress, value, pass: pass) }
+
+    /// The started albums of a pass, resolved from the progress it holds.
+    func setStartedAlbums(_ value: [LibraryItem]) {
+        apply { $0.started = value }
     }
 
     /// Started music that resolved only after the surface stopped waiting
     /// joins the row it belongs to, once.
     func addRecentAlbums(_ value: [LibraryItem]) {
-        updateRecentAlbums { current in
-            let known = Set(current.map(\.id))
-            return current + value.filter { !known.contains($0.id) }
+        apply { values in
+            let known = Set(values.started.map(\.id))
+            values.started += value.filter { !known.contains($0.id) }
         }
     }
 
-    /// One gate for both: the change reads the row as it stands when the
-    /// gate opens, so a late addition never undoes a pass that landed first.
-    private func updateRecentAlbums(_ change: @escaping @MainActor ([LibraryItem]) -> [LibraryItem]) {
+    private func land<Value>(_ key: ReferenceWritableKeyPath<LateMusicValues, Value>, _ value: Value?, pass: Int) {
+        apply { values in
+            guard let value,
+                  LandedValue.replaces(answered: true, pass: pass, landedPass: values.landedPass[key] ?? 0)
+            else { return }
+            values.landedPass[key] = pass
+            values[keyPath: key] = value
+        }
+    }
+
+    /// Through the shared calm gate: a landing value never reshapes a
+    /// surface mid-scroll (same rule as every other late arrival), and the
+    /// change reads the values as they stand when the gate opens.
+    private func apply(_ change: @escaping @MainActor (LateMusicValues) -> Void) {
         ScrollCalm.run { [weak self] in
             guard let self else { return }
-            self.recentAlbums = change(self.recentAlbums)
+            change(self)
+            self.recentAlbums = Self.merged(shelf: self.shelf, started: self.started)
         }
     }
 
-    func setNewAlbums(_ value: [LibraryItem]) {
-        ScrollCalm.run { [weak self] in self?.newAlbums = value }
-    }
-
-    func setProgress(_ value: [String: BookProgress]) {
-        ScrollCalm.run { [weak self] in self?.progress = value }
+    /// The row: the shelf, then the started albums it does not carry.
+    nonisolated static func merged(shelf: [LibraryItem], started: [LibraryItem]) -> [LibraryItem] {
+        let known = Set(shelf.map(\.id))
+        return shelf + started.filter { !known.contains($0.id) }
     }
 }

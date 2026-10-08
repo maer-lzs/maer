@@ -48,7 +48,7 @@ struct SharedGrowthFenceTests {
     /// lowered, by folding a duplicated grip in the same neighbourhood, and
     /// three times it rose and was written back as measured instead of hidden
     /// behind a default.
-    nonisolated static let stock = 373
+    nonisolated static let stock = 371
 
     /// The same count over all of `Sources`, measured 728 today (twelve
     /// grips of `Artwork` went through its one door). This is the
@@ -58,7 +58,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 724
+    nonisolated static let sourcesStock = 722
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
