@@ -84,7 +84,10 @@ struct TileDwellTests {
 
     @Test("Kachel: ein Cover aus dem Netz wird fuer eine Kachel, die verschwindet, nicht geholt; fuer eine, die bleibt, nach 0,4 s")
     func aCoverTileThatLeavesAsksNothing() async throws {
-        let stand = try await BulkImportTests.Stand.start(.unavailable)
+        // A 404 is absent for the cover door and asked once. A 503 would run
+        // the door's retry ladder after the stay, which is not what this
+        // case measures and cost it seconds.
+        let stand = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data()))
         defer { stand.stop() }
         let gone = URL(string: "http://127.0.0.1:\(stand.port)/gone-\(UUID().uuidString).png")!
         let leaving = Task {
