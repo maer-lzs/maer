@@ -104,8 +104,12 @@ struct GPodderConflictResolutionTests {
             #expect(gpodder.uploads.allSatisfy { $0.remove.isEmpty }, "this device sent the server a removal: \(gpodder.uploads)")
             #expect(!subs.shows.contains { feeds.contains($0.feedURL) }, "the precondition: none of them landed here")
         }
-        // Held on Audiobookshelf and a failed fetch: the server was read.
-        try await pass([held, failed], serverRead: true)
+        // One feed per pass: two removals in one round would be an
+        // implausible mass removal (`removesImplausible`), held by the guard,
+        // and the round could not show the removal this witness is about.
+        // Held on Audiobookshelf, then a failed fetch: the server was read.
+        try await pass([held], serverRead: true)
+        try await pass([failed], serverRead: true)
         // Set out: Audiobookshelf could not be read, and the person hears it.
         subs.serverUnreadNotice = false
         try await pass([setOut], serverRead: false)
