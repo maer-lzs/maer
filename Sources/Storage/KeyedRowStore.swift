@@ -17,8 +17,9 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     static var schemaVersion: Int { 1 }
 
     /// The tables this store may hold. Named here, not passed as free text,
-    /// so a table name never comes from data.
-    enum Table: String, Sendable {
+    /// so a table name never comes from data. Every one is sorted in the
+    /// fence of the counter tables (whole value or summed).
+    enum Table: String, Sendable, CaseIterable {
         case listenLog = "listen_log"
         case statsDay = "stats_day"
         case statsItem = "stats_item"
