@@ -275,6 +275,9 @@ struct PodcastSourceView: View {
 
     /// Create a subscription. On the server (synced) if possible/chosen, else locally.
     private func performSubscribe(feedURL: String) async -> Bool {
+        // `hasPodcasts` is set by a read of the server: read first, or a
+        // cold start subscribes here what the person wants on the server.
+        await PodcastShowSources.readAbsShows()
         if subscribeToServer, absPodcast.hasPodcasts {
             if let error = await absPodcast.subscribeOnServer(feedURL: feedURL) {
                 subscribeError = error

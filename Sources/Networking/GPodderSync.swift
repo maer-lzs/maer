@@ -174,7 +174,7 @@ final class GPodderSync {
         for norm in actions.subscribeLocally {
             // The person resolved the conflict, and what stays is noted to
             // the family like every other applied change of the round.
-            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw, notesCloud: true, isSingleUserAct: false) }
+            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) }
         }
         for norm in actions.unsubscribeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
@@ -376,7 +376,8 @@ final class GPodderSync {
         // again on the next reconcile, then pushed to the server once more.
         var addedLocallyNorms = Set<String>()
         for norm in merge.addLocally {
-            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw, notesCloud: true, isSingleUserAct: false) {
+            if let raw = visibleServerByNorm[norm],
+               await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) == .subscribed {
                 report.addedLocally += 1
                 addedLocallyNorms.insert(norm)
             }

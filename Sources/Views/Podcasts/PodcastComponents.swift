@@ -641,12 +641,17 @@ struct PodcastSubscribeBadge: View {
     }
 
     static func subscribe(_ feedURL: String) async {
+        // Server or here is chosen on `hasPodcasts`, which only a read of
+        // the server sets: read first, or a cold start subscribes here what
+        // the person wants on the server.
+        await PodcastShowSources.readAbsShows()
         if AppStorageKeys.absPodcastsEnabledValue, ABSPodcastProvider.shared.hasPodcasts {
             _ = await ABSPodcastProvider.shared.subscribeOnServer(feedURL: feedURL)
         } else {
-            // The door logs onServer and setOut; the badge keeps offering
-            // the subscription when nothing was subscribed here.
-            _ = await PodcastSubscriptions.shared.subscribeUnlessOnServer(urlString: feedURL)
+            // The badge has no line of its own: a subscription set out
+            // because the server could not be read is said by the root's host.
+            let subs = PodcastSubscriptions.shared
+            if await subs.subscribeUnlessOnServer(urlString: feedURL) == .setOut { subs.serverUnreadNotice = true }
             await GPodderSync.shared.reconcile()   // push the new subscription to the server
         }
         PodcastRecommendationsStore.shared.remove(feedURL: feedURL)

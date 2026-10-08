@@ -49,6 +49,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// exist once. Same shape as `pendingPremiumReplacement` above.
     @Published var emptyFeedNotice: String?
 
+    /// A subscription the person asked for on a surface without its own
+    /// line was set out because Audiobookshelf could not be read
+    /// (`LocalSubscription.setOut`); the same host says it.
+    @Published var serverUnreadNotice = false
+
     /// Feeds from the account this device could not follow yet (feed key
     /// ⇒ address and reason). The Podcasts tab shows them with the reason;
     /// the adoption skips them until the person retries, signs in or
@@ -1321,13 +1326,23 @@ final class PodcastSubscriptions: ObservableObject {
                     continue
                 }
                 self.adoptingFeedKeys.insert(key)
-                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true,
-                                              isSingleUserAct: false, statementT: entry.t)
+                let answer = await self.subscribeUnlessOnServer(urlString: entry.feedURL, notesCloud: false,
+                                                                adopting: true, isSingleUserAct: false,
+                                                                statementT: entry.t)
                 self.adoptingFeedKeys.remove(key)
+                let ok = answer == .subscribed
                 if ok { followed += 1 }
-                let outcome = FeedAdoptionPending.outcome(
-                    ok: ok, held: self.shows.contains { Self.feedKey($0.feedURL) == key },
-                    reason: self.feedsNotFollowed[key]?.reason)
+                // Held on Audiobookshelf the statement is followed there; set
+                // out, it stays open and unmarked, and a later round asks again.
+                let outcome: String
+                switch answer {
+                case .onServer: outcome = "onServer"
+                case .setOut: outcome = "setOut"
+                case .subscribed, .notSubscribed:
+                    outcome = FeedAdoptionPending.outcome(
+                        ok: ok, held: self.shows.contains { Self.feedKey($0.feedURL) == key },
+                        reason: self.feedsNotFollowed[key]?.reason)
+                }
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok) outcome=\(outcome, privacy: .public)")
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
@@ -1377,8 +1392,9 @@ final class PodcastSubscriptions: ObservableObject {
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         Task { [weak self] in
             guard let self else { return }
-            let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true, isSingleUserAct: false)
-            Logger.rss.notice("SUBSCRIBE cloud adoption retried: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
+            let answer = await self.subscribeUnlessOnServer(urlString: entry.feedURL, notesCloud: false, adopting: true,
+                                                            isSingleUserAct: false)
+            Logger.rss.notice("SUBSCRIBE cloud adoption retried: \(feedKey, privacy: .private(mask: .hash)) answer=\(answer.logName, privacy: .public)")
         }
     }
 
@@ -1405,19 +1421,25 @@ final class PodcastSubscriptions: ObservableObject {
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         Task { [weak self] in
             guard let self else { return }
-            let ok = await self.subscribe(urlString: newURL, notesCloud: true, adopting: false, isSingleUserAct: true)
-            if ok {
+            let answer = await self.subscribeUnlessOnServer(urlString: newURL, notesCloud: true, adopting: false,
+                                                            isSingleUserAct: true)
+            switch answer {
+            case .subscribed:
                 // The same feed under the same key (the same link, other
                 // case, tracking parameters): withdrawing the old address
                 // would withdraw the subscription just stated.
                 if Self.withdrawsOldAddress(oldFeedURL: entry.feedURL, newURL: newURL) {
                     Self.stateSubscription(entry.feedURL, subscribed: false)
                 }
-            } else {
+            case .onServer:
+                // Held on Audiobookshelf: nothing was stated here, so the old
+                // address is not withdrawn either, and nothing waits.
+                break
+            case .notSubscribed, .setOut:
                 self.markNotFollowed(feedURL: entry.feedURL, reason: entry.reason, status: entry.status,
                                      statementT: entry.statementT)
             }
-            Logger.rss.notice("SUBSCRIBE new link for refused feed: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
+            Logger.rss.notice("SUBSCRIBE new link for refused feed: \(feedKey, privacy: .private(mask: .hash)) answer=\(answer.logName, privacy: .public)")
         }
     }
 
@@ -1887,6 +1909,16 @@ final class PodcastSubscriptions: ObservableObject {
         /// Audiobookshelf could not be read: nothing subscribed, a later
         /// attempt asks again.
         case setOut
+
+        /// The answer in a log line, without the show's title.
+        var logName: String {
+            switch self {
+            case .subscribed: "subscribed"
+            case .notSubscribed: "notSubscribed"
+            case .onServer: "onServer"
+            case .setOut: "setOut"
+            }
+        }
     }
 
     /// THE door of every local subscription: a show held on Audiobookshelf

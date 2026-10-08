@@ -102,11 +102,87 @@ struct LocalSubscribeDoorTests {
         #expect(calls.hosts.isEmpty && subs.shows.isEmpty && result.subscribed == 0, "a show was subscribed while the server was unread")
     }
 
+    @Test("gpodder: eine Sendung auf Audiobookshelf wird ueber drei Runden nicht lokal abonniert, und gpodder bekommt von diesem Geraet keine Entfernung")
+    func gpodderGetsNoRemovalForAShowOnTheServer() async throws {
+        let subs = PodcastSubscriptions.shared
+        await subs.ensureLoaded()
+        subs._testSetLoaded(true)
+        let run = UUID().uuidString.prefix(8)
+        let feed = "https://gpodder-held.example/\(run)/feed.xml"
+        let keys = [AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
+                    AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderUserRemovedFeeds]
+        let kept = keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
+        for key in keys { UserDefaults.standard.removeObject(forKey: key) }
+        let shows = subs.serverShows, read = subs.serverShowsRead
+        let calls = Calls()
+        subs.serverShows = { [ServerHeldImportTests.serverShow(feedURL: feed, title: "Server Show")] }
+        subs.serverShowsRead = { true }
+        subs._testFeedFetcher = { url in
+            await MainActor.run { calls.hosts.append(url.host ?? "-") }
+            return .show(BulkImportTests.show(url, title: "Feed Show"))
+        }
+        defer {
+            subs.serverShows = shows
+            subs.serverShowsRead = read
+            subs._testFeedFetcher = nil
+            for (key, value) in kept { UserDefaults.standard.set(value, forKey: key) }
+        }
+        // Three rounds: a removal derived toward the server waits for a
+        // second confirming round, so only the third could send one.
+        let gpodder = SubscriptionFamilyServerTests.FakeGPodder([feed])
+        for _ in 0..<3 { _ = try await GPodderSync.shared.syncSubscriptions(gpodder) }
+        #expect(!subs.shows.contains { $0.feedURL == feed }, "the server's show was subscribed here")
+        #expect(calls.hosts.isEmpty, "the server's show was fetched")
+        #expect(gpodder.server.contains(feed), "gpodder lost the show")
+        #expect(gpodder.uploads.allSatisfy { $0.remove.isEmpty }, "this device sent gpodder a removal: \(gpodder.uploads)")
+    }
+
+    @Test("die Familie: eine Sendung auf Audiobookshelf wird nicht abonniert, nicht abgerufen und nicht als nicht gefolgt markiert; eine andere wie bisher")
+    func theFamilyFollowsAShowOnTheServerThere() async throws {
+        let (subs, cleanup) = try await BulkImportTests.store()
+        defer { cleanup() }
+        let run = UUID().uuidString.prefix(8)
+        let onServer = "https://family-held.example/\(run)/feed.xml"
+        let other = "https://family-other.example/\(run)/feed.xml"
+        let calls = Calls()
+        subs.serverShows = { [ServerHeldImportTests.serverShow(feedURL: onServer, title: "Server Show")] }
+        subs._testFeedFetcher = { url in
+            await MainActor.run { calls.hosts.append(url.host ?? "-") }
+            return .show(BulkImportTests.show(url, title: "Other Show"))
+        }
+        subs.adoptCloudSubscriptions(added: [(feedURL: onServer, t: 1000), (feedURL: other, t: 1000)], removed: [])
+        for _ in 0..<200 where !subs.shows.contains(where: { $0.feedURL == other }) {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(subs.shows.contains { $0.feedURL == other }, "the precondition: the other feed was followed")
+        #expect(!subs.shows.contains { $0.feedURL == onServer }, "the server's show was subscribed here")
+        #expect(!calls.hosts.contains("family-held.example"), "the server's show was fetched")
+        #expect(subs.feedsNotFollowed[PodcastSubscriptions.feedKey(onServer)] == nil, "the server's show was marked as not followed")
+    }
+
+    @Test("Abzeichen und Quellenseite lesen Audiobookshelf vor der Wahl zwischen Server und hier, und das Abzeichen sagt ein Aussetzen", .needsTheSources)
+    func theSurfacesReadBeforeTheyChoose() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let badge = try #require(ABSPodcastRefreshTests.body(
+            of: "static func subscribe(_ feedURL: String) async {", in: try code("Sources/Views/Podcasts/PodcastComponents.swift")))
+        let page = try #require(ABSPodcastRefreshTests.body(
+            of: "private func performSubscribe(feedURL: String) async -> Bool {", in: try code("Sources/Views/PodcastSourceView.swift")))
+        for (name, body) in [("badge", badge), ("source page", page)] {
+            let read = try #require(body.range(of: "readAbsShows()"), "the \(name) does not read the server")
+            let choice = try #require(body.range(of: "hasPodcasts"))
+            #expect(read.upperBound <= choice.lowerBound, "the \(name) chooses before it reads")
+        }
+        #expect(badge.contains("== .setOut { subs.serverUnreadNotice = true }"), "the badge sets out in silence")
+        let host = try code("Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift")
+        #expect(host.contains("subs.serverUnreadNotice"), "no host says the set out")
+    }
+
     /// Who may still call `subscribe(urlString:` past the door, and why.
     static let stock: [String: (count: Int, reason: String)] = [
-        "PodcastSubscriptions.swift": (4, "the door itself, and the account's adoption, the retry and the new link, which go through it in the next step"),
-        "GPodderSync.swift": (2, "the gpodder round and the resolved conflict, through the door in the next step"),
-        "PinchflatClient.swift": (1, "the Pinchflat mirror, through the door in the next step"),
+        "PodcastSubscriptions.swift": (1, "the door itself"),
         "CatalogDetailExtras.swift": (1, "waits for the owner's word: the person chose a local-only feed in so many words"),
     ]
 

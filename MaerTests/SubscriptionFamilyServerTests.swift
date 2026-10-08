@@ -135,7 +135,8 @@ struct SubscriptionFamilyServerTests {
         let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
         #expect(!code.contains("notesCloud: false"), "a server-driven change left unnoted comes back through the family")
         #expect(code.contains("subs.unsubscribe(id: show.id, notesCloud: true)"))
-        #expect(code.contains("subs.subscribe(urlString: raw, notesCloud: true"))
+        // Through the door before `subscribe`, with the same note.
+        #expect(code.contains("subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true"))
     }
 }
 #endif
