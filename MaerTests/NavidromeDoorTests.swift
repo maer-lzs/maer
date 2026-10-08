@@ -106,7 +106,12 @@ struct NavidromeDoorTests {
                 "the stream takes a stored song id past the door")
         #expect(provider.contains("client.lyrics(songId: Self.serverId(songId))"),
                 "the lyrics take a stored song id past the door")
-        #expect(try Self.rawIdTakers() == [], "a stored id is taken apart outside the door")
+        let spellers = try Self.subSpellers()
+        #expect(spellers == Set(Self.subSpellersWithReason.keys),
+                "a file outside the door spells a stored id, and may take it apart: \(spellers.sorted())")
+        // Calibration: any spelling counts, a namespace question does not.
+        #expect(Self.spellsSub(#"let raw = String(id.dropFirst("sub:song:".count))"#))
+        #expect(Self.spellsSub("if ItemNamespace.isSubsonic(id) {") == false)
     }
 
     // MARK: - Bookmarks: an id compared, not sent
@@ -163,22 +168,33 @@ struct NavidromeDoorTests {
         #expect(provider.contains("comment: Self.canonicalItemId(itemId))"), "a bookmark is written with an old id")
     }
 
-    /// Lines under `Sources` outside the provider that take a `sub:` id
-    /// apart into its raw server id.
-    static func rawIdTakers() throws -> [String] {
-        let root = SourceTree.root
-        let files = try #require(FileManager.default.enumerator(at: root.appendingPathComponent("Sources"),
-                                                                includingPropertiesForKeys: nil))
-        let patterns = ["dropFirst(\"sub:", "\"sub:song:\".count", "\"sub:album:\".count", "\"sub:playlist:\".count",
-                        "replacingOccurrences(of: \"sub:"]
-        var found: [String] = []
-        for case let url as URL in files where url.pathExtension == "swift" && url.lastPathComponent != "SubsonicProvider.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
-            for line in text.split(separator: "\n") where patterns.contains(where: { line.contains($0) }) {
-                found.append("\(url.lastPathComponent): \(line.trimmingCharacters(in: .whitespaces))")
-            }
+    /// The files that may spell the `sub:` namespace, each with its reason.
+    /// Only the door takes an id apart; the others ask which namespace an id
+    /// belongs to or name the test harness's ids.
+    nonisolated static let subSpellersWithReason: [String: String] = [
+        "SubsonicProvider.swift": "the door: it takes a stored id apart",
+        "ItemNamespace.swift": "the namespaces themselves",
+        "MediaFamily.swift": "which family a namespace serves",
+        "AppSession.swift": "which provider an id goes to",
+        "UserChoiceSync.swift": "the test harness's seed ids, kept out of the sync",
+        "UITestSeed.swift": "the test harness's seed ids",
+    ]
+
+    /// The files under `Sources` that spell the `sub:` namespace, in any
+    /// form: a file that spells it can take an id apart, and only the door
+    /// may. Asked by file, not by the ways of taking apart, of which there
+    /// are always more than a list knows.
+    static func subSpellers() throws -> Set<String> {
+        var found: Set<String> = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if Self.spellsSub(text) { found.insert(file.lastPathComponent) }
         }
         return found
+    }
+
+    nonisolated static func spellsSub(_ text: String) -> Bool {
+        text.contains("\"sub:")
     }
 }
 #endif

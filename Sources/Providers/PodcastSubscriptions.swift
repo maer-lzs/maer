@@ -1638,9 +1638,9 @@ final class PodcastSubscriptions: ObservableObject {
                 .episodes(feedURL: feedURL)
         }
     ) async -> [PodcastEpisode]? {
-        let piEpisodes: [PodcastIndexEpisode]
+        let indexEpisodes: [PodcastIndexEpisode]
         do {
-            piEpisodes = try await ask(show.feedURL)
+            indexEpisodes = try await ask(show.feedURL)
         } catch {
             Logger.library.notice("PODCAST full history failed reason=\(FailureReason.of(error), privacy: .public)\(browsed ? " browsed" : "", privacy: .public)")
             return nil
@@ -1648,7 +1648,7 @@ final class PodcastSubscriptions: ObservableObject {
         let key = feedKey(show.feedURL)
         var seen = Set(show.episodes.map { $0.guid })
         var added: [PodcastEpisode] = []
-        for pi in piEpisodes {
+        for pi in indexEpisodes {
             guard let audio = pi.enclosureUrl, !audio.isEmpty else { continue }
             let guid = "rss:\(key):\(pi.guid ?? audio)"   // like RSSFeedParser
             guard seen.insert(guid).inserted else { continue }
@@ -1665,7 +1665,7 @@ final class PodcastSubscriptions: ObservableObject {
         }
         // The same counts as the refresh line, for the other way episodes
         // reach the stock; a browsed show says so, it is not in the store.
-        Logger.rss.notice("PODCAST full history\(browsed ? " browsed" : "", privacy: .public) show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) directory=\(piEpisodes.count) added=\(added.count)")
+        Logger.rss.notice("PODCAST full history\(browsed ? " browsed" : "", privacy: .public) show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) directory=\(indexEpisodes.count) added=\(added.count)")
         return added.sorted { $0.pubDate > $1.pubDate }
     }
 

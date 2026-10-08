@@ -506,31 +506,52 @@ struct AccessFollowersTests {
     /// order: ask the rule, stop the old carrier, take it out of the
     /// refreshers, take the new one, open a new generation, and start only a
     /// runner that ran. A copy that drops a step lets the old carrier talk on
-    /// or a round of it land in the new generation.
+    /// or a round of it land in the new generation. The runners are whoever
+    /// asks the rule, found over the whole app and not from a list: a sixth
+    /// runner, whatever its signature, is measured too.
     @Test("jeder der fuenf Laeufer wechselt den Traeger in denselben Schritten", .needsTheSources)
     func everyRunnerChangesItsCarrierInTheSameSteps() throws {
-        let steps = ["CarrierWay.mustChange(", "carrier.stop()", "CarrierRefreshers.unregister(carrier)",
+        let steps = ["mustChange(", "carrier.stop()", "CarrierRefreshers.unregister(carrier)",
                      "carrier = next()", "generation.advance()", "guard didStart else { return }",
                      "startCarrier(by: caller)"]
-        var copies = 0
-        for path in ["Sources/Models/ListeningStats.swift", "Sources/Networking/MaerPlaylistCloudSync.swift",
-                     "Sources/Networking/PlaybackClaimSync.swift", "Sources/Networking/PodcastCloudSync.swift",
-                     "Sources/Networking/UserChoiceCloudSync.swift"] {
-            let code = SyncContractFenceTests.stripped(try String(
-                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
-            let head = try #require(code.range(of: "func follow(_ next: @autoclosure"), "\(path) has no follow")
-            copies += 1
-            let body = code[head.upperBound...].prefix(700)
+        var texts: [String: String] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        }
+        let askers = Self.askersOfTheRule(in: texts)
+        #expect(Set(askers.keys) == ["ListeningStats.swift", "MaerPlaylistCloudSync.swift", "PlaybackClaimSync.swift",
+                                     "PodcastCloudSync.swift", "UserChoiceCloudSync.swift"],
+                "the runners that ask the rule are not the five: \(askers.keys.sorted())")
+        for (file, count) in askers {
+            #expect(count == 1, "\(file) asks the rule \(count) times")
+            let code = try #require(texts[file])
+            let head = try #require(code.range(of: "mustChange("))
+            let body = code[head.lowerBound...].prefix(700)
             var cursor = body.startIndex
             for step in steps {
                 guard let found = body[cursor...].range(of: step) else {
-                    Issue.record("\(path): the step \(step) is missing or out of order")
+                    Issue.record("\(file): the step \(step) is missing or out of order")
                     break
                 }
                 cursor = found.upperBound
             }
         }
-        #expect(copies == 5)
+        // Calibration: a call counts in any form, the rule's own home not.
+        #expect(Self.askersOfTheRule(in: ["A.swift": "if CarrierWay.mustChange(holdsService: h, signedIn: s) {",
+                                          "B.swift": "static func mustChange(holdsService: Bool, signedIn: Bool) -> Bool {"])
+                == ["A.swift": 1])
+    }
+
+    /// Per file, the lines that ask `mustChange(`; the definition does not ask.
+    nonisolated static func askersOfTheRule(in texts: [String: String]) -> [String: Int] {
+        var found: [String: Int] = [:]
+        for (file, text) in texts {
+            let calls = text.split(separator: "\n").filter {
+                $0.contains("mustChange(") && !$0.contains("func mustChange(")
+            }.count
+            if calls > 0 { found[file] = calls }
+        }
+        return found
     }
 
     /// Files under `Sources` with the number of lines that write the token

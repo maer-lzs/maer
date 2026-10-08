@@ -30,11 +30,11 @@ struct PublicReadmeFenceTests {
     static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "Wache", "fable", "Fable"]
 
     /// Words the open count `name\w*` finds in any case that are not a name:
-    /// the English noun, the German plural and derivation of the cadence, the
-    /// plural of the code's guard, and one identifier in the sources (the
-    /// episodes from the podcast index).
+    /// the English noun and the German plural and derivation of the cadence.
+    /// An exception holds wherever its word stands, so a word of our own
+    /// making is renamed instead of listed here.
     /// Every entry must still stand in the scope, or it is a ghost.
-    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung", "piEpisodes", "Wachen"]
+    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung"]
 
     /// Every inflection that really occurs in the tree, not every one that is
     /// imaginable: the plain form, the German genitive `s`, the apostrophe a

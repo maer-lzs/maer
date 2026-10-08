@@ -107,9 +107,7 @@ struct HomeView: View {
 
     private func recomputeDiscover() {
         guard recommendationsEnabled else { discoverShown = []; return }
-        let subscribed = PodcastShowSources.ownedFeedKeys()
-        let fresh = PodcastRecommendationsStore.excludingSubscribed(
-            recommendations.results, subscribedNormalizedFeeds: subscribed)
+        let fresh = PodcastShowSources.excludingOwned(recommendations.results)
         // Layout-shift: the whole-section insert (2nd from top) routes through
         // the calm gate. Empty→filled IS the shift, so no immediate path here.
         ScrollCalm.run { discoverShown = fresh }

@@ -82,20 +82,35 @@ struct ServerGuidesTests {
     /// The addresses are for the browser. No client of the app may name a
     /// project host: the external-sources fence lets these hosts pass
     /// because of THIS test.
-    @Test("Kein Client nennt einen Projekt-Host: die Adressen sind fuer den Browser")
+    @Test("Kein Client nennt einen Projekt-Host: die Adressen sind fuer den Browser", .needsTheSources)
     func clientsNeverCallProjectHosts() throws {
         var offenders: [String] = []
-        // Every file that can open a connection, wherever it lives; the
-        // guides' own file names the hosts for the browser and is the one
-        // exception.
+        var clients: Set<String> = []
+        // Every file that can open a connection: the network folders, which
+        // load through the one door without naming a session, and every
+        // other file that opens one itself. The guides' own file names the
+        // hosts for the browser and is the one exception.
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "ServerGuides.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
-            guard text.contains("URLSession") || text.contains("URLRequest(") else { continue }
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            guard Self.isClient(path: file.path, text: text) else { continue }
+            clients.insert(file.lastPathComponent)
             for host in ServerGuides.projectHosts where text.contains("https://" + host) {
                 offenders.append("\(file.lastPathComponent): \(host)")
             }
         }
+        #expect(clients.contains("Artwork.swift") && clients.contains("CatalogClients.swift"),
+                "the precondition: a door client without a session and a client outside the folders were read")
         #expect(offenders.isEmpty, "a client names a guide host: \(offenders)")
+        // Calibration: a door client in a network folder is one, a view is not.
+        #expect(Self.isClient(path: "/x/Sources/Networking/A.swift", text: "let d = try await HTTP.data(for: r)"))
+        #expect(!Self.isClient(path: "/x/Sources/Views/B.swift", text: "Link(\"Guide\", destination: url)"))
+    }
+
+    /// A file that can open a connection: one in a network folder, or one
+    /// that names a session or builds a request.
+    nonisolated static func isClient(path: String, text: String) -> Bool {
+        path.contains("/Sources/Networking/") || path.contains("/Sources/Providers/")
+            || text.contains("URLSession") || text.contains("URLRequest(")
     }
 
     @Test("Kein Werbe-Ton: kein Eintrag sagt empfohlen oder best")

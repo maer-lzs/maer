@@ -46,10 +46,40 @@ struct RetiredDocumentsFenceTests {
         "downloadExtensionRepairV2", "downloadDeepValidationV1",
         "migrateSynthesizedFlag", "formerStampKey",
         // Other devices' old forms: the premium and block lists beside the
-        // choices document, and the one claim key every device shared.
-        "legacyList", "legacyStatements", "premiumMarkedFeedsRemoved", "blockedFeedKeysRemoved",
-        #"claimKey = "playbackClaim""#
+        // choices document. The one claim key every device shared has its
+        // own test below.
+        "legacyList", "legacyStatements", "premiumMarkedFeedsRemoved", "blockedFeedKeysRemoved"
     ]
+
+    /// The one claim key every device shared, in whatever line it would
+    /// come back. The one line allowed is the list of keys the user owns,
+    /// where the name is a prefix that also covers each device's own key.
+    @Test("der geteilte Anspruchs-Schluessel steht nur in der Liste der Nutzer-Schluessel", .needsTheSources)
+    func theSharedClaimKeyIsGone() throws {
+        var texts: [String: String] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        }
+        #expect(texts["ClaimCarrier.swift"] != nil, "the precondition: the fence read the sources")
+        #expect(Self.sharedClaimKeyLines(in: texts) == [], "the shared claim key is back")
+        // Calibration: any line with the key counts, the allowed line does not.
+        #expect(Self.sharedClaimKeyLines(in: ["A.swift": #"let key = "playbackClaim""#,
+                                              "DerivedStores.swift": #"static let userOwnedPrefixes = ["localPosition.", "playbackClaim","#,
+                                              "B.swift": #"static let claimKeyPrefix = "playbackClaim.""#])
+                == [#"A.swift: let key = "playbackClaim""#])
+    }
+
+    /// Lines naming the shared claim key, except the user-owned prefix list.
+    nonisolated static func sharedClaimKeyLines(in texts: [String: String]) -> [String] {
+        var found: [String] = []
+        for (file, text) in texts {
+            for line in text.split(separator: "\n") where line.contains(#""playbackClaim""#) {
+                if file == "DerivedStores.swift" && line.contains("userOwnedPrefixes") { continue }
+                found.append("\(file): \(line.trimmingCharacters(in: .whitespaces))")
+            }
+        }
+        return found.sorted()
+    }
 
     @Test("kein einmaliger Schritt von vor 3.3 kehrt mit Marker oder Schluessel zurueck", .needsTheSources)
     func noRetiredStepComesBack() throws {

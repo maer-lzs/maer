@@ -408,11 +408,7 @@ struct FreeAudiobooksPage: View {
         }
         chartsFailed = pool.isEmpty
         // Subscribed shows drop out. A catalog, not a second library view.
-        let shows = PodcastShowSources.ownedShows()
-        chartResults = PodcastRecommendationsStore.excludingSubscribed(
-            pool,
-            subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
-            subscribedTitles: shows.map(\.title))
+        chartResults = PodcastShowSources.excludingOwned(pool)
     }
 
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {

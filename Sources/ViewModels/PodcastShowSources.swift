@@ -58,6 +58,14 @@ enum PodcastShowSources {
         PodcastShowMerge.normalizedFeeds(ownedShows())
     }
 
+    /// A list of found shows without the ones we own, by feed and by
+    /// title: the one door for every catalog, chart and recommendation.
+    static func excludingOwned(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {
+        PodcastRecommendationsStore.excludingSubscribed(
+            list, subscribedNormalizedFeeds: ownedFeedKeys(),
+            subscribedTitles: ownedShows().map(\.title))
+    }
+
     /// A show's name from every stock on this device: what we own, then the
     /// listen log and the episodes kept from browsing, which remember a
     /// show nobody follows any more. The rule itself is

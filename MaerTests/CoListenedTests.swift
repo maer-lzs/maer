@@ -210,17 +210,39 @@ struct CoListenedTests {
         #expect(!PodcastShowSources.ownedFeedKeys().contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)))
     }
 
-    /// The set of owned feeds has one name; spelled out again by hand, a
-    /// second copy could miss a source and put a followed show back.
+    /// The set of owned feeds has one name; built again by hand, in one step
+    /// or in two, a second copy could miss a source and put a followed show
+    /// back. Every call that folds shows into feed addresses is counted, in
+    /// whatever spelling, and only the sources' own file may make one.
     @Test("die Menge der eigenen Feeds steht einmal, unter ihrem Namen", .needsTheSources)
     func theOwnedFeedsHaveOneName() throws {
-        var spelled = 0
+        var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            spelled += code.components(separatedBy: "normalizedFeeds(ownedShows())").count - 1
-            spelled += code.components(separatedBy: "normalizedFeeds(PodcastShowSources.ownedShows())").count - 1
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(spelled == 1, "the owned feeds are spelled out \(spelled) times")
+        #expect(texts["PodcastsView.swift"] != nil, "the precondition: the fence read the sources")
+        #expect(Self.calls(of: "normalizedFeeds", in: texts) == ["PodcastShowSources.swift": 1],
+                "shows are folded into feed addresses outside the sources' file: \(Self.calls(of: "normalizedFeeds", in: texts))")
+        // The one door that keeps the owned shows out, by feed and by title.
+        #expect(Self.calls(of: "excludingSubscribed", in: texts) == ["PodcastShowSources.swift": 1],
+                "a list keeps the owned shows out past the door: \(Self.calls(of: "excludingSubscribed", in: texts))")
+        // Calibration: the two-step form counts, the definition does not.
+        #expect(Self.calls(of: "normalizedFeeds",
+                           in: ["A.swift": "let shows = x()\nlet f = PodcastShowMerge.normalizedFeeds(shows)",
+                                "B.swift": "static func normalizedFeeds(_ shows: [PodcastShow]) -> Set<String> {"])
+                == ["A.swift": 1])
+    }
+
+    /// Per file, the lines that call `name(`; its definition is no call.
+    nonisolated static func calls(of name: String, in texts: [String: String]) -> [String: Int] {
+        var found: [String: Int] = [:]
+        for (file, text) in texts {
+            let calls = text.split(separator: "\n").filter {
+                $0.contains("\(name)(") && !$0.contains("func \(name)(")
+            }.count
+            if calls > 0 { found[file] = calls }
+        }
+        return found
     }
 }
 #endif

@@ -862,11 +862,7 @@ struct RecommendationsPage: View {
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
 
     private var pool: [PodcastSearchResult] {
-        let shows = PodcastShowSources.ownedShows()
-        return PodcastRecommendationsStore.excludingSubscribed(
-            recommendations.results,
-            subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
-            subscribedTitles: shows.map(\.title))
+        PodcastShowSources.excludingOwned(recommendations.results)
     }
 
     var body: some View {
@@ -1004,16 +1000,12 @@ struct RadioPlayChartsPage: View {
             loading = true
             defer { loading = false }
             let directory = ITunesDirectory()
-            let shows = PodcastShowSources.ownedShows()
-            let feeds = PodcastShowMerge.normalizedFeeds(shows)
-            let titles = shows.map(\.title)
             for chip in CatalogGenreAxis.hoerspielChips {
                 var pool: [PodcastSearchResult] = []
                 for genreId in chip.genreIds {
                     pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
                 }
-                byChip[chip.key] = PodcastRecommendationsStore.excludingSubscribed(
-                    pool, subscribedNormalizedFeeds: feeds, subscribedTitles: titles)
+                byChip[chip.key] = PodcastShowSources.excludingOwned(pool)
             }
         }
     }
@@ -1060,11 +1052,7 @@ struct ChartGenrePage: View {
             for genreId in chip.genreIds {
                 pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
             }
-            let shows = PodcastShowSources.ownedShows()
-            results = PodcastRecommendationsStore.excludingSubscribed(
-                pool,
-                subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
-                subscribedTitles: shows.map(\.title))
+            results = PodcastShowSources.excludingOwned(pool)
         }
     }
 }
