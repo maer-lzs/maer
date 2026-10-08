@@ -99,6 +99,20 @@ struct SQLiteConnectionTests {
         #expect(after.free >= 90, "the deleted rows' pages are free pages: \(after)")
     }
 
+    /// The page count is its own measurement: when it cannot be read, the
+    /// checkpoint line says that, never "checkpoint failed".
+    @Test("Eine Seitenzahl, die nicht gelesen wird, sagt das selbst und nicht der Checkpoint")
+    func anUnreadPageCountSaysSo() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("field-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let readable = MaerDatabase(path: path)
+        _ = try readable.connection()
+        let field = await MaerDatabase.pagesField(of: readable)
+        #expect(field.hasPrefix("file=") && field.contains(" free="), "\(field)")
+        let missing = MaerDatabase(path: "/nonexistent-\(UUID().uuidString)/x.sqlite")
+        #expect(await MaerDatabase.pagesField(of: missing).hasPrefix("file=unread reason="))
+    }
+
     /// Several stores share the one connection; their transactions must
     /// never nest. Measured in the simulator before the batch form: two
     /// writes at once ended in "cannot start a transaction within a

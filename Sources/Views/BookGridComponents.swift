@@ -116,53 +116,19 @@ struct BookContextMenuItems: View {
         }
     }
 
-    /// As in BookDetailScreen: always send the complete record (currentTime +
-    /// duration + isFinished), never the flag alone. Otherwise the real progress
-    /// is lost (see sync bugfix).
+    /// The same door as the detail page (`BookFinishMark`), so a catalogue
+    /// title's mark lands on the device here too.
     private func quickToggleFinished() async {
         // The provider OF THIS TITLE, not the main one: the coordinator's
         // provider is fixed at construction and is the MAIN library provider
         // (a `let` from its `init`), never what plays, and a title
         // carries its source in its id (a Jellyfin book asked the library
         // server and its position was written nowhere).
-        let provider = router.provider(entry.id)
         // The same rule as the label: the flag alone missed a book whose
         // numbers say complete, and marked it finished a second time.
-        let newIsFinished = (entry.progress?.markGesture ?? .markPlayed).marksPlayed
-        // Invariant "heard = flies out": marking finished drops it from Up Next.
-        if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
-        // The player consequence belongs at the same place as the queue
-        // invariant (marking finished = as if it had ended → stop and
-        // auto-continue). No-op when the book is not the active item, so the
-        // context menu needs no condition of its own.
-        if newIsFinished { playerCoordinator.markPlayedAndAdvance(itemId: entry.id) }
-        let duration: Double
-        let currentTime: Double
-        if let fresh = try? await provider.fetchItemDetail(itemId: entry.id) {
-            duration = fresh.media.duration ?? 0
-            currentTime = fresh.userMediaProgress?.currentTime ?? 0
-        } else {
-            // Offline/error: locally known values instead of a silent abort.
-            duration = entry.item.media?.duration ?? 0
-            currentTime = (entry.progress?.fraction ?? 0) * duration
-        }
-        do {
-            try await provider.updateProgress(
-                itemId: entry.id,
-                currentTime: newIsFinished ? duration : currentTime,
-                duration: duration,
-                isFinished: newIsFinished
-            )
-        } catch {
-            // Don't lose the status decision: queue it, the flush sends it later.
-            await SyncQueue.shared.enqueue(
-                itemId: entry.id,
-                currentTime: newIsFinished ? duration : currentTime,
-                duration: duration,
-                isFinished: newIsFinished
-            )
-        }
-        await libraryViewModel.refreshProgress()
+        _ = await BookFinishMark.apply(entry, target: (entry.progress?.markGesture ?? .markPlayed).marksPlayed,
+                                       progress: entry.progress, provider: router.provider(entry.id),
+                                       coordinator: playerCoordinator, libraryViewModel: libraryViewModel)
     }
 }
 

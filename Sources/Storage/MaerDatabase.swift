@@ -33,17 +33,31 @@ nonisolated final class MaerDatabase: Sendable {
 
     /// The journal written back into the file, on the way to the
     /// background and at termination: `DB checkpoint ms= pages= busy=
-    /// file= free=`, the last two the file's pages and its free pages.
+    /// file= free=`, the last two the file's pages and its free pages. The
+    /// page count is read after the checkpoint and is a measurement of its
+    /// own: when it fails, the line says so and the checkpoint still counts.
     func checkpoint() async {
         guard isOpen else { return }
         let started = Date()
+        let done: SQLiteConnection.Checkpoint
         do {
-            let done = try await connection().checkpoint()
-            let ms = Int(Date().timeIntervalSince(started) * 1000)
-            let pages = try await connection().pages()
-            Logger.library.notice("DB checkpoint ms=\(ms) pages=\(done.framesCheckpointed)/\(done.framesInLog) busy=\(done.busy) file=\(pages.total) free=\(pages.free)")
+            done = try await connection().checkpoint()
         } catch {
             Logger.library.error("DB checkpoint failed reason=\(String(describing: error), privacy: .public)")
+            return
+        }
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        let pages = await Self.pagesField(of: self)
+        Logger.library.notice("DB checkpoint ms=\(ms) pages=\(done.framesCheckpointed)/\(done.framesInLog) busy=\(done.busy) \(pages, privacy: .public)")
+    }
+
+    /// `file= free=`, or the reason the page count could not be read.
+    static func pagesField(of database: MaerDatabase) async -> String {
+        do {
+            let pages = try await database.connection().pages()
+            return "file=\(pages.total) free=\(pages.free)"
+        } catch {
+            return "file=unread reason=\(FailureReason.of(error))"
         }
     }
 

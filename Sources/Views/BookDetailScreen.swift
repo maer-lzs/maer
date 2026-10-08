@@ -782,79 +782,14 @@ struct BookDetailScreen: View {
 
     private func toggleFinishedMark() async {
         errorMessage = nil
-        // A catalog title's mark is a statement about the LISTENER's own
-        // listening and lives on the device, in the same family as every
-        // other local position. The provider's updateProgress is a no-op
-        // for the catalog, so the server-shaped branch below would have
-        // swallowed the gesture without a trace.
-        if isCatalogTitle {
-            let target = finishGesture.marksPlayed
-            let duration = entry.item.media?.duration ?? currentProgress?.currentTime ?? 0
-            let nowMs = Date().timeIntervalSince1970 * 1000
-            ListeningStore.store(entry.id, entry: ProgressMark.entry(
-                position: target ? max(duration, 1) : 0,
-                duration: duration, nowMs: nowMs))
-            if target { PlayQueue.shared.markedPlayed(entry.id) }
+        let target = finishGesture.marksPlayed
+        let outcome = await BookFinishMark.apply(entry, target: target, progress: currentProgress,
+                                                 provider: detailProvider, coordinator: coordinator,
+                                                 libraryViewModel: libraryViewModel)
+        if let reason = outcome.reason {
+            errorMessage = reason
+        } else {
             isFinishedOverride = target
-            // Same rule as the server branch: marking finished behaves like
-            // a natural end for the running session.
-            if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
-            return
-        }
-        do {
-            // Fetch a fresh state instead of trusting the possibly stale
-            // `detail`. And then ALWAYS send currentTime + duration + isFinished
-            // together. A PATCH with only {"isFinished": ...} leaves it to
-            // the server what to do with currentTime. Exactly that caused the
-            // real progress to be lost after played→unplayed.
-            let fresh = try await detailProvider.fetchItemDetail(itemId: entry.id)
-            let duration = fresh.media.duration ?? 0
-            let currentTime = fresh.userMediaProgress?.currentTime ?? 0
-
-            let target = finishGesture.marksPlayed
-            let writeTime = target ? duration : currentTime
-            // Invariant "heard = flies out": marking finished drops it from Up Next.
-            if target { PlayQueue.shared.markedPlayed(entry.id) }
-            do {
-                try await detailProvider.updateProgress(
-                    itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
-                )
-            } catch {
-                // Don't lose the status decision: queue it, the flush sends it later.
-                await SyncQueue.shared.enqueue(
-                    itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
-                )
-            }
-            isFinishedOverride = target
-            // Without this the library list would keep showing the old state
-            // (percentage instead of checkmark) until the app next comes to the
-            // foreground.
-            await libraryViewModel?.refreshProgress()
-            // Marking finished behaves like a natural end. If this is the
-            // active session, playback stops and auto-continue advances.
-            if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
-        } catch {
-            if NetworkStatus.isOfflineError(error) {
-                // Even the fresh fetch failed (offline): queue with locally known
-                // values instead of losing the decision.
-                let target = finishGesture.marksPlayed
-                let duration = entry.item.media?.duration ?? 0
-                let currentTime = (entry.progress?.fraction ?? 0) * duration
-                await SyncQueue.shared.enqueue(
-                    itemId: entry.id,
-                    currentTime: target ? duration : currentTime,
-                    duration: duration,
-                    isFinished: target
-                )
-                isFinishedOverride = target
-                // Same rule as in the online branch above: marking finished
-                // behaves like a natural end, so the running session stops and
-                // auto-continue advances. Offline must not behave differently.
-                // The decision is the user's, not the server's.
-                if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
-            } else {
-                errorMessage = ErrorSentence.of(error)
-            }
         }
     }
 

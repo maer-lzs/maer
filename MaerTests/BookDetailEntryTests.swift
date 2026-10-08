@@ -52,29 +52,21 @@ struct BookDetailEntryTests {
                 "die Sitzung beantwortet wieder eine Frage nach dem Titel")
     }
 
-    /// „Als gehoert markieren" gilt ueberall. Der Katalog-Zweig schreibt
-    /// den LOKALEN Stand; der Provider-Weg ist dort ein No-op und haette
-    /// die Geste spurlos verschluckt. Der Server-Zweig bleibt unveraendert.
+    /// "Mark as finished" holds everywhere. The page hands the gesture to
+    /// the one door (`BookFinishMark`), whose catalogue branch writes the
+    /// local mark (`BookFinishMarkTests`). What stays here: the door is asked
+    /// with the provider of the TITLE (`detailProvider`), never the running
+    /// session's, or a Jellyfin book reports its mark to the library server,
+    /// which does not know it.
     @Test("der Katalog-Zweig des Markierens schreibt lokal, der Server-Zweig bleibt")
     func theCatalogMarkWritesLocally() throws {
         let rumpf = try #require(functionBody(of: "private func toggleFinishedMark() async {",
                                               in: try seite()))
             .split(whereSeparator: \.isWhitespace).joined()
-        #expect(rumpf.contains("ifisCatalogTitle{"),
-                "der Katalog-Zweig fehlt — die Geste laeuft in den No-op")
-        #expect(rumpf.contains("ListeningStore.store(entry.id"),
-                "der Katalog-Zweig schreibt nicht in den lokalen Bestand")
-        #expect(rumpf.contains("PlayQueue.shared.markedPlayed(entry.id)"),
-                "gehoert-fliegt-raus gilt im Katalog-Zweig nicht")
-        // Abnahme-Marke: der Server-Weg schreibt weiter ueber den Provider,
-        // mit der Warteschlange als Netz. Er fragt ihn seit dem Pruefstand-Lauf
-        // nach der KENNUNG des Titels (`detailProvider`) statt nach der
-        // laufenden Sitzung; sonst meldet ein Jellyfin-Buch sein „gehoert"
-        // an den Bibliotheks-Server, der es nicht kennt.
-        #expect(rumpf.contains("detailProvider.updateProgress"),
-                "der Server-Zweig hat seinen Schreibweg verloren")
-        #expect(rumpf.contains("SyncQueue.shared.enqueue"),
-                "der Server-Zweig hat seine Warteschlange verloren")
+        #expect(rumpf.contains("BookFinishMark.apply(entry"),
+                "the page writes the mark past the door")
+        #expect(rumpf.contains("provider:detailProvider"),
+                "the door is asked with another provider than the title's")
     }
 
     /// Die Zweitknoepfe folgen den RECHTEN: ein Katalog-Titel bekommt
