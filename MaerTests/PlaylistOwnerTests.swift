@@ -85,7 +85,8 @@ struct PlaylistOwnerTests {
             runner.reconcile()
             #expect(store.playlists.isEmpty, "B sees A's lists")
             #expect(MaerPlaylists.tombstones.isEmpty, "B carries A's deletion marks")
-            #expect((carrier.pots["account-b"]?.lists ?? [:]).isEmpty, "A's lists went to B")
+            let listsAtB = carrier.pots["account-b"]?.lists ?? [:]
+            #expect(listsAtB.isEmpty, "A's lists went to B: \(listsAtB.keys.sorted())")
             let ofB = store.create(name: "Nur B")
             runner.reconcile()
 
