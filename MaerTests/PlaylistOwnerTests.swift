@@ -343,7 +343,8 @@ struct PlaylistOwnerTests {
             // B's rest right after the hand-over that laid it: measured
             // without the hold, A's unread row lay in it at once.
             let restOfB = try rig.shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-b")
-            #expect((restOfB?.unread ?? [:]).isEmpty, "A's unread row rested with B: \(String(describing: restOfB?.unread?.keys.sorted()))")
+            let carriedToB = restOfB?.unread?.keys.sorted() ?? []
+            #expect(carriedToB.isEmpty, "A's unread row rested with B: \(carriedToB)")
             await store.awaitPendingWrites()
             try await Task.sleep(for: .milliseconds(100))
             #expect(try undecoded(database) == ["later-form": Self.laterForm], "A's unread row did not come back")
