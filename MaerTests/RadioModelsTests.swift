@@ -663,23 +663,59 @@ struct RadioStateQueryTests {
 
     /// Folding, choosing and drawing the variants take one key, the stream
     /// address: two answers of the catalog can give one id two addresses,
-    /// and a list keyed by id would then hold the same id twice.
+    /// and a list keyed by id would then hold the same id twice. The fence
+    /// reads every file under Sources, so a new list is seen where it lands.
     @Test("Entdoppeln, Waehlen und Zeichnen der Varianten nehmen denselben Schluessel, die Stromadresse", .needsTheSources)
     func variantsAreKeyedByAddressEverywhere() throws {
-        func code(_ path: String) throws -> String {
-            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
-        }
-        let models = try code("Sources/Models/RadioModels.swift")
+        let models = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/RadioModels.swift"), encoding: .utf8))
         #expect(models.contains("station.variantList.contains(where: { $0.streamURL == selectedURL })"),
                 "the choice is not read by address")
-        var drawings: [String] = []
-        for path in ["Sources/Views/PlayerView.swift", "Sources/Views/Radio/RadioStationDetailView.swift"] {
-            drawings += try code(path).split(separator: "\n").map(String.init)
-                .filter { $0.contains("ForEach(") && ($0.contains("variantList") || $0.contains("variants.enumerated")) }
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }
+            .filter { $0.pathExtension == "swift" }
+        #expect(files.count > 100, "the fence read the sources")
+        var drawings: [(file: String, line: String)] = []
+        for file in files {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            drawings += Self.variantLists(in: code).map { (SourceTree.relativePath(of: file), $0) }
         }
-        #expect(drawings.count == 2, "the fence found the two variant lists: \(drawings.count)")
-        let byOtherKey = drawings.filter { !$0.contains("streamURL") }
+        #expect(drawings.contains { $0.file == "Sources/Views/PlayerView.swift" }
+                && drawings.contains { $0.file == "Sources/Views/Radio/RadioStationDetailView.swift" },
+                "the fence found the lists it guards: \(drawings.map(\.file))")
+        let byOtherKey = drawings.filter { !$0.line.contains("streamURL") && Self.listsByOtherKey[$0.file] == nil }
         #expect(byOtherKey.isEmpty, "a variant list is drawn by another key: \(byOtherKey)")
+        let unused = Set(Self.listsByOtherKey.keys).subtracting(drawings.filter { !$0.line.contains("streamURL") }.map(\.file))
+        #expect(unused.isEmpty, "a stock entry without its list goes: \(unused)")
+    }
+
+    /// The lines that draw a list of variants: a `ForEach` that names them.
+    static func variantLists(in code: String) -> [String] {
+        code.split(separator: "\n").map(String.init)
+            .filter { $0.contains("ForEach(") && $0.lowercased().contains("variant") }
+    }
+
+    /// Lists of variants drawn by another key than the stream address, each
+    /// with its reason.
+    static let listsByOtherKey: [String: String] = [
+        // The members of a genre family are separate stations, not stream
+        // variants of one. The page list is deduplicated by display identity
+        // (`RadioGenreCuration.deduped`), and the world core replaces its
+        // matches by the same key (`withWorldCore`), one station per name.
+        "Sources/Views/Radio/RadioGenreView.swift": "genre family members are separate stations",
+    ]
+
+    @Test("Der Varianten-Zaun sieht eine Liste, die nach der Kennung zeichnet, und eine nach der Adresse")
+    func theVariantFenceSeesBothKeys() {
+        let planted = """
+        ForEach(station.variantList) { variant in
+        ForEach(station.variantList, id: \\.streamURL) { variant in
+        ForEach(rows) { row in
+        """
+        let found = Self.variantLists(in: planted)
+        #expect(found.count == 2, "the reader sees both variant lists and no other: \(found)")
+        #expect(found.filter { !$0.contains("streamURL") }.count == 1, "the one by id is told apart")
     }
 
     /// One entry of the station of these findings.
