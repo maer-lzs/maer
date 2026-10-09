@@ -8,10 +8,12 @@ import OSLog
 
 /// The books the secondary audiobook sources put on the shelf in one round
 /// (local files, a Subsonic or Jellyfin source set to audiobooks). A source
-/// whose list could not be fetched keeps its books of the round before, and
-/// a source whose progress could not be fetched keeps the bars it had: a
-/// failure is no answer, so it empties nothing. A list that comes back empty
-/// is an answer, and it empties that source.
+/// whose list could not be fetched keeps its entries of the round before,
+/// books AND bars, whatever its progress answers (a Subsonic progress fetch
+/// practically never throws, so a fresh answer would wipe the bars of the
+/// books it kept); a source whose progress could not be fetched keeps the
+/// bars it had: a failure is no answer, so it empties nothing. A list that
+/// comes back empty is an answer, and it empties that source.
 nonisolated enum SecondaryShelf {
     /// One source of the round: its key (the owner of its item ids) and its
     /// two fetches.
@@ -33,9 +35,10 @@ nonisolated enum SecondaryShelf {
             do {
                 items = try await source.items()
             } catch {
-                let kept = previous.filter { owners[$0.id] == source.key }.map(\.item)
+                let kept = previous.filter { owners[$0.id] == source.key }
                 Logger.library.error("LIBRARY secondary items failed source=\(source.key, privacy: .public) kept=\(kept.count): \(FailureReason.of(error), privacy: .public)")
-                items = kept
+                entries += kept
+                continue
             }
             let fetched: [String: BookProgress]?
             do {

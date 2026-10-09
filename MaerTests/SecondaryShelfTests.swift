@@ -68,5 +68,18 @@ struct SecondaryShelfTests {
         let alone = await SecondaryShelf.entries(of: [Self.failing("sub")], previous: third, owners: Self.owners(third))
         #expect(alone.map(\.id) == ["sub:a"], "a failing source took a neighbour's books")
     }
+
+    /// The list fails, the progress answers (with nothing for the kept
+    /// books, as a Subsonic fetch that never throws does): the source keeps
+    /// its books of the round before and their bars.
+    @Test("scheitert nur die Liste und antwortet der Fortschritt, behaelt die Quelle Buecher und Balken")
+    func aFailedListKeepsItsBarsWhenTheProgressAnswers() async {
+        let first = await SecondaryShelf.entries(of: [Self.answering("sub", ["sub:a"], ["sub:a": 0.4])],
+                                                 previous: [], owners: [:])
+        let listDown = SecondaryShelf.Source(key: "sub", items: { throw Offline() }, progress: { [:] })
+        let second = await SecondaryShelf.entries(of: [listDown], previous: first, owners: Self.owners(first))
+        #expect(second.map(\.id) == ["sub:a"], "the kept book left the shelf")
+        #expect(second.first?.progress?.fraction == 0.4, "the progress answer wiped the bar of a kept book")
+    }
 }
 #endif
