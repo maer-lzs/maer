@@ -2,6 +2,25 @@
 
 ## Next build (not yet cut)
 
+## v3.4 (Build 52)
+
+**Next song works in a shuffled playlist.** With shuffle on, the title
+keys in the player, the lock screen, your headphones and CarPlay now go
+to the next song of the shuffled list, and the rest of the list keeps
+playing after it. Before, the press found nothing to go to.
+
+**A title that could not load plays again on the next tap.** When an
+episode, book or song cannot load, for example with almost no signal,
+playback now stops with a short note instead of staying silent, and the
+next tap on play loads it again where you were. When the network comes
+back, it is loaded again by itself, without starting. Before, it played
+again only after the app was restarted.
+
+**The player stays on screen between titles.** When one song ends and
+the next begins, or you skip to the next title, the full player keeps
+showing the title that played until the next one is ready, and then
+changes to it. Before, it disappeared for a moment and came up again.
+
 ## v3.4 (Build 51)
 
 **Mär Sync carries everything as soon as you sign in.** Your

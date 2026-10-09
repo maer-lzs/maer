@@ -82,7 +82,7 @@ Was das Gerät verlässt, wohin es geht und was bleibt. Jede Aussage unten läss
 - Adaptives helles und dunkles Design mit **dunkelgrauem Markenakzent**; jede Medienart trägt ihre eigene Farbe im Tab-Wähler: Hörbücher orange, Podcasts lila, Musik rot, Radio cyan. Das Liquid-Glass-Chrome (Mini-Leiste, Suche, Werkzeugknöpfe) nimmt im hellen Modus einen zarten Pastellton der aktuellen Cover-Farbe an, und die Mini-Leiste taucht beim Buchwechsel kurz ab und federt zurück
 - Leistung: Raster-Zellen dekodieren ein kleines abgeleitetes Vorschaubild statt des vollen Covers, für flüssiges Scrollen und viel weniger Speicher bei großen Bibliotheken; die Buchliste kommt im verkleinerten Format von Audiobookshelf
 - **Barrierefreiheit**: volle Unterstützung von Dynamic Type bis zu den Bedienungshilfen-Größen: Bedienzeilen brechen in ein zweispaltiges Raster um, Kacheln fester Breite bekommen Zeilen dazu, und feste Maße skalieren über `@ScaledMetric`; VoiceOver-Beschriftungen an allen Bedienelementen und 44-pt-Trefferflächen; geprüft über Gerätegrößen von der 375-pt-Klasse bis zum iPad in beiden Ausrichtungen
-- Härtung: Speicherplatz-Prüfung vor dem Download, Container-Erkennung über die ersten Bytes mit automatischer Reparatur der Dateiendung (mit Tests), automatische Erholung, wenn eine Spur mitten in der Wiedergabe ausfällt, statt stillem Stehenbleiben, VoiceOver-Beschriftungen an allen Transport-Knöpfen
+- Härtung: Speicherplatz-Prüfung vor dem Download, Container-Erkennung über die ersten Bytes mit automatischer Reparatur der Dateiendung (mit Tests), automatische Erholung, wenn eine Spur mitten in der Wiedergabe ausfällt, statt stillem Stehenbleiben, ein Titel, der nicht laden kann, hält mit einem kurzen Hinweis an und lädt beim nächsten Tippen auf Play neu (und von selbst, ohne zu starten, wenn das Netz zurückkommt), VoiceOver-Beschriftungen an allen Transport-Knöpfen
 
 ## Podcasts
 
@@ -236,7 +236,7 @@ iPhone und iPad sind im Projekt beide aktiviert. Das Bibliotheks-Raster passt si
 
 ## Aufbau der Quellen
 
-Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält 515 Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
+Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält 516 Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
 
 ```text
 Sources/

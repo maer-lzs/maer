@@ -82,7 +82,7 @@ What leaves the device, where it goes, and what stays. Every statement below can
 - Adaptive light and dark design with a **dark-gray brand accent**; each media type carries its own color on the tab selector: audiobooks orange, podcasts purple, music red, radio cyan. The Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
 - Performance: grid cells decode a small derived thumbnail instead of the full cover, for smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
 - **Accessibility**: full Dynamic Type support up to the accessibility text sizes: control rows reflow to a two-column grid, fixed-width tiles gain lines, and hard-coded metrics scale via `@ScaledMetric`; VoiceOver labels on all controls and 44 pt tap targets; verified across device sizes from the 375 pt class to iPad in both orientations
-- Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, VoiceOver labels on all transport controls
+- Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, a title that cannot load stops with a short note and loads again on the next tap on play (and by itself, without starting, when the network returns), VoiceOver labels on all transport controls
 
 ## Podcasts
 
@@ -236,7 +236,7 @@ iPhone and iPad are both enabled in the project. The library grid adapts automat
 
 ## Source layout
 
-The tree below is a selection, not the whole repository (`Sources/` holds 515 files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
+The tree below is a selection, not the whole repository (`Sources/` holds 516 files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
 
 ```text
 Sources/
