@@ -539,16 +539,18 @@ final class PlayerCoordinator: ObservableObject {
         viewModel.onBookFinished = { [weak self] finishedItemId in
             self?.advanceAfterFinish(finishedItemId: finishedItemId)
         }
-        // The headphone title button's queue hop. SKIPPING IS NOT FINISHING:
+        // The title button's hop to the next title. SKIPPING IS NOT FINISHING:
         // the natural-end path above finalises the item as heard. A skip must
         // not, or every skipped song joins the freshly healed class anew. This
-        // path shares the RESOLUTION (nextPlayableQueueItem) and nothing else;
-        // the skipped item keeps its position and its unheard state.
+        // path shares the first two stages of the end's resolution (the
+        // orders, then the context) and nothing else; the skipped item keeps
+        // its position and its unheard state.
         viewModel.onQueueSkipRequested = { [weak self] in
-            guard let self, let next = self.nextPlayableQueueItem() else { return false }
-            // A hop is a user start: the abandoned title's context dies
-            // with it (open's default), the orders stay untouched.
-            Task { await self.open(item: next) }
+            guard let self, let next = self.nextPlayableTitle() else { return false }
+            // A hop into the orders is a user start: the abandoned title's
+            // context dies with it. A hop along the context keeps it, so a
+            // shuffled list or an album played song by song goes on.
+            Task { await self.open(item: next.item, preservesContext: next.fromContext) }
             return true
         }
         // The way back, as in the system's music app: the song this session
@@ -603,9 +605,10 @@ final class PlayerCoordinator: ObservableObject {
     /// OPENS its answer, the player line NAMES it; both call this, so the
     /// line can never promise something the end would not play.
     func resolveAdvance(after finishedId: String) -> LibraryItem? {
-        let offline = !NetworkMonitor.shared.isConnected
-        let queueIds = orders.ids
-        let contextIds = PlaybackContext.shared.ids
+        let inputs = advanceInputs()
+        let queueIds = inputs.queueIds
+        let contextIds = inputs.contextIds
+        let offline = inputs.offline
         // Stage 3 answers ITEMS (binge/series providers); the pure rule
         // speaks ids. The memo carries the resolved items across.
         var memo: [String: LibraryItem] = [:]
@@ -613,9 +616,8 @@ final class PlayerCoordinator: ObservableObject {
             after: finishedId,
             queueIds: queueIds,
             contextIds: contextIds,
-            isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
-                                                       isDownloaded: DownloadManager.shared.isDownloaded(itemId: $0)) },
-            resolves: { AppSession.shared.playableItem(forId: $0) != nil },
+            isPlayable: inputs.isPlayable,
+            resolves: inputs.resolves,
             isPodcast: ItemNamespace.isPodcastEpisode,
             bingeNext: { id in
                 guard let item = PodcastAutoContinue.next(after: id) else { return nil }
@@ -636,7 +638,26 @@ final class PlayerCoordinator: ObservableObject {
             }
             return nil
         }
-        return memo[hit.id] ?? AppSession.shared.playableItem(forId: hit.id)
+        return memo[hit.id] ?? inputs.item(hit.id)
+    }
+
+    /// What both resolutions read: the orders, the context, and the questions
+    /// every candidate answers. One place, so the skip and the end of a
+    /// title cannot read different lists.
+    private func advanceInputs() -> (queueIds: [String], contextIds: [String], offline: Bool,
+                                     isPlayable: (String) -> Bool, resolves: (String) -> Bool,
+                                     item: (String) -> LibraryItem?) {
+        let offline = !NetworkMonitor.shared.isConnected
+        let session = AppSession.shared
+        let downloads = DownloadManager.shared
+        return (orders.ids, PlaybackContext.shared.ids, offline,
+                { MediaAvailability.canPlayNow(isConnected: !offline,
+                                               isDownloaded: downloads.isDownloaded(itemId: $0)) },
+                // Resolution on demand: a catalogue id and a music server song
+                // are self-describing (`SyncCarried.resolvesOnDemand`), the
+                // session cache is only a shortcut; `open` fetches the detail.
+                { session.playableItem(forId: $0) != nil },
+                { session.playableItem(forId: $0) })
     }
 
     /// What plays after the ACTIVE title, for the player line. Same rule,
@@ -671,33 +692,27 @@ final class PlayerCoordinator: ObservableObject {
         advanceAfterFinish(finishedItemId: itemId)
     }
 
-    /// First queue entry that can actually start now, scanning in order.
-    /// Offline only downloaded items are candidates. An undownloaded handoff
-    /// would be rejected mid-transition and read like a crash. Entries that no
-    /// longer resolve to a library item are skipped.
-    private func nextPlayableQueueItem() -> LibraryItem? {
-        let offline = !NetworkMonitor.shared.isConnected
-        let ids = orders.ids
-        let session = AppSession.shared
-        guard let id = QueueContinuation.nextPlayable(
-            ids: ids,
-            isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
-                                                       isDownloaded: DownloadManager.shared.isDownloaded(itemId: $0)) },
-            // Resolution on demand: a catalogue id and a music server song
-            // are self-describing (`SyncCarried.resolvesOnDemand`), the
-            // session cache is only a shortcut; `open` fetches the detail.
-            // A cache miss made the advancer end silently on entries it
-            // could have fetched.
-            resolves: { session.playableItem(forId: $0) != nil }
-        ) else {
-            // The end has a REASON, and it is told apart: an empty queue is
+    /// The title a skip goes to: the first entry of the orders that can start
+    /// now, else the first of the context, by the same rule as the end of a
+    /// title (`PlaybackAdvance.next`). The context is where a shuffled list
+    /// or an album started song by song keeps its rest; reading only the
+    /// orders made "next song" do nothing there. Offline only downloaded
+    /// entries are candidates (an undownloaded handoff would be rejected
+    /// mid-transition and read like a crash); entries that do not resolve
+    /// are skipped.
+    private func nextPlayableTitle() -> (item: LibraryItem, fromContext: Bool)? {
+        let inputs = advanceInputs()
+        guard let hit = PlaybackAdvance.next(queueIds: inputs.queueIds, contextIds: inputs.contextIds,
+                                             isPlayable: inputs.isPlayable, resolves: inputs.resolves),
+              let item = inputs.item(hit.id) else {
+            // The end has a REASON, and it is told apart: empty lists are
             // normal, entries that cannot start now are a finding.
-            if !ids.isEmpty {
-                Logger.library.notice("QUEUE advance ends: \(ids.count) entries, none playable (offline=\(offline))")
+            if !inputs.queueIds.isEmpty || !inputs.contextIds.isEmpty {
+                Logger.library.notice("SKIP ends: orders=\(inputs.queueIds.count) context=\(inputs.contextIds.count), none playable (offline=\(inputs.offline))")
             }
             return nil
         }
-        return session.playableItem(forId: id)
+        return (item, hit.origin == .context)
     }
 
     /// Restores the last played session on app start. Paused, so nothing plays

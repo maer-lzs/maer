@@ -60,7 +60,7 @@ struct QueueTrackEndTests {
     @Test("Warteschlange: das Weiterschalten findet einen Jellyfin-Titel, den dieser Lauf nie gelistet hat")
     func theAdvanceFindsAnUnlistedSong() {
         // The advance's own rule with the seam's answer as `resolves`, the
-        // way `nextPlayableQueueItem` wires it; nothing is known locally.
+        // way `PlayerCoordinator.advanceInputs` wires it; nothing is known locally.
         let resolves: (String) -> Bool = {
             SyncCarried.resolve(itemId: $0, carried: nil, known: nil, sourceConfigured: true).item != nil
         }

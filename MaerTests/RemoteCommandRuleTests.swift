@@ -37,6 +37,48 @@ struct RemoteCommandRuleTests {
         #expect(MediaFamily.allCases.count == 6, "a new family needs a row here")
     }
 
+    /// Music plays the same however it was started: every id a music start
+    /// hands the player (a whole album or list, a song alone as shuffle and
+    /// top songs play them, from either server) is songs to the one rule,
+    /// taken from the providers' own id builders, not typed here.
+    @Test("jeder Musik-Startweg, Album, Liste und einzelner Song beider Server, ist fuer die Regel Songs")
+    func everyMusicStartIsSongs() throws {
+        let song = try JSONDecoder().decode(SubsonicSong.self, from: Data(#"{"id":"s1","title":"Song"}"#.utf8))
+        let ids = [
+            SubsonicProvider.itemId(albumId: "a1"), SubsonicProvider.itemId(playlistId: "p1"),
+            SubsonicProvider.songItem(from: song).id,
+            JellyfinProvider.itemId(albumId: "a1"), JellyfinProvider.itemId(playlistId: "p1"),
+            JellyfinProvider.itemId(songId: "s1"),
+            CatalogSongID.make(album: "lva:some_item", index: 2),
+        ]
+        for id in ids {
+            #expect(RemoteCommandRule.kind(forItem: id) == .songs, "\(id) is not songs")
+        }
+    }
+
+    /// The title key's hop to the next title reads the orders AND the
+    /// context, by the end's own rule, and keeps the context when it hops
+    /// along it: a shuffled list keeps its rest in the context, and a hop
+    /// that read only the orders did nothing there.
+    @Test("der Sprung zum naechsten Titel liest Auftraege und Kontext nach der Regel des Titelendes und behaelt den Kontext", .needsTheSources)
+    func theSkipReadsTheContext() throws {
+        let hop = PlaybackAdvance.next(queueIds: [], contextIds: ["sub:song:2", "sub:song:3"],
+                                       isPlayable: { _ in true }, resolves: { _ in true })
+        #expect(hop?.id == "sub:song:2" && hop?.origin == .context, "the rule does not reach the context")
+        let order = PlaybackAdvance.next(queueIds: ["rss:feed:ep"], contextIds: ["sub:song:2"],
+                                         isPlayable: { _ in true }, resolves: { _ in true })
+        #expect(order?.id == "rss:feed:ep" && order?.origin == .order, "the orders lost their place in front")
+        let coordinator = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/ViewModels/PlayerCoordinator.swift"), encoding: .utf8))
+        let skip = try #require(ABSPodcastRefreshTests.body(of: "private func nextPlayableTitle()", in: coordinator),
+                                "the skip has no resolution of its own name")
+        #expect(skip.contains("PlaybackAdvance.next(queueIds: inputs.queueIds, contextIds: inputs.contextIds"),
+                "the skip does not read orders and context by the end's rule")
+        #expect(coordinator.contains("open(item: next.item, preservesContext: next.fromContext)"),
+                "a hop along the context drops it")
+        #expect(!coordinator.contains("QueueContinuation.nextPlayable("), "a resolution of the orders alone came back")
+    }
+
     @Test("Zurueck: 1 s geht zum Song davor, 5 s an den Anfang; erster Song mit Vorgaenger geht zum Vorgaenger, der allererste an den Anfang")
     func theBackRule() {
         typealias B = RemoteCommandRule.Back

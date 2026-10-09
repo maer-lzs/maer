@@ -184,7 +184,7 @@ final class PlayQueue: ObservableObject {
 }
 
 /// Pure cross-media auto-continue rule (testable core of
-/// `PlayerCoordinator.nextPlayableQueueItem`). Returns the first queued id that
+/// `PlaybackAdvance.next`, read by the end of a title and by a skip). Returns the first queued id that
 /// can start now. Scanning in order, regardless of media type, so a book,
 /// episode or album plays next as the queue dictates. Offline only downloaded
 /// items are playable; ids that no longer resolve to a library item are
