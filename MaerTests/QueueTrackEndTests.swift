@@ -151,6 +151,23 @@ struct QueueTrackEndTests {
                 "the order of the change moved; the states above no longer describe it")
     }
 
+    /// The held player stays on screen, and a play on it would run on a model
+    /// already stopped (claim, lock screen and widget for the old title). It
+    /// takes no input of any kind, and the one grip that says so blocks the
+    /// accessibility tree with the finger.
+    @Test("Grosser Player: der gehaltene alte Titel nimmt keine Eingabe an, weder Finger noch VoiceOver noch Schaltersteuerung")
+    func theHeldPlayerTakesNoInput() throws {
+        let screen = try Self.source("Sources/Views/PlayerScreen.swift")
+        #expect(screen.contains(".takesInput(content == .player)"), "the held player is not closed by the input grip")
+        #expect(!screen.contains(".allowsHitTesting("), "the screen blocks the finger alone again")
+        let library = try Self.source("Sources/Views/LibraryView.swift")
+        let start = try #require(library.range(of: "func takesInput(_ takes: Bool) -> some View {"), "the input grip is gone")
+        let end = try #require(library.range(of: "}", range: start.upperBound..<library.endIndex))
+        let grip = library[start.upperBound..<end.lowerBound]
+        #expect(grip.contains("allowsHitTesting(takes)"), "the grip lets the finger in: \(grip)")
+        #expect(grip.contains("accessibilityHidden(!takes)"), "the grip lets the accessibility tree in: \(grip)")
+    }
+
     @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")
     func thePlayerClosesOnNothing() throws {
         let overlay = try Self.source("Sources/Views/FullPlayerOverlay.swift")

@@ -1622,8 +1622,16 @@ extension View {
     /// survive) but are invisible, untouchable and hidden from VoiceOver.
     func tabVisibility(_ visible: Bool) -> some View {
         opacity(visible ? 1 : 0)
-            .allowsHitTesting(visible)
-            .accessibilityHidden(!visible)
+            .takesInput(visible)
+    }
+
+    /// Whether a view takes input of any kind, without changing how it
+    /// looks. A finger is not the only way in: VoiceOver, Voice Control,
+    /// Switch Control and Full Keyboard Access reach a view through the
+    /// accessibility tree, so blocking hit testing alone leaves them in.
+    func takesInput(_ takes: Bool) -> some View {
+        allowsHitTesting(takes)
+            .accessibilityHidden(!takes)
     }
 }
 

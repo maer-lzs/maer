@@ -43,8 +43,9 @@ struct PlayerScreen: View {
     var bottomInset: CGFloat = 0
 
     /// The session this screen showed last. The coordinator drops its model
-    /// while a title change loads; the screen keeps this one in place, not
-    /// touchable, until the new one is ready. Its title stays with it.
+    /// while a title change loads; the screen keeps this one in place,
+    /// taking no input of any kind, until the new one is ready. Its title
+    /// stays with it.
     @State private var shown: ShownSession?
 
     struct ShownSession {
@@ -69,7 +70,7 @@ struct PlayerScreen: View {
                 if let session = displayed {
                     player(session.viewModel, session.item)
                         .id(ObjectIdentifier(session.viewModel))
-                        .allowsHitTesting(content == .player)
+                        .takesInput(content == .player)
                         .task(id: ObjectIdentifier(session.viewModel)) {
                             if content == .player { shown = session }
                         }
