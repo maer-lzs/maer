@@ -70,6 +70,14 @@ final class RowChain<Snapshot> {
     private var waiting = 0
     /// The number the next handed-over write gets.
     private var issued = 0
+    /// Writes handed over and not yet ended (waiting or running).
+    private var unfinished = 0
+    /// Whether a write is on its way to the rows: a read of the rows beside
+    /// the chain would see them before it landed.
+    var isWriting: Bool { unfinished > 0 }
+    /// How many writes were ever handed over; a read that starts and ends
+    /// with the same count saw no write in between.
+    var writesIssued: Int { issued }
     /// The last write a narrowed permission covers: a permission to empty
     /// narrowed at its call covers the writes queued by then and its own,
     /// never a write queued later. It only grows, as the numbers do.
@@ -141,9 +149,11 @@ final class RowChain<Snapshot> {
         issued += 1
         if narrowing { narrowedThrough = number }
         waiting += 1
+        unfinished += 1
         pendingWrite = Task(priority: .utility) { [weak self] in
             await previous?.value
             guard let self else { return }
+            defer { self.unfinished -= 1 }
             self.waiting -= 1
             if self.startReadFailed {
                 guard let adopt = self.adopt else {

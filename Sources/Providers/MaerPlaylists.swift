@@ -162,10 +162,19 @@ final class MaerPlaylists: ObservableObject {
     /// The rows this build cannot decode, as stored; nil when there are
     /// none. Throws when the read fails, so a hand-over holds instead of
     /// leaving them under the next account.
+    /// The rows are being written; their unread part is read after.
+    private struct RowsStillWriting: Error {}
+
     private func undecodedRows() throws -> [String: Data]? {
         // Only a start that missed rows, or rows that came back, can leave
         // such rows; otherwise there is nothing to read.
         guard keeper.startIncomplete else { return nil }
+        // Read after the chain, never beside it: a hand-over right after a
+        // replacement would see the rows before its write landed.
+        guard !keeper.isWriting else {
+            Logger.library.notice("PLAYLIST owner held: a write of the rows is on its way")
+            throw RowsStillWriting()
+        }
         let rows = try keeper.undecodedNow()
         return rows.isEmpty ? nil : rows
     }

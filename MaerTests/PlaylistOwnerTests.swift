@@ -313,6 +313,41 @@ struct PlaylistOwnerTests {
         }
     }
 
+    /// Two hand-overs without waiting between them: the second one must
+    /// not read the rows before the first one's write landed, or B's rest
+    /// carries A's unread row and both accounts hold it.
+    @Test("zwei Uebergaben ohne Warten: die zweite liest die Zeilen erst nach dem Schrieb der ersten")
+    func twoHandOversWithoutWaitingReadAfterTheWrite() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.directory) }
+        try await withSyncOn {
+            let database = rig.database
+            let first = MaerPlaylists(database: database)
+            _ = first.create(name: "Von A")
+            await first.awaitPendingWrites()
+            _ = try await database.connection().run("INSERT INTO maer_playlist (key, payload) VALUES (?, ?)",
+                                                    [.text("later-form"), .blob(Self.laterForm)])
+            let store = MaerPlaylists(database: database)
+            #expect(store.follow(owner: "account-a"))
+            await store.awaitPendingWrites()
+            #expect(store.follow(owner: "account-b"))
+            // At once back, while B's replacement is still on its way.
+            #expect(!store.follow(owner: "account-a"), "the second hand-over read the rows beside the write")
+            await store.awaitPendingWrites()
+            var handed = false
+            for _ in 0..<100 where !handed {
+                try await Task.sleep(for: .milliseconds(20))
+                handed = store.follow(owner: "account-a")
+                await store.awaitPendingWrites()
+            }
+            #expect(handed, "the way back never came after the write")
+            try await Task.sleep(for: .milliseconds(100))
+            let restOfB = try rig.shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-b")
+            #expect((restOfB?.unread ?? [:]).isEmpty, "A's unread row rested with B: \(String(describing: restOfB?.unread?.keys.sorted()))")
+            #expect(try undecoded(database) == ["later-form": Self.laterForm], "A's unread row did not come back")
+        }
+    }
+
     @Test("bricht die Uebergabe nach dem Ablegen und vor dem Ersetzen ab, geht die ungelesene Zeile nicht verloren und steht nicht doppelt")
     func anUnreadRowSurvivesABrokenReplacement() async throws {
         let rig = try rig()
