@@ -206,6 +206,13 @@ actor Ablage {
         try? Data(contentsOf: url(for: name))
     }
 
+    /// How many bytes a grown file holds, without reading it; 0 when it is
+    /// not there.
+    nonisolated func grownCount(name: String) -> Int {
+        let size = (try? FileManager.default.attributesOfItem(atPath: url(for: name).path))?[.size] as? NSNumber
+        return size?.intValue ?? 0
+    }
+
     /// Appends at the end; the file and its folder are made when missing.
     nonisolated func append(_ bytes: Data, name: String) throws {
         let target = url(for: name)

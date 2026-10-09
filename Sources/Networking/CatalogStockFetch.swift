@@ -212,9 +212,21 @@ nonisolated enum CatalogStockFetch {
             return (ablage.grownBytes(name: name) ?? Data(), total)
         }
 
-        func append(_ slice: Data, total stated: Int?) throws {
+        /// Appends a slice that follows `held` bytes of the run. When the
+        /// file on the disk is not those bytes (the lever emptied the stocks
+        /// while the run went on), the slice is not kept: the run goes on
+        /// from memory, and the disk never holds the tail of the file
+        /// without its head, which a run after a restart would splice.
+        /// Answers whether the slice was kept.
+        @discardableResult
+        func append(_ slice: Data, after held: Int, total stated: Int?) throws -> Bool {
+            guard ablage.grownCount(name: name) == held else {
+                reset()
+                return false
+            }
             try ablage.append(slice, name: name)
             if let stated { try ablage.saveNow(stated, name: totalName) }
+            return true
         }
 
         /// How often the whole file was read and gave no work. Kept beside
@@ -313,10 +325,13 @@ nonisolated enum CatalogStockFetch {
                 continue
             }
             knownTotal = stated ?? knownTotal
+            let held = body.count
             body.append(data)
             resumed = false
             do {
-                try partial?.append(data, total: knownTotal)
+                if let partial, try !partial.append(data, after: held, total: knownTotal) {
+                    Logger.library.notice("STOCK gutenberg dump slice not kept: the file on the disk is not the run's head held=\(held)")
+                }
             } catch {
                 // The run goes on from memory; only its resumability is lost.
                 Logger.library.error("STOCK gutenberg dump slice not kept reason=\(FailureReason.of(error), privacy: .public)")

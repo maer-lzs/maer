@@ -88,19 +88,26 @@ nonisolated struct CatalogStockStore: Sendable {
             .sorted()
     }
 
-    /// Removes every kept stock. Returns how many files went, so the lever
-    /// can say what it emptied instead of claiming success. A stock's file
-    /// aside goes with it (`Ablage.retireAside`), else the surface read
-    /// "undecodable" for ever after the lever, not "missing".
+    /// Removes every kept stock and every unfinished dump. Returns how many
+    /// of them went, so the lever can say what it emptied instead of
+    /// claiming success. A dump's counters (its total, its empty reads) go
+    /// with it, and every file aside (`Ablage.retireAside`), else the
+    /// surface read "undecodable" for ever after the lever, not "missing".
+    /// A dump that runs meanwhile keeps no further slice on the disk
+    /// (`DumpPartial.append(_:after:total:)`) and finishes from memory.
     @discardableResult
     func clear(in directory: URL = CatalogStockStore.directory) -> Int {
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil)) ?? []
         var gone = 0
-        for file in files where file.pathExtension == "json" {
+        let dump = CatalogStockFetch.partialSuffix
+        for file in files where file.pathExtension == "json" || file.lastPathComponent.hasSuffix(dump) {
             if (try? FileManager.default.removeItem(at: file)) != nil { gone += 1 }
         }
         let ablage = Ablage(directory: directory)
+        for file in files where file.lastPathComponent.hasSuffix(dump + ".total") || file.lastPathComponent.hasSuffix(dump + ".empty") {
+            ablage.removeNow(name: file.lastPathComponent)
+        }
         for file in files where file.pathExtension == "corrupt" {
             let name = file.deletingPathExtension().lastPathComponent
             do {

@@ -98,6 +98,40 @@ struct GutenbergDumpTests {
         #expect(wire.requests == 1, "one question past the end (416), no slice fetched again")
     }
 
+    /// The lever that empties the derived stocks, pulled while a dump runs:
+    /// what lies on the disk afterwards must never be the tail of the file
+    /// without its head, else a run after a restart splices it.
+    @Test("der Hebel mitten im Abruf: auf der Platte liegt danach nie das Ende ohne den Anfang")
+    func theLeverMidRunLeavesNoHeadlessTail() async throws {
+        let file = try Self.excerpt()
+        let (partial, folder) = try partial()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let wire = DumpWire(file: file, chunk: 2000)
+        let works = try await CatalogStockFetch.gutenbergStock(partial: partial) { request in
+            // Before the second slice: the first lies on the disk, the lever runs.
+            if wire.requests == 1 { CatalogStockStore.shared.clear(in: folder) }
+            return wire.answer(request)
+        }
+        #expect(works.count == 2, "the run in memory finishes")
+        let held = partial.load().body
+        #expect(held.isEmpty || held == file, "the disk holds \(held.count) of \(file.count) bytes, not from the start")
+    }
+
+    /// The lever over a folder with an unfinished dump and its counters:
+    /// nothing of a stock stays, and what went is said.
+    @Test("der Hebel nimmt angefangene Abrufe samt Zaehlern mit")
+    func theLeverTakesUnfinishedDumps() async throws {
+        let (partial, folder) = try partial()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try partial.append(Data("head".utf8), after: 0, total: 4586)
+        _ = try partial.noteEmptyRead()
+        let before = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+        #expect(before.count == 3, "the precondition: the dump, its total and its count: \(before)")
+        CatalogStockStore.shared.clear(in: folder)
+        let after = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+        #expect(after.isEmpty, "left after the lever: \(after)")
+    }
+
     @Test("I1: eine Datei, die sich zwischen zwei Scheiben oben aendert, faengt neu an und wird fertig")
     func aFileRewrittenUpstreamStartsOverAndFinishes() async throws {
         let file = try Self.excerpt()

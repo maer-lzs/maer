@@ -109,8 +109,8 @@ struct CatalogStockRunTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         let partial = CatalogStockFetch.DumpPartial(surface: "gutenberg", directory: folder)
         #expect(partial.load().body.isEmpty && partial.load().total == nil, "a first run starts at zero")
-        try partial.append(Data("id,title\n".utf8), total: 21_196_613)
-        try partial.append(Data("1,Alice\n".utf8), total: 21_196_613)
+        try partial.append(Data("id,title\n".utf8), after: 0, total: 21_196_613)
+        try partial.append(Data("1,Alice\n".utf8), after: 9, total: 21_196_613)
         let held = partial.load()
         #expect(String(decoding: held.body, as: UTF8.self) == "id,title\n1,Alice\n", "slices append in order")
         #expect(held.total == 21_196_613)
@@ -150,7 +150,7 @@ struct CatalogStockRunTests {
     func theDumpIsWired() throws {
         let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
         #expect(fetch.contains("var (body, knownTotal) = partial?.load() ?? (Data(), nil)"))
-        let append = try #require(fetch.range(of: "try partial?.append(data, total: knownTotal)"))
+        let append = try #require(fetch.range(of: "try !partial.append(data, after: held, total: knownTotal)"))
         let grow = try #require(fetch.range(of: "body.append(data)"))
         #expect(grow.lowerBound < append.lowerBound, "each slice kept on the disk as it arrives")
         let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")
