@@ -150,7 +150,7 @@ struct SyncPlanTests {
     /// exists, the refresh read answered, the status changed, the error was
     /// an offline one). Named here, one line each.
     nonisolated static let outcomeBranches = [
-        "guard let item else { return }",
+        "guard let item else { return false }",
         "if raise {",
         "if let fresh = try? await provider.fetchItemDetail(itemId: item.id),",
         "if syncStatus != .synced {",
@@ -171,7 +171,7 @@ struct SyncPlanTests {
     func theExecutionDecidesNothing() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)
-        let body = try #require(functionBody(of: "private func performSync(_ origin: SyncOrigin) async {", in: text))
+        let body = try #require(functionBody(of: "private func performSync(_ origin: SyncOrigin) async -> Bool {", in: text))
         #expect(body.contains("SyncRules.plan(origin: origin"), "die Ausfuehrung fragt den Plan nicht mehr")
         #expect(Self.ownDecisions(in: body).isEmpty, "eigene Entscheidungen: \(Self.ownDecisions(in: body))")
         #expect(Self.ownDecisions(in: "        if provider.capabilities.contains(.progressSync) {").count == 1,

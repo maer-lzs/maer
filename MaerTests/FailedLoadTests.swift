@@ -30,7 +30,7 @@ struct FailedLoadTests {
 
     /// A source whose every track lives at a loopback port nothing listens
     /// on: the item fails to load at once, as a stream does without network.
-    private final class DeadAddressProvider: AudioProvider {
+    final class DeadAddressProvider: AudioProvider {
         var providerId: String { "dead-address" }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }

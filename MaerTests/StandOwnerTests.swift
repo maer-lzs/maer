@@ -331,7 +331,8 @@ struct StandOwnerTests {
         #expect(pausing.contains("if wasPlaying { pauseRecordPending = true }"), "a pause marks no record on its way")
         let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
         let run = try #require(ABSPodcastRefreshTests.body(of: "func syncProgress(_ origin: SyncOrigin) async {", in: sync))
-        #expect(run.contains("if pauseRecordPending { coversPause = true }") && run.contains("if coversPause { pauseRecordPending = false }"),
+        #expect(run.contains("AccountSwitchHold.clearsPauseMark(roundBeganPending: beganPending, roundWrote: wrote)")
+                && run.contains("if coversPause { pauseRecordPending = false }"),
                 "the mark is cleared by a round that did not write the paused stand")
     }
 
@@ -344,6 +345,60 @@ struct StandOwnerTests {
         #expect(AccountSwitchHold.records(isPlaying: false, pauseRecordPending: true))
         #expect(AccountSwitchHold.records(isPlaying: true, pauseRecordPending: true))
         #expect(!AccountSwitchHold.records(isPlaying: false, pauseRecordPending: false))
+        #expect(AccountSwitchHold.clearsPauseMark(roundBeganPending: true, roundWrote: true))
+        #expect(!AccountSwitchHold.clearsPauseMark(roundBeganPending: true, roundWrote: false))
+        #expect(!AccountSwitchHold.clearsPauseMark(roundBeganPending: false, roundWrote: true))
+    }
+
+    /// A paused piece whose record waits, then a sync round that leaves
+    /// before its write (an unanswered start, a conflict): the mark stays,
+    /// and the change of account records the stand of the pause. A round
+    /// that writes clears it.
+    @Test("eine Runde ohne Schrieb laesst die Pausen-Marke stehen, der Kontowechsel nimmt den Stand auf; eine Runde mit Schrieb loescht sie")
+    func aRoundWithoutAWriteKeepsThePauseMark() async throws {
+        func model(progress: Double?) async -> (PlayerViewModel, String) {
+            let id = "pausemark-\(UUID().uuidString)"
+            let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 600, contentUrl: "t.mp3", metadata: nil)
+            let detail = LibraryItemDetail(
+                id: id,
+                media: LibraryItemMedia(metadata: nil, duration: 600, chapters: nil, tracks: [track]),
+                userMediaProgress: progress.map {
+                    MediaProgress(currentTime: $0, duration: 600, progress: nil, isFinished: false, lastUpdate: nil)
+                })
+            let player = PlayerViewModel(provider: FailedLoadTests.DeadAddressProvider())
+            await player.load(item: detail)
+            return (player, id)
+        }
+
+        // No source answered the start: the round leaves before the write.
+        let (unanswered, first) = await model(progress: nil)
+        #expect(!unanswered.startSourceResolved, "the precondition: an unanswered start")
+        unanswered.currentTime = 42
+        unanswered.pauseRecordPending = true
+        await unanswered.syncProgress(.pause)
+        #expect(unanswered.pauseRecordPending, "a round without a write cleared the mark")
+        unanswered.holdForAccountSwitch()
+        let firstStand = ListeningStore.backup(first)?.first ?? -1
+        #expect(firstStand == 42, "the change of account did not record the paused stand: \(firstStand)")
+
+        // A backward jump nobody chose: the round raises the conflict and leaves.
+        let (conflicted, second) = await model(progress: 500)
+        #expect(conflicted.lastSyncedTime == 500, "the precondition: the server's stand is known")
+        conflicted.currentTime = 100
+        conflicted.pauseRecordPending = true
+        await conflicted.syncProgress(.pause)
+        #expect(conflicted.pendingServerConflict != nil, "the precondition: the round met the conflict")
+        #expect(conflicted.pauseRecordPending, "a round that met the conflict cleared the mark")
+        conflicted.holdForAccountSwitch()
+        let secondStand = ListeningStore.backup(second)?.first ?? -1
+        #expect(secondStand == 100, "the change of account did not record the paused stand: \(secondStand)")
+
+        // A round that writes takes the stand and clears the mark.
+        let (written, _) = await model(progress: 500)
+        written.currentTime = 510
+        written.pauseRecordPending = true
+        await written.syncProgress(.pause)
+        #expect(!written.pauseRecordPending, "a round that wrote kept the mark")
     }
 
     /// The rows of a witness, with the mirror installed on its own defaults.

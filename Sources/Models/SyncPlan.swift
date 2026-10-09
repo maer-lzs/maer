@@ -114,4 +114,12 @@ nonisolated enum AccountSwitchHold {
     static func records(isPlaying: Bool, pauseRecordPending: Bool) -> Bool {
         isPlaying || pauseRecordPending
     }
+
+    /// Whether a sync round clears the mark of a pause whose record waits:
+    /// only a round that began with the mark set and wrote. A round that
+    /// left before its write (no item, an unanswered start, a conflict)
+    /// took nothing, so the mark stays for the hold.
+    static func clearsPauseMark(roundBeganPending: Bool, roundWrote: Bool) -> Bool {
+        roundBeganPending && roundWrote
+    }
 }

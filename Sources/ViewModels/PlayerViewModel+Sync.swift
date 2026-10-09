@@ -68,14 +68,18 @@ extension PlayerViewModel {
         defer { syncInFlight = false }
 
         var runOrigin = origin
-        // Whether a round began after a pause of a running piece: only such
-        // a round wrote the stand of that pause. A round already on its way
-        // when the pause came wrote the state from before it.
+        // Whether a round that began after a pause of a running piece also
+        // wrote: only such a round took the stand of that pause. A round
+        // already on its way when the pause came wrote the state from before
+        // it, and a round that left before the write took nothing.
         var coversPause = false
         repeat {
             syncFollowUpOrigin = nil
-            if pauseRecordPending { coversPause = true }
-            await performSync(runOrigin)
+            let beganPending = pauseRecordPending
+            let wrote = await performSync(runOrigin)
+            if AccountSwitchHold.clearsPauseMark(roundBeganPending: beganPending, roundWrote: wrote) {
+                coversPause = true
+            }
             if let next = syncFollowUpOrigin { runOrigin = next }
         } while syncFollowUpOrigin != nil
         if coversPause { pauseRecordPending = false }
@@ -96,8 +100,11 @@ extension PlayerViewModel {
 
     /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
     /// own: every branch below reads the plan, or the outcome of the write.
-    private func performSync(_ origin: SyncOrigin) async {
-        guard let item else { return }
+    /// Says whether the round wrote (to the server or into the queue); the
+    /// exits before the write take nothing.
+    @discardableResult
+    private func performSync(_ origin: SyncOrigin) async -> Bool {
+        guard let item else { return false }
         let plan = SyncRules.plan(origin: origin, state: syncState(for: item))
         switch plan.gate {
         case .unresolvedStart, .belowThreshold:
@@ -105,7 +112,7 @@ extension PlayerViewModel {
             // forced: at 00:00 in a fresh session this would overwrite a
             // server that is hours ahead, and the suspicious-drop guard has
             // no reference value to catch it.
-            return
+            return false
         case .conflict(let raise):
             // Core rule: a backward jump the user did NOT initiate is never
             // written silently.
@@ -113,7 +120,7 @@ extension PlayerViewModel {
                 pendingServerConflict = ServerConflict(serverTime: lastSyncedTime, localTime: currentTime)
                 showSourceHint(.conflict)
             }
-            return
+            return false
         case .write:
             break
         }
@@ -255,6 +262,7 @@ extension PlayerViewModel {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
         }
+        return true
     }
 
     /// Connection lost while playing: set the visible sync status to "offline"
