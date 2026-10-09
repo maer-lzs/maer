@@ -114,13 +114,50 @@ struct QueueTrackEndTests {
                 "the state after `STANDBY cleared live`: it spun forever")
     }
 
+    /// A title change with the player open: the coordinator drops its model
+    /// and loads, the screen keeps the title it showed until the new one is
+    /// ready. The states of a change, in the order `open` sets them (a
+    /// session, no session while loading, the new session), never show the
+    /// spinner once a session was shown; a load that fails shows its error,
+    /// and a first open still spins.
+    @Test("Grosser Player: ein Titelwechsel zeigt keinen Ladekreis zwischen zwei Titeln, der alte Titel bleibt bis zum neuen")
+    func aTitleChangeShowsNoSpinnerBetweenTitles() throws {
+        let change: [(hasSession: Bool, isLoading: Bool, loadError: String?)] = [
+            (true, false, nil), (false, true, nil), (false, true, nil), (true, false, nil),
+        ]
+        var shown = false
+        var seen: [PlayerScreenContent] = []
+        for state in change {
+            let content = PlayerScreenContent.of(hasSession: state.hasSession, isLoading: state.isLoading,
+                                                 loadError: state.loadError, holdsShown: shown)
+            seen.append(content)
+            if content == .player { shown = true }
+        }
+        #expect(seen == [.player, .held, .held, .player], "the change showed: \(seen)")
+        #expect(PlayerScreenContent.of(hasSession: false, isLoading: true, loadError: nil, holdsShown: false) == .loading,
+                "a first open without a title before it spins as before")
+        #expect(PlayerScreenContent.of(hasSession: false, isLoading: false, loadError: "x", holdsShown: true) == .error("x"),
+                "a failed load hides its error behind the old title")
+        // The screen asks the rule with what it showed, and the order in
+        // `open` that makes the gap is the one above.
+        let screen = try Self.source("Sources/Views/PlayerScreen.swift")
+        #expect(screen.contains("holdsShown: shown != nil"), "the screen does not tell the rule what it showed")
+        #expect(screen.contains("case .player, .held:"), "the held title is drawn by another branch than the running one")
+        let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
+        let drop = try #require(coordinator.range(of: "viewModel = nil beginOwnSession(item, origin: origin)"), "open no longer drops its model")
+        let load = try #require(coordinator.range(of: "isLoading = true"), "open no longer marks the load")
+        let swap = try #require(coordinator.range(of: "viewModel = newViewModel"), "open no longer swaps the model")
+        #expect(drop.lowerBound < load.lowerBound && load.lowerBound < swap.lowerBound,
+                "the order of the change moved; the states above no longer describe it")
+    }
+
     @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")
     func thePlayerClosesOnNothing() throws {
         let overlay = try Self.source("Sources/Views/FullPlayerOverlay.swift")
         #expect(overlay.contains(".onChange(of: coordinator.screenContent == .nothing, initial: true)"))
         #expect(overlay.contains("if isEmpty { slideOutAndDismiss() }"))
         let screen = try Self.source("Sources/Views/PlayerScreen.swift")
-        #expect(screen.contains("switch coordinator.screenContent"))
+        #expect(screen.contains("switch content") && screen.contains("PlayerScreenContent.of(hasSession: coordinator.viewModel != nil && coordinator.activeItem != nil"))
         #expect(screen.components(separatedBy: "ProgressView(").count - 1 == 1,
                 "one spinner, the one for loading; the bare one is gone")
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
