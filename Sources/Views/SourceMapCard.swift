@@ -109,41 +109,24 @@ struct SourceMapCard: View {
     }
 }
 
-/// One row of the map: its symbol, its title and the line under it. At an
-/// accessibility size the line stands in the label's title, so it keeps the
-/// title's edge, where the row's separator starts, instead of running under
-/// the symbol; at the other sizes the line stays under the whole label.
+/// One row of the map: its symbol, its title and the line under it. The
+/// line stands in the label's title at every size, so it keeps the title's
+/// edge, where the row's separator starts, instead of running under the
+/// symbol.
 struct SourceMapRowLabel: View {
     let title: LocalizedStringKey
     let symbol: String
     let line: Text
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    /// Whether the line belongs to the label's title at this size.
-    nonisolated static func lineInTitle(_ size: DynamicTypeSize) -> Bool {
-        size.isAccessibilitySize
-    }
 
     var body: some View {
-        if Self.lineInTitle(typeSize) {
-            Label {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                    styledLine
-                }
-            } icon: {
-                Image(systemName: symbol)
-            }
-        } else {
+        Label {
             VStack(alignment: .leading, spacing: 3) {
-                Label(title, systemImage: symbol)
-                styledLine
+                Text(title)
+                line.font(.caption).foregroundStyle(.secondary)
             }
+        } icon: {
+            Image(systemName: symbol)
         }
-    }
-
-    private var styledLine: some View {
-        line.font(.caption).foregroundStyle(.secondary)
     }
 }
 

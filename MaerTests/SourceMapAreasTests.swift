@@ -6,7 +6,6 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-import SwiftUI
 @testable import Maer
 
 /// The areas list must be COMPLETE. Free music steered a visible
@@ -105,22 +104,24 @@ struct SourceMapAreasTests {
         #expect(SourceMapCard.isConnected(.audiobooks, facts: abs))
     }
 
-    /// At an accessibility size the line under a row's title stands at the
-    /// title's edge, where the separator starts (seen at AX3: it ran under
-    /// the symbol); at the other sizes it stays under the whole label. Both
-    /// kinds of row on the card, the areas and Mär Sync, go through the one
-    /// row label.
-    @Test("bei Bedienungshilfen-Groessen steht die Unterzeile einer Kartenzeile an der Titelkante, beide Zeilenarten nehmen denselben Baustein")
-    func theLineKeepsTheTitleEdgeAtAccessibilitySizes() throws {
-        #expect(SourceMapRowLabel.lineInTitle(.accessibility1))
-        #expect(SourceMapRowLabel.lineInTitle(.accessibility3))
-        #expect(SourceMapRowLabel.lineInTitle(.accessibility5))
-        #expect(!SourceMapRowLabel.lineInTitle(.large))
-        #expect(!SourceMapRowLabel.lineInTitle(.xxxLarge))
+    /// The line under a row's title stands at the title's edge at every
+    /// size, where the separator starts (seen at AX3: it ran under the
+    /// symbol, and at the usual size too): it is part of the label's title.
+    /// Both kinds of row on the card, the areas and Mär Sync, go through
+    /// the one row label.
+    @Test("die Unterzeile einer Kartenzeile steht bei jeder Groesse an der Titelkante, beide Zeilenarten nehmen denselben Baustein")
+    func theLineKeepsTheTitleEdge() throws {
         let card = SyncContractFenceTests.stripped(try sourceText("Sources/Views/SourceMapCard.swift"))
         let uses = card.components(separatedBy: "SourceMapRowLabel(title:").count - 1
         #expect(uses == 2, "rows of the card through the row label: \(uses)")
         #expect(!card.contains("Label(Self.title(area)"), "an area row builds its own label again")
+        let row = try #require(ABSPodcastRefreshTests.body(of: "struct SourceMapRowLabel: View {", in: card))
+        let title = try #require(row.range(of: "Label {"), "the line is no part of the label's title")
+        let line = try #require(row.range(of: "line.font(.caption)"), "the row draws no line")
+        let icon = try #require(row.range(of: "} icon: {"), "the label has no symbol of its own")
+        #expect(title.lowerBound < line.lowerBound && line.lowerBound < icon.lowerBound,
+                "the line stands outside the label's title")
+        #expect(!row.contains("dynamicTypeSize"), "the edge depends on the size again")
     }
 
     /// Mär Sync ist kein Medienbereich, steht aber auf der Karte: sonst
