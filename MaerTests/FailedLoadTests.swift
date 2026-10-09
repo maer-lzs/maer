@@ -26,6 +26,11 @@ struct FailedLoadTests {
         #expect(FailedLoad.rebuildsOnPathChange(noted: true, satisfied: true))
         #expect(!FailedLoad.rebuildsOnPathChange(noted: true, satisfied: false))
         #expect(!FailedLoad.rebuildsOnPathChange(noted: false, satisfied: true))
+        #expect(FailedLoad.holdsAhead(failedIndex: 2, currentIndex: 0, inCurrentQueue: true, heldAt: nil))
+        #expect(FailedLoad.holdsAhead(failedIndex: 1, currentIndex: 0, inCurrentQueue: true, heldAt: 2))
+        #expect(!FailedLoad.holdsAhead(failedIndex: 3, currentIndex: 0, inCurrentQueue: true, heldAt: 2))
+        #expect(!FailedLoad.holdsAhead(failedIndex: 0, currentIndex: 0, inCurrentQueue: true, heldAt: nil))
+        #expect(!FailedLoad.holdsAhead(failedIndex: 2, currentIndex: 0, inCurrentQueue: false, heldAt: nil))
     }
 
     /// A source whose every track lives at a loopback port nothing listens
@@ -84,6 +89,84 @@ struct FailedLoadTests {
         let rebuilt = try #require(model.player?.currentItem, "the play left a queue")
         #expect(rebuilt !== failed, "the play built the item anew")
         #expect(model.currentTime == held, "the rebuild keeps the held position: \(model.currentTime)")
+        model.player?.pause()
+    }
+
+    /// Tracks with an absolute path play from that file; every other track
+    /// sits at the dead loopback port.
+    final class MixedProvider: AudioProvider {
+        var providerId: String { "mixed-address" }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            throw NSError(domain: "mixed-address", code: 404)
+        }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? {
+            contentPath.hasPrefix("/") ? URL(fileURLWithPath: contentPath) : URL(string: "http://127.0.0.1:1/\(contentPath)")
+        }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    private func tone(seconds: Double) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).caf")
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1))
+        let file = try AVAudioFile(forWriting: url, settings: format.settings)
+        let frames = AVAudioFrameCount(44_100 * seconds)
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
+        buffer.frameLength = frames
+        if let data = buffer.floatChannelData?[0] {
+            for i in 0..<Int(frames) { data[i] = 0.1 * sinf(Float(i) * 0.05) }
+        }
+        try file.write(from: buffer)
+        return url
+    }
+
+    @Test("eine spaetere Datei, die nicht laden kann, haelt an ihrem Anfang an, die Position springt nicht ueber sie")
+    func aLaterFailedTrackHoldsAtItsStart() async throws {
+        let first = try tone(seconds: 1)
+        let third = try tone(seconds: 1)
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: third)
+        }
+        let tracks = [
+            ABSAudioTrack(index: 0, startOffset: 0, duration: 1, contentUrl: first.path, metadata: nil),
+            ABSAudioTrack(index: 1, startOffset: 1, duration: 1, contentUrl: "second.mp3", metadata: nil),
+            ABSAudioTrack(index: 2, startOffset: 2, duration: 1, contentUrl: third.path, metadata: nil),
+        ]
+        let detail = LibraryItemDetail(
+            id: "loadfail-later-\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 3, chapters: nil, tracks: tracks),
+            userMediaProgress: MediaProgress(currentTime: 0, duration: 3, progress: 0, isFinished: false, lastUpdate: nil))
+        let model = PlayerViewModel(provider: MixedProvider())
+        await model.load(item: detail)
+        let queued = model.player?.items().count ?? 0
+        #expect(queued == 3, "the precondition: all three files are queued")
+        model.play()
+
+        var furthest = 0.0
+        await waitFor {
+            furthest = max(furthest, model.currentTime)
+            return model.sourceHint == .loadFailed
+        }
+        #expect(model.sourceHint == .loadFailed, "the later failure says so")
+        #expect(!model.isPlaying, "playback stops at the failed file")
+        #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed file: \(model.currentTime)")
+        #expect(furthest < 2, "the position never reached the file behind it: \(furthest)")
+        let left = model.player?.items().count ?? 0
+        #expect(left == 0, "nothing behind the failed file is left to play: \(left)")
+
+        model.play()
+        let rebuilt = model.player?.items().count ?? 0
+        #expect(rebuilt == 2, "the play builds the queue anew from the failed file: \(rebuilt)")
+        #expect(abs(model.currentTime - 1) < 0.01, "the rebuild keeps the held position: \(model.currentTime)")
         model.player?.pause()
     }
 }

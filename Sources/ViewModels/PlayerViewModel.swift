@@ -176,6 +176,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // unsafe because main actor and deinit are the only places that touch them.
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
+    /// A later track of this queue that failed to load: the queue ends before
+    /// it, and playback stops at its start. Cleared by every new queue.
+    private var heldAhead: Int?
     /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream
     /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
     /// (playback never begins). It would stall silently. Rebuilt per queue.
@@ -673,6 +676,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         trackAdvanceObserver = nil
+        heldAhead = nil
         for observer in itemStatusObservers { observer.invalidate() }
         itemStatusObservers.removeAll()
 
@@ -764,7 +768,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Detects the BOOK end (last item finished): sync as finished immediately
     /// instead of waiting for the 30s timer. Track changes no longer need an
-    /// observer. The index comes per tick from `itemTrackIndex`.
+    /// observer. The index comes per tick from `itemTrackIndex`. A queue cut
+    /// before a later track that failed to load ends at its held point instead.
     private func observeBookEnd(lastItem: AVPlayerItem?) {
         if let observer = trackAdvanceObserver {
             NotificationCenter.default.removeObserver(observer)
@@ -778,6 +783,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                if let held = self.heldAhead {
+                    self.stopAtHeldFailure(held)
+                    return
+                }
                 self.currentTime = self.duration
                 self.notePlayback("stopped", from: "item ended")
                 self.isPlaying = false
@@ -1358,14 +1367,51 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                        errorDescription: String?) {
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
+        let inCurrentQueue = itemTrackIndex[failedItem] != nil
+        if FailedLoad.holdsAhead(failedIndex: index, currentIndex: currentTrackIndex,
+                                 inCurrentQueue: inCurrentQueue, heldAt: heldAhead) {
+            holdAhead(at: index)
+            return
+        }
         guard FailedLoad.stopsPlayback(failedIndex: index, currentIndex: currentTrackIndex,
-                                       inCurrentQueue: itemTrackIndex[failedItem] != nil) else { return }
+                                       inCurrentQueue: inCurrentQueue) else { return }
         loadFailureNoted = true
         notePlayback("stopped", from: isRadio ? "radio item failed" : "item failed to load")
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
         showSourceHint(isRadio ? .streamFailed : .loadFailed)
+        forgetCatalogAnswer()
+    }
+
+    /// A later track failed to load while an earlier one plays: the queue is
+    /// cut before it, so nothing behind it plays, and when the track before
+    /// it ends, playback stops at its start like a failure of the playing
+    /// item (mark, hint, the next play builds anew from there).
+    private func holdAhead(at index: Int) {
+        heldAhead = index
+        guard let player else { return }
+        let queued = player.items()
+        for item in queued where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
+            player.remove(item)
+        }
+        // The track before is now the last of the queue: its end is the
+        // held point, not the end of the book.
+        let before = queued.first { itemTrackIndex[ObjectIdentifier($0)] == index - 1 }
+        observeBookEnd(lastItem: before)
+        Logger.player.notice("LOADFAIL ahead track=\(index) queue ends before it, before=\(before != nil)")
+    }
+
+    private func stopAtHeldFailure(_ index: Int) {
+        guard heldAhead == index else { return }
+        loadFailureNoted = true
+        currentTrackIndex = index
+        currentTime = trackAbsoluteStart(index)
+        notePlayback("stopped", from: "later item failed to load")
+        player?.pause()
+        isPlaying = false
+        updateNowPlayingInfo()
+        showSourceHint(.loadFailed)
         forgetCatalogAnswer()
     }
 
@@ -1442,6 +1488,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         routeChangeObserver = nil
         mediaResetObserver = nil
         trackFailureObserver = nil
+        heldAhead = nil
         for observer in itemStatusObservers { observer.invalidate() }
         itemStatusObservers.removeAll()
         player = nil

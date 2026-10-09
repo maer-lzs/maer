@@ -10,13 +10,23 @@ import Foundation
 /// not try it again, and setting a rate on it plays nothing. Only a new
 /// queue plays, so these rules say when the queue is built again.
 nonisolated enum FailedLoad {
-    /// Whether a load failure stops playback with a hint: only when the
-    /// failed item is the one playing, in the queue that plays now. A
-    /// failure further down the queue waits for its turn, where the status
-    /// of the current item is asked; a late word from a queue already
-    /// replaced stops nothing.
+    /// Whether a load failure stops playback with a hint now: only when the
+    /// failed item is the one playing, in the queue that plays now; a late
+    /// word from a queue already replaced stops nothing.
     static func stopsPlayback(failedIndex: Int, currentIndex: Int, inCurrentQueue: Bool) -> Bool {
         inCurrentQueue && failedIndex == currentIndex
+    }
+
+    /// Whether a load failure further down the queue becomes the point where
+    /// playback holds. The queue would never ask it: measured, it skips a
+    /// failed item when the one before ends and plays the next file, so the
+    /// position jumped a whole file. The queue is cut before the failed
+    /// track, and playback stops at its start when the track before ends.
+    /// An earlier held point stays: the queue already ends before it.
+    static func holdsAhead(failedIndex: Int, currentIndex: Int, inCurrentQueue: Bool,
+                           heldAt held: Int?) -> Bool {
+        guard inCurrentQueue, failedIndex > currentIndex else { return false }
+        return held.map { failedIndex < $0 } ?? true
     }
 
     /// Whether a play builds the queue anew before it starts: the current
