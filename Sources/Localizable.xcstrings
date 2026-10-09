@@ -2831,6 +2831,16 @@
         }
       }
     },
+    "Could not load. Tap play to try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht geladen werden. Zum erneuten Versuch Wiedergabe antippen."
+          }
+        }
+      }
+    },
     "Could not read this file as an AntennaPod database." : {
       "localizations" : {
         "de" : {

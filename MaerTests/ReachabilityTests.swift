@@ -100,7 +100,7 @@ struct ReachabilityTests {
         "RootView.swift": "shows: the offline banner observes it",
         "PodcastHelpers.swift": "shows: the episode menu offers play and download by it",
         "FreeCatalogStore.swift": "decides: its four load gates start a catalog pass by it",
-        "PlayerCoordinator.swift": "decides: opening refuses an undownloaded title offline, and both next-item picks skip one",
+        "PlayerCoordinator.swift": "decides: opening refuses an undownloaded title offline, both next-item picks skip one, and a path change rebuilds a stopped load failure",
         "PlayerViewModel.swift": "decides: a missing track download restarts, and a failed local file is dropped for streaming",
         "PodcastAutoContinue.swift": "decides: offline the next episode is picked among the downloaded ones",
         "Lyrics.swift": "decides: offline LRCLIB is not asked and the round books a failure",

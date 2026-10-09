@@ -84,12 +84,18 @@ final class PlayerCoordinator: ObservableObject {
 
     init(provider: any AudioProvider) {
         self.provider = provider
+        // A load failure that stopped playback is built anew once the
+        // network carries again, without starting: the next play then plays.
+        NetworkMonitor.shared.onChange { [weak self] path in
+            self?.viewModel?.rebuildAfterPathChange(path)
+        }
         // Takeover: a foreign claim on the item THIS device is
         // playing means another device took over on explicit play. This
         // side stands down by itself and pushes its final state (pause()
         // force-syncs). No remote control, no locks; the claim age in the
         // log line is the latency witness for the device pair.
-        PlaybackClaimSync.shared.onForeignClaim = { [weak self] claim in
+        let sync = PlaybackClaimSync.shared
+        sync.onForeignClaim = { [weak self] claim in
             guard let self else { return }
             let nowMs = Date().timeIntervalSince1970 * 1000
             let age = Int((nowMs - claim.t) / 1000)
@@ -97,7 +103,6 @@ final class PlayerCoordinator: ObservableObject {
             // Second witness: the own fresh claim. Written only while
             // playing, so it says "this device plays X" even when the
             // coordinator's view of itself does not.
-            let sync = PlaybackClaimSync.shared
             let playing = PlaybackClaimRules.playingItem(
                 held: held, ownClaim: sync.lastOwnClaim,
                 ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs)

@@ -76,6 +76,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         case conflict
         case trackFailed
         case streamFailed
+        case loadFailed
 
         var label: String {
             switch self {
@@ -87,6 +88,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .conflict: return String(localized: "Conflict detected")
             case .trackFailed: return String(localized: "Playback error: track unavailable")
             case .streamFailed: return String(localized: "Stream unavailable: the station could not be reached")
+            case .loadFailed: return String(localized: "Could not load. Tap play to try again.")
             }
         }
 
@@ -100,6 +102,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .conflict: return "exclamationmark.triangle"
             case .trackFailed: return "exclamationmark.triangle"
             case .streamFailed: return "exclamationmark.triangle"
+            case .loadFailed: return "wifi.exclamationmark"
             }
         }
     }
@@ -180,6 +183,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Track indices that already got their ONE automatic recovery attempt.
     /// Guards against a rebuild loop on a persistently broken track.
     private var trackRetryAttempts: Set<Int> = []
+    /// The playing item failed to load and playback stopped for it; the
+    /// next play or the network's return builds the queue anew.
+    private var loadFailureNoted = false
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
 
@@ -655,6 +661,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @discardableResult
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
         guard startIndex >= 0, startIndex < tracks.count else { return false }
+        // A new queue holds new items: a noted load failure is healed by it.
+        loadFailureNoted = false
 
         // Cleanly tear down the old player and its observers.
         if let token = timeObserverToken {
@@ -726,8 +734,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard observedItem.status == .failed else { return }
                 let description = observedItem.error.map { FailureReason.of($0) }
                     ?? observedItem.errorLog()?.events.last?.errorComment
+                let failedItem = ObjectIdentifier(observedItem)
                 Task { @MainActor [weak self] in
-                    self?.handleItemLoadFailure(trackIndex: failedIndex, errorDescription: description)
+                    self?.handleItemLoadFailure(trackIndex: failedIndex, item: failedItem,
+                                                errorDescription: description)
                 }
             }
             itemStatusObservers.append(observation)
@@ -822,6 +832,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         refreshClaim(forced: true)
         activateAudioSession()
         applySmartRewindIfNeeded()
+        // A failed item plays nothing at any rate: build the queue first.
+        rebuildIfLoadFailed()
         // In case a sleep fade was interrupted mid-way: full volume.
         player?.volume = 1
         player?.rate = playbackRate
@@ -1339,17 +1351,45 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// An item whose asset never loads (`status == .failed`). The load failure
     /// path that FailedToPlayToEndTime doesn't cover (playback never started).
-    /// Logs the error persistently and surfaces a hint instead
-    /// of a silent stall.
-    private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
+    /// Logs the error persistently; when the failed item is the one playing,
+    /// playback stops with a hint instead of a silent stall, for every kind
+    /// of item, and the next play builds the queue anew.
+    private func handleItemLoadFailure(trackIndex index: Int, item failedItem: ObjectIdentifier,
+                                       errorDescription: String?) {
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
-        // Radio is single-item live audio. No track recovery to attempt; stop
-        // and tell the user. Books/podcasts keep their existing retry path.
-        guard isRadio else { return }
-        notePlayback("stopped", from: "radio item failed")
+        guard FailedLoad.stopsPlayback(failedIndex: index, currentIndex: currentTrackIndex,
+                                       inCurrentQueue: itemTrackIndex[failedItem] != nil) else { return }
+        loadFailureNoted = true
+        notePlayback("stopped", from: isRadio ? "radio item failed" : "item failed to load")
+        player?.pause()
         isPlaying = false
-        showSourceHint(.streamFailed)
+        updateNowPlayingInfo()
+        showSourceHint(isRadio ? .streamFailed : .loadFailed)
+        forgetCatalogAnswer()
+    }
+
+    /// Before a play: a queue whose current item failed to load is built
+    /// anew. The position is the one this device holds, never one fetched
+    /// for the rebuild, so the rebuild itself moves nobody back.
+    private func rebuildIfLoadFailed() {
+        let failed = player?.currentItem?.status == .failed
+        guard FailedLoad.rebuildsBeforePlay(currentItemFailed: failed, noted: loadFailureNoted) else { return }
+        rebuildAtHeldPosition(reason: "play")
+    }
+
+    /// The network path changed: a stopped load failure is built anew once
+    /// the path carries, without starting playback.
+    func rebuildAfterPathChange(_ path: MaerSyncPath) {
+        guard FailedLoad.rebuildsOnPathChange(noted: loadFailureNoted, satisfied: path.satisfied) else { return }
+        rebuildAtHeldPosition(reason: "network back")
+    }
+
+    private func rebuildAtHeldPosition(reason: String) {
+        let index = trackIndex(for: currentTime)
+        let rebuilt = buildQueue(startingAtTrackIndex: index,
+                                 seekWithin: max(0, currentTime - trackAbsoluteStart(index)))
+        Logger.player.notice("LOADFAIL rebuild reason=\(reason, privacy: .public) track=\(index) ok=\(rebuilt)")
     }
 
     /// Absolute book time where the currently playing track ends.
