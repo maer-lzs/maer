@@ -690,6 +690,20 @@ wohl — das ist der Nutzer, der neu aufbaut, und ihn dauerhaft zu blockieren
 waere ein eigener Defekt. Die Aufbewahrung allein dient der Forensik, die
 Schreibsperre dient dem Menschen.
 
+**W-Sammel 12a (09.10.2026), eine vorhandene, nicht lesbare Datei ist nie
+`.fresh`:** vorher hiess eine Datei, die da ist und nicht gelesen werden kann
+(Datenschutzklasse vor dem ersten Entsperren, Rechte, ein Ordner an ihrer
+Stelle), „noch keine“, ohne Zeile und ohne Sperre. Gemessen: bei Rechten 000
+scheiterte der leere Schrieb nur am System, ein Ordner an der Stelle wurde vom
+leeren Schrieb ersetzt. Jetzt antwortet sie `.corrupt` mit Zeile (`… unreadable,
+kept in place, NOT overwritten`) und bleibt UNBERUEHRT an ihrem Platz (nicht
+beiseite: die Ursache kann vergehen, das naechste Lesen findet sie dann ganz).
+Die Sperre der `Ablage` liest dasselbe Zeichen wie ihr Laden: ein in diesem
+Lauf unlesbar getroffener Name, oder ohne Dokument eine Beiseite-Datei
+(`readsAsUnreadable`; vorher nur der Name im Lauf, gerettet nur durch das Laden
+davor). Zeugen `AblageTests.aPresentUnreadableFileIsNeverFresh`,
+`theLockReadsTheFileAsideWithoutALoad`.
+
 Angewandt auf die drei gemessenen Faelle: `LocalLibrary.Entry` (die ganze
 Sideload-Bibliothek), `SyncQueue.PendingUpdate` (nicht gepushte Hoerstaende),
 `BookmarkQueue.Operation` (nicht gepushte Lesezeichen). Die Hoerstaende und die

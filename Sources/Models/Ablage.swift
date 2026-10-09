@@ -72,6 +72,12 @@ actor Ablage {
         FileManager.default.fileExists(atPath: asideURL(for: name).path)
     }
 
+    /// No document and its file aside lies there: what a load answers as
+    /// `.corrupt` without the process having met the name.
+    private nonisolated func readsAsUnreadable(_ name: String) -> Bool {
+        !FileManager.default.fileExists(atPath: url(for: name).path) && liesAside(name)
+    }
+
     /// Read and decode a document. Missing is `.fresh`; unreadable is
     /// `.corrupt` (file preserved aside, saves of emptiness blocked), and
     /// stays `.corrupt` on later reads, also after a restart, until a
@@ -118,7 +124,9 @@ actor Ablage {
     /// instead of burying the recoverable data. Encoding and writing run
     /// off the caller's actor, in this name's chain.
     func save<T: Encodable & Sendable>(_ value: T, name: String, isEmpty: Bool = false) async throws {
-        if isEmpty, corruptNames.contains(name) {
+        // The same sign the load reads: a name met unreadable in this
+        // process, or, with no document, a file aside that outlives it.
+        if isEmpty, corruptNames.contains(name) || readsAsUnreadable(name) {
             Logger.library.error("ABLAGE save refused name=\(name, privacy: .public) reason=empty over corrupt")
             throw AblageError.blockedByCorruptFile(name: name)
         }

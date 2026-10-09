@@ -42,11 +42,21 @@ nonisolated enum CorruptStore {
         }
     }
 
-    /// Read a file, preserving an unreadable one under `.corrupt`.
+    /// Read a file, preserving an undecodable one under `.corrupt`. A file
+    /// that is there and cannot be read at all (its protection class before
+    /// the first unlock, its rights, a folder in its place) is no fresh
+    /// start either: it answers `.corrupt`, so the empty save is refused,
+    /// and stays where it is, untouched, because the cause may pass and the
+    /// next read then finds it whole. Measured: an empty save over such a
+    /// folder replaced it.
     static func load<T: Decodable>(_ type: T.Type, from url: URL,
                                    label: String,
                                    log: Logger = Logger.library) -> Outcome<T> {
-        guard let data = try? Data(contentsOf: url) else { return .fresh }
+        guard let data = try? Data(contentsOf: url) else {
+            guard FileManager.default.fileExists(atPath: url.path) else { return .fresh }
+            log.error("\(label, privacy: .public) unreadable — kept in place, NOT overwritten")
+            return .corrupt
+        }
         if let decoded = try? JSONDecoder().decode(type, from: data) {
             return .loaded(decoded)
         }
