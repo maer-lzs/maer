@@ -150,7 +150,7 @@ struct CatalogStockRunTests {
     func theDumpIsWired() throws {
         let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
         #expect(fetch.contains("var (body, knownTotal) = partial?.load() ?? (Data(), nil)"))
-        let append = try #require(fetch.range(of: "try !partial.append(data, after: held, total: knownTotal)"))
+        let append = try #require(fetch.range(of: "try !disk.append(data, after: held, total: knownTotal)"))
         let grow = try #require(fetch.range(of: "body.append(data)"))
         #expect(grow.lowerBound < append.lowerBound, "each slice kept on the disk as it arrives")
         let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")

@@ -117,6 +117,28 @@ struct GutenbergDumpTests {
         #expect(held.isEmpty || held == file, "the disk holds \(held.count) of \(file.count) bytes, not from the start")
     }
 
+    /// Once a slice was refused, the run goes on from memory and leaves the
+    /// disk alone: a later slice neither empties the file again nor says so
+    /// again. A mark put on the disk after the refusal outlives the run.
+    @Test("nach einer verweigerten Scheibe laesst der Abruf die Platte in Ruhe, eine Zeile statt einer je Scheibe")
+    func aRefusedSliceLeavesTheDiskAloneAfterwards() async throws {
+        let file = try Self.excerpt()
+        let (partial, folder) = try partial()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let wire = DumpWire(file: file, chunk: 2000)
+        let works = try await CatalogStockFetch.gutenbergStock(partial: partial) { request in
+            // Before the second slice the lever runs, so that slice is refused;
+            // before the third a mark lies where the file was.
+            if wire.requests == 1 { CatalogStockStore.shared.clear(in: folder) }
+            if wire.requests == 2 { try partial.append(Data("mark".utf8), after: 0, total: nil) }
+            return wire.answer(request)
+        }
+        #expect(works.count == 2, "the run in memory finishes")
+        #expect(wire.requests == 3, "the precondition: three slices of 2000 bytes for 4586")
+        let held = String(decoding: partial.load().body, as: UTF8.self)
+        #expect(held == "mark", "a slice after the refusal touched the disk again: \(held.count) bytes")
+    }
+
     /// The lever over a folder with an unfinished dump and its counters:
     /// nothing of a stock stays, and what went is said.
     @Test("der Hebel nimmt angefangene Abrufe samt Zaehlern mit")

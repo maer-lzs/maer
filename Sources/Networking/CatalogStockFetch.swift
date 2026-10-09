@@ -261,6 +261,9 @@ nonisolated enum CatalogStockFetch {
         partial: DumpPartial? = nil,
         wire: (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await HTTP.data(for: $0, lane: .mass) }
     ) async throws -> [CatalogStockEntry] {
+        // The file on the disk for this run; it falls away once a slice was
+        // refused, and the run goes on from memory alone.
+        var partial = partial
         var (body, knownTotal) = partial?.load() ?? (Data(), nil)
         // What was held came from the disk and has not met the service yet.
         var resumed = !body.isEmpty
@@ -329,8 +332,11 @@ nonisolated enum CatalogStockFetch {
             body.append(data)
             resumed = false
             do {
-                if let partial, try !partial.append(data, after: held, total: knownTotal) {
-                    Logger.library.notice("STOCK gutenberg dump slice not kept: the file on the disk is not the run's head held=\(held)")
+                if let disk = partial, try !disk.append(data, after: held, total: knownTotal) {
+                    // Once is enough: every later slice would find the same
+                    // file, empty it again and say so again.
+                    Logger.library.notice("STOCK gutenberg dump slice not kept: the file on the disk is not the run's head held=\(held); the run goes on without it")
+                    partial = nil
                 }
             } catch {
                 // The run goes on from memory; only its resumability is lost.
