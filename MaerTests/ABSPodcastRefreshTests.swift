@@ -61,6 +61,34 @@ struct ABSPodcastRefreshTests {
                 "a device without shows takes even an empty failed run, as before")
     }
 
+    /// A run whose failures are all absences ends as an answer: the server
+    /// said which shows and libraries are gone, so the device that holds
+    /// them adopts it and stamps the throttle. Before, such a run adopted
+    /// nothing and held nothing back, so every mount asked again after
+    /// five minutes and the gone shows stood for the session.
+    @Test("eine Runde aus lauter Absenzen ist eine Antwort: der Stand wird uebernommen, nie weder uebernommen noch gesperrt")
+    func aRunOfAbsencesAloneIsAnAnswer() async {
+        let detailsGone = await ABSPodcastProvider.fetchShows(
+            libraryIds: ["lib"], items: { _ in ["a", "b"] }, detail: { _ in throw APIError.http(404, "") })
+        #expect(detailsGone.failures == 0 && detailsGone.gone == 2 && detailsGone.details.isEmpty,
+                "the precondition: every detail answered gone")
+        #expect(adopts(detailsGone), "a run of gone shows was not adopted")
+        let libraryGone = await ABSPodcastProvider.fetchShows(
+            libraryIds: ["lib"], items: { _ in throw APIError.http(410, "") }, detail: { Self.detail($0) })
+        #expect(libraryGone.failures == 0 && libraryGone.gone == 1, "the precondition: the list answered gone")
+        #expect(adopts(libraryGone), "a run with its library gone was not adopted")
+        // Gone beside a real failure: the failure holds back, as before.
+        let mixed = await ABSPodcastProvider.fetchShows(
+            libraryIds: ["lib"], items: { _ in ["gone", "down"] },
+            detail: { id in throw id == "gone" ? APIError.http(404, "") : APIError.http(503, "") })
+        #expect(mixed.failures == 1 && mixed.gone == 1 && mixed.holdsBack)
+        #expect(!adopts(mixed), "a real failure beside an absence emptied the shows")
+        // Every class of a run with shows held ends as an answer or a holdback.
+        for fetched in [detailsGone, libraryGone, mixed] {
+            #expect(adopts(fetched) || fetched.holdsBack, "a run ended in neither: \(fetched.failures) failed, \(fetched.gone) gone")
+        }
+    }
+
     /// The refresh asks the rule with the run's failures, and no fetch of the
     /// run swallows its error any more.
     @Test("die Aktualisierung fragt die Regel mit den gescheiterten Abrufen", .needsTheSources)
@@ -108,7 +136,8 @@ struct ABSPodcastRefreshTests {
                                                 detail: { _ in throw error })
         }
         let deleted = await run(APIError.http(404, ""))
-        #expect(deleted.failures == 1 && !deleted.holdsBack, "a show deleted on the server started a holdback")
+        #expect(deleted.failures == 0 && deleted.gone == 1 && !deleted.holdsBack,
+                "a show deleted on the server counted as a failure or started a holdback")
         let failing = await run(APIError.http(503, ""))
         #expect(failing.failures == 1 && failing.holdsBack, "a failing server started no holdback")
         let cancelled = await run(CancellationError())

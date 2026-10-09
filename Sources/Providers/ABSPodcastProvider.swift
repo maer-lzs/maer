@@ -270,25 +270,31 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             // Fetches failed and nothing came back: the stock stays, and the
             // loops that ask per feed wait out the holdback. Only a failure
             // that earns it starts one, by the same rule as the library list
-            // above (`FetchHoldback.starts`): a show deleted on the server
-            // (404) is a finding, a cancellation no failure.
+            // above (`FetchHoldback.starts`); a cancellation is no failure.
+            // A show deleted on the server is no failure either but an
+            // answer (`FetchedShows.gone`), so a run of absences alone is
+            // adopted above and never ends in neither.
             failedAt = Date()
         }
     }
 
     /// What one refresh fetched: the show details that came back, how many
-    /// fetches (item lists and details) failed, and whether one of those
-    /// failures earns a holdback (`FetchHoldback.starts`).
+    /// fetches (item lists and details) failed, how many answered that
+    /// their library or show is gone, and whether one of the failures earns
+    /// a holdback (`FetchHoldback.starts`). A gone fetch is an answer, not a
+    /// failure: the server said what it holds.
     nonisolated struct FetchedShows: Sendable {
         var details: [LibraryItemDetail]
         var failures: Int
         var holdsBack = false
+        var gone = 0
     }
 
     /// The item ids of every library, then their details in parallel,
     /// batched (at most five at once; serial was noticeably slow with many
     /// shows). Every failed fetch is logged with its reason and counted, so
-    /// an empty answer can be told from "nothing came through".
+    /// an empty answer can be told from "nothing came through"; a fetch that
+    /// answers "gone" counts as an answer (`gone`).
     nonisolated static func fetchShows(
         libraryIds: [String],
         items: @escaping @Sendable (String) async throws -> [String],
@@ -296,12 +302,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     ) async -> FetchedShows {
         var failures = 0
         var holdsBack = false
+        var gone = 0
         var itemIds: [String] = []
         for libraryId in libraryIds {
             do {
                 itemIds.append(contentsOf: try await items(libraryId))
             } catch {
-                failures += 1
+                if FreeCatalog.isGone(error) { gone += 1 } else { failures += 1 }
                 if FetchHoldback.starts(after: error) { holdsBack = true }
                 Logger.library.error("ABSPOD items failed library=\(libraryId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
             }
@@ -326,13 +333,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 case .success(let loaded):
                     details.append(loaded)
                 case .failure(let error):
-                    failures += 1
+                    if FreeCatalog.isGone(error) { gone += 1 } else { failures += 1 }
                     if FetchHoldback.starts(after: error) { holdsBack = true }
                     Logger.library.error("ABSPOD detail failed item=\(id, privacy: .public): \(FailureReason.of(error), privacy: .public)")
                 }
             }
         }
-        return FetchedShows(details: details, failures: failures, holdsBack: holdsBack)
+        return FetchedShows(details: details, failures: failures, holdsBack: holdsBack, gone: gone)
     }
 
     /// Equivalent ids of the same episode across both sources (self + bridge).
