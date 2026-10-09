@@ -6,7 +6,7 @@ Werkzeug bleibt als Verfahren und Server-Attrappe; wer die Messung wieder
 braucht, schreibt die Journey neu (Schema `Maer`, Ziel `MaerUITests`).
 
 Misst, wo ein HERUNTERGELADENES Buch startet, wenn es keinen lokalen Zeugen
-mehr hat — und was die App in dieser Lage zum Server schreibt.
+mehr hat, und was die App in dieser Lage zum Server schreibt.
 
 `server.py` ist ein Audiobookshelf-Ersatz mit genau den Endpunkten, die das
 Oeffnen braucht, plus einem Schreibprotokoll (`/__writes`). Vier Zustaende:
@@ -18,14 +18,14 @@ die CA gehoert per `simctl keychain <sim> add-root-cert` in den Simulator.
 Server-Zustand. Der Simulator wird zwischen den Faellen NICHT geloescht.
 
 **Nie gegen ein echtes Konto laufen lassen:** nach einem Null-Start steht
-`lastSyncedTime` auf 0, und die Sync-Schwelle liegt bei 5 s Differenz — die
+`lastSyncedTime` auf 0, und die Sync-Schwelle liegt bei 5 s Differenz. Die
 Messung koennte zerstoeren, was sie misst.
 
 **Fallen, die der Harness selbst produziert hat** (alle behoben, hier als
 Warnung): Tondatei und angegebene Dauer muessen zusammenpassen, sonst meldet
 die App sofort „fertig"; der Sync-Takt ist 30 s, kuerzeres Hoeren misst nichts;
 ohne bewusstes Pausieren schreibt der Sekundenschreiber den Zeugen sofort neu;
-und ein Messfall muss seine eigene Voraussetzung zusichern — die erste Fassung
+und ein Messfall muss seine eigene Voraussetzung zusichern: die erste Fassung
 meldete gruen, ohne dass je Wiedergabe lief.
 
 **Der Fahrer ist weg (B3, 17.09.2026):** `NullStartMeasurement.swift` wurde mit dem

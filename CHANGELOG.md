@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.4 (Build 51)
+
 **Mär Sync carries everything as soon as you sign in.** Your
 subscriptions, known servers, choices, playlists, statistics and progress
 move to the sync service the moment you sign in, and back to iCloud the
