@@ -149,6 +149,33 @@ struct AblageTests {
                 "the empty save replaced the folder")
     }
 
+    /// Without a load before: a folder in the document's place is refused
+    /// the empty save as the load would answer it, and stays.
+    @Test("ohne vorheriges Laden sperrt die Sperre den leeren Schrieb ueber einem vorhandenen, unlesbaren Dokument")
+    func theLockCoversAPresentUnreadableDocumentWithoutALoad() async throws {
+        let dir = scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let folder = dir.appendingPathComponent("dir.json")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        await #expect(throws: AblageError.blockedByCorruptFile(name: "dir.json")) {
+            try await Ablage(directory: dir).save(Doc(items: []), name: "dir.json", isEmpty: true)
+        }
+        var isFolder: ObjCBool = false
+        #expect(FileManager.default.fileExists(atPath: folder.path, isDirectory: &isFolder) && isFolder.boolValue,
+                "the empty save replaced the folder")
+        // A document that reads and does not decode: the load would answer
+        // `.corrupt` and keep it aside; the empty save leaves it whole.
+        try "not json".write(to: dir.appendingPathComponent("doc.json"), atomically: true, encoding: .utf8)
+        await #expect(throws: AblageError.blockedByCorruptFile(name: "doc.json")) {
+            try await Ablage(directory: dir).save(Doc(items: []), name: "doc.json", isEmpty: true)
+        }
+        #expect(try String(contentsOf: dir.appendingPathComponent("doc.json"), encoding: .utf8) == "not json",
+                "the empty save buried an undecodable document")
+        // A readable document stays open to an empty save.
+        try await Ablage(directory: dir).save(Doc(items: [5]), name: "ok.json")
+        try await Ablage(directory: dir).save(Doc(items: []), name: "ok.json", isEmpty: true)
+    }
+
     /// The lock reads the same sign as the load: a new instance that never
     /// loaded refuses the empty save over a file aside.
     @Test("die Sperre liest dasselbe Zeichen wie das Laden: ohne vorher zu laden ist der leere Schrieb ueber einer Beiseite-Datei gesperrt")

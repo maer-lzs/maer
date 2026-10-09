@@ -702,7 +702,11 @@ Die Sperre der `Ablage` liest dasselbe Zeichen wie ihr Laden: ein in diesem
 Lauf unlesbar getroffener Name, oder ohne Dokument eine Beiseite-Datei
 (`readsAsUnreadable`; vorher nur der Name im Lauf, gerettet nur durch das Laden
 davor). Zeugen `AblageTests.aPresentUnreadableFileIsNeverFresh`,
-`theLockReadsTheFileAsideWithoutALoad`.
+`theLockReadsTheFileAsideWithoutALoad`. **Auflage 12a-2:** auch ein Dokument,
+das da ist und nicht liest (Rechte, ein Ordner an seiner Stelle) oder nicht als
+der Typ des Schriebs dekodiert, sperrt den leeren Schrieb ohne Laden davor,
+denn das Laden sagte dort `.corrupt`; ein lesbares Dokument bleibt offen. Zeuge
+`theLockCoversAPresentUnreadableDocumentWithoutALoad`.
 
 Angewandt auf die drei gemessenen Faelle: `LocalLibrary.Entry` (die ganze
 Sideload-Bibliothek), `SyncQueue.PendingUpdate` (nicht gepushte Hoerstaende),

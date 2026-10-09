@@ -72,10 +72,22 @@ actor Ablage {
         FileManager.default.fileExists(atPath: asideURL(for: name).path)
     }
 
-    /// No document and its file aside lies there: what a load answers as
-    /// `.corrupt` without the process having met the name.
-    private nonisolated func readsAsUnreadable(_ name: String) -> Bool {
-        !FileManager.default.fileExists(atPath: url(for: name).path) && liesAside(name)
+    /// What a load answers as `.corrupt` without the process having met the
+    /// name: a document that is there and cannot be read (its rights, a
+    /// folder in its place) or does not decode as `type`, or no document and
+    /// its file aside lies there.
+    private nonisolated func readsAsUnreadable<T>(_ name: String, as type: T.Type) -> Bool {
+        let target = url(for: name)
+        guard FileManager.default.fileExists(atPath: target.path) else { return liesAside(name) }
+        // bearable, because a document that does not read is exactly the answer asked for
+        guard let data = try? Data(contentsOf: target) else { return true }
+        guard let decodable = type as? any Decodable.Type else { return false }
+        return !Self.decodes(decodable, data)
+    }
+
+    private nonisolated static func decodes<D: Decodable>(_ type: D.Type, _ data: Data) -> Bool {
+        // bearable, because the answer asked for is only whether it decodes
+        (try? JSONDecoder().decode(type, from: data)) != nil
     }
 
     /// Read and decode a document. Missing is `.fresh`; unreadable is
@@ -125,8 +137,9 @@ actor Ablage {
     /// off the caller's actor, in this name's chain.
     func save<T: Encodable & Sendable>(_ value: T, name: String, isEmpty: Bool = false) async throws {
         // The same sign the load reads: a name met unreadable in this
-        // process, or, with no document, a file aside that outlives it.
-        if isEmpty, corruptNames.contains(name) || readsAsUnreadable(name) {
+        // process, a document there that does not read or decode, or, with
+        // no document, a file aside that outlives it.
+        if isEmpty, corruptNames.contains(name) || readsAsUnreadable(name, as: T.self) {
             Logger.library.error("ABLAGE save refused name=\(name, privacy: .public) reason=empty over corrupt")
             throw AblageError.blockedByCorruptFile(name: name)
         }
