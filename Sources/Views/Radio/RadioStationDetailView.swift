@@ -170,7 +170,9 @@ struct RadioStationDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quality").font(.headline).padding(.horizontal)
             VStack(spacing: 0) {
-                ForEach(Array(variants.enumerated()), id: \.element.id) { index, variant in
+                // Keyed by address, like the folding and the choice: two
+                // answers can give one id two addresses.
+                ForEach(Array(variants.enumerated()), id: \.element.streamURL) { index, variant in
                     Button {
                         selectedURL = variant.streamURL
                         RadioStore.setSelectedVariant(variant.streamURL, for: station)

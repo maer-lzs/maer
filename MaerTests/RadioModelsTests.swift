@@ -661,6 +661,27 @@ struct RadioStateQueryTests {
         #expect(addresses == [twin, other], "addresses: \(addresses)")
     }
 
+    /// Folding, choosing and drawing the variants take one key, the stream
+    /// address: two answers of the catalog can give one id two addresses,
+    /// and a list keyed by id would then hold the same id twice.
+    @Test("Entdoppeln, Waehlen und Zeichnen der Varianten nehmen denselben Schluessel, die Stromadresse", .needsTheSources)
+    func variantsAreKeyedByAddressEverywhere() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let models = try code("Sources/Models/RadioModels.swift")
+        #expect(models.contains("station.variantList.contains(where: { $0.streamURL == selectedURL })"),
+                "the choice is not read by address")
+        var drawings: [String] = []
+        for path in ["Sources/Views/PlayerView.swift", "Sources/Views/Radio/RadioStationDetailView.swift"] {
+            drawings += try code(path).split(separator: "\n").map(String.init)
+                .filter { $0.contains("ForEach(") && ($0.contains("variantList") || $0.contains("variants.enumerated")) }
+        }
+        #expect(drawings.count == 2, "the fence found the two variant lists: \(drawings.count)")
+        let byOtherKey = drawings.filter { !$0.contains("streamURL") }
+        #expect(byOtherKey.isEmpty, "a variant list is drawn by another key: \(byOtherKey)")
+    }
+
     /// One entry of the station of these findings.
     private static func rock(_ id: String, _ bitrate: Int, at address: String? = nil) -> RadioStation {
         RadioStation(id: id, name: "ROCK ANTENNE", streamURL: address ?? "https://cdn\(id).example/stream",

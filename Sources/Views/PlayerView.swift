@@ -610,7 +610,9 @@ struct PlayerView: View {
     private func qualityMenu(for station: RadioStation) -> some View {
         let selected = RadioStore.selectedVariantURL(for: station) ?? station.streamURL
         return Menu {
-            ForEach(station.variantList, id: \.id) { variant in
+            // Keyed by address, like the folding and the choice: two
+            // answers can give one id two addresses.
+            ForEach(station.variantList, id: \.streamURL) { variant in
                 Button {
                     RadioStore.setSelectedVariant(variant.streamURL, for: station)
                     RadioPlay.play(station, playerCoordinator: coordinator)
