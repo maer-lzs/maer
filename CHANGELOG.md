@@ -58,6 +58,36 @@ something later.
 started no longer stands in Continue Listening. Like an album, it
 appears in Listen Again and still picks up where you left off.
 
+**Each radio stream once.** A station with several streams lists every
+stream address once in its quality choice, in the player and on the
+station page, including the stream that is shown, which was missing
+from its own list before.
+
+**Each catalog title once.** On the overview of a free catalog, a title
+stands only in the first row that has it (Popular, New at LibriVox, the
+shelves, the decades). A row with nothing of its own is left out.
+
+**Switching the Mär Sync account pauses playback.** What plays is
+recorded under the account you leave, then it pauses. A piece you had
+just paused, whose position had not reached the service yet, is
+recorded there too.
+
+**A refused mark says why, on the tile too.** When the server refuses
+to mark a book as finished from the menu of its cover, the tile now
+shows the same sentence as the book page.
+
+**Podcasts deleted on Audiobookshelf go away.** Shows the server no
+longer has are removed from Mär, instead of staying because the server
+answered "not found" for them.
+
+**The source map reads cleanly at every text size.** The line under
+each area and under Mär Sync starts where the title starts, also at the
+largest text sizes, where it used to run under the symbol.
+
+**The indent on the Rows page grows with your text.** The switches of a
+group stay indented under the group's title, and the indent now grows
+with your text size instead of staying fixed.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such
