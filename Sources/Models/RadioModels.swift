@@ -275,8 +275,9 @@ nonisolated enum RadioMapping {
     /// station (different domain) never folds in (the Rock-Antenne-Italy
     /// class); real program siblings (1LIVE vs 1LIVE Dance Hits) differ by
     /// name and never fold either. The best entry is shown (bitrate,
-    /// AAC>MP3), and every stream of the bundle rides in its `variants`
-    /// once (`bundleStreams`), the ones each entry brought included, so the
+    /// AAC>MP3), and every stream address of the bundle rides in its
+    /// `variants` once (`bundleStreams`), the ones each entry brought
+    /// included, so the
     /// detail page offers them instead of throwing them away.
     static func dedupeForDisplay(_ stations: [RadioStation]) -> [RadioStation] {
         var shown: [String: RadioStation] = [:]
@@ -300,13 +301,25 @@ nonisolated enum RadioMapping {
         }
     }
 
-    /// The streams of one bundle, each once by id: the shown entry first
-    /// (the house rule: the station is one of its own streams), the others
-    /// best first. Nil when the bundle holds a single stream.
+    /// The streams of one bundle, each stream address once: the shown entry
+    /// first (the house rule: the station is one of its own streams), the
+    /// others best first. A stream is its address, not its id: Radio
+    /// Browser lists one address under several ids, and the choice keys on
+    /// the address (`RadioStore.selectedVariantURL`). Of several ids of one
+    /// address the shown entry stays, else the best. Nil when the bundle
+    /// holds a single stream.
     static func bundleStreams(shown: RadioStation, among all: [RadioStation]) -> [RadioStation]? {
-        var seen: Set<String> = [shown.id]
-        var others: [RadioStation] = []
-        for stream in all where seen.insert(stream.id).inserted { others.append(stream) }
+        var best: [String: RadioStation] = [:]
+        var addresses: [String] = []
+        for stream in all where stream.streamURL != shown.streamURL {
+            if let held = best[stream.streamURL] {
+                if prefers(stream, over: held) { best[stream.streamURL] = stream }
+            } else {
+                best[stream.streamURL] = stream
+                addresses.append(stream.streamURL)
+            }
+        }
+        let others = addresses.compactMap { best[$0] }
         let list = [strippedVariant(shown)] + others.sorted { prefers($0, over: $1) }
         return list.count > 1 ? list : nil
     }

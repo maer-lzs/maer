@@ -643,9 +643,27 @@ struct RadioStateQueryTests {
         #expect(streams == ["c", "z", "b"], "streams: \(streams)")
     }
 
+    /// A stream is its address: Radio Browser lists one address under
+    /// several ids (measured: Rock Antenne three times with one address,
+    /// name, homepage and bitrate). Each address stands once, the shown
+    /// entry for its own address, the best id for another.
+    @Test("in der Auswahl steht jede Stromadresse einmal, auch wenn Radio Browser sie unter mehreren Kennungen fuehrt")
+    func eachStreamAddressStandsOnce() {
+        let twin = "http://mp3channels.webradio.rockantenne.de/rockantenne"
+        let other = "https://cdn.example/rock-aac"
+        let stations = [Self.rock("t1", 128, at: twin), Self.rock("t2", 128, at: twin), Self.rock("t3", 128, at: twin),
+                        Self.rock("o1", 64, at: other), Self.rock("o2", 96, at: other)]
+        let deduped = RadioMapping.dedupeForDisplay(stations)
+        let streams = deduped.first?.variantList.map(\.id) ?? []
+        let addresses = deduped.first?.variantList.map(\.streamURL) ?? []
+        #expect(deduped.count == 1 && deduped.first?.id == "t1", "the precondition: one bundle, the first of the equal best is shown")
+        #expect(streams == ["t1", "o2"], "streams: \(streams)")
+        #expect(addresses == [twin, other], "addresses: \(addresses)")
+    }
+
     /// One entry of the station of these findings.
-    private static func rock(_ id: String, _ bitrate: Int) -> RadioStation {
-        RadioStation(id: id, name: "ROCK ANTENNE", streamURL: "https://cdn\(id).example/stream",
+    private static func rock(_ id: String, _ bitrate: Int, at address: String? = nil) -> RadioStation {
+        RadioStation(id: id, name: "ROCK ANTENNE", streamURL: address ?? "https://cdn\(id).example/stream",
                      faviconURL: nil, homepage: "https://www.rockantenne.de", countryCode: "DE",
                      tags: [], bitrate: bitrate, codec: "MP3")
     }
