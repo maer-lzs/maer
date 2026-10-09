@@ -93,6 +93,12 @@ struct ExpectationFormFenceTests {
         ]
         let kept = [
             "#expect(listsAtB.isEmpty, \"A's lists went to B\")",
+            // Kept because it reports: measured in a package of its own
+            // (Swift 6.4), this form with a value that is not empty fails,
+            // while `(a?.b ?? d).isEmpty` stays silent. The silent form needs
+            // an optional chain inside the parentheses; a cast before `??`
+            // is none. `IdFormHoldTests` asks the blob in this form and so
+            // does check.
             "#expect((cloud.storage[key] as? [String: Any] ?? [:]).isEmpty)",
             "#expect(restOfB?.unread?.shows.map(\\.id) == [\"x\"])",
             "#expect((set?.ids ?? []).count == 2)",
