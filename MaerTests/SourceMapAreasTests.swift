@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// The areas list must be COMPLETE. Free music steered a visible
@@ -102,6 +103,24 @@ struct SourceMapAreasTests {
         abs.absConnected = true
         abs.absServer = "https://abs.example.net"
         #expect(SourceMapCard.isConnected(.audiobooks, facts: abs))
+    }
+
+    /// At an accessibility size the line under a row's title stands at the
+    /// title's edge, where the separator starts (seen at AX3: it ran under
+    /// the symbol); at the other sizes it stays under the whole label. Both
+    /// kinds of row on the card, the areas and Mär Sync, go through the one
+    /// row label.
+    @Test("bei Bedienungshilfen-Groessen steht die Unterzeile einer Kartenzeile an der Titelkante, beide Zeilenarten nehmen denselben Baustein")
+    func theLineKeepsTheTitleEdgeAtAccessibilitySizes() throws {
+        #expect(SourceMapRowLabel.lineInTitle(.accessibility1))
+        #expect(SourceMapRowLabel.lineInTitle(.accessibility3))
+        #expect(SourceMapRowLabel.lineInTitle(.accessibility5))
+        #expect(!SourceMapRowLabel.lineInTitle(.large))
+        #expect(!SourceMapRowLabel.lineInTitle(.xxxLarge))
+        let card = SyncContractFenceTests.stripped(try sourceText("Sources/Views/SourceMapCard.swift"))
+        let uses = card.components(separatedBy: "SourceMapRowLabel(title:").count - 1
+        #expect(uses == 2, "rows of the card through the row label: \(uses)")
+        #expect(!card.contains("Label(Self.title(area)"), "an area row builds its own label again")
     }
 
     /// Mär Sync ist kein Medienbereich, steht aber auf der Karte: sonst

@@ -26,12 +26,8 @@ struct SourceMapCard: View {
                     destination(area)
                 } label: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Label(Self.title(area), systemImage: area.symbol)
-                            Self.stateLine(area, facts: facts)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        SourceMapRowLabel(title: Self.title(area), symbol: area.symbol,
+                                          line: Self.stateLine(area, facts: facts))
                         Spacer()
                         // The tick is measured, not remembered: a server
                         // of the user's own answers for the area.
@@ -57,12 +53,7 @@ struct SourceMapCard: View {
             } label: {
                 let line = SourceMapSyncLine.of(facts.syncStanding, host: facts.syncHost)
                 HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Label("Mär Sync", systemImage: "server.rack")
-                        Text(line.text)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    SourceMapRowLabel(title: "Mär Sync", symbol: "server.rack", line: Text(line.text))
                     Spacer()
                     if line.connected {
                         Image(systemName: "checkmark")
@@ -115,6 +106,44 @@ struct SourceMapCard: View {
             default: return Text("No account needed: LibriVox, radio plays, netlabels, old records")
             }
         }
+    }
+}
+
+/// One row of the map: its symbol, its title and the line under it. At an
+/// accessibility size the line stands in the label's title, so it keeps the
+/// title's edge, where the row's separator starts, instead of running under
+/// the symbol; at the other sizes the line stays under the whole label.
+struct SourceMapRowLabel: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    let line: Text
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// Whether the line belongs to the label's title at this size.
+    nonisolated static func lineInTitle(_ size: DynamicTypeSize) -> Bool {
+        size.isAccessibilitySize
+    }
+
+    var body: some View {
+        if Self.lineInTitle(typeSize) {
+            Label {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                    styledLine
+                }
+            } icon: {
+                Image(systemName: symbol)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(title, systemImage: symbol)
+                styledLine
+            }
+        }
+    }
+
+    private var styledLine: some View {
+        line.font(.caption).foregroundStyle(.secondary)
     }
 }
 
