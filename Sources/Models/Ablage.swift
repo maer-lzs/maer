@@ -138,7 +138,9 @@ actor Ablage {
     func save<T: Encodable & Sendable>(_ value: T, name: String, isEmpty: Bool = false) async throws {
         // The same sign the load reads: a name met unreadable in this
         // process, a document there that does not read or decode, or, with
-        // no document, a file aside that outlives it.
+        // no document, a file aside that outlives it. The decode test takes
+        // the type of this save: it holds as long as a store writes and
+        // reads a name with one and the same type.
         if isEmpty, corruptNames.contains(name) || readsAsUnreadable(name, as: T.self) {
             Logger.library.error("ABLAGE save refused name=\(name, privacy: .public) reason=empty over corrupt")
             throw AblageError.blockedByCorruptFile(name: name)

@@ -159,12 +159,12 @@ final class MaerPlaylists: ObservableObject {
         var unread: [String: Data]? = nil
     }
 
-    /// The rows this build cannot decode, as stored; nil when there are
-    /// none. Throws when the read fails, so a hand-over holds instead of
-    /// leaving them under the next account.
     /// The rows are being written; their unread part is read after.
     private struct RowsStillWriting: Error {}
 
+    /// The rows this build cannot decode, as stored; nil when there are
+    /// none. Throws when the read fails, so a hand-over holds instead of
+    /// leaving them under the next account.
     private func undecodedRows() throws -> [String: Data]? {
         // Only a start that missed rows, or rows that came back, can leave
         // such rows; otherwise there is nothing to read.

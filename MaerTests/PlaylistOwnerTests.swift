@@ -332,18 +332,20 @@ struct PlaylistOwnerTests {
             await store.awaitPendingWrites()
             #expect(store.follow(owner: "account-b"))
             // At once back, while B's replacement is still on its way.
-            #expect(!store.follow(owner: "account-a"), "the second hand-over read the rows beside the write")
-            await store.awaitPendingWrites()
-            var handed = false
+            var handed = store.follow(owner: "account-a")
+            #expect(!handed, "the second hand-over read the rows beside the write")
             for _ in 0..<100 where !handed {
+                await store.awaitPendingWrites()
                 try await Task.sleep(for: .milliseconds(20))
                 handed = store.follow(owner: "account-a")
-                await store.awaitPendingWrites()
             }
             #expect(handed, "the way back never came after the write")
-            try await Task.sleep(for: .milliseconds(100))
+            // B's rest right after the hand-over that laid it: measured
+            // without the hold, A's unread row lay in it at once.
             let restOfB = try rig.shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-b")
             #expect((restOfB?.unread ?? [:]).isEmpty, "A's unread row rested with B: \(String(describing: restOfB?.unread?.keys.sorted()))")
+            await store.awaitPendingWrites()
+            try await Task.sleep(for: .milliseconds(100))
             #expect(try undecoded(database) == ["later-form": Self.laterForm], "A's unread row did not come back")
         }
     }
