@@ -105,3 +105,13 @@ nonisolated extension SyncRules {
                         potDeliberate: deliberate)
     }
 }
+
+/// Whether a change of account records the stand of the player under the
+/// account before: when a piece plays, or when a piece was paused and the
+/// record of that pause still waits for the server. A stand recorded long
+/// ago is not stamped anew; it may be older than another device's.
+nonisolated enum AccountSwitchHold {
+    static func records(isPlaying: Bool, pauseRecordPending: Bool) -> Bool {
+        isPlaying || pauseRecordPending
+    }
+}

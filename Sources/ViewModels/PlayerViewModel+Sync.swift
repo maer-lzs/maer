@@ -68,11 +68,17 @@ extension PlayerViewModel {
         defer { syncInFlight = false }
 
         var runOrigin = origin
+        // Whether a round began after a pause of a running piece: only such
+        // a round wrote the stand of that pause. A round already on its way
+        // when the pause came wrote the state from before it.
+        var coversPause = false
         repeat {
             syncFollowUpOrigin = nil
+            if pauseRecordPending { coversPause = true }
             await performSync(runOrigin)
             if let next = syncFollowUpOrigin { runOrigin = next }
         } while syncFollowUpOrigin != nil
+        if coversPause { pauseRecordPending = false }
     }
 
     /// What the player knows now, for the plan of one sync.

@@ -321,6 +321,29 @@ struct StandOwnerTests {
         let record = try #require(hold.range(of: "epoch: standEpoch)"), "the hold records without the epoch")
         let pause = try #require(hold.range(of: "pause(caller:"), "the hold does not pause")
         #expect(record.lowerBound < pause.lowerBound, "the hold pauses before it records")
+        // A paused piece whose record still waits for the server is held
+        // too: the hold asks the rule, the pause of a running piece sets the
+        // mark, and only a round that began after it clears the mark.
+        #expect(hold.contains("AccountSwitchHold.records(isPlaying: isPlaying, pauseRecordPending: pauseRecordPending)"),
+                "the hold does not ask the rule")
+        #expect(hold.contains("if isPlaying { pause(caller:"), "the hold pauses what does not play")
+        let pausing = try #require(ABSPodcastRefreshTests.body(of: "func pause(caller: String = #function) {", in: player))
+        #expect(pausing.contains("if wasPlaying { pauseRecordPending = true }"), "a pause marks no record on its way")
+        let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
+        let run = try #require(ABSPodcastRefreshTests.body(of: "func syncProgress(_ origin: SyncOrigin) async {", in: sync))
+        #expect(run.contains("if pauseRecordPending { coversPause = true }") && run.contains("if coversPause { pauseRecordPending = false }"),
+                "the mark is cleared by a round that did not write the paused stand")
+    }
+
+    /// The rule of the hold: a playing piece and a paused one whose record
+    /// waits for the server are recorded; a stand recorded long ago is not
+    /// stamped anew.
+    @Test("beim Kontowechsel wird aufgenommen, wenn ein Stueck spielt oder die Aufnahme seiner Pause noch aussteht, sonst nicht")
+    func theHoldRecordsWhatPlaysOrWaits() {
+        #expect(AccountSwitchHold.records(isPlaying: true, pauseRecordPending: false))
+        #expect(AccountSwitchHold.records(isPlaying: false, pauseRecordPending: true))
+        #expect(AccountSwitchHold.records(isPlaying: true, pauseRecordPending: true))
+        #expect(!AccountSwitchHold.records(isPlaying: false, pauseRecordPending: false))
     }
 
     /// The rows of a witness, with the mirror installed on its own defaults.

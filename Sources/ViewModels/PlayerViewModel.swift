@@ -223,6 +223,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A deliberate sync arrived while one was running. Re-run once
     /// afterwards, under the last occasion that asked.
     var syncFollowUpOrigin: SyncOrigin?
+    /// A pause of a running piece asked for its sync, and the run that
+    /// records its stand has not ended yet (the record follows the server's
+    /// answer). A change of account in that window holds this stand too
+    /// (`AccountSwitchHold`).
+    var pauseRecordPending = false
 
     /// Seconds before the timer end over which the volume fades gently. No hard
     /// stop mid-sentence.
@@ -924,18 +929,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// because the stock passes to the next account right after and the
     /// write of the pause comes only after the server's answer, under an
     /// epoch that no longer counts. Then it pauses, so nothing of it plays
-    /// on into the next account. Not playing, it does nothing.
+    /// on into the next account. A piece paused whose record still waits for
+    /// the server is recorded the same way; one whose record landed long ago
+    /// is left alone, so it is never stamped anew.
     func holdForAccountSwitch() {
-        guard isPlaying else { return }
+        guard AccountSwitchHold.records(isPlaying: isPlaying, pauseRecordPending: pauseRecordPending) else { return }
         if let id = item?.id {
             ListeningStore.record(id, position: currentTime, duration: duration,
                                   atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
         }
-        pause(caller: "account switch")
+        if isPlaying { pause(caller: "account switch") }
     }
 
     func pause(caller: String = #function) {
         notePlayback("pause", from: caller)
+        let wasPlaying = isPlaying
         player?.pause()
         isPlaying = false
         pausedAt = Date()
@@ -951,6 +959,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateWidgetSnapshot(force: true)
         ListeningStatsStore.shared.flush()
         Haptics.tap()
+        // Only a pause of a running piece has a stand on its way; the run
+        // of `syncProgress` that writes it clears the mark when it ends.
+        if wasPlaying { pauseRecordPending = true }
         Task { await syncProgress(.pause) }
     }
 
