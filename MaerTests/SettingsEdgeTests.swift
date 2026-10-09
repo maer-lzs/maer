@@ -24,8 +24,8 @@ struct SettingsEdgeTests {
             "the inner padding of the capsule that names a feed's class beside its title; no row",
         "SetupView.swift: .padding(.horizontal)":
             "the button pinned below the setup form keeps the system margin; no row",
-        "RowsSettingsView.swift: .padding(.leading, row.group == nil ? 0 : 16)":
-            "the switches of a group of shares stand under the group's title; whether they indent is a visible choice, open",
+        "RowsSettingsView.swift: .padding(.leading, row.group == nil ? 0 : groupIndent)":
+            "the switches of a group of shares stand in under the group's title, decided, by a scaled value",
     ]
 
     /// Symbols measured wider than the list's icon column, each with its

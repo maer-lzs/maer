@@ -14,6 +14,9 @@ struct RowsSettingsView: View {
     /// inline note. Session-transient by design: the durable reason shows
     /// derived on the sources page.
     @State private var cleanupNotes: [String: [String]] = [:]
+    /// How far the switches of a group of shares stand in under the
+    /// group's title; it grows with the text like the rows it indents.
+    @ScaledMetric(relativeTo: .body) private var groupIndent: CGFloat = 16
 
     var body: some View {
         Form {
@@ -31,7 +34,7 @@ struct RowsSettingsView: View {
                                      note: cleanupNotes[row.key]) { turnedOff in
                             cleanupNotes[row.key] = turnedOff.isEmpty ? nil : turnedOff
                         }
-                        .padding(.leading, row.group == nil ? 0 : 16)
+                        .padding(.leading, row.group == nil ? 0 : groupIndent)
                     }
                 } header: {
                     Text(Self.title(for: tab))
