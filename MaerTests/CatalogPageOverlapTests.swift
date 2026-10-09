@@ -43,9 +43,48 @@ struct CatalogPageOverlapTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
         #expect(code.contains("logOverlap(by: \"open\")") && code.contains("logOverlap(by: \"stock\")"),
                 "a pass of the shelves ends without the line")
-        #expect(code.contains("CatalogPageOverlap.count(rows: shownRows)"))
+        #expect(code.contains("CatalogPageOverlap.count(rows: split.rows.map"),
+                "the line counts what the page draws, the split")
         #expect(code.contains("CatalogPageOverlap.speaks(feedBased: source.isFeedBased"),
                 "the line asks the rule whether this page has rows to count")
+    }
+
+    private struct Title: Identifiable { let id: String }
+
+    private static func ids(_ rows: [[Title]]) -> [[String]] { rows.map { $0.map(\.id) } }
+
+    /// On the overview each title stands once, in the first row of the page
+    /// that shows it; a later row fills from deeper in its own stock, a row
+    /// that keeps nothing comes back empty and is counted.
+    @Test("auf der Uebersicht steht jeder Titel einmal, in der ersten Reihe der Seitenfolge; eine spaetere Reihe fuellt aus ihrem Bestand nach")
+    func eachTitleStandsInItsFirstRowOnly() {
+        let stocks = [["a", "b", "c"], ["b", "d", "e", "f"], ["a", "c"], ["g", "g", "h"]]
+            .map { $0.map(Title.init) }
+        let kept = CatalogPageOverlap.firstRowOnly(stocks, limit: 2)
+        let rows = Self.ids(kept)
+        #expect(rows == [["a", "b"], ["d", "e"], ["c"], ["g", "h"]], "rows: \(rows)")
+        let count = CatalogPageOverlap.count(rows: rows)
+        #expect(count.duplicates == 0, "a title stands twice: \(count.examples)")
+        let fullyShown = [["a", "b"], ["b", "a"], ["c"]].map { $0.map(Title.init) }
+        let emptiedRows = Self.ids(CatalogPageOverlap.firstRowOnly(fullyShown, limit: 12))
+        #expect(emptiedRows == [["a", "b"], [], ["c"]], "rows: \(emptiedRows)")
+        #expect(CatalogPageOverlap.emptied(fullyShown, to: CatalogPageOverlap.firstRowOnly(fullyShown, limit: 12)) == 1)
+        let noStock: [[Title]] = [[], ["x"].map(Title.init)]
+        #expect(CatalogPageOverlap.emptied(noStock, to: CatalogPageOverlap.firstRowOnly(noStock, limit: 12)) == 0,
+                "a row without a stock of its own is no emptied row")
+    }
+
+    /// The page draws the split and its rows read their share of it, so no
+    /// row cuts its own stock past the rule.
+    @Test("die Quellen-Seite zeichnet die Verteilung, keine Reihe schneidet ihren Bestand selbst", .needsTheSources)
+    func thePageDrawsTheSplit() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
+        let page = try #require(code.range(of: "struct CatalogSourcePage: View"))
+        let next = code.range(of: "struct CatalogPopularPage", range: page.upperBound..<code.endIndex)
+        let body = code[page.upperBound..<(next?.lowerBound ?? code.endIndex)]
+        #expect(body.contains("CatalogPageOverlap.firstRowOnly("), "the overview does not split its rows")
+        #expect(!body.contains("RowPreview.cut("), "a row of the overview cuts its own stock again")
     }
 }
 #endif

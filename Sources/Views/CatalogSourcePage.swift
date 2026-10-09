@@ -191,7 +191,8 @@ struct CatalogSourcePage: View {
     /// EXCLUSIVELY of tile rows. Endless paging has not disappeared. It lives
     /// on the full page behind the chevron, where scrolling is the form.
     private var catalogGrid: some View {
-        LazyVStack(alignment: .leading, spacing: 14) {
+        let rows = overviewRows
+        return LazyVStack(alignment: .leading, spacing: 14) {
             // The notice stands at the START of every surface whose content
             // comes from archive.org. LibriVox and Gutenberg carry their own
             // holdings and state their own terms.
@@ -218,14 +219,14 @@ struct CatalogSourcePage: View {
                                        surface: source.rawValue,
                                        archiveQuery: ArchiveOrgClient.archiveBaseQuery(for: source))
                                })
-            popularRow
+            popularRow(rows.byKey[Self.popularRowKey] ?? [])
             // LibriVox keeps its "new additions" as a second lens on the
             // same source. The overview shows one row per source only.
-            if source == .librivox, !store.sourceRows.librivoxNew.isEmpty {
+            if source == .librivox, let fresh = rows.byKey[Self.newRowKey], !fresh.isEmpty {
                 RowHeading.plain("New at LibriVox")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(RowPreview.cut(store.sourceRows.librivoxNew)) { item in
+                        ForEach(fresh) { item in
                             tile(item)
                                 .cardRowSlot(spacing: 14)
                         }
@@ -240,13 +241,14 @@ struct CatalogSourcePage: View {
             if hasChips {
                 ForEach(shelfSlots, id: \.key) { slot in
                     if slot.ready {
-                        genreRow((key: slot.key, title: slot.title))
+                        genreRow((key: slot.key, title: slot.title),
+                                 shown: rows.byKey[Self.shelfRowKey(slot.key)] ?? [])
                     } else {
                         shelfPlaceholderRow(title: slot.title)
                     }
                 }
                 ForEach(decadeRows, id: \.key) { decade in
-                    decadeRow(decade)
+                    decadeRow(decade, shown: rows.byKey[Self.decadeRowKey(decade.key)] ?? [])
                 }
                 if showsShelfPlaceholder {
                     shelfPlaceholderRow(title: String(localized: "Loading genres…"))
@@ -266,8 +268,7 @@ struct CatalogSourcePage: View {
     /// grid is the named row at the top, with the chevron onto the full page
     /// where scrolling belongs.
     @ViewBuilder
-    private var popularRow: some View {
-        let preview = RowPreview.cut(items)
+    private func popularRow(_ preview: [LibraryItem]) -> some View {
         if !preview.isEmpty {
             RowHeading.entry("Popular", destination: FreeAudiobooksRoute.popular(source))
             ScrollView(.horizontal, showsIndicators: false) {
@@ -302,53 +303,71 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// The ids each row of the page shows, in page order: the same cut the
-    /// rows draw (`RowPreview.cut`).
-    private var shownRows: [[String]] {
-        var rows = [RowPreview.cut(items).map(\.id)]
+    static let popularRowKey = "popular"
+    static let newRowKey = "new"
+    static func shelfRowKey(_ key: String) -> String { "shelf." + key }
+    static func decadeRowKey(_ key: String) -> String { "decade." + key }
+
+    /// The overview's rows in page order (popular, new at LibriVox, the
+    /// filled shelves, the decades), each title once, in the first row that
+    /// shows it (`CatalogPageOverlap.firstRowOnly`). Drawing and the page's
+    /// log line read this one split.
+    private var overviewRows: (byKey: [String: [LibraryItem]], rows: [[LibraryItem]], emptied: Int) {
+        var keys = [Self.popularRowKey]
+        var stocks = [items]
         if source == .librivox {
-            rows.append(RowPreview.cut(store.sourceRows.librivoxNew).map(\.id))
+            keys.append(Self.newRowKey)
+            stocks.append(store.sourceRows.librivoxNew)
         }
         for slot in shelfSlots where slot.ready {
-            rows.append(RowPreview.cut(shelfStock[slot.key]?.items ?? []).map(\.id))
+            keys.append(Self.shelfRowKey(slot.key))
+            stocks.append(shelfStock[slot.key]?.items ?? [])
         }
         for decade in decadeRows {
-            rows.append(RowPreview.cut(decadeStock[decade.key]?.items ?? []).map(\.id))
+            keys.append(Self.decadeRowKey(decade.key))
+            stocks.append(decadeStock[decade.key]?.items ?? [])
         }
-        return rows
+        let kept = CatalogPageOverlap.firstRowOnly(stocks, limit: RowPreview.limit)
+        return (Dictionary(zip(keys, kept), uniquingKeysWith: { first, _ in first }), kept,
+                CatalogPageOverlap.emptied(stocks, to: kept))
     }
 
     /// One line per finished pass: how many titles stand in more than one
-    /// row (`CatalogPageOverlap.speaks` says when).
+    /// row, and how many rows the split leaves without a title of their own
+    /// (`CatalogPageOverlap.speaks` says when).
     private func logOverlap(by caller: String) {
         guard CatalogPageOverlap.speaks(feedBased: source.isFeedBased, hasShelves: hasChips,
                                         shelvesLoaded: shelvesLoaded) else { return }
-        let count = CatalogPageOverlap.count(rows: shownRows)
-        Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) examples=\(count.examples.joined(separator: ","), privacy: .public)")
+        let split = overviewRows
+        let count = CatalogPageOverlap.count(rows: split.rows.map { $0.map(\.id) })
+        Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) emptied=\(split.emptied) examples=\(count.examples.joined(separator: ","), privacy: .public)")
     }
 
-    private func decadeRow(_ decade: (key: String, title: String)) -> some View {
+    /// A decade's preview row; `shown` is its share of the overview split.
+    @ViewBuilder
+    private func decadeRow(_ decade: (key: String, title: String), shown: [LibraryItem]) -> some View {
         let stock = decadeStock[decade.key]
-        let shown = RowPreview.cut(stock?.items ?? [])
-        return VStack(alignment: .leading, spacing: 10) {
-            if let total = stock?.total {
-                RowHeading(title: "", verbatimTitle: decade.title,
-                           total: total, shown: shown.count, showsTotal: true,
-                           destination: FreeAudiobooksRoute.shelf(source, decade.key))
-            } else {
-                RowHeading(title: "", verbatimTitle: decade.title, font: .title3,
-                           variant: .entry,
-                           destination: FreeAudiobooksRoute.shelf(source, decade.key))
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
-                    ForEach(shown) { item in
-                        tile(item).cardRowSlot(spacing: 14)
-                    }
+        if !shown.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                if let total = stock?.total {
+                    RowHeading(title: "", verbatimTitle: decade.title,
+                               total: total, shown: shown.count, showsTotal: true,
+                               destination: FreeAudiobooksRoute.shelf(source, decade.key))
+                } else {
+                    RowHeading(title: "", verbatimTitle: decade.title, font: .title3,
+                               variant: .entry,
+                               destination: FreeAudiobooksRoute.shelf(source, decade.key))
                 }
-                .padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(shown) { item in
+                            tile(item).cardRowSlot(spacing: 14)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
             }
-            .scrollClipDisabled()
         }
     }
 
@@ -360,13 +379,13 @@ struct CatalogSourcePage: View {
 
     /// One shelf's preview row, from the shelf's own stock.
     ///
-    /// Each row asks its source for its own shelf, and no row leaves out
-    /// what another row shows: a title that carries two subjects can stand
-    /// in both rows, and in the popular row or a decade row besides.
+    /// Each row asks its source for its own shelf, so a title that carries
+    /// two subjects is in both stocks; on the overview it stands only in
+    /// the first row that shows it (`shown`, the row's share of the split),
+    /// and its full shelf page keeps the whole stock.
     @ViewBuilder
-    private func genreRow(_ shelf: (key: String, title: String)) -> some View {
-        if let stock = shelfStock[shelf.key], !stock.items.isEmpty {
-            let shown = RowPreview.cut(stock.items)
+    private func genreRow(_ shelf: (key: String, title: String), shown: [LibraryItem]) -> some View {
+        if let stock = shelfStock[shelf.key], !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 // The chevron counts the SOURCE's stock. With the pool
                 // count it was `1 > 1` for every shelf, so the door to the

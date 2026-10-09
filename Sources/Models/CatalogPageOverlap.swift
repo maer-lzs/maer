@@ -39,4 +39,30 @@ nonisolated enum CatalogPageOverlap {
     static func speaks(feedBased: Bool, hasShelves: Bool, shelvesLoaded: Bool) -> Bool {
         !feedBased && (shelvesLoaded || !hasShelves)
     }
+
+    /// The overview's rows with each title once, in the first row of the
+    /// page that shows it. In page order every row keeps, from its own
+    /// stock, only titles no earlier row shows, and is cut to `limit`
+    /// after that, so a row whose stock holds more than it shows fills
+    /// from deeper in it, and one that holds no more gets shorter. A row
+    /// that keeps nothing comes back empty, and the page leaves it out.
+    /// The full page of a row stays its whole stock.
+    static func firstRowOnly<Item: Identifiable>(_ rows: [[Item]], limit: Int) -> [[Item]] where Item.ID == String {
+        var shown: Set<String> = []
+        return rows.map { row in
+            var kept: [Item] = []
+            var inRow: Set<String> = []
+            for item in row where kept.count < limit && !shown.contains(item.id) && inRow.insert(item.id).inserted {
+                kept.append(item)
+            }
+            shown.formUnion(inRow)
+            return kept
+        }
+    }
+
+    /// How many rows had titles of their own and keep none once every
+    /// title stands only in its first row.
+    static func emptied<Item>(_ rows: [[Item]], to kept: [[Item]]) -> Int {
+        zip(rows, kept).filter { !$0.isEmpty && $1.isEmpty }.count
+    }
 }
