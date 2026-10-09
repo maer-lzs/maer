@@ -205,13 +205,15 @@ final class MaerPlaylists: ObservableObject {
     /// The lists of the new owner replace the ones here; the holding settles
     /// once the rows hold them.
     private func replace(with incoming: Resting?) throws {
+        // What can throw comes first: a replacement that throws touches nothing.
+        let leaving = try undecodedRows() ?? [:]
         Self.tombstones = incoming?.tombstones ?? [:]
         playlists = Self.ordered(Self.keyed(incoming?.lists ?? []))
         // The owner changed, and the lists before rest on the shelf, the
         // rows this build cannot read with them. In the same transaction as
         // the new lists and the mark: those rows leave the table, and the
         // unread rows of the incoming account come back as they are.
-        let carried = keeper.carriedRows(leaving: try undecodedRows() ?? [:], coming: incoming?.unread ?? [:],
+        let carried = keeper.carriedRows(leaving: leaving, coming: incoming?.unread ?? [:],
                                          kept: Set(playlists.map(\.id)))
         save(emptying: .allowed, also: carried)
         // The rows that came back are rows this build does not read.

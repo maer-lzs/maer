@@ -1595,6 +1595,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// The shows of the new owner replace the ones here; the holding settles
     /// once the rows hold them.
     private func replace(with incoming: Resting?) throws {
+        // Everything that can throw comes first: a replacement that throws
+        // touches nothing (the hand-over of an unfinished replacement asks
+        // here without asking `current()` before, so the read of the unread
+        // rows may start only now).
+        let leaving = try undecodedRows() ?? .init()
         let waiting = try incoming?.waiting.map { try PropertyListSerialization.propertyList(from: $0, format: nil) }
         defaults.set(waiting, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
@@ -1603,13 +1608,14 @@ final class PodcastSubscriptions: ObservableObject {
         // rows this build cannot read with them. In the same transaction as
         // the new shows and the mark: those rows leave the tables, and the
         // unread rows of the incoming account come back as they are.
-        let carried = PodcastRowStore.carriedRows(leaving: try undecodedRows() ?? .init(), coming: incoming?.unread ?? .init(),
+        let carried = PodcastRowStore.carriedRows(leaving: leaving, coming: incoming?.unread ?? .init(),
                                                   keptShows: Set(shows.map(\.id)),
                                                   keptEpisodes: Set(shows.flatMap { $0.episodes.map(\.guid) }))
         save(emptying: .allowed, also: carried)
-        // What stands unread in the rows now is what came back; those are
-        // rows this build does not read.
-        rawRows = incoming?.unread ?? .init()
+        // What stands unread in the rows now follows the write that lands,
+        // never its intent: the write may fail or be refused. So the memo
+        // goes, and the next question reads the table again.
+        rawRows = nil
         if !(incoming?.unread?.isEmpty ?? true) { rowChain.noteRowsNotRead() }
     }
 

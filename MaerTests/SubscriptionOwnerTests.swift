@@ -125,7 +125,18 @@ struct SubscriptionOwnerTests {
         #expect(try undecoded().isEmpty, "A's unread rows stand under B")
         #expect(subs.shows.isEmpty)
 
-        #expect(subs.follow(owner: "account-a"))
+        // After each replacement the unread rows are read again (the memo
+        // follows the table, not the intent): a hand-over holds once, a later
+        // round goes.
+        func handOver(to owner: String) async throws -> Bool {
+            var handed = subs.follow(owner: owner)
+            for _ in 0..<100 where !handed {
+                try await Task.sleep(for: .milliseconds(20))
+                handed = subs.follow(owner: owner)
+            }
+            return handed
+        }
+        #expect(try await handOver(to: "account-a"))
         await subs.awaitPendingWrites()
         #expect(try undecoded() == before, "A's unread rows did not come back as they were")
         #expect(subs.startIncomplete, "this process takes its rows for whole after rows came back unread")
@@ -138,11 +149,11 @@ struct SubscriptionOwnerTests {
         subs.unsubscribe(id: moor.id, notesCloud: false)
         await subs.awaitPendingWrites()
         #expect(try undecoded().episodes.map(\.guid) == ["later-1"], "the precondition: the cascade took the episode under moor")
-        #expect(subs.follow(owner: "account-b"))
+        #expect(try await handOver(to: "account-b"))
         await subs.awaitPendingWrites()
         let restAgain = try #require(try shelf.rest(PodcastSubscriptions.Resting.self, of: PodcastSubscriptions.shelfFamily, owner: "account-a"))
         #expect(restAgain.unread?.episodes.map(\.guid) == ["later-1"], "an episode whose show is gone rested with A")
-        #expect(subs.follow(owner: "account-a"))
+        #expect(try await handOver(to: "account-a"))
         await subs.awaitPendingWrites()
         try await Task.sleep(for: .milliseconds(100))
         #expect(try shelf.holding(of: PodcastSubscriptions.shelfFamily) == .init(owner: "account-a"),
@@ -162,6 +173,71 @@ struct SubscriptionOwnerTests {
         let inserted = statements.filter { $0.sql.contains("INTO episode") }.compactMap { $0.params.first?.string }
         #expect(inserted == ["under-raw", "under-kept"], "an episode without its show was inserted: \(inserted)")
         #expect(raw.standing(under: ["feed:kept"]).episodes.map(\.guid) == ["under-raw", "under-kept"])
+    }
+
+    /// An unfinished replacement of a run before, met at a start whose rows
+    /// hold a row this build cannot read: the hand-over asks `replace`
+    /// without `current()` before, so the read of the unread rows starts
+    /// there. The first round holds and touches nothing; a later one replaces.
+    @Test("ein unterbrochenes Ersetzen ueber einer ungelesenen Zeile haelt, ohne etwas anzufassen, und ersetzt danach")
+    func anUnfinishedReplacementOverAnUnreadRowTouchesNothingFirst() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let moor = Self.show("moor", episodes: 1)
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([moor])
+        _ = try await rig.database.connection().run("INSERT INTO show (id, position, payload) VALUES (?, ?, ?)",
+                                                    [.text("feed:later"), .integer(9), .blob(Data("a later form".utf8))])
+        let shelf = try #require(rig.database.restingShelf)
+        let family = PodcastSubscriptions.shelfFamily
+        try shelf.lay(PodcastSubscriptions.Resting(shows: [Self.show("deich", episodes: 1)], waiting: nil),
+                      of: family, owner: "account-b")
+        try shelf.setHolding(.init(owner: "account-b", replacing: true, from: "account-a", replacement: "open"), of: family)
+        let subs = await rig.store()
+        #expect(subs.shows.map(\.title) == ["moor"], "the precondition: the rows of before are live")
+        #expect(!subs.follow(owner: "account-b"), "the first round did not hold for the unread rows")
+        #expect(subs.shows.map(\.title) == ["moor"], "a replacement that threw swapped the shows")
+        var handed = false
+        for _ in 0..<100 where !handed {
+            try await Task.sleep(for: .milliseconds(20))
+            handed = subs.follow(owner: "account-b")
+        }
+        #expect(handed, "the replacement never came after the read")
+        await subs.awaitPendingWrites()
+        #expect(subs.shows.map(\.title) == ["deich"])
+        #expect(try PodcastRowStore.undecodedNow(reader: try #require(try rig.database.readerNow())).shows.isEmpty,
+                "the unread row stands under the account replaced in")
+    }
+
+    /// After a replacement the memo of the unread rows does not say what
+    /// should stand: the next question reads the table. A row that appears
+    /// there after the hand-over rests with its account at the next one.
+    @Test("nach einem Ersetzen liest die naechste Frage die Tabelle neu, statt dem Merker der Absicht zu glauben")
+    func theUnreadMemoFollowsTheTableAfterAReplacement() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        try await PodcastRowStore(connection: try rig.database.connection()).replaceAll([Self.show("moor", episodes: 1)])
+        _ = try await rig.database.connection().run("INSERT INTO show (id, position, payload) VALUES (?, ?, ?)",
+                                                    [.text("feed:early"), .integer(9), .blob(Data("a later form".utf8))])
+        let subs = await rig.store()
+        #expect(subs.follow(owner: "account-a"))
+        func handOver(to owner: String) async throws -> Bool {
+            var handed = subs.follow(owner: owner)
+            for _ in 0..<100 where !handed {
+                try await Task.sleep(for: .milliseconds(20))
+                handed = subs.follow(owner: owner)
+            }
+            await subs.awaitPendingWrites()
+            return handed
+        }
+        #expect(try await handOver(to: "account-b"), "the precondition: the hand-over to B")
+        // A row appears under B after the hand-over, as a write of a later
+        // build would leave it.
+        _ = try await rig.database.connection().run("INSERT INTO show (id, position, payload) VALUES (?, ?, ?)",
+                                                    [.text("feed:late"), .integer(10), .blob(Data("a later form".utf8))])
+        #expect(try await handOver(to: "account-a"))
+        let shelf = try #require(rig.database.restingShelf)
+        let restOfB = try #require(try shelf.rest(PodcastSubscriptions.Resting.self, of: PodcastSubscriptions.shelfFamily, owner: "account-b"))
+        #expect(restOfB.unread?.shows.map(\.id) == ["feed:late"], "B's unread row did not rest with B: \(String(describing: restOfB.unread))")
     }
 
     /// An unsubscribe given while a show stood narrows its own write; a save
