@@ -589,11 +589,12 @@ struct RadioStateQueryTests {
         ]
         let deduped = RadioMapping.dedupeForDisplay(stations)
         // Real variants fold (name-after-trim + domain); AAC wins the bundle,
-        // the loser rides as a detail variant.
+        // the bundle carries both streams, the shown one first.
         let rock = deduped.first { PodcastSubscriptions.feedHost($0.homepage ?? "") == "rockantenne.de" }
+        let rockStreams = rock?.variantList.map(\.id) ?? []
         #expect(deduped.count == 4)
         #expect(rock?.id == "2")
-        #expect(rock?.variants?.count == 1)
+        #expect(rockStreams == ["2", "1"], "streams: \(rockStreams)")
         // The same-named FOREIGN station (other domain) stays separate…
         #expect(deduped.contains { $0.id == "3" })
         // …and program siblings never fold (name differs).
@@ -601,35 +602,45 @@ struct RadioStateQueryTests {
     }
 
     /// The variant choice shows `variantList`, and the station itself is one
-    /// of its streams (the house rule: self included). Measured W-Sammel 11a:
-    /// three entries of one station, the last best, give `a, b, a`: the earlier
-    /// loser stands twice and the winner is missing from its own list. A named
-    /// finding until the form is decided; the case turns red once it holds.
-    @Test("die Auswahl eines gefalteten Senders zeigt jeden Strom einmal, den Gewinner eingeschlossen (Befund W-Sammel 11a)")
+    /// of its streams (the house rule: self included). Three entries of one
+    /// station, the last best: each stream stands once, the shown one first,
+    /// the others best first (before, `a, b, a`: the earlier loser twice and
+    /// the winner missing from its own list).
+    @Test("die Auswahl eines gefalteten Senders zeigt jeden Strom einmal, den gezeigten zuerst")
     func aLaterWinnerCarriesEachVariantOnce() {
         let deduped = RadioMapping.dedupeForDisplay([Self.rock("a", 64), Self.rock("b", 96), Self.rock("c", 192)])
         let winner = deduped.first
         let streams = winner?.variantList.map(\.id) ?? []
         #expect(deduped.count == 1 && winner?.id == "c", "the precondition: one bundle, the best wins")
-        withKnownIssue("the earlier loser stands twice and the winner is missing from its own list; the form is open") {
-            #expect(streams.sorted() == ["a", "b", "c"], "streams: \(streams)")
-        }
+        #expect(streams == ["c", "b", "a"], "streams: \(streams)")
     }
 
     /// An entry that already brings variants keeps them in the bundle,
-    /// whether it wins or loses. Read at the code, held here as a finding.
-    @Test("mitgebrachte Varianten bleiben in der Faltung erhalten (Befund W-Sammel 11a)")
+    /// whether it wins or loses, and a stream it brings twice (itself among
+    /// its own variants) stands once.
+    @Test("mitgebrachte Varianten bleiben in der Faltung erhalten, jeder Strom einmal")
     func broughtVariantsStayInTheBundle() {
         var winning = Self.rock("c", 192)
-        winning.variants = [Self.rock("x", 32)]
+        winning.variants = [Self.rock("c", 192), Self.rock("x", 32)]
         var losing = Self.rock("b", 96)
-        losing.variants = [Self.rock("y", 48)]
+        losing.variants = [Self.rock("b", 96), Self.rock("y", 48)]
         let deduped = RadioMapping.dedupeForDisplay([losing, winning])
         let streams = deduped.first?.variantList.map(\.id) ?? []
         #expect(deduped.count == 1 && deduped.first?.id == "c", "the precondition: one bundle, the best wins")
-        withKnownIssue("an entry's own variants fall away in the fold; the form is open") {
-            #expect(streams.sorted() == ["b", "c", "x", "y"], "streams: \(streams)")
-        }
+        #expect(streams == ["c", "b", "y", "x"], "streams: \(streams)")
+    }
+
+    /// The shown entry is the best of the ENTRIES, not of every stream: one
+    /// may bring a better stream than itself. The shown one still stands
+    /// first, the better stream after it, none twice.
+    @Test("ist der gezeigte Strom nicht der beste, steht er trotzdem zuerst, der beste danach, keiner doppelt")
+    func theShownStreamLeadsEvenWhenABetterOneRidesAlong() {
+        var shown = Self.rock("c", 192)
+        shown.variants = [Self.rock("c", 192), Self.rock("z", 320)]
+        let deduped = RadioMapping.dedupeForDisplay([Self.rock("b", 96), shown])
+        let streams = deduped.first?.variantList.map(\.id) ?? []
+        #expect(deduped.count == 1 && deduped.first?.id == "c", "the precondition: the best entry is shown")
+        #expect(streams == ["c", "z", "b"], "streams: \(streams)")
     }
 
     /// One entry of the station of these findings.

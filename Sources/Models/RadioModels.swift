@@ -254,14 +254,6 @@ nonisolated enum RadioMapping {
         return aAAC && !bAAC
     }
 
-    /// Sender-Dedupe: RB serves the same station multiply (stream
-    /// variants, stale twins). Identity = display-normalized name PLUS the
-    /// homepage/stream DOMAIN as the second key. A same-named FOREIGN
-    /// station (different domain) never folds in (the Rock-Antenne-Italy
-    /// class); real program siblings (1LIVE vs 1LIVE Dance Hits) differ by
-    /// name and never fold either. The best member wins (bitrate, AAC>MP3);
-    /// the losers ride as `variants` so the detail page offers them as
-    /// further streams instead of throwing them away.
     /// In a list fetched WITH a country filter, an entry
     /// whose country code belongs to a DIFFERENT country is dropped. Empty
     /// codes stay. Radio Browser reports countries patchily, and in this
@@ -277,30 +269,46 @@ nonisolated enum RadioMapping {
         }
     }
 
+    /// Sender-Dedupe: RB serves the same station multiply (stream
+    /// variants, stale twins). Identity = display-normalized name PLUS the
+    /// homepage/stream DOMAIN as the second key. A same-named FOREIGN
+    /// station (different domain) never folds in (the Rock-Antenne-Italy
+    /// class); real program siblings (1LIVE vs 1LIVE Dance Hits) differ by
+    /// name and never fold either. The best entry is shown (bitrate,
+    /// AAC>MP3), and every stream of the bundle rides in its `variants`
+    /// once (`bundleStreams`), the ones each entry brought included, so the
+    /// detail page offers them instead of throwing them away.
     static func dedupeForDisplay(_ stations: [RadioStation]) -> [RadioStation] {
-        var buckets: [String: RadioStation] = [:]
+        var shown: [String: RadioStation] = [:]
+        var streams: [String: [RadioStation]] = [:]
         var order: [String] = []
         for station in stations {
-            var flat = station
             let key = displayIdentityKey(station)
-            if var existing = buckets[key] {
-                var variants = existing.variants ?? []
-                if prefers(flat, over: existing) {
-                    let loser = existing
-                    flat.variants = variants + [strippedVariant(loser)] + (loser.variants ?? [])
-                    buckets[key] = flat
-                } else {
-                    variants.append(strippedVariant(flat))
-                    existing.variants = variants
-                    buckets[key] = existing
-                }
+            let own = [strippedVariant(station)] + station.variantList.map(strippedVariant)
+            if let existing = shown[key] {
+                if prefers(station, over: existing) { shown[key] = station }
             } else {
-                flat.variants = flat.variants ?? nil
-                buckets[key] = flat
+                shown[key] = station
                 order.append(key)
             }
+            streams[key, default: []] += own
         }
-        return order.compactMap { buckets[$0] }
+        return order.compactMap { key in
+            guard var entry = shown[key] else { return nil }
+            entry.variants = bundleStreams(shown: entry, among: streams[key] ?? [])
+            return entry
+        }
+    }
+
+    /// The streams of one bundle, each once by id: the shown entry first
+    /// (the house rule: the station is one of its own streams), the others
+    /// best first. Nil when the bundle holds a single stream.
+    static func bundleStreams(shown: RadioStation, among all: [RadioStation]) -> [RadioStation]? {
+        var seen: Set<String> = [shown.id]
+        var others: [RadioStation] = []
+        for stream in all where seen.insert(stream.id).inserted { others.append(stream) }
+        let list = [strippedVariant(shown)] + others.sorted { prefers($0, over: $1) }
+        return list.count > 1 ? list : nil
     }
 
     private static func strippedVariant(_ station: RadioStation) -> RadioStation {
