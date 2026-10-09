@@ -52,8 +52,11 @@ enum AccessFollowers {
     /// service.
     static var identity: String? { MaerSyncCarriers.session.identity?.scope }
 
-    /// The app's register; the account it follows is the session's.
-    private static let register = AccessRegister(identity: { identity })
+    /// The app's register; the account it follows is the session's. A
+    /// change of account holds what plays before the stock passes on.
+    private static let register = AccessRegister(identity: { identity }, onSwitch: {
+        AppSession.shared.playerCoordinator.viewModel?.holdForAccountSwitch()
+    })
 
     /// Enrolls a shared runner as it is built and hands it back.
     static func enrolled<Follower: AccessFollower>(_ follower: Follower) -> Follower {
@@ -102,10 +105,16 @@ final class AccessRegister {
     /// outlives a sign-out and a restart, so a change of account counts
     /// however it happened.
     private let defaults: UserDefaults
+    /// Runs once per change of account, before any family hands its stock
+    /// to the new account: what still plays under the account before is
+    /// held there (`PlayerViewModel.holdForAccountSwitch`).
+    private let onSwitch: () -> Void
 
-    init(identity: @escaping () -> String?, defaults: UserDefaults = .standard) {
+    init(identity: @escaping () -> String?, defaults: UserDefaults = .standard,
+         onSwitch: @escaping () -> Void = {}) {
         self.identity = identity
         self.defaults = defaults
+        self.onSwitch = onSwitch
     }
 
     func enroll<Follower: AccessFollower>(_ follower: Follower) -> Follower {
@@ -137,6 +146,9 @@ final class AccessRegister {
         let previous = StockOwner.owner(in: defaults)
         let change = StockOwner.change(owner: previous, now: now)
         let identityChanged = (restart && signedIn) || change.isSwitch
+        // Before the stock moves: the stand of what plays lands in the
+        // account it was played in, and nothing of it reaches the next.
+        if change.isSwitch { onSwitch() }
         if let now { StockOwner.setOwner(now, in: defaults) }
         // The stock follows the account before any carrier starts again,
         // with the sync switch off as well; in the order the runners

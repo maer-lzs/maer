@@ -673,6 +673,7 @@ final class PlayerCoordinator: ObservableObject {
     private func nextPlayableQueueItem() -> LibraryItem? {
         let offline = !NetworkMonitor.shared.isConnected
         let ids = orders.ids
+        let session = AppSession.shared
         guard let id = QueueContinuation.nextPlayable(
             ids: ids,
             isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
@@ -682,7 +683,7 @@ final class PlayerCoordinator: ObservableObject {
             // session cache is only a shortcut; `open` fetches the detail.
             // A cache miss made the advancer end silently on entries it
             // could have fetched.
-            resolves: { AppSession.shared.playableItem(forId: $0) != nil }
+            resolves: { session.playableItem(forId: $0) != nil }
         ) else {
             // The end has a REASON, and it is told apart: an empty queue is
             // normal, entries that cannot start now are a finding.
@@ -691,7 +692,7 @@ final class PlayerCoordinator: ObservableObject {
             }
             return nil
         }
-        return AppSession.shared.playableItem(forId: id)
+        return session.playableItem(forId: id)
     }
 
     /// Restores the last played session on app start. Paused, so nothing plays

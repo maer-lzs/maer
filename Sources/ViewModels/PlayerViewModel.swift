@@ -919,6 +919,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
         PodcastCloudSync.shared.sendState(changedId: item.id, deliberate: deliberate)
     }
 
+    /// A change of account holds what plays. The stand of the running piece
+    /// is recorded now, under the account it was played in (`standEpoch`),
+    /// because the stock passes to the next account right after and the
+    /// write of the pause comes only after the server's answer, under an
+    /// epoch that no longer counts. Then it pauses, so nothing of it plays
+    /// on into the next account. Not playing, it does nothing.
+    func holdForAccountSwitch() {
+        guard isPlaying else { return }
+        if let id = item?.id {
+            ListeningStore.record(id, position: currentTime, duration: duration,
+                                  atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
+        }
+        pause(caller: "account switch")
+    }
+
     func pause(caller: String = #function) {
         notePlayback("pause", from: caller)
         player?.pause()

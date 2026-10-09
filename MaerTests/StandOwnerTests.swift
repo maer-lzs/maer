@@ -248,6 +248,81 @@ struct StandOwnerTests {
         withExtendedLifetime(runner) {}
     }
 
+    /// Hands the stock over through the real runner and keeps its carrier:
+    /// the app's carrier must never start in a witness.
+    private final class HandOverOnly: AccessFollower {
+        let runner: PodcastCloudSync
+        let note: (String) -> Void
+        init(_ runner: PodcastCloudSync, note: @escaping (String) -> Void) { self.runner = runner; self.note = note }
+        var followerName: String { "stands" }
+        func followOwner(previous: String?) {
+            note("handover")
+            runner.followOwner(previous: previous)
+        }
+        func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {}
+    }
+
+    /// The register holds what plays before any family hands its stock to
+    /// the next account: the stand at the hold carries the epoch of A and
+    /// lands in A; written after the hand over it would count for nothing,
+    /// and A would come back with the stand from before.
+    @Test("ein Kontowechsel haelt das laufende Stueck vor der Uebergabe an: sein Stand beim Anhalten landet bei A, nichts davon bei B")
+    func aSwitchHoldsWhatPlaysBeforeTheHandOver() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        try await withSyncOn {
+            var scope: String? = "account-a"
+            let carrier = AccountCarrier(scope: { scope })
+            let runner = PodcastCloudSync(carrier: carrier, defaults: defaults, identity: { scope }, shelf: rig.shelf)
+            runner.reconcile(pushing: false)
+            let t = 1_700_000_100_000.0
+            let epochOfA = ListeningStore.ownerEpoch(in: defaults)
+            ListeningStore.record("rss:a-1", position: 600, duration: 3600, atMs: t, epoch: epochOfA, in: defaults)
+            var order: [String] = []
+            // The piece played under A runs on to 700 when the switch comes;
+            // the hold records it with the epoch it was played in.
+            let register = AccessRegister(identity: { scope }, defaults: defaults, onSwitch: {
+                order.append("hold")
+                ListeningStore.record("rss:a-1", position: 700, duration: 3600, atMs: t + 60_000,
+                                      epoch: epochOfA, in: defaults)
+            })
+            let follower = register.enroll(HandOverOnly(runner) { order.append($0) })
+
+            scope = "account-b"
+            register.followAll(by: "sign-in")
+            #expect(order == ["hold", "handover"], "order at the switch: \(order)")
+            #expect(ListeningStore.backup("rss:a-1", in: defaults) == nil, "B sees A's stand")
+            #expect(carrier.pots["account-b"]?["rss:a-1"] == nil, "A's stand went to B")
+
+            // A second sign-in of B is no switch and holds nothing.
+            register.followAll(by: "sign-in")
+            #expect(order == ["hold", "handover", "handover"], "a sign-in without a switch held: \(order)")
+
+            scope = "account-a"
+            register.followAll(by: "sign-in")
+            let back = ListeningStore.backup("rss:a-1", in: defaults)?.first ?? -1
+            #expect(back == 700, "A's stand at the hold did not land in A: \(back)")
+            withExtendedLifetime(follower) {}
+        }
+    }
+
+    /// The app's register holds the player, and the player records the
+    /// stand under its epoch before it pauses.
+    @Test("das Register der App haelt den Player an, der Player nimmt den Stand mit seiner Epoche vor dem Anhalten auf", .needsTheSources)
+    func theAppHoldsThePlayerAtASwitch() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let followers = try code("Sources/Networking/AccessFollowers.swift")
+        #expect(followers.contains("viewModel?.holdForAccountSwitch()"), "the app's register does not hold the player")
+        let player = try code("Sources/ViewModels/PlayerViewModel.swift")
+        let hold = try #require(ABSPodcastRefreshTests.body(of: "func holdForAccountSwitch() {", in: player))
+        let record = try #require(hold.range(of: "epoch: standEpoch)"), "the hold records without the epoch")
+        let pause = try #require(hold.range(of: "pause(caller:"), "the hold does not pause")
+        #expect(record.lowerBound < pause.lowerBound, "the hold pauses before it records")
+    }
+
     /// The rows of a witness, with the mirror installed on its own defaults.
     private func mirrored(_ defaults: UserDefaults) async throws -> (StandStore, SQLiteConnection, StandMirror) {
         let connection = try SQLiteConnection(path: ":memory:")
@@ -524,7 +599,8 @@ struct StandOwnerTests {
             sites += Self.playerSites(in: SyncContractFenceTests.stripped(
                 try String(contentsOf: folder.appendingPathComponent(file), encoding: .utf8)))
         }
-        #expect(sites.count == 6, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
+        // Seven: the hold at a change of account records with the epoch too.
+        #expect(sites.count == 7, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
         for site in sites where !site.carriesEpoch {
             #expect(Self.epochExceptions[site.function] != nil, "\(site.function) writes or claims without the epoch")
         }
