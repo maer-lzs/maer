@@ -51,13 +51,13 @@ struct ReadmeVersionFenceTests {
         }
     }
 
-    /// The newest stamp the changelog names: its first `## v… (Build …)`
-    /// heading. Entries above it belong to the next build, not yet cut.
+    /// The newest stamp the changelog names: what its first `## v` heading
+    /// says, nil when that heading carries no `(Build …)`. Entries above it
+    /// belong to the next build, not yet cut. Only the first heading counts:
+    /// a new one without its build may not hand the question to an older one.
     static func newestChangelogStamp(in text: String) -> (version: String, build: String)? {
-        for line in text.split(separator: "\n") where line.hasPrefix("## v") {
-            if let stamp = namedStamps(in: String(line)).first { return stamp }
-        }
-        return nil
+        guard let newest = text.split(separator: "\n").first(where: { $0.hasPrefix("## v") }) else { return nil }
+        return namedStamps(in: String(newest)).first
     }
 
     /// The headings of a README (`#` to `###`) and its code fences, counted.
@@ -102,7 +102,8 @@ struct ReadmeVersionFenceTests {
         let version = try #require(versions.first)
         let build = try #require(builds.first)
         let changelog = try Self.text("CHANGELOG.md")
-        let newest = try #require(Self.newestChangelogStamp(in: changelog), "the changelog names no stamp")
+        let newest = try #require(Self.newestChangelogStamp(in: changelog),
+                                  "the changelog's first version heading names no build")
         #expect(newest.version == version && newest.build == build,
                 "the changelog's newest stamp is \(newest.version) (Build \(newest.build)), the project says \(version) (Build \(build))")
         for name in Self.readmes {
@@ -136,6 +137,11 @@ struct ReadmeVersionFenceTests {
         let changelog = "# Changelog\n\n## Next build (not yet cut)\n\n**New.**\n\n## v3.4 (Build 51)\n\n## v3.3 (Build 50)\n"
         let newest = try #require(Self.newestChangelogStamp(in: changelog))
         #expect(newest.version == "3.4" && newest.build == "51")
+        // A new heading without its build is a finding, not a pass to the
+        // older heading below it.
+        let unstamped = "# Changelog\n\n## v3.5\n\n## v3.4 (Build 51)\n"
+        let handedOn = Self.newestChangelogStamp(in: unstamped)?.version
+        #expect(handedOn == nil, "an unstamped heading handed the question on to \(handedOn ?? "-")")
         let full = Self.outline(of: "# A\n## B\n```text\n# not a heading\n```\n### C\n")
         let missing = Self.outline(of: "# A\n### C\n")
         #expect(full.headings == [1, 2, 3] && full.fences == 2)
