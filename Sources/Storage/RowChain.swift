@@ -74,10 +74,24 @@ final class RowChain<Snapshot> {
     private var unfinished = 0
     /// Whether a write is on its way to the rows: a read of the rows beside
     /// the chain would see them before it landed.
-    var isWriting: Bool { unfinished > 0 }
-    /// How many writes were ever handed over; a read that starts and ends
-    /// with the same count saw no write in between.
-    var writesIssued: Int { issued }
+    private var isWriting: Bool { unfinished > 0 }
+
+    /// THE rule for reading the rows beside the chain (the rows a build
+    /// does not decode, read raw for a hand-over): never beside a write. A
+    /// reader that reads at once asks this and holds while it is false.
+    var mayReadBesideTheChain: Bool { !isWriting }
+
+    /// The same rule for a reader that reads off the main actor: it waits
+    /// the chain out, reads, and gets nil when a write was handed over
+    /// while it read, because the rows it saw may be gone or changed; the
+    /// caller reads again at its next question.
+    func readAfterTheChain<Value>(_ read: () async -> Value) async -> Value? {
+        await awaitPendingWrites()
+        let before = issued
+        let value = await read()
+        guard issued == before, !isWriting else { return nil }
+        return value
+    }
     /// The last write a narrowed permission covers: a permission to empty
     /// narrowed at its call covers the writes queued by then and its own,
     /// never a write queued later. It only grows, as the numbers do.

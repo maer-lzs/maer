@@ -169,9 +169,11 @@ final class MaerPlaylists: ObservableObject {
         // Only a start that missed rows, or rows that came back, can leave
         // such rows; otherwise there is nothing to read.
         guard keeper.startIncomplete else { return nil }
-        // Read after the chain, never beside it: a hand-over right after a
-        // replacement would see the rows before its write landed.
-        guard !keeper.isWriting else {
+        // Read after the chain, never beside it (the chain's one rule): a
+        // hand-over right after a replacement would see the rows before its
+        // write landed. The read is quick, so the hand-over holds instead
+        // of waiting.
+        guard keeper.mayReadBesideTheChain else {
             Logger.library.notice("PLAYLIST owner held: a write of the rows is on its way")
             throw RowsStillWriting()
         }

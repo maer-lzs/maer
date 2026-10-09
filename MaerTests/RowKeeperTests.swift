@@ -168,6 +168,35 @@ struct RowKeeperTests {
         #expect(chain.lastRefusal == .suspected)
     }
 
+    /// Whether a write landed before a read looked, held by reference.
+    private final class Landed { var yet = false }
+
+    /// The chain's one rule for reading rows beside it: never beside a
+    /// write. A reader that reads at once holds while a write is on its
+    /// way; a reader that reads off the main actor waits the chain out and
+    /// gets nothing when a write was handed over while it read.
+    @Test("rohe Zeilen liest niemand neben einem Schrieb: das Lesen wartet die Kette ab und verwirft sich, wenn waehrenddessen einer kam")
+    func aReadBesideTheChainWaitsAndDropsWhenOvertaken() async {
+        let chain = RowChain<[String: Int]>(label: "PROBE")
+        let landed = Landed()
+        #expect(chain.mayReadBesideTheChain, "a chain without a write may be read")
+        chain.write(read: { (nil, 0) }, take: { ["a": 1] }, apply: { _, _, _ in
+            try await Task.sleep(for: .milliseconds(50))
+            landed.yet = true
+            return .landed
+        })
+        #expect(!chain.mayReadBesideTheChain, "a write is on its way, yet the rows may be read")
+        let afterTheWrite = await chain.readAfterTheChain { landed.yet }
+        #expect(afterTheWrite == true, "the read looked before the write landed")
+        #expect(chain.mayReadBesideTheChain)
+        let overtaken = await chain.readAfterTheChain { () async -> Int in
+            chain.write(read: { (nil, 0) }, take: { ["b": 2] }, apply: { _, _, _ in .landed })
+            return 1
+        }
+        #expect(overtaken == nil, "a read that a write overtook was trusted")
+        await chain.awaitPendingWrites()
+    }
+
     /// A removal given while rows stood narrows its own write; a write
     /// queued afterwards that is refused empty speaks as a suspicion.
     @Test("im Keeper deckt eine abgewertete Erlaubnis nur ihren eigenen Schrieb")

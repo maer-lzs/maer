@@ -1519,17 +1519,15 @@ final class PodcastSubscriptions: ObservableObject {
         if rawReading == nil {
             let database = self.database
             rawReading = Task { [weak self] in
-                // Read after the chain, never beside it: a hand-over right
-                // after a replacement would see the rows before its write
-                // landed. A write handed over meanwhile makes the read stale,
-                // and the next question reads again.
+                // Read after the chain, never beside it (the chain's one
+                // rule): a hand-over right after a replacement would see the
+                // rows before its write landed. A write handed over meanwhile
+                // makes the read stale, and the next question reads again.
                 guard let chain = self?.rowChain else { return }
-                await chain.awaitPendingWrites()
-                let issued = chain.writesIssued
-                let read = await Self.readUndecoded(database)
+                let read = await chain.readAfterTheChain { await Self.readUndecoded(database) }
                 guard let self else { return }
                 self.rawReading = nil
-                guard chain.writesIssued == issued, !chain.isWriting else {
+                guard let read else {
                     Logger.rss.notice("SUBSTORE unread rows read beside a write; read again at the next question")
                     return
                 }

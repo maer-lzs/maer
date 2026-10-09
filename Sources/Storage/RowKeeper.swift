@@ -74,8 +74,9 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     var base: RowBase<Rows> { chain.base }
     /// Whether the start read failed as a whole (`RowChain.startReadFailed`).
     var startReadFailed: Bool { chain.startReadFailed }
-    /// Whether a write is on its way to the rows (`RowChain.isWriting`).
-    var isWriting: Bool { chain.isWriting }
+    /// Whether the rows may be read beside the chain now
+    /// (`RowChain.mayReadBesideTheChain`).
+    var mayReadBesideTheChain: Bool { chain.mayReadBesideTheChain }
     /// How the last refused wipe spoke (`RowChain.lastRefusal`).
     var lastRefusal: WipeRefusal? { chain.lastRefusal }
     /// Whether the start missed rows (`RowChain.startIncomplete`).
