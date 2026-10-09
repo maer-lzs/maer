@@ -814,7 +814,13 @@ final class LibraryViewModel: ObservableObject {
             fetchedProgress = nil
         }
         let progress = ProgressAnswer.of(fetchedProgress, known: lastProgress)
-        librarySeed = (try? await seedTask) ?? LibrarySeed()
+        do {
+            librarySeed = try await seedTask
+        } catch {
+            // The start rows fall back to the pages; the line says why.
+            Logger.library.notice("LIBRARY seed failed, rows from the pages: \(FailureReason.of(error), privacy: .public)")
+            librarySeed = LibrarySeed()
+        }
 
         libraryId = id
         isShowingOfflineCache = false
@@ -895,7 +901,9 @@ final class LibraryViewModel: ObservableObject {
         guard !cachedItems.isEmpty, !loadInFlight else { return }
         let progress: [String: BookProgress]
         do {
-            progress = ProgressAnswer.of(try await provider.fetchAllProgress(), known: lastProgress)
+            // A failure throws to the catch below and keeps the known state;
+            // an answer is taken as it is (the rule's fallback has nothing to do here).
+            progress = try await provider.fetchAllProgress()
         } catch {
             // Offline/error: keep the last known state instead of wiping it.
             Logger.library.notice("LIBRARY progress refresh failed, last known kept: \(FailureReason.of(error), privacy: .public)")
@@ -906,7 +914,15 @@ final class LibraryViewModel: ObservableObject {
         // show up after a cold start. refreshProgress used to rebuild from
         // the stale cached items.
         var items = cachedItems
-        if let libraryId, let fresh = try? await provider.fetchLibraryItems(libraryId: libraryId) {
+        var fresh: [LibraryItem]?
+        if let libraryId {
+            do {
+                fresh = try await provider.fetchLibraryItems(libraryId: libraryId)
+            } catch {
+                Logger.library.notice("LIBRARY refresh items failed, cached kept: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        if let fresh {
             // Plausibility (like loadContent only persisting a COMPLETE load): a
             // foreground refresh must not shrink the visible library on a partial
             // 2xx answer. And this result is even persisted to the disk cache.

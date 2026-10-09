@@ -71,11 +71,15 @@ struct ProgressAnswerTests {
         }.map(\.name)
         #expect(empty.isEmpty, "a caller answers a failure with an empty map: \(empty)")
         // The secondary sources keep what their entries carried, in their
-        // own round; with the two of the main library, three load paths ask
-        // the one rule.
+        // own round, through the one rule; so does the main library's page
+        // load. The refresh asks no rule: its fetch throws on a failure, and
+        // its catch keeps the known state (the rule's fallback could never
+        // run there, so counting it as a second path measured an occurrence,
+        // not an effect).
         let shelf = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/SecondaryShelf.swift"), encoding: .utf8))
-        #expect(code.components(separatedBy: "ProgressAnswer.of(").count - 1 == 2, "the main library's two load paths ask the one rule")
+        #expect(code.components(separatedBy: "ProgressAnswer.of(").count - 1 == 1, "the main library's page load asks the one rule")
+        #expect(code.contains("LIBRARY progress refresh failed, last known kept"), "the refresh lost the catch that keeps the known state")
         #expect(shelf.contains("ProgressAnswer.of(fetched, known: known)"))
         #expect(shelf.contains("for entry in previous { if let progress = entry.progress { known[entry.id] = progress } }"))
         #expect(code.contains("SecondaryShelf.entries(of: sources, previous: localCache"), "the secondary round left the one rule")
