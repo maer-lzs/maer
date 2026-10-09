@@ -45,6 +45,9 @@ struct BookContextMenuItems: View {
     /// In the library grid the entry would be meaningless (the book is not
     /// there because of Continue). The row decides, not the card.
     var showsContinueHide = false
+    /// Hands up the sentence of a refused mark. The menu is closed when the
+    /// answer comes, so the cell that hosts it says it.
+    var onRefused: (String) -> Void = { _ in }
 
     /// Offline, playing needs a download and starting a download is
     /// impossible. Gate the menu entries consistently with the detail page.
@@ -61,11 +64,12 @@ struct BookContextMenuItems: View {
     @ObservedObject private var downloadStock = DownloadManager.stock
 
     init(entry: LibraryEntry, playerCoordinator: PlayerCoordinator, libraryViewModel: LibraryViewModel,
-         showsContinueHide: Bool = false) {
+         showsContinueHide: Bool = false, onRefused: @escaping (String) -> Void = { _ in }) {
         self.entry = entry
         self.playerCoordinator = playerCoordinator
         self.libraryViewModel = libraryViewModel
         self.showsContinueHide = showsContinueHide
+        self.onRefused = onRefused
     }
 
     var body: some View {
@@ -117,7 +121,8 @@ struct BookContextMenuItems: View {
     }
 
     /// The same door as the detail page (`BookFinishMark`), so a catalogue
-    /// title's mark lands on the device here too.
+    /// title's mark lands on the device here too, and a refused mark says
+    /// the detail page's sentence.
     private func quickToggleFinished() async {
         // The provider OF THIS TITLE, not the main one: the coordinator's
         // provider is fixed at construction and is the MAIN library provider
@@ -126,9 +131,10 @@ struct BookContextMenuItems: View {
         // server and its position was written nowhere).
         // The same rule as the label: the flag alone missed a book whose
         // numbers say complete, and marked it finished a second time.
-        _ = await BookFinishMark.apply(entry, target: (entry.progress?.markGesture ?? .markPlayed).marksPlayed,
-                                       progress: entry.progress, provider: router.provider(entry.id),
-                                       coordinator: playerCoordinator, libraryViewModel: libraryViewModel)
+        let outcome = await BookFinishMark.apply(entry, target: (entry.progress?.markGesture ?? .markPlayed).marksPlayed,
+                                                 progress: entry.progress, provider: router.provider(entry.id),
+                                                 coordinator: playerCoordinator, libraryViewModel: libraryViewModel)
+        if let reason = outcome.reason { onRefused(reason) }
     }
 }
 
@@ -178,6 +184,17 @@ struct BookCellContextMenu: ViewModifier {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
     var showsContinueHide = false
+    /// The sentence of a mark the menu asked for and the server refused,
+    /// the same the detail page shows in its line.
+    @State private var refusal: String?
+
+    init(entry: LibraryEntry, playerCoordinator: PlayerCoordinator, libraryViewModel: LibraryViewModel,
+         showsContinueHide: Bool = false) {
+        self.entry = entry
+        self.playerCoordinator = playerCoordinator
+        self.libraryViewModel = libraryViewModel
+        self.showsContinueHide = showsContinueHide
+    }
 
     func body(content: Content) -> some View {
         content.contextMenu {
@@ -185,10 +202,17 @@ struct BookCellContextMenu: ViewModifier {
                 entry: entry,
                 playerCoordinator: playerCoordinator,
                 libraryViewModel: libraryViewModel,
-                showsContinueHide: showsContinueHide
+                showsContinueHide: showsContinueHide,
+                onRefused: { refusal = $0 }
             )
         } preview: {
             BookContextPreview(entry: entry)
+        }
+        .alert(Text(verbatim: refusal ?? ""), isPresented: Binding(
+            get: { refusal != nil },
+            set: { if !$0 { refusal = nil } }
+        )) {
+            Button("OK", role: .cancel) { refusal = nil }
         }
     }
 }

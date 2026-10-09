@@ -87,5 +87,21 @@ struct BookFinishMarkTests {
             .map(\.name).sorted()
         #expect(callers == ["BookDetailScreen.swift", "BookGridComponents.swift"], "\(callers)")
     }
+
+    /// A refused mark writes nothing, and both surfaces say the door's
+    /// sentence: the detail page in its line, the tile menu, closed by the
+    /// time the answer comes, in a notice on the cell that hosts it.
+    @Test("verweigert der Server die Marke, sagen beide Flaechen den Satz der Tuer", .needsTheSources)
+    func bothSurfacesSayARefusedMark() throws {
+        let views = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
+        for name in ["BookDetailScreen.swift", "BookGridComponents.swift"] {
+            let code = SyncContractFenceTests.stripped(try #require(views.first { $0.name == name }).text)
+            #expect(code.contains("let outcome = await BookFinishMark.apply("), "\(name) drops the outcome")
+            #expect(code.contains("outcome.reason"), "\(name) never reads the sentence")
+        }
+        let grid = SyncContractFenceTests.stripped(try #require(views.first { $0.name == "BookGridComponents.swift" }).text)
+        #expect(grid.contains("onRefused: { refusal = $0 }"), "the menu does not hand the sentence to its cell")
+        #expect(grid.contains(".alert(Text(verbatim: refusal"), "the cell does not say the sentence")
+    }
 }
 #endif
