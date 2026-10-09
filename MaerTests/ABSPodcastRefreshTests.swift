@@ -95,9 +95,27 @@ struct ABSPodcastRefreshTests {
 
     /// A refresh that failed holds the implicit callers for the holdback:
     /// the loops of gpodder, Pinchflat and the cloud adoption ask per feed,
-    /// and an unread server was asked again for every one of them.
-    @Test("nach einem gescheiterten Lauf fragt kein impliziter Rufer vor dem Ende der Sperrfrist", .needsTheSources)
-    func aFailedRunHoldsTheImplicitCallers() throws {
+    /// and an unread server was asked again for every one of them. Which
+    /// failures earn the holdback is one question at one place
+    /// (`FetchHoldback.starts`), asked by both stamps: a show deleted on the
+    /// server (404) is a finding, a cancellation is no failure.
+    @Test("nach einem gescheiterten Lauf fragt kein impliziter Rufer vor dem Ende der Sperrfrist; welche Fehler sperren, sagt eine Regel", .needsTheSources)
+    func aFailedRunHoldsTheImplicitCallers() async throws {
+        // The classes, through the fetch itself: a deleted show holds
+        // nothing, a failing server holds, a cancellation holds nothing.
+        func run(_ error: Error) async -> ABSPodcastProvider.FetchedShows {
+            await ABSPodcastProvider.fetchShows(libraryIds: ["lib"], items: { _ in ["gone"] },
+                                                detail: { _ in throw error })
+        }
+        let deleted = await run(APIError.http(404, ""))
+        #expect(deleted.failures == 1 && !deleted.holdsBack, "a show deleted on the server started a holdback")
+        let failing = await run(APIError.http(503, ""))
+        #expect(failing.failures == 1 && failing.holdsBack, "a failing server started no holdback")
+        let cancelled = await run(CancellationError())
+        #expect(!cancelled.holdsBack, "a cancellation started a holdback")
+        let listDown = await ABSPodcastProvider.fetchShows(libraryIds: ["lib"], items: { _ in throw Down() },
+                                                           detail: { _ in Self.detail("x") })
+        #expect(listDown.holdsBack, "a failed item list started no holdback")
         let now = Date(timeIntervalSince1970: 1_000_000)
         #expect(ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: nil, failedAt: nil, now: now, maxAge: 300))
         #expect(!ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: nil, failedAt: now.addingTimeInterval(-60), now: now, maxAge: 300),
@@ -111,8 +129,8 @@ struct ABSPodcastRefreshTests {
         #expect(stale.contains("ABSPodcastRefreshRule.mayRefresh(lastRefreshAt: lastRefreshAt, failedAt: failedAt"))
         let refresh = try #require(Self.body(of: "func refresh() async {", in: code))
         #expect(refresh.contains("if FetchHoldback.starts(after: error) { failedAt = Date() }"), "a failed library list holds nothing")
-        #expect(refresh.contains("} else if !Task.isCancelled {") && refresh.contains("failedAt = nil"),
-                "a run without adoption holds nothing, or an adoption keeps the hold")
+        #expect(refresh.contains("} else if fetched.holdsBack {"), "the second stamp asks its own question instead of the rule's")
+        #expect(refresh.contains("failedAt = nil"), "an adoption keeps the holdback of a run before")
     }
 
     /// Every write to `shows`, whatever its spelling: an assignment with or

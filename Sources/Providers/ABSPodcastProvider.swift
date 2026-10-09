@@ -192,7 +192,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// Load shows + episodes of all podcast libraries. Best effort: individual
-    /// failed shows are skipped, the rest stays usable.
+    /// failed shows are skipped, the rest stays usable. A pull that fails
+    /// starts the same holdback as an implicit run, on purpose: it is the
+    /// same evidence that the server does not answer now, and the tab's
+    /// implicit runs wait as after any failed run.
     func refresh() async {
         // ABS is opt-in as a podcast source. Without it enabled load nothing and
         // clear the existing state (the user then uses ABS for audiobooks only).
@@ -263,18 +266,23 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS, handles: newHandles)
             lastRefreshAt = Date()
             failedAt = nil
-        } else if !Task.isCancelled {
+        } else if fetched.holdsBack {
             // Fetches failed and nothing came back: the stock stays, and the
-            // loops that ask per feed wait out the holdback.
+            // loops that ask per feed wait out the holdback. Only a failure
+            // that earns it starts one, by the same rule as the library list
+            // above (`FetchHoldback.starts`): a show deleted on the server
+            // (404) is a finding, a cancellation no failure.
             failedAt = Date()
         }
     }
 
-    /// What one refresh fetched: the show details that came back, and how
-    /// many fetches (item lists and details) failed.
+    /// What one refresh fetched: the show details that came back, how many
+    /// fetches (item lists and details) failed, and whether one of those
+    /// failures earns a holdback (`FetchHoldback.starts`).
     nonisolated struct FetchedShows: Sendable {
         var details: [LibraryItemDetail]
         var failures: Int
+        var holdsBack = false
     }
 
     /// The item ids of every library, then their details in parallel,
@@ -287,12 +295,14 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         detail: @escaping @Sendable (String) async throws -> LibraryItemDetail
     ) async -> FetchedShows {
         var failures = 0
+        var holdsBack = false
         var itemIds: [String] = []
         for libraryId in libraryIds {
             do {
                 itemIds.append(contentsOf: try await items(libraryId))
             } catch {
                 failures += 1
+                if FetchHoldback.starts(after: error) { holdsBack = true }
                 Logger.library.error("ABSPOD items failed library=\(libraryId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
             }
         }
@@ -317,11 +327,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                     details.append(loaded)
                 case .failure(let error):
                     failures += 1
+                    if FetchHoldback.starts(after: error) { holdsBack = true }
                     Logger.library.error("ABSPOD detail failed item=\(id, privacy: .public): \(FailureReason.of(error), privacy: .public)")
                 }
             }
         }
-        return FetchedShows(details: details, failures: failures)
+        return FetchedShows(details: details, failures: failures, holdsBack: holdsBack)
     }
 
     /// Equivalent ids of the same episode across both sources (self + bridge).
