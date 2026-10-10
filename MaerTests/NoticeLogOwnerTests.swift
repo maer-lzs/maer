@@ -165,6 +165,36 @@ struct NoticeLogOwnerTests {
         #expect(restOfA == ["ofA"], "A's line was lost or B's rests under A: \(restOfA)")
     }
 
+    /// The document stands but cannot be read, and no account changes: a
+    /// line said meanwhile is not saved over it, the file keeps its lines;
+    /// once it reads again, its lines and the new ones stand in the log.
+    @Test("ein Protokoll, das unlesbar dasteht, wird ohne Wechsel nicht ueberschrieben: die Datei behaelt ihre Zeilen, danach stehen alte und neue")
+    func anUnreadDocumentIsNotSavedOver() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let before = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        say(before, "old")
+        await before.awaitPendingSave()
+
+        let file = rig.ablage.url(for: PlaybackNotices.documentName).path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let notices = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-a" })
+        let seen = said(notices)
+        say(notices, "new")
+        await notices.awaitPendingSave()
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        #expect(seen.isEmpty, "the precondition: the start read nothing")
+        let onDisk = rig.ablage.loadNow([NoticeLogEntry].self, name: PlaybackNotices.documentName).value?.compactMap(\.title)
+        #expect(onDisk == ["old"], "a line was saved over the unread document: \(String(describing: onDisk))")
+
+        say(notices, "newer")
+        await notices.awaitPendingSave()
+        #expect(said(notices) == ["old", "new", "newer"], "the read lines and this run's did not meet: \(said(notices))")
+        let again = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-a" })
+        #expect(said(again) == ["old", "new", "newer"], "a restart shows another log: \(said(again))")
+    }
+
     @Test("der Meldungs-Kanal der App traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)
     func theChannelIsEnrolledAndFollowsAtStart() throws {
         let code = SyncContractFenceTests.stripped(try String(
