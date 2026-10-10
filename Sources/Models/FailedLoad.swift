@@ -29,6 +29,17 @@ nonisolated enum FailedLoad {
         return held.map { failedIndex < $0 } ?? true
     }
 
+    /// Whether the item that now ends the cut queue has already reached its
+    /// end. Measured with a track that fails only after the one before had
+    /// ended: the queue does not skip it, it waits at the end of the track
+    /// before, whose end signal has passed. Holding at that end would then
+    /// wait forever, so playback holds at once. No item left is the same.
+    static func endHasPassed(position: Double?, duration: Double?) -> Bool {
+        guard let position, let duration else { return true }
+        guard position.isFinite, duration.isFinite, duration > 0 else { return false }
+        return position >= duration - 0.1   // progress-fence: the end of a queue item, not the played mark
+    }
+
     /// What a load failure does when the track may have come from a local
     /// file. Measured: a missing or broken local file fails to load and
     /// never fires FailedToPlayToEndTime, so every play built the same file

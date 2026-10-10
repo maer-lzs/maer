@@ -7,6 +7,8 @@
 import Testing
 import Foundation
 import AVFoundation
+import Network
+import os
 @testable import Maer
 
 /// A play after a load failure plays once the network is back, without a
@@ -38,6 +40,10 @@ struct FailedLoadTests {
                 "a streamed track keeps the network rules after its attempt")
         #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: true) == .none)
         #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: false) == .none)
+        #expect(FailedLoad.endHasPassed(position: 1.0026, duration: 1), "waiting at the end of the track before")
+        #expect(!FailedLoad.endHasPassed(position: 0.3, duration: 1), "the track before still plays")
+        #expect(FailedLoad.endHasPassed(position: nil, duration: nil), "no item left")
+        #expect(!FailedLoad.endHasPassed(position: 0.3, duration: .nan), "a duration not known yet is no end")
     }
 
     /// A source whose every track lives at a loopback port nothing listens
@@ -99,8 +105,8 @@ struct FailedLoadTests {
         model.player?.pause()
     }
 
-    /// Tracks with an absolute path play from that file; every other track
-    /// sits at the dead loopback port.
+    /// Tracks with an absolute path play from that file, a track that names
+    /// an address uses it, every other track sits at the dead loopback port.
     final class MixedProvider: AudioProvider {
         var providerId: String { "mixed-address" }
         var capabilities: ProviderCapabilities { [] }
@@ -112,13 +118,62 @@ struct FailedLoadTests {
         }
         func coverURL(forItemId itemId: String) -> URL? { nil }
         func streamURL(forContentPath contentPath: String) -> URL? {
-            contentPath.hasPrefix("/") ? URL(fileURLWithPath: contentPath) : URL(string: "http://127.0.0.1:1/\(contentPath)")
+            if contentPath.hasPrefix("/") { return URL(fileURLWithPath: contentPath) }
+            if contentPath.hasPrefix("http") { return URL(string: contentPath) }
+            return URL(string: "http://127.0.0.1:1/\(contentPath)")
         }
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
         func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
         func createBookmark(itemId: String, time: Double, title: String) async throws {}
         func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    /// A host that takes the connection and answers 500 only after a while,
+    /// so the track fails late: after the track before it has ended.
+    /// Unchecked because the listener and its connections are only touched
+    /// on the listener's own queue after start.
+    nonisolated final class SlowFailHost: @unchecked Sendable {
+        private let listener: NWListener
+        private let delay: Double
+        private(set) var port: UInt16 = 0
+
+        private init(delay: Double) throws {
+            self.delay = delay
+            listener = try NWListener(using: .tcp, on: .any)
+        }
+
+        static func start(delay: Double) async throws -> SlowFailHost {
+            let host = try SlowFailHost(delay: delay)
+            host.listener.newConnectionHandler = { [host] connection in host.serve(connection) }
+            let port: UInt16 = try await withCheckedThrowingContinuation { continuation in
+                let once = OSAllocatedUnfairLock(initialState: false)
+                host.listener.stateUpdateHandler = { [host] state in
+                    let first = once.withLock { done in
+                        let was = done
+                        if case .ready = state { done = true } else if case .failed = state { done = true }
+                        return !was && done
+                    }
+                    if first, case .ready = state { continuation.resume(returning: host.listener.port?.rawValue ?? 0) }
+                    if first, case .failed(let error) = state { continuation.resume(throwing: error) }
+                }
+                host.listener.start(queue: .global())
+            }
+            host.port = port
+            return host
+        }
+
+        func stop() { listener.cancel() }
+
+        private func serve(_ connection: NWConnection) {
+            connection.start(queue: .global())
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [delay] _, _, _, _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+                    let answer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    connection.send(content: Data(answer.utf8), completion: .contentProcessed { _ in connection.cancel() })
+                }
+            }
+        }
     }
 
     private func tone(seconds: Double) throws -> URL {
@@ -258,6 +313,39 @@ struct FailedLoadTests {
         #expect(!offline.isPlaying, "offline playback stops")
         #expect(FileManager.default.fileExists(atPath: broken.path), "offline the file stays")
         offline.stop()
+    }
+
+    /// A later track that fails only after the track before has ended: the
+    /// queue has moved past it by then, and its failure comes too late to
+    /// hold ahead. The gap in the playing index holds it all the same.
+    @Test("eine spaetere Datei, die erst nach dem Ende der Datei davor scheitert, haelt an ihrem Anfang, nie in der Datei dahinter")
+    func aLateFailureHoldsAtItsStart() async throws {
+        let first = try tone(seconds: 1)
+        let third = try tone(seconds: 3)
+        defer {
+            for url in [first, third] { try? FileManager.default.removeItem(at: url) }
+        }
+        try await requireAudioHere(first)
+        let host = try await SlowFailHost.start(delay: 2)
+        defer { host.stop() }
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: detail([(first.path, 1), ("http://127.0.0.1:\(host.port)/slow.mp3", 1), (third.path, 3)]))
+        let started = Date()
+        model.play()
+        var furthest = 0.0
+        await waitFor({
+            furthest = max(furthest, model.currentTime)
+            return model.sourceHint == .loadFailed
+        }, seconds: 20)
+        #expect(Date().timeIntervalSince(started) > 1.5,
+                "the precondition: the failure came after the track before had ended")
+        #expect(model.sourceHint == .loadFailed, "the late failure says so: \(String(describing: model.sourceHint))")
+        #expect(!model.isPlaying, "playback stops at the failed track")
+        #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed track: \(model.currentTime)")
+        #expect(furthest < 2, "the position never reached the track behind it: \(furthest)")
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        #expect(abs(model.currentTime - 1) < 0.01, "the held position stays: \(model.currentTime)")
+        model.stop()
     }
 
     /// A later downloaded file that cannot load is dropped while the one

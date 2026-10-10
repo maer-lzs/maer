@@ -1450,6 +1450,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let last = player.items().last
         observeBookEnd(lastItem: last)
         Logger.player.notice("LOADFAIL ahead track=\(index) queue ends before it, last=\(last.flatMap { self.itemTrackIndex[ObjectIdentifier($0)] } ?? -1)")
+        // A late failure finds the queue waiting at the end of the track
+        // before, its end signal already gone: no end will come, hold now.
+        if FailedLoad.endHasPassed(position: last?.currentTime().seconds, duration: last?.duration.seconds),
+           let held = heldAhead {
+            Logger.player.notice("LOADFAIL ahead track=\(index) the track before has ended, holds now")
+            stopAtHeldFailure(held)
+        }
     }
 
     private func stopAtHeldFailure(_ held: HeldPoint) {
