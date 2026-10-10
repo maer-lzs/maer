@@ -2046,55 +2046,83 @@ extension ProjectFileIntegrityTests {
         #expect("nonisolated struct X: Codable, Sendable {".contains(": Codable"))
     }
 
-    /// Die Kernschicht baut auf einem nackten Linux-Werkzeugkasten (die
-    /// Quellen-Wache prueft dort den echten Decoder). Ein einziges
-    /// Apple-Rahmenwerk in `Sources/Models` macht sie blind, ohne dass
-    /// der Sim es zeigt. Positivliste statt Erinnerung: erlaubt sind
-    /// Foundation und OSLog; die zwei Combine-Dateien stehen NAMENTLICH,
-    /// weil dort nur `ObservableObject`-Speicher wohnen, keine Kernlogik.
-    /// Der Pruefer als pure Funktion ueber EINE Zeile, damit die Rot-Probe
-    /// den PRUEFER fuettert und nicht eine Eigenschaft eines Strings.
-    /// Bestandsliste nach RELATIVEM Pfad, damit eine gleichnamige Datei in
-    /// einem Unterordner die Ausnahme nicht erbt.
-    nonisolated static func offendingImport(line: String, relativePath: String) -> String? {
-        // `Synchronization` is the standard library's `Mutex`, no framework.
-        let allowed: Set<String> = ["Foundation", "OSLog", "Synchronization"]
-        let bestand: [String: Set<String>] = ["Sources/Models/ListeningStats.swift": ["Combine"],
-                                              "Sources/Models/RadioGenreSources.swift": ["Combine"]]
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard trimmed.hasPrefix("import ") else { return nil }
-        let module = String(trimmed.dropFirst("import ".count)
-            .prefix { $0.isLetter || $0.isNumber })
-        if allowed.contains(module) { return nil }
-        if bestand[relativePath]?.contains(module) == true { return nil }
+    /// Die Dateien, die die Quellen-Pruefung auf Linux uebersetzt, stehen
+    /// in EINER Liste, `tools/source-check/quellen.json`; die Pruefung liest
+    /// dieselbe Datei am gepinnten Stand. Nur diese Dateien muessen mit dem
+    /// auskommen, was Linux hat (Entscheid vom 09.10.2026): vorher galt die Regel fuer ganz
+    /// `Sources/Models`, und die Liste lag in einem anderen Repo und lief
+    /// der App davon. Positivliste statt Erinnerung, der Bestand namentlich
+    /// nach RELATIVEM Pfad. Der Pruefer als pure Funktion ueber EINE Zeile,
+    /// damit die Rot-Probe den PRUEFER fuettert und nicht einen String.
+    struct PureSources: Decodable {
+        let sources: [String]
+        let allowedImports: Set<String>
+        let holdings: [String: Set<String>]
+
+        enum CodingKeys: String, CodingKey {
+            case sources = "quellen", allowedImports = "erlaubte_importe", holdings = "bestand"
+        }
+
+        init(sources: [String], allowedImports: Set<String>, holdings: [String: Set<String>]) {
+            self.sources = sources
+            self.allowedImports = allowedImports
+            self.holdings = holdings
+        }
+    }
+
+    static func pureSources() throws -> PureSources {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("tools/source-check/quellen.json"))
+        return try JSONDecoder().decode(PureSources.self, from: data)
+    }
+
+    /// The module an import line brings in when the list does not allow it
+    /// for this file; attributes (`@preconcurrency`) and a declaration kind
+    /// (`import struct Foundation.URL`) do not hide the module.
+    nonisolated static func offendingImport(line: String, relativePath: String, list: PureSources) -> String? {
+        let kinds: Set<String> = ["struct", "class", "enum", "protocol", "typealias", "func", "var", "let"]
+        var words = line.split(separator: " ").map(String.init).drop { $0.hasPrefix("@") }
+        guard words.first == "import" else { return nil }
+        words = words.dropFirst().drop { kinds.contains($0) }
+        guard let word = words.first else { return nil }
+        let module = String(word.prefix { $0.isLetter || $0.isNumber || $0 == "_" })
+        if list.allowedImports.contains(module) { return nil }
+        if list.holdings[relativePath]?.contains(module) == true { return nil }
         return module
     }
 
-    @Test("Sources/Models importiert nur Foundation und OSLog")
-    func coreLayerImportsOnlyFoundation() throws {
+    @Test("die Dateien der Quellen-Pruefung importieren nur, was Linux hat")
+    func pureSourcesImportOnlyWhatLinuxHas() throws {
+        let list = try Self.pureSources()
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        var missing: [String] = []
         var offenders: [String] = []
-        for file in Self.sourceFiles() where file.path.contains("/Sources/Models/") {
-            let relative = "Sources/Models/" + file.lastPathComponent
-            let text = try String(contentsOf: file, encoding: .utf8)
+        for relative in list.sources {
+            guard let text = try? String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8) else {
+                missing.append(relative); continue
+            }
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                if let module = Self.offendingImport(line: String(line), relativePath: relative) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if let module = Self.offendingImport(line: trimmed, relativePath: relative, list: list) {
                     offenders.append("\(relative):\(number + 1) \(module)")
                 }
             }
         }
-        #expect(offenders.isEmpty,
-                "ein Apple-Rahmenwerk in der Kernschicht: \(offenders)")
+        #expect(!list.sources.isEmpty, "the list reads empty")
+        #expect(list.sources.count == Set(list.sources).count, "a file stands twice in the list")
+        #expect(missing.isEmpty, "listed but not in the tree, the list is behind the app: \(missing)")
+        #expect(offenders.isEmpty, "a module Linux does not have in a file of the source check: \(offenders)")
+        #expect(Set(list.holdings.keys).isSubset(of: Set(list.sources)), "a holding for a file the list does not carry")
         // Rot-Proben am PRUEFER, in beide Richtungen.
-        #expect(Self.offendingImport(line: "import CryptoKit",
-                                     relativePath: "Sources/Models/FreeCatalog.swift") == "CryptoKit")
-        #expect(Self.offendingImport(line: "import Combine",
-                                     relativePath: "Sources/Models/ListeningStats.swift") == nil)
-        #expect(Self.offendingImport(line: "import Combine",
-                                     relativePath: "Sources/Models/Other.swift") == "Combine")
-        #expect(Self.offendingImport(line: "import Combine",
-                                     relativePath: "Sources/Models/Sub/ListeningStats.swift") == "Combine")
-        #expect(Self.offendingImport(line: "import Foundation",
-                                     relativePath: "Sources/Models/X.swift") == nil)
+        let probe = PureSources(sources: ["Sources/A.swift"], allowedImports: ["Foundation"],
+                                holdings: ["Sources/A.swift": ["SQLite3"]])
+        #expect(Self.offendingImport(line: "import SwiftUI", relativePath: "Sources/A.swift", list: probe) == "SwiftUI")
+        #expect(Self.offendingImport(line: "@preconcurrency import Combine", relativePath: "Sources/A.swift", list: probe) == "Combine")
+        #expect(Self.offendingImport(line: "import struct UIKit.UIImage", relativePath: "Sources/A.swift", list: probe) == "UIKit")
+        #expect(Self.offendingImport(line: "import SQLite3", relativePath: "Sources/A.swift", list: probe) == nil)
+        #expect(Self.offendingImport(line: "import SQLite3", relativePath: "Sources/Sub/A.swift", list: probe) == "SQLite3")
+        #expect(Self.offendingImport(line: "import Foundation", relativePath: "Sources/B.swift", list: probe) == nil)
+        #expect(Self.offendingImport(line: "let x = 1 // import SwiftUI", relativePath: "Sources/B.swift", list: probe) == nil)
     }
 
     /// Image bytes leave through ONE door that raises cleartext addresses
