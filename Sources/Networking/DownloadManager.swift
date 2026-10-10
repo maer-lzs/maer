@@ -270,9 +270,7 @@ final class DownloadManager {
             // The mark is written only after a complete download. A folder
             // without a mark is an aborted remnant (kept for resume, not counted).
             guard marked.contains(itemId) else {
-                if let changed = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate {
-                    remnants[itemId] = changed
-                }
+                if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
             ids.insert(itemId)
@@ -291,6 +289,12 @@ final class DownloadManager {
         return (files.count, bytes)
     }
 
+    /// When a download folder last changed, read from the disk now (a fresh
+    /// URL, so no cached value); nil when it cannot be read.
+    nonisolated static func lastChanged(_ dir: URL) -> Date? {
+        (try? URL(fileURLWithPath: dir.path).resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    }
+
     /// How long an unfinished download is kept for a resume.
     nonisolated static let remnantKeepSeconds: TimeInterval = 7 * 24 * 3600
 
@@ -306,14 +310,29 @@ final class DownloadManager {
         return now.timeIntervalSince(changed) >= remnantKeepSeconds
     }
 
+    /// Whether a download runs, is paused or is being resumed for this item
+    /// in this session. A resume clears `phase` before its download starts
+    /// while `controls` stands, so both are asked.
+    private func downloadHolds(_ itemId: String) -> Bool {
+        phase[itemId] != nil || controls[itemId] != nil
+    }
+
     /// The remnants of the start scan that are old enough go through the one
     /// delete of the downloads, with a line per folder: its size and file
     /// count tell a complete download that lost its mark from a remnant.
+    /// The scan's age only picks the candidates: a folder can change between
+    /// the scan and now, so the age that decides is read when clearing.
     private func clearOldRemnants(_ remnants: [String: Date], now: Date) {
         let marksRead = !startIncomplete
-        let old = remnants.filter { itemId, changed in
-            Self.remnantClears(marksRead: marksRead, complete: details[itemId] != nil,
-                               active: phase[itemId] != nil, changed: changed, now: now)
+        var old: [String: Date] = [:]
+        for (itemId, scanned) in remnants
+        where Self.remnantClears(marksRead: marksRead, complete: false, active: false, changed: scanned, now: now) {
+            let changed = Self.lastChanged(itemDirectory(itemId))
+            if Self.remnantClears(marksRead: marksRead, complete: details[itemId] != nil,
+                                  active: downloadHolds(itemId), changed: changed, now: now),
+               let changed {
+                old[itemId] = changed
+            }
         }
         guard !old.isEmpty else { return }
         for (itemId, changed) in old {
@@ -323,6 +342,14 @@ final class DownloadManager {
         }
         deleteDownloads(Set(old.keys))
     }
+
+    #if DEBUG
+    /// For witnesses: a download held as between a resume and its start
+    /// (`controls` stands, `phase` is clear), and the clearing of the start
+    /// scan run on remnants handed in.
+    func _testHoldAsResuming(_ detail: LibraryItemDetail) { controls[detail.id] = DownloadControl(detail: detail) }
+    func _testClearRemnants(_ remnants: [String: Date], now: Date) { clearOldRemnants(remnants, now: now) }
+    #endif
 
     /// The size of every download, measured on the disk, and their sum. Run
     /// after every way that changes a download's files, so `sizeByItem` is
@@ -1020,7 +1047,7 @@ final class DownloadManager {
             let newId = map(oldId)
             guard newId != oldId else { continue }
             found += 1
-            guard phase[oldId] == nil, controls[oldId] == nil,
+            guard !downloadHolds(oldId),
                   !fm.fileExists(atPath: itemDirectory(newId).path) else { continue }
             do {
                 try fm.moveItem(at: itemDirectory(oldId), to: itemDirectory(newId))

@@ -156,6 +156,55 @@ struct DownloadManagerRowsTests {
         #expect(manager.downloadedItemIds == ["done"])
     }
 
+    /// Between a resume and the start of its download `phase` is clear and
+    /// `controls` stands. The folders turn old only after the start scan, so
+    /// the clearing is run by hand, with a free remnant beside it to show
+    /// the clearing does clear.
+    @Test("ein unfertiger Download, der gerade fortgesetzt wird, wird nicht geraeumt, auch wenn er alt ist")
+    func aResumingDownloadIsNeverCleared() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        try await home.plant("resuming", bytes: 100, mark: false)
+        try await home.plant("free", bytes: 100, mark: false)
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let old = Date().addingTimeInterval(-8 * 24 * 3600)
+        for id in ["resuming", "free"] {
+            try FileManager.default.setAttributes([.modificationDate: old],
+                                                  ofItemAtPath: home.downloads.appendingPathComponent(id).path)
+        }
+        manager._testHoldAsResuming(Self.detail("resuming"))
+        manager._testClearRemnants(["resuming": old, "free": old], now: Date())
+        await manager.awaitPendingWrites()
+        func exists(_ id: String) -> Bool {
+            FileManager.default.fileExists(atPath: home.downloads.appendingPathComponent(id).path)
+        }
+        #expect(!exists("free"), "the free remnant of eight days stayed, so the clearing never ran")
+        #expect(exists("resuming"), "a download being resumed was cleared")
+    }
+
+    /// The scan saw an old folder; it changed before the clearing. The age
+    /// that decides is the one on the disk when clearing.
+    @Test("das Alter wird beim Raeumen gelesen: ein Ordner, der seit dem Scan geaendert wurde, bleibt")
+    func theAgeIsReadWhenClearing() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        try await home.plant("touched", bytes: 100, mark: false)
+        try await home.plant("stale", bytes: 100, mark: false)
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let old = Date().addingTimeInterval(-8 * 24 * 3600)
+        try FileManager.default.setAttributes([.modificationDate: old],
+                                              ofItemAtPath: home.downloads.appendingPathComponent("stale").path)
+        manager._testClearRemnants(["touched": old, "stale": old], now: Date())
+        await manager.awaitPendingWrites()
+        func exists(_ id: String) -> Bool {
+            FileManager.default.fileExists(atPath: home.downloads.appendingPathComponent(id).path)
+        }
+        #expect(!exists("stale"), "the stale remnant stayed, so the clearing never ran")
+        #expect(exists("touched"), "a folder changed since the scan was cleared on the scan's age")
+    }
+
     /// The line of a cleared remnant names its files and bytes; they come
     /// from here, so a complete download that lost its mark would show.
     @Test("ein Ordner wird mit Dateizahl und Bytes vermessen")

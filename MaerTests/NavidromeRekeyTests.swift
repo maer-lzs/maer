@@ -850,14 +850,22 @@ struct NavidromeRekeyTests {
         return (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) == nil
     }
 
-    /// A folder held for a resume moves not: a resume clears the phase
-    /// before its download runs, the control stands throughout.
+    /// A folder held for a resume neither moves nor is cleared: a resume
+    /// clears the phase before its download runs, the control stands
+    /// throughout. Both ways ask the one question.
     @Test("der Waechter der abgebrochenen Downloads fragt die Steuerung mit", .needsTheSources)
     func theRemnantGuardAsksTheControls() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
-        let body = try #require(code.range(of: "private func rekeyRemnants(").map { String(code[$0.upperBound...].prefix(1800)) })
-        #expect(body.contains("phase[oldId] == nil, controls[oldId] == nil"), "a folder held for a resume can move")
+        func body(_ head: String, _ length: Int) throws -> String {
+            try #require(code.range(of: head).map { String(code[$0.upperBound...].prefix(length)) })
+        }
+        let holds = try body("private func downloadHolds(", 200)
+        let rekey = try body("private func rekeyRemnants(", 1800)
+        let clear = try body("private func clearOldRemnants(", 1200)
+        #expect(holds.contains("phase[itemId] != nil || controls[itemId] != nil"), "the question leaves the control out")
+        #expect(rekey.contains("!downloadHolds(oldId)"), "a folder held for a resume can move")
+        #expect(clear.contains("active: downloadHolds(itemId)"), "a folder held for a resume can be cleared")
     }
 
     /// A pass over many downloads writes the marks and the kinds and
