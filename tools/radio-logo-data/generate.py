@@ -502,7 +502,13 @@ def offline_check(dry):
             gone.append((name, file_name))
     for name, file_name in gone:
         print(f"  raus: {name} -> {file_name}", file=sys.stderr)
-    stale = sorted(n for n in held if previous.get(n) != held[n].get("file"))
+    # A vouched entry for a core name without one is a vetted assignment of
+    # its own (another spelling of a station the table carries): it comes in.
+    for name in sorted(held):
+        if name in names and name not in previous and held[name].get("reason"):
+            entries[name] = held[name]["file"]
+            print(f"  belegt neu: {name} -> {held[name]['file']}", file=sys.stderr)
+    stale = sorted(n for n in held if entries.get(n) != held[n].get("file"))
     if stale:
         print(f"Belegt, aber nicht in der Tabelle: {stale}", file=sys.stderr)
         return 2

@@ -12,7 +12,7 @@
 // names, fingerprint 39f5648aeb1d. A later quota is only comparable to this one
 // if the fingerprint matches. The core tables move with every maintenance
 // round, and a wandering denominator makes two percentages meaningless.
-// Measured: 507 of them carry a declared logo.
+// Measured: 508 of them carry a declared logo.
 
 import Foundation
 
@@ -504,6 +504,7 @@ nonisolated enum RadioLogoData {
         "radioeins": "Radio Eins.svg",
         "rbb 88.8": "Rbb 88.8 Logo 2019.svg",
         "rbb24 Inforadio": "Rbb24 Inforadio Logo 2022.svg",
+        "Ö 3": "Hitradio Ö3.svg",
         "Ö1": "Österreich 1 logo (2012).svg",
         "Ö3": "Hitradio Ö3.svg",
         "Österreich 1": "Österreich 1 logo (2012).svg",
@@ -698,6 +699,7 @@ nonisolated enum RadioLogoData {
         "hr1": (file: "Hr1-Logo 2015.svg", reason: "Kurzname: der Name selbst steht im Dateinamen"),
         "hr3": (file: "Hr3-Logo 2015.svg", reason: "Kurzname: der Name selbst steht im Dateinamen"),
         "hr4": (file: "Hr4-Logo 2015.svg", reason: "Kurzname: der Name selbst steht im Dateinamen"),
+        "Ö 3": (file: "Hitradio Ö3.svg", reason: "Schreibweise: dieselbe Station, anders geschrieben"),
         "Ö1": (file: "Österreich 1 logo (2012).svg", reason: "Schreibweise: dieselbe Station, anders geschrieben"),
         "Ö3": (file: "Hitradio Ö3.svg", reason: "Schreibweise: dieselbe Station, anders geschrieben"),
         "Český rozhlas Brno": (file: "ČRo Brno Logo 2013.svg", reason: "Schreibweise: dieselbe Station, anders geschrieben"),
