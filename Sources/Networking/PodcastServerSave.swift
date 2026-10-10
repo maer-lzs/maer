@@ -64,29 +64,45 @@ final class PodcastServerSave {
     /// and write it once to the ABS server.
     private func migrateProgress(from old: String, to new: String, duration: Double) async {
         guard let arr = ListeningStore.backup(old), arr.count >= 2 else { return }
-        // The state MOVES; it does not paint over whatever the target holds.
-        // Unconditional overwriting killed a NEWER stand on the server-side
-        // twin. A device that had already listened there lost it by being
-        // re-keyed.
-        ListeningStore.move(from: old, to: new)
+        let toPush = Self.moveStand(from: old, to: new)
         PodcastCloudSync.shared.reconcile()
 
-        let position = arr[0]
-        let dur = duration > 0 ? duration : 0
-        do {
-            try await ABSPodcastProvider.shared.updateProgress(
-                itemId: new, currentTime: position, duration: dur,
-                isFinished: ProgressMark.reachedEnd(position: position, duration: dur)
-            )
-        } catch {
-            // The one push site that failed in SILENCE. The state itself is
-            // safe: local and iCloud already hold it (the move above), and
-            // the next playback event pushes it again over the normal,
-            // queued path. What must not happen is a failure without a
-            // trace, so the reason is findable when the server lags.
-            Logger.library.error("SERVERSAVE progress push failed for \(new, privacy: .public): \(String(describing: error), privacy: .public)")
+        let abs = ABSPodcastProvider.shared
+        if let toPush {
+            let position = toPush[0]
+            let dur = duration > 0 ? duration : 0
+            do {
+                try await abs.updateProgress(
+                    itemId: new, currentTime: position, duration: dur,
+                    isFinished: ProgressMark.reachedEnd(position: position, duration: dur)
+                )
+            } catch {
+                // The one push site that failed in SILENCE. The state itself is
+                // safe: local and iCloud already hold it (the move above), and
+                // the next playback event pushes it again over the normal,
+                // queued path. What must not happen is a failure without a
+                // trace, so the reason is findable when the server lags.
+                Logger.library.error("SERVERSAVE progress push failed for \(new, privacy: .public): \(String(describing: error), privacy: .public)")
+            }
+        } else {
+            Logger.library.notice("SERVERSAVE the server episode holds a newer stand, nothing pushed for \(new, privacy: .public)")
         }
-        await ABSPodcastProvider.shared.refreshProgress()
+        await abs.refreshProgress()
         PodcastProgressStore.shared.reload()
+    }
+
+    /// The re-key of one stand: it MOVES and does not paint over whatever the
+    /// target holds (`ListeningStore.move` keeps the newer of the two).
+    /// Returns the stand the server gets: the arriving one when it won, nil
+    /// when the server-side twin held a newer one, since that came from the
+    /// server or goes there over the normal queued path. Pushing the arriving
+    /// stand regardless wrote the older position over the newer one on the
+    /// server, the overwrite the move keeps out locally.
+    static func moveStand(from old: String, to new: String,
+                          in defaults: UserDefaults = .standard) -> [Double]? {
+        guard let arriving = ListeningStore.backup(old, in: defaults), arriving.count >= 2 else { return nil }
+        ListeningStore.move(from: old, to: new, in: defaults)
+        guard let winner = ListeningStore.backup(new, in: defaults), winner == arriving else { return nil }
+        return winner
     }
 }
