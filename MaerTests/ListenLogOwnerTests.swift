@@ -141,6 +141,78 @@ struct ListenLogOwnerTests {
         #expect(restingGuids == [ofA], "B's episode rests under A, or A's was lost: \(restingGuids)")
     }
 
+    /// A switch held over unreadable rows, as above: A holds, the next start
+    /// cannot read the rows. Returns the log of that start and whether its
+    /// switch to B went on; the rows stay unreadable while `during` runs.
+    private func heldSwitch(_ rig: Rig, during: (PodcastListenLog) -> Void) async throws -> (PodcastListenLog, Bool) {
+        let before = PodcastListenLog(database: rig.database, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        await before.awaitPendingWrites()
+        let file = rig.directory.appendingPathComponent("maer.sqlite").path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let log = PodcastListenLog(database: rig.database, identity: { "account-b" })
+        let handed = log.follow(owner: "account-b", previous: "account-a")
+        during(log)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        return (log, handed)
+    }
+
+    /// Notes heard while the switch holds wait in memory; after it they are
+    /// written in chunks and once, not one write per note.
+    @Test("viele Folgen, die auf eine gehaltene Uebergabe warten, werden danach gebuendelt geschrieben: alle stehen da, ein Schrieb")
+    func waitingNotesAreWrittenOnce() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let run = UUID().uuidString.prefix(6)
+        let guids = (0..<250).map { "rss:batch:\(run):\($0)" }
+        let (log, handed) = try await heldSwitch(rig) { log in
+            for (index, guid) in guids.enumerated() { hear(log, guid, at: 1_700_000_000_000 + Double(index)) }
+        }
+        #expect(!handed, "the precondition: the switch held")
+        #expect(heard(log).isEmpty, "the precondition: the notes waited")
+        let writes = log.rowWrites
+        #expect(log.follow(owner: "account-b", previous: "account-a"))
+        await log.awaitPendingWrites()
+        let written = log.rowWrites - writes
+        #expect(heard(log) == Set(guids), "waiting notes were lost: \(heard(log).count) of \(guids.count)")
+        #expect(written == 1, "the waiting notes were written one by one: \(written) writes")
+        let later = PodcastListenLog(database: rig.database, identity: { "account-b" })
+        #expect(later.follow(owner: "account-b", previous: "account-b"))
+        #expect(heard(later) == Set(guids), "the notes did not land: \(heard(later).count)")
+    }
+
+    /// The one-time backfill under a held switch waits in memory. A restart
+    /// before the hand-over loses that, so the flag must not stand yet: the
+    /// next start runs the backfill again, after its hand-over.
+    @Test("der Einmal-Nachtrag bei gehaltener Uebergabe setzt seine Marke nicht; nach einem Neustart ohne Uebergabe laeuft er nach der Uebergabe, die Geschichte steht da")
+    func theBackfillWaitsForTheHandOver() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let key = AppStorageKeys.listenLogBackfilled
+        let saved = UserDefaults.standard.object(forKey: key)
+        defer { UserDefaults.standard.set(saved, forKey: key) }
+        UserDefaults.standard.set(false, forKey: key)
+        let run = UUID().uuidString.prefix(6)
+        let guids = ["rss:fill:\(run):1", "rss:fill:\(run):2"]
+        let show = PodcastShow(id: "rss:fill:\(run)", title: "Fill", author: nil, artworkURL: nil, description: nil,
+                               feedURL: "https://fill.example/\(run)",
+                               episodes: guids.map { PodcastEpisode(guid: $0, title: $0, audioURL: "https://fill.example/\($0).mp3",
+                                                                    pubDate: 1, duration: 1800) })
+        let stand: (String) -> [Double]? = { guids.contains($0) ? [1800, 1_700_000_000_000, 1800] : nil }
+        let (_, handed) = try await heldSwitch(rig) { log in log.backfillIfNeeded(shows: [show], stand: stand) }
+        #expect(!handed, "the precondition: the switch held")
+        let flagged = AppStorageKeys.bool(key)
+        #expect(!flagged, "the flag stands over a backfill that only waits in memory")
+        // A restart without the hand-over: the waiting backfill is gone.
+        let later = PodcastListenLog(database: rig.database, identity: { "account-b" })
+        #expect(later.follow(owner: "account-b", previous: "account-a"))
+        later.backfillIfNeeded(shows: [show], stand: stand)
+        await later.awaitPendingWrites()
+        #expect(heard(later) == Set(guids), "the backfill was lost to the restart: \(heard(later))")
+        let flaggedLater = AppStorageKeys.bool(key)
+        #expect(flaggedLater, "the flag did not follow the pass")
+    }
+
     @Test("das Gehoert-Protokoll traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)
     func theLogIsEnrolledAndFollowsAtStart() throws {
         func code(_ path: String) throws -> String {

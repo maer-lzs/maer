@@ -147,6 +147,21 @@ struct PlayerDismissZoneTests {
         #expect(info == nil && short == nil, "a notice that does not hold took the line: \(String(describing: info)) \(String(describing: short))")
     }
 
+    /// The notice under the controls and the lasting failure can carry the
+    /// same sentence (two failures map to one in `ErrorSentence.of`). It
+    /// stands once; two different ones stand both, the notice first.
+    @Test("traegt der Hinweis unter der Steuerung denselben Satz wie der bleibende Fehler, steht er einmal; zwei verschiedene stehen beide")
+    func theSameSentenceStandsOnceUnderTheControls() {
+        let notice = PlaybackNotice.cannotPlay("Kein Titel")
+        let same = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: false, error: notice.label)
+        #expect(same == [notice.label], "the same sentence stood twice: \(same)")
+        let other = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: false, error: "Sync failed")
+        #expect(other == [notice.label, "Sync failed"], "two sentences: \(other)")
+        let onlyError = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: true, error: notice.label)
+        #expect(onlyError == [notice.label], "with room the pill says the notice, the error stays: \(onlyError)")
+        #expect(NoticePlacement.linesUnderControls(shown: nil, pillHasRoom: false, error: nil).isEmpty)
+    }
+
     @Test("die Zeile unter der Steuerung fragt dieselbe Antwort wie die Pille", .needsTheSources)
     func theLineAsksTheSlotOfThePill() throws {
         func code(_ path: String) throws -> String {

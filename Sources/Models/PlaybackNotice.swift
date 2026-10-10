@@ -165,6 +165,19 @@ nonisolated enum NoticePlacement {
         let answer = NoticeRule.answer(shown.kind)
         return answer.holdsUntilPlay && answer.isError ? shown.label : nil
     }
+
+    /// Every line under the controls: the notice placed there, then the
+    /// failure that lasts beyond the pill. Two failures can map to the same
+    /// sentence (`ErrorSentence.of`); a sentence shows once, so it is never
+    /// said twice and the lines keep distinct identities.
+    static func linesUnderControls(shown: PlaybackNotice?, pillHasRoom: Bool, error: String?) -> [String] {
+        var lines: [String] = []
+        for line in [lineUnderControls(shown: shown, pillHasRoom: pillHasRoom), error].compactMap({ $0 })
+        where !lines.contains(line) {
+            lines.append(line)
+        }
+        return lines
+    }
 }
 
 /// Which notice shows as the pill and for how long. Pure: the channel feeds

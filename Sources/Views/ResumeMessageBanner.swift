@@ -66,16 +66,17 @@ extension EnvironmentValues {
 
 /// The lines under the full player's controls: a stopping error while the
 /// pill has no room (`NoticePlacement`), then a failure that lasts beyond
-/// the pill (`errorMessage`). It observes the channel itself, the smallest
-/// leaf that reads it.
+/// the pill (`errorMessage`), the same sentence once
+/// (`NoticePlacement.linesUnderControls`). It observes the channel itself,
+/// the smallest leaf that reads it.
 struct ControlsNoticeLines: View {
     @ObservedObject var notices: PlaybackNotices
     let error: String?
     @Environment(\.noticePillHasRoom) private var pillHasRoom
 
     var body: some View {
-        let notice = NoticePlacement.lineUnderControls(shown: notices.shown, pillHasRoom: pillHasRoom)
-        ForEach([notice, error].compactMap { $0 }, id: \.self) { line in
+        let lines = NoticePlacement.linesUnderControls(shown: notices.shown, pillHasRoom: pillHasRoom, error: error)
+        ForEach(lines, id: \.self) { line in
             Text(line)
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.9))

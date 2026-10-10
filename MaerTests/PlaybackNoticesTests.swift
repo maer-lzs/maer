@@ -274,7 +274,8 @@ struct PlaybackNoticesTests {
         #expect(player.contains("ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)"),
                 "the full player shows no line under the controls")
         let lines = try code("Sources/Views/ResumeMessageBanner.swift")
-        #expect(lines.contains("ForEach([notice, error].compactMap { $0 }, id: \\.self)"),
+        #expect(lines.contains("NoticePlacement.linesUnderControls(shown: notices.shown, pillHasRoom: pillHasRoom, error: error)")
+                    && lines.contains("ForEach(lines, id: \\.self)"),
                 "the lines under the controls leave the lasting failure out")
         let channel = try code("Sources/ViewModels/PlaybackNotices.swift") + (try code("Sources/Models/PlaybackNotice.swift"))
         #expect(!channel.contains("errorMessage"), "the channel's timer reaches the line")

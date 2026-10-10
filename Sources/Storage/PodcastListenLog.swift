@@ -72,6 +72,14 @@ final class PodcastListenLog {
     /// under. In memory only: the log is derived from the stands, so a note
     /// lost to a kill comes back at the next transition.
     private var waitingNotes: [@MainActor () -> Void] = []
+    /// Waiting notes after their hand-over, written in chunks with a yield
+    /// between them and one write at the end, like the bulk entry
+    /// (`noteReconciled(batched:)`). A next hand-over writes what is left
+    /// first, so no note lands under the account after.
+    private var replayQueue: [@MainActor () -> Void] = []
+    private var replaying: Task<Void, Never>?
+    /// How many writes of the rows the notes asked for, for the witnesses.
+    private(set) var rowWrites = 0
     nonisolated static let shelfFamily = "listen-log"
 
     init(database: MaerDatabase = .shared, identity: @escaping () -> String? = { AccessFollowers.identity }) {
@@ -125,17 +133,51 @@ final class PodcastListenLog {
     /// then tried again before the next note, and notes wait for it.
     @discardableResult
     func follow(owner scope: String, previous: String? = nil) -> Bool {
+        replayAllNow()
         let handed = handOver(to: scope, previous: previous)
         guard handed else {
             held = (scope, previous)
             return false
         }
         held = nil
-        let waiting = waitingNotes
+        guard !waitingNotes.isEmpty else { return true }
+        Logger.rss.notice("LISTENLOG notes written after the hand-over count=\(self.waitingNotes.count)")
+        replayQueue += waitingNotes
         waitingNotes = []
-        if !waiting.isEmpty { Logger.rss.notice("LISTENLOG notes written after the hand-over count=\(waiting.count)") }
-        waiting.forEach { $0() }
+        guard replaying == nil else { return true }
+        replaying = Task { [weak self] in
+            while self?.replayNextChunk() == true { await Task.yield() }
+        }
         return true
+    }
+
+    /// One chunk of the waiting notes; false once none is left, after the
+    /// one write of them all.
+    private func replayNextChunk() -> Bool {
+        guard !replayQueue.isEmpty else {
+            replaying = nil
+            persist()
+            return false
+        }
+        replayNotes(min(200, replayQueue.count))
+        return true
+    }
+
+    /// The notes still queued, written now: before a hand-over, so they
+    /// land under the account they were heard under.
+    private func replayAllNow() {
+        guard !replayQueue.isEmpty else { return }
+        replayNotes(replayQueue.count)
+        persist()
+    }
+
+    private func replayNotes(_ count: Int) {
+        let chunk = replayQueue.prefix(count)
+        replayQueue.removeFirst(chunk.count)
+        let outer = suspendPersist
+        suspendPersist = true
+        chunk.forEach { $0() }
+        suspendPersist = outer
     }
 
     private func handOver(to scope: String, previous: String?) -> Bool {
@@ -302,14 +344,30 @@ final class PodcastListenLog {
     /// Targeted re-scan of specific shows (Apple import: metadata is present
     /// there). The backfill body without the one-time flag.
     func rescan(shows: [PodcastShow]) {
+        bulkPass { [weak self] in self?.noteAll(shows, stand: { ListeningStore.backup($0) }) }
+    }
+
+    /// A bulk pass (backfill, rescan): its notes coalesce into one write.
+    /// While a hand-over is held the whole pass waits for it as one note,
+    /// and `done` runs only once the pass ran.
+    private func bulkPass(_ body: @escaping @MainActor () -> Void, done: (@MainActor () -> Void)? = nil) {
+        if waitsForHandOver({ [weak self] in self?.bulkPass(body, done: done) }) { return }
         loadIfNeeded()
+        let outer = suspendPersist
         suspendPersist = true
-        defer { suspendPersist = false; persist() }
+        body()
+        suspendPersist = outer
+        if !outer { persist() }
+        done?()
+    }
+
+    /// Every played episode of `shows`, booked as the position store knows it.
+    private func noteAll(_ shows: [PodcastShow], stand: (String) -> [Double]?) {
         for show in shows {
             for episode in show.episodes {
                 noteIfPlayed(guid: episode.guid, duration: episode.duration,
                              episodeTitle: episode.title, showTitle: show.title,
-                             feedURL: show.feedURL, synthesized: true)
+                             feedURL: show.feedURL, synthesized: true, written: stand(episode.guid))
             }
         }
     }
@@ -356,26 +414,24 @@ final class PodcastListenLog {
     // MARK: - Backfill (once): today's shows seed the log so the history of
     // the current subscriptions is not lost to a later unsubscribe.
 
-    func backfillIfNeeded(shows: [PodcastShow]) {
+    /// The flag is set only once the pass ran: while a hand-over is held the
+    /// notes would wait in memory, and a kill before it would lose the
+    /// backfill for good. Without the flag the next start runs it again.
+    /// `stand`: the position store's entry for a guid; a witness hands in its own.
+    func backfillIfNeeded(shows: [PodcastShow],
+                          stand: @escaping (String) -> [Double]? = { ListeningStore.backup($0) }) {
         guard !AppStorageKeys.bool(AppStorageKeys.listenLogBackfilled) else { return }
-        loadIfNeeded()
-        suspendPersist = true
-        defer { suspendPersist = false; persist() }
-        for show in shows {
-            for episode in show.episodes {
-                noteIfPlayed(guid: episode.guid, duration: episode.duration,
-                             episodeTitle: episode.title, showTitle: show.title,
-                             feedURL: show.feedURL, synthesized: true)
-            }
+        bulkPass({ [weak self] in self?.noteAll(shows, stand: stand) }) { [weak self] in
+            AppStorageKeys.set(true, for: AppStorageKeys.listenLogBackfilled)
+            Logger.rss.notice("listen log backfilled: \(self?.entries.count ?? 0) entries")
         }
-        AppStorageKeys.set(true, for: AppStorageKeys.listenLogBackfilled)
-        Logger.rss.notice("listen log backfilled: \(self.entries.count) entries")
     }
 
     // MARK: - Persistence
 
-    /// The last handed-over write (tests).
+    /// The waiting notes written and the last handed-over write (tests).
     func awaitPendingWrites() async {
+        await replaying?.value
         await keeper.awaitPendingWrites()
     }
 
@@ -445,6 +501,7 @@ final class PodcastListenLog {
 
     private func persist() {
         guard !suspendPersist else { return }
+        rowWrites += 1
         // Only the entries that changed go to the rows, in order: each write
         // waits for the one before it and diffs against the log of the
         // write before. A lost write self-heals on the next transition (the
