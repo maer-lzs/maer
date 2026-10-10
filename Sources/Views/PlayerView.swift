@@ -1030,6 +1030,16 @@ struct PlayerView: View {
         let gesture = ProgressMark.markGesture(atTrueEnd: viewModel.isFinished)
         return Button {
             Task {
+                // A book takes the door of the tile menu and the detail
+                // page; it ends the title itself when the mark is written.
+                if let active = coordinator.activeItem, active.id == viewModel.item?.id,
+                   !ItemNamespace.isPodcastEpisode(active.id) {
+                    if let refusal = await viewModel.markWithTheBookDoor(
+                        active, coordinator: coordinator, libraryViewModel: AppSession.shared.libraryViewModel) {
+                        viewModel.errorMessage = refusal
+                    }
+                    return
+                }
                 let wasFinished = viewModel.isFinished
                 await viewModel.toggleFinished()
                 if !wasFinished, let id = viewModel.item?.id {

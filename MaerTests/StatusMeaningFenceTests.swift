@@ -23,6 +23,7 @@ struct StatusMeaningFenceTests {
     /// The files that read the meaning, each with what the meaning decides there.
     nonisolated static let callers: [String: String] = [
         "FeedAdoptionPending.swift": "the feed's reason is read off the meaning (a pause is a server answer there)",
+        "SyncRules.swift": "a progress write refused for its content (an absence, or 403 apart from the access) is neither queued nor kept in the queue",
         "PodcastSubscriptions.swift": "a feed pull that survived the ladder is marked with the meaning, the number beside it",
         "GPodderClient.swift": "a refusal that survived the login retry gets its own sentence, every other answer keeps its number",
         "RadioLogoService.swift": "only an absence is a clean no for the logo chain; a refusal books nothing for 14 days",

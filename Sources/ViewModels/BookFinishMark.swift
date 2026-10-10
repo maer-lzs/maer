@@ -37,11 +37,13 @@ enum BookFinishMark {
     }
 
     /// `knownDuration` and `knownFraction` are what the device knows when
-    /// the server does not answer; for a catalogue title the duration is
-    /// its only source.
-    nonisolated static func step(isCatalog: Bool, target: Bool, fetch: Fetch,
+    /// the server does not answer; for a title kept on the device the
+    /// duration is its only source. `keptHere`: a catalogue title or one
+    /// whose source keeps no positions (a local file), whose mark lives in
+    /// the local positions; its provider writes nothing.
+    nonisolated static func step(keptHere: Bool, target: Bool, fetch: Fetch,
                                  knownDuration: Double, knownFraction: Double) -> Step {
-        if isCatalog {
+        if keptHere {
             return .local(position: target ? max(knownDuration, 1) : 0, duration: knownDuration)
         }
         switch fetch {
@@ -69,9 +71,12 @@ enum BookFinishMark {
                       provider: any AudioProvider, coordinator: PlayerCoordinator,
                       libraryViewModel: LibraryViewModel?) async -> Outcome {
         let isCatalog = FreeCatalog.isCatalogId(entry.id)
+        // A local file's source writes no position (`LocalProvider`): sent
+        // there, the mark went nowhere and was gone at the next start.
+        let keptHere = isCatalog || !provider.capabilities.contains(.progressSync)
         var fetch = Fetch.failed
         var reason: String?
-        if !isCatalog {
+        if !keptHere {
             // A fresh state instead of the possibly stale one on screen.
             do {
                 let fresh = try await provider.fetchItemDetail(itemId: entry.id)
@@ -85,10 +90,9 @@ enum BookFinishMark {
                 }
             }
         }
-        let duration = entry.item.media?.duration ?? (isCatalog ? progress?.currentTime : nil) ?? 0
-        let step = step(isCatalog: isCatalog, target: target, fetch: fetch,
+        let duration = entry.item.media?.duration ?? (keptHere ? progress?.currentTime : nil) ?? 0
+        let step = step(keptHere: keptHere, target: target, fetch: fetch,
                         knownDuration: duration, knownFraction: progress?.fraction ?? 0)
-        if step != .refuse, target { PlayQueue.shared.markedPlayed(entry.id) }
         switch step {
         case .local(let position, let duration):
             ListeningStore.store(entry.id, entry: ProgressMark.entry(
@@ -98,6 +102,12 @@ enum BookFinishMark {
                 try await provider.updateProgress(itemId: entry.id, currentTime: currentTime,
                                                   duration: duration, isFinished: target)
             } catch {
+                // A server that refused the write for its content answers
+                // the same next time: refused, not queued for ever.
+                if SyncQueue.refusesTheWrite(error) {
+                    Logger.library.error("BOOK finish mark refused on send reason=\(FailureReason.of(error), privacy: .public)")
+                    return Outcome(step: .refuse, reason: ErrorSentence.of(error))
+                }
                 await SyncQueue.shared.enqueue(itemId: entry.id, currentTime: currentTime,
                                                duration: duration, isFinished: target)
             }
@@ -111,6 +121,8 @@ enum BookFinishMark {
         case .refuse:
             return Outcome(step: step, reason: reason)
         }
+        // Out of Up Next only once the mark is written or queued.
+        if target { PlayQueue.shared.markedPlayed(entry.id) }
         // The list shows the mark at once, from what it already holds and
         // without the network: a catalogue mark is read from the device, a
         // server mark was just noted. The server's own answer follows when

@@ -333,14 +333,44 @@ extension PlayerViewModel {
     }
 
 
-    /// Sets the book to "finished" server-side, or reverses it.
-    func toggleFinished() async {
-        guard let item else { return }
-        // Respect the same in-flight guard as syncProgress. Otherwise this
-        // write could overtake a running position write on the network.
+    /// Respect the same in-flight guard as `syncProgress`: a mark must not
+    /// overtake a running position write on the network.
+    private func waitForTheRunningWrite() async {
         while syncInFlight {
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
+    }
+
+    /// The player's mark for a book takes the door of the tile menu and the
+    /// detail page (`BookFinishMark`): the same gesture, the same result. A
+    /// refused mark changes neither position nor playback nor Up Next, and
+    /// its sentence comes back for the person; a written one ends the title
+    /// like a natural end inside the door. Episodes keep `toggleFinished`.
+    func markWithTheBookDoor(_ entryItem: LibraryItem, coordinator: PlayerCoordinator,
+                             libraryViewModel: LibraryViewModel?) async -> String? {
+        guard let item, item.id == entryItem.id else { return nil }
+        await waitForTheRunningWrite()
+        syncInFlight = true
+        defer { syncInFlight = false }
+        let target = !isFinished
+        let progress = BookProgress(fraction: duration > 0 ? min(currentTime / duration, 1) : 0,
+                                    isFinished: isFinished,
+                                    lastUpdate: Date().timeIntervalSince1970 * 1000,
+                                    currentTime: currentTime)
+        let outcome = await BookFinishMark.apply(LibraryEntry(item: entryItem, progress: progress), target: target,
+                                                 progress: progress, provider: provider,
+                                                 coordinator: coordinator, libraryViewModel: libraryViewModel)
+        // Every refusal carries its sentence, as on the detail page.
+        if let reason = outcome.reason { return reason }
+        isFinished = target
+        lastSyncedTime = target ? duration : currentTime
+        return nil
+    }
+
+    /// Sets the episode to "finished", or reverses it.
+    func toggleFinished() async {
+        guard let item else { return }
+        await waitForTheRunningWrite()
         syncInFlight = true
         defer { syncInFlight = false }
 

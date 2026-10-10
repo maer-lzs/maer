@@ -70,5 +70,28 @@ struct SyncQueueRowsTests {
         let again = SyncQueue(storage: home.storage())
         #expect(Set(again.allPending().keys) == ["b"])
     }
+
+    /// A server that answers every write of one title with a refusal of its
+    /// content and another with a passing failure.
+    private final class RefusingServer: ProgressSyncAPI {
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
+            throw itemId == "gone" ? APIError.http(404, "gone") : APIError.http(503, "busy")
+        }
+    }
+
+    @Test("ein Eintrag, dessen Schrieb der Server inhaltlich verweigert, verlaesst die Schlange; ein voruebergehender Fehler bleibt")
+    func aRefusedEntryLeavesTheQueue() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let queue = SyncQueue(storage: home.storage())
+        await queue.enqueue(itemId: "gone", currentTime: 900, duration: 900, isFinished: true)
+        await queue.enqueue(itemId: "busy", currentTime: 900, duration: 900, isFinished: true)
+        let server = RefusingServer()
+        await queue.flush { _ in ProgressTarget(key: "server", client: server) }
+        #expect(!queue.hasPendingUpdate(itemId: "gone"), "a refused mark is sent again on every flush")
+        #expect(queue.hasPendingUpdate(itemId: "busy"), "a passing failure lost its entry")
+        #expect(Set(try home.rows().keys) == ["busy"])
+    }
 }
 #endif

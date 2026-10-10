@@ -12,6 +12,20 @@ import Foundation
 /// default MainActor isolation.
 nonisolated enum SyncRules {
 
+    /// Whether a server's answer to a progress write refuses its content:
+    /// the title is not there (404, 410) or this account may not write it
+    /// (403). Asking again gets the same answer, so such a write is neither
+    /// queued nor kept in the queue. 401 is the access, not the content: it
+    /// stays queued for after the next sign-in.
+    static func refusesContent(status: Int) -> Bool {
+        switch StatusMeaning.from(status: status) {
+        case .notFound: return true
+        // 401 asks for the access again, 403 refuses this title.
+        case .signIn: return status == 403
+        case .throttled, .server: return false
+        }
+    }
+
     /// May the player write a podcast's LOCAL state (localPosition +
     /// gpodder push)?
     ///

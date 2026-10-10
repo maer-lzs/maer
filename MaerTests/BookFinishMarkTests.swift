@@ -14,21 +14,21 @@ import Foundation
 struct BookFinishMarkTests {
     @Test("die Geste geht je Titel an ihren Ort: Katalog lokal, Server ganz, offline in die Schlange, ein Fehler schreibt nichts")
     func eachTitleGoesToItsPlace() {
-        #expect(BookFinishMark.step(isCatalog: true, target: true, fetch: .failed, knownDuration: 600, knownFraction: 0.2)
+        #expect(BookFinishMark.step(keptHere: true, target: true, fetch: .failed, knownDuration: 600, knownFraction: 0.2)
                 == .local(position: 600, duration: 600), "a catalogue title is marked on the device, whatever the server said")
-        #expect(BookFinishMark.step(isCatalog: true, target: true, fetch: .failed, knownDuration: 0, knownFraction: 0)
+        #expect(BookFinishMark.step(keptHere: true, target: true, fetch: .failed, knownDuration: 0, knownFraction: 0)
                 == .local(position: 1, duration: 0), "a finished mark without a known length still stands past the start")
-        #expect(BookFinishMark.step(isCatalog: true, target: false, fetch: .failed, knownDuration: 600, knownFraction: 1)
+        #expect(BookFinishMark.step(keptHere: true, target: false, fetch: .failed, knownDuration: 600, knownFraction: 1)
                 == .local(position: 0, duration: 600))
-        #expect(BookFinishMark.step(isCatalog: false, target: true, fetch: .fresh(duration: 900, currentTime: 300),
+        #expect(BookFinishMark.step(keptHere: false, target: true, fetch: .fresh(duration: 900, currentTime: 300),
                                     knownDuration: 800, knownFraction: 0.5)
                 == .send(currentTime: 900, duration: 900), "the server's own numbers lead, the whole record goes")
-        #expect(BookFinishMark.step(isCatalog: false, target: false, fetch: .fresh(duration: 900, currentTime: 300),
+        #expect(BookFinishMark.step(keptHere: false, target: false, fetch: .fresh(duration: 900, currentTime: 300),
                                     knownDuration: 800, knownFraction: 0.5)
                 == .send(currentTime: 300, duration: 900), "unmarking keeps the real position")
-        #expect(BookFinishMark.step(isCatalog: false, target: false, fetch: .offline, knownDuration: 800, knownFraction: 0.5)
+        #expect(BookFinishMark.step(keptHere: false, target: false, fetch: .offline, knownDuration: 800, knownFraction: 0.5)
                 == .queue(currentTime: 400, duration: 800), "offline the decision is queued with the known values")
-        #expect(BookFinishMark.step(isCatalog: false, target: true, fetch: .failed, knownDuration: 800, knownFraction: 0.5)
+        #expect(BookFinishMark.step(keptHere: false, target: true, fetch: .failed, knownDuration: 800, knownFraction: 0.5)
                 == .refuse)
     }
 
@@ -74,7 +74,143 @@ struct BookFinishMarkTests {
         #expect(!library.continueAll.contains { $0.id == id }, "the finished book still stands in the list")
     }
 
-    @Test("die Buch-Geste schreibt nur noch die Tuer, beide Flaechen rufen sie", .needsTheSources)
+    /// A server title's source: it answers with fresh numbers and writes,
+    /// or refuses the write with `writeError`. Counts the writes.
+    private final class AnsweringProvider: AudioProvider {
+        let keepsPositions: Bool
+        var writeError: Error?
+        var writes = 0
+        init(keepsPositions: Bool = true, writeError: Error? = nil) {
+            self.keepsPositions = keepsPositions
+            self.writeError = writeError
+        }
+        var providerId: String { "answering" }
+        var capabilities: ProviderCapabilities { keepsPositions ? [.progressSync] : [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            LibraryItemDetail(id: itemId, media: BookFinishMarkTests.media(itemId),
+                              userMediaProgress: MediaProgress(currentTime: 300, duration: 900, progress: nil,
+                                                               isFinished: false, lastUpdate: nil))
+        }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
+            writes += 1
+            if let writeError { throw writeError }
+        }
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    nonisolated static func media(_ id: String) -> LibraryItemMedia {
+        LibraryItemMedia(metadata: LibraryItemMetadata(title: id, authorName: nil, narratorName: nil, seriesName: nil,
+                                                       genres: nil, publishedYear: nil, description: nil),
+                         duration: 900, chapters: nil, tracks: nil)
+    }
+
+    private func book(_ prefix: String) -> LibraryEntry {
+        let id = "\(prefix)-\(UUID().uuidString)"
+        return LibraryEntry(item: LibraryItem(id: id, media: Self.media(id), addedAt: nil), progress: nil)
+    }
+
+    private func clearQueued(_ id: String) async {
+        let pending = SyncQueue.shared.pendingUpdate(itemId: id)
+        await SyncQueue.shared.remove(itemId: id, ifStill: pending)
+        PlayQueue.shared.remove(id)
+    }
+
+    @Test("ein Server, der eine Antwort auf den Inhalt verweigert (403, 404, 410), bekommt den Schrieb nicht noch einmal; Zugang und Ausfall schon")
+    func theRefusalRule() {
+        #expect(SyncRules.refusesContent(status: 403))
+        #expect(SyncRules.refusesContent(status: 404))
+        #expect(SyncRules.refusesContent(status: 410))
+        #expect(!SyncRules.refusesContent(status: 401), "the access, not the content: queued for after the sign-in")
+        #expect(!SyncRules.refusesContent(status: 429))
+        #expect(!SyncRules.refusesContent(status: 503))
+        #expect(SyncQueue.refusesTheWrite(APIError.http(403, "")))
+        #expect(SyncQueue.refusesTheWrite(JellyfinClient.JellyfinError.http(404)))
+        #expect(SyncQueue.refusesTheWrite(SubsonicClient.SubsonicError.http(410)))
+        #expect(!SyncQueue.refusesTheWrite(APIError.http(401, "")))
+        #expect(!SyncQueue.refusesTheWrite(URLError(.notConnectedToInternet)))
+    }
+
+    @Test("verweigert der Server den Schrieb inhaltlich, bleibt alles: nichts eingereiht, Als Naechstes unveraendert, der Satz kommt")
+    func aRefusedWriteChangesNothing() async {
+        let entry = book("refused")
+        PlayQueue.shared.playLast(entry.id)
+        let provider = AnsweringProvider(writeError: APIError.http(403, "forbidden"))
+        let outcome = await BookFinishMark.apply(entry, target: true, progress: nil, provider: provider,
+                                                 coordinator: PlayerCoordinator(provider: provider), libraryViewModel: nil)
+        let queued = SyncQueue.shared.hasPendingUpdate(itemId: entry.id)
+        let stillNext = PlayQueue.shared.contains(entry.id)
+        await clearQueued(entry.id)
+        #expect(provider.writes == 1, "the precondition: the write was tried")
+        #expect(outcome.step == .refuse)
+        #expect(outcome.reason != nil, "the person hears nothing")
+        #expect(!queued, "a refused mark waits in the queue to be sent again")
+        #expect(stillNext, "a refused mark took the title out of Up Next")
+    }
+
+    @Test("ein voruebergehender Fehler beim Schrieb reiht die Marke ein und nimmt den Titel aus Als Naechstes")
+    func aPassingFailureQueuesTheMark() async {
+        let entry = book("passing")
+        PlayQueue.shared.playLast(entry.id)
+        let provider = AnsweringProvider(writeError: APIError.http(503, "busy"))
+        let outcome = await BookFinishMark.apply(entry, target: true, progress: nil, provider: provider,
+                                                 coordinator: PlayerCoordinator(provider: provider), libraryViewModel: nil)
+        let queued = SyncQueue.shared.pendingUpdate(itemId: entry.id)
+        let stillNext = PlayQueue.shared.contains(entry.id)
+        await clearQueued(entry.id)
+        #expect(outcome.step == .send(currentTime: 900, duration: 900))
+        #expect(queued?.isFinished == true, "the mark is lost instead of queued")
+        #expect(!stillNext)
+    }
+
+    @Test("eine lokale Datei traegt ihre Marke auf dem Geraet, ihre Quelle schreibt nichts")
+    func aLocalFileKeepsItsMarkHere() async {
+        let entry = book("local:finish")
+        defer { ListeningStore.forgetUserDeleted(entry.id) }
+        let provider = AnsweringProvider(keepsPositions: false)
+        let outcome = await BookFinishMark.apply(entry, target: true, progress: nil, provider: provider,
+                                                 coordinator: PlayerCoordinator(provider: provider), libraryViewModel: nil)
+        #expect(outcome.step == .local(position: 900, duration: 900))
+        #expect(provider.writes == 0, "the mark went to a source that writes nothing")
+        #expect(ListeningStore.mark(entry.id)?.position == 900, "the mark is gone at the next start")
+    }
+
+    @Test("der Player nimmt fuer ein Buch die Tuer: verweigert bleiben Stand und Marke, geschrieben steht die Marke")
+    func thePlayerTakesTheDoor() async {
+        let entry = book("player")
+        let refusing = AnsweringProvider(writeError: APIError.http(404, "gone"))
+        let model = PlayerViewModel(provider: refusing)
+        model.item = LibraryItemDetail(id: entry.id, media: Self.media(entry.id), userMediaProgress: nil)
+        model.duration = 900
+        model.currentTime = 300
+        let coordinator = PlayerCoordinator(provider: refusing)
+        let refusal = await model.markWithTheBookDoor(entry.item, coordinator: coordinator, libraryViewModel: nil)
+        let queuedAfterRefusal = SyncQueue.shared.hasPendingUpdate(itemId: entry.id)
+        #expect(refusal != nil, "the person hears nothing")
+        #expect(!model.isFinished && model.currentTime == 300, "a refused mark moved the player")
+        #expect(!queuedAfterRefusal)
+
+        let writing = AnsweringProvider()
+        let written = PlayerViewModel(provider: writing)
+        written.item = LibraryItemDetail(id: entry.id, media: Self.media(entry.id), userMediaProgress: nil)
+        written.duration = 900
+        written.currentTime = 300
+        let answer = await written.markWithTheBookDoor(entry.item, coordinator: PlayerCoordinator(provider: writing),
+                                                       libraryViewModel: nil)
+        await clearQueued(entry.id)
+        #expect(answer == nil)
+        #expect(written.isFinished, "the written mark does not show in the player")
+        #expect(writing.writes == 1)
+    }
+
+    @Test("die Buch-Geste schreibt nur noch die Tuer, alle drei Flaechen rufen sie", .needsTheSources)
     func onlyTheDoorWritesTheGesture() throws {
         let views = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
         #expect(views.count > 100, "der Zaun hat die Ansichten nicht gelesen")
@@ -86,6 +222,14 @@ struct BookFinishMarkTests {
         let callers = views.filter { SyncContractFenceTests.stripped($0.text).contains("BookFinishMark.apply(") }
             .map(\.name).sorted()
         #expect(callers == ["BookDetailScreen.swift", "BookGridComponents.swift"], "\(callers)")
+        // The player is the third surface: its model takes the door, and its
+        // button hands a book to it.
+        let models = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/ViewModels"])
+        let modelCallers = models.filter { SyncContractFenceTests.stripped($0.text).contains("BookFinishMark.apply(") }
+            .map(\.name).sorted()
+        #expect(modelCallers == ["PlayerViewModel+Sync.swift"], "\(modelCallers)")
+        let player = SyncContractFenceTests.stripped(try #require(views.first { $0.name == "PlayerView.swift" }).text)
+        #expect(player.contains("viewModel.markWithTheBookDoor("), "the player's button does not hand a book to the door")
     }
 
     /// A refused mark writes nothing, and both surfaces say the door's
