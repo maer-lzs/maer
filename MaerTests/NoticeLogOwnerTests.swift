@@ -126,6 +126,45 @@ struct NoticeLogOwnerTests {
         #expect(restOfA == ["ofA"], "B's line rests under A, or A's was lost: \(restOfA)")
     }
 
+    /// The document stands but cannot be read at the start and at the switch
+    /// (no rights on it): the hand-over holds, nothing is saved over A's
+    /// lines, and B's lines wait. Readable again, B's next line tries the
+    /// hand-over first: A's lines rest under A, B's stand with B.
+    @Test("ein Wechsel, waehrend das Protokoll unlesbar dasteht, haelt: nichts wird darueber gespeichert, B's Zeilen warten, A's ruhen ganz")
+    func aSwitchOverAnUnreadDocumentHolds() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let before = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        say(before, "ofA")
+        await before.awaitPendingSave()
+
+        let file = rig.ablage.url(for: PlaybackNotices.documentName).path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let notices = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-b" })
+        let seen = said(notices)
+        let handed = notices.follow(owner: "account-b", previous: "account-a")
+        say(notices, "firstOfB")
+        await notices.awaitPendingSave()
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        #expect(seen.isEmpty, "the precondition: the start read nothing")
+        #expect(!handed, "a switch over an unread document went on")
+        let holder = try rig.shelf.holding(of: PlaybackNotices.shelfFamily)?.owner
+        #expect(holder == "account-a", "the holder moved over an unread document: \(String(describing: holder))")
+        let early = try resting(rig, "account-a")
+        #expect(early.isEmpty, "a rest was laid for A from a document nobody read: \(early)")
+
+        say(notices, "secondOfB")
+        await notices.awaitPendingSave()
+        #expect(said(notices) == ["firstOfB", "secondOfB"], "B's lines and A's mixed: \(said(notices))")
+
+        let again = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-b" })
+        #expect(again.follow(owner: "account-b", previous: "account-b"))
+        #expect(said(again) == ["firstOfB", "secondOfB"], "a restart under B shows another log: \(said(again))")
+        let restOfA = try resting(rig, "account-a")
+        #expect(restOfA == ["ofA"], "A's line was lost or B's rests under A: \(restOfA)")
+    }
+
     @Test("der Meldungs-Kanal der App traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)
     func theChannelIsEnrolledAndFollowsAtStart() throws {
         let code = SyncContractFenceTests.stripped(try String(

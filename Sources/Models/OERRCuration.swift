@@ -115,7 +115,8 @@ nonisolated enum OERRCuration {
 
     /// Pure rule: does this artist name belong to a listed broadcaster?
     /// Token-exact over the name's words plus full-name containment for
-    /// multi-word tokens. Precision before breadth (X²·3 Auflage).
+    /// multi-word tokens. Precision before breadth: a name that only
+    /// resembles a broadcaster's stays out.
     static func matches(artistName: String?) -> Broadcaster? {
         guard let raw = artistName?.lowercased(), !raw.isEmpty else { return nil }
         let words = Set(raw.split(whereSeparator: { !$0.isLetter && !$0.isNumber })

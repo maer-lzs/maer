@@ -100,5 +100,65 @@ struct PlayerDismissZoneTests {
                                               topInset: 62, bottomInset: 34, pillHeight: pill) == nil,
                 "a slot while the controls frame is unknown")
     }
+
+    /// The pill's height starts at zero at every opening of the player,
+    /// before it is measured: a gap of a few points below the controls must
+    /// not take the pill then.
+    @Test("eine noch nicht gemessene Pille nimmt keine kleine Luecke unter der Steuerung")
+    func anUnmeasuredPillTakesNoSmallGap() {
+        let upright = CGSize(width: 402, height: 874)
+        // A few points below the controls, room above them.
+        let controls = CGRect(x: 16, y: 400, width: 370, height: 418)
+        let slot = PlayerDismissZones.noticeSlot(controlsFrame: controls, container: upright,
+                                                 topInset: 62, bottomInset: 34, pillHeight: 0)
+        let slotTop = slot?.minY
+        #expect(slotTop == 62, "the unmeasured pill went into the gap below: \(String(describing: slot))")
+        let height = slot?.height ?? 0
+        #expect(height >= PlayerDismissZones.noticePillMinHeight, "the slot does not hold the pill: \(height)")
+    }
+
+    /// A title that cannot start says why in the full player exactly once
+    /// in every position: the pill where it has room, else the line under
+    /// the controls; scrolling from one to the other never shows both and
+    /// never neither. The pill shows where the slot is (`FullPlayerOverlay`),
+    /// the line asks the same answer.
+    @Test("der Satz eines Titels, der nicht starten kann, steht im grossen Player in jeder Lage genau einmal: Pille mit Platz, Zeile ohne, beim Scrollen nie beides, nie keins")
+    func aStoppingErrorStandsExactlyOnce() {
+        let notice = PlaybackNotice.cannotPlay("Kein Titel")
+        let upright = CGSize(width: 402, height: 874)
+        func placed(_ controls: CGRect) -> (pill: Bool, line: String?) {
+            let slot = PlayerDismissZones.noticeSlot(controlsFrame: controls, container: upright,
+                                                     topInset: 62, bottomInset: 34, pillHeight: 38)
+            return (slot != nil, NoticePlacement.lineUnderControls(shown: notice, pillHasRoom: slot != nil))
+        }
+        let roomy = placed(CGRect(x: 16, y: 360, width: 370, height: 429))
+        #expect(roomy.pill && roomy.line == nil, "with room: \(roomy)")
+        let scrolled = placed(CGRect(x: 16, y: -300, width: 370, height: 1400))
+        #expect(!scrolled.pill && scrolled.line == notice.label, "scrolled at AX3: \(scrolled)")
+        var wrong: [String] = []
+        for y in stride(from: 420.0, through: -400.0, by: -20.0) {
+            let step = placed(CGRect(x: 16, y: y, width: 370, height: 1400))
+            if step.pill == (step.line != nil) { wrong.append("y=\(y) pill=\(step.pill) line=\(step.line ?? "-")") }
+        }
+        #expect(wrong.isEmpty, "both or neither while scrolling: \(wrong)")
+        // An info or a short error never takes the line: it is no stopping error.
+        let info = NoticePlacement.lineUnderControls(shown: .serverAdopted, pillHasRoom: false)
+        let short = NoticePlacement.lineUnderControls(shown: .conflict, pillHasRoom: false)
+        #expect(info == nil && short == nil, "a notice that does not hold took the line: \(String(describing: info)) \(String(describing: short))")
+    }
+
+    @Test("die Zeile unter der Steuerung fragt dieselbe Antwort wie die Pille", .needsTheSources)
+    func theLineAsksTheSlotOfThePill() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let overlay = try code("Sources/Views/FullPlayerOverlay.swift")
+        #expect(overlay.contains(".onChange(of: slot != nil, initial: true) { _, hasRoom in pillHasRoom = hasRoom }"),
+                "the overlay does not hand the pill's room on")
+        #expect(overlay.contains(".environment(\\.noticePillHasRoom, pillHasRoom)"), "the controls do not hear the pill's room")
+        #expect(try code("Sources/Views/PlayerView.swift")
+            .contains("ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)"),
+                "the controls do not show the line")
+    }
 }
 #endif

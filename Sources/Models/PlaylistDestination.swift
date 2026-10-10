@@ -27,7 +27,7 @@ nonisolated enum PlaylistDestination {
         servers.isEmpty ? [.device] : [.server, .device]
     }
 
-    /// The music servers these entries may be filed on (ENTSCHEID 23.09.).
+    /// The music servers these entries may be filed on.
     /// A server playlist holds only its own server's titles: a catalogue
     /// track has no address on Navidrome, and a Jellyfin song none there
     /// either. So:

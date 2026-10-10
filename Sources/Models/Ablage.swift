@@ -59,6 +59,12 @@ actor Ablage {
         directory.appendingPathComponent(name)
     }
 
+    /// Whether the document stands where it is (also one that cannot be
+    /// read), as opposed to none or one moved aside.
+    nonisolated func stands(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: url(for: name).path)
+    }
+
     /// Where an unreadable document lies aside (`CorruptStore.preserve`).
     nonisolated func asideURL(for name: String) -> URL {
         url(for: name).appendingPathExtension("corrupt")

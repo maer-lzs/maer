@@ -50,6 +50,49 @@ struct GPodderAfterSwitchTests {
                 "a left feed this device subscribes itself stays hidden and would read as removed")
     }
 
+    @Test("das Konfliktblatt sieht den Server wie die Runde: ohne liegengelassene Feeds und ohne Opt-in ohne Token-Feeds")
+    func theConflictSheetSeesTheServerLikeTheRound() {
+        let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
+        let plain = "https://plain.example/feed", left = "https://left.example/feed"
+        let leftNorm = PodcastSubscriptions.normalizeFeedURL(left)
+        let tokenNorm = PodcastSubscriptions.normalizeFeedURL(token)
+        let off = GPodderSync.conflictSnapshot(serverURLs: [token, plain, left], localRaw: [:],
+                                               premiumOptIn: false, leftOnServer: [leftNorm])
+        let seenOff = off.serverNorms
+        #expect(seenOff == [PodcastSubscriptions.normalizeFeedURL(plain)], "without the opt-in: \(seenOff)")
+        let on = GPodderSync.conflictSnapshot(serverURLs: [token, plain, left], localRaw: [:],
+                                              premiumOptIn: true, leftOnServer: [leftNorm])
+        let seenOn = on.serverNorms
+        #expect(seenOn.contains(tokenNorm) && !seenOn.contains(leftNorm), "with the opt-in: \(seenOn)")
+    }
+
+    /// Going on with this account writes the holder before the keys: when
+    /// the holder cannot be written, nothing of the account before changes,
+    /// so its return goes on with its own state.
+    @Test("Weiterfuehren, wenn der Halter nicht geschrieben werden kann: kein Schluessel aendert sich")
+    func aFailedHolderChangesNoKey() throws {
+        let kept = Self.keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
+        let (shelf, folder) = shelf()
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+            for (key, value) in kept { UserDefaults.standard.set(value, forKey: key) }
+            try? FileManager.default.removeItem(at: folder)
+        }
+        AppStorageKeys.set(["kept"], for: AppStorageKeys.gpodderLastSyncedFeeds)
+        AppStorageKeys.set(["keptLeft"], for: AppStorageKeys.gpodderLeftOnServer)
+        AppStorageKeys.set(["pending"], for: AppStorageKeys.gpodderPendingRemoveLocal)
+        try shelf.setHolding(.init(owner: "account-b"), of: PodcastSubscriptions.shelfFamily)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        let error = GPodderSync.shared.continueWithThisAccount(serverURLs: ["https://only-on-server.example/feed"], shelf: shelf)
+        #expect(error != nil, "the precondition: the holder could not be written")
+        let synced = AppStorageKeys.stringArray(AppStorageKeys.gpodderLastSyncedFeeds)
+        let leftList = AppStorageKeys.stringArray(AppStorageKeys.gpodderLeftOnServer)
+        let pending = AppStorageKeys.stringArray(AppStorageKeys.gpodderPendingRemoveLocal)
+        #expect(synced == ["kept"], "the state of the account before changed: \(String(describing: synced))")
+        #expect(leftList == ["keptLeft"], "the left feeds changed: \(String(describing: leftList))")
+        #expect(pending == ["pending"], "the pending removals went: \(String(describing: pending))")
+    }
+
     private static let keys = [AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
                                AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderUserRemovedFeeds,
                                AppStorageKeys.gpodderLeftOnServer]

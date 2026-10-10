@@ -155,6 +155,18 @@ nonisolated enum NoticeCause: String, Equatable, Sendable, Codable {
     }
 }
 
+/// Where the full player says a notice: in the pill where the pill has room,
+/// else a stopping error as the line under the controls, so a title that
+/// cannot start says why exactly once in every position, never twice and
+/// never not at all. Pure: the overlay hands in whether the pill has room.
+nonisolated enum NoticePlacement {
+    static func lineUnderControls(shown: PlaybackNotice?, pillHasRoom: Bool) -> String? {
+        guard !pillHasRoom, let shown else { return nil }
+        let answer = NoticeRule.answer(shown.kind)
+        return answer.holdsUntilPlay && answer.isError ? shown.label : nil
+    }
+}
+
 /// Which notice shows as the pill and for how long. Pure: the channel feeds
 /// it the events and keeps the state.
 nonisolated enum NoticeRule {

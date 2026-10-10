@@ -605,7 +605,7 @@ struct PlaylistCreateForm: View {
     }
 
     /// With several servers to choose from, the one whose playlist changed
-    /// last is preselected (ENTSCHEID 23.09.); unknown moments keep the first.
+    /// last is preselected; unknown moments keep the first.
     private func preselectLastChangedServer() async {
         guard request.servers.count > 1, request.place == .server else { return }
         var stamped: [(server: MusicSourceRule.Server, changedAt: Double?)] = []

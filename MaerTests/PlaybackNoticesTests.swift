@@ -271,7 +271,11 @@ struct PlaybackNoticesTests {
         }
         #expect(withLine.count == before.count, "a sync failure says only the pill, which goes after its time")
         let player = try code("Sources/Views/PlayerView.swift")
-        #expect(player.contains("if let error = viewModel.errorMessage {"), "the full player shows no line under the controls")
+        #expect(player.contains("ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)"),
+                "the full player shows no line under the controls")
+        let lines = try code("Sources/Views/ResumeMessageBanner.swift")
+        #expect(lines.contains("ForEach([notice, error].compactMap { $0 }, id: \\.self)"),
+                "the lines under the controls leave the lasting failure out")
         let channel = try code("Sources/ViewModels/PlaybackNotices.swift") + (try code("Sources/Models/PlaybackNotice.swift"))
         #expect(!channel.contains("errorMessage"), "the channel's timer reaches the line")
     }

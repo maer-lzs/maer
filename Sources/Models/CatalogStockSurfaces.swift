@@ -7,8 +7,8 @@ import Foundation
 
 /// What a catalogue stock run needs to know about a surface from its KEY
 /// alone, so the runs can start when the app opens instead of when a page
-/// appears (ENTSCHEID, GT 3.2: the indexing runs start with the app
-/// and survive an update). Pure.
+/// appears; the indexing runs start with the app and survive an update.
+/// Pure.
 nonisolated enum CatalogStockSurfaces {
     /// How a surface's stock is fetched.
     enum Fetch: Equatable, Sendable {

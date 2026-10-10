@@ -29,6 +29,9 @@ struct FullPlayerOverlay: View {
     /// Rendered height of the notice pill, kept while no notice shows, so
     /// the next notice is placed at its real height at once.
     @State private var noticePillHeight: CGFloat = 0
+    /// Whether the pill has room now; without it a stopping error stands as
+    /// the line under the controls (`NoticePlacement`).
+    @State private var pillHasRoom = true
     private let dismissThreshold: CGFloat = 180
 
     init(
@@ -72,6 +75,7 @@ struct FullPlayerOverlay: View {
                     topInset: topInset,
                     bottomInset: bottomInset
                 )
+                .environment(\.noticePillHasRoom, pillHasRoom)
                 sideDismissZones
                 topDismissZone
                 bottomDismissZone
@@ -127,18 +131,25 @@ struct FullPlayerOverlay: View {
     /// log; it takes only its own capsule, the zones keep everything beside.
     private var noticePill: some View {
         GeometryReader { proxy in
-            if let slot = PlayerDismissZones.noticeSlot(
+            let slot = PlayerDismissZones.noticeSlot(
                 controlsFrame: controlsFrame, container: proxy.size,
-                topInset: topInset, bottomInset: bottomInset, pillHeight: noticePillHeight) {
-                ResumeMessageBanner(notices: coordinator.notices)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-                        if height > 0 { noticePillHeight = height }
-                    }
-                    .frame(width: slot.width, height: slot.height, alignment: .bottom)
-                    .offset(x: slot.minX, y: slot.minY)
-                    // The full player is always dark. Keep the pill dark too.
-                    .environment(\.colorScheme, .dark)
+                topInset: topInset, bottomInset: bottomInset, pillHeight: noticePillHeight)
+            ZStack(alignment: .topLeading) {
+                if let slot {
+                    ResumeMessageBanner(notices: coordinator.notices)
+                        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                            if height > 0 { noticePillHeight = height }
+                        }
+                        .frame(width: slot.width, height: slot.height, alignment: .bottom)
+                        .offset(x: slot.minX, y: slot.minY)
+                        // The full player is always dark. Keep the pill dark too.
+                        .environment(\.colorScheme, .dark)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            // The same answer places the pill and tells the controls whether
+            // a stopping error needs their line.
+            .onChange(of: slot != nil, initial: true) { _, hasRoom in pillHasRoom = hasRoom }
         }
     }
 

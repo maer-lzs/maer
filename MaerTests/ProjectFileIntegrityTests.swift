@@ -1858,7 +1858,7 @@ extension ProjectFileIntegrityTests {
             hits.append(token)
         }
         if line.contains("Auftrag ") { hits.append("Auftrag") }
-        if line.contains("Auflage ") { hits.append("Auflage") }
+        hits += decisionWords(in: line)
         // A build number and a finding number (`Build 48`, `47-6`) are the
         // same history in another shape. A range of numbers (`0,99-1,49`)
         // is not: a digit or a comma beside it keeps it out. A letter in
@@ -1867,6 +1867,76 @@ extension ProjectFileIntegrityTests {
         hits += matches(of: #"Build [0-9]+"#, in: line)
         hits += matches(of: #"(?<![0-9A-Za-z,.])[0-9]{2}-[0-9](?![0-9,.])"#, in: line)
         return hits
+    }
+
+    /// The words that note who settled something instead of what the code
+    /// does, in any case and form, also before a bracket or a full stop.
+    nonisolated static let decisionStems = ["entscheid", "ausnahme", "auflage"]
+
+    static func decisionWords(in line: String) -> [String] {
+        let lowered = line.lowercased()
+        return decisionStems.filter { lowered.contains($0) }
+    }
+
+    /// The comment lines of the test targets that carry such a word, per
+    /// file, measured when the fence widened to them. A file may only fall,
+    /// and a fall lowers its number here.
+    /// BESTAND OHNE EINZELGRUENDE: one sentence covers every entry, each is
+    /// the count that stood on the day of measuring, none chosen on its own.
+    nonisolated static let testDecisionStock: [String: Int] = [
+        "AppHousekeepingFenceTests.swift": 1,
+        "AppShortcutPhrasesTests.swift": 1,
+        "ArchiveMusicContractTests.swift": 1,
+        "CarrierSwitchTravelTests.swift": 1,
+        "CatalogGenreAxisTests.swift": 1,
+        "CatalogStockFetchTests.swift": 1,
+        "CatalogStoreReadFenceTests.swift": 2,
+        "DownloadProviderFenceTests.swift": 1,
+        "ExternalSourcesTests.swift": 2,
+        "ExternalSourcesWitnessFenceTests.swift": 1,
+        "FeedAuthBlockTests.swift": 5,
+        "FreeCatalogTests.swift": 1,
+        "ItemRouterFenceTests.swift": 1,
+        "JellyfinBooksSurfaceTests.swift": 1,
+        "KeychainBothWorldsTests.swift": 3,
+        "ListeningStoreTests.swift": 1,
+        "MediaDownloadOfferTests.swift": 3,
+        "MusicProviderDoorFenceTests.swift": 2,
+        "MusicProviderForItemTests.swift": 1,
+        "OnlineValueFenceTests.swift": 1,
+        "PlayerToolRuleTests.swift": 1,
+        "PlaylistEmptyCardTests.swift": 1,
+        "PodcastShowMergeTests.swift": 1,
+        "PodcastShowModeTests.swift": 1,
+        "PodcastSubscribeNoticeTests.swift": 2,
+        "ProjectFileIntegrityTests.swift": 7,
+        "PublicReadmeFenceTests.swift": 2,
+        "RadioLogoServiceTests.swift": 3,
+        "RecordingRightsTests.swift": 1,
+        "RemoteCommandRuleTests.swift": 1,
+        "ScrollCalmFenceTests.swift": 1,
+        "SearchDoorFenceTests.swift": 2,
+        "SocketLaneTimeoutTests.swift": 1,
+        "SourceTreeProbe.swift": 1,
+        "StockReasonFenceTests.swift": 2,
+        "SyncContractFenceTests.swift": 1,
+        "SyncRulesTests.swift": 1,
+    ]
+
+    @Test("decision words in the comments of the tests only fall", .needsTheTests)
+    func testCommentsLoseDecisionWords() throws {
+        let files = Self.sourceTexts(in: ["MaerTests", "MaerUITests"])
+        try #require(files.count > 100, "the fence read no test file")
+        var measured: [String: Int] = [:]
+        for (name, text) in files {
+            let count = Self.comments(in: text).filter { !Self.decisionWords(in: $0.comment).isEmpty }.count
+            if count > 0 { measured[name, default: 0] += count }
+        }
+        let grown = measured.filter { $0.value > (Self.testDecisionStock[$0.key] ?? 0) }.map { "\($0.key): \($0.value)" }.sorted()
+        let fallen = Self.testDecisionStock.filter { (measured[$0.key] ?? 0) < $0.value }
+            .map { "\($0.key): \(measured[$0.key] ?? 0) of \($0.value)" }.sorted()
+        #expect(grown.isEmpty, "a test comment notes a decision: \(grown)")
+        #expect(fallen.isEmpty, "a test file carries fewer decision words, lower its stock: \(fallen)")
     }
 
     /// A step of a plan (`3b`, `4b`): the older comments still carry some,
@@ -1919,6 +1989,10 @@ extension ProjectFileIntegrityTests {
         #expect(Set(names("// Pies Messung und MOMO und Takts Fund", nil)) == ["Pies", "MOMO", "Takts"])
         #expect(Self.orderShorthands(in: "/// R58: die Faecher fragen") == ["R58"])
         #expect(Self.orderShorthands(in: "/// Auftrag K settled it") == ["Auftrag"])
+        #expect(Self.orderShorthands(in: "/// genre lists as one (ENTSCHEID 23.09.): a") == ["entscheid"])
+        #expect(Self.orderShorthands(in: "/// what the Entscheids say") == ["entscheid"])
+        #expect(Self.orderShorthands(in: "/// precision first (X2 Auflage).") == ["auflage"])
+        #expect(Self.orderShorthands(in: "/// a named Ausnahme for the header") == ["ausnahme"])
         #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)
         #expect(Self.orderShorthands(in: "/// the row shows twelve tiles").isEmpty)
         #expect(Self.orderShorthands(in: "/// the refused feed (47-6: typed by hand)") == ["47-6"])

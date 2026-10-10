@@ -69,7 +69,7 @@ nonisolated enum GPodderVisibleSubscriptions {
     /// the fence that keeps it in one place stays honest.
     static func visibleServerURLs(_ byNorm: [String: String],
                                   premiumOptIn: Bool,
-                                  leftOnServer: Set<String> = []) -> [String: String] {
+                                  leftOnServer: Set<String>) -> [String: String] {
         let found = withoutLeftOnServer(byNorm, leftOnServer)
         guard !premiumOptIn else { return found }
         return found.filter { !PodcastSubscriptions.isTokenFeedURL($0.value) }

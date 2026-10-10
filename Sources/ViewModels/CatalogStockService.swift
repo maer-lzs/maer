@@ -116,8 +116,8 @@ final class CatalogStockService: ObservableObject {
     /// every way to the host, and a run that meets it waits there.
     static let retryFloorSeconds: TimeInterval = 30
 
-    /// The runs start when the app opens, not when a page appears
-    /// (ENTSCHEID, GT 3.2): every collection whose source is switched on
+    /// The runs start when the app opens, not when a page appears: every
+    /// collection whose source is switched on
     /// runs through the same `ensureStock`, one after the other, with the
     /// same Wi-Fi gate and the same thirty-day rule, so a page is whole
     /// the first time it is opened. Collections with an unfinished run on

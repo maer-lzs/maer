@@ -63,6 +63,15 @@ final class PodcastListenLog {
     private let follower: ShelfFollower?
     /// The account signed in now; a witness hands in its own.
     private let identity: () -> String?
+    /// A hand-over that could not happen (rows unread, a rest not laid):
+    /// the account it was for and the owner before it. Tried again before
+    /// every note and at every change of way.
+    private var held: (scope: String, previous: String?)?
+    /// Notes taken while a hand-over is held, kept out of the holder's log
+    /// and written once the log belongs to the account they were heard
+    /// under. In memory only: the log is derived from the stands, so a note
+    /// lost to a kill comes back at the next transition.
+    private var waitingNotes: [@MainActor () -> Void] = []
     nonisolated static let shelfFamily = "listen-log"
 
     init(database: MaerDatabase = .shared, identity: @escaping () -> String? = { AccessFollowers.identity }) {
@@ -112,11 +121,29 @@ final class PodcastListenLog {
     /// (`RestingShelf.handOver`): no holder yet is the first account, which
     /// takes what this device heard; another holder's entries rest under it
     /// and the entries resting for `scope` take their place. False while
-    /// the hand-over cannot happen (rows unread, a rest not laid).
+    /// the hand-over cannot happen (rows unread, a rest not laid); it is
+    /// then tried again before the next note, and notes wait for it.
     @discardableResult
     func follow(owner scope: String, previous: String? = nil) -> Bool {
+        let handed = handOver(to: scope, previous: previous)
+        guard handed else {
+            held = (scope, previous)
+            return false
+        }
+        held = nil
+        let waiting = waitingNotes
+        waitingNotes = []
+        if !waiting.isEmpty { Logger.rss.notice("LISTENLOG notes written after the hand-over count=\(waiting.count)") }
+        waiting.forEach { $0() }
+        return true
+    }
+
+    private func handOver(to scope: String, previous: String?) -> Bool {
         guard let follower else { return true }
         loadIfNeeded()
+        // Rows the start could not read are read again first: once read,
+        // the hand-over goes on here instead of after the next write.
+        _ = keeper.readAgainNow()
         let rested = entries.count
         // Unread rows join the log of this run once read (`adopted`): the
         // holder's would come back.
@@ -158,6 +185,22 @@ final class PodcastListenLog {
         follow(owner: scope, previous: StockOwner.owner(in: .standard))
     }
 
+    /// A held hand-over, tried again.
+    private func followIfHeld() {
+        guard let held else { return }
+        follow(owner: held.scope, previous: held.previous)
+    }
+
+    /// Whether a note waits for a held hand-over: tried again first; while
+    /// it still holds, the note is kept for after it.
+    private func waitsForHandOver(_ note: @escaping @MainActor () -> Void) -> Bool {
+        followIfHeld()
+        guard held != nil else { return false }
+        waitingNotes.append(note)
+        Logger.rss.notice("LISTENLOG note waits for the hand-over waiting=\(self.waitingNotes.count)")
+        return true
+    }
+
     // MARK: - Recording (the ONE hook; threshold logic stays in
     // PodcastProgressStore.state. Reused, never copied)
 
@@ -192,8 +235,9 @@ final class PodcastListenLog {
     /// (it hides the entry until a newer play); with the rows read, a guid
     /// that never played has nothing to mark, and a line says so.
     func markUnplayed(guid: String, at ts: Double? = nil) {
-        loadIfNeeded()
         let stamp = ts ?? Date().timeIntervalSince1970 * 1000
+        if waitsForHandOver({ [weak self] in self?.markUnplayed(guid: guid, at: stamp) }) { return }
+        loadIfNeeded()
         guard var entry = entries[guid] else {
             guard keeper.startReadFailed else {
                 Logger.rss.notice("LISTENLOG mark unplayed: no entry, nothing played to mark")
@@ -273,6 +317,10 @@ final class PodcastListenLog {
     private func upsertPlayed(guid: String, episodeTitle: String, showTitle: String,
                               feedURL: String, duration: Double, playedAt: Double,
                               synthesized: Bool = false) {
+        if waitsForHandOver({ [weak self] in
+            self?.upsertPlayed(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle, feedURL: feedURL,
+                               duration: duration, playedAt: playedAt, synthesized: synthesized)
+        }) { return }
         loadIfNeeded()
         if var existing = entries[guid] {
             // Latest transition wins; a tombstone yields only to a NEWER play.
@@ -494,6 +542,9 @@ extension PodcastListenLog: AccessFollower {
         follow(owner: scope, previous: previous)
     }
 
-    /// No carrier: the log stays on this device.
-    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {}
+    /// No carrier: the log stays on this device. A held hand-over is tried
+    /// again at every change of way, besides before the next note.
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
+        followIfHeld()
+    }
 }

@@ -68,8 +68,8 @@ enum AppHousekeeping {
         Task { await MetricReceiver.startIfAllowed() }
         // The catalogue stock runs start with the app, not with a page:
         // every collection whose source is on, continuing what an earlier
-        // run (or an earlier version) reached (ENTSCHEID, GT 3.2). In their
-        // own task: nothing here waits.
+        // run (or an earlier version) reached, so a page is whole the first
+        // time it opens. In their own task: nothing here waits.
         if !Self.catalogRunsMustStaySilent {
             Task { await CatalogStockService.shared.startRuns() }
         }

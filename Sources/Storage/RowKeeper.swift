@@ -113,6 +113,28 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         }
     }
 
+    /// After a start read that failed as a whole, the rows read again at
+    /// once, beside the chain while no write is on its way (a hand-over that
+    /// waits for them cannot wait for the next write, which would carry the
+    /// new account's word into the old stock). Read rows go to the store by
+    /// its adoption, as after a read on save. True when the rows are read.
+    func readAgainNow() -> Bool {
+        guard chain.startReadFailed else { return true }
+        guard let adopt, chain.mayReadBesideTheChain else { return false }
+        do {
+            let reader = try database.readerNow()
+            let load = try reader.map { try KeyedRowStore<Value>.loadNow(table: table, reader: $0) }
+                ?? KeyedRowStore<Value>.Load(rows: [:], skipped: 0)
+            chain.started(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+            if !load.rows.isEmpty { adopt(load.rows) }
+            Logger.library.notice("\(self.label, privacy: .public) rows read again: rows=\(load.rows.count) skipped=\(load.skipped)")
+            return true
+        } catch {
+            Logger.library.notice("\(self.label, privacy: .public) rows still not read reason=\(String(describing: error), privacy: .public)")
+            return false
+        }
+    }
+
     /// The store's memory, taken by `take` when the write runs in the chain;
     /// the rows get the diff against the base (known rows, or the rows the
     /// start read that are gone). `emptying` says whether an empty snapshot

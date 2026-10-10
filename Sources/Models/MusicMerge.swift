@@ -154,7 +154,7 @@ nonisolated enum MusicMerge {
         }
     }
 
-    /// The genre lists of several sources as one (ENTSCHEID 23.09.): a
+    /// The genre lists of several sources as one: a
     /// genre several servers know appears once, under the first spelling
     /// met, trimmed. A count is the sum where every server that has the
     /// genre counts it, else unknown, so a genre is never shown smaller

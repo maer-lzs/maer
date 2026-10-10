@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The name a person knows a music server by (ENTSCHEID 23.09.): the type
+/// The name a person knows a music server by: the type
 /// the server reports about itself, not the protocol it speaks. A person
 /// runs "Navidrome" or "Nextcloud Music"; "Subsonic" is what the app talks.
 /// One place for the name: the source capsule and the failure sentence

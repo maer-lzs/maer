@@ -145,11 +145,21 @@ final class GPodderSync {
         let client = GPodderClient(config: config)
         guard (try? await client.login()) != nil,
               let serverURLs = try? await client.subscriptions() else { return nil }
-        let visible = GPodderVisibleSubscriptions.current()
-        let localRaw = visible.byNorm
-        let serverRaw = GPodderVisibleSubscriptions.withoutLeftOnServer(
+        let localRaw = GPodderVisibleSubscriptions.current().byNorm
+        return Self.conflictSnapshot(serverURLs: serverURLs, localRaw: localRaw,
+                                     premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled,
+                                     leftOnServer: GPodderVisibleSubscriptions.currentLeftOnServer(local: Set(localRaw.keys)))
+    }
+
+    /// The snapshot from the server's list: the server side through the
+    /// same visibility as the round (`visibleServerURLs`), so the sheet sees
+    /// neither the feeds left on the server nor, without the opt-in, the
+    /// token feeds.
+    static func conflictSnapshot(serverURLs: [String], localRaw: [String: String],
+                                 premiumOptIn: Bool, leftOnServer: Set<String>) -> ConflictSnapshot {
+        let serverRaw = GPodderVisibleSubscriptions.visibleServerURLs(
             Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) }, uniquingKeysWith: { a, _ in a }),
-            GPodderVisibleSubscriptions.currentLeftOnServer(local: Set(localRaw.keys)))
+            premiumOptIn: premiumOptIn, leftOnServer: leftOnServer)
         return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),
                                 localRaw: localRaw, serverRaw: serverRaw)
     }
@@ -286,16 +296,19 @@ final class GPodderSync {
         let server = Set(serverURLs.map(PodcastSubscriptions.normalizeFeedURL))
         let local = Set(GPodderVisibleSubscriptions.current().byNorm.keys)
         let left = GPodderVisibleSubscriptions.leftOnServer(server: server, local: local)
-        AppStorageKeys.set(Array(left), for: AppStorageKeys.gpodderLeftOnServer)
-        AppStorageKeys.set(Array(local.intersection(server)), for: AppStorageKeys.gpodderLastSyncedFeeds)
-        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveLocal)
-        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveServer)
+        // The holder first: it can fail, the keys cannot. A failed holder
+        // leaves gpodder resting with the state of the account before, so a
+        // return of that account goes on with its own state.
         do {
             try shelf?.adopt(Self.shelfFamily, holderOf: PodcastSubscriptions.shelfFamily)
         } catch {
             Logger.gpodder.error("GPODDER continue: holder not written reason=\(String(describing: error), privacy: .public)")
             return ErrorSentence.of(error)
         }
+        AppStorageKeys.set(Array(left), for: AppStorageKeys.gpodderLeftOnServer)
+        AppStorageKeys.set(Array(local.intersection(server)), for: AppStorageKeys.gpodderLastSyncedFeeds)
+        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveLocal)
+        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveServer)
         Logger.gpodder.notice("GPODDER continues with this account: left on the server=\(left.count) shared=\(local.intersection(server).count)")
         return nil
     }

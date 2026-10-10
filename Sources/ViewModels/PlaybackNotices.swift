@@ -31,10 +31,18 @@ final class PlaybackNotices: ObservableObject {
     private let follower: ShelfFollower?
     /// The account signed in now; a witness hands in its own.
     private let identity: () -> String?
-    /// A hand-over that could not happen (the shelf did not take the rest):
-    /// the owner before it, tried again before the next line is written,
-    /// so no line said under the new account joins the holder's log.
-    private var heldFrom: String??
+    /// A hand-over that could not happen (the document lies unread, the
+    /// shelf did not take the rest): the account it was for and the owner
+    /// before it, tried again before every line and at every change of way.
+    private var held: (scope: String, previous: String?)?
+    /// Lines said while a hand-over is held: kept out of the holder's log
+    /// and added once the log belongs to the account they were said under.
+    private var waitingLines: [NoticeLogEntry] = []
+    /// The document stands but could not be read (its rights, its
+    /// protection before the first unlock). Nothing is saved over it, since
+    /// a save would replace lines nobody read, and a hand-over holds, until
+    /// a read succeeds.
+    private var unread = false
 
     /// The document the log lives in. It stands in no list of the carriers
     /// or the choices: it stays on this device.
@@ -53,35 +61,64 @@ final class PlaybackNotices: ObservableObject {
         follower = shelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "NOTICES") }
         let read = ablage.loadNow([NoticeLogEntry].self, name: Self.documentName)
         if case .corrupt = read {
-            Logger.player.error("NOTICES log unreadable, starts empty this run")
+            // A document that does not decode lies aside by the rule of the
+            // seam; one that stands and cannot be read stays where it is.
+            unread = ablage.stands(Self.documentName)
+            Logger.player.error("NOTICES log unreadable, starts empty this run standing=\(self.unread)")
         }
         log = NoticeLogEntry.trimmed(read.value ?? [], now: now().timeIntervalSince1970)
     }
 
     // MARK: - Owner (the log follows the account like every family)
 
+    /// The document that stood unread, read again; once read, its lines
+    /// come before the ones this run said, and the log is saved again.
+    private func readAgainIfUnread() {
+        guard unread else { return }
+        switch ablage.loadNow([NoticeLogEntry].self, name: Self.documentName) {
+        case .loaded(let lines):
+            unread = false
+            log = NoticeLogEntry.trimmed(lines + log, now: now().timeIntervalSince1970)
+            Logger.player.notice("NOTICES log read again lines=\(lines.count)")
+            queueSave(log)
+        case .fresh:
+            unread = false
+        case .corrupt:
+            unread = ablage.stands(Self.documentName)
+        }
+    }
+
     /// Hands the log to `scope` by the shelf's one rule
-    /// (`RestingShelf.handOver`). The stock of this run is always whole: an
-    /// unreadable document lies aside by the rule of the seam and this run
-    /// starts empty, so no hand-over waits for a read. False while the
-    /// hand-over cannot happen; it is tried again before the next line.
+    /// (`RestingShelf.handOver`). A document that stands unread holds the
+    /// hand-over (`unread`), as rows nobody read do; a document that did not
+    /// decode lies aside and this run starts empty, its stock whole. False
+    /// while the hand-over cannot happen; it is tried again before the next
+    /// line, and lines said meanwhile wait for it.
     @discardableResult
     func follow(owner scope: String, previous: String? = nil) -> Bool {
         guard let follower else { return true }
+        readAgainIfUnread()
         let before = log.count
-        guard let step = follower.follow(
-            to: scope, previous: previous, unread: false, landing: .marked,
+        let step = follower.follow(
+            to: scope, previous: previous, unread: unread, landing: .marked,
             current: { log },
-            replace: { rest, _, name in replace(with: rest, replacement: name) }) else {
-            heldFrom = .some(previous)
-            Logger.player.notice("NOTICES owner held, tried again before the next line")
+            replace: { rest, _, name in replace(with: rest, replacement: name) })
+        guard let step, step != .unread else {
+            held = (scope, previous)
+            Logger.player.notice("NOTICES owner held unread=\(self.unread), tried again before the next line")
             return false
         }
-        heldFrom = nil
+        held = nil
         switch step {
         case .kept, .unread: break
         case .first: Logger.player.notice("NOTICES owner first lines=\(before)")
         case .moved: Logger.player.notice("NOTICES owner moved rested=\(before) lines=\(self.log.count)")
+        }
+        if !waitingLines.isEmpty {
+            Logger.player.notice("NOTICES lines added after the hand-over count=\(self.waitingLines.count)")
+            log = NoticeLogEntry.trimmed(log + waitingLines, now: now().timeIntervalSince1970)
+            waitingLines = []
+            queueSave(log)
         }
         return true
     }
@@ -102,8 +139,8 @@ final class PlaybackNotices: ObservableObject {
 
     /// A held hand-over, tried again.
     private func followIfHeld() {
-        guard let previous = heldFrom, let scope = identity() else { return }
-        follow(owner: scope, previous: previous)
+        guard let held else { return }
+        follow(owner: held.scope, previous: held.previous)
     }
 
     /// A notice happened. It goes into the log; the rule says whether and
@@ -162,16 +199,27 @@ final class PlaybackNotices: ObservableObject {
 
     private func append(_ notice: PlaybackNotice, title: String?) {
         followIfHeld()
+        readAgainIfUnread()
         let at = now().timeIntervalSince1970
-        log = NoticeLogEntry.trimmed(log + [NoticeLogEntry(id: UUID(), at: at, kind: notice.kind, label: notice.label,
-                                                           icon: notice.icon, title: title)], now: at)
+        let line = NoticeLogEntry(id: UUID(), at: at, kind: notice.kind, label: notice.label, icon: notice.icon, title: title)
+        guard held == nil else {
+            waitingLines.append(line)
+            Logger.player.notice("NOTICES line waits for the hand-over waiting=\(self.waitingLines.count)")
+            return
+        }
+        log = NoticeLogEntry.trimmed(log + [line], now: at)
         queueSave(log)
     }
 
-    /// Saves in order, one after the other. `landed` hears a save that
-    /// stands on disk; an empty log refused over an unreadable file counts
-    /// as landed, because no readable line stands there either.
+    /// Saves in order, one after the other, never over a document that
+    /// stands unread. `landed` hears a save that stands on disk; an empty
+    /// log refused over a file that did not decode counts as landed,
+    /// because no readable line stands there either.
     private func queueSave(_ snapshot: [NoticeLogEntry], landed: (@MainActor () -> Void)? = nil) {
+        guard !unread else {
+            Logger.player.notice("NOTICES log not saved: the document stands unread")
+            return
+        }
         let previous = pendingSave
         pendingSave = Task { [ablage] in
             await previous?.value

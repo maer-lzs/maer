@@ -95,45 +95,50 @@ struct ListenLogOwnerTests {
         #expect(restingGuids == [device, whileOut, both], "A's entries do not rest under A: \(restingGuids)")
     }
 
-    /// The start could not read the rows (no rights on the file at that
-    /// moment), the rows are readable again when B comes: the switch holds,
-    /// so A's entries are neither laid down empty nor replaced; a later
-    /// start that reads them hands them over whole.
-    @Test("ein Wechsel, waehrend die Gehoert-Zeilen ungelesen sind, haelt: nichts ruht, nichts mischt sich, nichts geht verloren")
+    /// The start could not read the rows and they are still unreadable when
+    /// B comes (no rights on the file): the switch holds, so A's entries are
+    /// neither laid down empty nor replaced. The rows become readable, and
+    /// B hears an episode: the held switch is tried again first, so B's
+    /// entry stands with B and none with A, also after a restart.
+    @Test("ein Wechsel, waehrend die Gehoert-Zeilen ungelesen sind, haelt und wird vor der naechsten Folge wiederholt: B's Folge bei B, keine bei A, ueber einen Neustart")
     func aSwitchOverUnreadRowsHolds() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
         let run = UUID().uuidString.prefix(6)
-        let ofA = "rss:unread:\(run):a"
+        let ofA = "rss:unread:\(run):a", ofB = "rss:unread:\(run):b"
         let before = PodcastListenLog(database: rig.database, identity: { "account-a" })
         #expect(before.follow(owner: "account-a", previous: nil))
         hear(before, ofA, at: 1_700_000_000_000)
         await before.awaitPendingWrites()
 
-        // The next start cannot read the rows; afterwards they are readable.
+        // The next start cannot read the rows, nor can the switch.
         let file = rig.directory.appendingPathComponent("maer.sqlite").path
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
         let log = PodcastListenLog(database: rig.database, identity: { "account-b" })
         let seen = heard(log)
+        let handed = log.follow(owner: "account-b", previous: "account-a")
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
         #expect(seen.isEmpty, "the precondition: the start read nothing")
-
-        let handed = log.follow(owner: "account-b", previous: "account-a")
         #expect(!handed, "a switch over unread rows went on")
         let restOfA = try rig.shelf.rest(PodcastListenLog.Resting.self, of: PodcastListenLog.shelfFamily, owner: "account-a")
         #expect(restOfA == nil, "a rest was laid for A from rows nobody read")
         let holder = try rig.shelf.holding(of: PodcastListenLog.shelfFamily)?.owner
         #expect(holder == "account-a", "the holder moved over unread rows: \(String(describing: holder))")
-        await log.awaitPendingWrites()
 
-        // A start that reads the rows hands A's entries over whole.
+        // Readable again; B hears an episode.
+        hear(log, ofB, at: 1_700_000_100_000)
+        await log.awaitPendingWrites()
+        #expect(heard(log) == [ofB], "B's episode joined A's log, or A's came along: \(heard(log))")
+        let moved = try rig.shelf.holding(of: PodcastListenLog.shelfFamily)?.owner
+        #expect(moved == "account-b", "the held switch was not tried again: \(String(describing: moved))")
+
+        // A restart under B keeps B's episode; A's rests whole, without B's.
         let later = PodcastListenLog(database: rig.database, identity: { "account-b" })
-        #expect(later.follow(owner: "account-b", previous: "account-a"))
-        await later.awaitPendingWrites()
+        #expect(later.follow(owner: "account-b", previous: "account-b"))
+        #expect(heard(later) == [ofB], "a restart under B shows another stock: \(heard(later))")
         let laid = try rig.shelf.rest(PodcastListenLog.Resting.self, of: PodcastListenLog.shelfFamily, owner: "account-a")
         let restingGuids = Set(laid?.entries.keys.map { $0 } ?? [])
-        #expect(restingGuids == [ofA], "A's entry was lost over the unread start: \(restingGuids)")
-        #expect(heard(later).isEmpty, "B sees A's entry")
+        #expect(restingGuids == [ofA], "B's episode rests under A, or A's was lost: \(restingGuids)")
     }
 
     @Test("das Gehoert-Protokoll traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)

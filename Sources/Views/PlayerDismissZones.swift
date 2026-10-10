@@ -48,15 +48,23 @@ nonisolated enum PlayerDismissZones {
     /// Narrowest space beside the controls that takes the notice pill.
     static let noticeSlotMinWidth: CGFloat = 160
 
+    /// The pill's height at the standard text size (one line of bold
+    /// subheadline and its padding): the least space a slot must give, also
+    /// before the pill's real height is measured, which starts at zero at
+    /// every opening of the player.
+    static let noticePillMinHeight: CGFloat = 38
+
     /// The free space the notice pill stands in, never over a control:
     /// first below the controls, then beside them (side by side, over the
     /// cover), then above them (over the cover). The pill hangs above the
     /// dismiss zones, so its tap arrives; the zones keep everything else.
     /// Nil while the controls frame is unknown or no free space in the
-    /// visible container holds the pill; the notice then stays in the log.
+    /// visible container holds the pill; a stopping error then stands as the
+    /// line under the controls (`NoticePlacement`), anything else in the log.
     static func noticeSlot(controlsFrame: CGRect?, container: CGSize,
                            topInset: CGFloat, bottomInset: CGFloat, pillHeight: CGFloat) -> CGRect? {
         guard let controls = controlsFrame, controls.height > 0 else { return nil }
+        let pillHeight = max(pillHeight, noticePillMinHeight)
         let left = sideStripWidth
         let right = container.width - sideStripWidth
         let top = topInset

@@ -275,13 +275,7 @@ struct PlayerView: View {
         secondaryControls
         tertiaryControls
         upNextLine
-        if let error = viewModel.errorMessage {
-            Text(error)
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.9))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
+        ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)
     }
 
     @ViewBuilder
