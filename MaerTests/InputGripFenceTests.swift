@@ -23,7 +23,6 @@ struct InputGripFenceTests {
         "KindGlyph.swift": (1, "a glyph over artwork: touches reach the tile below, its label is read"),
         "PlayerView.swift": (1, "the chapter ticks over the scrubber: drags reach the scrubber below"),
         "TabContentLayout.swift": (1, "a placeholder row, hidden from the accessibility tree at its root"),
-        "ResumeMessageBanner.swift": (1, "the hint pill: touches pass through, VoiceOver reads the hint"),
     ]
 
     /// The one place that may name the modifier without blocking the finger

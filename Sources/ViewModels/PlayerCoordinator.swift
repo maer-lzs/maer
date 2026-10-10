@@ -380,8 +380,11 @@ final class PlayerCoordinator: ObservableObject {
         // (mini player) must survive the rejected tap, otherwise it looks like
         // a crash. The hint is rendered both in the player and as a banner in
         // the library (the player screen may not be mounted).
+        // The one question before the network (`Reachability`): in the app
+        // the path monitor's answer, and a witness can ask the offline side.
+        let connected = await Reachability.isConnected()
         if MediaAvailability.offlineUnavailable(
-            isConnected: NetworkMonitor.shared.isConnected,
+            isConnected: connected,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id)) {
             openFailed(String(localized: "Offline. This title is not downloaded."),
                        reason: "offlineNotDownloaded", item: item, origin: origin, cause: .network)
@@ -475,7 +478,7 @@ final class PlayerCoordinator: ObservableObject {
             } else {
                 openFailed(ErrorSentence.of(error),
                            reason: FailureReason.of(error), item: item, origin: origin,
-                           cause: NoticeCause.of(error, online: NetworkMonitor.shared.isConnected))
+                           cause: NoticeCause.of(error, online: await Reachability.isConnected()))
                 activeItem = nil
                 // The item never opened, so the pointer that went out at
                 // the gesture is withdrawn with it. `activeItem` was

@@ -227,5 +227,47 @@ struct PlaybackNoticesTests {
         let library = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
         #expect(!library.contains("playerCoordinator.loadError"), "the library shows a failed open on a line of its own")
     }
+
+    /// The real open, not the door alone: offline, a title that is not on
+    /// the device says so with the network symbol; an open nobody asked for
+    /// says nothing.
+    @Test("offline sagt das echte Oeffnen eines nicht geladenen Titels es mit dem WLAN-Zeichen, ein Oeffnen ohne Geste schweigt")
+    func theRealOpenSaysOfflineWithTheNetwork() async {
+        let (notices, folder) = channel(expiry: 60)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let coordinator = PlayerCoordinator(provider: MockProvider(), notices: notices)
+        let item = LibraryItem(id: "notice-open-\(UUID().uuidString)", media: Self.media, addedAt: nil)
+        await Reachability.$assumed.withValue(false) {
+            await coordinator.open(item: item, origin: .restore)
+        }
+        #expect(notices.shown == nil, "an open nobody asked for spoke")
+        await Reachability.$assumed.withValue(false) {
+            await coordinator.open(item: item, origin: .gesture)
+        }
+        guard case .openFailed(_, let cause)? = notices.shown else {
+            Issue.record("the offline open said nothing in the channel: \(String(describing: notices.shown))")
+            return
+        }
+        #expect(cause == .network, "offline open drew \(cause)")
+        #expect(notices.shown?.icon == "wifi.exclamationmark")
+        #expect(coordinator.loadError != nil, "the full player's screen lost the sentence")
+    }
+
+    private static let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+
+    @Test("die Pille faengt nur ihre eigene Flaeche, ein Tipp oeffnet das Protokoll, die Einstellungen fuehren dorthin", .needsTheSources)
+    func thePillTakesOnlyItsOwnCapsule() throws {
+        let root = SourceTree.root
+        let banner = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/ResumeMessageBanner.swift"), encoding: .utf8))
+        #expect(!banner.contains("allowsHitTesting"), "the pill still lets every touch through")
+        let pill = try #require(banner.components(separatedBy: "if let hint = notices.shown {").last?
+            .components(separatedBy: ".animation(").first, "the fence did not find the pill")
+        #expect(pill.contains(".contentShape(shape)"), "the pill takes more than its capsule")
+        #expect(pill.contains(".onTapGesture { showsLog = true }"), "a tap on the pill does not open the log")
+        let afterPill = banner.components(separatedBy: ".animation(").last ?? ""
+        #expect(afterPill.contains(".sheet(isPresented: $showsLog)"), "the log hangs on the pill and closes with it")
+        let settings = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8))
+        #expect(settings.contains("NoticeLogView(notices: coordinator.notices)"), "the settings do not lead to the log")
+    }
 }
 #endif

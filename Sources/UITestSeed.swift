@@ -253,6 +253,11 @@ enum UITestSeed {
             item: LibraryItem(id: npId, media: npMedia, addedAt: 0),
             detail: LibraryItemDetail(id: npId, media: npMedia, userMediaProgress: nil),
             chapters: npChapters, currentChapterIndex: 1, isFallback: true, openedHere: true)
+        // A stopping notice over the mini bar, for the journey that taps
+        // beside, under and on the pill. Opt-in (`-uitest-notice`).
+        if ProcessInfo.processInfo.arguments.contains("-uitest-notice") {
+            session.playerCoordinator.notices.show(.loadFailed(.network), title: npTitle)
+        }
     }
 
     // MARK: - Fixtures

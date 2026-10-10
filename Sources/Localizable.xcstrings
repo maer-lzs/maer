@@ -6702,6 +6702,16 @@
         }
       }
     },
+    "No notices yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Meldungen"
+          }
+        }
+      }
+    },
     "No playable track found." : {
       "localizations" : {
         "de" : {
@@ -7304,6 +7314,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts ist verloren: das Gerät behält, was es geschrieben hat, und versucht es beim nächsten Anlass erneut. Ein geschrumpfter Stand oder ein Format, das der Dienst neuer hält, entscheidet dieses Gerät nicht allein."
+          }
+        }
+      }
+    },
+    "Notices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meldungen"
           }
         }
       }
@@ -9806,6 +9826,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendungen"
+          }
+        }
+      }
+    },
+    "Shows all notices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt alle Meldungen"
           }
         }
       }

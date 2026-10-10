@@ -152,6 +152,7 @@ struct SettingsEdgeTests {
         "PodcastsView.swift": "the podcast sources and the access editor of a private feed, opened from the podcast tab",
         "PodcastShowView.swift": "the access editor of a private feed, opened from its show",
         "SetupView.swift": "the first screen before any server, with the map of areas and the guides",
+        "ResumeMessageBanner.swift": "the notice log, opened by a tap on the hint pill",
     ]
 
     /// The first screens: a settings file whose own stack is a root, shown

@@ -15,6 +15,7 @@ import SwiftUI
 /// channel decides.
 struct ResumeMessageBanner: View {
     @ObservedObject var notices: PlaybackNotices
+    @State private var showsLog = false
 
     private var shape: Capsule { Capsule(style: .continuous) }
 
@@ -32,12 +33,28 @@ struct ResumeMessageBanner: View {
                     .padding(.vertical, 10)
                     .modifier(AdaptiveGlassBackground(shape: shape))
                     .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-                    // Purely informational. Must never intercept the sort menu,
-                    // sign-out, search button, mini-player or player controls.
-                    .allowsHitTesting(false)
+                    // A tap opens the log. The pill takes exactly its own
+                    // capsule, nothing beside or under it: the sort menu,
+                    // sign-out, search, the mini player and the player
+                    // controls keep every touch outside it. Reading the
+                    // log does not end a stopping error; the next start does.
+                    .contentShape(shape)
+                    .onTapGesture { showsLog = true }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint(Text("Shows all notices"))
+                    .accessibilityIdentifier("notice-pill")
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.5), value: notices.shown)
+        // On the container, which stays when the pill goes after its time,
+        // so the log stays open.
+        .sheet(isPresented: $showsLog) {
+            // A settings page outside the settings sheet: its stack sets the
+            // row style like the sheet does.
+            NavigationStack { NoticeLogView(notices: notices) }
+                .labelStyle(RowLabelStyle())
+                .followsAppearanceChoice()
+        }
     }
 }

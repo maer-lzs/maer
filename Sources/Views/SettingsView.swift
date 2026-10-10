@@ -490,6 +490,13 @@ struct SettingsView: View {
             } label: {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
+            // The same log the pill opens: notices of playback on this device.
+            NavigationLink {
+                NoticeLogView(notices: coordinator.notices)
+            } label: {
+                Label("Notices", systemImage: "text.bubble")
+            }
+            .accessibilityIdentifier("notice-log-page")
             NavigationLink {
                 MaerSyncSettingsView()
             } label: {
