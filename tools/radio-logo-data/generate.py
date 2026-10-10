@@ -608,6 +608,13 @@ def self_check():
          {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", None)}, "Eigen.svg"),
         ("two stations with different logos, the country decides", {"countries": {"DE"}},
          {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", "Fremd.svg")}, "Eigen.svg"),
+        # The foreign station first: only the country, not the order of the
+        # answer, may pick the own one.
+        ("two stations with logos, the foreign one first", {"countries": {"DE"}},
+         {"Q2": station("Q142", "Fremd.svg"), "Q1": station("Q183", "Eigen.svg")}, "Eigen.svg"),
+        ("two own stations with one logo and a foreign one first", {"countries": {"DE"}},
+         {"Q3": station("Q142", "Fremd.svg"), "Q1": station("Q183", "Eigen.svg"),
+          "Q2": station("Q183", "Eigen.svg")}, "Eigen.svg"),
         ("two stations and no country", None,
          {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", "Fremd.svg")}, None),
         ("one station with a logo", None, {"Q1": station("Q142", "Einzig.svg")}, "Einzig.svg"),
