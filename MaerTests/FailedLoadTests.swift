@@ -98,6 +98,10 @@ struct FailedLoadTests {
         #expect(!FailedLoad.endHasPassed(position: 0.3, duration: 1), "the track before still plays")
         #expect(FailedLoad.endHasPassed(position: nil, duration: nil), "no item left")
         #expect(!FailedLoad.endHasPassed(position: 0.3, duration: .nan), "a duration not known yet is no end")
+        #expect(FailedLoad.atFiring(.stream, online: true) == .stream)
+        #expect(FailedLoad.atFiring(.stream, online: false) == .unavailable, "the network went before the held point")
+        #expect(FailedLoad.atFiring(.unavailable, online: true) == .unavailable)
+        #expect(FailedLoad.atFiring(.none, online: false) == .none)
     }
 
     /// A source whose every track lives at a loopback port nothing listens
