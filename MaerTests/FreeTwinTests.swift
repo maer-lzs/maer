@@ -141,7 +141,7 @@ struct FreeTwinTests {
         let devices = suites.map { suite -> (UserChoiceCloudSync, UserDefaults) in
             let d = UserDefaults(suiteName: suite)!
             return (UserChoiceCloudSync(defaults: d, cloud: cloud, syncEnabled: { true },
-                                        now: { clock += 1; return clock }), d)
+                                        now: { clock += 1; return clock }, idFormSettled: { true }), d)
         }
         let key = AppStorageKeys.podcastFreeTwin("feed:abc")
         devices[0].1.set("https://free.example/feed.xml", forKey: key)

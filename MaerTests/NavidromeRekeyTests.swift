@@ -287,7 +287,7 @@ struct NavidromeRekeyTests {
         let defaults = UserDefaults(suiteName: suite)!
         var clock = now
         let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
-                                       now: { clock += 1; return clock }, itemIdMap: map)
+                                       now: { clock += 1; return clock }, itemIdMap: map, idFormSettled: { true })
         return Device(sync: sync, defaults: defaults, suite: suite)
     }
 
@@ -473,8 +473,8 @@ struct NavidromeRekeyTests {
         let oldId = "sub:song:\(Self.old)", newId = "sub:song:\(Self.new)"
         let carrier = RecordingPlaylistCarrier()
         let oldStore = try store("old"), movedStore = try store("moved")
-        let old = MaerPlaylistCloudSync(carrier: carrier, playlists: oldStore, itemIdMap: { $0 })
-        let moved = MaerPlaylistCloudSync(carrier: carrier, playlists: movedStore, itemIdMap: Self.map)
+        let old = MaerPlaylistCloudSync(carrier: carrier, playlists: oldStore, itemIdMap: { $0 }, idFormSettled: { true })
+        let moved = MaerPlaylistCloudSync(carrier: carrier, playlists: movedStore, itemIdMap: Self.map, idFormSettled: { true })
 
         let list = oldStore.create(name: "Unterwegs")
         _ = oldStore.add(itemId: oldId, to: list.id)

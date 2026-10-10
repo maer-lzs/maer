@@ -104,7 +104,7 @@ struct CarrierSwitchTravelTests {
         // wie nach einem Neustart mit umgestelltem Traeger.
         let carrier = RecordingPlaylistCarrier()
         #expect(carrier.snapshot.lists.isEmpty, "die Voraussetzung: der neue Traeger haelt nichts")
-        let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store)
+        let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, idFormSettled: { true })
         runner.start()
 
         #expect(carrier.snapshot.lists[list.id]?.itemIds == ["rss:eins"],

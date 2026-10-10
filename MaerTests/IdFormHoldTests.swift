@@ -247,7 +247,9 @@ struct IdFormHoldTests {
         try await withSyncOn {
             let store = MaerPlaylists(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path))
             let carrier = RecordingCarrier()
-            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { nil })
+            // This witness asks the real rule over the address set above.
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { nil },
+                                               idFormSettled: { SubsonicProvider.idFormSettled() })
             let list = store.create(name: "Musik")
             _ = store.add(itemId: "sub:song:alt-3", to: list.id)
             runner.reconcile()
@@ -274,6 +276,54 @@ struct IdFormHoldTests {
         SubsonicClient.persistReportedVersion("0.64.2 (38dc2727)", server: servers[2])
         #expect(SubsonicProvider.idFormSettled(now: now))
         #expect(NavidromeIDRule.isDecided(type: "gonic", version: nil), "a server that is not Navidrome needs no version")
+    }
+
+    /// The two rounds that hold while the music server's id form is open
+    /// ask, unless told, the server set up in the standard defaults. A
+    /// witness built without saying it then depends on what another test or
+    /// an earlier launch left there: three rekey witnesses went red on a
+    /// simulator whose defaults held the UI harness's server. Every
+    /// construction in the tests therefore names `idFormSettled`.
+    nonisolated static func constructionsWithoutTheForm(in code: String) -> Int {
+        var count = 0
+        for type in ["UserChoice" + "CloudSync(", "MaerPlaylist" + "CloudSync("] {
+            var rest = code[...]
+            while let found = rest.range(of: type) {
+                var depth = 1
+                var index = found.upperBound
+                while depth > 0, index < rest.endIndex {
+                    if rest[index] == "(" { depth += 1 } else if rest[index] == ")" { depth -= 1 }
+                    index = rest.index(after: index)
+                }
+                let lineStart = rest[..<found.lowerBound].lastIndex(of: "\n").map { rest.index(after: $0) } ?? rest.startIndex
+                let isComment = rest[lineStart..<found.lowerBound].trimmingCharacters(in: .whitespaces).hasPrefix("//")
+                if !isComment, !rest[found.upperBound..<index].contains("idFormSettled:") { count += 1 }
+                rest = rest[index...]
+            }
+        }
+        return count
+    }
+
+    @Test("jeder Test-Bau eines Abgleichs sagt, ob die Form der Kennungen entschieden ist", .needsTheTests)
+    func everyTestConstructionNamesTheForm() throws {
+        var offenders: [String] = []
+        var seen = 0
+        let walker = try #require(FileManager.default.enumerator(
+            at: SourceTree.root.appendingPathComponent("MaerTests"), includingPropertiesForKeys: nil))
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let code = try String(contentsOf: url, encoding: .utf8)
+            seen += code.components(separatedBy: "UserChoice" + "CloudSync(").count - 1
+            let missing = Self.constructionsWithoutTheForm(in: code)
+            if missing > 0 { offenders.append("\(url.lastPathComponent): \(missing)") }
+        }
+        #expect(seen >= 22, "the fence does not find the constructions: \(seen)")
+        #expect(offenders.isEmpty, "a construction leaves the id form to the standard defaults: \(offenders)")
+        // Calibration: over lines, with the form, inside a comment, nested parentheses.
+        let type = "UserChoice" + "CloudSync"
+        #expect(Self.constructionsWithoutTheForm(in: "let s = \(type)(defaults: d,\n  now: { f(1) })") == 1)
+        #expect(Self.constructionsWithoutTheForm(in: "let s = \(type)(defaults: d, idFormSettled: { true })") == 0)
+        #expect(Self.constructionsWithoutTheForm(in: "// let s = \(type)(defaults: d)") == 0)
+        #expect(Self.constructionsWithoutTheForm(in: "let r = MaerPlaylist" + "CloudSync(carrier: c(), playlists: p)") == 1)
     }
 }
 #endif

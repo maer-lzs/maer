@@ -75,14 +75,14 @@ struct SubscriptionFamilyServerTests {
         var clock: Double = 1_000
         var padSubs: [String: String] = [:]
         let pad = UserChoiceCloudSync(defaults: padDefaults, cloud: cloud, syncEnabled: { true },
-                                      now: { clock += 1; return clock })
+                                      now: { clock += 1; return clock }, idFormSettled: { true })
         pad.localSubscriptions = { padSubs }
         pad.subscriptionAdopter = { added, removed in
             for entry in added { padSubs[PodcastSubscriptions.feedKey(entry.feedURL)] = entry.feedURL }
             for key in removed { padSubs[key] = nil }
         }
         let phone = UserChoiceCloudSync(defaults: phoneDefaults, cloud: cloud, syncEnabled: { true },
-                                        now: { clock += 1; return clock })
+                                        now: { clock += 1; return clock }, idFormSettled: { true })
         phone.localSubscriptions = { subs.subscriptionsForCloud() }
         phone.subscriptionAdopter = { added, removed in subs.adoptCloudSubscriptions(added: added, removed: removed) }
         let gpodder = FakeGPodder([feed])

@@ -90,7 +90,7 @@ struct HarnessSeedFenceTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let cloud = InMemoryCloudStore()
         let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
-                                       now: { 1_000 })
+                                       now: { 1_000 }, idFormSettled: { true })
         let station = RadioStation(id: "radio:manual:own-1", name: "Eigener Sender",
                                    streamURL: "https://own.example/stream")
         sync.noteManualStation(station, removed: false)

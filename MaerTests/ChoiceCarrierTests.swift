@@ -147,7 +147,7 @@ struct ChoiceCarrierTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let carrier = FakeChoiceCarrier()
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier,
-                                       syncEnabled: { true }, now: { 1000 })
+                                       syncEnabled: { true }, now: { 1000 }, idFormSettled: { true })
         sync.start()
         #expect(carrier.onChange != nil, "start hands the carrier its wake-up")
 

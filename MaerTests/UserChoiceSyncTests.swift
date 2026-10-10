@@ -201,7 +201,7 @@ struct UserChoiceCloudSyncTests {
         var clock = now
         let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud,
                                        syncEnabled: { true },
-                                       now: { clock += 1; return clock })
+                                       now: { clock += 1; return clock }, idFormSettled: { true })
         return (sync, defaults, suite)
     }
 
@@ -425,7 +425,7 @@ struct UserChoiceCloudSyncTests {
         defer { cleanup(suiteC) }
         var clockC: Double = 3000
         let c = UserChoiceCloudSync(defaults: defaultsC, cloud: cloud, syncEnabled: { true },
-                                    now: { clockC += 1; return clockC })
+                                    now: { clockC += 1; return clockC }, idFormSettled: { true })
         var adoptedOnC = 0
         c.subscriptionAdopter = { added, removed in adoptedOnC += added.count + removed.count }
         c.localSubscriptions = { [:] }

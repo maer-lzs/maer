@@ -345,7 +345,7 @@ struct SubscriptionOwnerTests {
         rig.defaults.set("title", forKey: "librarySortOption")
         let shelf = try #require(rig.database.restingShelf)
         let sync = UserChoiceCloudSync(defaults: rig.defaults, cloud: UserChoiceFakeCloud(), syncEnabled: { false },
-                                       identity: { "account-b" }, shelf: shelf)
+                                       identity: { "account-b" }, shelf: shelf, idFormSettled: { true })
         sync.subscriptionsFollow = { subs.follow(owner: $0, previous: $1) }
         sync.sourcesAdopted = {}
         sync.followOwner(previous: "account-a")
@@ -372,7 +372,7 @@ struct SubscriptionOwnerTests {
         var scope: String? = "account-a"
         let cloud = UserChoiceFakeCloud()
         let sync = UserChoiceCloudSync(defaults: rig.defaults, cloud: cloud, syncEnabled: { true },
-                                       identity: { scope }, shelf: RestingShelf(directory: rig.folder.appendingPathComponent("choices")))
+                                       identity: { scope }, shelf: RestingShelf(directory: rig.folder.appendingPathComponent("choices")), idFormSettled: { true })
         sync.sourcesAdopted = {}
         sync.subscriptionsFollow = { subs.follow(owner: $0, previous: $1) }
         rig.defaults.set("title", forKey: "librarySortOption")

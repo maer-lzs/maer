@@ -62,7 +62,7 @@ struct UserChoiceOwnerTests {
         let carrier = AccountCarrier(scope: { scope })
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
                                        now: { clock += 1; return clock }, identity: { scope },
-                                       serviceAddress: { address }, shelf: rig.shelf)
+                                       serviceAddress: { address }, shelf: rig.shelf, idFormSettled: { true })
         sync.sourcesAdopted = {}
 
         // A's choices: a scalar, a rate of one book, a search, a cleared
@@ -142,7 +142,7 @@ struct UserChoiceOwnerTests {
         var clock = 1000.0
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
                                        now: { clock += 1; return clock }, identity: { "account-c" },
-                                       serviceAddress: { nil }, shelf: shelf)
+                                       serviceAddress: { nil }, shelf: shelf, idFormSettled: { true })
         sync.sourcesAdopted = {}
         sync.reconcile()
         #expect(try shelf.rest(UserChoiceCloudSync.Resting.self, of: "choices", owner: "account-b") == restOfB,
@@ -161,7 +161,7 @@ struct UserChoiceOwnerTests {
         var clock = 1000.0
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
                                        now: { clock += 1; return clock }, identity: { scope },
-                                       serviceAddress: { nil }, shelf: rig.shelf)
+                                       serviceAddress: { nil }, shelf: rig.shelf, idFormSettled: { true })
         sync.sourcesAdopted = {}
         defaults.set(1.5, forKey: "playbackRate.krimi-buch")
         sync.noteScalar(key: "playbackRate.krimi-buch", value: 1.5)
@@ -188,7 +188,7 @@ struct UserChoiceOwnerTests {
         var clock = 1000.0
         let carrier = AccountCarrier(scope: { scope })
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
-                                       now: { clock += 1; return clock }, identity: { scope }, shelf: rig.shelf)
+                                       now: { clock += 1; return clock }, identity: { scope }, shelf: rig.shelf, idFormSettled: { true })
         sync.sourcesAdopted = {}
         defaults.set("title", forKey: "librarySortOption")
         sync.noteScalar(key: "librarySortOption", value: "title")

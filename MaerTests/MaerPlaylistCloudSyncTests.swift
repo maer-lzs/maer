@@ -42,7 +42,7 @@ struct MaerPlaylistCloudSyncTests {
 
         let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         let carrier = RecordingCarrier()
-        let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store)
+        let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, idFormSettled: { true })
         runner.start()
         let sentAtStart = carrier.stores.count
 

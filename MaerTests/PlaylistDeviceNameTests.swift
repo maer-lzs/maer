@@ -40,7 +40,7 @@ struct PlaylistDeviceNameTests {
     private func device(_ name: String, on carrier: RecordingCarrier, in directory: URL) -> Device {
         let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("\(name).sqlite").path))
         let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store,
-                                           itemIdMap: { $0 }, deviceName: { name })
+                                           itemIdMap: { $0 }, deviceName: { name }, idFormSettled: { true })
         return Device(store: store, runner: runner)
     }
 

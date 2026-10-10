@@ -63,7 +63,7 @@ struct PlaylistOwnerTests {
             var scope: String? = "account-a"
             let carrier = AccountCarrier(scope: { scope })
             let store = MaerPlaylists(database: rig.database)
-            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope })
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope }, idFormSettled: { true })
             runner.start()
 
             // A's lists: two that travel, one deleted, one rescue copy that
@@ -112,7 +112,7 @@ struct PlaylistOwnerTests {
             var scope: String? = "account-a"
             let carrier = AccountCarrier(scope: { scope })
             let store = MaerPlaylists(database: rig.database)
-            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope })
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope }, idFormSettled: { true })
             runner.start()
             let list = store.create(name: "Unterwegs")
             runner.reconcile()
@@ -148,7 +148,7 @@ struct PlaylistOwnerTests {
             let carrier = AccountCarrier(scope: { scope })
             let store = MaerPlaylists(database: rig.database)
             try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
-            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope })
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { scope }, idFormSettled: { true })
             runner.start()
             runner.reconcile()
             #expect(carrier.pots["account-b"] == nil, "the round ran over unread rows")
@@ -225,7 +225,7 @@ struct PlaylistOwnerTests {
             let store = MaerPlaylists(database: rig.database)
             _ = store.create(name: "Von A")
             let carrier = AccountCarrier(scope: { "account-b" })
-            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { "account-b" })
+            let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store, identity: { "account-b" }, idFormSettled: { true })
             runner.followOwner(previous: "account-a")
             let rested = try shelf.rest(MaerPlaylists.Resting.self, of: "playlists", owner: "account-a")
             #expect(rested?.lists.map(\.name) == ["Von A"], "A's lists do not rest under A")

@@ -231,7 +231,7 @@ struct AccessFollowersTests {
         _ = store.add(itemId: "rss:eins", to: mine.id)
 
         let apple = PlaylistFake(Self.apple)
-        let runner = MaerPlaylistCloudSync(carrier: apple, playlists: store)
+        let runner = MaerPlaylistCloudSync(carrier: apple, playlists: store, idFormSettled: { true })
         runner.start()
         let oldWake = try #require(apple.onChange, "the first carrier was started")
 
@@ -275,7 +275,7 @@ struct AccessFollowersTests {
         let defaults = UserDefaults(suiteName: suite)!
         var clock = 1_000.0
         let sync = UserChoiceCloudSync(defaults: defaults, carrier: carrier, syncEnabled: { true },
-                                       now: { clock += 1; return clock })
+                                       now: { clock += 1; return clock }, idFormSettled: { true })
         return (sync, defaults, suite)
     }
 

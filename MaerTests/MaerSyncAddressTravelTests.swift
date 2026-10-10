@@ -22,7 +22,7 @@ struct MaerSyncAddressTravelTests {
         var clock = now
         let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud,
                                        syncEnabled: { true },
-                                       now: { clock += 1; return clock })
+                                       now: { clock += 1; return clock }, idFormSettled: { true })
         return (sync, defaults, suite)
     }
 
