@@ -80,6 +80,76 @@ struct StringCatalogOrderTests {
         #expect(stale.isEmpty, "stale keys (\(stale.count)): \(stale.prefix(5))")
     }
 
+    /// The pattern of a key as a whole string literal in Swift: each format
+    /// specifier stands for an interpolation, the rest is the literal text
+    /// in its escaped form.
+    static func literalPattern(of key: String) throws -> String {
+        let specifier = try NSRegularExpression(pattern: #"%(?:\d+\$)?(?:lld|ld|llu|lu|d|u|@|lf|\.\d+f|f)"#)
+        var pieces: [String] = []
+        var rest = key.startIndex
+        for match in specifier.matches(in: key, range: NSRange(key.startIndex..., in: key)) {
+            guard let range = Range(match.range, in: key) else { continue }
+            pieces.append(String(key[rest..<range.lowerBound]))
+            rest = range.upperBound
+        }
+        pieces.append(String(key[rest...]))
+        let escaped = pieces.map {
+            NSRegularExpression.escapedPattern(for: $0.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n"))
+        }
+        return "\"" + escaped.joined(separator: #"\\\(.*?\)"#) + "\""
+    }
+
+    /// Swift source with its `\u{…}` escapes read as the characters they are.
+    static func unescaped(_ source: String) throws -> String {
+        let escape = try NSRegularExpression(pattern: #"\\u\{([0-9A-Fa-f]+)\}"#)
+        var text = source
+        for match in escape.matches(in: source, range: NSRange(source.startIndex..., in: source)).reversed() {
+            guard let whole = Range(match.range, in: text), let hex = Range(match.range(at: 1), in: text),
+                  let scalar = UInt32(text[hex], radix: 16).flatMap(Unicode.Scalar.init) else { continue }
+            text.replaceSubrange(whole, with: String(Character(scalar)))
+        }
+        return text
+    }
+
+    /// The stale mark comes from Xcode's next sync, so a key whose code is
+    /// gone sits unmarked in the catalog until someone builds in Xcode, and
+    /// then that tree is dirty. Every key but the dynamic ones held manual
+    /// stands as a string literal in the app or widget sources.
+    @Test("Jeder Schluessel des String-Katalogs steht als Literal im Quelltext, ein toter macht den naechsten Xcode-Bau schmutzig", .needsTheSources)
+    func everyCatalogKeyStandsInTheSources() throws {
+        let entries = try Self.entries()
+        var source = ""
+        for folder in ["Sources", "LiveActivityWidget"] {
+            let files = try #require(FileManager.default.enumerator(
+                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
+                .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+            #expect(!files.isEmpty, "the fence read \(folder)")
+            for file in files { source += try String(contentsOf: file, encoding: .utf8) + "\n" }
+        }
+        source = try Self.unescaped(source)
+        let range = NSRange(source.startIndex..., in: source)
+        let dead = try entries.filter { ($0.value["extractionState"] as? String) != "manual" }.map(\.key)
+            .filter { try NSRegularExpression(pattern: Self.literalPattern(of: $0)).firstMatch(in: source, range: range) == nil }
+            .sorted()
+        #expect(dead.isEmpty, "catalog keys without their code (\(dead.count)): \(dead.prefix(5))")
+        // The reader sees an interpolation, a nested call in it, an escape,
+        // and a literal that only begins like the key.
+        let planted = try Self.unescaped(#"""
+        Text("Playing on \(device)")
+        status(String(localized: "Try again in \(Duration.text(minutes: m))."))
+        Text("Nothing \u{2018}hidden\u{2019}")
+        """#)
+        func found(_ key: String) throws -> Bool {
+            try NSRegularExpression(pattern: Self.literalPattern(of: key))
+                .firstMatch(in: planted, range: NSRange(planted.startIndex..., in: planted)) != nil
+        }
+        #expect(try found("Playing on %@"))
+        #expect(try found("Try again in %@."))
+        #expect(try found("Nothing \u{2018}hidden\u{2019}"))
+        #expect(try !found("Playing on %@: %@"), "a longer key is not taken for a shorter literal")
+    }
+
     @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen")
     func everyDynamicGuideKeyIsHeldManual() throws {
         let entries = try Self.entries()
