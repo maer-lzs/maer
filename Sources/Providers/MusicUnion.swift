@@ -387,6 +387,7 @@ final class MusicUnion: MusicProvider {
     var mediaTypes: Set<MediaType> { sources.reduce(into: Set()) { $0.formUnion($1.mediaTypes) } }
     /// What only one source can do is not offered for the lists; the
     /// door per item still reaches it.
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities {
         sources.dropFirst().reduce(sources[0].capabilities) { $0.intersection($1.capabilities) }
     }

@@ -24,6 +24,7 @@ final class RSSProvider: AudioProvider {
     var isAvailable: Bool { AppStorageKeys.rssActive && subs.hasSubscriptions }
     /// Episodes can be downloaded for offline; no server sync, no server
     /// bookmarks.
+    var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
     /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the item id).

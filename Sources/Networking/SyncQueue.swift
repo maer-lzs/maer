@@ -282,10 +282,11 @@ final class SyncQueue {
                 await remove(itemId: itemId, ifStill: update)
                 sent += 1
             } catch {
-                // A refusal of the content gets the same answer every time:
-                // the entry leaves instead of being sent on every flush.
-                if Self.refusesTheWrite(error) {
-                    Logger.library.error("SYNCQUEUE dropped, the server refused the write: \(FailureReason.of(error), privacy: .public)")
+                // A title the host says is not there gets the same answer
+                // every time: the entry leaves instead of being sent on every
+                // flush. Any other refusal waits (`SyncRules.queueDrops`).
+                if Self.httpStatus(of: error).map(SyncRules.queueDrops(status:)) ?? false {
+                    Logger.library.error("SYNCQUEUE dropped, the title is not on the server: \(FailureReason.of(error), privacy: .public)")
                     await remove(itemId: itemId, ifStill: update)
                     continue
                 }
@@ -304,15 +305,13 @@ final class SyncQueue {
             deviceId: SyncHistoryStore.deviceId, startedAt: flushStarted), moved: sent > 0)
     }
 
-    /// Whether a server refused a progress write for its content, from any
-    /// of the three server clients (`SyncRules.refusesContent`).
-    nonisolated static func refusesTheWrite(_ error: Error) -> Bool {
-        let status: Int?
-        if let api = error as? APIError, case .http(let code, _) = api { status = code }
-        else if let jellyfin = error as? JellyfinClient.JellyfinError, case .http(let code) = jellyfin { status = code }
-        else if let subsonic = error as? SubsonicClient.SubsonicError, case .http(let code) = subsonic { status = code }
-        else { status = nil }
-        return status.map(SyncRules.refusesContent(status:)) ?? false
+    /// The HTTP status a progress write failed with, from any of the three
+    /// server clients; nil for every other failure (offline, decoding).
+    nonisolated static func httpStatus(of error: Error) -> Int? {
+        if let api = error as? APIError, case .http(let code, _) = api { return code }
+        if let jellyfin = error as? JellyfinClient.JellyfinError, case .http(let code) = jellyfin { return code }
+        if let subsonic = error as? SubsonicClient.SubsonicError, case .http(let code) = subsonic { return code }
+        return nil
     }
 
     private func loadAll() -> [String: PendingUpdate] {

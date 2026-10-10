@@ -12,6 +12,7 @@ import Foundation
 extension APIClient: AudioProvider {
     var providerId: String { "abs" }
 
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities {
         [.progressSync, .bookmarks, .passwordLogin, .downloadable]
     }

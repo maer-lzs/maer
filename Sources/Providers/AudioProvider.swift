@@ -83,6 +83,14 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// default, so a source's real answer would be discarded in silence.
     func servingSignature(for type: MediaType) -> String
     var capabilities: ProviderCapabilities { get }
+    /// Whether a "finished" mark for one of its titles lives in the local
+    /// positions because this source writes no position anywhere (local
+    /// files, catalogues, feeds, radio). A source whose `updateProgress`
+    /// writes a stand (Audiobookshelf, Jellyfin, a Subsonic bookmark) gets
+    /// the mark sent. A requirement without a default, so every source
+    /// answers for itself; `.progressSync` names the Audiobookshelf
+    /// reconcile, not this question.
+    var keepsMarksOnDevice: Bool { get }
     /// Whether the source currently has content (drives tab visibility and the
     /// search fan-out). MUST be a protocol REQUIREMENT: the callers hold
     /// `[any AudioProvider]`, and an extension-only property on the existential

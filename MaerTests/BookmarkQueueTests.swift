@@ -75,6 +75,7 @@ struct BookmarkQueueTests {
     /// person adds or removes a bookmark during a slow flush.
     private final class HookProvider: AudioProvider {
         var providerId: String { "bookmark-hook" }
+        var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         var onCreate: ((Double) -> Void)?

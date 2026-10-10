@@ -76,6 +76,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Password login + own search; content is streamed from a server and can be
     /// downloaded for offline. No server-side progress sync (music needs none;
     /// "played" is handled via scrobble at the track level).
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 

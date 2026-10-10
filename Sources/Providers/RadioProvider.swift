@@ -19,6 +19,7 @@ final class RadioProvider: AudioProvider {
 
     var providerId: String { "radio" }
     var mediaTypes: Set<MediaType> { [.radio] }
+    var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [.remoteSearch] }
     var streamAuthHeaders: [String: String] { [:] }
 

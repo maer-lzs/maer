@@ -69,6 +69,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func servingSignature(for type: MediaType) -> String {
         type == .audiobooks ? AppStorageKeys.jellyfinBooksViewIdValue : ""
     }
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 

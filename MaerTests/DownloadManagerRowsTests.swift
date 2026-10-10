@@ -58,6 +58,7 @@ struct DownloadManagerRowsTests {
     /// and ends the way every download ends, at the mark.
     private final class MarkOnlyProvider: AudioProvider {
         var providerId: String { "mark-only" }
+        var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }

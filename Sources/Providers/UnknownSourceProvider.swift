@@ -30,6 +30,7 @@ final class UnknownSourceProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "unknown" }
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities { [] }
     /// Never offer this source anywhere in the UI.
     var isAvailable: Bool { false }

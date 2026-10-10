@@ -71,9 +71,9 @@ enum BookFinishMark {
                       provider: any AudioProvider, coordinator: PlayerCoordinator,
                       libraryViewModel: LibraryViewModel?) async -> Outcome {
         let isCatalog = FreeCatalog.isCatalogId(entry.id)
-        // A local file's source writes no position (`LocalProvider`): sent
-        // there, the mark went nowhere and was gone at the next start.
-        let keptHere = isCatalog || !provider.capabilities.contains(.progressSync)
+        // The source says whether it writes a stand at all: a local file's
+        // does not, and a mark sent there was gone at the next start.
+        let keptHere = isCatalog || provider.keepsMarksOnDevice
         var fetch = Fetch.failed
         var reason: String?
         if !keptHere {
@@ -102,9 +102,9 @@ enum BookFinishMark {
                 try await provider.updateProgress(itemId: entry.id, currentTime: currentTime,
                                                   duration: duration, isFinished: target)
             } catch {
-                // A server that refused the write for its content answers
-                // the same next time: refused, not queued for ever.
-                if SyncQueue.refusesTheWrite(error) {
+                // A refused write is said to the person, who can mark again,
+                // instead of being queued for ever (`SyncRules.refusesTheMark`).
+                if SyncQueue.httpStatus(of: error).map(SyncRules.refusesTheMark(status:)) ?? false {
                     Logger.library.error("BOOK finish mark refused on send reason=\(FailureReason.of(error), privacy: .public)")
                     return Outcome(step: .refuse, reason: ErrorSentence.of(error))
                 }

@@ -75,17 +75,20 @@ struct BookFinishMarkTests {
     }
 
     /// A server title's source: it answers with fresh numbers and writes,
-    /// or refuses the write with `writeError`. Counts the writes.
+    /// or refuses the write with `writeError`. Counts the writes and keeps
+    /// the last flag. It carries no capability at all, like Jellyfin and
+    /// Subsonic: whether a mark is sent is the source's own answer.
     private final class AnsweringProvider: AudioProvider {
-        let keepsPositions: Bool
+        let keepsMarksOnDevice: Bool
         var writeError: Error?
         var writes = 0
-        init(keepsPositions: Bool = true, writeError: Error? = nil) {
-            self.keepsPositions = keepsPositions
+        var lastFinished: Bool?
+        init(keepsMarksOnDevice: Bool = false, writeError: Error? = nil) {
+            self.keepsMarksOnDevice = keepsMarksOnDevice
             self.writeError = writeError
         }
         var providerId: String { "answering" }
-        var capabilities: ProviderCapabilities { keepsPositions ? [.progressSync] : [] }
+        var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }
         func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
@@ -99,6 +102,7 @@ struct BookFinishMarkTests {
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
             writes += 1
+            lastFinished = isFinished
             if let writeError { throw writeError }
         }
         func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
@@ -123,19 +127,47 @@ struct BookFinishMarkTests {
         PlayQueue.shared.remove(id)
     }
 
-    @Test("ein Server, der eine Antwort auf den Inhalt verweigert (403, 404, 410), bekommt den Schrieb nicht noch einmal; Zugang und Ausfall schon")
-    func theRefusalRule() {
-        #expect(SyncRules.refusesContent(status: 403))
-        #expect(SyncRules.refusesContent(status: 404))
-        #expect(SyncRules.refusesContent(status: 410))
-        #expect(!SyncRules.refusesContent(status: 401), "the access, not the content: queued for after the sign-in")
-        #expect(!SyncRules.refusesContent(status: 429))
-        #expect(!SyncRules.refusesContent(status: 503))
-        #expect(SyncQueue.refusesTheWrite(APIError.http(403, "")))
-        #expect(SyncQueue.refusesTheWrite(JellyfinClient.JellyfinError.http(404)))
-        #expect(SyncQueue.refusesTheWrite(SubsonicClient.SubsonicError.http(410)))
-        #expect(!SyncQueue.refusesTheWrite(APIError.http(401, "")))
-        #expect(!SyncQueue.refusesTheWrite(URLError(.notConnectedToInternet)))
+    @Test("eine gesendete Marke ist bei 403, 404 und 410 eine Verweigerung mit Satz; die Schlange laesst nur 404 und 410 fallen")
+    func theRefusalRules() {
+        #expect(SyncRules.refusesTheMark(status: 403))
+        #expect(SyncRules.refusesTheMark(status: 404))
+        #expect(SyncRules.refusesTheMark(status: 410))
+        #expect(!SyncRules.refusesTheMark(status: 401), "the access, not the content: queued for after the sign-in")
+        #expect(!SyncRules.refusesTheMark(status: 429))
+        #expect(!SyncRules.refusesTheMark(status: 503))
+        #expect(SyncRules.queueDrops(status: 404))
+        #expect(SyncRules.queueDrops(status: 410))
+        #expect(!SyncRules.queueDrops(status: 403), "a 403 can come from in front of the server and says nothing about the title")
+        #expect(!SyncRules.queueDrops(status: 401))
+        #expect(!SyncRules.queueDrops(status: 503))
+        #expect(SyncQueue.httpStatus(of: APIError.http(403, "")) == 403)
+        #expect(SyncQueue.httpStatus(of: JellyfinClient.JellyfinError.http(404)) == 404)
+        #expect(SyncQueue.httpStatus(of: SubsonicClient.SubsonicError.http(410)) == 410)
+        #expect(SyncQueue.httpStatus(of: URLError(.notConnectedToInternet)) == nil)
+    }
+
+    @Test("jede Quelle sagt selbst, ob eine Marke bei ihr ankommt: Server senden, lokale Dateien, Kataloge, Feeds und Radio behalten sie")
+    func everySourceAnswersWhereItsMarkGoes() {
+        let session = AppSession.shared
+        let answers: [(id: String, keeps: Bool)] = [
+            ("abs-book-id", false), ("jf:book:x", false), ("sub:album:x", false),
+            ("local:x", true), (FreeCatalog.librivoxPrefix + "x", true), ("rss:x", true), ("radio:x", true),
+        ]
+        for answer in answers {
+            #expect(session.provider(for: answer.id).keepsMarksOnDevice == answer.keeps, "\(answer.id)")
+        }
+    }
+
+    @Test("ein Buch einer Quelle ohne Audiobookshelf-Abgleich (Jellyfin, Booksonic) bekommt seine Marke gesendet")
+    func aMarkReachesASourceWithoutTheReconcile() async {
+        let entry = book("jf:book")
+        let provider = AnsweringProvider()
+        let outcome = await BookFinishMark.apply(entry, target: true, progress: nil, provider: provider,
+                                                 coordinator: PlayerCoordinator(provider: provider), libraryViewModel: nil)
+        await clearQueued(entry.id)
+        #expect(outcome.step == .send(currentTime: 900, duration: 900), "the mark stayed on the device")
+        #expect(provider.writes == 1)
+        #expect(provider.lastFinished == true)
     }
 
     @Test("verweigert der Server den Schrieb inhaltlich, bleibt alles: nichts eingereiht, Als Naechstes unveraendert, der Satz kommt")
@@ -174,7 +206,7 @@ struct BookFinishMarkTests {
     func aLocalFileKeepsItsMarkHere() async {
         let entry = book("local:finish")
         defer { ListeningStore.forgetUserDeleted(entry.id) }
-        let provider = AnsweringProvider(keepsPositions: false)
+        let provider = AnsweringProvider(keepsMarksOnDevice: true)
         let outcome = await BookFinishMark.apply(entry, target: true, progress: nil, provider: provider,
                                                  coordinator: PlayerCoordinator(provider: provider), libraryViewModel: nil)
         #expect(outcome.step == .local(position: 900, duration: 900))

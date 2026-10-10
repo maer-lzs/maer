@@ -110,6 +110,7 @@ struct MusicUnionTests {
         nonisolated func artistId(fromItemId itemId: String) -> String? { nil }
 
         var providerId: String { prefix }
+        var keepsMarksOnDevice: Bool { false }
         var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
         var isAvailable: Bool { true }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }

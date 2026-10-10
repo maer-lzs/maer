@@ -24,6 +24,7 @@ struct DownloadNotifyCountTests {
     /// because every track is already there.
     final class AddressProvider: AudioProvider {
         var providerId: String { "address" }
+        var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [.downloadable] }
         var streamAuthHeaders: [String: String] { [:] }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }

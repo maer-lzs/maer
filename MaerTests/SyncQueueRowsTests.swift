@@ -71,27 +71,33 @@ struct SyncQueueRowsTests {
         #expect(Set(again.allPending().keys) == ["b"])
     }
 
-    /// A server that answers every write of one title with a refusal of its
-    /// content and another with a passing failure.
+    /// A server that answers the writes of three titles with 404, 403 and a
+    /// passing failure.
     private final class RefusingServer: ProgressSyncAPI {
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
-            throw itemId == "gone" ? APIError.http(404, "gone") : APIError.http(503, "busy")
+            switch itemId {
+            case "gone": throw APIError.http(404, "gone")
+            case "forbidden": throw APIError.http(403, "forbidden")
+            default: throw APIError.http(503, "busy")
+            }
         }
     }
 
-    @Test("ein Eintrag, dessen Schrieb der Server inhaltlich verweigert, verlaesst die Schlange; ein voruebergehender Fehler bleibt")
-    func aRefusedEntryLeavesTheQueue() async throws {
+    @Test("die Schlange laesst nur einen Titel fallen, den der Server nicht kennt; 403 und ein voruebergehender Fehler bleiben")
+    func onlyAnAbsentTitleLeavesTheQueue() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
         let queue = SyncQueue(storage: home.storage())
-        await queue.enqueue(itemId: "gone", currentTime: 900, duration: 900, isFinished: true)
-        await queue.enqueue(itemId: "busy", currentTime: 900, duration: 900, isFinished: true)
+        for id in ["gone", "forbidden", "busy"] {
+            await queue.enqueue(itemId: id, currentTime: 900, duration: 900, isFinished: true)
+        }
         let server = RefusingServer()
         await queue.flush { _ in ProgressTarget(key: "server", client: server) }
-        #expect(!queue.hasPendingUpdate(itemId: "gone"), "a refused mark is sent again on every flush")
+        #expect(!queue.hasPendingUpdate(itemId: "gone"), "a title the server does not know is sent again on every flush")
+        #expect(queue.hasPendingUpdate(itemId: "forbidden"), "a 403, maybe from in front of the server, lost its entry")
         #expect(queue.hasPendingUpdate(itemId: "busy"), "a passing failure lost its entry")
-        #expect(Set(try home.rows().keys) == ["busy"])
+        #expect(Set(try home.rows().keys) == ["busy", "forbidden"])
     }
 }
 #endif

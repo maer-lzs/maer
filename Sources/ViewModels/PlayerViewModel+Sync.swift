@@ -348,7 +348,10 @@ extension PlayerViewModel {
     /// like a natural end inside the door. Episodes keep `toggleFinished`.
     func markWithTheBookDoor(_ entryItem: LibraryItem, coordinator: PlayerCoordinator,
                              libraryViewModel: LibraryViewModel?) async -> String? {
-        guard let item, item.id == entryItem.id else { return nil }
+        guard let item, item.id == entryItem.id else {
+            Logger.player.notice("MARK book door not run: the player holds item=\(self.item?.id ?? "-", privacy: .private(mask: .hash)), asked item=\(entryItem.id, privacy: .private(mask: .hash))")
+            return nil
+        }
         await waitForTheRunningWrite()
         syncInFlight = true
         defer { syncInFlight = false }

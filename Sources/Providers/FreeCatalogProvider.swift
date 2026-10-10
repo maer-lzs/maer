@@ -18,6 +18,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     var providerId: String { "freecatalog" }
     var mediaTypes: Set<MediaType> { [.audiobooks] }
+    var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [] }
     var streamAuthHeaders: [String: String] { [:] }
     /// Deliberately false. Discover-only surface, never a tab/search source.

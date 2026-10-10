@@ -108,6 +108,7 @@ struct FailedLoadTests {
     /// on: the item fails to load at once, as a stream does without network.
     final class DeadAddressProvider: AudioProvider {
         var providerId: String { "dead-address" }
+        var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }
@@ -167,6 +168,7 @@ struct FailedLoadTests {
     /// an address uses it, every other track sits at the dead loopback port.
     final class MixedProvider: AudioProvider {
         var providerId: String { "mixed-address" }
+        var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }

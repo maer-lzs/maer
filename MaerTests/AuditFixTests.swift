@@ -168,6 +168,7 @@ struct PlayedWithoutDurationTests {
 @MainActor
 final class MockProvider: AudioProvider {
     var providerId: String { "mock" }
+    var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities { [.progressSync] }
     var streamAuthHeaders: [String: String] { [:] }
 

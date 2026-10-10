@@ -12,18 +12,26 @@ import Foundation
 /// default MainActor isolation.
 nonisolated enum SyncRules {
 
-    /// Whether a server's answer to a progress write refuses its content:
-    /// the title is not there (404, 410) or this account may not write it
-    /// (403). Asking again gets the same answer, so such a write is neither
-    /// queued nor kept in the queue. 401 is the access, not the content: it
+    /// Whether the answer to a mark sent while the person waits is a refusal
+    /// with a sentence instead of a queued write: the title is not there
+    /// (404, 410) or the write was forbidden (403). The person sees it and
+    /// can mark again, so nothing is lost in silence. 401 is the access and
     /// stays queued for after the next sign-in.
-    static func refusesContent(status: Int) -> Bool {
+    static func refusesTheMark(status: Int) -> Bool {
         switch StatusMeaning.from(status: status) {
         case .notFound: return true
-        // 401 asks for the access again, 403 refuses this title.
+        // 401 asks for the access again, 403 forbids this write.
         case .signIn: return status == 403
         case .throttled, .server: return false
         }
+    }
+
+    /// Whether the queue drops a waiting write after this answer: only when
+    /// the host said the title is not there. A 403 can come from in front of
+    /// the server (a proxy rule, a block on this network) and says nothing
+    /// about the title, so the entry waits for the next flush like a 401.
+    static func queueDrops(status: Int) -> Bool {
+        StatusMeaning.from(status: status).isAbsence
     }
 
     /// May the player write a podcast's LOCAL state (localPosition +
