@@ -11,6 +11,60 @@ import Network
 import os
 @testable import Maer
 
+/// Whether this simulator plays a local audio file at all, measured once per
+/// run. Measured on a gate simulator whose CoreAudio had no system object:
+/// every item failed (-11800 under -12746), a tone from AVAudioFile and a WAV
+/// written byte by byte alike, while the asset said it was playable. A
+/// witness that plays a tone cannot ask its question there and is skipped
+/// with that reason, not failed.
+actor AudioHereProbe {
+    static let shared = AudioHereProbe()
+    private var answer: Bool?
+
+    func plays() async -> Bool {
+        if let answer { return answer }
+        let measured = await Self.measure()
+        answer = measured
+        return measured
+    }
+
+    @MainActor private static func measure() async -> Bool {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("audio-here-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let rate = 22_050
+        var samples = Data(capacity: rate * 2)
+        for index in 0..<rate {
+            let value = Int16(3000 * sin(Double(index) * 0.05))
+            withUnsafeBytes(of: value.littleEndian) { samples.append(contentsOf: $0) }
+        }
+        var file = Data()
+        func word(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { file.append(contentsOf: $0) } }
+        func half(_ value: UInt16) { withUnsafeBytes(of: value.littleEndian) { file.append(contentsOf: $0) } }
+        file.append(contentsOf: Array("RIFF".utf8)); word(UInt32(36 + samples.count)); file.append(contentsOf: Array("WAVE".utf8))
+        file.append(contentsOf: Array("fmt ".utf8)); word(16); half(1); half(1); word(UInt32(rate)); word(UInt32(rate * 2)); half(2); half(16)
+        file.append(contentsOf: Array("data".utf8)); word(UInt32(samples.count)); file.append(samples)
+        guard (try? file.write(to: url)) != nil else { return false }
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
+        let player = AVPlayer(playerItem: item)
+        let deadline = Date().addingTimeInterval(5)
+        while item.status == .unknown, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        player.replaceCurrentItem(with: nil)
+        return item.status == .readyToPlay
+    }
+}
+
+extension Trait where Self == ConditionTrait {
+    /// The witness plays a generated tone; skipped where the simulator plays
+    /// no local audio file at all.
+    static var needsAudio: Self {
+        .enabled("this simulator plays no local audio file, the witness cannot ask its question here") {
+            await AudioHereProbe.shared.plays()
+        }
+    }
+}
+
 /// A play after a load failure plays once the network is back, without a
 /// restart of the app: the failed item is built anew at the position the
 /// device holds, and the failure itself stops playback with a hint.
@@ -190,30 +244,7 @@ struct FailedLoadTests {
         return url
     }
 
-    /// The witnesses that play a generated tone stand on a simulator that
-    /// plays audio at all. Measured on a gate simulator whose CoreAudio had
-    /// no system object: every item failed (-11800 under -12746), a tone
-    /// from AVAudioFile and a WAV written byte by byte alike, while the asset
-    /// said it was playable. There the witness says so instead of failing on
-    /// the rule.
-    private func requireAudioHere(_ url: URL) async throws {
-        let item = AVPlayerItem(asset: AVURLAsset(url: url))
-        let player = AVPlayer(playerItem: item)
-        let deadline = Date().addingTimeInterval(5)
-        while item.status == .unknown, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-        let error = item.error.map { error -> String in
-            let outer = error as NSError
-            let inner = outer.userInfo[NSUnderlyingErrorKey] as? NSError
-            return "\(outer.code) under \(inner?.code ?? 0)"
-        } ?? "none"
-        try #require(item.status == .readyToPlay,
-                     "this simulator plays no local audio file (status \(item.status.rawValue), error \(error)); the witness cannot measure the rule here")
-        player.replaceCurrentItem(with: nil)
-    }
-
-    @Test("eine spaetere Datei, die nicht laden kann, haelt an ihrem Anfang an, die Position springt nicht ueber sie")
+    @Test("eine spaetere Datei, die nicht laden kann, haelt an ihrem Anfang an, die Position springt nicht ueber sie", .needsAudio)
     func aLaterFailedTrackHoldsAtItsStart() async throws {
         let first = try tone(seconds: 1)
         let third = try tone(seconds: 1)
@@ -221,7 +252,6 @@ struct FailedLoadTests {
             try? FileManager.default.removeItem(at: first)
             try? FileManager.default.removeItem(at: third)
         }
-        try await requireAudioHere(first)
         let tracks = [
             ABSAudioTrack(index: 0, startOffset: 0, duration: 1, contentUrl: first.path, metadata: nil),
             ABSAudioTrack(index: 1, startOffset: 1, duration: 1, contentUrl: "second.mp3", metadata: nil),
@@ -282,11 +312,10 @@ struct FailedLoadTests {
     /// server, the file goes and the hint says the download could not be
     /// read; without network it stops with that hint, not a network one, and
     /// the file stays.
-    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz Halt, beide Male der Hinweis auf den Download")
+    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz Halt, beide Male der Hinweis auf den Download", .needsAudio)
     func aBrokenLocalFilePlaysOnFromTheServer() async throws {
         let server = try tone(seconds: 3)
         defer { try? FileManager.default.removeItem(at: server) }
-        try await requireAudioHere(server)
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
         for local in [missing, try brokenFile()] {
             let online = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: local] }, isOnline: { true })
@@ -318,14 +347,13 @@ struct FailedLoadTests {
     /// A later track that fails only after the track before has ended: the
     /// queue has moved past it by then, and its failure comes too late to
     /// hold ahead. The gap in the playing index holds it all the same.
-    @Test("eine spaetere Datei, die erst nach dem Ende der Datei davor scheitert, haelt an ihrem Anfang, nie in der Datei dahinter")
+    @Test("eine spaetere Datei, die erst nach dem Ende der Datei davor scheitert, haelt an ihrem Anfang, nie in der Datei dahinter", .needsAudio)
     func aLateFailureHoldsAtItsStart() async throws {
         let first = try tone(seconds: 1)
         let third = try tone(seconds: 3)
         defer {
             for url in [first, third] { try? FileManager.default.removeItem(at: url) }
         }
-        try await requireAudioHere(first)
         let host = try await SlowFailHost.start(delay: 2)
         defer { host.stop() }
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { true })
@@ -350,7 +378,7 @@ struct FailedLoadTests {
 
     /// A later downloaded file that cannot load is dropped while the one
     /// before plays; at its start playback goes on from the server, no stop.
-    @Test("eine spaetere kaputte lokale Datei: mit Netz laeuft die Wiedergabe an ihrem Anfang vom Server weiter")
+    @Test("eine spaetere kaputte lokale Datei: mit Netz laeuft die Wiedergabe an ihrem Anfang vom Server weiter", .needsAudio)
     func aLaterBrokenLocalFilePlaysOnFromTheServer() async throws {
         let first = try tone(seconds: 1)
         let server = try tone(seconds: 2)
@@ -358,7 +386,6 @@ struct FailedLoadTests {
         defer {
             for url in [first, server, broken] { try? FileManager.default.removeItem(at: url) }
         }
-        try await requireAudioHere(first)
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [1: broken] }, isOnline: { true })
         await model.load(item: detail([(first.path, 1), (server.path, 2)]))
         model.play()
@@ -370,6 +397,39 @@ struct FailedLoadTests {
         #expect(seen == .downloadUnreadable, "the hint names the download: \(String(describing: seen))")
         #expect(model.isPlaying && model.currentTime > 1.5, "playback went on past its start: \(model.currentTime)")
         #expect(!FileManager.default.fileExists(atPath: broken.path), "the failed file is dropped")
+        model.stop()
+    }
+
+    /// The network as a switch the witness turns between the failure and
+    /// the held point.
+    final class NetworkSwitch { var online = true }
+
+    /// The later file fails with network and is dropped for the server, then
+    /// the network goes while the track before still plays. At the held
+    /// point nothing can take over: playback holds with the offline hint,
+    /// it does not claim to play on from the server.
+    @Test("eine spaetere kaputte lokale Datei, und das Netz geht vor ihrem Anfang: Halt mit dem Hinweis ohne Netz", .needsAudio)
+    func aLaterBrokenLocalFileHoldsWhenTheNetworkLeft() async throws {
+        let first = try tone(seconds: 1)
+        let server = try tone(seconds: 2)
+        let broken = try brokenFile()
+        defer {
+            for url in [first, server, broken] { try? FileManager.default.removeItem(at: url) }
+        }
+        let network = NetworkSwitch()
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [1: broken] },
+                                    isOnline: { network.online })
+        await model.load(item: detail([(first.path, 1), (server.path, 2)]))
+        model.play()
+        await waitFor { !FileManager.default.fileExists(atPath: broken.path) }
+        #expect(!FileManager.default.fileExists(atPath: broken.path), "the precondition: the file failed with network and was dropped")
+        #expect(model.currentTime < 1, "the precondition: the track before still plays: \(model.currentTime)")
+        network.online = false
+        await waitFor { model.sourceHint == .downloadUnreadableOffline || model.currentTime > 1.5 }
+        #expect(model.sourceHint == .downloadUnreadableOffline,
+                "without network the held point says so: \(String(describing: model.sourceHint))")
+        #expect(!model.isPlaying, "playback holds")
+        #expect(abs(model.currentTime - 1) < 0.01, "at the start of the failed file: \(model.currentTime)")
         model.stop()
     }
 

@@ -1462,7 +1462,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func stopAtHeldFailure(_ held: HeldPoint) {
         guard heldAhead?.index == held.index else { return }
         let index = held.index
-        if held.then == .stream {
+        // Asked again now: the network may have gone while the track before
+        // played, and then nothing can take over.
+        let then = FailedLoad.atFiring(held.then, online: isOnline())
+        if then == .stream {
             currentTime = trackAbsoluteStart(index)
             let rebuilt = buildQueue(startingAtTrackIndex: index, seekWithin: 0)
             Logger.player.notice("LOADFAIL held track=\(index) plays on from the server ok=\(rebuilt)")
@@ -1478,7 +1481,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(Self.loadHint(held.then))
+        showSourceHint(Self.loadHint(then))
         forgetCatalogAnswer()
     }
 

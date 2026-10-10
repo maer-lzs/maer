@@ -64,6 +64,14 @@ nonisolated enum FailedLoad {
         return .stream
     }
 
+    /// What a held point does when it fires. A download dropped for the
+    /// server needs the network then, not only when the file failed: the
+    /// track before plays in between, and without network the track is
+    /// unavailable after all.
+    static func atFiring(_ held: LocalFallback, online: Bool) -> LocalFallback {
+        held == .stream && !online ? .unavailable : held
+    }
+
     /// Whether a play builds the queue anew before it starts: the current
     /// item failed to load, or a stopped failure was not healed yet. The
     /// queue drops a failed item (measured: no current item right after
