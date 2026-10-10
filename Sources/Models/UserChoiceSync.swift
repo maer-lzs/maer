@@ -411,14 +411,19 @@ nonisolated enum UserChoiceCatalog {
         return harnessSeedExactPrefixes.contains { id.hasPrefix($0) && !id.contains("/") && !id.contains(":") }
     }
 
+    /// Every family prefix of the catalog, the list the seed question strips.
+    /// It knew eight of the ten: a seeded hand-entered station or variant
+    /// (`radioManual.`, `radioVariant.`) came in from the document as a
+    /// person's own. A fence holds every prefix of this type in the list.
+    static let familyPrefixes = [subscriptionPrefix, favoritePrefix, recentStationPrefix,
+                                 manualStationPrefix, variantPrefix, searchPrefix, hiddenPrefix,
+                                 premiumMarkPrefix, feedBlockPrefix, knownServerPrefix]
+
     /// The same question for a cloud key: the id stands behind the
     /// family's prefix, so the prefix is stripped before asking. Asking
     /// the whole key would have missed the anchor.
     static func isHarnessSeed(cloudKey key: String) -> Bool {
-        let families = [favoritePrefix, recentStationPrefix, hiddenPrefix,
-                        premiumMarkPrefix, feedBlockPrefix, searchPrefix,
-                        subscriptionPrefix, knownServerPrefix]
-        for family in families where key.hasPrefix(family) {
+        for family in familyPrefixes where key.hasPrefix(family) {
             return isHarnessSeed(id: String(key.dropFirst(family.count)))
         }
         return isHarnessSeed(id: key)

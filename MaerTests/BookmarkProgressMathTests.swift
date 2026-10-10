@@ -83,5 +83,39 @@ struct BookmarkProgressMathTests {
         let done = BookmarkProgressMath.progress(currentTime: 600, duration: 600, lastUpdate: pick.stamp)
         #expect(done.isFinished)
     }
+
+    /// The local stand of a playlist that grew since it was heard to the
+    /// end: finished is judged against the duration the stand was written
+    /// with. One of three copies judged against today's and lost it.
+    @Test("eine gewachsene Playlist behaelt ihr fertig: der lokale Stand zaehlt gegen seine geschriebene Dauer")
+    func aGrownPlaylistStaysFinished() {
+        let stand: [Double] = [3600, 1_700_000_000_000, 3600]
+        let grown = BookmarkProgressMath.progress(fromStand: stand, duration: 4200)
+        #expect(grown?.isFinished == true, "the grown playlist lost its finished: \(String(describing: grown))")
+        #expect(grown?.lastUpdate == 1_700_000_000_000)
+        #expect(BookmarkProgressMath.progress(fromStand: [10, 1_700_000_000_000], duration: nil) == nil)
+        #expect(BookmarkProgressMath.progress(fromStand: nil, duration: 600) == nil)
+    }
+
+    /// Every source whose continue lives on the device asks the one rule;
+    /// a second copy is how the drift came.
+    @Test("jede Quelle mit lokalem Weiterhoeren fragt dieselbe Regel, keine eigene Kopie", .needsTheSources)
+    func everyLocalContinueAsksTheOneRule() throws {
+        func code(_ name: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/\(name)"), encoding: .utf8))
+        }
+        let expected = ["JellyfinProvider.swift": (stand: 2, own: 0), "SubsonicProvider.swift": (stand: 2, own: 1),
+                        "RSSProvider.swift": (stand: 1, own: 0)]
+        for (file, count) in expected {
+            // Whitespace collapsed: a call broken after its parenthesis is
+            // the same call.
+            let text = try code(file).replacingOccurrences(of: #"\(\s+"#, with: "(", options: .regularExpression)
+            let stand = text.components(separatedBy: "BookmarkProgressMath.progress(fromStand:").count - 1
+            let own = text.components(separatedBy: "BookmarkProgressMath.progress(currentTime:").count - 1
+            #expect(stand == count.stand, "\(file): \(stand) asks of the stand rule")
+            #expect(own == count.own, "\(file): \(own) own progress from a position (only a server bookmark may)")
+        }
+    }
 }
 #endif

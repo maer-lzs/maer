@@ -1038,20 +1038,13 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         var result: [String: BookProgress] = [:]
         for pl in playlists {
             let itemId = Self.itemId(playlistId: pl.id)
-            guard let stored = ListeningStore.backup(itemId),
-                  stored.count >= 2, let duration = pl.duration, duration > 0 else { continue }
-            result[itemId] = BookmarkProgressMath.progress(
-                currentTime: stored[0], duration: duration,
-                lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
+            result[itemId] = BookmarkProgressMath.progress(fromStand: ListeningStore.backup(itemId), duration: pl.duration)
         }
         // Albums join the local fallback. Same localPosition machinery,
         // sourced from the session's album cache.
         for album in cachedAlbumItems {
-            guard let stored = ListeningStore.backup(album.id),
-                  stored.count >= 2, let duration = album.media?.duration, duration > 0 else { continue }
-            result[album.id] = BookmarkProgressMath.progress(
-                currentTime: stored[0], duration: duration,
-                lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
+            result[album.id] = BookmarkProgressMath.progress(fromStand: ListeningStore.backup(album.id),
+                                                             duration: album.media?.duration)
         }
         return result
     }

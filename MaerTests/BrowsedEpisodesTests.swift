@@ -56,5 +56,25 @@ struct BrowsedEpisodesTests {
         #expect(store.episode(guid: guid) != nil)
         #expect(store.listened(guid: guid, defaults: defaults) != nil)
     }
+
+    /// A kept list that stands and does not decode is never written over:
+    /// the next keep wrote the empty list plus one row over it.
+    @Test("eine gemerkte Liste, die nicht dekodiert, wird weder beim Merken noch beim Vergessen ueberschrieben")
+    func anUnreadableListIsNotWrittenOver() {
+        let suite = "browsed-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let garbage = Data("{\"not\": \"a kept list\"".utf8)
+        defaults.set(garbage, forKey: "browsedEpisodesListened")
+        let store = BrowsedEpisodes()
+        let browsed = show(feedURL: "https://z.example/feed")
+        let guid = browsed.episodes[0].guid
+        store.remember(show: browsed)
+        #expect(store.episode(guid: guid) != nil, "the precondition: the episode is browsed")
+        store.keepListened(guid: guid, defaults: defaults)
+        #expect(defaults.data(forKey: "browsedEpisodesListened") == garbage, "a keep wrote over the unreadable list")
+        store.forgetListened(feedURL: "https://z.example/feed", defaults: defaults)
+        #expect(defaults.data(forKey: "browsedEpisodesListened") == garbage, "a forget wrote over the unreadable list")
+    }
 }
 #endif

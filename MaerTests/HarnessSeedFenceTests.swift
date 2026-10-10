@@ -57,12 +57,34 @@ struct HarnessSeedFenceTests {
         #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.recentStationPrefix + "radio:rb:seed-pop-1"))
         #expect(!UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.favoritePrefix + "radio:manual:swr3"))
         #expect(!UserChoiceCatalog.isHarnessSeed(cloudKey: "radioNationalCountryCode"))
+        // Every family is stripped, the hand-entered stations and the
+        // variants too; a real station behind them stays real.
+        for family in UserChoiceCatalog.familyPrefixes {
+            #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: family + "radio:manual:seed-1"), "\(family) lets a seed in")
+            #expect(!UserChoiceCatalog.isHarnessSeed(cloudKey: family + "radio:manual:swr3"), "\(family) takes a real id for a seed")
+        }
         // The family is stripped, so the anchor still stands at the id's
         // own start; and a real address behind a family stays real.
         #expect(!UserChoiceCatalog.isHarnessSeed(
             cloudKey: UserChoiceCatalog.subscriptionPrefix + "rss:9f8e:https://example.org/seed-book-club/ep1"))
         #expect(!UserChoiceCatalog.isHarnessSeed(
             cloudKey: UserChoiceCatalog.hiddenPrefix + "sub:album:my-seed-book"))
+    }
+
+    /// A new family prefix that the seed question does not strip lets seeds
+    /// of that family in; the list is held to every prefix of the catalog.
+    @Test("jedes Familien-Praefix des Katalogs steht in der Liste, die die Saat-Frage abzieht", .needsTheSources)
+    func everyFamilyPrefixIsStripped() throws {
+        let code = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/UserChoiceSync.swift"),
+                              encoding: .utf8)
+        let declared = code.split(separator: "\n").compactMap { line -> String? in
+            guard let range = line.range(of: #"static let [A-Za-z]+Prefix = ""#, options: .regularExpression) else { return nil }
+            let rest = line[range.upperBound...]
+            return rest.firstIndex(of: "\"").map { String(rest[..<$0]) }
+        }
+        #expect(declared.count >= 10, "the fence read the prefixes: \(declared)")
+        let missing = declared.filter { !UserChoiceCatalog.familyPrefixes.contains($0) }
+        #expect(missing.isEmpty, "family prefixes the seed question does not strip: \(missing)")
     }
 
     @Test("Ein geseedeter Sender reist nicht hinaus, ein echter schon") @MainActor

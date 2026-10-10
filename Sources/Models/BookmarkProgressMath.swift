@@ -40,6 +40,18 @@ nonisolated enum BookmarkProgressMath {
             currentTime: currentTime)
     }
 
+    /// The progress of an item from its local stand: the one rule of every
+    /// source whose continue lives on the device (Subsonic and Jellyfin
+    /// playlists and albums, RSS episodes). Finished is judged against the
+    /// duration the stand was written with, so a playlist that grew since
+    /// keeps its "finished"; one of three copies had lost that. Nil without
+    /// a stand or a duration.
+    static func progress(fromStand stored: [Double]?, duration: Double?) -> BookProgress? {
+        guard let stored, stored.count >= 2, let duration, duration > 0 else { return nil }
+        return progress(currentTime: stored[0], duration: duration,
+                        lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
+    }
+
     /// Of several bookmarks for the SAME playlist (one per song played), the one
     /// to resume at is the most recently changed. Returns its index in `stamps`
     /// (ms since 1970), or nil for an empty input.

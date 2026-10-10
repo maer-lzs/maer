@@ -338,6 +338,41 @@ struct FreeCatalogTests {
         if case .idle = importer.phase {} else { Issue.record("cancel must yield idle") }
     }
 
+    /// The duplicate check could not list the library: no answer, so nothing
+    /// is downloaded or uploaded, and the failure says so. Imported anyway,
+    /// a short outage put the book on the server twice.
+    @Test("kann die Bibliothek nicht gelesen werden, laedt der Import nichts und sagt es")
+    @MainActor
+    func aFailedDuplicateCheckImportsNothing() async throws {
+        let importer = LibriVoxImporter.shared
+        importer.cancel()
+        let library = try await BulkImportTests.Stand.start(.unavailable)
+        let audio = try await BulkImportTests.Stand.start(.silent)
+        defer { library.stop(); audio.stop(); importer.cancel() }
+        let client = AppSession.shared.apiClient
+        let before = client.baseURL
+        client.updateBaseURL(URL(string: "http://127.0.0.1:\(library.port)")!)
+        defer { client.updateBaseURL(before) }
+        let book = LibriVoxBook(id: "43", title: "Witness Book", language: nil,
+                                totaltimesecs: nil, url_iarchive: nil, url_librivox: nil, url_rss: nil,
+                                authors: nil,
+                                sections: [LibriVoxBook.Section(title: "1",
+                                                                listen_url: "http://127.0.0.1:\(audio.port)/1.mp3",
+                                                                playtime: nil)],
+                                genres: nil)
+        importer.start(book: book, itemId: "lv:43", libraryId: "L", folderId: "F")
+        for _ in 0..<250 {
+            if case .failed = importer.phase { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(audio.requestCount == 0, "a section was downloaded although the library could not be listed")
+        guard case .failed(let sentence) = importer.phase else {
+            Issue.record("expected .failed, got \(importer.phase)"); return
+        }
+        #expect(sentence == String(localized: "The library could not be reached. Check the server and try again."),
+                "the failure names another cause: \(sentence)")
+    }
+
     /// Die Genre-Achse war TOTES HOLZ: die API
     /// liefert Genres, aber LibriVoxBook decodierte sie nicht, der Provider
     /// setzte an sieben Stellen nil, die Filterleiste renderte nie. Ein Feld,

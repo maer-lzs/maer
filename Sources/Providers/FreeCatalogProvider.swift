@@ -321,17 +321,30 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Carries a stored album position over to the song it falls into. Runs
     /// once per release, changes nothing else, and never invents an entry.
-    static func migrateAlbumPositionToSong(albumId: String) async {
-        var done = Set(AppStorageKeys.stringArray(migratedKey) ?? [])
-        guard !done.contains(albumId) else { return }
-        defer {
-            done.insert(albumId)
-            AppStorageKeys.set(Array(done), for: migratedKey)
-        }
+    /// A release counts as done once it was decided: no position to carry,
+    /// or the detail answered. A failed detail marks nothing, so the next
+    /// open asks again; marked on a failure, one network error kept the
+    /// song from ever getting its position. `fetch`: the detail, a witness
+    /// hands in its own.
+    static func migrateAlbumPositionToSong(
+        albumId: String,
+        fetch: ((String) async throws -> LibraryItemDetail)? = nil
+    ) async {
+        guard !(AppStorageKeys.stringArray(migratedKey) ?? []).contains(albumId) else { return }
         guard let stored = ListeningStore.backup(albumId),
-              stored.count >= 2, stored[0] > 0 else { return }
-        guard let detail = try? await shared.fetchAlbumDetail(albumId: albumId),
-              let tracks = detail.media.tracks else { return }
+              stored.count >= 2, stored[0] > 0 else {
+            markMigrated(albumId)
+            return
+        }
+        let detail: LibraryItemDetail
+        do {
+            detail = try await (fetch ?? { try await shared.fetchAlbumDetail(albumId: $0) })(albumId)
+        } catch {
+            Logger.library.error("CATALOG album position not carried yet, detail failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+            return
+        }
+        defer { markMigrated(albumId) }
+        guard let tracks = detail.media.tracks else { return }
         // The decision itself is pure and tested. Including against an
         // IMPORTED stock, which is what a new user starts with.
         let songIdFor = { (index: Int) in CatalogSongID.make(album: albumId, index: index) }
@@ -343,6 +356,25 @@ final class FreeCatalogProvider: AudioProvider {
         ListeningStore.store(songIdFor(carried.index), entry: carried.entry)
         Logger.library.notice("CATALOG carried album position to song index \(carried.index) of \(albumId, privacy: .public)")
     }
+
+    /// Marks one release, read at the moment of marking: another release
+    /// marked while this one awaited its detail stays marked.
+    private static func markMigrated(_ albumId: String) {
+        var done = Set(AppStorageKeys.stringArray(migratedKey) ?? [])
+        done.insert(albumId)
+        AppStorageKeys.set(Array(done), for: migratedKey)
+    }
+
+    #if DEBUG
+    /// Whether a release counts as migrated, and its mark taken back, for
+    /// the witnesses.
+    static func _isMigrated(_ albumId: String) -> Bool {
+        (AppStorageKeys.stringArray(migratedKey) ?? []).contains(albumId)
+    }
+    static func _forgetMigrated(_ albumId: String) {
+        AppStorageKeys.set((AppStorageKeys.stringArray(migratedKey) ?? []).filter { $0 != albumId }, for: migratedKey)
+    }
+    #endif
 
     /// The release itself, without the song shortcut. Used by the migration.
     private func fetchAlbumDetail(albumId: String) async throws -> LibraryItemDetail {

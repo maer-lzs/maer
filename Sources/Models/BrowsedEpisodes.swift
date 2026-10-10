@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 import Synchronization
 
 /// Episodes of a show that is being BROWSED without being subscribed.
@@ -87,7 +88,7 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// only what was actually listened to is kept.
     func keepListened(guid: String, defaults: UserDefaults = .standard) {
         guard let found = episode(guid: guid), !found.episode.audioURL.isEmpty else { return }
-        var stored = Self.storedRecords(defaults)
+        guard var stored = Self.writableRecords(defaults) else { return }
         guard stored[guid] == nil else { return }
         stored[guid] = Kept(guid: guid,
                             feedURL: found.show.feedURL,
@@ -119,18 +120,35 @@ nonisolated final class BrowsedEpisodes: Sendable {
         }
     }
 
+    /// The kept rows for reading: a list that does not decode reads as none.
     private static func storedRecords(_ defaults: UserDefaults) -> [String: Kept] {
-        guard let data = defaults.data(forKey: storeKey),
-              let stored = try? JSONDecoder().decode([String: Kept].self, from: data)
-        else { return [:] }
+        records(defaults) ?? [:]
+    }
+
+    /// The kept rows for a write: nil while a list stands that does not
+    /// decode, so no write replaces it with what this run knows (the next
+    /// keep would have written the empty list plus one row over it).
+    private static func writableRecords(_ defaults: UserDefaults) -> [String: Kept]? {
+        guard let stored = records(defaults) else {
+            Logger.rss.error("BROWSED kept list unreadable, not written over")
+            return nil
+        }
         return stored
+    }
+
+    /// The decoded list, empty when none stands, nil when one stands and
+    /// does not decode.
+    private static func records(_ defaults: UserDefaults) -> [String: Kept]? {
+        guard let data = defaults.data(forKey: storeKey) else { return [:] }
+        return try? JSONDecoder().decode([String: Kept].self, from: data)
     }
 
     /// A subscription takes the show over: the remembered episodes of that
     /// address then belong to the subscription stock, and that is the one truth.
     func forgetListened(feedURL: String, defaults: UserDefaults = .standard) {
         let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        let stored = Self.storedRecords(defaults).filter {
+        guard let all = Self.writableRecords(defaults) else { return }
+        let stored = all.filter {
             PodcastSubscriptions.normalizeFeedURL($0.value.feedURL) != key
         }
         guard let data = try? JSONEncoder().encode(stored) else { return }

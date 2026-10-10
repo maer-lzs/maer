@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
+import Foundation
 @testable import Maer
 
 /// Carrying a stored album position over to the song it falls into. Checked
@@ -76,5 +77,31 @@ struct CatalogPositionMigrationTests {
             #expect(carried.index == expected)
             #expect(ProgressMark.timestamp(carried.entry) == importStamp)
         }
+    }
+
+    /// The migration runs once per release; a failed detail is no decision,
+    /// so it marks nothing and the next open asks again. A release without
+    /// a position to carry is decided at once.
+    @Test("scheitert der Abruf der Details, bleibt die Uebernahme offen; ohne Position gilt sie als entschieden")
+    @MainActor
+    func aFailedDetailMarksNothing() async {
+        struct Down: Error {}
+        let album = "lva:witness-\(UUID().uuidString.prefix(8))"
+        let empty = "lva:witness-\(UUID().uuidString.prefix(8))"
+        defer {
+            ListeningStore.forgetBackups(where: { $0 == album })
+            FreeCatalogProvider._forgetMigrated(album)
+            FreeCatalogProvider._forgetMigrated(empty)
+        }
+        ListeningStore.store(album, entry: [120, 1_700_000_000_000, 3600])
+        var asked = 0
+        await FreeCatalogProvider.migrateAlbumPositionToSong(albumId: album) { _ in
+            asked += 1
+            throw Down()
+        }
+        #expect(asked == 1, "the precondition: the detail was asked")
+        #expect(!FreeCatalogProvider._isMigrated(album), "a failed detail marked the release as done")
+        await FreeCatalogProvider.migrateAlbumPositionToSong(albumId: empty) { _ in throw Down() }
+        #expect(FreeCatalogProvider._isMigrated(empty), "a release without a position stays open for ever")
     }
 }

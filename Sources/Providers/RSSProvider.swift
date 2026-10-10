@@ -129,16 +129,8 @@ final class RSSProvider: AudioProvider {
         var map: [String: BookProgress] = [:]
         for (show, episode) in subs.allEpisodes() {
             let item = podcastLibraryItem(show: show, episode: episode)
-            guard let duration = item.media?.duration, duration > 0,
-                  let stored = ListeningStore.backup(item.id),
-                  stored.count >= 2 else { continue }
-            let time = stored[0]
-            map[item.id] = BookProgress(
-                fraction: min(max(time / duration, 0), 1),
-                isFinished: ProgressMark.reachedEnd(stored: stored, currentDuration: duration),
-                lastUpdate: ProgressMark.timestamp(stored) ?? 0,
-                currentTime: time
-            )
+            map[item.id] = BookmarkProgressMath.progress(fromStand: ListeningStore.backup(item.id),
+                                                         duration: item.media?.duration)
         }
         return map
     }

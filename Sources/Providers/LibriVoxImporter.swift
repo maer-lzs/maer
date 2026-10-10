@@ -179,11 +179,20 @@ final class LibriVoxImporter: ObservableObject {
             phase = .failed(String(localized: "This book has no downloadable audio."))
             return
         }
-        // Idempotenz: same title (case-folded) already in the target library?
-        if let existing = try? await AppSession.shared.provider.fetchLibraryItems(libraryId: libraryId),
-           let hit = existing.first(where: {
-               $0.title.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
-           }) {
+        // Idempotent: same title (case-folded) already in the target library?
+        // A library that could not be listed is no answer: importing then
+        // put the book on the server twice after a short outage.
+        let existing: [LibraryItem]
+        do {
+            existing = try await AppSession.shared.provider.fetchLibraryItems(libraryId: libraryId)
+        } catch {
+            Logger.library.notice("LIBRIVOX duplicate check failed, nothing imported: \(FailureReason.of(error), privacy: .public)")
+            phase = .failed(String(localized: "The library could not be reached. Check the server and try again."))
+            return
+        }
+        if let hit = existing.first(where: {
+            $0.title.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }) {
             phase = .duplicate(existingTitle: hit.title)
             return
         }
