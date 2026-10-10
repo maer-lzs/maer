@@ -1911,7 +1911,6 @@ extension ProjectFileIntegrityTests {
         "PodcastSubscribeNoticeTests.swift": 2,
         "ProjectFileIntegrityTests.swift": 7,
         "PublicReadmeFenceTests.swift": 2,
-        "RadioLogoServiceTests.swift": 3,
         "RecordingRightsTests.swift": 1,
         "RemoteCommandRuleTests.swift": 1,
         "ScrollCalmFenceTests.swift": 1,

@@ -57,32 +57,30 @@ struct RadioLogoCacheTests {
 }
 #endif
 
-// MARK: - 🔴 Punkt 6: ein Urteil gilt nur unter seinem Tor
+// MARK: - A verdict holds only under its gate
 
 struct RadioLogoGateVersioningTests {
-    /// Der SRF-1-Fixfall: die Kette liefert (463 px), aber ein NEIN aus der
-    /// 64er-Zeit blockierte die Wiedervorlage. Ein Schwellen-Fix erreichte
-    /// das Geraet nie. Dieselbe Klasse wie die eingebackene Breite (v3), nur
-    /// fuer Urteile statt URLs.
+    /// The SRF 1 case: the chain delivers (463 px), but a NO stored under
+    /// the 64 px gate blocked the retry, so a threshold change never reached
+    /// the device. The same class as the baked-in width, for verdicts
+    /// instead of URLs.
     @Test("die Tor-Signatur leitet sich aus den Schwellen ab — kein Handzaehler")
     func signatureFollowsTheThresholds() {
         let signature = RadioLogoService.gateSignature
         #expect(signature.contains("\(RadioFaviconGate.minSide)"))
         #expect(signature.contains("\(RadioFaviconGate.touchIconMinSide)"))
-        // Genau das ist der Punkt: aendert jemand eine Schwelle, aendert
-        // sich die Signatur MIT. Niemand muss an eine Version denken
-        // (die Falle, in die der 400→800-Wechsel lief).
+        // A changed threshold changes the signature with it, so no version
+        // has to be bumped by hand (the 400 to 800 width change missed one).
         #expect(signature == "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)")
     }
 }
 
-// MARK: - Die generierten Daten sind die erste Stufe
+// MARK: - The generated data is the first stage
 
 struct RadioLogoDataTests {
     @Test("die Tabelle traegt DATEINAMEN, nie fertige URLs")
     func storesFileNamesOnly() {
-        // Strukturell geprueft: kein Eintrag ist eine URL, sonst waere die
-        // Breite wieder eingebacken.
+        // No entry is a URL; a URL would bake the width in again.
         for (_, file) in RadioLogoData.commonsFiles {
             #expect(!file.contains("http"))
             #expect(!file.contains("width="))
@@ -91,9 +89,10 @@ struct RadioLogoDataTests {
 
     @Test("Kern-Sender werden ohne Netz beantwortet")
     func coreStationsResolveOffline() {
-        // Stichproben aus den DACH-Kernen. Sie sind der Grund fuer die
-        // Tabelle: das Geraet soll fuer sie gar nicht erst die Kette laufen.
-        let hits = ["SWR3", "WDR 2", "Ö 3", "SRF 1"]
+        // Samples from the DACH cores, each bound to its station object.
+        // They are why the table exists: the device does not run the chain
+        // for them.
+        let hits = ["SWR3", "WDR 2", "Ö3", "1LIVE"]
             .compactMap { RadioLogoData.commonsFile(forName: $0) }
         #expect(hits.count >= 3, "die Kern-Koepfe sollten in den Daten stehen")
         #expect(RadioLogoData.commonsFile(forName: "Ein Sender ohne Eintrag") == nil)
@@ -107,15 +106,15 @@ struct RadioLogoDataTests {
         // The variant has no own entry. The family mark answers. The fence
         // rides on a family whose mark is an SVG and scales; a 256×37 raster
         // entry can never render and would fall at the quality gate.
-        #expect(RadioLogoData.commonsFile(forName: "Radio Bob! rockt Schleswig-Holstein") == nil)
-        let head = RadioLogoData.commonsFile(forName: "RADIO BOB!")
-        #expect(head != nil)
-        #expect(RadioLogoService.curatedFile(forName: "Radio Bob! rockt Schleswig-Holstein") == head)
+        #expect(RadioLogoData.commonsFile(forName: "SWR3 Elchradio") == nil)
+        let head = RadioLogoData.commonsFile(forName: "SWR3")
+        #expect(head?.lowercased().hasSuffix(".svg") == true)
+        #expect(RadioLogoService.curatedFile(forName: "SWR3 Elchradio") == head)
         // An OWN entry always wins (the DLF-Kultur guard, by order):
         #expect(RadioLogoService.curatedFile(forName: "Deutschlandfunk Kultur")
                 == RadioLogoData.commonsFile(forName: "Deutschlandfunk Kultur"))
         // Word boundary: a name CONTINUING the head in the same word is no kin.
-        #expect(RadioLogoService.curatedFile(forName: "RADIO BOB!X") == nil)
+        #expect(RadioLogoService.curatedFile(forName: "SWR3X") == nil)
         // No head, no answer.
         #expect(RadioLogoService.curatedFile(forName: "Völlig Unbekannt 9000") == nil)
         // The gate corpse itself stays OUT: bigFM has no table entry any
@@ -162,16 +161,17 @@ struct RadioLogoDataTests {
     }
 }
 
-// MARK: - Bundesliga-Sender
+// MARK: - Bundesliga streams
 
 struct RadioLogoBundesligaTests {
 
-    /// Der Entscheid lautet: BEIDE Bundesliga-Familien tragen das
-    /// Bundesliga-Logo. Gebaut ist das als EIN kuratierter Eintrag, den die
-    /// Praefix-Regel in `curatedFile` an beide Familien weiterreicht. Die
-    /// Kacheln heissen "Fußball-Bundesliga: Spiel 1" und
-    /// "Fußball-Bundesliga 2: Spiel 1". Ein zweiter Eintrag waere eine
-    /// zweite Wahrheit fuer dieselbe Entscheidung.
+    /// BOTH Bundesliga families carry the Bundesliga logo, through ONE
+    /// curated entry that the prefix rule in `curatedFile` hands to both.
+    /// The tiles are named "Fußball-Bundesliga: Spiel 1" and
+    /// "Fußball-Bundesliga 2: Spiel 1". A second entry would be a second
+    /// truth for the same assignment. No radio station object carries this
+    /// logo, so the entry stands in belegt.json as the one entry without a
+    /// binding.
     @Test("ein Eintrag traegt beide Bundesliga-Familien")
     func oneEntryCarriesBothFamilies() {
         let expected = "Bundesliga logo.svg"
@@ -185,20 +185,19 @@ struct RadioLogoBundesligaTests {
         }
     }
 
-    /// Rot-Probe der Praefix-Regel: sie darf nicht zu "faengt zufaellig
-    /// gleich an" verkommen. Die Fortsetzung MUSS an einer Wortgrenze
-    /// beginnen (die laut.fm-Lehre: Text-Treffer ohne Semantik).
+    /// The prefix rule is not "happens to start alike": the rest MUST begin
+    /// at a word boundary (a text match carries no meaning, measured on
+    /// laut.fm names).
     @Test("ein fortgesetztes Wort erbt NICHT")
     func aContinuedWordIsNoFamily() {
         #expect(RadioLogoService.curatedFile(forName: "Fußball-Bundesligahasser") == nil)
     }
 
-    /// Die Auflage aus dem Entscheid: der Eintrag muss die
-    /// Gate-Leichen-Pruefung bestehen. Am Datum pruefbar ist die eine
-    /// Bedingung, unter der sie IMMER haelt. MediaWiki skaliert Raster nie
-    /// hoch, eine SVG dagegen rendert in jeder Breite. Ein Raster hier waere
-    /// nur mit einer Netzmessung zu verantworten, und die gehoert in den
-    /// Generator (`renders_at_tile_size`), nicht in den Zaun.
+    /// The entry must pass the tile gate. Checkable on the data is the one
+    /// condition under which it ALWAYS holds: MediaWiki never upscales a
+    /// raster, an SVG renders at every width. A raster here would need a
+    /// network measurement, and that belongs in the generator
+    /// (`renders_at_tile_size`), not in the fence.
     @Test("der Eintrag kann am Tor nicht sterben")
     func theEntryCannotBeAGateCorpse() {
         let file = RadioLogoData.commonsFile(forName: "Fußball-Bundesliga")

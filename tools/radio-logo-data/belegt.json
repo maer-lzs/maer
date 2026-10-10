@@ -11,22 +11,6 @@
     "file": "5FM logo 2020.png",
     "reason": "Kurzname: der Name selbst steht im Dateinamen"
   },
-  "80s80s RADIO": {
-    "file": "80s80s Logo 2015.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "80s80s Radio": {
-    "file": "80s80s Logo 2015.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "90s90s RADIO": {
-    "file": "90s90s Logo 2017.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "95.5 Charivari (München)": {
-    "file": "95.5 Charivari Logo.png",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
   "ABC Alice Springs": {
     "file": "Australian Broadcasting Corporation logo (1974-).svg",
     "reason": "Haus: das Logo des Senders oder seiner Familie"
@@ -143,16 +127,8 @@
     "file": "107.7logo.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "DasDing / UnserDing": {
-    "file": "UnserDing.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
   "Die Neue 107.7": {
     "file": "107.7logo.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "Donau 3 FM Baden-Württemberg": {
-    "file": "Donau 3 FM Logo (2021).svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "ERT Chanion": {
@@ -219,10 +195,6 @@
     "file": "ERT Zakynthos.png",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "FM1": {
-    "file": "Logo FM1.jpg",
-    "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
   "FM4": {
     "file": "FM4.svg",
     "reason": "Kurzname: der Name selbst steht im Dateinamen"
@@ -230,14 +202,6 @@
   "First Programme (ERT)": {
     "file": "First Programme (ERA 1) logo.png",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "France Bleu Occitanie": {
-    "file": "Ici Occitanie.svg",
-    "reason": "Umbenannt: dieselbe Station unter ihrem heutigen Namen"
-  },
-  "France Bleu Paris": {
-    "file": "France Bleu 2021.svg",
-    "reason": "Haus: das Logo des Senders oder seiner Familie"
   },
   "France Bleu Pays Basque": {
     "file": "Ici Pays Basque.svg",
@@ -253,7 +217,8 @@
   },
   "Fußball-Bundesliga": {
     "file": "Bundesliga logo.svg",
-    "reason": "Haus: das Logo des Senders oder seiner Familie"
+    "reason": "Haus: das Logo des Senders oder seiner Familie",
+    "unbound": "Familie von Spielübertragungen, kein Senderobjekt trägt dieses Logo"
   },
   "Gangwon No.1 Broadcasting": {
     "file": "G1 broadcasting logo.svg",
@@ -295,10 +260,6 @@
     "file": "JIBS 제주방송.svg",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
   },
-  "Jeonju Television": {
-    "file": "Jtv logo.svg",
-    "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
   "KBS World Radio": {
     "file": "KBS World (2009).svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
@@ -315,10 +276,6 @@
     "file": "Kosmos logo.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "Kyung-In Broadcasting System": {
-    "file": "ITV LOGO.svg",
-    "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
   "Kyushu Asahi Broadcasting": {
     "file": "KBCnewlogo.png",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
@@ -326,14 +283,6 @@
   "LFM": {
     "file": "Logo LFM.svg",
     "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
-  "Life Radio (OÖ)": {
-    "file": "LifeRadio LOGO.png",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "Life Radio (Tirol)": {
-    "file": "LifeRadio LOGO.png",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "MDR SACHSEN": {
     "file": "MDR 1 Radio Sachsen alt.svg",
@@ -350,10 +299,6 @@
   "Minaminihon Broadcasting": {
     "file": "Mbclogo.svg",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
-  "Munghana Lonene FM": {
-    "file": "Munghana Lonene Logo.png",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "NHK": {
     "file": "NHK logo 2020.svg",
@@ -395,10 +340,6 @@
     "file": "Polskie Radio Jedynka.png",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "Polskie Radio Program II": {
-    "file": "Polskie Radio Dwójka.png",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
   "Polskie Radio Rzeszów": {
     "file": "Logo Polskiego Radia Rzeszów 2006.png",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
@@ -406,14 +347,6 @@
   "Pomurski madžarski radio": {
     "file": "MMR logo 2015.png",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
-  "R.SA": {
-    "file": "R.SA Logo 2003.svg",
-    "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
-  "R.SH Radio Schleswig-Holstein": {
-    "file": "Radio Schleswig-Holstein Logo 2019.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "RADIO PSR": {
     "file": "LOGO PSR 2009.svg",
@@ -425,10 +358,6 @@
   },
   "RFI România": {
     "file": "RFI.svg",
-    "reason": "Haus: das Logo des Senders oder seiner Familie"
-  },
-  "RTL": {
-    "file": "RTL Logo 2017.svg",
     "reason": "Haus: das Logo des Senders oder seiner Familie"
   },
   "RTP Antena 2": {
@@ -455,16 +384,8 @@
     "file": "Radio Exterior 2026.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "Radio Giappone": {
-    "file": "Logo NHK World Radio Japan.jpg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
   "Radio Hamburg": {
     "file": "RadioHH Logo2021.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "Radio Iași": {
-    "file": "Logo Radio România Iași.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "Radio Kärnten": {
@@ -487,10 +408,6 @@
     "file": "LOGO PSR 2009.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
-  "Radio Reșița": {
-    "file": "Logo Radio România Reșița (2008).svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
   "Radio Romania International": {
     "file": "Logo-RRI.png",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
@@ -498,10 +415,6 @@
   "Radio Salzburg": {
     "file": "Radio S.svg",
     "reason": "Schreibweise: dieselbe Station, anders geschrieben"
-  },
-  "Radio Shanghai": {
-    "file": "SMG.svg",
-    "reason": "Haus: das Logo des Senders oder seiner Familie"
   },
   "Radio Steiermark": {
     "file": "Radio St.svg",
@@ -599,10 +512,6 @@
     "file": "ESPN New York 880 logo.png",
     "reason": "Haus: das Logo des Senders oder seiner Familie"
   },
-  "WIMZ-FM": {
-    "file": "WIMZ 103.5-WIMZ logo.png",
-    "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
   "WOR": {
     "file": "WOR (AM) logo 2011-2013.jpg",
     "reason": "Kurzname: der Name selbst steht im Dateinamen"
@@ -614,22 +523,6 @@
   "Yamanashi Broadcasting System": {
     "file": "YBS2001JP.svg",
     "reason": "Kuerzel: das Logo traegt das Rufzeichen oder Kuerzel des Senders"
-  },
-  "hr1": {
-    "file": "Hr1-Logo 2015.svg",
-    "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
-  "hr3": {
-    "file": "Hr3-Logo 2015.svg",
-    "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
-  "hr4": {
-    "file": "Hr4-Logo 2015.svg",
-    "reason": "Kurzname: der Name selbst steht im Dateinamen"
-  },
-  "Ö 3": {
-    "file": "Hitradio Ö3.svg",
-    "reason": "Schreibweise: dieselbe Station, anders geschrieben"
   },
   "Ö1": {
     "file": "Österreich 1 logo (2012).svg",

@@ -87,5 +87,27 @@ struct RadioLogoDataFenceTests {
         let booked = regions.filter { RadioLogoData.commonsFiles[$0] != nil }
         #expect(booked.isEmpty, "regions booked as stations: \(booked)")
     }
+
+    /// A vouched entry only lets a bound file pass the probe; it makes no
+    /// entry of its own. So every entry of belegt.json stands in the table
+    /// with exactly its file, and one that does not is a leftover that a
+    /// later run must not read as a binding.
+    @Test("jeder Beleg in belegt.json gehoert zu einem Eintrag der Tabelle mit genau seiner Datei", .needsTheSources)
+    func everyVouchedEntryBelongsToATableEntry() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("tools/radio-logo-data/belegt.json"))
+        let parsed = try JSONSerialization.jsonObject(with: data)
+        let held = try #require(parsed as? [String: [String: String]])
+        #expect(held.count > 100, "the fence read belegt.json: \(held.count)")
+        // An entry without a binding names why no station object carries
+        // its logo. The stock only falls.
+        let unbound = held.filter { $0.value["unbound"]?.isEmpty == false }.map(\.key).sorted()
+        #expect(unbound == ["Fußball-Bundesliga"], "entries without a binding: \(unbound)")
+        let apart = held.filter { name, entry in
+            RadioLogoData.vouched[name]?.file != entry["file"] || RadioLogoData.commonsFiles[name] != entry["file"]
+        }.map(\.key).sorted()
+        #expect(apart.isEmpty, "vouched without a table entry for their file: \(apart)")
+        #expect(held.count == RadioLogoData.vouched.count,
+                "the table carries vouched entries belegt.json does not: \(RadioLogoData.vouched.count) against \(held.count)")
+    }
 }
 #endif

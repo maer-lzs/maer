@@ -3,208 +3,137 @@
 # Copyright (C) 2026 Laurenz Schröder
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# 🔴 e32454e (GO nach dem Messbericht): generierte LOGO-DATEN je Kern-Sender.
+# Generated LOGO DATA per core station: a Commons FILE NAME, never a finished
+# URL (the width is applied when the app reads it).
 #
-# Zwei Quellen, in dieser Reihenfolge — beide liefern einen Commons-DATEINAMEN,
-# nie eine fertige URL (cb8bac1: Abgeleitetes entsteht beim Lesen):
-#   1. Wikidata P154 des zugeordneten Objekts (die Laufzeit-Kette macht es auch,
-#      nur eben pro Gerät und pro Kachel).
-#   2. Commons-DATEISUCHE nach Sendername — die Klasse "Logo existiert, ist nur
-#      nicht mit dem Objekt verknüpft" (3 der 9 Quellenlosen im Audit).
+# One source, and an entry only with a binding: the logo (P154) of a Wikidata
+# object that is a radio station (instance of Q14350 or of a subclass). A
+# station named in the Wikidata core table carries its object in a comment
+# there and is asked directly; every other name is searched by its exact
+# label, and when several radio stations share that name, only the country of
+# the core table decides, otherwise no entry. A file name match is no binding:
+# the Commons file search booked photos and foreign logos whose names held the
+# station name, so it is not asked any more.
 #
-# Die Laufzeit-Kette bleibt Rückfall für den langen Schwanz.
+# The table probe (`names_only_station`) and the tile gate (a raster the app's
+# 48 px gate rejects never shows) hold in addition. A vouched entry
+# (belegt.json) only lets a BOUND file pass the probe, for exactly that file;
+# without a binding it makes no entry, unless it names why no station object
+# can carry its logo (`unbound`, a family of match streams).
 #
-# Mess-Tore (unverändert gültig): jede Abfrage liefert (Zeilen, Befund); eine
-# leere oder unerreichbare Antwort schreibt NICHTS und endet auf Exit 2; der
-# Schreibweg ist atomar.
+# Measuring gates: an answer that is empty or unreachable writes NOTHING and
+# ends with exit 2; the write is atomic. Every request is counted, and the
+# count goes into the report (`--bericht <path>`, JSON).
 #
-# Nenner-Auflage (e32454e): das Ergebnis trägt seine ZIELMENGE — Laufdatum und
-# den Stand der Kern-Tabellen —, damit zwei Quoten vergleichbar bleiben.
+# The result carries its TARGET SET (run date, count, fingerprint over the
+# names), so two quotas are only compared over the same set.
 
 import hashlib
-import io
 import json
 import os
 import re
+import struct
 import sys
 import time
 import urllib.parse
 import urllib.request
 
 UA = "Maer/1.0 (+https://maer.fm)"
-MIN_SIDE = 48          # RadioFaviconGate.touchIconMinSide
-COMMONS_WIDTH = 800    # RadioLogoService.commonsWidth
-# 87c77c4: die KACHEL ist quadratisch, also will sie eine quadratische
-# Bildmarke; ein Schriftzug ist die Rueckfallebene. Die Regel ist das
-# SEITENVERHAELTNIS, nicht der Sendername — DLF war nur der Melder.
-#   <= MARK_MAX      Bildmarke (rund/quadratisch, fuellt die Kachel)
-#   >  WORDMARK_MIN  Schriftzug (ein Etikett, kein Logo)
-#   dazwischen       Grauzone: brauchbar, aber eine Marke schlaegt sie
-MARK_MAX = 1.6
-WORDMARK_MIN = 3.0
+MIN_SIDE = 48            # RadioFaviconGate.touchIconMinSide
+RADIO_STATION = "Q14350"
+PAUSE = 0.2              # seconds between two requests to the same service
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REQUESTS = 0             # every request of this run, counted in `get`
 
 
 def get(url, raw=False, timeout=25):
-    """→ (payload, verdict). verdict: ok | empty | failed."""
+    """(payload, verdict); verdict is ok, empty or failed. Counts the request
+    and waits the pause after it."""
+    global REQUESTS
+    REQUESTS += 1
     try:
         request = urllib.request.Request(url, headers={"User-Agent": UA})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             data = response.read()
-            if not data:
-                return None, "empty"
-            return (data if raw else json.loads(data)), "ok"
+        if not data:
+            return None, "empty"
+        return (data if raw else json.loads(data)), "ok"
     except Exception:
         return None, "failed"
+    finally:
+        time.sleep(PAUSE)
 
 
 def image_size(data):
-    try:
-        from PIL import Image
-        with Image.open(io.BytesIO(data)) as image:
-            return image.size
-    except Exception:
+    """Width and height of a PNG, GIF, JPEG or WebP, read from its header with
+    the standard library; None for anything else or a header too short."""
+    if not data:
         return None
-
-
-def image_side(data):
-    size = image_size(data)
-    return min(size) if size else None
-
-
-def aspect(size):
-    """Laengere Seite geteilt durch kuerzere — 1.0 ist quadratisch."""
-    width, height = size
-    if width <= 0 or height <= 0:
+    if data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) >= 24:
+        return struct.unpack(">II", data[16:24])
+    if data[:6] in (b"GIF87a", b"GIF89a") and len(data) >= 10:
+        return struct.unpack("<HH", data[6:10])
+    if data[:2] == b"\xff\xd8":
+        index = 2
+        while index + 9 < len(data):
+            if data[index] != 0xFF:
+                index += 1
+                continue
+            marker = data[index + 1]
+            if marker in (0xD8, 0x01, 0xFF) or 0xD0 <= marker <= 0xD7:
+                index += 2 if marker != 0xFF else 1
+                continue
+            length = struct.unpack(">H", data[index + 2:index + 4])[0]
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                height, width = struct.unpack(">HH", data[index + 5:index + 9])
+                return width, height
+            index += 2 + length
         return None
-    return max(width, height) / min(width, height)
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP" and len(data) >= 30:
+        chunk = data[12:16]
+        if chunk == b"VP8X":
+            return 1 + int.from_bytes(data[24:27], "little"), 1 + int.from_bytes(data[27:30], "little")
+        if chunk == b"VP8L":
+            bits = int.from_bytes(data[21:25], "little")
+            return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+        if chunk == b"VP8 ":
+            return (struct.unpack("<H", data[26:28])[0] & 0x3FFF,
+                    struct.unpack("<H", data[28:30])[0] & 0x3FFF)
+    return None
 
 
-# Woerter, die eine Datei ueber den Sendernamen hinaus tragen DARF, ohne dass
-# sie einen anderen Gegenstand meint. Alles andere ist ein fremdes Wort — und
-# ein fremdes Wort heisst meist ein fremder Gegenstand.
+# Words a file may carry besides the station name without meaning another
+# thing. Every other word names something else, mostly another thing.
 GENERIC_EXTRA = {
     "logo", "logos", "klein", "gross", "big", "small", "neu", "new",
     "radio", "svg", "png", "jpg", "jpeg", "gif", "de", "the", "of",
     "final", "rgb", "official", "icon", "wortmarke", "bildmarke",
 }
 
-# NICHT generisch, obwohl es danach aussieht: "alt"/"old" benennen ausdruecklich
-# eine VERALTETE Fassung. Gemessen im ersten Lauf: "SWR3 Logo.svg" wurde zu
-# "SWR3 Logo alt.svg" — dieselbe Marke, nur die abgeloeste.
-OUTDATED_MARKERS = {"alt", "old", "ehemalig", "former", "historic", "historisch"}
 
-
-def tokens(raw):
-    import re as _re
-    return [w for w in _re.split(r"[^a-z0-9]+", fold_words(raw)) if w]
-
-
-def fold_words(raw):
-    """Wie `fold`, aber mit erhaltenen Wortgrenzen."""
-    import re as _re, unicodedata
+def fold(raw):
+    import unicodedata
     text = unicodedata.normalize("NFKD", raw or "")
     text = "".join(c for c in text if not unicodedata.combining(c))
-    return _re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
-
-
-def only_generic_extra(name, title):
-    """Traegt die Datei NUR generische Zusatzwoerter zum Sendernamen?
-
-    Gemessen an einem vollen Lauf ueber 786 Kern-Namen: die reine
-    Namens-Wache (Sendername steht im Dateinamen) laesst 76 Aenderungen durch,
-    davon **35 Rueckschritte** — „Radio Pilatus logo" wurde zur
-    „Pilatus PC-7 silhouette", „BBC Radio 5 Live" zum Logo von „5 Live Sports
-    Extra", „Mecklenburg-Vorpommern" zum SPD-Logo. Der Grund ist immer
-    derselbe: der Name steht drin, gemeint ist etwas anderes.
-
-    Diese Regel verlangt zusaetzlich, dass die Datei NICHTS anderes benennt.
-    Sie kostet ein paar echte Verbesserungen (das Wikidata-Logo bleibt dann
-    stehen) und verhindert alle gemessenen Rueckschritte. Ein falsches Logo ist
-    schlimmer als eine Farbkachel — und ein Rueckschritt ist schlimmer als ein
-    ausgebliebener Fortschritt.
-    """
-    import re as _re
-    name_words = set(tokens(name))
-    stem = _re.sub(r"\.[a-z0-9]+$", "", title)
-    extra = [w for w in tokens(stem) if w not in name_words]
-    return all(w in GENERIC_EXTRA or w.isdigit() for w in extra)
-
-
-def year_in(title):
-    """Die groesste vierstellige Jahreszahl im Dateinamen, oder None."""
-    import re as _re
-    years = [int(y) for y in _re.findall(r"\b(19\d{2}|20\d{2})\b", title or "")]
-    return max(years) if years else None
-
-
-def keep_previous(name, previous, candidate):
-    """Darf die BISHERIGE Zuordnung durch die neue ersetzt werden?
-
-    Der Generator laeuft gegen einen bestehenden Bestand, und ein Lauf, der ihn
-    verschlechtert, ist schlimmer als einer, der nichts findet. Gemessen an zwei
-    vollen Laeufen ueber 786 Namen bleiben drei Klassen uebrig, die die
-    Namens-Wache passieren und trotzdem Rueckschritte sind:
-
-      * die ausdruecklich ALTE Fassung derselben Marke ("SWR3 Logo alt"),
-      * eine AELTERE Jahresfassung ("… Logo 2024" → "… Logo 2012"),
-      * der Verlust des Namens ("Rai Radio 1 - Logo 2017" → "Logo of RAI Radio").
-
-    Alle drei sind am Dateinamen allein entscheidbar — kein Netz noetig, und
-    deshalb steht die Regel hier und nicht in einem Nachbearbeitungsschritt.
-    """
-    if not previous or previous == candidate:
-        return False
-    stem = candidate.rsplit(".", 1)[0]
-    if any(w in OUTDATED_MARKERS for w in tokens(stem)):
-        return True
-    old_year, new_year = year_in(previous), year_in(candidate)
-    if old_year and new_year and new_year < old_year:
-        return True
-    # Der Name darf nicht verlorengehen: was ihn traegt, schlaegt was ihn nicht
-    # traegt — auch wenn das neue Bild quadratischer waere.
-    if carries_name(name, previous) and not carries_name(name, candidate):
-        return True
-    # Ein unterscheidendes Zeichen, das die bisherige Datei BEWAHRT, darf nicht
-    # wegfallen. Gemessen: "NRK P1+" bekam das Logo von "NRK P1" — die Faltung
-    # wirft das "+" weg, und damit sehen zwei VERSCHIEDENE Sender gleich aus.
-    # Die bisherige Datei hiess "NRK P1+ logo.svg" und wusste es besser.
-    for mark in set(name) - set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "):
-        if mark in previous and mark not in candidate:
-            return True
-    return False
+    return "".join(c for c in text.lower() if c.isalnum())
 
 
 def existing_mapping():
-    """Der bisherige Bestand als Vergleichsgrundlage."""
-    import re as _re
+    """The table as it stands, the basis of the comparison."""
     path = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
     try:
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
     except OSError:
         return {}
-    return dict(_re.findall(r'^\s*"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)",?\s*$',
-                            text, _re.M))
-
-
-def carries_name(name, title):
-    """Traegt der Dateiname den Sendernamen? Die WACHE gegen Fremdbilder.
-
-    Gemessen: ohne sie holt die Verhaeltnis-Regel fuer "Bayern 2" das Logo des
-    FC Bayern, fuer "Bremen NEXT" ein NASA-Foto und fuer "Bremen Eins" das von
-    Marktkauf — die Dateisuche liefert nach RELEVANZ, und der quadratischste
-    Treffer ist oft der unaehnlichste. In 176 geprueften Schriftzuegen hat
-    die Wache 55 Fremdbilder abgewehrt. Ein falsches Logo ist schlimmer als eine
-    Farbkachel."""
-    folded_name, folded_title = fold(name), fold(title)
-    return len(folded_name) >= 4 and folded_name in folded_title
+    return dict(re.findall(r'^\s*"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)",?\s*$', text, re.M))
 
 
 def vouched():
-    """Entries that keep a file whose name does not carry the station name,
-    each with its file and its reason (belegt.json): a family logo, another
-    spelling, a call sign. A name under four characters is only kept here."""
+    """Entries that keep a file whose name does not carry the station name
+    alone, each with its file and its reason (belegt.json): a family logo,
+    another spelling, a call sign. A name under four characters is only kept
+    here."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "belegt.json")
     with open(path, encoding="utf-8") as handle:
         return json.load(handle)
@@ -243,11 +172,11 @@ def only_generic_words(rest):
 
 
 def label_ok(name, file_name, held):
-    """The probe of the table (`names_only_station`) on the final choice of
-    every stage, or the vouched entry for exactly this file. Measured: the
-    table booked Wikidata P154 files without a probe, and "Ö 3" carried the
-    logo of a football club; with the looser probe of the runtime (the name
-    carried anywhere) it booked photos whose names held the station name."""
+    """The probe of the table (`names_only_station`), or the vouched entry for
+    exactly this file. Measured: the table booked Wikidata P154 files without
+    a probe, and "Ö 3" carried the logo of a football club; with the looser
+    probe of the runtime (the name carried anywhere) it booked photos whose
+    names held the station name."""
     if names_only_station(name, file_name):
         return True
     entry = held.get(name)
@@ -255,73 +184,34 @@ def label_ok(name, file_name, held):
 
 
 def renders_at_tile_size(file_name, size):
-    """Gate corpse guard (c0addba): MediaWiki never upscales raster files —
-    a PNG whose smallest side is under the app's 48-px gate can NEVER render
-    on a tile, and a table entry the gate always rejects SHADOWS working
-    stored positives (bigFM: the 256x37 wordmark hid the healed 600x600
-    sibling favicon). SVG scales and is exempt."""
+    """MediaWiki never upscales a raster, so a raster whose smaller side is
+    under the app's 48 px gate can never show on a tile, and a table entry the
+    gate always rejects shadows a working stored logo. An SVG scales and
+    passes."""
     if file_name.lower().endswith(".svg"):
         return True
     if not size:
-        return False   # unknown raster size = unverifiable = out
-    return min(size) >= 48
+        return False   # an unknown raster size cannot be checked, so it is out
+    return min(size) >= MIN_SIDE
 
 
 def final_render_size(file_name):
-    """The size the APP will actually get: the width-800 FilePath render.
-    MediaWiki serves rasters `thumbnail_unscaled` — this is the only honest
-    place to measure (the audit's status-only check was blind to it)."""
-    from urllib.parse import quote
+    """The size the APP gets: the width 800 FilePath render. MediaWiki serves
+    rasters unscaled, so only this render answers how big the logo is."""
     url = ("https://commons.wikimedia.org/wiki/Special:FilePath/"
-           + quote(file_name) + "?width=800")
+           + urllib.parse.quote(file_name) + "?width=800")
     data, verdict = get(url, raw=True)
     return image_size(data) if verdict == "ok" and data else None
 
 
-def rank(size, name=None, title=None):
-    """Kleiner ist besser: Klasse → wenigster ZUSATZ → Naehe zu 1:1.
-
-    Eine Grauzonen-Datei bleibt brauchbar — sie verliert nur gegen eine echte
-    Marke. So behaelt ein Sender OHNE quadratische Variante seinen Schriftzug,
-    statt gar nichts zu bekommen.
-
-    Der Zusatz entscheidet innerhalb einer FAMILIE: fuer "Deutschlandfunk"
-    liegen "Deutschlandfunk Logo klein.png", "… Kultur Logo klein.png" und
-    "… Nova Logo klein.png" alle bei 1:1 — nur die WENIGSTEN Zusatzzeichen
-    treffen den gemeinten Sender. Ohne dieses Kriterium bekaeme der
-    Deutschlandfunk das Logo von DLF Kultur, gemessen."""
-    ratio = aspect(size)
-    extra = 0
-    if name and title:
-        extra = max(0, len(fold(title)) - len(fold(name)))
-    if ratio is None:
-        return (9, extra, 0)
-    if ratio <= MARK_MAX:
-        return (0, extra, ratio)
-    if ratio <= WORDMARK_MIN:
-        return (1, extra, ratio)
-    return (2, extra, ratio)
-
-
-def fold(raw):
-    import unicodedata
-    text = unicodedata.normalize("NFKD", raw or "")
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    return "".join(c for c in text.lower() if c.isalnum())
-
-
-# f837dc0: Namen, die der AUFTRAG ausdruecklich nennt, aber in keiner
-# Kern-Tabelle stehen — die DLF-Familie war MEHRZAHL, die Tabellen kennen
-# nur den Hauptsender. Katalog-Anzeigenamen (displayName-Form, gemessen).
+# Names the catalog shows that stand in no core table: the further stations
+# of the Deutschlandfunk family, and the head of the two Bundesliga families
+# whose tiles are "Fußball-Bundesliga: Spiel 1" and "Fußball-Bundesliga 2:
+# Spiel 1"; `RadioLogoService.curatedFile` carries the one entry to both over
+# its prefix rule.
 EXTRA_NAMES = [
     "Deutschlandfunk Kultur",
     "Deutschlandfunk Nova",
-    # 11c32f1 (ENTSCHEID): beide Bundesliga-Familien tragen das
-    # BUNDESLIGA-Logo. Der Familienkopf steht in keiner Kern-Tabelle — die
-    # Kacheln heissen "Fußball-Bundesliga: Spiel 1" bzw. "Fußball-Bundesliga 2:
-    # Spiel 1", und `RadioLogoService.curatedFile` traegt den Eintrag ueber die
-    # Praefix-Regel an beide weiter (naechstes Zeichen ":" bzw. " " ist keine
-    # Wortfortsetzung). EIN Eintrag, zwei Familien.
     "Fußball-Bundesliga",
 ]
 
@@ -352,116 +242,170 @@ def core_names():
     return out
 
 
-def wikidata_file(name):
-    """Stage 1 — P154 of the matched entity."""
+def core_facts():
+    """Per core name the countries of the tables it stands in, and the
+    Wikidata object the Wikidata core table names for it in a comment
+    (`"Triple J",  // Q1522899`). The listener tables are the German,
+    Austrian and Swiss ones; the extra names are German."""
+    facts = {name: {"countries": {"DE"}, "qid": None} for name in EXTRA_NAMES}
+
+    def note(name, country, qid=None):
+        entry = facts.setdefault(name, {"countries": set(), "qid": None})
+        if country:
+            entry["countries"].add(country)
+        if qid and not entry["qid"]:
+            entry["qid"] = qid
+
+    country = None
+    for line in open(os.path.join(ROOT, "Sources", "Models", "RadioWikidataCores.swift"), encoding="utf-8"):
+        block = re.match(r'\s*"([A-Z]{2})":\s*\[\s*$', line)
+        if block:
+            country = block.group(1)
+            continue
+        hit = re.match(r'\s*"((?:[^"\\]|\\.)*)",?\s*(?://\s*(Q\d+))?', line)
+        if hit and country:
+            note(hit.group(1), country, hit.group(2))
+    country = None
+    for line in open(os.path.join(ROOT, "Sources", "Models", "RadioListenerCores.swift"), encoding="utf-8"):
+        stripped = line.split("//", 1)[0]
+        for prefix, code in (("germany", "DE"), ("austria", "AT"), ("switzerland", "CH")):
+            if f"static let {prefix}" in stripped:
+                country = code
+        inline = re.search(r'case "([A-Z]{2})":', stripped)
+        for match in re.finditer(r'"((?:[^"\\]|\\.)*)"', stripped):
+            name = match.group(1)
+            if re.fullmatch(r"[A-Z]{2}", name) or name.endswith(":"):
+                continue
+            if re.match(r"\s*:\s*\[[ \t]*$", stripped[match.end():]):
+                continue
+            note(name, inline.group(1) if inline else country)
+    return facts
+
+
+def sparql(query):
+    url = "https://query.wikidata.org/sparql?" + urllib.parse.urlencode({"query": query, "format": "json"})
+    payload, verdict = get(url, timeout=90)
+    if verdict != "ok":
+        return None
+    return [{key: value["value"] for key, value in row.items()} for row in payload["results"]["bindings"]]
+
+
+def radio_classes():
+    """The radio station class and every subclass of it."""
+    rows = sparql(f"SELECT ?c WHERE {{ ?c wdt:P279* wd:{RADIO_STATION} }}")
+    return None if rows is None else {row["c"].rsplit("/", 1)[-1] for row in rows}
+
+
+def country_codes():
+    """Country object to its ISO code (P297)."""
+    rows = sparql("SELECT ?c ?iso WHERE { ?c wdt:P297 ?iso }")
+    return None if rows is None else {row["c"].rsplit("/", 1)[-1]: row["iso"].upper() for row in rows}
+
+
+def search(name):
+    """The objects whose label or alias is exactly the name, in German and
+    English; None when a search failed."""
+    found = []
+    wanted = fold(name)
     for language in ("de", "en"):
         url = "https://www.wikidata.org/w/api.php?" + urllib.parse.urlencode(
             {"action": "wbsearchentities", "search": name, "language": language,
-             "format": "json", "limit": 10})
+             "type": "item", "format": "json", "limit": 10})
         payload, verdict = get(url)
         if verdict == "failed":
-            return None, "failed"
-        wanted = fold(name)
+            return None
         for hit in (payload or {}).get("search", []):
-            have = fold(hit.get("label", ""))
-            if not have or not (wanted in have or have in wanted):
-                continue
-            entity = hit.get("id")
-            data, verdict = get(f"https://www.wikidata.org/wiki/Special:EntityData/{entity}.json")
-            if verdict == "failed":
-                return None, "failed"
-            try:
-                claims = data["entities"][entity].get("claims", {})
-                return claims["P154"][0]["mainsnak"]["datavalue"]["value"], "ok"
-            except Exception:
-                break
-        time.sleep(0.2)
-    return None, "ok"      # measured, no result — that is a finding, not a failure
+            texts = {hit.get("label", ""), (hit.get("match") or {}).get("text", "")}
+            if any(fold(text) == wanted for text in texts) and hit.get("id") not in found:
+                found.append(hit["id"])
+    return found
 
 
-def commons_file(name):
-    """Stage 2 — the Commons FILE SEARCH ("logo exists, just not linked")."""
-    url = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(
-        {"action": "query", "list": "search",
-         "srsearch": f"{name} logo filetype:bitmap|drawing",
-         "srnamespace": "6", "srlimit": "5", "format": "json"})
+def entities(ids):
+    """Per object: its classes (P31), its logo (P154) and its countries (P17);
+    None when the request failed."""
+    if not ids:
+        return {}
+    url = "https://www.wikidata.org/w/api.php?" + urllib.parse.urlencode(
+        {"action": "wbgetentities", "ids": "|".join(ids[:50]), "props": "claims", "format": "json"})
     payload, verdict = get(url)
-    if verdict == "failed":
-        return None, "failed"
-    # 87c77c4: NICHT der erste Treffer, sondern der quadratischste. Fuer
-    # Deutschlandfunk liegen "Logo 2017.svg" (676x100, 6.8:1) und
-    # "Logo klein.png" (1920x1920, 1:1) nebeneinander — die Auswahl griff
-    # bisher zur breitesten Variante, weil sie zuerst kam.
-    # ZWEI Stufen, und die Trennung ist der ganze Punkt:
-    #
-    #   * Die Verhaeltnis-Bevorzugung gilt NUR fuer Dateien, die den
-    #     Sendernamen TRAGEN. Ohne diese Wache holt sie Fremdbilder — gemessen:
-    #     das Logo des FC Bayern fuer "Bayern 2", ein NASA-Foto fuer
-    #     "Bremen NEXT", Marktkauf fuer "Bremen Eins".
-    #   * Alles andere bleibt wie bisher: der erste Treffer in RELEVANZ-Ordnung.
-    #     Eine harte Wache haette 48,6 % des Bestands verworfen (der Name
-    #     "105'5 Spreeradio" steht nicht in "Spreeradio-logo.svg", und die Datei
-    #     ist trotzdem richtig) — die Deckung darf nicht sinken, damit ein paar
-    #     Karten quadratischer werden.
-    best_named, first_relevant = None, None
-    for hit in (payload or {}).get("query", {}).get("search", []):
-        title = hit["title"].replace("File:", "")
-        thumb = "https://commons.wikimedia.org/w/thumb.php?" + urllib.parse.urlencode(
-            {"f": title, "width": COMMONS_WIDTH})
-        data, verdict = get(thumb, raw=True)
-        if verdict == "failed":
-            return None, "failed"
-        size = image_size(data) if data else None
-        # GT-Nachtrag (2b7c857/f837dc0-Klasse): HOCHFORMAT fliegt ganz raus.
-        # Gemessen an allen sechs hochformatigen Neuzuordnungen des letzten
-        # Laufs: JEDE war ein Rueckschritt — vier Stapel aus Marke+Textzeile
-        # (SRF 3, Musikwelle, RTL2, Oesterreich 1: die Kachel rendert fill,
-        # die Marke wird gesprengt, unten stehen Textreste) und einmal sogar
-        # ein FREMDER Sender (das indische Big FM, Hindi-Claim — durch
-        # Namens-Wache UND Generik-Regel gerutscht, weil Name und Zusaetze
-        # passten). Die Zielflaeche ist quadratisch: eine echte Bildmarke ist
-        # quadratisch oder quer; hochformatige "Logos" sind auf Commons fast
-        # immer Kombi-Stapel. Lieber der Schriftzug (zentriert, sauber) oder
-        # zur Laufzeit das Touch-Icon als ein gesprengtes Stapelbild.
-        if size and size[1] > size[0]:
-            time.sleep(0.2)
-            continue
-        if size and min(size) >= MIN_SIDE:
-            if first_relevant is None:
-                first_relevant = title
-            if carries_name(name, title) and only_generic_extra(name, title):
-                score = rank(size, name=name, title=title)
-                if best_named is None or score < best_named[0]:
-                    best_named = (score, title)
-        time.sleep(0.2)
-    # Eine echte Bildmarke mit dem richtigen Namen schlaegt die Relevanz;
-    # sonst bleibt es beim bisherigen Verhalten.
-    if best_named and best_named[0][0] == 0:
-        return best_named[1], "ok"
-    return first_relevant, "ok"
+    if verdict != "ok":
+        return None
+
+    def values(claims, prop):
+        out = []
+        for claim in claims.get(prop, []):
+            value = (claim.get("mainsnak", {}).get("datavalue") or {}).get("value")
+            if isinstance(value, dict) and "id" in value:
+                out.append(value["id"])
+            elif isinstance(value, str):
+                out.append(value)
+        return out
+
+    result = {}
+    for entity_id, entity in (payload.get("entities") or {}).items():
+        claims = entity.get("claims", {})
+        result[entity_id] = {"classes": set(values(claims, "P31")),
+                             "logo": next(iter(values(claims, "P154")), None),
+                             "countries": set(values(claims, "P17"))}
+    return result
 
 
-def is_wordmark(title):
-    """Ist die Datei ein Schriftzug? Eine Messung, keine Namensregel."""
-    thumb = "https://commons.wikimedia.org/w/thumb.php?" + urllib.parse.urlencode(
-        {"f": title, "width": COMMONS_WIDTH})
-    data, verdict = get(thumb, raw=True)
-    if verdict == "failed" or not data:
-        return False          # unbekannt ist kein Befund — nichts ersetzen
-    size = image_size(data)
-    ratio = aspect(size) if size else None
-    return ratio is not None and ratio > WORDMARK_MIN
+def bound_file(name, fact, radio, isos):
+    """(file, object, reason, failed): the logo of the one radio station this
+    name means, or the reason there is none. A name in the tables of several
+    countries gets none: the table is keyed by the name alone, so one logo
+    would show for every country's station of that name ("Radio 1" stands in
+    the Belgian and the Swiss table)."""
+    countries = (fact or {}).get("countries") or set()
+    if len(countries) > 1:
+        return None, None, f"name in the tables of {len(countries)} countries ({', '.join(sorted(countries))})", False
+    ids = [fact["qid"]] if fact and fact.get("qid") else search(name)
+    if ids is None:
+        return None, None, "search failed", True
+    if not ids:
+        return None, None, "no Wikidata object with this exact name", False
+    objects = entities(ids)
+    if objects is None:
+        return None, None, "object request failed", True
+    stations = [(entity_id, data) for entity_id, data in objects.items() if data["classes"] & radio]
+    if not stations:
+        return None, None, "no object of the class radio station", False
+    with_logo = [(entity_id, data) for entity_id, data in stations if data["logo"]]
+    if not with_logo:
+        return None, None, "radio station without a logo (P154)", False
+    if len({data["logo"] for _, data in with_logo}) > 1:
+        in_country = [(entity_id, data) for entity_id, data in with_logo
+                      if {isos.get(c) for c in data["countries"]} & countries]
+        if len({data["logo"] for _, data in in_country}) != 1:
+            return None, None, f"ambiguous: {len(with_logo)} radio stations, the country does not decide", False
+        with_logo = in_country
+    entity_id, data = with_logo[0]
+    return data["logo"], entity_id, None, False
 
 
-def swift_file(entries, names, failures, single=None, check=False):
-    """The data file. Names → Commons FILE NAME; the width is applied at read
+def resolve(name, fact, radio, isos, held):
+    """The verdict of one name: (file, object, status, reason, failed)."""
+    file_name, entity_id, reason, failed = bound_file(name, fact, radio, isos)
+    if file_name and not label_ok(name, file_name, held):
+        reason, file_name = f"probe: {file_name}", None
+    if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
+        reason, file_name = f"tile gate: {file_name}", None
+    if file_name:
+        return file_name, entity_id, "bound", None, failed
+    entry = held.get(name)
+    if entry and entry.get("unbound") and entry.get("reason"):
+        return entry["file"], None, "unbound", entry["unbound"], failed
+    return None, None, "none", reason, failed
+
+
+def swift_file(entries, names, single=None, check=False):
+    """The data file. Names to Commons FILE NAME; the width is applied at read
     time from the app's one constant. The vouched entries travel along, so
     the suite holds every entry to the same probe."""
     def quoted(text):
         return text.replace("\\", "\\\\").replace('"', '\\"')
-    lines = []
-    for name in sorted(entries):
-        lines.append(f'        "{quoted(name)}": "{quoted(entries[name])}",')
+    lines = [f'        "{quoted(name)}": "{quoted(entries[name])}",' for name in sorted(entries)]
     held = vouched()
     vouched_lines = []
     for name in sorted(entries):
@@ -470,23 +414,21 @@ def swift_file(entries, names, failures, single=None, check=False):
             vouched_lines.append(f'        "{quoted(name)}": (file: "{quoted(entry["file"])}", reason: "{quoted(entry["reason"])}"),')
     stamp = time.strftime("%Y-%m-%d")
     digest = hashlib.sha256("\n".join(sorted(names)).encode()).hexdigest()[:12]
-    # A single-name run measures ONE name and carries the rest over
-    # unchanged. That has to stand in the header, otherwise the quota reads
-    # like a fresh full measurement.
-    single_note = ("" if not single else
-                   f"\n// SINGLE-NAME RUN: only \"{single}\" was measured, every other"
-                   f"\n// entry comes unchanged from the last full run.")
+    note = ""
+    if single:
+        note = (f"\n// SINGLE-NAME RUN: only \"{single}\" was measured, every other"
+                f"\n// entry comes unchanged from the last full run.")
     if check:
-        single_note = ("\n// CHECK RUN: no source was asked. The entries of the last run were"
-                       "\n// held to the table probe (the file names the station and nothing"
-                       "\n// else); what failed it and is not vouched left.")
+        note = ("\n// CHECK RUN: no source was asked. The entries of the last run were"
+                "\n// held to the table probe (the file names the station and nothing"
+                "\n// else); what failed it and is not vouched left.")
     return f'''// Mär — an audio player for self-hosted open ecosystems
 // Copyright (C) 2026 Laurenz Schröder
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 // GENERATED by tools/radio-logo-data/generate.py. Edit the script, not this
-// file. Run date: {stamp}.{single_note}
+// file. Run date: {stamp}.{note}
 //
 // THE TARGET SET OF THIS RUN (the denominator): {len(names)} core
 // names, fingerprint {digest}. A later quota is only comparable to this one
@@ -496,11 +438,12 @@ def swift_file(entries, names, failures, single=None, check=False):
 
 import Foundation
 
-/// 🔴 The logos of the CORE stations as generated DATA. Wikidata P154 first,
-/// then the Commons FILE SEARCH, for the class "a logo exists, it is just not
-/// linked to the object". Only the file NAME is stored; the width is applied
-/// at read time from `RadioLogoService.commonsWidth`, so the next width
-/// change is a constant, not a migration.
+/// 🔴 The logos of the CORE stations as generated DATA: the logo (P154) of
+/// the one Wikidata object of the class radio station a name means, held to
+/// the table probe, or vouched for exactly its bound file.
+/// Only the file NAME is stored; the width is applied at read time from
+/// `RadioLogoService.commonsWidth`, so the next width change is a constant,
+/// not a migration.
 ///
 /// The runtime chain stays the fallback for the long tail. This table only
 /// spares it the work for the stations everyone actually sees.
@@ -525,6 +468,15 @@ nonisolated enum RadioLogoData {{
 '''
 
 
+def write_table(entries, names, **mode):
+    target = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
+    temporary = target + ".neu"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        handle.write(swift_file(entries, names, **mode))
+    os.replace(temporary, target)      # atomic: never a half-written state
+    print(f"Geschrieben: {target} ({len(entries)} Eintraege)")
+
+
 def offline_check(dry):
     """`--pruefen`: the last run's entries held to the table probe, without
     asking any source. What fails and is not vouched leaves the table."""
@@ -542,12 +494,6 @@ def offline_check(dry):
             gone.append((name, file_name))
     for name, file_name in gone:
         print(f"  raus: {name} -> {file_name}", file=sys.stderr)
-    # A vouched entry for a core name without one is a vetted assignment of
-    # its own (another spelling of a station the table carries): it comes in.
-    for name in sorted(held):
-        if name in names and name not in previous and held[name].get("reason"):
-            entries[name] = held[name]["file"]
-            print(f"  belegt neu: {name} -> {held[name]['file']}", file=sys.stderr)
     stale = sorted(n for n in held if entries.get(n) != held[n].get("file"))
     if stale:
         print(f"Belegt, aber nicht in der Tabelle: {stale}", file=sys.stderr)
@@ -556,75 +502,102 @@ def offline_check(dry):
     if dry:
         print("(trocken: nichts geschrieben)")
         return 0
-    target = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
-    temporary = target + ".neu"
-    with open(temporary, "w", encoding="utf-8") as handle:
-        handle.write(swift_file(entries, names, 0, check=True))
-    os.replace(temporary, target)
-    print(f"Geschrieben: {target}")
+    write_table(entries, names, check=True)
     return 0
 
 
-def resolve_one(name, previous):
-    """Die Kette EINES Namens — dieselben Stufen wie im Voll-Lauf, damit ein
-    Einzelnamen-Lauf nicht zu einer zweiten, milderen Regel wird."""
-    file_name, _ = wikidata_file(name)
-    if file_name and is_wordmark(file_name):
-        mark, _ = commons_file(name)
-        if mark and not is_wordmark(mark) and only_generic_extra(name, mark):
-            file_name = mark
-    if not file_name:
-        file_name, _ = commons_file(name)
-    if file_name and keep_previous(name, previous.get(name), file_name):
-        file_name = previous[name]
-    if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
-        print(f"  GATE-LEICHE verworfen: {name} -> {file_name}", file=sys.stderr)
+def lookups():
+    """The class set and the country codes, asked once per run."""
+    radio, isos = radio_classes(), country_codes()
+    if not radio or not isos:
+        print("NICHT GEMESSEN: Klassen oder Laendercodes nicht gelesen. Keine Datei geschrieben.",
+              file=sys.stderr)
         return None
-    if file_name and not label_ok(name, file_name, vouched()):
-        print(f"  ETIKETT verworfen: {name} -> {file_name}", file=sys.stderr)
-        return None
-    return file_name
+    return radio, isos
 
 
 def single_run(name, dry):
-    """`--nur "<Name>"` — EINEN Namen messen und in den Bestand einfuegen.
-
-    Warum es diesen Modus gibt: ein Voll-Lauf fragt 786 Namen neu ab, um EINEN
-    Eintrag zu ergaenzen. Er wuerde den ganzen Bestand anfassen, ohne dass eine
-    einzige der anderen Zuordnungen zur Debatte stuende — und die Datei selbst
-    warnt davor, Quoten ueber wandernde Nenner zu vergleichen. Der Nenner
-    (core_names) wird hier trotzdem frisch gebildet: er waechst um den neuen
-    Namen, und das ist die ehrliche Zahl.
-    """
+    """`--nur "<Name>"`: ONE name measured by the same rule and put into the
+    table; every other entry stays byte for byte."""
     previous = existing_mapping()
     if not previous:
-        print("Kein Bestand gefunden — Einzelnamen-Lauf braucht eine bestehende "
-              "Tabelle.", file=sys.stderr)
+        print("Kein Bestand gefunden: ein Einzelnamen-Lauf braucht eine bestehende Tabelle.", file=sys.stderr)
         return 2
-    file_name = resolve_one(name, previous)
-    if not file_name:
-        print(f"NICHT GEMESSEN: {name} hat kein Logo, das das Gate besteht. "
-              f"Keine Datei geschrieben.", file=sys.stderr)
+    found = lookups()
+    if not found:
         return 2
-    was = previous.get(name)
+    radio, isos = found
+    file_name, entity_id, status, reason, failed = resolve(name, core_facts().get(name), radio, isos, vouched())
+    if failed or not file_name:
+        print(f"NICHT GEMESSEN: {name}: {reason}. Keine Datei geschrieben.", file=sys.stderr)
+        return 2
     entries = dict(previous)
     entries[name] = file_name
-    print(f"{name}: {was or '(neu)'} -> {file_name}")
+    print(f"{name}: {previous.get(name) or '(neu)'} -> {file_name} ({status}, {entity_id}); Abrufe {REQUESTS}")
     if dry:
-        print("(trocken — nichts geschrieben)")
+        print("(trocken: nichts geschrieben)")
         return 0
+    write_table(entries, core_names(), single=name)
+    return 0
+
+
+def full_run(dry, report_path):
     names = core_names()
-    target = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
-    temporary = target + ".neu"
-    with open(temporary, "w", encoding="utf-8") as handle:
-        handle.write(swift_file(entries, names, 0, single=name))
-    os.replace(temporary, target)
-    print(f"Geschrieben: {target} ({len(entries)} Eintraege)")
+    facts = core_facts()
+    previous = existing_mapping()
+    held = vouched()
+    found = lookups()
+    if not found:
+        return 2
+    radio, isos = found
+    print(f"target set: {len(names)} core names, {len(radio)} radio classes", file=sys.stderr)
+    entries, rows, failures = {}, [], 0
+    for index, name in enumerate(names, 1):
+        # A truncated name ("… Premium") is an artifact of the source tables;
+        # a search on its tail matches foreign brands.
+        if name.startswith("…") or name.startswith("..."):
+            continue
+        file_name, entity_id, status, reason, failed = resolve(name, facts.get(name), radio, isos, held)
+        failures += failed
+        if file_name:
+            entries[name] = file_name
+        before = previous.get(name)
+        change = ("kept" if before == file_name else "new" if before is None and file_name
+                  else "dropped" if file_name is None and before else "changed" if file_name else "none")
+        rows.append({"name": name, "status": status, "change": change, "file": file_name,
+                     "before": before, "object": entity_id, "reason": reason})
+        if index % 25 == 0:
+            print(f"  {index}/{len(names)}: {len(entries)} logos, {failures} failures, {REQUESTS} requests",
+                  file=sys.stderr)
+    summary = {"names": len(names), "entries_before": len(previous), "entries_after": len(entries),
+               "bound": sum(r["status"] == "bound" for r in rows),
+               "unbound": sum(r["status"] == "unbound" for r in rows),
+               "failures": failures, "requests": REQUESTS}
+    if report_path:
+        with open(report_path, "w", encoding="utf-8") as handle:
+            json.dump({"summary": summary, "rows": rows}, handle, ensure_ascii=False, indent=1)
+    print(json.dumps(summary))
+    # Measuring gate: nothing measured, or the service broke down: write NOTHING.
+    if not entries or failures > len(names) // 4:
+        print(f"NICHT GEMESSEN: {len(entries)} Treffer, {failures} Fehlschlaege. Keine Datei geschrieben.",
+              file=sys.stderr)
+        return 2
+    if dry:
+        print("(trocken: nichts geschrieben)")
+        return 0
+    write_table(entries, names)
     return 0
 
 
 def main():
     dry = "--trocken" in sys.argv
+    report_path = None
+    if "--bericht" in sys.argv:
+        index = sys.argv.index("--bericht")
+        if index + 1 >= len(sys.argv):
+            print("--bericht braucht einen Pfad", file=sys.stderr)
+            return 2
+        report_path = sys.argv[index + 1]
     if "--nur" in sys.argv:
         index = sys.argv.index("--nur")
         if index + 1 >= len(sys.argv):
@@ -633,78 +606,7 @@ def main():
         return single_run(sys.argv[index + 1], dry)
     if "--pruefen" in sys.argv:
         return offline_check(dry)
-    names = core_names()
-    previous = existing_mapping()
-    held = vouched()
-    print(f"target set: {len(names)} core names", file=sys.stderr)
-    entries, failures = {}, 0
-    for index, name in enumerate(names, 1):
-        # 383a3e8: truncated core names ("… Premium") are artifacts of the
-        # source tables — a search on the tail matches FOREIGN brands (the
-        # audit found the YouTube Premium logo booked for one). Never look
-        # them up; a station they might mean is covered by its own name.
-        if name.startswith("…") or name.startswith("..."):
-            continue
-        file_name, verdict = wikidata_file(name)
-        if verdict == "failed":
-            failures += 1
-        # 87c77c4 Punkt 2: liefert Wikidata einen SCHRIFTZUG, die Dateisuche
-        # aber eine quadratische Marke, gewinnt die Marke — die Flaeche ist
-        # quadratisch, nicht die Datenquelle.
-        if file_name and is_wordmark(file_name):
-            mark, mark_verdict = commons_file(name)
-            if mark_verdict == "failed":
-                failures += 1
-            elif mark and not is_wordmark(mark) and only_generic_extra(name, mark):
-                # Punkt 2 des Auftrags, aber ENGER: eine Wikidata-P154-Datei
-                # stammt aus einem zugeordneten OBJEKT, ein Suchtreffer nur aus
-                # einer Zeichenkette. Objekt-Beleg schlaegt Zeichenketten-Beleg,
-                # also darf die Marke nur uebernehmen, wenn sie zweifelsfrei
-                # denselben Sender benennt.
-                file_name = mark
-        if not file_name:
-            file_name, verdict = commons_file(name)
-            if verdict == "failed":
-                failures += 1
-        if file_name and keep_previous(name, previous.get(name), file_name):
-            # Ein Lauf, der den Bestand verschlechtert, ist schlimmer als einer,
-            # der nichts findet.
-            file_name = previous[name]
-        # c0addba: the gate-corpse guard sits on the FINAL choice (so it also
-        # judges resurrected previous values) — an entry the app's 48-px gate
-        # always rejects can never display AND shadows working stored
-        # positives via table-before-store. A colour tile beats a corpse.
-        if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
-            print(f"  GATE-LEICHE verworfen: {name} -> {file_name}", file=sys.stderr)
-            file_name = None
-        if file_name and not label_ok(name, file_name, held):
-            print(f"  ETIKETT verworfen: {name} -> {file_name}", file=sys.stderr)
-            file_name = None
-        if file_name:
-            entries[name] = file_name
-        if index % 25 == 0:
-            print(f"  {index}/{len(names)} — {len(entries)} logos, {failures} failures",
-                  file=sys.stderr)
-        time.sleep(0.2)
-
-    # Measuring gate: nothing measured (or the service broke down) ⇒ write NOTHING.
-    if not entries or failures > len(names) // 4:
-        print(f"NICHT GEMESSEN — {len(entries)} Treffer, {failures} Fehlschlaege. "
-              f"Keine Datei geschrieben.", file=sys.stderr)
-        return 2
-
-    print(f"\n{len(entries)}/{len(names)} = {100 * len(entries) / len(names):.1f} % "
-          f"tragen ein deklariertes Logo ({failures} Transport-Fehlschlaege)")
-    if dry:
-        print("(trocken — nichts geschrieben)")
-        return 0
-    target = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
-    temporary = target + ".neu"
-    with open(temporary, "w", encoding="utf-8") as handle:
-        handle.write(swift_file(entries, names, failures))
-    os.replace(temporary, target)      # atomic — never a half-written state
-    print(f"Geschrieben: {target}")
-    return 0
+    return full_run(dry, report_path)
 
 
 if __name__ == "__main__":
