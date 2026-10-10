@@ -31,6 +31,12 @@ struct FailedLoadTests {
         #expect(!FailedLoad.holdsAhead(failedIndex: 3, currentIndex: 0, inCurrentQueue: true, heldAt: 2))
         #expect(!FailedLoad.holdsAhead(failedIndex: 0, currentIndex: 0, inCurrentQueue: true, heldAt: nil))
         #expect(!FailedLoad.holdsAhead(failedIndex: 2, currentIndex: 0, inCurrentQueue: false, heldAt: nil))
+        #expect(FailedLoad.localFallback(fromLocalFile: true, retried: false, online: true) == .stream)
+        #expect(FailedLoad.localFallback(fromLocalFile: true, retried: false, online: false) == .unavailable)
+        #expect(FailedLoad.localFallback(fromLocalFile: true, retried: true, online: true) == .unavailable)
+        #expect(FailedLoad.localFallback(fromLocalFile: false, retried: true, online: true) == .unavailable)
+        #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: true) == .none)
+        #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: false) == .none)
     }
 
     /// A source whose every track lives at a loopback port nothing listens
@@ -168,6 +174,95 @@ struct FailedLoadTests {
         #expect(rebuilt == 2, "the play builds the queue anew from the failed file: \(rebuilt)")
         #expect(abs(model.currentTime - 1) < 0.01, "the rebuild keeps the held position: \(model.currentTime)")
         model.player?.pause()
+    }
+
+    /// Bytes no decoder reads, under an audio name.
+    private func brokenFile() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).mp3")
+        try Data((0..<20_000).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ 7) }).write(to: url)
+        return url
+    }
+
+    private func detail(_ tracks: [(path: String, seconds: Double)]) -> LibraryItemDetail {
+        var start = 0.0
+        var built: [ABSAudioTrack] = []
+        for (index, track) in tracks.enumerated() {
+            built.append(ABSAudioTrack(index: index, startOffset: start, duration: track.seconds,
+                                       contentUrl: track.path, metadata: nil))
+            start += track.seconds
+        }
+        return LibraryItemDetail(
+            id: "loadfail-local-\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: start, chapters: nil, tracks: built),
+            userMediaProgress: MediaProgress(currentTime: 0, duration: start, progress: 0, isFinished: false, lastUpdate: nil))
+    }
+
+    /// A downloaded file that is missing or broken fails to load and never
+    /// fires FailedToPlayToEndTime. With network the track plays on from the
+    /// server and the file goes; without, it stops as unavailable, not as a
+    /// network failure, and the file stays.
+    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz nicht verfuegbar statt Netz-Hinweis")
+    func aBrokenLocalFilePlaysOnFromTheServer() async throws {
+        let server = try tone(seconds: 3)
+        defer { try? FileManager.default.removeItem(at: server) }
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
+        for local in [missing, try brokenFile()] {
+            let online = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: local] }, isOnline: { true })
+            await online.load(item: detail([(server.path, 3)]))
+            online.play()
+            await waitFor { online.currentTime > 0.5 || online.sourceHint != nil }
+            #expect(online.sourceHint == nil, "\(local.pathExtension): no hint, the server took over: \(String(describing: online.sourceHint))")
+            #expect(online.isPlaying && online.currentTime > 0.5, "\(local.pathExtension): playback goes on: \(online.currentTime)")
+            #expect(!FileManager.default.fileExists(atPath: local.path), "\(local.pathExtension): the failed file is dropped")
+            online.stop()
+        }
+        let broken = try brokenFile()
+        defer { try? FileManager.default.removeItem(at: broken) }
+        let offline = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: broken] }, isOnline: { false })
+        await offline.load(item: detail([(server.path, 3)]))
+        offline.play()
+        await waitFor { offline.sourceHint != nil }
+        #expect(offline.sourceHint == .trackFailed, "offline the track is unavailable: \(String(describing: offline.sourceHint))")
+        #expect(!offline.isPlaying, "offline playback stops")
+        #expect(FileManager.default.fileExists(atPath: broken.path), "offline the file stays")
+        offline.stop()
+    }
+
+    /// A later downloaded file that cannot load is dropped while the one
+    /// before plays; at its start playback goes on from the server, no stop.
+    @Test("eine spaetere kaputte lokale Datei: mit Netz laeuft die Wiedergabe an ihrem Anfang vom Server weiter")
+    func aLaterBrokenLocalFilePlaysOnFromTheServer() async throws {
+        let first = try tone(seconds: 1)
+        let server = try tone(seconds: 2)
+        let broken = try brokenFile()
+        defer {
+            for url in [first, server, broken] { try? FileManager.default.removeItem(at: url) }
+        }
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [1: broken] }, isOnline: { true })
+        await model.load(item: detail([(first.path, 1), (server.path, 2)]))
+        model.play()
+        await waitFor { model.currentTime > 1.5 || model.sourceHint != nil }
+        #expect(model.sourceHint == nil, "no hint at the dropped file: \(String(describing: model.sourceHint))")
+        #expect(model.isPlaying && model.currentTime > 1.5, "playback went on past its start: \(model.currentTime)")
+        #expect(!FileManager.default.fileExists(atPath: broken.path), "the failed file is dropped")
+        model.stop()
+    }
+
+    /// One attempt per track: the server copy fails too, so the track is
+    /// unavailable after the one try, and nothing builds it again by itself.
+    @Test("eine lokale Datei und ihr Server scheitern: nach dem einen Versuch nicht verfuegbar, keine Schleife")
+    func oneAttemptThenUnavailable() async throws {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: missing] }, isOnline: { true })
+        await model.load(item: detail([("dead.mp3", 3)]))
+        model.play()
+        await waitFor { model.sourceHint == .trackFailed }
+        #expect(model.sourceHint == .trackFailed, "after the one try the track is unavailable: \(String(describing: model.sourceHint))")
+        #expect(!model.isPlaying, "playback stops")
+        let queue = model.player.map(ObjectIdentifier.init)
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        #expect(model.player.map(ObjectIdentifier.init) == queue, "nothing builds the track again by itself")
+        model.stop()
     }
 }
 #endif

@@ -29,6 +29,29 @@ nonisolated enum FailedLoad {
         return held.map { failedIndex < $0 } ?? true
     }
 
+    /// What a load failure does when the track may have come from a local
+    /// file. Measured: a missing or broken local file fails to load and
+    /// never fires FailedToPlayToEndTime, so every play built the same file
+    /// again and the hint blamed the network.
+    enum LocalFallback: Equatable {
+        /// Not a local file: the rules above decide as for any item.
+        case none
+        /// The file is dropped and fetched again in the background; the
+        /// track plays on from the server at the same place.
+        case stream
+        /// Playback stops with the hint that the track is unavailable.
+        case unavailable
+    }
+
+    /// One attempt per track: a track that already had it is unavailable,
+    /// a local file without network is too, a local file with network
+    /// streams instead.
+    static func localFallback(fromLocalFile: Bool, retried: Bool, online: Bool) -> LocalFallback {
+        if retried { return .unavailable }
+        guard fromLocalFile else { return .none }
+        return online ? .stream : .unavailable
+    }
+
     /// Whether a play builds the queue anew before it starts: the current
     /// item failed to load, or a stopped failure was not healed yet. The
     /// queue drops a failed item (measured: no current item right after

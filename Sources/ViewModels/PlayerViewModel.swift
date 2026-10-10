@@ -177,8 +177,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
     /// A later track of this queue that failed to load: the queue ends before
-    /// it, and playback stops at its start. Cleared by every new queue.
-    private var heldAhead: Int?
+    /// it. At its start playback stops, or, when its local file was dropped
+    /// for the server, goes on from there. Cleared by every new queue.
+    private var heldAhead: HeldPoint?
+
+    struct HeldPoint {
+        let index: Int
+        let then: FailedLoad.LocalFallback
+    }
+
+    /// Where the local files of an item lie, and whether the network carries.
+    /// Both are the shared ones; a witness hands in its own.
+    private let localTracks: (String) -> [Int: URL]
+    private let isOnline: () -> Bool
     /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream
     /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
     /// (playback never begins). It would stall silently. Rebuilt per queue.
@@ -296,8 +307,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// (typical pocket-contact pattern, not deliberate multiple tapping).
     private let lockscreenSkipSuspicionCount = 5
 
-    init(provider: any AudioProvider) {
+    init(provider: any AudioProvider,
+         localTracks: @escaping (String) -> [Int: URL] = { DownloadManager.shared.localTrackMap(forItemId: $0) },
+         isOnline: @escaping () -> Bool = { NetworkMonitor.shared.isConnected }) {
         self.provider = provider
+        self.localTracks = localTracks
+        self.isOnline = isOnline
         super.init()
         configureAudioSession()
         observeInterruptions()
@@ -471,7 +486,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
 
-        localTrackFiles = DownloadManager.shared.localTrackMap(forItemId: item.id)
+        localTrackFiles = localTracks(item.id)
         trackRetryAttempts.removeAll()
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
@@ -480,7 +495,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if provider.capabilities.contains(.downloadable),
            DownloadManager.shared.isDownloaded(itemId: item.id),
            localTrackFiles.count < sortedTracks.count,
-           NetworkMonitor.shared.isConnected {
+           isOnline() {
             let provider = self.provider
             Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
         }
@@ -1327,16 +1342,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
         trackRetryAttempts.insert(index)
-        if let local = localTrackFiles[index], NetworkMonitor.shared.isConnected {
-            // Only drop the file when streaming can take over; offline the
-            // retry re-reads the same file (it may fail transiently).
-            try? FileManager.default.removeItem(at: local)
-            localTrackFiles[index] = nil
-            if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
-                let provider = self.provider
-                Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
-            }
-        }
+        // Only drop the file when streaming can take over; offline the
+        // retry re-reads the same file (it may fail transiently).
+        if isOnline() { dropLocalFile(at: index) }
         let idx = trackIndex(for: currentTime)
         let rebuilt = buildQueue(
             startingAtTrackIndex: idx,
@@ -1347,6 +1355,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
             isPlaying = false
             showSourceHint(.trackFailed)
             forgetCatalogAnswer()
+        }
+    }
+
+    /// A local file that failed is dropped and fetched again in the
+    /// background; until it is back, the track plays from the server. The
+    /// one place for both failure paths, mid-play and at load.
+    private func dropLocalFile(at index: Int) {
+        guard let local = localTrackFiles[index] else { return }
+        try? FileManager.default.removeItem(at: local)
+        localTrackFiles[index] = nil
+        if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
+            let provider = self.provider
+            Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
         }
     }
 
@@ -1368,42 +1389,69 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
         let inCurrentQueue = itemTrackIndex[failedItem] != nil
+        let fallback = inCurrentQueue && index >= currentTrackIndex && !isRadio
+            ? FailedLoad.localFallback(fromLocalFile: localTrackFiles[index] != nil,
+                                       retried: trackRetryAttempts.contains(index), online: isOnline())
+            : .none
+        if fallback == .stream {
+            trackRetryAttempts.insert(index)
+            dropLocalFile(at: index)
+            Logger.player.notice("LOADFAIL local file dropped track=\(index), plays on from the server")
+        }
         if FailedLoad.holdsAhead(failedIndex: index, currentIndex: currentTrackIndex,
-                                 inCurrentQueue: inCurrentQueue, heldAt: heldAhead) {
-            holdAhead(at: index)
+                                 inCurrentQueue: inCurrentQueue, heldAt: heldAhead?.index) {
+            holdAhead(at: index, then: fallback)
             return
         }
         guard FailedLoad.stopsPlayback(failedIndex: index, currentIndex: currentTrackIndex,
                                        inCurrentQueue: inCurrentQueue) else { return }
+        if fallback == .stream {
+            rebuildAtHeldPosition(reason: "local file")
+            return
+        }
         loadFailureNoted = true
         notePlayback("stopped", from: isRadio ? "radio item failed" : "item failed to load")
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(isRadio ? .streamFailed : .loadFailed)
+        showSourceHint(isRadio ? .streamFailed : Self.loadHint(fallback))
         forgetCatalogAnswer()
     }
 
-    /// A later track failed to load while an earlier one plays: the queue is
-    /// cut before it, so nothing behind it plays, and when the track before
-    /// it ends, playback stops at its start like a failure of the playing
-    /// item (mark, hint, the next play builds anew from there).
-    private func holdAhead(at index: Int) {
-        heldAhead = index
-        guard let player else { return }
-        let queued = player.items()
-        for item in queued where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
-            player.remove(item)
-        }
-        // The track before is now the last of the queue: its end is the
-        // held point, not the end of the book.
-        let before = queued.first { itemTrackIndex[ObjectIdentifier($0)] == index - 1 }
-        observeBookEnd(lastItem: before)
-        Logger.player.notice("LOADFAIL ahead track=\(index) queue ends before it, before=\(before != nil)")
+    /// The hint of a stopped load failure: a track without a way back is
+    /// unavailable; every other failure may be the network.
+    private static func loadHint(_ fallback: FailedLoad.LocalFallback) -> SourceHint {
+        fallback == .unavailable ? .trackFailed : .loadFailed
     }
 
-    private func stopAtHeldFailure(_ index: Int) {
-        guard heldAhead == index else { return }
+    /// A later track failed to load while an earlier one plays: the queue is
+    /// cut before it, so nothing behind it plays. When the queue's last item
+    /// ends, playback stops at the failed track's start like a failure of the
+    /// playing item (mark, hint, the next play builds anew from there), or
+    /// goes on from there when its local file was dropped for the server.
+    private func holdAhead(at index: Int, then: FailedLoad.LocalFallback) {
+        heldAhead = HeldPoint(index: index, then: then)
+        guard let player else { return }
+        for item in player.items() where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
+            player.remove(item)
+        }
+        // What is left ends at the held point, not at the end of the book.
+        // The last item left is the one before the failed track, or, when a
+        // track between had no address, the one before that.
+        let last = player.items().last
+        observeBookEnd(lastItem: last)
+        Logger.player.notice("LOADFAIL ahead track=\(index) queue ends before it, last=\(last.flatMap { self.itemTrackIndex[ObjectIdentifier($0)] } ?? -1)")
+    }
+
+    private func stopAtHeldFailure(_ held: HeldPoint) {
+        guard heldAhead?.index == held.index else { return }
+        let index = held.index
+        if held.then == .stream {
+            currentTime = trackAbsoluteStart(index)
+            let rebuilt = buildQueue(startingAtTrackIndex: index, seekWithin: 0)
+            Logger.player.notice("LOADFAIL held track=\(index) plays on from the server ok=\(rebuilt)")
+            if rebuilt { return }
+        }
         loadFailureNoted = true
         currentTrackIndex = index
         currentTime = trackAbsoluteStart(index)
@@ -1411,7 +1459,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(.loadFailed)
+        showSourceHint(Self.loadHint(held.then))
         forgetCatalogAnswer()
     }
 
