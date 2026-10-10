@@ -269,5 +269,29 @@ struct PlaybackNoticesTests {
         let settings = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8))
         #expect(settings.contains("NoticeLogView(notices: coordinator.notices)"), "the settings do not lead to the log")
     }
+
+    /// The two sentences of an unreadable download stand as decided, in
+    /// German too; a change of the wording is a decision, not an edit.
+    @Test("die zwei Saetze eines unlesbaren Downloads stehen im Katalog, wie entschieden")
+    func theUnreadableDownloadSentencesStandAsDecided() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let strings = try #require(json?["strings"] as? [String: Any], "the catalog was not read")
+        func german(_ key: String) -> String? {
+            let entry = strings[key] as? [String: Any]
+            let unit = ((entry?["localizations"] as? [String: Any])?["de"] as? [String: Any])?["stringUnit"] as? [String: Any]
+            return unit?["value"] as? String
+        }
+        let decided: [(PlaybackNotice, String, String)] = [
+            (.downloadUnreadable, "Download unreadable, playing from the server",
+             "Download nicht lesbar, läuft vom Server"),
+            (.downloadUnreadableOffline, "Download unreadable. Online it plays from the server.",
+             "Download nicht lesbar. Mit Netz läuft er vom Server."),
+        ]
+        for (notice, key, sentence) in decided {
+            #expect(strings[key] != nil, "the key of \(notice.kind) left the catalog")
+            #expect(german(key) == sentence, "\(notice.kind) says \(String(describing: german(key)))")
+        }
+    }
 }
 #endif
