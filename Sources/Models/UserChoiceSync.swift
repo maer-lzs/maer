@@ -210,6 +210,7 @@ nonisolated enum UserChoiceCatalog {
         "gpodderLastSyncedFeeds": .machine,
         "gpodderPendingRemoveLocal": .machine,
         "gpodderPendingRemoveServer": .machine,
+        "gpodderLeftOnServer": .machine,
         "gpodderDeviceRegisteredFor": .machine,
         "gpodderUserRemovedFeeds": .machine,
         "cloudQuotaViolationAt": .machine,

@@ -130,6 +130,9 @@ nonisolated enum AppStorageKeys {
     /// (normalised keys). One per side; a diff must persist across two runs.
     static let gpodderPendingRemoveLocal = "gpodderPendingRemoveLocal"
     static let gpodderPendingRemoveServer = "gpodderPendingRemoveServer"
+    /// Feeds found only on the gpodder server when this device went on with
+    /// another account (normalised keys): they stay there, unseen.
+    static let gpodderLeftOnServer = "gpodderLeftOnServer"
 
     static var gpodderServerURLValue: String {
         get { UserDefaults.standard.string(forKey: gpodderServerURL) ?? "" }

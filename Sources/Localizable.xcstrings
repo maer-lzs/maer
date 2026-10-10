@@ -2680,6 +2680,26 @@
         }
       }
     },
+    "Continue with this account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit diesem Konto weiterführen"
+          }
+        }
+      }
+    },
+    "Continue with this account…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit diesem Konto weiterführen…"
+          }
+        }
+      }
+    },
     "Continuing" : {
       "localizations" : {
         "de" : {
@@ -3375,6 +3395,16 @@
         }
       }
     },
+    "Disconnect gpodder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gpodder trennen"
+          }
+        }
+      }
+    },
     "Disconnect server" : {
       "localizations" : {
         "de" : {
@@ -4027,6 +4057,16 @@
         }
       }
     },
+    "Feeds that are only on the gpodder server stay there and are not added to this account." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feeds, die nur auf dem gpodder-Server stehen, bleiben dort und kommen nicht in dieses Konto."
+          }
+        }
+      }
+    },
     "Feeds work without any account. A server is only needed to keep subscriptions in sync across devices." : {
       "localizations" : {
         "de" : {
@@ -4453,6 +4493,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gothic & Industrial"
+          }
+        }
+      }
+    },
+    "gpodder is paused: it cannot be read which account the subscriptions belong to." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gpodder ist angehalten: es lässt sich nicht lesen, welchem Konto die Abos gehören."
+          }
+        }
+      }
+    },
+    "gpodder is paused: your subscriptions now belong to a different account. This device is still signed in to the same gpodder account as before." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gpodder ist angehalten: die Abos gehören jetzt einem anderen Konto. Die gpodder-Anmeldung dieses Geräts ist dieselbe wie vorher."
           }
         }
       }

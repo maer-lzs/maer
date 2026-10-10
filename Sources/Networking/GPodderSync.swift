@@ -145,10 +145,11 @@ final class GPodderSync {
         let client = GPodderClient(config: config)
         guard (try? await client.login()) != nil,
               let serverURLs = try? await client.subscriptions() else { return nil }
-        let serverRaw = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
-                                   uniquingKeysWith: { a, _ in a })
         let visible = GPodderVisibleSubscriptions.current()
         let localRaw = visible.byNorm
+        let serverRaw = GPodderVisibleSubscriptions.withoutLeftOnServer(
+            Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) }, uniquingKeysWith: { a, _ in a }),
+            GPodderVisibleSubscriptions.currentLeftOnServer(local: Set(localRaw.keys)))
         return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),
                                 localRaw: localRaw, serverRaw: serverRaw)
     }
@@ -168,9 +169,13 @@ final class GPodderSync {
         }
     }
 
-    /// The same, with the server's one request as a seam.
+    /// The same, with the server's one request as a seam. While gpodder
+    /// rests it changes nothing and says why: resolving would take the
+    /// feeds of the account before into this one, or remove them.
     func applyConflictResolution(_ actions: GPodderConflictResolution.Actions, snapshot: ConflictSnapshot,
+                                 rest: GPodderRest = GPodderSync.rest(on: MaerDatabase.restingShelf),
                                  upload: (_ add: [String], _ remove: [String]) async throws -> Void) async -> String? {
+        if let sentence = rest.sentence { return sentence }
         let subs = PodcastSubscriptions.shared
         // Server side (one request): push kept local-only, remove dropped server-only.
         let add = actions.addToServer.compactMap { snapshot.localRaw[$0] }
@@ -226,27 +231,93 @@ final class GPodderSync {
         cleared.save()
     }
 
-    /// Whether gpodder may run: its account belongs to the device, not to
-    /// the sync account. After a change of account its round would take the
-    /// feeds of the account before from its server into the new account's
-    /// subscriptions, so it rests while another account holds them than the
-    /// one it ran for (`RestingShelf.follows`). How the person sees and ends
-    /// that rest is an open question; until then it rests silently, with a
-    /// log line. A shelf that cannot be read rests it too.
+    /// Whether gpodder may run (`GPodderRest.runs`).
     static func followsTheSubscriptions(on shelf: RestingShelf?, quietly: Bool = false) -> Bool {
-        guard let shelf else { return true }
+        rest(on: shelf, quietly: quietly) == .runs
+    }
+
+    /// Whether gpodder runs or rests, and why: its account belongs to the
+    /// device, not to the sync account. After a change of account its round
+    /// would take the feeds of the account before from its server into the
+    /// new account's subscriptions, so it rests while another account holds
+    /// them than the one it ran for (`RestingShelf.follows`), until the
+    /// person goes on with this account or disconnects gpodder. A shelf that
+    /// cannot be read rests it too.
+    static func rest(on shelf: RestingShelf?, quietly: Bool = false) -> GPodderRest {
+        guard let shelf else { return .runs }
         do {
-            guard try shelf.follows("gpodder", holderOf: PodcastSubscriptions.shelfFamily) else {
+            guard try shelf.follows(shelfFamily, holderOf: PodcastSubscriptions.shelfFamily) else {
                 if !quietly {
                     Logger.gpodder.notice("GPODDER rests: the subscriptions belong to another account than the one it ran for")
                 }
-                return false
+                return .restsAfterSwitch
             }
-            return true
+            return .runs
         } catch {
             Logger.gpodder.error("GPODDER rests: owner unreadable reason=\(String(describing: error), privacy: .public)")
-            return false
+            return .ownerUnreadable
         }
+    }
+
+    /// gpodder's name on the shelf, where it follows the subscriptions.
+    static let shelfFamily = "gpodder"
+
+    /// Goes on with the account that holds the subscriptions now. The feeds
+    /// only on the gpodder server came from the account before: they stay
+    /// there, never taken into this account and never removed from the
+    /// server (`GPodderVisibleSubscriptions.withoutLeftOnServer`). The
+    /// prior state becomes what both sides share, so this account's own
+    /// feeds go to the server on the next round. gpodder follows the holder
+    /// only once that is written; an error leaves the rest standing.
+    func continueWithThisAccount() async -> String? {
+        guard let config else { return String(localized: "Please fill in server, username and password.") }
+        let client = GPodderClient(config: config)
+        do {
+            try await client.login()
+            let serverURLs = try await client.subscriptions()
+            return continueWithThisAccount(serverURLs: serverURLs, shelf: MaerDatabase.restingShelf)
+        } catch {
+            return ErrorSentence.of(error)
+        }
+    }
+
+    /// The same, with the server's list handed in.
+    func continueWithThisAccount(serverURLs: [String], shelf: RestingShelf?) -> String? {
+        let server = Set(serverURLs.map(PodcastSubscriptions.normalizeFeedURL))
+        let local = Set(GPodderVisibleSubscriptions.current().byNorm.keys)
+        let left = GPodderVisibleSubscriptions.leftOnServer(server: server, local: local)
+        AppStorageKeys.set(Array(left), for: AppStorageKeys.gpodderLeftOnServer)
+        AppStorageKeys.set(Array(local.intersection(server)), for: AppStorageKeys.gpodderLastSyncedFeeds)
+        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveLocal)
+        AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveServer)
+        do {
+            try shelf?.adopt(Self.shelfFamily, holderOf: PodcastSubscriptions.shelfFamily)
+        } catch {
+            Logger.gpodder.error("GPODDER continue: holder not written reason=\(String(describing: error), privacy: .public)")
+            return ErrorSentence.of(error)
+        }
+        Logger.gpodder.notice("GPODDER continues with this account: left on the server=\(left.count) shared=\(local.intersection(server).count)")
+        return nil
+    }
+
+    /// Signs this device out of gpodder: address, name, password and the
+    /// state of the rounds go; nothing changes on the gpodder server. gpodder
+    /// then follows the account that holds the subscriptions, so a new
+    /// sign-in starts as a first one.
+    func disconnect(shelf: RestingShelf? = MaerDatabase.restingShelf) {
+        for key in [AppStorageKeys.gpodderServerURL, AppStorageKeys.gpodderUsername,
+                    AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
+                    AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderLeftOnServer,
+                    AppStorageKeys.gpodderDeviceRegisteredFor] {
+            AppStorageKeys.remove(key)
+        }
+        AppStorageKeys.setGpodderPassword("")
+        do {
+            try shelf?.adopt(Self.shelfFamily, holderOf: PodcastSubscriptions.shelfFamily)
+        } catch {
+            Logger.gpodder.error("GPODDER disconnect: holder not written reason=\(String(describing: error), privacy: .public)")
+        }
+        Logger.gpodder.notice("GPODDER disconnected on this device, the server unchanged")
     }
 
     /// Reconcile subscriptions (and history – part 2). Idempotent, never two at once.
@@ -341,7 +412,8 @@ final class GPodderSync {
         // (neither adopted nor cleaned up), otherwise the asymmetry becomes
         // a tug-of-war between two devices.
         let visibleServerByNorm = GPodderVisibleSubscriptions.visibleServerURLs(
-            serverByNorm, premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled)
+            serverByNorm, premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled,
+            leftOnServer: GPodderVisibleSubscriptions.currentLeftOnServer(local: Set(localByNorm.keys)))
         let prev = Set(AppStorageKeys.stringArray(AppStorageKeys.gpodderLastSyncedFeeds) ?? [])
         // 2–3-feed removals awaiting their second confirmation (from last run).
         let prevPendingLocal = Set(AppStorageKeys.stringArray(AppStorageKeys.gpodderPendingRemoveLocal) ?? [])
@@ -688,5 +760,28 @@ extension GPodderSync.StoredReport {
     func save() {
         guard let data = try? JSONEncoder().encode(self) else { return }
         AppStorageKeys.set(data, for: Self.key)
+    }
+}
+
+/// Whether gpodder runs, and if not, why. Read at one place
+/// (`GPodderSync.rest`); the round, the playback push, the conflict path and
+/// the settings ask it.
+nonisolated enum GPodderRest: Equatable, Sendable {
+    case runs
+    /// Another account holds the subscriptions than the one gpodder ran for.
+    case restsAfterSwitch
+    /// Whose the subscriptions are cannot be read.
+    case ownerUnreadable
+
+    /// What the person reads while gpodder rests; nil while it runs.
+    var sentence: String? {
+        switch self {
+        case .runs:
+            return nil
+        case .restsAfterSwitch:
+            return String(localized: "gpodder is paused: your subscriptions now belong to a different account. This device is still signed in to the same gpodder account as before.")
+        case .ownerUnreadable:
+            return String(localized: "gpodder is paused: it cannot be read which account the subscriptions belong to.")
+        }
     }
 }

@@ -161,6 +161,14 @@ nonisolated struct RestingShelf: Sendable {
         return own == holder
     }
 
+    /// `family` follows the holder of `other` from now on: the person chose
+    /// to go on with the account that holds it. No holder of `other` leaves
+    /// `family` as it is.
+    func adopt(_ family: String, holderOf other: String) throws {
+        guard let holder = try holding(of: other)?.owner else { return }
+        try setHolding(.init(owner: holder), of: family)
+    }
+
     /// The replacement for `scope` landed: the holding says so, unless
     /// another switch or replacement began meanwhile (`replacement`: the
     /// name of the one that landed; nil settles any for `scope`).

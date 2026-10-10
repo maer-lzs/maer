@@ -23,9 +23,22 @@ struct GPodderSettingsView: View {
     @State private var statusIsError = false
     // Last sync outcome, persisted across restarts (sticky guard warning).
     @State private var storedReport = GPodderSync.shared.storedReport
+    /// Whether gpodder runs or rests after a change of account.
+    @State private var rest = GPodderSync.rest(on: MaerDatabase.restingShelf, quietly: true)
+    @State private var confirmsContinue = false
+    @State private var confirmsDisconnect = false
 
     var body: some View {
         Form {
+            if rest == .restsAfterSwitch, let sentence = rest.sentence {
+                Section {
+                    HintLine(systemImage: "pause.circle") { Text(sentence) }
+                    Button("Continue with this account…") { confirmsContinue = true }
+                        .disabled(isSyncing)
+                    Button("Disconnect gpodder", role: .destructive) { confirmsDisconnect = true }
+                        .disabled(isSyncing)
+                }
+            }
             Section {
                 CredentialField.serverURL("Server URL", text: $serverURL,
                                           id: "gpodder-url",
@@ -75,6 +88,13 @@ struct GPodderSettingsView: View {
 
                 Button {
                     save()
+                    // While gpodder rests, the button says so instead of a
+                    // round that ran nothing and would read "in sync".
+                    rest = GPodderSync.rest(on: MaerDatabase.restingShelf, quietly: true)
+                    if let sentence = rest.sentence {
+                        setStatus(sentence, isError: false)
+                        return
+                    }
                     isSyncing = true
                     Task {
                         let r = await GPodderSync.shared.reconcile()
@@ -133,6 +153,34 @@ struct GPodderSettingsView: View {
         }
         .navigationTitle("gpodder Sync")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("Continue with this account…", isPresented: $confirmsContinue, titleVisibility: .visible) {
+            Button("Continue with this account") {
+                save()
+                isSyncing = true
+                Task {
+                    if let error = await GPodderSync.shared.continueWithThisAccount() {
+                        setStatus(error, isError: true)
+                    } else {
+                        let r = await GPodderSync.shared.reconcile()
+                        setStatus(syncSummary(r), isError: r.error != nil)
+                        storedReport = GPodderSync.shared.storedReport
+                    }
+                    rest = GPodderSync.rest(on: MaerDatabase.restingShelf, quietly: true)
+                    isSyncing = false
+                }
+            }
+        } message: {
+            Text("Feeds that are only on the gpodder server stay there and are not added to this account.")
+        }
+        .confirmationDialog("Disconnect gpodder", isPresented: $confirmsDisconnect, titleVisibility: .visible) {
+            Button("Disconnect gpodder", role: .destructive) {
+                GPodderSync.shared.disconnect()
+                serverURL = ""
+                username = ""
+                password = ""
+                rest = GPodderSync.rest(on: MaerDatabase.restingShelf, quietly: true)
+            }
+        }
         .alert("Podcast source changed", isPresented: Binding(
             get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
         )) { Button("OK", role: .cancel) {} } message: { Text(podcastServerNote ?? "") }
