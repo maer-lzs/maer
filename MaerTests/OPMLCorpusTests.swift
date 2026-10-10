@@ -11,10 +11,12 @@ import Testing
 /// Loads fixture files from the test bundle. They live under
 /// `MaerTests/Fixtures/<subdirectory>`, but the synced folder bundles them
 /// flat (measured 08.10.2026: every fixture at the bundle's root), so the
-/// bundle is asked by name, and the subdirectory says nothing there. Where
-/// the tests folder lies beside, the file must stand under the subdirectory
-/// the caller names, with the same bytes: a caller naming a folder that
-/// does not hold the file is red, not read by its name alone.
+/// bundle is asked by name, and the subdirectory says nothing there. The
+/// loader only delivers the bytes. Whether the bundled file is the one
+/// under `Fixtures/`, and whether a caller names the folder that holds it,
+/// is asked by `CorpusFixtureTests`, which needs the tests folder and shows
+/// as skipped without it; inside the loader that comparison fell away
+/// silently in a copy without the tests folder.
 final class CorpusFixtureToken {}
 enum CorpusFixture {
     nonisolated static func data(_ name: String, ext: String, subdirectory: String) throws -> Data {
@@ -22,14 +24,103 @@ enum CorpusFixture {
         let url = bundle.url(forResource: name, withExtension: ext, subdirectory: "Fixtures/\(subdirectory)")
             ?? bundle.url(forResource: name, withExtension: ext, subdirectory: subdirectory)
             ?? bundle.url(forResource: name, withExtension: ext)
-        let data = try Data(contentsOf: try #require(url, "fixture \(name).\(ext) not in test bundle"))
-        if SourceTree.hasTests {
-            let named = SourceTree.root.appendingPathComponent("MaerTests/Fixtures/\(subdirectory)/\(name).\(ext)")
-            let source = try #require(try? Data(contentsOf: named),
-                                      "fixture \(name).\(ext) is not under Fixtures/\(subdirectory)")
-            try #require(source == data, "fixture \(name).\(ext) in the bundle is another file than under Fixtures/\(subdirectory)")
+        return try Data(contentsOf: try #require(url, "fixture \(name).\(ext) not in test bundle"))
+    }
+}
+
+/// The two questions the loader no longer asks, each a witness of its own
+/// that needs the tests folder.
+struct CorpusFixtureTests {
+    /// Every fixture file, by its path below `MaerTests/Fixtures`.
+    static func fixtureFiles() throws -> [String] {
+        let folder = SourceTree.root.appendingPathComponent("MaerTests/Fixtures")
+        let walker = try #require(FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey]))
+        var found: [String] = []
+        for case let url as URL in walker where !url.lastPathComponent.hasPrefix(".")
+            && (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
+            found.append(String(SourceTree.relativePath(of: url).dropFirst("MaerTests/Fixtures/".count)))
         }
-        return data
+        return found.sorted()
+    }
+
+    @Test("jede Fixture im Testbuendel ist dieselbe Datei wie unter Fixtures/", .needsTheTests)
+    func everyBundledFixtureIsTheFileUnderFixtures() throws {
+        let files = try Self.fixtureFiles()
+        #expect(files.contains("OPMLCorpus/OPML-MANIFEST.json"), "the witness does not find the fixtures: \(files.count)")
+        // The bundle is flat: two fixtures with one name would be one file there.
+        let byName = Dictionary(grouping: files) { ($0 as NSString).lastPathComponent }
+        let twice = byName.filter { $0.value.count > 1 }.keys.sorted()
+        #expect(twice.isEmpty, "two fixtures share a name, the flat bundle holds only one: \(twice)")
+        let bundle = Bundle(for: CorpusFixtureToken.self)
+        var missing: [String] = []
+        var other: [String] = []
+        for relative in files {
+            let file = relative as NSString
+            let name = (file.lastPathComponent as NSString).deletingPathExtension
+            let ext = file.pathExtension
+            guard let url = bundle.url(forResource: name, withExtension: ext.isEmpty ? nil : ext) else {
+                missing.append(relative); continue
+            }
+            let source = try Data(contentsOf: SourceTree.root.appendingPathComponent("MaerTests/Fixtures/\(relative)"))
+            if try Data(contentsOf: url) != source { other.append(relative) }
+        }
+        #expect(missing.isEmpty, "under Fixtures/ but not in the test bundle: \(missing)")
+        #expect(other.isEmpty, "the bundle holds another file than under Fixtures/: \(other)")
+    }
+
+    /// The arguments of every loader call in a source: a literal stands
+    /// without its quotes, anything else is nil.
+    nonisolated static func loaderCalls(in code: String) -> [(name: String?, ext: String?, subdirectory: String?)] {
+        let call = #/CorpusFixture\.data\(\s*([^,\n]+?)\s*,\s*ext:\s*([^,\n]+?)\s*,\s*subdirectory:\s*([^)\n]+?)\s*\)/#
+        func literal(_ raw: Substring) -> String? {
+            guard let match = raw.wholeMatch(of: #/"([^"\\]*)"/#) else { return nil }
+            return String(match.output.1)
+        }
+        return code.matches(of: call).map { (literal($0.output.1), literal($0.output.2), literal($0.output.3)) }
+    }
+
+    @Test("jeder Aufruf des Laders nennt den Ordner, in dem seine Datei liegt", .needsTheTests)
+    func everyLoaderCallNamesTheFolderOfItsFile() throws {
+        let fixtures = SourceTree.root.appendingPathComponent("MaerTests/Fixtures")
+        var named: Set<String> = []
+        var wrong: [String] = []
+        for folder in ["MaerTests", "MaerUITests"] {
+            let walker = try #require(FileManager.default.enumerator(
+                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+                for call in Self.loaderCalls(in: code) {
+                    // A folder built at run time (`Shared/\(area)`) is the
+                    // shared cases' own fence.
+                    guard let subdirectory = call.subdirectory else { continue }
+                    let place = fixtures.appendingPathComponent(subdirectory)
+                    if let name = call.name, let ext = call.ext {
+                        named.insert("\(subdirectory)/\(name).\(ext)")
+                        if !FileManager.default.fileExists(atPath: place.appendingPathComponent("\(name).\(ext)").path) {
+                            wrong.append("\(url.lastPathComponent): \(subdirectory)/\(name).\(ext)")
+                        }
+                    } else {
+                        // A name built at run time: the folder must exist and
+                        // hold files of the named kind.
+                        let held = (try? FileManager.default.contentsOfDirectory(atPath: place.path)) ?? []
+                        if held.isEmpty || (call.ext.map { ext in !held.contains { $0.hasSuffix(".\(ext)") } } ?? false) {
+                            wrong.append("\(url.lastPathComponent): \(subdirectory)/* .\(call.ext ?? "?")")
+                        }
+                    }
+                }
+            }
+        }
+        // The precondition names a call the witness must see: the manifest.
+        #expect(named.contains("OPMLCorpus/OPML-MANIFEST.json"), "the witness does not find the loader calls: \(named.count)")
+        #expect(wrong.isEmpty, "a loader call names a folder that does not hold its file: \(wrong)")
+        // Calibration, written with escaped quotes so this file's own text is
+        // no call: one line, a name built at run time, a folder built at run time.
+        let one = Self.loaderCalls(in: "CorpusFixture.data(\"a\", ext: \"json\", subdirectory: \"OPMLCorpus\")")
+        #expect(one.count == 1 && one.first?.name == "a" && one.first?.ext == "json" && one.first?.subdirectory == "OPMLCorpus")
+        let built = Self.loaderCalls(in: "CorpusFixture.data(name, ext: \"xml\", subdirectory: \"RSSEdgeCorpus\")")
+        #expect(built.count == 1 && built.first?.name == nil && built.first?.subdirectory == "RSSEdgeCorpus")
+        let shared = Self.loaderCalls(in: "CorpusFixture.data(name, ext: \"json\", subdirectory: \"Shared/\\(area)\")")
+        #expect(shared.count == 1 && shared.first?.subdirectory == nil)
     }
 }
 
