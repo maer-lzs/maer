@@ -134,6 +134,29 @@ struct FailedLoadTests {
         return url
     }
 
+    /// The witnesses that play a generated tone stand on a simulator that
+    /// plays audio at all. Measured on a gate simulator whose CoreAudio had
+    /// no system object: every item failed (-11800 under -12746), a tone
+    /// from AVAudioFile and a WAV written byte by byte alike, while the asset
+    /// said it was playable. There the witness says so instead of failing on
+    /// the rule.
+    private func requireAudioHere(_ url: URL) async throws {
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
+        let player = AVPlayer(playerItem: item)
+        let deadline = Date().addingTimeInterval(5)
+        while item.status == .unknown, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        let error = item.error.map { error -> String in
+            let outer = error as NSError
+            let inner = outer.userInfo[NSUnderlyingErrorKey] as? NSError
+            return "\(outer.code) under \(inner?.code ?? 0)"
+        } ?? "none"
+        try #require(item.status == .readyToPlay,
+                     "this simulator plays no local audio file (status \(item.status.rawValue), error \(error)); the witness cannot measure the rule here")
+        player.replaceCurrentItem(with: nil)
+    }
+
     @Test("eine spaetere Datei, die nicht laden kann, haelt an ihrem Anfang an, die Position springt nicht ueber sie")
     func aLaterFailedTrackHoldsAtItsStart() async throws {
         let first = try tone(seconds: 1)
@@ -142,6 +165,7 @@ struct FailedLoadTests {
             try? FileManager.default.removeItem(at: first)
             try? FileManager.default.removeItem(at: third)
         }
+        try await requireAudioHere(first)
         let tracks = [
             ABSAudioTrack(index: 0, startOffset: 0, duration: 1, contentUrl: first.path, metadata: nil),
             ABSAudioTrack(index: 1, startOffset: 1, duration: 1, contentUrl: "second.mp3", metadata: nil),
@@ -205,6 +229,7 @@ struct FailedLoadTests {
     func aBrokenLocalFilePlaysOnFromTheServer() async throws {
         let server = try tone(seconds: 3)
         defer { try? FileManager.default.removeItem(at: server) }
+        try await requireAudioHere(server)
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
         for local in [missing, try brokenFile()] {
             let online = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: local] }, isOnline: { true })
@@ -238,6 +263,7 @@ struct FailedLoadTests {
         defer {
             for url in [first, server, broken] { try? FileManager.default.removeItem(at: url) }
         }
+        try await requireAudioHere(first)
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [1: broken] }, isOnline: { true })
         await model.load(item: detail([(first.path, 1), (server.path, 2)]))
         model.play()
