@@ -68,5 +68,37 @@ struct PlayerDismissZoneTests {
         let zone = PlayerDismissZones.bottomZone(controlsFrame: controls, containerHeight: 900)
         #expect(zone.height == 0)
     }
+
+    /// The four layouts measured on the app image (iPhone 17, a stopping
+    /// notice standing): the slot lies below, beside or above the controls,
+    /// never over them, and the pill fits in it. Where the controls fill the
+    /// visible player there is no slot.
+    @Test("die Pille im grossen Player steht nie ueber der Steuerung: unter, neben oder ueber ihr, sonst gar nicht")
+    func theNoticeSlotNeverCoversTheControls() throws {
+        let pill: CGFloat = 38
+        let upright = CGSize(width: 402, height: 874)
+        let sideways = CGSize(width: 874, height: 402)
+        let cases: [(String, CGRect, CGSize, CGFloat, CGFloat, CGFloat?)] = [
+            // name, controls, container, top inset, bottom inset, expected slot top (nil: none)
+            ("hochkant", CGRect(x: 16, y: 360, width: 370, height: 429), upright, 62, 34, 797),
+            ("hochkant AX3", CGRect(x: 16, y: 420, width: 370, height: 900), upright, 62, 34, 62),
+            ("quer", CGRect(x: 370, y: 20, width: 472, height: 383), sideways, 0, 21, 0),
+            ("quer AX3", CGRect(x: 370, y: 20, width: 472, height: 700), sideways, 0, 21, 0),
+            ("gescrollt AX3", CGRect(x: 16, y: -300, width: 370, height: 1400), upright, 62, 34, nil),
+        ]
+        for (name, controls, container, top, bottom, expectedTop) in cases {
+            let slot = PlayerDismissZones.noticeSlot(controlsFrame: controls, container: container,
+                                                     topInset: top, bottomInset: bottom, pillHeight: pill)
+            let slotTop = slot?.minY
+            #expect(slotTop == expectedTop, "\(name): slot \(String(describing: slot))")
+            guard let slot else { continue }
+            #expect(!slot.intersects(controls), "\(name): the slot lies over the controls \(slot)")
+            #expect(slot.height >= pill, "\(name): the pill does not fit \(slot)")
+            #expect(slot.maxY <= container.height - bottom, "\(name): the slot runs into the bottom inset \(slot)")
+        }
+        #expect(PlayerDismissZones.noticeSlot(controlsFrame: nil, container: upright,
+                                              topInset: 62, bottomInset: 34, pillHeight: pill) == nil,
+                "a slot while the controls frame is unknown")
+    }
 }
 #endif

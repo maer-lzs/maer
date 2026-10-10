@@ -6,9 +6,9 @@
 import SwiftUI
 
 /// Global, transient glass pill (icon + short text) showing where the current
-/// state comes from and how it is saved. Hosted ONCE centrally as an overlay in
-/// the library's NavigationStack, so it appears on every level (library, book
-/// detail, full player).
+/// state comes from and how it is saved. Two hosts: above the mini bar in the
+/// library, on every level of its stack (`LibraryView`), and in the full
+/// player, in the space its controls leave free (`FullPlayerOverlay`).
 ///
 /// Its own view observing the one channel (`PlaybackNotices`), so a notice
 /// arrives without any other redraw; what shows, and for how long, the

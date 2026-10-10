@@ -413,14 +413,23 @@ nonisolated final class MaerUITests: XCTestCase {
 
     /// The full player's title line navigates to the source page —
     /// player minimizes (keeps playing, mini bar visible), detail is pushed.
+    /// A stopping notice stands (`-uitest-notice`): its pill lies over no
+    /// control of the full player, the title beside it still answers, and
+    /// back in the full player a tap on the pill opens the log.
     func testPlayerNavigatesToSource() {
-        let app = launchSeeded(withActivePlayer: true)
+        let app = launchSeeded(withActivePlayer: true, extra: ["-uitest-notice"])
         // The bar's STABLE handle; its label is the running title.
         let mini = app.buttons["mini-player"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
         let title = app.buttons["player-source-title"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 15), "book title must be tappable (source target)")
+        let pill = app.buttons["notice-pill"].firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the stopping notice must stand in the full player")
+        let covered = app.buttons.allElementsBoundByIndex.filter {
+            ($0.identifier.hasPrefix("player-") || $0.label == "AirPlay") && $0.frame.intersects(pill.frame)
+        }.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
+        XCTAssertEqual(covered, [], "controls of the full player lie under the pill")
         title.tap()
         // Player minimized: the mini bar is back …
         XCTAssertTrue(mini.waitForExistence(timeout: 10), "player must MINIMIZE, playback keeps running")
@@ -428,6 +437,13 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10),
                       "a source page must be pushed onto the stack")
         snap(app, "player-to-source")
+        // Back in the full player, the pill takes its own tap: no dismiss
+        // zone lies over it.
+        mini.tap()
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the stopping notice must stand in the full player again")
+        pill.tap()
+        XCTAssertTrue(app.navigationBars["Meldungen"].firstMatch.waitForExistence(timeout: 10),
+                      "a tap on the pill in the full player must open the log")
     }
 
     /// A foreign import shows its preview BEFORE anything is written, and

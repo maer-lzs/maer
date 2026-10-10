@@ -387,10 +387,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
     }
 
-    /// The title cannot play: the sentence stands in the full player and,
-    /// through the channel, over the mini bar until the next start.
+    /// The title cannot play: the sentence stands in the pill of the channel,
+    /// in the full player and over the mini bar, until the next start. Only
+    /// there: the line under the controls (`errorMessage`) carries what lasts
+    /// beyond the pill, a sync failure, and would say this sentence twice.
     private func cannotPlay(_ sentence: String) {
-        errorMessage = sentence
         showSourceHint(.cannotPlay(sentence))
     }
 

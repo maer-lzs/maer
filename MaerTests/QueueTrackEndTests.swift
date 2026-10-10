@@ -197,9 +197,11 @@ struct QueueTrackEndTests {
         let library = try Self.source("Sources/Views/LibraryView.swift")
         #expect(library.contains("ResumeMessageBanner(notices: playerCoordinator.notices)"),
                 "the pill above the mini bar does not read the channel")
-        let player = try Self.source("Sources/Views/PlayerView.swift")
+        let player = try Self.source("Sources/Views/FullPlayerOverlay.swift")
         #expect(player.contains("ResumeMessageBanner(notices: coordinator.notices)"),
                 "the pill in the full player does not read the channel")
+        #expect(player.contains("PlayerDismissZones.noticeSlot("),
+                "the pill in the full player stands outside the free space the controls leave")
     }
 
     /// An open by id that resolves nothing starts nothing; the line is the

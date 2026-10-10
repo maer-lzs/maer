@@ -214,7 +214,7 @@ struct PlaybackNoticesTests {
         #expect(notices.log.map(\.kind) == [.localUsed])
     }
 
-    @Test("ein Titel ohne Spur sagt es ueber dem Mini-Player, bis zum naechsten Start")
+    @Test("ein Titel ohne Spur sagt es in der Pille bis zum naechsten Start, im grossen Player genau einmal")
     func aTitleThatCannotPlaySaysSo() async {
         let id = "rss:notice-cannot:\(UUID().uuidString)"
         let detail = LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil),
@@ -222,7 +222,8 @@ struct PlaybackNoticesTests {
         let model = PlayerViewModel(provider: MockProvider())
         await model.load(item: detail)
         #expect(model.sourceHint?.kind == .cannotPlay, "the load error stayed in the full player only")
-        #expect(model.errorMessage == model.sourceHint?.label, "pill and full player say different sentences")
+        let line = model.errorMessage
+        #expect(line == nil, "the full player says the sentence twice, in the pill and on the line: \(String(describing: line))")
         #expect(NoticeRule.answer(.cannotPlay).holdsUntilPlay)
     }
 
@@ -246,6 +247,32 @@ struct PlaybackNoticesTests {
                 "a sync failure that says nothing over the mini bar, or says it on every round")
         let library = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
         #expect(!library.contains("playerCoordinator.loadError"), "the library shows a failed open on a line of its own")
+    }
+
+    /// A sync failure lasts beyond its pill: both failure sites set the line
+    /// under the controls before they say the pill, the full player shows
+    /// that line, and the channel, whose pill goes after its time, never
+    /// touches it.
+    @Test("ein andauernder Sync-Fehler steht nach der Pille weiter als Zeile im grossen Player", .needsTheSources)
+    func aLastingSyncFailureStaysAsTheLine() throws {
+        let root = SourceTree.root
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
+        let pill = "if syncStatus != .failed { showSourceHint(.syncFailed) }"
+        let before = sync.components(separatedBy: pill).dropLast()
+        #expect(before.count == 2, "the precondition: the two failure sites were read, \(before.count)")
+        // The line carries the failure's sentence, not just any assignment.
+        let withLine = before.filter {
+            let site = $0.suffix(160)
+            return site.contains("errorMessage = ") && site.contains("ErrorSentence.of(error)")
+        }
+        #expect(withLine.count == before.count, "a sync failure says only the pill, which goes after its time")
+        let player = try code("Sources/Views/PlayerView.swift")
+        #expect(player.contains("if let error = viewModel.errorMessage {"), "the full player shows no line under the controls")
+        let channel = try code("Sources/ViewModels/PlaybackNotices.swift") + (try code("Sources/Models/PlaybackNotice.swift"))
+        #expect(!channel.contains("errorMessage"), "the channel's timer reaches the line")
     }
 
     /// The real open, not the door alone: offline, a title that is not on

@@ -44,6 +44,39 @@ nonisolated enum PlayerDismissZones {
         let top = controls.maxY + controlsMargin
         return (top, max(0, containerHeight - top))
     }
+
+    /// Narrowest space beside the controls that takes the notice pill.
+    static let noticeSlotMinWidth: CGFloat = 160
+
+    /// The free space the notice pill stands in, never over a control:
+    /// first below the controls, then beside them (side by side, over the
+    /// cover), then above them (over the cover). The pill hangs above the
+    /// dismiss zones, so its tap arrives; the zones keep everything else.
+    /// Nil while the controls frame is unknown or no free space in the
+    /// visible container holds the pill; the notice then stays in the log.
+    static func noticeSlot(controlsFrame: CGRect?, container: CGSize,
+                           topInset: CGFloat, bottomInset: CGFloat, pillHeight: CGFloat) -> CGRect? {
+        guard let controls = controlsFrame, controls.height > 0 else { return nil }
+        let left = sideStripWidth
+        let right = container.width - sideStripWidth
+        let top = topInset
+        let bottom = container.height - bottomInset
+        // The spans are compared before a rect is built: a CGRect reports
+        // the size of a negative span as positive.
+        let belowTop = controls.maxY + controlsMargin
+        if bottom - belowTop >= pillHeight {
+            return CGRect(x: left, y: belowTop, width: right - left, height: bottom - belowTop)
+        }
+        let besideRight = controls.minX - controlsMargin
+        if besideRight - left >= noticeSlotMinWidth, bottom - top >= pillHeight {
+            return CGRect(x: left, y: top, width: besideRight - left, height: bottom - top)
+        }
+        let aboveBottom = controls.minY - controlsMargin
+        if aboveBottom - top >= pillHeight {
+            return CGRect(x: left, y: top, width: right - left, height: aboveBottom - top)
+        }
+        return nil
+    }
 }
 
 /// Reports the frame of the player's controls column (chapter header, scrubber,

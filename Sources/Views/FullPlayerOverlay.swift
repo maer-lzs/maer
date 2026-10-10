@@ -26,6 +26,9 @@ struct FullPlayerOverlay: View {
     /// top and bottom zones are capped against it so they never cover the
     /// chapter buttons or the scrubber; the side strips stay clear by width.
     @State private var controlsFrame: CGRect?
+    /// Rendered height of the notice pill, kept while no notice shows, so
+    /// the next notice is placed at its real height at once.
+    @State private var noticePillHeight: CGFloat = 0
     private let dismissThreshold: CGFloat = 180
 
     init(
@@ -72,6 +75,7 @@ struct FullPlayerOverlay: View {
                 sideDismissZones
                 topDismissZone
                 bottomDismissZone
+                noticePill
                 grabHandle
             }
             // Anchor for the controls-frame preference reported by PlayerView:
@@ -114,6 +118,27 @@ struct FullPlayerOverlay: View {
             shape
                 .fill(.ultraThinMaterial)
                 .overlay(shape.fill(Color.black.opacity(0.45)))
+        }
+    }
+
+    /// The same pill of the one channel as above the mini bar, in the free
+    /// space the controls leave (`PlayerDismissZones.noticeSlot`), never over
+    /// a control. It stands above the dismiss zones, so a tap on it opens the
+    /// log; it takes only its own capsule, the zones keep everything beside.
+    private var noticePill: some View {
+        GeometryReader { proxy in
+            if let slot = PlayerDismissZones.noticeSlot(
+                controlsFrame: controlsFrame, container: proxy.size,
+                topInset: topInset, bottomInset: bottomInset, pillHeight: noticePillHeight) {
+                ResumeMessageBanner(notices: coordinator.notices)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+                        if height > 0 { noticePillHeight = height }
+                    }
+                    .frame(width: slot.width, height: slot.height, alignment: .bottom)
+                    .offset(x: slot.minX, y: slot.minY)
+                    // The full player is always dark. Keep the pill dark too.
+                    .environment(\.colorScheme, .dark)
+            }
         }
     }
 
