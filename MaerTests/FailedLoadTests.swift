@@ -34,7 +34,8 @@ struct FailedLoadTests {
         #expect(FailedLoad.localFallback(fromLocalFile: true, retried: false, online: true) == .stream)
         #expect(FailedLoad.localFallback(fromLocalFile: true, retried: false, online: false) == .unavailable)
         #expect(FailedLoad.localFallback(fromLocalFile: true, retried: true, online: true) == .unavailable)
-        #expect(FailedLoad.localFallback(fromLocalFile: false, retried: true, online: true) == .unavailable)
+        #expect(FailedLoad.localFallback(fromLocalFile: false, retried: true, online: true) == .none,
+                "a streamed track keeps the network rules after its attempt")
         #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: true) == .none)
         #expect(FailedLoad.localFallback(fromLocalFile: false, retried: false, online: false) == .none)
     }
@@ -223,9 +224,10 @@ struct FailedLoadTests {
 
     /// A downloaded file that is missing or broken fails to load and never
     /// fires FailedToPlayToEndTime. With network the track plays on from the
-    /// server and the file goes; without, it stops as unavailable, not as a
-    /// network failure, and the file stays.
-    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz nicht verfuegbar statt Netz-Hinweis")
+    /// server, the file goes and the hint says the download could not be
+    /// read; without network it stops with that hint, not a network one, and
+    /// the file stays.
+    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz Halt, beide Male der Hinweis auf den Download")
     func aBrokenLocalFilePlaysOnFromTheServer() async throws {
         let server = try tone(seconds: 3)
         defer { try? FileManager.default.removeItem(at: server) }
@@ -235,8 +237,12 @@ struct FailedLoadTests {
             let online = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: local] }, isOnline: { true })
             await online.load(item: detail([(server.path, 3)]))
             online.play()
-            await waitFor { online.currentTime > 0.5 || online.sourceHint != nil }
-            #expect(online.sourceHint == nil, "\(local.pathExtension): no hint, the server took over: \(String(describing: online.sourceHint))")
+            var seen: PlayerViewModel.SourceHint?
+            await waitFor {
+                seen = seen ?? online.sourceHint
+                return online.currentTime > 0.5 || online.sourceHint == .loadFailed
+            }
+            #expect(seen == .downloadUnreadable, "\(local.pathExtension): the hint names the download: \(String(describing: seen))")
             #expect(online.isPlaying && online.currentTime > 0.5, "\(local.pathExtension): playback goes on: \(online.currentTime)")
             #expect(!FileManager.default.fileExists(atPath: local.path), "\(local.pathExtension): the failed file is dropped")
             online.stop()
@@ -247,7 +253,8 @@ struct FailedLoadTests {
         await offline.load(item: detail([(server.path, 3)]))
         offline.play()
         await waitFor { offline.sourceHint != nil }
-        #expect(offline.sourceHint == .trackFailed, "offline the track is unavailable: \(String(describing: offline.sourceHint))")
+        #expect(offline.sourceHint == .downloadUnreadableOffline,
+                "offline the hint names the download, not the network: \(String(describing: offline.sourceHint))")
         #expect(!offline.isPlaying, "offline playback stops")
         #expect(FileManager.default.fileExists(atPath: broken.path), "offline the file stays")
         offline.stop()
@@ -267,23 +274,28 @@ struct FailedLoadTests {
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [1: broken] }, isOnline: { true })
         await model.load(item: detail([(first.path, 1), (server.path, 2)]))
         model.play()
-        await waitFor { model.currentTime > 1.5 || model.sourceHint != nil }
-        #expect(model.sourceHint == nil, "no hint at the dropped file: \(String(describing: model.sourceHint))")
+        var seen: PlayerViewModel.SourceHint?
+        await waitFor {
+            seen = seen ?? model.sourceHint
+            return model.currentTime > 1.5 || model.sourceHint == .loadFailed
+        }
+        #expect(seen == .downloadUnreadable, "the hint names the download: \(String(describing: seen))")
         #expect(model.isPlaying && model.currentTime > 1.5, "playback went on past its start: \(model.currentTime)")
         #expect(!FileManager.default.fileExists(atPath: broken.path), "the failed file is dropped")
         model.stop()
     }
 
-    /// One attempt per track: the server copy fails too, so the track is
-    /// unavailable after the one try, and nothing builds it again by itself.
-    @Test("eine lokale Datei und ihr Server scheitern: nach dem einen Versuch nicht verfuegbar, keine Schleife")
-    func oneAttemptThenUnavailable() async throws {
+    /// One attempt per track: the server copy fails too. The track streams
+    /// by then, so the network hint stands, and nothing builds it again by
+    /// itself.
+    @Test("eine lokale Datei und ihr Server scheitern: nach dem einen Versuch der Netz-Hinweis, keine Schleife")
+    func oneAttemptThenTheNetworkHint() async throws {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: missing] }, isOnline: { true })
         await model.load(item: detail([("dead.mp3", 3)]))
         model.play()
-        await waitFor { model.sourceHint == .trackFailed }
-        #expect(model.sourceHint == .trackFailed, "after the one try the track is unavailable: \(String(describing: model.sourceHint))")
+        await waitFor { model.sourceHint == .loadFailed }
+        #expect(model.sourceHint == .loadFailed, "after the one try the stream failure says so: \(String(describing: model.sourceHint))")
         #expect(!model.isPlaying, "playback stops")
         let queue = model.player.map(ObjectIdentifier.init)
         try? await Task.sleep(nanoseconds: 1_000_000_000)

@@ -77,6 +77,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         case trackFailed
         case streamFailed
         case loadFailed
+        /// A downloaded file could not be read; the track plays on from the server.
+        case downloadUnreadable
+        /// A downloaded file could not be read and nothing can take over.
+        case downloadUnreadableOffline
 
         var label: String {
             switch self {
@@ -89,6 +93,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .trackFailed: return String(localized: "Playback error: track unavailable")
             case .streamFailed: return String(localized: "Stream unavailable: the station could not be reached")
             case .loadFailed: return String(localized: "Could not load. Tap play to try again.")
+            case .downloadUnreadable: return String(localized: "Download unreadable, playing from the server")
+            case .downloadUnreadableOffline: return String(localized: "Download unreadable. Online it plays from the server.")
             }
         }
 
@@ -103,6 +109,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .trackFailed: return "exclamationmark.triangle"
             case .streamFailed: return "exclamationmark.triangle"
             case .loadFailed: return "wifi.exclamationmark"
+            case .downloadUnreadable: return "icloud.and.arrow.down"
+            case .downloadUnreadableOffline: return "exclamationmark.triangle"
             }
         }
     }
@@ -1407,6 +1415,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                        inCurrentQueue: inCurrentQueue) else { return }
         if fallback == .stream {
             rebuildAtHeldPosition(reason: "local file")
+            showSourceHint(.downloadUnreadable)
             return
         }
         loadFailureNoted = true
@@ -1418,10 +1427,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         forgetCatalogAnswer()
     }
 
-    /// The hint of a stopped load failure: a track without a way back is
-    /// unavailable; every other failure may be the network.
+    /// The hint of a stopped load failure: a download that cannot be read
+    /// says so; every other failure may be the network.
     private static func loadHint(_ fallback: FailedLoad.LocalFallback) -> SourceHint {
-        fallback == .unavailable ? .trackFailed : .loadFailed
+        fallback == .unavailable ? .downloadUnreadableOffline : .loadFailed
     }
 
     /// A later track failed to load while an earlier one plays: the queue is
@@ -1450,7 +1459,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             currentTime = trackAbsoluteStart(index)
             let rebuilt = buildQueue(startingAtTrackIndex: index, seekWithin: 0)
             Logger.player.notice("LOADFAIL held track=\(index) plays on from the server ok=\(rebuilt)")
-            if rebuilt { return }
+            if rebuilt {
+                showSourceHint(.downloadUnreadable)
+                return
+            }
         }
         loadFailureNoted = true
         currentTrackIndex = index

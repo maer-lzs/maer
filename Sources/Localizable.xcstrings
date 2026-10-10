@@ -3529,6 +3529,26 @@
         }
       }
     },
+    "Download unreadable, playing from the server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download nicht lesbar, läuft vom Server"
+          }
+        }
+      }
+    },
+    "Download unreadable. Online it plays from the server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download nicht lesbar. Mit Netz läuft er vom Server."
+          }
+        }
+      }
+    },
     "Downloaded" : {
       "localizations" : {
         "de" : {

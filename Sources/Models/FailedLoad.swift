@@ -43,13 +43,14 @@ nonisolated enum FailedLoad {
         case unavailable
     }
 
-    /// One attempt per track: a track that already had it is unavailable,
-    /// a local file without network is too, a local file with network
-    /// streams instead.
+    /// Only a local file falls back. One attempt per track: a local file
+    /// that already had it is unavailable, so is one without network; with
+    /// network it streams instead. A streamed track keeps the network rules
+    /// after its attempt, because in a dead spot the network is the cause.
     static func localFallback(fromLocalFile: Bool, retried: Bool, online: Bool) -> LocalFallback {
-        if retried { return .unavailable }
         guard fromLocalFile else { return .none }
-        return online ? .stream : .unavailable
+        if retried || !online { return .unavailable }
+        return .stream
     }
 
     /// Whether a play builds the queue anew before it starts: the current
