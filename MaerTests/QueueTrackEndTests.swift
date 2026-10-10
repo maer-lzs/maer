@@ -210,6 +210,14 @@ struct QueueTrackEndTests {
         let body = source[start.upperBound...].prefix(400)
         #expect(body.contains("guard let item = await AppSession.shared.resolveItem(forId: itemId) else { Logger.player.notice(\"OPEN unresolved"),
                 "an open that resolves nothing returns without a line")
+        // And the resolver keeps why its detail fetch failed, cancellation
+        // apart, instead of swallowing it.
+        let session = try Self.source("Sources/AppSession.swift")
+        let resolver = try #require(session.range(of: "func resolveItem(forId itemId: String) async -> LibraryItem? {"))
+        let resolve = session[resolver.upperBound...].prefix(900)
+        #expect(!resolve.contains("try? await provider(for: itemId).fetchItemDetail"), "the resolver swallows the fetch error again")
+        #expect(resolve.contains("if !error.isCancellation { Logger.player.notice(\"RESOLVE detail failed"),
+                "the resolver's failed fetch leaves no line with its reason")
     }
 
     @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")

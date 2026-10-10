@@ -284,8 +284,15 @@ final class AppSession: ObservableObject {
     /// resolvers of old (session, library route, standby) are this one.
     func resolveItem(forId itemId: String) async -> LibraryItem? {
         if let item = resolve(forId: itemId, carried: nil).item, item.media != nil { return item }
-        if let detail = try? await provider(for: itemId).fetchItemDetail(itemId: itemId) {
+        do {
+            let detail = try await provider(for: itemId).fetchItemDetail(itemId: itemId)
             return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
+        } catch {
+            // A failed fetch falls back like before; the line keeps why, so an
+            // open that resolves nothing can be read from the log.
+            if !error.isCancellation {
+                Logger.player.notice("RESOLVE detail failed item=\(itemId, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+            }
         }
         // A catalogue stub without a fetchable detail still plays from its id.
         return resolve(forId: itemId, carried: nil).item
