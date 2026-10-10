@@ -472,12 +472,6 @@ struct SearchScreen: View {
         .buttonStyle(.plain)
     }
 
-    private func bookEntryRow(_ entry: LibraryEntry) -> some View {
-        SearchBookRow(entry: entry, isOnline: isOnline) {
-            onOpen(SearchResult(id: entry.id, kind: .book, title: entry.item.title))
-        }
-    }
-
     // MARK: - Browse deck
 
     @ViewBuilder
@@ -485,18 +479,6 @@ struct SearchScreen: View {
         if let level = drill.last {
             drillBackChip
             switch level {
-            case .groups(_, let groups):
-                ForEach(groups, id: \.name) { group in
-                    deckEntryRow(title: group.name, count: group.entries.count) {
-                        withAnimation(.snappy(duration: 0.2)) {
-                            drill.append(.entries(title: group.name, entries: group.entries))
-                        }
-                    }
-                }
-            case .entries(_, let entries):
-                ForEach(entries) { entry in
-                    bookEntryRow(entry)
-                }
             case .catalogShows(_, let results, let footer):
                 // The SAME result row the typed search uses for catalog shows
                 // (subscribe/preview routing via onOpen. No second row idiom).
@@ -649,11 +631,9 @@ struct SearchScreen: View {
     /// switch or a route, so a new tile cannot lead nowhere.
     private func go(to destination: SearchDeckDestination) {
         switch destination {
-        case .group(let group):
-            let title = Self.groupTitle(group)
-            withAnimation(.snappy(duration: 0.2)) {
-                drill.append(.groups(title: title, groups: groups(of: group)))
-            }
+        case .group(let kind):
+            // The page of the books tab, not a drill level of the search.
+            pushLibraryListRoute(.groups(kind))
         case .artists:
             Task {
                 let artists = await SearchDoor.artists()
@@ -702,45 +682,12 @@ struct SearchScreen: View {
         }
     }
 
-    private func groups(of group: SearchDeckGroup) -> [(name: String, entries: [LibraryEntry])] {
-        switch group {
-        case .authors: return deck.authorGroups
-        case .series: return deck.seriesGroups
-        case .genres: return deck.genreGroups
-        }
-    }
-
-    private static func groupTitle(_ group: SearchDeckGroup) -> String {
-        switch group {
-        case .authors: return String(localized: "Authors")
-        case .series: return String(localized: "Series")
-        case .genres: return String(localized: "Genres")
-        }
-    }
-
-    /// Drilldown sub-level row (still a row. The drilled lists of individual
-    /// authors/series/artists are long, not a tile grid). Only the upper
-    /// ENTRY tier is tiles.
+    /// Drilldown sub-level row (still a row. The drilled list of artists is
+    /// long, not a tile grid). Only the upper ENTRY tier is tiles.
     private func deckEntryRow(title: String, count: Int, capsule: String? = nil,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack {
-                Text(title)
-                    .font(.body.weight(.medium))
-                    .lineLimit(1)
-                if let capsule { OriginCapsule(compact: true, text: capsule, systemImage: nil) }
-                Spacer()
-                Text("\(count)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 20)
-            .frame(minHeight: 52)
-            .contentShape(Rectangle())
+            DeckEntryRowLabel(title: title, count: count, capsule: capsule)
         }
         .buttonStyle(.plain)
     }
@@ -960,37 +907,6 @@ struct SearchScreen: View {
         case .artist: return "music.mic"
         case .radioStation: return "dot.radiowaves.left.and.right"
         }
-    }
-}
-
-/// A book row of the browse deck. It reads whether the book lies on the
-/// device (dimmed with the offline badge when it cannot play), so it observes
-/// the download manager itself and the search page does not.
-private struct SearchBookRow: View {
-    private let downloadManager = DownloadManager.shared
-    @ObservedObject private var downloadStock = DownloadManager.stock
-    let entry: LibraryEntry
-    let isOnline: Bool
-    let open: () -> Void
-
-    var body: some View {
-        let unavailable = MediaAvailability.offlineUnavailable(
-            isConnected: isOnline,
-            isDownloaded: downloadManager.isDownloaded(itemId: entry.id))
-        Button(action: open) {
-            MediaRowContent(
-                coverURL: SearchDoor.coverURL(forItemId: entry.id),
-                eyebrow: entry.item.author,
-                title: entry.item.title,
-                titleDimmed: unavailable,
-                coverDimmed: unavailable,
-                offlineBadge: unavailable,
-                placeholderSystemImage: "book.closed"
-            )
-            .padding(.horizontal, 20)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 

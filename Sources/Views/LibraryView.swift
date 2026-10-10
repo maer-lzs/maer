@@ -327,13 +327,19 @@ struct LibraryView: View {
                     // the sort/filter control that moved with it).
                     AllBooksPage(viewModel: viewModel,
                                  playerCoordinator: playerCoordinator)
-                case .author, .series:
+                case .author, .series, .genre:
                     BrowseBooksScreen(
                         title: route.title,
                         entries: entries(for: route),
                         playerCoordinator: playerCoordinator,
                         libraryViewModel: viewModel
                     )
+                case .groups(let kind):
+                    // The one page of the groups: the books tab's tiles and
+                    // the search deck's tiles open it.
+                    BookGroupsScreen(kind: kind, entries: viewModel.entries)
+                case .localFiles:
+                    LocalFilesView()
                 }
             }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
@@ -1139,17 +1145,30 @@ struct LibraryView: View {
     }
 
     /// Serverless: the way to files on this device. A section, not a buried
-    /// settings row.
+    /// settings row. The same route the tile deck opens with a server.
     private var localFilesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             RowHeading.plain("Local Files")
-            NavigationLink {
-                LocalFilesView()
-            } label: {
+            NavigationLink(value: LibraryListRoute.localFiles) {
                 Label("Files on this device", systemImage: "folder")
                     .padding(.horizontal)
             }
         }
+    }
+
+    /// With a server: the entries into the own library as the SAME deck of
+    /// tiles the music tab and the search show (series, authors, local
+    /// files; genres stand in the search deck only). No numeral: the groups
+    /// are counted off the main thread on their page, not per evaluation
+    /// of the tab.
+    private var bookTabDeck: some View {
+        CategoryDeckGrid(entries: LibraryListRoute.bookTabEntries.map { route in
+            CategoryDeckEntry(id: route.tileId, title: route.title,
+                              systemImage: route.systemImage ?? "books.vertical",
+                              count: nil, accessibilityId: route.tileId) {
+                push(route, to: .audiobooks)
+            }
+        })
     }
 
     /// The library section's own three states. Inline, each with a way out.
@@ -1253,6 +1272,8 @@ struct LibraryView: View {
                     if freeAudiobooksArea {
                         freeAudiobooksSection
                     }
+                    // Place 7: the entries into the own library.
+                    bookTabDeck
                 }
             }
             // Force full width explicitly. Without it the stack's width follows
@@ -1589,16 +1610,14 @@ struct LibraryView: View {
         case .continueListening: viewModel.continueListening
         case .recentlyAdded:     viewModel.recentlyAdded
         // .allBooks renders AllBooksPage (grid follows the live sort state
-        // itself). Never reaches this list helper.
-        case .allBooks:          []
-        // The books of one author, of one series: the same question the
-        // browse deck asks, asked in ONE place.
-        case .author(let name):
-            viewModel.entries.filter { AuthorMatch.field($0.item.author, names: name) }
-        case .series(let name):
-            viewModel.entries.filter {
-                LibraryViewModel.baseSeriesName($0.item.media?.metadata?.seriesName) == name
-            }
+        // itself), the groups and local files pages read on their own. They
+        // never reach this list helper.
+        case .allBooks, .groups, .localFiles: []
+        // The books of one author, of one series, of one genre: asked in
+        // ONE place, next to the groups their page counts.
+        case .author(let name): LibraryViewModel.books(of: .authors, named: name, in: viewModel.entries)
+        case .series(let name): LibraryViewModel.books(of: .series, named: name, in: viewModel.entries)
+        case .genre(let name):  LibraryViewModel.books(of: .genres, named: name, in: viewModel.entries)
         }
     }
 

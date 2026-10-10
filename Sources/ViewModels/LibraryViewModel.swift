@@ -424,7 +424,9 @@ final class LibraryViewModel: ObservableObject {
 
     /// Grouping key: case-/diacritic-insensitive so "Foundation" and
     /// "foundation" end up in the same stack; display keeps the original.
-    nonisolated private static func seriesGroupKey(_ base: String) -> String {
+    /// The page of one series asks the same key, so it holds every book
+    /// its group counted.
+    nonisolated static func seriesGroupKey(_ base: String) -> String {
         base.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
@@ -513,14 +515,74 @@ final class LibraryViewModel: ObservableObject {
     nonisolated static func authorGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
         var dict: [String: [LibraryEntry]] = [:]
         for entry in entries {
-            let author = entry.item.author ?? String(localized: "Unknown Author")
-            dict[author, default: []].append(entry)
+            dict[authorGroupName(of: entry), default: []].append(entry)
         }
         return dict
             .map { (name: $0.key, entries: $0.value.sorted {
                 $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
             }) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// The author group a book stands in: its whole author field, or the
+    /// group of the books without one.
+    nonisolated static func authorGroupName(of entry: LibraryEntry) -> String {
+        entry.item.author ?? String(localized: "Unknown Author")
+    }
+
+    /// Books grouped by series (`baseSeriesName`, key-folded), sorted by
+    /// name. A book without a series stands in none.
+    nonisolated static func seriesGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
+        var indexByKey: [String: Int] = [:]
+        var groups: [(name: String, entries: [LibraryEntry])] = []
+        for entry in entries {
+            guard let name = baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
+            let key = seriesGroupKey(name)
+            if let index = indexByKey[key] {
+                groups[index].entries.append(entry)
+            } else {
+                indexByKey[key] = groups.count
+                groups.append((name: name, entries: [entry]))
+            }
+        }
+        return groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// The groups of one kind: the ONE place the books tab's page and the
+    /// search deck ask.
+    nonisolated static func groups(_ kind: BookGroupKind, of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
+        switch kind {
+        case .authors: return authorGroups(of: entries)
+        case .series: return seriesGroups(of: entries)
+        case .genres: return genreGroups(of: entries)
+        }
+    }
+
+    /// The books of one group, the list its page shows: a series by the
+    /// folded key its group counted under, a genre by name, an author by
+    /// its group and by `AuthorMatch`, the question a typed hit asks too (so
+    /// the page of an author also holds the books it wrote with others, and
+    /// the group of the books without an author holds them).
+    nonisolated static func books(of kind: BookGroupKind, named name: String,
+                                  in entries: [LibraryEntry]) -> [LibraryEntry] {
+        switch kind {
+        case .authors:
+            return entries.filter { authorGroupName(of: $0) == name || AuthorMatch.field($0.item.author, names: name) }
+        case .series:
+            let key = seriesGroupKey(name)
+            return entries.filter {
+                baseSeriesName($0.item.media?.metadata?.seriesName).map(seriesGroupKey) == key
+            }
+        case .genres:
+            return entries.filter { ($0.item.media?.metadata?.genres ?? []).contains(name) }
+        }
+    }
+
+    /// The same, off the main thread: the grouping and its sorts over the
+    /// whole stock are a visible stall there.
+    @concurrent nonisolated static func groupsOffMain(_ kind: BookGroupKind,
+                                                      of entries: [LibraryEntry]) async -> [(name: String, count: Int)] {
+        groups(kind, of: entries).map { (name: $0.name, count: $0.entries.count) }
     }
 
     nonisolated static func genreGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {

@@ -105,3 +105,33 @@ struct CategoryDeckGrid: View {
         }
     }
 }
+
+/// The row a deck tile opens into: title, an optional source capsule, the
+/// count and the chevron. A label only, so a button (the artists of the
+/// search) and a navigation link (the groups of the own library) carry
+/// the same row.
+struct DeckEntryRowLabel: View {
+    let title: String
+    let count: Int
+    var capsule: String? = nil
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.body.weight(.medium))
+                .lineLimit(1)
+            if let capsule { OriginCapsule(compact: true, text: capsule, systemImage: nil) }
+            Spacer()
+            Text("\(count)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 20)
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
+    }
+}

@@ -38,22 +38,10 @@ nonisolated struct SearchDeck {
     static func build(entries: [LibraryEntry], shows: [PodcastShow],
                       albums: [LibraryItem]) -> SearchDeck {
         var deck = SearchDeck()
-        deck.authorGroups = LibraryViewModel.authorGroups(of: entries)
-        deck.genreGroups = LibraryViewModel.genreGroups(of: entries)
-        // Series grouped like the author groups. Key-folded dedupe, sorted.
-        var indexByKey: [String: Int] = [:]
-        var groups: [(name: String, entries: [LibraryEntry])] = []
-        for entry in entries {
-            guard let name = LibraryViewModel.baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
-            let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            if let idx = indexByKey[key] {
-                groups[idx].entries.append(entry)
-            } else {
-                indexByKey[key] = groups.count
-                groups.append((name: name, entries: [entry]))
-            }
-        }
-        deck.seriesGroups = groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        // The same groups the page of a kind lists (`LibraryViewModel.groups`).
+        deck.authorGroups = LibraryViewModel.groups(.authors, of: entries)
+        deck.genreGroups = LibraryViewModel.groups(.genres, of: entries)
+        deck.seriesGroups = LibraryViewModel.groups(.series, of: entries)
         // Alphabetical, diacritic-folded; no letter start lands in "#".
         let sorted = entries.sorted {
             $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
@@ -79,10 +67,9 @@ nonisolated struct SearchDeck {
 
 /// The in-page drill levels of the deck. The stack itself is view state,
 /// because it is navigation; what a level HOLDS and what it is called is
-/// data and lives here.
+/// data and lives here. The groups of the own library are no level here:
+/// they are a page (`LibraryListRoute.groups`), the same the books tab opens.
 nonisolated enum SearchDeckDrill {
-    case groups(title: String, groups: [(name: String, entries: [LibraryEntry])])
-    case entries(title: String, entries: [LibraryEntry])
     case artists(title: String, artists: [MusicArtist])
     /// Catalog shows of ONE podcast genre, with an honesty line when the
     /// directory answered short.
@@ -94,8 +81,7 @@ nonisolated enum SearchDeckDrill {
 
     var title: String {
         switch self {
-        case .groups(let title, _), .entries(let title, _), .artists(let title, _),
-             .catalogShows(let title, _, _), .failed(let title, _, _):
+        case .artists(let title, _), .catalogShows(let title, _, _), .failed(let title, _, _):
             return title
         }
     }

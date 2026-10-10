@@ -5,9 +5,27 @@
 
 import Foundation
 
-/// Which groups of the own library the deck drills into.
-nonisolated enum SearchDeckGroup: String, CaseIterable, Sendable {
+/// The kinds of groups of the own library. One page lists the groups of a
+/// kind (`LibraryListRoute.groups`); the books tab and the search deck open
+/// the same page, with the same title and glyph.
+nonisolated enum BookGroupKind: String, CaseIterable, Hashable, Sendable {
     case authors, series, genres
+
+    var title: String {
+        switch self {
+        case .authors: return String(localized: "Authors")
+        case .series: return String(localized: "Series")
+        case .genres: return String(localized: "Genres")
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .authors: return "person.2.fill"
+        case .series: return "books.vertical.fill"
+        case .genres: return "theatermasks.fill"
+        }
+    }
 }
 
 /// Where a deck tile leads. The rule NAMES the destination, the view
@@ -15,8 +33,9 @@ nonisolated enum SearchDeckGroup: String, CaseIterable, Sendable {
 /// scope binding. Without this the target of a tile lived inside a
 /// closure that no test could reach.
 nonisolated enum SearchDeckDestination: Hashable, Sendable {
-    /// Drill into the grouped own library (authors, series, genres).
-    case group(SearchDeckGroup)
+    /// The page of the groups of one kind of the own library (authors,
+    /// series, genres), the same page the books tab opens.
+    case group(BookGroupKind)
     /// Drill into the artists of the music source. Needs the music scope,
     /// so it switches there first when it is called from the library scope.
     case artists
@@ -87,17 +106,10 @@ nonisolated enum SearchDeckTiles {
     }
 
     private static func libraryTiles(counts: SearchDeckCounts) -> [SearchDeckTile] {
-        [
-            SearchDeckTile(id: "authors", title: String(localized: "Authors"),
-                           systemImage: "person.2.fill", count: counts.authors,
-                           destination: .group(.authors)),
-            SearchDeckTile(id: "series", title: String(localized: "Series"),
-                           systemImage: "books.vertical.fill", count: counts.series,
-                           destination: .group(.series)),
-            SearchDeckTile(id: "genres", title: String(localized: "Genres"),
-                           systemImage: "theatermasks.fill", count: counts.genres,
-                           destination: .group(.genres)),
-        ]
+        [(BookGroupKind.authors, counts.authors), (.series, counts.series), (.genres, counts.genres)].map { kind, count in
+            SearchDeckTile(id: kind.rawValue, title: kind.title, systemImage: kind.systemImage,
+                           count: count, destination: .group(kind))
+        }
     }
 
     /// The music deck offers every library entry point as a tile. Counts
