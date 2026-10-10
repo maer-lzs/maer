@@ -74,6 +74,8 @@ struct LibriVoxTakeoverSection: View {
     @State private var showLibraryPicker = false
     @State private var showWiFiWarning = false
     @State private var localSubscribed = false
+    /// Why the local-only feed was not subscribed, said beside the menu.
+    @State private var localRefusal: String?
 
     private var book: LibriVoxBook? {
         catalogFacts.librivoxBook(item.id)
@@ -169,6 +171,9 @@ struct LibriVoxTakeoverSection: View {
                 }
                 .disabled(localSubscribed)
                 .accessibilityIdentifier("librivox-import-menu")
+                if let localRefusal {
+                    HintLine(systemImage: "exclamationmark.triangle.fill") { Text(localRefusal) }
+                }
             }
         }
     }
@@ -208,10 +213,23 @@ struct LibriVoxTakeoverSection: View {
         importer.start(book: book, itemId: item.id, library: library)
     }
 
+    /// The local-only feed goes through the one door like every local
+    /// subscription: a show Audiobookshelf holds is not subscribed a second
+    /// time here, and an unread server says so instead of guessing.
     private func subscribeLocally() {
         guard let rss = book?.url_rss, !rss.isEmpty else { return }
         Task {
-            localSubscribed = await PodcastSubscriptions.shared.subscribe(urlString: rss)
+            switch await PodcastSubscriptions.shared.subscribeUnlessOnServer(urlString: rss) {
+            case .subscribed:
+                localSubscribed = true
+                localRefusal = nil
+            case .onServer:
+                localRefusal = String(localized: "Subscribed on Audiobookshelf")
+            case .setOut:
+                localRefusal = String(localized: "Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
+            case .notSubscribed:
+                localSubscribed = false
+            }
         }
     }
 }

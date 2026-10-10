@@ -180,10 +180,27 @@ struct LocalSubscribeDoorTests {
         #expect(host.contains("subs.serverUnreadNotice"), "no host says the set out")
     }
 
+    /// The catalog page's "local only" feed goes through the door too: a show
+    /// Audiobookshelf holds is refused with that sentence, an unread server
+    /// says so, nothing is subscribed a second time.
+    @Test("Abo als Feed von der Katalogseite: geht durch die Tuer, liegt die Sendung auf Audiobookshelf, weist es ab", .needsTheSources)
+    func theCatalogLocalFeedGoesThroughTheDoor() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogDetailExtras.swift"), encoding: .utf8))
+        let body = try #require(ABSPodcastRefreshTests.body(of: "private func subscribeLocally() {", in: page))
+        #expect(body.contains("subscribeUnlessOnServer(urlString: rss)"), "the local feed passes the door")
+        let held = try #require(body.range(of: "case .onServer:"), "a show held on Audiobookshelf is not handled")
+        let sentence = try #require(body.range(of: "localRefusal = String(localized: \"Subscribed on Audiobookshelf\")"),
+                                    "a show held on Audiobookshelf is not refused with its sentence")
+        #expect(held.upperBound < sentence.lowerBound, "the sentence belongs to another case")
+        #expect(body.contains("case .setOut:"), "an unread server is not said")
+        #expect(page.contains("HintLine(systemImage: \"exclamationmark.triangle.fill\") { Text(localRefusal) }"),
+                "the refusal is not shown beside the menu")
+    }
+
     /// Who may still call `subscribe(urlString:` past the door, and why.
     static let stock: [String: (count: Int, reason: String)] = [
         "PodcastSubscriptions.swift": (1, "the door itself"),
-        "CatalogDetailExtras.swift": (1, "waits for the owner's word: the person chose a local-only feed in so many words"),
     ]
 
     @Test("nur die benannten Stellen abonnieren an der Tuer vorbei", .needsTheSources)
