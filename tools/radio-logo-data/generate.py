@@ -351,12 +351,16 @@ def entities(ids):
     return result
 
 
-def bound_file(name, fact, radio, isos):
+def bound_file(name, fact, radio, isos, search=search, entities=entities):
     """(file, object, reason, failed): the logo of the one radio station this
     name means, or the reason there is none. A name in the tables of several
     countries gets none: the table is keyed by the name alone, so one logo
     would show for every country's station of that name ("Radio 1" stands in
-    the Belgian and the Swiss table)."""
+    the Belgian and the Swiss table). Several radio stations of the name are
+    decided by the country of the core table over the STATIONS, not over
+    their logos: a foreign station that alone carries a logo is still a
+    foreign station. `search` and `entities` are the two lookups, handed in
+    by the self check."""
     countries = (fact or {}).get("countries") or set()
     if len(countries) > 1:
         return None, None, f"name in the tables of {len(countries)} countries ({', '.join(sorted(countries))})", False
@@ -371,15 +375,15 @@ def bound_file(name, fact, radio, isos):
     stations = [(entity_id, data) for entity_id, data in objects.items() if data["classes"] & radio]
     if not stations:
         return None, None, "no object of the class radio station", False
+    if len(stations) > 1:
+        in_country = [(entity_id, data) for entity_id, data in stations
+                      if {isos.get(c) for c in data["countries"]} & countries]
+        if len({data["logo"] for _, data in in_country if data["logo"]}) != 1:
+            return None, None, f"ambiguous: {len(stations)} radio stations, the country does not decide", False
+        stations = in_country
     with_logo = [(entity_id, data) for entity_id, data in stations if data["logo"]]
     if not with_logo:
         return None, None, "radio station without a logo (P154)", False
-    if len({data["logo"] for _, data in with_logo}) > 1:
-        in_country = [(entity_id, data) for entity_id, data in with_logo
-                      if {isos.get(c) for c in data["countries"]} & countries]
-        if len({data["logo"] for _, data in in_country}) != 1:
-            return None, None, f"ambiguous: {len(with_logo)} radio stations, the country does not decide", False
-        with_logo = in_country
     entity_id, data = with_logo[0]
     return data["logo"], entity_id, None, False
 
@@ -589,7 +593,39 @@ def full_run(dry, report_path):
     return 0
 
 
+def self_check():
+    """`--selbstpruefung`: the binding rule over fixed answers, no request.
+    Exit 0 when every case holds, 1 when one does not."""
+    radio, isos = {RADIO_STATION}, {"Q183": "DE", "Q142": "FR"}
+
+    def station(country, logo):
+        return {"classes": {RADIO_STATION}, "logo": logo, "countries": {country}}
+
+    cases = [
+        ("two stations, only the foreign one with a logo", {"countries": {"DE"}},
+         {"Q1": station("Q183", None), "Q2": station("Q142", "Fremd.svg")}, None),
+        ("two stations, the own one with a logo", {"countries": {"DE"}},
+         {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", None)}, "Eigen.svg"),
+        ("two stations with different logos, the country decides", {"countries": {"DE"}},
+         {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", "Fremd.svg")}, "Eigen.svg"),
+        ("two stations and no country", None,
+         {"Q1": station("Q183", "Eigen.svg"), "Q2": station("Q142", "Fremd.svg")}, None),
+        ("one station with a logo", None, {"Q1": station("Q142", "Einzig.svg")}, "Einzig.svg"),
+    ]
+    failed = 0
+    for title, fact, objects, expected in cases:
+        file_name, _, reason, _ = bound_file("X", fact, radio, isos,
+                                             search=lambda _name, ids=list(objects): ids,
+                                             entities=lambda _ids, objects=objects: objects)
+        held = file_name == expected
+        failed += not held
+        print(f"{'ok ' if held else 'ROT'} {title}: {file_name or reason}")
+    return 1 if failed else 0
+
+
 def main():
+    if "--selbstpruefung" in sys.argv:
+        return self_check()
     dry = "--trocken" in sys.argv
     report_path = None
     if "--bericht" in sys.argv:
