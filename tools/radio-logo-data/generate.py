@@ -44,12 +44,21 @@ RADIO_STATION = "Q14350"
 PAUSE = 0.2              # seconds between two requests to the same service
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REQUESTS = 0             # every request of this run, counted in `get`
+REQUEST_LIMIT = None     # `--hoechstens N`: no request beyond the Nth
+OBJECT_COUNTRIES = {}    # countries (P17, object ids) of every object read, for the report
+
+
+class RequestLimitReached(Exception):
+    """The run reached its request limit (`--hoechstens`) and stops."""
 
 
 def get(url, raw=False, timeout=25):
     """(payload, verdict); verdict is ok, empty or failed. Counts the request
-    and waits the pause after it."""
+    and waits the pause after it. A request past the limit is not sent: the
+    run stops with `RequestLimitReached`."""
     global REQUESTS
+    if REQUEST_LIMIT is not None and REQUESTS >= REQUEST_LIMIT:
+        raise RequestLimitReached()
     REQUESTS += 1
     try:
         request = urllib.request.Request(url, headers={"User-Agent": UA})
@@ -348,6 +357,7 @@ def entities(ids):
         result[entity_id] = {"classes": set(values(claims, "P31")),
                              "logo": next(iter(values(claims, "P154")), None),
                              "countries": set(values(claims, "P17"))}
+        OBJECT_COUNTRIES[entity_id] = result[entity_id]["countries"]
     return result
 
 
@@ -403,7 +413,7 @@ def resolve(name, fact, radio, isos, held):
     return None, None, "none", reason, failed
 
 
-def swift_file(entries, names, single=None, check=False):
+def swift_file(entries, names, single=None, check=False, search_path=None):
     """The data file. Names to Commons FILE NAME; the width is applied at read
     time from the app's one constant. The vouched entries travel along, so
     the suite holds every entry to the same probe."""
@@ -422,6 +432,10 @@ def swift_file(entries, names, single=None, check=False):
     if single:
         note = (f"\n// SINGLE-NAME RUN: only \"{single}\" was measured, every other"
                 f"\n// entry comes unchanged from the last full run.")
+    if search_path:
+        note = (f"\n// SEARCH PATH RUN: only the {search_path} names without an object in"
+                f"\n// the Wikidata core table were measured; every entry of a name with"
+                f"\n// one comes unchanged from the last full run.")
     if check:
         note = ("\n// CHECK RUN: no source was asked. The entries of the last run were"
                 "\n// held to the table probe (the file names the station and nothing"
@@ -545,51 +559,68 @@ def single_run(name, dry):
     return 0
 
 
-def full_run(dry, report_path):
+def full_run(dry, report_path, search_path=False):
+    """Every core name, or with `search_path` (`--suchweg`) only the names
+    without an object in the Wikidata core table; the entries of the names
+    with one then stay byte for byte."""
     names = core_names()
     facts = core_facts()
     previous = existing_mapping()
     held = vouched()
-    found = lookups()
-    if not found:
-        return 2
-    radio, isos = found
-    print(f"target set: {len(names)} core names, {len(radio)} radio classes", file=sys.stderr)
-    entries, rows, failures = {}, [], 0
-    for index, name in enumerate(names, 1):
-        # A truncated name ("… Premium") is an artifact of the source tables;
-        # a search on its tail matches foreign brands.
-        if name.startswith("…") or name.startswith("..."):
-            continue
-        file_name, entity_id, status, reason, failed = resolve(name, facts.get(name), radio, isos, held)
-        failures += failed
-        if file_name:
-            entries[name] = file_name
-        before = previous.get(name)
-        change = ("kept" if before == file_name else "new" if before is None and file_name
-                  else "dropped" if file_name is None and before else "changed" if file_name else "none")
-        rows.append({"name": name, "status": status, "change": change, "file": file_name,
-                     "before": before, "object": entity_id, "reason": reason})
-        if index % 25 == 0:
-            print(f"  {index}/{len(names)}: {len(entries)} logos, {failures} failures, {REQUESTS} requests",
-                  file=sys.stderr)
-    summary = {"names": len(names), "entries_before": len(previous), "entries_after": len(entries),
+    # A truncated name ("… Premium") is an artifact of the source tables;
+    # a search on its tail matches foreign brands.
+    measured = [name for name in names if not (name.startswith("…") or name.startswith("..."))]
+    entries = {}
+    if search_path:
+        measured = [name for name in measured if not (facts.get(name) or {}).get("qid")]
+        entries = {name: file_name for name, file_name in previous.items()
+                   if (facts.get(name) or {}).get("qid")}
+    rows, failures, stopped = [], 0, False
+    try:
+        found = lookups()
+        if not found:
+            return 2
+        radio, isos = found
+        print(f"target set: {len(names)} core names, {len(measured)} measured, {len(radio)} radio classes",
+              file=sys.stderr)
+        for index, name in enumerate(measured, 1):
+            file_name, entity_id, status, reason, failed = resolve(name, facts.get(name), radio, isos, held)
+            failures += failed
+            if file_name:
+                entries[name] = file_name
+            before = previous.get(name)
+            change = ("kept" if before == file_name else "new" if before is None and file_name
+                      else "dropped" if file_name is None and before else "changed" if file_name else "none")
+            countries = sorted(isos.get(c, c) for c in OBJECT_COUNTRIES.get(entity_id, ())) if entity_id else []
+            rows.append({"name": name, "status": status, "change": change, "file": file_name,
+                         "before": before, "object": entity_id, "countries": countries, "reason": reason})
+            if index % 25 == 0:
+                print(f"  {index}/{len(measured)}: {len(entries)} logos, {failures} failures, {REQUESTS} requests",
+                      file=sys.stderr)
+    except RequestLimitReached:
+        stopped = True
+    summary = {"names": len(names), "measured": len(measured), "rows": len(rows),
+               "entries_before": len(previous), "entries_after": len(entries),
                "bound": sum(r["status"] == "bound" for r in rows),
                "unbound": sum(r["status"] == "unbound" for r in rows),
-               "failures": failures, "requests": REQUESTS}
+               "failures": failures, "requests": REQUESTS, "stopped_at_limit": stopped}
     if report_path:
         with open(report_path, "w", encoding="utf-8") as handle:
             json.dump({"summary": summary, "rows": rows}, handle, ensure_ascii=False, indent=1)
     print(json.dumps(summary))
+    if stopped:
+        print(f"ANGEHALTEN: Abrufgrenze {REQUEST_LIMIT} erreicht nach {len(rows)} von {len(measured)} Namen. "
+              "Keine Datei geschrieben.", file=sys.stderr)
+        return 2
     # Measuring gate: nothing measured, or the service broke down: write NOTHING.
-    if not entries or failures > len(names) // 4:
+    if not entries or failures > len(measured) // 4:
         print(f"NICHT GEMESSEN: {len(entries)} Treffer, {failures} Fehlschlaege. Keine Datei geschrieben.",
               file=sys.stderr)
         return 2
     if dry:
         print("(trocken: nichts geschrieben)")
         return 0
-    write_table(entries, names)
+    write_table(entries, names, search_path=len(measured) if search_path else None)
     return 0
 
 
@@ -649,7 +680,14 @@ def main():
         return single_run(sys.argv[index + 1], dry)
     if "--pruefen" in sys.argv:
         return offline_check(dry)
-    return full_run(dry, report_path)
+    if "--hoechstens" in sys.argv:
+        index = sys.argv.index("--hoechstens")
+        if index + 1 >= len(sys.argv) or not sys.argv[index + 1].isdigit():
+            print("--hoechstens braucht eine Zahl", file=sys.stderr)
+            return 2
+        global REQUEST_LIMIT
+        REQUEST_LIMIT = int(sys.argv[index + 1])
+    return full_run(dry, report_path, search_path="--suchweg" in sys.argv)
 
 
 if __name__ == "__main__":
