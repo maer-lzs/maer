@@ -32,18 +32,21 @@ final class PlayerCoordinator: ObservableObject {
                 // here would publish the previous song.
                 self?.nowPlayingLine = PlayerViewModel.displayLine(fromStreamTitle: raw)
             }
+            // Another title, or none, takes the old one's stopping error with
+            // it. FIRST, before the new model's notices arrive: the sink
+            // below delivers the notice standing at the attach at once, and a
+            // stopping error of the new title's load must outlive the change.
+            if viewModel !== oldValue { notices.titleChanged() }
             // Every notice the model says goes into the one channel, which
             // keeps the pill, its timer and the log; every start of playback
-            // lets a stopping error fall there. Another title, or none,
-            // takes the old one's stopping error with it.
-            // The value present at the attach counts too: the model is
-            // attached after its load, and a notice of the load (position
-            // adopted, title not playable) stands there already.
+            // lets a stopping error fall there. The value present at the
+            // attach counts too: the model is attached after its load, and a
+            // notice of the load (position adopted, title not playable)
+            // stands there already.
             hintCancellable = viewModel?.$sourceHint.compactMap { $0 }.sink { [weak self] notice in
                 self?.notices.show(notice, title: self?.viewModel?.item?.media.metadata?.title)
             }
             startsCancellable = viewModel?.playbackStarts.sink { [weak self] in self?.notices.played() }
-            if viewModel !== oldValue { notices.titleChanged() }
             if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
         }
     }

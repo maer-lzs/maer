@@ -179,6 +179,26 @@ struct PlaybackNoticesTests {
         #expect(literal == ["PlaybackNotices.swift"], "the document is named elsewhere: \(literal)")
     }
 
+    /// The real attach: a title that cannot play says so over the change of
+    /// title that brings it, and the next title takes that error with it.
+    @Test("der Halt-Fehler aus dem Laden ueberlebt den Titelwechsel, der ihn bringt; der naechste Titel nimmt ihn mit")
+    func aStoppingErrorOfTheLoadOutlivesTheChange() throws {
+        let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+        let (notices, folder) = channel(expiry: 60)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let coordinator = PlayerCoordinator(provider: MockProvider(), notices: notices)
+        func seed(_ id: String, _ notice: PlaybackNotice?) {
+            coordinator._seedActivePlayerForUITest(item: LibraryItem(id: id, media: media, addedAt: nil),
+                                                   detail: LibraryItemDetail(id: id, media: media, userMediaProgress: nil),
+                                                   chapters: [], currentChapterIndex: 0, isFallback: false,
+                                                   noticeBeforeAttach: notice)
+        }
+        seed("rss:notice-a:\(UUID().uuidString)", .cannotPlay("Kein Titel"))
+        #expect(notices.shown == .cannotPlay("Kein Titel"), "the change of title swallowed its own stopping error")
+        seed("rss:notice-b:\(UUID().uuidString)", nil)
+        #expect(notices.shown == nil, "the previous title's stopping error stayed over the next title")
+    }
+
     @Test("eine Meldung aus dem Laden kommt an, obwohl das Modell erst danach am Koordinator haengt")
     func aNoticeOfTheLoadArrives() throws {
         let id = "rss:notice-load:\(UUID().uuidString)"
@@ -270,9 +290,10 @@ struct PlaybackNoticesTests {
         #expect(settings.contains("NoticeLogView(notices: coordinator.notices)"), "the settings do not lead to the log")
     }
 
-    /// The two sentences of an unreadable download stand as decided, in
-    /// German too; a change of the wording is a decision, not an edit.
-    @Test("die zwei Saetze eines unlesbaren Downloads stehen im Katalog, wie entschieden")
+    /// The two notices of an unreadable download say the decided sentences,
+    /// and those stand in the catalog, in German too; a change of the wording
+    /// is a decision, not an edit.
+    @Test("die zwei Meldungen eines unlesbaren Downloads sagen die entschiedenen Saetze, und die stehen im Katalog")
     func theUnreadableDownloadSentencesStandAsDecided() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -289,6 +310,10 @@ struct PlaybackNoticesTests {
              "Download nicht lesbar. Mit Netz läuft er vom Server."),
         ]
         for (notice, key, sentence) in decided {
+            // The notice says the decided key in whatever language the run
+            // has: its label is that key's translation from the same catalog.
+            let spoken = String(localized: String.LocalizationValue(key))
+            #expect(notice.label == spoken, "\(notice.kind) says \(notice.label), the decided key says \(spoken)")
             #expect(strings[key] != nil, "the key of \(notice.kind) left the catalog")
             #expect(german(key) == sentence, "\(notice.kind) says \(String(describing: german(key)))")
         }
