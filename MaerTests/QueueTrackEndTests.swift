@@ -201,6 +201,17 @@ struct QueueTrackEndTests {
                 "the carried hint outlives its session")
     }
 
+    /// An open by id that resolves nothing starts nothing; the line is the
+    /// only trace of that tap.
+    @Test("Oeffnen per Kennung, die nicht aufloest: nichts spielt, eine Zeile sagt es")
+    func anUnresolvedOpenLeavesALine() throws {
+        let source = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
+        let start = try #require(source.range(of: "func open(itemId: String) async {"), "the open by id is gone")
+        let body = source[start.upperBound...].prefix(400)
+        #expect(body.contains("guard let item = await AppSession.shared.resolveItem(forId: itemId) else { Logger.player.notice(\"OPEN unresolved"),
+                "an open that resolves nothing returns without a line")
+    }
+
     @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")
     func thePlayerClosesOnNothing() throws {
         let overlay = try Self.source("Sources/Views/FullPlayerOverlay.swift")

@@ -312,9 +312,13 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// Opens an id through the one resolver (the seam); a view need not
-    /// hold the session for it. Nothing happens when nothing resolves.
+    /// hold the session for it. Nothing plays when nothing resolves, and a
+    /// line says so: a tap that starts nothing is otherwise without a trace.
     func open(itemId: String) async {
-        guard let item = await AppSession.shared.resolveItem(forId: itemId) else { return }
+        guard let item = await AppSession.shared.resolveItem(forId: itemId) else {
+            Logger.player.notice("OPEN unresolved item=\(itemId, privacy: .private(mask: .hash)), nothing plays")
+            return
+        }
         await open(item: item)
     }
 
