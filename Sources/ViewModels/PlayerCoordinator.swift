@@ -32,9 +32,16 @@ final class PlayerCoordinator: ObservableObject {
                 // here would publish the previous song.
                 self?.nowPlayingLine = PlayerViewModel.displayLine(fromStreamTitle: raw)
             }
-            if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
+            // The hint pill above the mini bar, for the same reason. Measured:
+            // a hint that came without a change of `isPlaying` published
+            // nothing here, so the pill only showed on an unrelated redraw.
+            hintCancellable = viewModel?.$sourceHint.sink { [weak self] in self?.sourceHint = $0 }
+            if viewModel == nil { isPlaying = false; nowPlayingLine = nil; sourceHint = nil }
         }
     }
+
+    /// The active session's hint, mirrored for the pill above the mini bar.
+    @Published private(set) var sourceHint: PlayerViewModel.SourceHint?
 
     /// The running ICY line of the active item, mirrored for list surfaces
     /// (radio tiles/cards) that must not each observe the nested view model.
@@ -56,6 +63,7 @@ final class PlayerCoordinator: ObservableObject {
 
     private var isPlayingCancellable: AnyCancellable?
     private var icyCancellable: AnyCancellable?
+    private var hintCancellable: AnyCancellable?
     private var standbyCancellable: AnyCancellable?
     /// One progress refresh per foreign-claimed library item, then one
     /// per minute at most (see `ClaimRefreshThrottle`).

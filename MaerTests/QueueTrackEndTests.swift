@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// A music server song plays from the queue whether or not this run has
@@ -166,6 +167,38 @@ struct QueueTrackEndTests {
         let grip = library[start.upperBound..<end.lowerBound]
         #expect(grip.contains("allowsHitTesting(takes)"), "the grip lets the finger in: \(grip)")
         #expect(grip.contains("accessibilityHidden(!takes)"), "the grip lets the accessibility tree in: \(grip)")
+    }
+
+    /// The pill above the mini bar is drawn by the library view, which
+    /// observes the coordinator only. Measured: a hint that came without a
+    /// change of `isPlaying` published nothing there, so six of twelve hints
+    /// showed only on an unrelated redraw. The coordinator carries the hint,
+    /// and the view reads it there.
+    @Test("Statushinweis: der Coordinator meldet jeden Hinweis des Modells, die Pille ueber dem Mini-Player liest ihn dort")
+    @MainActor
+    func theCoordinatorCarriesTheHint() throws {
+        let id = "rss:hint-carry:\(UUID().uuidString)"
+        let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+        let coordinator = PlayerCoordinator(provider: MockProvider())
+        coordinator._seedActivePlayerForUITest(item: LibraryItem(id: id, media: media, addedAt: nil),
+                                               detail: LibraryItemDetail(id: id, media: media, userMediaProgress: nil),
+                                               chapters: [], currentChapterIndex: 0, isFallback: false)
+        let model = try #require(coordinator.viewModel)
+        var published = 0
+        let token = coordinator.objectWillChange.sink { _ in published += 1 }
+        defer { token.cancel() }
+        let playing = model.isPlaying
+        model.showSourceHint(.offline)
+        #expect(model.isPlaying == playing, "the precondition: the hint came without a change of isPlaying")
+        #expect(published > 0, "the coordinator says the hint arrived")
+        #expect(coordinator.sourceHint == .offline, "the coordinator carries the hint: \(String(describing: coordinator.sourceHint))")
+        let library = try Self.source("Sources/Views/LibraryView.swift")
+        #expect(library.contains("if let vm = playerCoordinator.viewModel, playerCoordinator.sourceHint != nil {"),
+                "the pill above the mini bar does not read the carried hint")
+        #expect(!library.contains("vm.sourceHint != nil"), "the pill reads the model's own value again")
+        let source = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
+        #expect(source.contains("if viewModel == nil { isPlaying = false; nowPlayingLine = nil; sourceHint = nil }"),
+                "the carried hint outlives its session")
     }
 
     @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")

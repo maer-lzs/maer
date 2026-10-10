@@ -853,7 +853,9 @@ struct LibraryView: View {
                 }
                 .onTapGesture { playerCoordinator.loadError = nil }
         }
-        if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
+        // The coordinator's mirror, not the model's own value: only what
+        // this view observes makes it draw the pill when a hint arrives.
+        if let vm = playerCoordinator.viewModel, playerCoordinator.sourceHint != nil {
             ResumeMessageBanner(viewModel: vm)
         }
     }
