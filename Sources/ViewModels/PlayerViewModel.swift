@@ -64,61 +64,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Short, transient hint (icon + text) about where the current state comes
-    /// from or how it is saved. Fixed, checked labels instead of free text.
-    /// Shown as a global glass pill.
-    enum SourceHint: Equatable {
-        case saved
-        case serverAdopted
-        case localUsed
-        case queued
-        case offline
-        case conflict
-        case trackFailed
-        case streamFailed
-        case loadFailed
-        /// A downloaded file could not be read; the track plays on from the server.
-        case downloadUnreadable
-        /// A downloaded file could not be read and nothing can take over.
-        case downloadUnreadableOffline
-
-        var label: String {
-            switch self {
-            case .saved: return String(localized: "Progress saved")
-            case .serverAdopted: return String(localized: "Adopted server position")
-            case .localUsed: return String(localized: "Using local position")
-            case .queued: return String(localized: "Offline: queued for sync")
-            case .offline: return String(localized: "Offline: progress saved locally")
-            case .conflict: return String(localized: "Conflict detected")
-            case .trackFailed: return String(localized: "Playback error: track unavailable")
-            case .streamFailed: return String(localized: "Stream unavailable: the station could not be reached")
-            case .loadFailed: return String(localized: "Could not load. Tap play to try again.")
-            case .downloadUnreadable: return String(localized: "Download unreadable, playing from the server")
-            case .downloadUnreadableOffline: return String(localized: "Download unreadable. Online it plays from the server.")
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .saved: return "checkmark.icloud"
-            case .serverAdopted: return "arrow.down.circle"
-            case .localUsed: return "internaldrive"
-            case .queued: return "icloud.and.arrow.up"
-            case .offline: return "icloud.slash"
-            case .conflict: return "exclamationmark.triangle"
-            case .trackFailed: return "exclamationmark.triangle"
-            case .streamFailed: return "exclamationmark.triangle"
-            case .loadFailed: return "wifi.exclamationmark"
-            case .downloadUnreadable: return "icloud.and.arrow.down"
-            case .downloadUnreadableOffline: return "exclamationmark.triangle"
-            }
-        }
-    }
+    /// The notices this model says (`PlaybackNotice`); what shows, and for
+    /// how long, decides the coordinator's channel.
+    typealias SourceHint = PlaybackNotice
 
     @Published var syncStatus: SyncStatus = .synced
-    /// Short hint about where the progress came from on open. Fades out by
-    /// itself after a few seconds.
+    /// The last notice this model said: an event for the channel, which
+    /// keeps the pill, its timer and the log. It is not cleared here.
     @Published var sourceHint: SourceHint?
+    /// Every start of playback, from any way (button, lock screen, AirPods,
+    /// CarPlay, Siri): the channel lets a stopping error fall on it.
+    let playbackStarts = PassthroughSubject<Void, Never>()
 
     @Published var isPlaying = false
     /// Absolute position in the WHOLE book, in seconds. Regardless of whether
@@ -192,6 +148,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     struct HeldPoint {
         let index: Int
         let then: FailedLoad.LocalFallback
+        /// Why the held track failed, for the symbol when it stops.
+        let cause: NoticeCause
     }
 
     /// Where the local files of an item lie, and whether the network carries.
@@ -628,18 +586,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         loadArtwork(coverURL: provider.coverURL(forItemId: item.id))
     }
 
-    /// Shows a brief hint (e.g. "adopted server position") and fades it out by
-    /// itself after a few seconds. Shown globally via the overlay pill.
-    /// Regardless of whether you are currently in the
-    /// library, on the detail page or in the full player.
+    /// Says a notice (e.g. "adopted server position"). The coordinator's
+    /// channel puts it in the log and decides whether and how long it shows.
     func showSourceHint(_ hint: SourceHint) {
         sourceHint = hint
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            if self?.sourceHint == hint {
-                self?.sourceHint = nil
-            }
-        }
     }
 
     // MARK: - Track-Verwaltung (Multi-Track)
@@ -761,10 +711,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard observedItem.status == .failed else { return }
                 let description = observedItem.error.map { FailureReason.of($0) }
                     ?? observedItem.errorLog()?.events.last?.errorComment
+                // The cause as the error tells it; the network's state is
+                // asked on the main actor.
+                let cause = NoticeCause.of(observedItem.error, online: true)
                 let failedItem = ObjectIdentifier(observedItem)
                 Task { @MainActor [weak self] in
                     self?.handleItemLoadFailure(trackIndex: failedIndex, item: failedItem,
-                                                errorDescription: description)
+                                                errorDescription: description, cause: cause)
                 }
             }
             itemStatusObservers.append(observation)
@@ -854,6 +807,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func play(caller: String = #function) {
         notePlayback("play", from: caller)
+        playbackStarts.send()
         // Playback is an EVENT. From here on the sync path may
         // write this item's local state.
         eventSinceLoad = true
@@ -1393,8 +1347,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// playback stops with a hint instead of a silent stall, for every kind
     /// of item, and the next play builds the queue anew.
     private func handleItemLoadFailure(trackIndex index: Int, item failedItem: ObjectIdentifier,
-                                       errorDescription: String?) {
+                                       errorDescription: String?, cause errorCause: NoticeCause) {
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
+        let cause = isOnline() ? errorCause : .network
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
         let inCurrentQueue = itemTrackIndex[failedItem] != nil
         let fallback = inCurrentQueue && index >= currentTrackIndex && !isRadio
@@ -1408,7 +1363,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         if FailedLoad.holdsAhead(failedIndex: index, currentIndex: currentTrackIndex,
                                  inCurrentQueue: inCurrentQueue, heldAt: heldAhead?.index) {
-            holdAhead(at: index, then: fallback)
+            holdAhead(at: index, then: fallback, cause: cause)
             return
         }
         guard FailedLoad.stopsPlayback(failedIndex: index, currentIndex: currentTrackIndex,
@@ -1423,14 +1378,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(isRadio ? .streamFailed : Self.loadHint(fallback))
+        showSourceHint(isRadio ? .streamFailed : Self.loadHint(fallback, cause: cause))
         forgetCatalogAnswer()
     }
 
     /// The hint of a stopped load failure: a download that cannot be read
-    /// says so; every other failure may be the network.
-    private static func loadHint(_ fallback: FailedLoad.LocalFallback) -> SourceHint {
-        fallback == .unavailable ? .downloadUnreadableOffline : .loadFailed
+    /// says so; every other failure carries its cause for the symbol.
+    private static func loadHint(_ fallback: FailedLoad.LocalFallback, cause: NoticeCause) -> SourceHint {
+        fallback == .unavailable ? .downloadUnreadableOffline : .loadFailed(cause)
     }
 
     /// A later track failed to load while an earlier one plays: the queue is
@@ -1438,8 +1393,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// ends, playback stops at the failed track's start like a failure of the
     /// playing item (mark, hint, the next play builds anew from there), or
     /// goes on from there when its local file was dropped for the server.
-    private func holdAhead(at index: Int, then: FailedLoad.LocalFallback) {
-        heldAhead = HeldPoint(index: index, then: then)
+    private func holdAhead(at index: Int, then: FailedLoad.LocalFallback, cause: NoticeCause) {
+        heldAhead = HeldPoint(index: index, then: then, cause: cause)
         guard let player else { return }
         for item in player.items() where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
             player.remove(item)
@@ -1481,7 +1436,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(Self.loadHint(then))
+        showSourceHint(Self.loadHint(then, cause: isOnline() ? held.cause : .network))
         forgetCatalogAnswer()
     }
 

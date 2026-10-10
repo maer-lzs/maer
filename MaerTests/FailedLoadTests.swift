@@ -152,9 +152,9 @@ struct FailedLoadTests {
         let failed = try #require(model.player?.currentItem, "a queue was built")
         model.play()
 
-        await waitFor { model.sourceHint == .loadFailed }
+        await waitFor { model.sourceHint?.kind == .loadFailed }
         #expect(failed.status == .failed, "the precondition: the item failed to load")
-        #expect(model.sourceHint == .loadFailed, "the failure says so")
+        #expect(model.sourceHint?.kind == .loadFailed, "the failure says so")
         #expect(!model.isPlaying, "the failure stops playback instead of a silent stall")
 
         model.play()
@@ -276,9 +276,9 @@ struct FailedLoadTests {
         var furthest = 0.0
         await waitFor {
             furthest = max(furthest, model.currentTime)
-            return model.sourceHint == .loadFailed
+            return model.sourceHint?.kind == .loadFailed
         }
-        #expect(model.sourceHint == .loadFailed, "the later failure says so")
+        #expect(model.sourceHint?.kind == .loadFailed, "the later failure says so")
         #expect(!model.isPlaying, "playback stops at the failed file")
         #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed file: \(model.currentTime)")
         #expect(furthest < 2, "the position never reached the file behind it: \(furthest)")
@@ -330,7 +330,7 @@ struct FailedLoadTests {
             var seen: PlayerViewModel.SourceHint?
             await waitFor {
                 seen = seen ?? online.sourceHint
-                return online.currentTime > 0.5 || online.sourceHint == .loadFailed
+                return online.currentTime > 0.5 || online.sourceHint?.kind == .loadFailed
             }
             #expect(seen == .downloadUnreadable, "\(local.pathExtension): the hint names the download: \(String(describing: seen))")
             #expect(online.isPlaying && online.currentTime > 0.5, "\(local.pathExtension): playback goes on: \(online.currentTime)")
@@ -369,11 +369,11 @@ struct FailedLoadTests {
         var furthest = 0.0
         await waitFor({
             furthest = max(furthest, model.currentTime)
-            return model.sourceHint == .loadFailed
+            return model.sourceHint?.kind == .loadFailed
         }, seconds: 20)
         #expect(Date().timeIntervalSince(started) > 1.5,
                 "the precondition: the failure came after the track before had ended")
-        #expect(model.sourceHint == .loadFailed, "the late failure says so: \(String(describing: model.sourceHint))")
+        #expect(model.sourceHint?.kind == .loadFailed, "the late failure says so: \(String(describing: model.sourceHint))")
         #expect(!model.isPlaying, "playback stops at the failed track")
         #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed track: \(model.currentTime)")
         #expect(furthest < 2, "the position never reached the track behind it: \(furthest)")
@@ -398,7 +398,7 @@ struct FailedLoadTests {
         var seen: PlayerViewModel.SourceHint?
         await waitFor {
             seen = seen ?? model.sourceHint
-            return model.currentTime > 1.5 || model.sourceHint == .loadFailed
+            return model.currentTime > 1.5 || model.sourceHint?.kind == .loadFailed
         }
         #expect(seen == .downloadUnreadable, "the hint names the download: \(String(describing: seen))")
         #expect(model.isPlaying && model.currentTime > 1.5, "playback went on past its start: \(model.currentTime)")
@@ -448,8 +448,8 @@ struct FailedLoadTests {
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: missing] }, isOnline: { true })
         await model.load(item: detail([("dead.mp3", 3)]))
         model.play()
-        await waitFor { model.sourceHint == .loadFailed }
-        #expect(model.sourceHint == .loadFailed, "after the one try the stream failure says so: \(String(describing: model.sourceHint))")
+        await waitFor { model.sourceHint?.kind == .loadFailed }
+        #expect(model.sourceHint?.kind == .loadFailed, "after the one try the stream failure says so: \(String(describing: model.sourceHint))")
         #expect(!model.isPlaying, "playback stops")
         let queue = model.player.map(ObjectIdentifier.init)
         try? await Task.sleep(nanoseconds: 1_000_000_000)

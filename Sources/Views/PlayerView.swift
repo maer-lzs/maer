@@ -115,16 +115,14 @@ struct PlayerView: View {
             .padding(.bottom, bottomInset)
         }
         .overlay(alignment: .bottom) {
-            // The same global source/sync hint pill as above the mini bar. In
-            // the full player at the bottom, slightly above the controls. Only
-            // visible when set (reserves no space otherwise); purely
-            // informational (allowsHitTesting(false) in the view).
-            if viewModel.sourceHint != nil {
-                ResumeMessageBanner(viewModel: viewModel)
-                    .padding(.bottom, bottomInset + 16)
-                    // The full player is always dark. Keep the pill dark too.
-                    .environment(\.colorScheme, .dark)
-            }
+            // The same pill of the one channel as above the mini bar. In the
+            // full player at the bottom, slightly above the controls. It
+            // shows nothing without a notice, and an overlay takes no space;
+            // purely informational (allowsHitTesting(false) in the view).
+            ResumeMessageBanner(notices: coordinator.notices)
+                .padding(.bottom, bottomInset + 16)
+                // The full player is always dark. Keep the pill dark too.
+                .environment(\.colorScheme, .dark)
         }
         .foregroundStyle(.white)
         .tint(.white)

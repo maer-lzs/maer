@@ -10,19 +10,17 @@ import SwiftUI
 /// the library's NavigationStack, so it appears on every level (library, book
 /// detail, full player).
 ///
-/// Its own view with `@ObservedObject` so changes to `sourceHint` arrive
-/// reliably. A value read only via `coordinator.viewModel?.sourceHint` would
-/// not update, since `PlayerCoordinator` only notifies when `viewModel` is
-/// completely re-SET, not when values WITHIN it change (the same pattern as the
-/// play/pause button).
+/// Its own view observing the one channel (`PlaybackNotices`), so a notice
+/// arrives without any other redraw; what shows, and for how long, the
+/// channel decides.
 struct ResumeMessageBanner: View {
-    @ObservedObject var viewModel: PlayerViewModel
+    @ObservedObject var notices: PlaybackNotices
 
     private var shape: Capsule { Capsule(style: .continuous) }
 
     var body: some View {
         Group {
-            if let hint = viewModel.sourceHint {
+            if let hint = notices.shown {
                 Label(hint.label, systemImage: hint.icon)
                     .font(.subheadline).bold()
                     .lineLimit(1)
@@ -40,6 +38,6 @@ struct ResumeMessageBanner: View {
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.5), value: viewModel.sourceHint)
+        .animation(.easeInOut(duration: 0.5), value: notices.shown)
     }
 }

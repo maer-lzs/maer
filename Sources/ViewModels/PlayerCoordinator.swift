@@ -32,16 +32,22 @@ final class PlayerCoordinator: ObservableObject {
                 // here would publish the previous song.
                 self?.nowPlayingLine = PlayerViewModel.displayLine(fromStreamTitle: raw)
             }
-            // The hint pill above the mini bar, for the same reason. Measured:
-            // a hint that came without a change of `isPlaying` published
-            // nothing here, so the pill only showed on an unrelated redraw.
-            hintCancellable = viewModel?.$sourceHint.sink { [weak self] in self?.sourceHint = $0 }
-            if viewModel == nil { isPlaying = false; nowPlayingLine = nil; sourceHint = nil }
+            // Every notice the model says goes into the one channel, which
+            // keeps the pill, its timer and the log; every start of playback
+            // lets a stopping error fall there. Another title, or none,
+            // takes the old one's stopping error with it.
+            hintCancellable = viewModel?.$sourceHint.dropFirst().compactMap { $0 }.sink { [weak self] notice in
+                self?.notices.show(notice, title: self?.viewModel?.item?.media.metadata?.title)
+            }
+            startsCancellable = viewModel?.playbackStarts.sink { [weak self] in self?.notices.played() }
+            if viewModel !== oldValue { notices.titleChanged() }
+            if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
         }
     }
 
-    /// The active session's hint, mirrored for the pill above the mini bar.
-    @Published private(set) var sourceHint: PlayerViewModel.SourceHint?
+    /// The one channel of playback notices (pill above the mini bar, pill in
+    /// the full player, the log).
+    let notices: PlaybackNotices
 
     /// The running ICY line of the active item, mirrored for list surfaces
     /// (radio tiles/cards) that must not each observe the nested view model.
@@ -64,6 +70,7 @@ final class PlayerCoordinator: ObservableObject {
     private var isPlayingCancellable: AnyCancellable?
     private var icyCancellable: AnyCancellable?
     private var hintCancellable: AnyCancellable?
+    private var startsCancellable: AnyCancellable?
     private var standbyCancellable: AnyCancellable?
     /// One progress refresh per foreign-claimed library item, then one
     /// per minute at most (see `ClaimRefreshThrottle`).
@@ -90,8 +97,10 @@ final class PlayerCoordinator: ObservableObject {
     /// enough and the witness drives both.
     private var pointerBeforeOpen: String??
 
-    init(provider: any AudioProvider) {
+    /// `notices`: a witness hands in a channel of its own (own log file).
+    init(provider: any AudioProvider, notices: PlaybackNotices? = nil) {
         self.provider = provider
+        self.notices = notices ?? PlaybackNotices()
         // A load failure that stopped playback is built anew once the
         // network carries again, without starting: the next play then plays.
         NetworkMonitor.shared.onChange { [weak self] path in
