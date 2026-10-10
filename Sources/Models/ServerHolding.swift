@@ -25,4 +25,42 @@ nonisolated enum ServerHolding: Equatable, Sendable {
         if let title = serverTitles[feedKey] { return .held(title: title) }
         return read ? .notThere : .unread
     }
+
+    /// What a local subscription does while Audiobookshelf is unread.
+    enum WhileUnread: Equatable, Sendable {
+        /// The person asked for this feed: subscribed here, noted for the
+        /// next read.
+        case subscribeNoted
+        /// A mechanism asked (gpodder, Pinchflat, the cloud, an import):
+        /// nothing subscribed, a later attempt asks again.
+        case setOut
+    }
+
+    static func whileUnread(byPerson: Bool) -> WhileUnread {
+        byPerson ? .subscribeNoted : .setOut
+    }
+
+    /// What the next read does with a show subscribed while the server was
+    /// unread.
+    enum Settle: Equatable, Sendable {
+        /// The server does not hold it: the note goes, the subscription stays.
+        case noteGoes
+        /// Still unread: everything stays for the next read.
+        case waits
+        /// The server holds it and every state found its episode there: the
+        /// states went over, the local subscription goes (the two sources
+        /// hold a show exclusively).
+        case handOver
+        /// The server holds it but a state found no episode there: the local
+        /// subscription stays, so nothing heard is lost.
+        case keepsLocal
+    }
+
+    static func settle(_ holding: ServerHolding, everyStateBridged: Bool) -> Settle {
+        switch holding {
+        case .notThere: .noteGoes
+        case .unread: .waits
+        case .held: everyStateBridged ? .handOver : .keepsLocal
+        }
+    }
 }

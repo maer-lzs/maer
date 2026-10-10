@@ -50,7 +50,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.shows.contains { $0.feedURL == other })
     }
 
-    @Test("die Tuer bei ungelesenem Audiobookshelf: erst lesen; bleibt es ungelesen, wird nichts abonniert, gelesen gilt die Antwort")
+    @Test("die Tuer bei ungelesenem Audiobookshelf: erst lesen; bleibt es ungelesen, abonniert eine Mechanik nichts, gelesen gilt die Antwort")
     func anUnreadServerIsReadFirstAndSetsOut() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -66,7 +66,7 @@ struct LocalSubscribeDoorTests {
             await MainActor.run { calls.hosts.append(url.host ?? "-") }
             return .show(BulkImportTests.show(url, title: "Feed Show"))
         }
-        let setOut = await subs.subscribeUnlessOnServer(urlString: feed)
+        let setOut = await subs.subscribeUnlessOnServer(urlString: feed, isSingleUserAct: false)
         #expect(setOut == .setOut, "an unread server was read as not there")
         #expect(calls.reads == 1, "the door did not read the server first")
         #expect(calls.hosts.isEmpty && subs.shows.isEmpty, "a show was subscribed while the server was unread")
@@ -80,6 +80,131 @@ struct LocalSubscribeDoorTests {
         let held = await subs.subscribeUnlessOnServer(urlString: feed)
         #expect(held == .onServer(title: "Server Show"), "the answer after the read was not taken")
         #expect(calls.hosts.isEmpty && subs.shows.isEmpty)
+    }
+
+    @Test("die Regeln bei ungelesenem Audiobookshelf: die Person abonniert mit Vermerk, eine Mechanik setzt aus; der Abgleich danach")
+    func theRulesWhileTheServerIsUnread() {
+        #expect(ServerHolding.whileUnread(byPerson: true) == .subscribeNoted)
+        #expect(ServerHolding.whileUnread(byPerson: false) == .setOut)
+        #expect(ServerHolding.settle(.notThere, everyStateBridged: true) == .noteGoes)
+        #expect(ServerHolding.settle(.unread, everyStateBridged: true) == .waits)
+        #expect(ServerHolding.settle(.held(title: "S"), everyStateBridged: true) == .handOver)
+        #expect(ServerHolding.settle(.held(title: "S"), everyStateBridged: false) == .keepsLocal,
+                "a state without an episode there keeps the local subscription")
+    }
+
+    /// A store whose server is unread, then read and holding the feed with
+    /// one episode the bridge can or cannot find.
+    struct Settling {
+        let subs: PodcastSubscriptions
+        let defaults: UserDefaults
+        let server: ServerHeldImportTests.FakeServer
+        let feed: String
+        let cleanup: () -> Void
+    }
+
+    func settling() async throws -> (Settling, SettleSwitch) {
+        let (subs, defaults, cleanup) = try await BulkImportTests.storeAndDefaults()
+        let run = UUID().uuidString.prefix(8)
+        let feed = "https://settle-\(run).example/feed.xml"
+        let state = SettleSwitch()
+        subs.serverShows = { state.heldThere }
+        subs.serverShowsRead = { state.read }
+        subs.readServerShows = {}
+        subs._testFeedFetcher = { url in .show(BulkImportTests.show(url, title: "Feed Show")) }
+        let server = ServerHeldImportTests.FakeServer()
+        subs.serverSide = { server }
+        return (Settling(subs: subs, defaults: defaults, server: server, feed: feed, cleanup: cleanup), state)
+    }
+
+    @MainActor final class SettleSwitch {
+        var read = false
+        var heldThere: [PodcastShow] = []
+        /// The server holds the feed with one episode, found by `guid`.
+        func hold(_ feed: String, guid: String) -> String {
+            let episode = "abspod:st:e0"
+            heldThere = [PodcastShow(id: "abspod:st", title: "Feed Show", author: nil, artworkURL: nil,
+                                     description: nil, feedURL: feed,
+                                     episodes: [PodcastEpisode(guid: episode, title: "e0", audioURL: "/api/items/st/e0",
+                                                               pubDate: 1, duration: 1800)])]
+            read = true
+            return episode
+        }
+    }
+
+    /// The person's tap while the server is unread subscribes here with a
+    /// note, a mechanism sets out; the next read hands the heard state to
+    /// the server's episode (600 s against nothing there) and the local
+    /// subscription goes, without a tombstone for the cloud.
+    @Test("ein Tipp bei ungelesenem Audiobookshelf abonniert hier mit Vermerk; der naechste Lesevorgang gibt den gehoerten Stand an die Folge dort und nimmt das lokale Abo")
+    func aTapWhileUnreadHandsOverOnTheNextRead() async throws {
+        let (rig, state) = try await settling()
+        defer { rig.cleanup() }
+        let subs = rig.subs
+        #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed, isSingleUserAct: false) == .setOut,
+                "a mechanism subscribes while the server is unread")
+        #expect(subs.shows.isEmpty)
+        #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked,
+                "the person's tap was refused while the server is unread")
+        let key = PodcastSubscriptions.feedKey(rig.feed)
+        #expect(subs.uncheckedFeedKeys() == [key], "the subscription is not noted")
+        let local = try #require(subs.shows.first { $0.feedURL == rig.feed })
+        let heard = try #require(local.episodes.first)
+        ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
+        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+                                                                 enclosure: nil)
+        await subs.settleUnchecked()
+        #expect(rig.server.progress[episode]?.currentTime == 600, "the heard state did not reach the server's episode")
+        #expect(!subs.shows.contains { $0.feedURL == rig.feed }, "the local subscription stays beside the server's")
+        #expect(subs.uncheckedFeedKeys().isEmpty, "the note stays")
+        #expect(ListeningStore.backup(heard.guid, in: rig.defaults)?.first == 600, "the local state was dropped")
+    }
+
+    /// The other way round: the server knows the episode later (900 s), so
+    /// its state stays; the local subscription still goes, every state was
+    /// decided there.
+    @Test("der Abgleich, wenn der Server spaeter gehoert hat: dessen Stand bleibt, nichts wird geschrieben")
+    func aNewerServerStateStays() async throws {
+        let (rig, state) = try await settling()
+        defer { rig.cleanup() }
+        let subs = rig.subs
+        #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
+        let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
+        ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
+        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+                                                                 enclosure: nil)
+        rig.server.progress[episode] = BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 9_000_000,
+                                                    currentTime: 900)
+        await subs.settleUnchecked()
+        #expect(rig.server.writes.isEmpty, "an older local state was written over the server's")
+        #expect(rig.server.progress[episode]?.currentTime == 900)
+        #expect(!subs.shows.contains { $0.feedURL == rig.feed })
+    }
+
+    /// Without the bridge (the server's episode carries another guid) the
+    /// heard state has nowhere to go: the local subscription and its note
+    /// stay. Not held there, the note goes and the subscription stays.
+    @Test("der Abgleich ohne Bruecke behaelt das lokale Abo; liegt die Sendung nicht dort, faellt nur der Vermerk")
+    func withoutTheBridgeTheLocalSubscriptionStays() async throws {
+        let (rig, state) = try await settling()
+        defer { rig.cleanup() }
+        let subs = rig.subs
+        #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
+        let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
+        ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
+        let episode = state.hold(rig.feed, guid: "another-guid")
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: "another-guid", enclosure: nil)
+        await subs.settleUnchecked()
+        #expect(subs.shows.contains { $0.feedURL == rig.feed }, "the local subscription went without its states")
+        #expect(rig.server.writes.isEmpty)
+        #expect(subs.uncheckedFeedKeys() == [PodcastSubscriptions.feedKey(rig.feed)], "the note went")
+        // The server read again, and it does not hold the feed.
+        state.heldThere = []
+        await subs.settleUnchecked()
+        #expect(subs.shows.contains { $0.feedURL == rig.feed })
+        #expect(subs.uncheckedFeedKeys().isEmpty, "the note stays for a show the server does not hold")
     }
 
     @Test("der Import bei ungelesenem Audiobookshelf: erst lesen, dann aussetzen, nichts abonniert, das Ergebnis sagt es")
@@ -194,6 +319,10 @@ struct LocalSubscribeDoorTests {
                                     "a show held on Audiobookshelf is not refused with its sentence")
         #expect(held.upperBound < sentence.lowerBound, "the sentence belongs to another case")
         #expect(body.contains("case .setOut:"), "an unread server is not said")
+        // The button is the person's own tap: while the server is unread it
+        // subscribes here with a note, like every tap (14a).
+        #expect(body.contains("case .subscribed, .subscribedUnchecked:"), "a noted subscription is not taken as subscribed")
+        #expect(!body.contains("isSingleUserAct: false"), "the button calls the door as a mechanism")
         #expect(page.contains("HintLine(systemImage: \"exclamationmark.triangle.fill\") { Text(localRefusal) }"),
                 "the refusal is not shown beside the menu")
     }

@@ -170,6 +170,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// says nothing about the server (`ServerHolding.unread`).
     var showsRead: Bool { lastRefreshAt != nil }
 
+    /// After a read that answered: the shows the person subscribed here
+    /// while this server could not be read are settled against it.
+    private func afterShowsRead() {
+        Task { await PodcastSubscriptions.shared.settleUnchecked() }
+    }
+
     /// The ONE way the shows change: the bridge with them, the episode
     /// handles, and the token the podcast tab recomputes on. Every caller
     /// names the handles, so shows and handles never part.
@@ -225,6 +231,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             hasPodcasts = false
             replaceShows([], absToRSS: [:], rssToABS: [:], handles: [:])
             lastRefreshAt = Date()
+            afterShowsRead()
             return
         }
         hasPodcasts = true
@@ -265,6 +272,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                                         loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
             replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS, handles: newHandles)
             lastRefreshAt = Date()
+            afterShowsRead()
             failedAt = nil
         } else if fetched.holdsBack {
             // Fetches failed and nothing came back: the stock stays, and the

@@ -1341,6 +1341,7 @@ final class PodcastSubscriptions: ObservableObject {
                 switch answer {
                 case .onServer: outcome = "onServer"
                 case .setOut: outcome = "setOut"
+                case .subscribedUnchecked: outcome = "subscribedUnchecked"
                 case .subscribed, .notSubscribed:
                     outcome = FeedAdoptionPending.outcome(
                         ok: ok, held: self.shows.contains { Self.feedKey($0.feedURL) == key },
@@ -1427,7 +1428,7 @@ final class PodcastSubscriptions: ObservableObject {
             let answer = await self.subscribeUnlessOnServer(urlString: newURL, notesCloud: true, adopting: false,
                                                             isSingleUserAct: true)
             switch answer {
-            case .subscribed:
+            case .subscribed, .subscribedUnchecked:
                 // The same feed under the same key (the same link, other
                 // case, tracking parameters): withdrawing the old address
                 // would withdraw the subscription just stated.
@@ -1990,8 +1991,11 @@ final class PodcastSubscriptions: ObservableObject {
         /// Audiobookshelf holds the show: no local subscription.
         case onServer(title: String)
         /// Audiobookshelf could not be read: nothing subscribed, a later
-        /// attempt asks again.
+        /// attempt asks again. Only for a mechanism.
         case setOut
+        /// Audiobookshelf could not be read and the person asked: subscribed
+        /// here, noted, and settled against the server on its next read.
+        case subscribedUnchecked
 
         /// The answer in a log line, without the show's title.
         var logName: String {
@@ -2000,20 +2004,23 @@ final class PodcastSubscriptions: ObservableObject {
             case .notSubscribed: "notSubscribed"
             case .onServer: "onServer"
             case .setOut: "setOut"
+            case .subscribedUnchecked: "subscribedUnchecked"
             }
         }
     }
 
     /// THE door of every local subscription: a show held on Audiobookshelf
     /// is not subscribed here (the two sources hold a show exclusively),
-    /// and an Audiobookshelf that was not read is read first; still unread,
-    /// nothing is subscribed rather than reading "not there" into no
-    /// answer. A show already held here is refreshed as before. The
-    /// parameters are those of `subscribe`.
+    /// and an Audiobookshelf that was not read is read first. Still unread,
+    /// a mechanism subscribes nothing rather than reading "not there" into
+    /// no answer, while the person's own tap subscribes here with a note
+    /// that the next read settles (`settleUnchecked`). A show already held
+    /// here is refreshed as before. The parameters are those of `subscribe`.
     func subscribeUnlessOnServer(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
                                  isSingleUserAct: Bool = true,
                                  statementT: Double? = nil) async -> LocalSubscription {
         let key = Self.feedKey(urlString)
+        var noted = false
         if !shows.contains(where: { Self.feedKey($0.feedURL) == key }) {
             var holding = serverHolding(feedKey: key)
             if holding == .unread {
@@ -2025,15 +2032,97 @@ final class PodcastSubscriptions: ObservableObject {
                 Logger.rss.notice("SUBSCRIBE held on Audiobookshelf, not here: \(key, privacy: .private(mask: .hash))")
                 return .onServer(title: title)
             case .unread:
-                Logger.rss.notice("SUBSCRIBE set out, Audiobookshelf unread: \(key, privacy: .private(mask: .hash))")
-                return .setOut
+                guard ServerHolding.whileUnread(byPerson: isSingleUserAct) == .subscribeNoted else {
+                    Logger.rss.notice("SUBSCRIBE set out, Audiobookshelf unread: \(key, privacy: .private(mask: .hash))")
+                    return .setOut
+                }
+                noted = true
             case .notThere:
                 break
             }
         }
         let held = await subscribe(urlString: urlString, notesCloud: notesCloud, adopting: adopting,
                                    isSingleUserAct: isSingleUserAct, statementT: statementT)
-        return held ? .subscribed : .notSubscribed
+        guard held else { return .notSubscribed }
+        guard noted else { return .subscribed }
+        noteUnchecked(key, true)
+        Logger.rss.notice("SUBSCRIBE here, Audiobookshelf unread, noted: \(key, privacy: .private(mask: .hash))")
+        return .subscribedUnchecked
+    }
+
+    /// The feed keys subscribed here by the person while Audiobookshelf
+    /// could not be read.
+    func uncheckedFeedKeys() -> Set<String> {
+        Set(defaults.stringArray(forKey: AppStorageKeys.podcastServerUncheckedFeeds) ?? [])
+    }
+
+    private func noteUnchecked(_ key: String, _ noted: Bool) {
+        var keys = uncheckedFeedKeys()
+        if noted { keys.insert(key) } else { keys.remove(key) }
+        if keys.isEmpty {
+            defaults.removeObject(forKey: AppStorageKeys.podcastServerUncheckedFeeds)
+        } else {
+            defaults.set(keys.sorted(), forKey: AppStorageKeys.podcastServerUncheckedFeeds)
+        }
+    }
+
+    /// The shows subscribed here while Audiobookshelf could not be read,
+    /// settled against it after a read. Held there, their heard states go
+    /// to the server's episodes over the one bridge of the import (guid,
+    /// then enclosure; the newer state wins) and the local subscription
+    /// goes like a mechanism removes one: no tombstone for the cloud, no
+    /// gpodder intent, the local states stay. A state without an episode
+    /// there keeps the local subscription, so nothing heard is lost.
+    func settleUnchecked() async {
+        for key in uncheckedFeedKeys().sorted() {
+            guard let show = shows.first(where: { Self.feedKey($0.feedURL) == key }) else {
+                noteUnchecked(key, false)
+                continue
+            }
+            let holding = serverHolding(feedKey: key)
+            var bridged = true
+            if case .held = holding,
+               let serverShow = serverShows().first(where: { Self.feedKey($0.feedURL) == key }) {
+                bridged = await handOverStates(of: show, to: serverShow)
+            }
+            switch ServerHolding.settle(holding, everyStateBridged: bridged) {
+            case .noteGoes:
+                noteUnchecked(key, false)
+                Logger.rss.notice("SETTLE not on Audiobookshelf, stays here: \(key, privacy: .private(mask: .hash))")
+            case .waits:
+                break
+            case .handOver:
+                shows.removeAll { Self.feedKey($0.feedURL) == key }
+                save()
+                noteUnchecked(key, false)
+                Logger.rss.notice("SETTLE held on Audiobookshelf, states handed over, local removed: \(key, privacy: .private(mask: .hash))")
+            case .keepsLocal:
+                Logger.rss.notice("SETTLE held on Audiobookshelf, a state found no episode there, local kept: \(key, privacy: .private(mask: .hash))")
+            }
+        }
+    }
+
+    /// The local states of `show` handed to the server's episodes of
+    /// `serverShow` through the import's bridge. True when every state found
+    /// its episode and was decided there (written or kept as newer).
+    private func handOverStates(of show: PodcastShow, to serverShow: PodcastShow) async -> Bool {
+        let states: [ForeignListeningState] = show.episodes.compactMap { episode in
+            guard let entry = ListeningStore.backup(episode.guid, in: defaults) else { return nil }
+            let duration = episode.duration > 0 ? episode.duration : nil
+            let write = ForeignServerProgress.write(entry, duration: episode.duration)
+            return ForeignListeningState(feedURL: show.feedURL, showTitle: show.title,
+                                         episodeGUID: Self.originalGuid(episode.guid),
+                                         enclosureURL: episode.audioURL.isEmpty ? nil : episode.audioURL,
+                                         episodeLink: nil, episodeTitle: episode.title,
+                                         position: write.time, duration: duration, finished: write.finished,
+                                         stampedAt: entry.count > 1 ? entry[1] : nil)
+        }
+        guard !states.isEmpty else { return true }
+        var result = ImportResult()
+        let plan = await applyToServer(ForeignLibrary(feedURLs: [show.feedURL], states: states),
+                                       onServer: [Self.feedKey(show.feedURL): serverShow],
+                                       run: ForeignRun(), into: &result)
+        return plan.unmatched.isEmpty && result.notSent.isEmpty
     }
 
     /// The shows of `serverShows` that are not subscribed here, by feed key.

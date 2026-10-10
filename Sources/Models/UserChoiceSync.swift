@@ -169,6 +169,8 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
+        // What this device could not read is its own mechanics.
+        "podcastServerUncheckedFeeds": .machine,
         // The free twin's search, the No to its offer and the paid address
         // left for it stay here: each device asks its own directory, answers
         // its own question, and the paid address carries a token.

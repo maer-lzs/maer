@@ -220,7 +220,7 @@ struct LibriVoxTakeoverSection: View {
         guard let rss = book?.url_rss, !rss.isEmpty else { return }
         Task {
             switch await PodcastSubscriptions.shared.subscribeUnlessOnServer(urlString: rss) {
-            case .subscribed:
+            case .subscribed, .subscribedUnchecked:
                 localSubscribed = true
                 localRefusal = nil
             case .onServer:

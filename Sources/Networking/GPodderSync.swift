@@ -190,7 +190,7 @@ final class GPodderSync {
             // the family like every other applied change of the round.
             guard let raw = snapshot.serverRaw[norm] else { continue }
             switch await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) {
-            case .subscribed: subscribed.insert(norm)
+            case .subscribed, .subscribedUnchecked: subscribed.insert(norm)
             case .setOut: setOut += 1
             case .onServer, .notSubscribed: break
             }

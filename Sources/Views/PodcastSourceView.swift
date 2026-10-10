@@ -286,8 +286,9 @@ struct PodcastSourceView: View {
             return true
         }
         switch await subs.subscribeUnlessOnServer(urlString: feedURL) {
-        case .subscribed, .onServer:
+        case .subscribed, .onServer, .subscribedUnchecked:
             // Held on Audiobookshelf counts as subscribed: the show is there.
+            // Subscribed while the server was unread: the next read settles it.
             return true
         case .notSubscribed:
             return false

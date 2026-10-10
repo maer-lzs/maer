@@ -643,6 +643,10 @@ nonisolated enum AppStorageKeys {
     /// sign-in demand: feed key ⇒ address, kept until a login is saved or
     /// the person removes them. Device-class: the login lives here.
     nonisolated static let podcastFeedsNeedingSignIn = "podcastFeedsNeedingSignIn"
+    /// Feed keys the person subscribed here while Audiobookshelf could not
+    /// be read; the next read settles them against the server. Machine
+    /// state of this device: what it could not read.
+    nonisolated static let podcastServerUncheckedFeeds = "podcastServerUncheckedFeeds"
     /// Refused refreshes per subscribed feed (`FeedRefusal`): feed key ⇒
     /// count, first, latest, status. Device-class: every device measures
     /// its own access.
