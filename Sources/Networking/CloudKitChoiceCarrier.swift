@@ -66,7 +66,7 @@ nonisolated enum CloudChoicePayload {
     }
 
     static func decode(_ data: Data) -> UserChoiceValue? {
-        // bearable, because an unreadable value is none: the carrier drops the entry, like half a line in the blob
+        // bearable, because an unreadable value is none here: the carrier keeps such a record raw as a value of an unknown kind (`blob(of:)`)
         guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
         return MaerSyncChoiceWire.untagged(object)
     }
@@ -352,12 +352,18 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
 
     /// The desired record set for a blob: a value becomes a value record, a
     /// cleared key a tombstone with the clear's moment. An entry the blob
-    /// cannot read is not a record.
+    /// cannot read is not a record. An entry of an unknown kind keeps the
+    /// record payload it came with; one from another carrier has none and
+    /// is left out, never sent as a tombstone.
     nonisolated static func records(for blob: [String: Any]) -> [String: CloudChoiceRecord] {
         var out: [String: CloudChoiceRecord] = [:]
         for (key, raw) in blob {
             guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
-            if let value = entry.value {
+            if entry.unknownKind {
+                if let payload = (raw as? [String: Any])?[UserChoiceEntry.rawRecordKey] as? Data {
+                    out[key] = CloudChoiceRecord(key: key, payload: payload, t: entry.t, tombstone: false)
+                }
+            } else if let value = entry.value {
                 out[key] = CloudChoiceRecord(key: key, payload: CloudChoicePayload.encode(value),
                                              t: entry.t, tombstone: false)
             } else {
@@ -368,8 +374,10 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     }
 
     /// The blob a set of records makes: a readable payload is a value, a
-    /// tombstone a cleared key with its moment. An unreadable payload is
-    /// dropped, like a half entry in the blob.
+    /// tombstone a cleared key with its moment. A payload this build cannot
+    /// read is a value of an unknown kind: kept raw beside its moment, so the
+    /// record is neither applied nor removed (dropped, it would leave the
+    /// desired set and go out as a removal).
     nonisolated static func blob(of records: [String: CloudChoiceRecord]) -> [String: Any] {
         var out: [String: Any] = [:]
         for (key, record) in records {
@@ -377,6 +385,8 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
                 out[key] = UserChoiceEntry(value: nil, t: record.t).plist
             } else if let value = CloudChoicePayload.decode(record.payload) {
                 out[key] = UserChoiceEntry(value: value, t: record.t).plist
+            } else {
+                out[key] = ["t": record.t, UserChoiceEntry.rawRecordKey: record.payload]
             }
         }
         return out
@@ -397,7 +407,8 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
             guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
             if let atFold = folded[key], entry.t <= atFold { continue }
             if let held = UserChoiceEntry.from(plist: out[key]), held.t >= entry.t { continue }
-            out[key] = entry.plist
+            // Taken as it stands, so an entry of an unknown kind stays raw.
+            out[key] = raw
         }
         return out
     }

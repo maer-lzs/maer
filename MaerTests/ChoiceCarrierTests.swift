@@ -133,11 +133,14 @@ struct ChoiceCarrierTests {
         // The same blob gives the same bytes, so a needless write is a byte-for-byte match.
         #expect(try MaerSyncChoiceWire.encode(every) == data)
         #expect(MaerSyncChoiceWire.decode(Data("nonsense".utf8)) == nil)
-        // A tag this build does not know is skipped, never read as a cleared key.
+        // A tag this build does not know is a value of an unknown kind,
+        // never read as a cleared key, and it goes back out as it came.
         let unknown = Data(#"{"entries":{"k":{"t":1,"v":{"zz":1}},"ok":{"t":2,"v":{"s":"y"}}}}"#.utf8)
         let read = try #require(MaerSyncChoiceWire.decode(unknown))
-        #expect(entries(read)["k"] == nil)
+        let kept = try #require(entries(read)["k"])
+        #expect(kept.unknownKind && kept.value == nil && kept.t == 1)
         #expect(entries(read)["ok"]?.value == .string("y"))
+        #expect(try MaerSyncChoiceWire.encode(read) == unknown)
     }
 
     @Test("der Laeufer notiert und uebernimmt ueber einen eingereichten Traeger") @MainActor

@@ -261,9 +261,12 @@ struct CloudKitChoiceCarrierTests {
         #expect(entries(back)["d"]?.value == .double(1))
         let rows = CloudKitChoiceCarrier.rows(of: records)
         #expect(CloudKitChoiceCarrier.records(of: rows) == records)
-        // An unreadable payload is dropped, not turned into a tombstone.
+        // An unreadable payload is a value of an unknown kind: kept as it
+        // came, not turned into a tombstone and not dropped.
         let broken = ["k": CloudChoiceRecord(key: "k", payload: Data("nonsense".utf8), t: 9, tombstone: false)]
-        #expect(CloudKitChoiceCarrier.blob(of: broken).isEmpty)
+        let kept = CloudKitChoiceCarrier.blob(of: broken)
+        #expect(entries(kept)["k"]?.unknownKind == true)
+        #expect(CloudKitChoiceCarrier.records(for: kept) == broken)
         // A long key still names a record under the cap.
         let long = String(repeating: "feed/", count: 80)
         #expect(CloudChoiceCodec.recordName(for: CloudChoiceRecord(key: long, payload: Data(), t: 1, tombstone: false)).count == 64)

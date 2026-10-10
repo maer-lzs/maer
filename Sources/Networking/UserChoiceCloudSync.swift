@@ -212,7 +212,14 @@ final class UserChoiceCloudSync {
     /// choice. Stamps always (event times survive an off switch); the cloud
     /// write is gated on the switch.
     func noteScalar(key: String, value: Any?) {
-        note(cloudKey: key, value: UserChoiceValue.from(plist: value))
+        let read = UserChoiceValue.read(plist: value)
+        // A value of a kind the choices cannot carry is no clear: noted as
+        // nil it would travel as a tombstone and clear the other devices.
+        guard !read.unknown else {
+            Logger.library.error("CHOICE local value of an unknown kind not noted key=\(key, privacy: .public)")
+            return
+        }
+        note(cloudKey: key, value: read.value)
     }
 
     func noteFavorite(_ station: RadioStation, added: Bool) {
@@ -320,7 +327,9 @@ final class UserChoiceCloudSync {
         }
         var blob = cloudBlob()
         let existing = UserChoiceEntry.from(plist: blob[cloudKey])
-        if let existing, existing.value == value {
+        // An entry of an unknown kind is never "the same statement", also
+        // not as a clear: the newer local statement replaces it.
+        if let existing, !existing.unknownKind, existing.value == value {
             // Same statement already in the cloud (adoption echo, or a
             // re-select of the same value): align the stamp, write nothing.
             // A fresh "now" here would re-stamp foreign knowledge as new.
@@ -580,7 +589,8 @@ final class UserChoiceCloudSync {
         if !recorded.isEmpty {
             var cloudRemovalTimes: [String: Double] = [:]
             for (key, plist) in blob where key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
-                guard let entry = UserChoiceEntry.from(plist: plist), entry.value == nil else { continue }
+                guard let entry = UserChoiceEntry.from(plist: plist), entry.value == nil,
+                      !entry.unknownKind else { continue }
                 cloudRemovalTimes[String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = entry.t
             }
             let settled = SubscriptionRemovalRecord.settled(recorded: recorded,
@@ -798,13 +808,24 @@ final class UserChoiceCloudSync {
                 out[key] = entry
             }
         }
+        // A local value of a kind the choices cannot carry makes no entry:
+        // read as nil it would go out as a tombstone and clear the key on
+        // every other device.
+        var unknownKinds: Set<String> = []
+        func addRead(_ key: String, _ raw: Any?) {
+            let read = UserChoiceValue.read(plist: raw)
+            if read.unknown { unknownKinds.insert(key) } else { add(key, read.value) }
+        }
         for key in UserChoiceCatalog.travelingScalars {
-            add(key, UserChoiceValue.from(plist: defaults.object(forKey: key)))
+            addRead(key, defaults.object(forKey: key))
         }
         for (key, raw) in defaults.dictionaryRepresentation() {
             guard UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) })
             else { continue }
-            add(key, UserChoiceValue.from(plist: raw))
+            addRead(key, raw)
+        }
+        if !unknownKinds.isEmpty {
+            Logger.library.error("CHOICE local values of an unknown kind kept out count=\(unknownKinds.count)")
         }
         // A seeded station never travels out either: the harness's leftovers
         // stay inside the device that ran it.
@@ -869,7 +890,8 @@ final class UserChoiceCloudSync {
         // tombstone would bury the other device's subscription for the
         // whole account. A subscription tombstone comes from the person's
         // unsubscribe only (`noteSubscription(subscribed: false)`).
-        for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
+        // A key that holds a value of an unknown kind is not cleared either.
+        for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) && !unknownKinds.contains(key) {
             if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) { continue }
 
             out[key] = UserChoiceEntry(value: nil, t: stamps[key] ?? 0)
@@ -973,15 +995,24 @@ final class UserChoiceCloudSync {
         let prefixes = NavidromeRekey.itemKeyedChoicePrefixes
         func isItemKeyed(_ key: String) -> Bool { prefixes.contains { key.hasPrefix($0) } }
         var held: [String: UserChoiceEntry] = [:]
+        var unknownKinds: Set<String> = []
         for (key, raw) in defaults.dictionaryRepresentation()
         where isItemKeyed(key) && !key.hasPrefix(UserChoiceCatalog.hiddenPrefix) {
-            held[key] = UserChoiceEntry(value: UserChoiceValue.from(plist: raw), t: stamps[key] ?? 0)
+            // A value of an unknown kind is not held as a clear: it stays
+            // where it is, under its key, and is not moved.
+            let read = UserChoiceValue.read(plist: raw)
+            guard !read.unknown else {
+                unknownKinds.insert(key)
+                Logger.library.error("CHOICE item value of an unknown kind not moved key=\(key, privacy: .public)")
+                continue
+            }
+            held[key] = UserChoiceEntry(value: read.value, t: stamps[key] ?? 0)
         }
         for (id, marker) in markers {
             let key = UserChoiceCatalog.hiddenPrefix + id
             held[key] = UserChoiceEntry(value: .double(marker), t: stamps[key] ?? 0)
         }
-        for (key, t) in stamps where held[key] == nil && isItemKeyed(key) {
+        for (key, t) in stamps where held[key] == nil && isItemKeyed(key) && !unknownKinds.contains(key) {
             held[key] = UserChoiceEntry(value: nil, t: t)
         }
         return held

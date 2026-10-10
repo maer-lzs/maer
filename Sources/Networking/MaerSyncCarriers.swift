@@ -1546,17 +1546,35 @@ final class MaerSyncChoiceCarrier: ChoiceCarrier {
 /// int, `d` double, `l` string list, `x` data as base64), because JSON
 /// blurs bool and int and cannot hold data, and the merge's equal-value
 /// guard must read back exactly what was written. A tombstone has no `v`.
-/// Sorted keys, so the same blob gives the same bytes. Format 1.
+/// Sorted keys, so the same blob gives the same bytes. Format 1: the six
+/// tags above. A new kind of value is a new tag and raises the format (a
+/// fence holds the cases of `UserChoiceValue` against it). A tag this build
+/// does not know is kept raw and written back unchanged.
 nonisolated enum MaerSyncChoiceWire {
     static let format = 1
 
     static func encode(_ blob: [String: Any]) throws -> Data {
         var entries: [String: Any] = [:]
+        var untaggable = 0
         for (key, raw) in blob {
             guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
             var payload: [String: Any] = ["t": entry.t]
-            if let value = entry.value { payload["v"] = tagged(value) }
+            if let value = entry.value {
+                payload["v"] = tagged(value)
+            } else if entry.unknownKind {
+                // The tag as it came from the service goes back unchanged.
+                // An unknown value from another carrier has no tag here and
+                // is left out rather than sent as a tombstone.
+                guard let rawTag = (raw as? [String: Any])?[UserChoiceEntry.rawWireKey] else {
+                    untaggable += 1
+                    continue
+                }
+                payload["v"] = rawTag
+            }
             entries[key] = payload
+        }
+        if untaggable > 0 {
+            Logger.library.error("MAERSYNC choices of an unknown kind without a tag left out count=\(untaggable)")
         }
         return try JSONSerialization.data(withJSONObject: ["entries": entries], options: [.sortedKeys])
     }
@@ -1571,9 +1589,12 @@ nonisolated enum MaerSyncChoiceWire {
                   let t = (dict["t"] as? NSNumber)?.doubleValue else { continue }
             var value: UserChoiceValue?
             if let tag = dict["v"] {
-                // An unknown tag is a value this build cannot read; the
-                // entry is skipped, never turned into a tombstone.
-                guard let read = untagged(tag) else { continue }
+                // An unknown tag is a value this build cannot read: kept raw,
+                // never turned into a tombstone, written back as it came.
+                guard let read = untagged(tag) else {
+                    blob[key] = ["t": t, UserChoiceEntry.rawWireKey: tag]
+                    continue
+                }
                 value = read
             }
             blob[key] = UserChoiceEntry(value: value, t: t).plist

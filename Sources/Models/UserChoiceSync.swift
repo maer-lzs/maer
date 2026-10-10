@@ -443,13 +443,25 @@ nonisolated enum UserChoiceCatalog {
 /// produced it, or a tombstone ("deliberately cleared") with that event time.
 /// "Never set" is the ABSENCE of an entry. The difference the merge lives on.
 nonisolated struct UserChoiceEntry: Equatable {
-    /// nil = tombstone.
+    /// nil = tombstone, unless `unknownKind`.
     var value: UserChoiceValue?
     /// Event time in ms since 1970. 0 = pre-family stock (set at an unknown
     /// time): loses against every real action, wins against nothing.
     var t: Double
+    /// The entry carries a value of a kind this build cannot read (a newer
+    /// build wrote it). It is neither a value nor a tombstone: the merge
+    /// decides over it by time but never applies it, and the carriers pass
+    /// it on as they received it.
+    var unknownKind = false
+
+    /// The keys under which a carrier keeps an entry of an unknown kind in
+    /// the blob exactly as it arrived: the service's tagged value, the
+    /// cloud record's payload. The key-value blob keeps it under "v".
+    static let rawWireKey = "rawWire"
+    static let rawRecordKey = "rawRecord"
 
     /// Plist form for the KVS blob: ["t": ms] + ("v" when not a tombstone).
+    /// Never built for an entry of an unknown kind, which travels raw.
     var plist: [String: Any] {
         var out: [String: Any] = ["t": t]
         if let value { out["v"] = value.plist }
@@ -459,7 +471,11 @@ nonisolated struct UserChoiceEntry: Equatable {
     static func from(plist: Any?) -> UserChoiceEntry? {
         guard let dict = plist as? [String: Any],
               let t = (dict["t"] as? NSNumber)?.doubleValue else { return nil }
-        return UserChoiceEntry(value: UserChoiceValue.from(plist: dict["v"]), t: t)
+        if dict[rawWireKey] != nil || dict[rawRecordKey] != nil {
+            return UserChoiceEntry(value: nil, t: t, unknownKind: true)
+        }
+        let read = UserChoiceValue.read(plist: dict["v"])
+        return UserChoiceEntry(value: read.value, t: t, unknownKind: read.unknown)
     }
 }
 
@@ -499,6 +515,15 @@ nonisolated enum UserChoiceValue: Equatable {
             return .double(v.doubleValue)
         default: return nil
         }
+    }
+
+    /// Three answers where `from` has two: nothing there, a value, or
+    /// something there of a kind this build does not know. Only the last
+    /// sets `unknown`, so "not there" and "not readable" stay apart.
+    static func read(plist: Any?) -> (value: UserChoiceValue?, unknown: Bool) {
+        guard let plist else { return (nil, false) }
+        if let value = from(plist: plist) { return (value, false) }
+        return (nil, true)
     }
 }
 
@@ -544,7 +569,7 @@ nonisolated enum UserChoiceMerge {
         var subscribed: [String: UserChoiceEntry] = [:]
         var removed = 0
         for (key, raw) in blob where key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
-            guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
+            guard let entry = UserChoiceEntry.from(plist: raw), !entry.unknownKind else { continue }
             if case .string? = entry.value {
                 subscribed[String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = entry
             } else {
@@ -573,8 +598,16 @@ nonisolated enum UserChoiceMerge {
             return .none
         case (let l?, nil):
             return .push(l.t)
-        case (nil, .some):
-            return .adopt
+        case (nil, let c?):
+            // An entry of an unknown kind cannot be applied; it holds its
+            // key and stays in the document as it is.
+            return c.unknownKind ? .none : .adopt
+        case (let l?, let c?) where c.unknownKind:
+            // Decided by time like every entry, never applied: a newer
+            // unknown entry holds the key and the local value stays as it
+            // is (not cleared, not written out); an older one is replaced
+            // by the local statement, a tombstone included.
+            return l.t > c.t ? .push(l.t) : .none
         case (let l?, let c?):
             if l.value == c.value {
                 return c.t > l.t ? .adoptStampOnly : .none
