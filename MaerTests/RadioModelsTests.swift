@@ -684,38 +684,91 @@ struct RadioStateQueryTests {
         #expect(drawings.contains { $0.file == "Sources/Views/PlayerView.swift" }
                 && drawings.contains { $0.file == "Sources/Views/Radio/RadioStationDetailView.swift" },
                 "the fence found the lists it guards: \(drawings.map(\.file))")
-        let byOtherKey = drawings.filter { !$0.line.contains("streamURL") && Self.listsByOtherKey[$0.file] == nil }
-        #expect(byOtherKey.isEmpty, "a variant list is drawn by another key: \(byOtherKey)")
-        let unused = Set(Self.listsByOtherKey.keys).subtracting(drawings.filter { !$0.line.contains("streamURL") }.map(\.file))
-        #expect(unused.isEmpty, "a stock entry without its list goes: \(unused)")
+        let byOtherKey = drawings.filter { !$0.line.contains("streamURL") }
+        let unheld = byOtherKey.filter { Self.listsByOtherKey[$0.file] == nil }
+        #expect(unheld.isEmpty, "a variant list is drawn by another key: \(unheld)")
+        let wrongCount = Self.listsByOtherKey.compactMap { file, held -> String? in
+            let count = byOtherKey.filter { $0.file == file }.count
+            return count == held.count ? nil : "\(file): held \(held.count), found \(count)"
+        }
+        #expect(wrongCount.isEmpty, "a held file has another number of lists by another key: \(wrongCount)")
     }
 
-    /// The lines that draw a list of variants: a `ForEach` that names them.
+    /// The statements that draw a list of variants: a `ForEach` whose first
+    /// argument names variants, or names a value this file bound to them.
+    /// Read as statements, across lines, from `ForEach(` to the parenthesis
+    /// that closes its arguments; a word in the closure does not count.
     static func variantLists(in code: String) -> [String] {
-        code.split(separator: "\n").map(String.init)
-            .filter { $0.contains("ForEach(") && $0.lowercased().contains("variant") }
+        let bound = variantNames(in: code)
+        var found: [String] = []
+        var search = code.startIndex
+        while let hit = code.range(of: "ForEach(", range: search..<code.endIndex) {
+            search = hit.upperBound
+            var depth = 1
+            var index = hit.upperBound
+            var firstEnd: String.Index?
+            while index < code.endIndex, depth > 0 {
+                switch code[index] {
+                case "(", "[": depth += 1
+                case ")", "]": depth -= 1
+                case "," where depth == 1 && firstEnd == nil: firstEnd = index
+                default: break
+                }
+                if depth > 0 { index = code.index(after: index) }
+            }
+            guard depth == 0 else { break }
+            let first = code[hit.upperBound..<(firstEnd ?? index)]
+            let names = Set(first.split { !($0.isLetter || $0.isNumber || $0 == "_") }.map(String.init))
+            guard first.lowercased().contains("variant") || !names.isDisjoint(with: bound) else { continue }
+            found.append(("ForEach(" + code[hit.upperBound...index]).split(whereSeparator: \.isWhitespace).joined(separator: " "))
+        }
+        return found
     }
 
-    /// Lists of variants drawn by another key than the stream address, each
-    /// with its reason.
-    static let listsByOtherKey: [String: String] = [
+    /// Names this file binds to variants (`let streams = station.variantList`).
+    /// Every binding on a line counts, each read up to the next one.
+    static func variantNames(in code: String) -> Set<String> {
+        var names: Set<String> = []
+        for line in code.split(separator: "\n") {
+            let bindings = line.matches(of: #/(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)/#)
+            for (offset, binding) in bindings.enumerated() {
+                let end = offset + 1 < bindings.count ? bindings[offset + 1].range.lowerBound : line.endIndex
+                let value = line[binding.range.upperBound..<end]
+                guard value.contains("=") || value.contains("{"), value.lowercased().contains("variant") else { continue }
+                names.insert(String(binding.output.1))
+            }
+        }
+        return names
+    }
+
+    /// Lists of variants drawn by another key than the stream address: how
+    /// many in each file, and why.
+    static let listsByOtherKey: [String: (count: Int, reason: String)] = [
         // The members of a genre family are separate stations, not stream
         // variants of one. The page list is deduplicated by display identity
         // (`RadioGenreCuration.deduped`), and the world core replaces its
         // matches by the same key (`withWorldCore`), one station per name.
-        "Sources/Views/Radio/RadioGenreView.swift": "genre family members are separate stations",
+        "Sources/Views/Radio/RadioGenreView.swift": (1, "genre family members are separate stations"),
     ]
 
-    @Test("Der Varianten-Zaun sieht eine Liste, die nach der Kennung zeichnet, und eine nach der Adresse")
+    @Test("Der Varianten-Zaun sieht eine Liste nach Kennung und nach Adresse, auch mehrzeilig und unter anderem Namen")
     func theVariantFenceSeesBothKeys() {
         let planted = """
         ForEach(station.variantList) { variant in
         ForEach(station.variantList, id: \\.streamURL) { variant in
-        ForEach(rows) { row in
+        ForEach(rows) { variant in
+        let streams = station.variantList
+        ForEach(
+            streams
+        ) { stream in
         """
         let found = Self.variantLists(in: planted)
-        #expect(found.count == 2, "the reader sees both variant lists and no other: \(found)")
-        #expect(found.filter { !$0.contains("streamURL") }.count == 1, "the one by id is told apart")
+        #expect(found.count == 3, "the reader sees the three variant lists and not the rows: \(found)")
+        #expect(found.filter { !$0.contains("streamURL") }.count == 2, "the two by id are told apart: \(found)")
+        #expect(found.contains("ForEach( streams )"), "a list under another name, across lines, is seen: \(found)")
+        // Two bindings on one line: the second is read too.
+        let packed = "var page: some View { let feeds = station.variantList; return ForEach(feeds) { s in Text(s.name) } }"
+        #expect(Self.variantLists(in: packed) == ["ForEach(feeds)"], "the second binding of a line is read")
     }
 
     /// One entry of the station of these findings.
