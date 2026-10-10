@@ -97,9 +97,7 @@ struct GPodderSettingsView: View {
                     }
                     isSyncing = true
                     Task {
-                        let r = await GPodderSync.shared.reconcile()
-                        setStatus(syncSummary(r), isError: r.error != nil)
-                        storedReport = GPodderSync.shared.storedReport
+                        await runRound()
                         isSyncing = false
                     }
                 } label: {
@@ -161,9 +159,7 @@ struct GPodderSettingsView: View {
                     if let error = await GPodderSync.shared.continueWithThisAccount() {
                         setStatus(error, isError: true)
                     } else {
-                        let r = await GPodderSync.shared.reconcile()
-                        setStatus(syncSummary(r), isError: r.error != nil)
-                        storedReport = GPodderSync.shared.storedReport
+                        await runRound()
                     }
                     rest = GPodderSync.rest(on: MaerDatabase.restingShelf, quietly: true)
                     isSyncing = false
@@ -214,6 +210,14 @@ struct GPodderSettingsView: View {
             AppStorageKeys.setGpodderPassword(password)
         }
         AppStorageKeys.setGpodderEnabled(enabled)   // enforces gpodder↔ABS exclusivity
+    }
+
+    /// One round and its report, from the button and after going on with
+    /// this account.
+    private func runRound() async {
+        let r = await GPodderSync.shared.reconcile()
+        setStatus(syncSummary(r), isError: r.error != nil)
+        storedReport = GPodderSync.shared.storedReport
     }
 
     private func setStatus(_ message: String, isError: Bool) {

@@ -71,7 +71,6 @@ struct ModelsLayerFenceTests {
         "Sources/Models/MediaDownloadOffer.swift": 1,
         "Sources/Models/MusicSourceRule.swift": 1,
         "Sources/Models/PlaylistDestination.swift": 1,
-        "Sources/Models/PodcastListenLog.swift": 6,
         "Sources/Models/PodcastShowMerge.swift": 8,
         "Sources/Models/RadioGenreSources.swift": 9,
         "Sources/Models/RadioLogoLookup.swift": 2,

@@ -17,7 +17,9 @@ import OSLog
 /// the log itself, see report). Own file (thousands of entries possible).
 @MainActor
 final class PodcastListenLog {
-    static let shared = PodcastListenLog()
+    /// Enrolled where it is built, so a change of account reaches the log
+    /// at its moment (`followOwner`); built at start (`followAtStart`).
+    static let shared = AccessFollowers.enrolled(PodcastListenLog())
 
     nonisolated struct Entry: Codable, Equatable {
         let guid: String
@@ -54,9 +56,21 @@ final class PodcastListenLog {
     /// The rows, one per guid, and their one write chain (`RowKeeper`); a
     /// witness hands in a database file of its own.
     private let keeper: RowKeeper<Entry>
+    private let database: MaerDatabase
+    /// Hands the log to the account that holds the device's stock, like
+    /// every family on the shelf: what was heard under another account
+    /// rests there and comes back with it; nothing is deleted.
+    private let follower: ShelfFollower?
+    /// The account signed in now; a witness hands in its own.
+    private let identity: () -> String?
+    nonisolated static let shelfFamily = "listen-log"
 
-    init(database: MaerDatabase = .shared) {
+    init(database: MaerDatabase = .shared, identity: @escaping () -> String? = { AccessFollowers.identity }) {
+        self.database = database
+        self.identity = identity
         keeper = RowKeeper(database: database, table: .listenLog, label: "LISTENLOG", logsSaves: true)
+        let follower = database.restingShelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "LISTENLOG") }
+        self.follower = follower
         // Rows read after a failed start join the log by its own rule: a
         // tombstone yields only to a newer play (`adopted`), never "the run
         // wins", which would undo a tombstone nobody read.
@@ -64,6 +78,84 @@ final class PodcastListenLog {
             guard let self else { return }
             self.entries = Self.adopted(read: read, run: self.entries)
         }
+        keeper.mark = { [weak follower] in follower?.mark() }
+    }
+
+    // MARK: - Owner (the log follows the account like every family)
+
+    /// What rests for an account: its entries, and its rows this build
+    /// cannot decode, as stored (key and payload), so they never stand under
+    /// another account and come back unread.
+    nonisolated struct Resting: Codable, Equatable {
+        var entries: [String: Entry]
+        var unread: [String: Data]? = nil
+    }
+
+    /// The rows are being written; their unread part is read after.
+    private struct RowsStillWriting: Error {}
+
+    /// The rows this build cannot decode, as stored; nil when there are
+    /// none. Throws when the read fails, so a hand-over holds.
+    private func undecodedRows() throws -> [String: Data]? {
+        guard keeper.startIncomplete else { return nil }
+        // Read after the chain, never beside it: a hand-over right after a
+        // replacement would see the rows before its write landed.
+        guard keeper.mayReadBesideTheChain else {
+            Logger.rss.notice("LISTENLOG owner held: a write of the rows is on its way")
+            throw RowsStillWriting()
+        }
+        let rows = try keeper.undecodedNow()
+        return rows.isEmpty ? nil : rows
+    }
+
+    /// Hands the log to `scope` by the shelf's one rule
+    /// (`RestingShelf.handOver`): no holder yet is the first account, which
+    /// takes what this device heard; another holder's entries rest under it
+    /// and the entries resting for `scope` take their place. False while
+    /// the hand-over cannot happen (rows unread, a rest not laid).
+    @discardableResult
+    func follow(owner scope: String, previous: String? = nil) -> Bool {
+        guard let follower else { return true }
+        loadIfNeeded()
+        let rested = entries.count
+        // Unread rows join the log of this run once read (`adopted`): the
+        // holder's would come back.
+        guard let step = follower.follow(
+            to: scope, previous: previous, unread: keeper.startReadFailed, landing: .marked,
+            landed: { [database] name in
+                try OwnerMark.stands(family: Self.shelfFamily, replacement: name, database: database)
+            },
+            current: {
+                let unread = try undecodedRows()
+                Logger.rss.notice("LISTENLOG owner rest taken at=\(Date().timeIntervalSince1970, privacy: .public) entries=\(self.entries.count) unread=\(unread?.count ?? 0)")
+                return Resting(entries: entries, unread: unread)
+            },
+            replace: { rest, _, _ in try replace(with: rest) }) else { return false }
+        switch step {
+        case .kept: return true
+        case .first: Logger.rss.notice("LISTENLOG owner first entries=\(rested)")
+        case .unread: Logger.rss.notice("LISTENLOG owner held: rows unread")
+        case .moved: Logger.rss.notice("LISTENLOG owner moved rested=\(rested) entries=\(self.entries.count)")
+        }
+        return step != .unread
+    }
+
+    /// The entries of the new owner replace the ones here, in the same
+    /// transaction as the mark; the holding settles once the rows hold them.
+    private func replace(with incoming: Resting?) throws {
+        // What can throw comes first: a replacement that throws touches nothing.
+        let leaving = try undecodedRows() ?? [:]
+        entries = incoming?.entries ?? [:]
+        let carried = keeper.carriedRows(leaving: leaving, coming: incoming?.unread ?? [:], kept: Set(entries.keys))
+        keeper.write(emptying: .allowed, also: carried) { [weak self] in self?.entries }
+        if !(incoming?.unread ?? [:]).isEmpty { keeper.noteRowsNotRead() }
+    }
+
+    /// At start: the log follows the account signed in now, against the
+    /// device's stock owner; signed out, it stays with the stock.
+    func followAtStart() {
+        guard let scope = identity() else { return }
+        follow(owner: scope, previous: StockOwner.owner(in: .standard))
     }
 
     // MARK: - Recording (the ONE hook; threshold logic stays in
@@ -391,4 +483,17 @@ final class PodcastListenLog {
     /// Test seam: reset in-memory state (file untouched).
     func _resetForTest() { entries = [:]; loaded = true }
     #endif
+}
+
+extension PodcastListenLog: AccessFollower {
+    var followerName: String { "listen-log" }
+
+    /// The log follows a change of account at the moment of the change.
+    func followOwner(previous: String?) {
+        guard let scope = identity() else { return }
+        follow(owner: scope, previous: previous)
+    }
+
+    /// No carrier: the log stays on this device.
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {}
 }

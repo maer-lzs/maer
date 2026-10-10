@@ -19,6 +19,7 @@ struct RowEmptyingFenceTests {
         "LocalLibrary.swift": (1, "the user deleted the item"),
         "MaerPlaylists.swift": (3, "the user deleted the list; the merge carries the account's removal marks; another account owns the device and the lists before rest on the shelf, read back"),
         "PodcastSubscriptions.swift": (3, "the person's own unsubscribe, the last one too, here or as a tombstone from another device; another account owns the device and the shows before rest on the shelf, read back"),
+        "PodcastListenLog.swift": (1, "another account owns the device and the entries before rest on the shelf, read back"),
     ]
 
     /// The writes in `code` that may empty, as written.
