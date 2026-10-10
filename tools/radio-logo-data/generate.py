@@ -201,6 +201,26 @@ def carries_name(name, title):
     return len(folded_name) >= 4 and folded_name in folded_title
 
 
+def vouched():
+    """Entries that keep a file whose name does not carry the station name,
+    each with its file and its reason (belegt.json): a family logo, another
+    spelling, a call sign. A name under four characters is only kept here."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "belegt.json")
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def label_ok(name, file_name, held):
+    """The probe of the runtime (`RadioLogoLookup.fileCarriesLabel`) on the
+    final choice of every stage, or the vouched entry for exactly this file.
+    Measured: the table booked Wikidata P154 files without it, and "Ö 3"
+    carried the logo of a football club."""
+    if carries_name(name, file_name):
+        return True
+    entry = held.get(name)
+    return bool(entry) and entry.get("file") == file_name and bool(entry.get("reason"))
+
+
 def renders_at_tile_size(file_name, size):
     """Gate corpse guard (c0addba): MediaWiki never upscales raster files —
     a PNG whose smallest side is under the app's 48-px gate can NEVER render
@@ -274,13 +294,20 @@ EXTRA_NAMES = [
 
 
 def core_names():
-    """The target set: every name in the core tables (the app's own data)."""
+    """The target set: every station name in the core tables (the app's own
+    data). Comments are cut first and country codes skipped: read as names,
+    "Beliebt in …" from a comment and "DE" from a `case "DE":` were searched
+    and booked logos of strangers."""
     out = list(EXTRA_NAMES)
     for name in ("RadioListenerCores.swift", "RadioWikidataCores.swift"):
         path = os.path.join(ROOT, "Sources", "Models", name)
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
-        for hit in re.findall(r'"((?:[^"\\]|\\.)*)"', text):
+        code = "\n".join(line.split("//", 1)[0] if not line.lstrip().startswith("///") else ""
+                         for line in text.split("\n"))
+        for hit in re.findall(r'"((?:[^"\\]|\\.)*)"', code):
+            if re.fullmatch(r"[A-Z]{2}", hit):
+                continue
             if len(hit) >= 2 and not hit.endswith(":") and hit not in out:
                 out.append(hit)
     return out
@@ -387,14 +414,21 @@ def is_wordmark(title):
     return ratio is not None and ratio > WORDMARK_MIN
 
 
-def swift_file(entries, names, failures, single=None):
+def swift_file(entries, names, failures, single=None, check=False):
     """The data file. Names → Commons FILE NAME; the width is applied at read
-    time from the app's one constant."""
+    time from the app's one constant. The vouched entries travel along, so
+    the suite holds every entry to the same probe."""
+    def quoted(text):
+        return text.replace("\\", "\\\\").replace('"', '\\"')
     lines = []
     for name in sorted(entries):
-        file_name = entries[name].replace("\\", "\\\\").replace('"', '\\"')
-        key = name.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(f'        "{key}": "{file_name}",')
+        lines.append(f'        "{quoted(name)}": "{quoted(entries[name])}",')
+    held = vouched()
+    vouched_lines = []
+    for name in sorted(entries):
+        entry = held.get(name)
+        if entry and entry.get("file") == entries[name]:
+            vouched_lines.append(f'        "{quoted(name)}": (file: "{quoted(entry["file"])}", reason: "{quoted(entry["reason"])}"),')
     stamp = time.strftime("%Y-%m-%d")
     digest = hashlib.sha256("\n".join(sorted(names)).encode()).hexdigest()[:12]
     # A single-name run measures ONE name and carries the rest over
@@ -403,6 +437,9 @@ def swift_file(entries, names, failures, single=None):
     single_note = ("" if not single else
                    f"\n// SINGLE-NAME RUN: only \"{single}\" was measured, every other"
                    f"\n// entry comes unchanged from the last full run.")
+    if check:
+        single_note = ("\n// CHECK RUN: no source was asked. The entries of the last run were"
+                       "\n// held to the label probe; what failed it and is not vouched left.")
     return f'''// Mär — an audio player for self-hosted open ecosystems
 // Copyright (C) 2026 Laurenz Schröder
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -433,12 +470,53 @@ nonisolated enum RadioLogoData {{
 {chr(10).join(lines)}
     ]
 
+    /// Entries whose file name does not carry the station name, kept with
+    /// their reason (tools/radio-logo-data/belegt.json). Every other entry
+    /// passes `RadioLogoLookup.fileCarriesLabel`.
+    static let vouched: [String: (file: String, reason: String)] = [
+{chr(10).join(vouched_lines)}
+    ]
+
     /// Lookup by the name the core tables use.
     static func commonsFile(forName name: String) -> String? {{
         commonsFiles[name]
     }}
 }}
 '''
+
+
+def offline_check(dry):
+    """`--pruefen`: the last run's entries held to the label probe, without
+    asking any source. What fails and is not vouched leaves the table."""
+    previous = existing_mapping()
+    if not previous:
+        print("Kein Bestand gefunden.", file=sys.stderr)
+        return 2
+    names = core_names()
+    held = vouched()
+    entries, gone = {}, []
+    for name, file_name in sorted(previous.items()):
+        if name in names and label_ok(name, file_name, held):
+            entries[name] = file_name
+        else:
+            gone.append((name, file_name))
+    for name, file_name in gone:
+        print(f"  raus: {name} -> {file_name}", file=sys.stderr)
+    stale = sorted(n for n in held if previous.get(n) != held[n].get("file"))
+    if stale:
+        print(f"Belegt, aber nicht in der Tabelle: {stale}", file=sys.stderr)
+        return 2
+    print(f"{len(entries)} bleiben, {len(gone)} raus, {len(names)} Kern-Namen")
+    if dry:
+        print("(trocken: nichts geschrieben)")
+        return 0
+    target = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
+    temporary = target + ".neu"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        handle.write(swift_file(entries, names, 0, check=True))
+    os.replace(temporary, target)
+    print(f"Geschrieben: {target}")
+    return 0
 
 
 def resolve_one(name, previous):
@@ -455,6 +533,9 @@ def resolve_one(name, previous):
         file_name = previous[name]
     if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
         print(f"  GATE-LEICHE verworfen: {name} -> {file_name}", file=sys.stderr)
+        return None
+    if file_name and not label_ok(name, file_name, vouched()):
+        print(f"  ETIKETT verworfen: {name} -> {file_name}", file=sys.stderr)
         return None
     return file_name
 
@@ -504,8 +585,11 @@ def main():
             print("--nur braucht einen Namen", file=sys.stderr)
             return 2
         return single_run(sys.argv[index + 1], dry)
+    if "--pruefen" in sys.argv:
+        return offline_check(dry)
     names = core_names()
     previous = existing_mapping()
+    held = vouched()
     print(f"target set: {len(names)} core names", file=sys.stderr)
     entries, failures = {}, 0
     for index, name in enumerate(names, 1):
@@ -546,6 +630,9 @@ def main():
         # positives via table-before-store. A colour tile beats a corpse.
         if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
             print(f"  GATE-LEICHE verworfen: {name} -> {file_name}", file=sys.stderr)
+            file_name = None
+        if file_name and not label_ok(name, file_name, held):
+            print(f"  ETIKETT verworfen: {name} -> {file_name}", file=sys.stderr)
             file_name = None
         if file_name:
             entries[name] = file_name
