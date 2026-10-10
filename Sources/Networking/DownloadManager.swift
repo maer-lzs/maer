@@ -276,13 +276,19 @@ final class DownloadManager {
                 continue
             }
             ids.insert(itemId)
-            let files = (try? FileManager.default.contentsOfDirectory(
-                at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-            sizes[itemId] = files.reduce(0) { sum, url in
-                sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
-            }
+            sizes[itemId] = folderContents(dir).bytes
         }
         return (ids, sizes, true, remnants)
+    }
+
+    /// The files directly in a download folder and their bytes.
+    nonisolated static func folderContents(_ dir: URL) -> (files: Int, bytes: Int64) {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        let bytes = files.reduce(Int64(0)) { sum, url in
+            sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+        return (files.count, bytes)
     }
 
     /// How long an unfinished download is kept for a resume.
@@ -301,16 +307,21 @@ final class DownloadManager {
     }
 
     /// The remnants of the start scan that are old enough go through the one
-    /// delete of the downloads, with a line.
+    /// delete of the downloads, with a line per folder: its size and file
+    /// count tell a complete download that lost its mark from a remnant.
     private func clearOldRemnants(_ remnants: [String: Date], now: Date) {
         let marksRead = !startIncomplete
         let old = remnants.filter { itemId, changed in
             Self.remnantClears(marksRead: marksRead, complete: details[itemId] != nil,
                                active: phase[itemId] != nil, changed: changed, now: now)
-        }.keys
+        }
         guard !old.isEmpty else { return }
-        Logger.library.notice("DOWNLOADS remnants cleared count=\(old.count), untouched for seven days")
-        deleteDownloads(Set(old))
+        for (itemId, changed) in old {
+            let contents = Self.folderContents(downloadsDirectory.appendingPathComponent(itemId, isDirectory: true))
+            let days = Int(now.timeIntervalSince(changed) / 86_400)
+            Logger.library.notice("DOWNLOADS remnant cleared item=\(itemId, privacy: .private(mask: .hash)) files=\(contents.files) bytes=\(contents.bytes) untouched=\(days)d")
+        }
+        deleteDownloads(Set(old.keys))
     }
 
     /// The size of every download, measured on the disk, and their sum. Run

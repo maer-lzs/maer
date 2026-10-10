@@ -155,6 +155,22 @@ struct DownloadManagerRowsTests {
         #expect(manager.downloadedItemIds == ["done"])
     }
 
+    /// The line of a cleared remnant names its files and bytes; they come
+    /// from here, so a complete download that lost its mark would show.
+    @Test("ein Ordner wird mit Dateizahl und Bytes vermessen")
+    func aFolderIsMeasured() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        try await home.plant("rest", bytes: 100, mark: false)
+        let folder = home.downloads.appendingPathComponent("rest", isDirectory: true)
+        try Data(repeating: 1, count: 23).write(to: folder.appendingPathComponent("1.m4b"))
+        let contents = DownloadManager.folderContents(folder)
+        #expect(contents.files == 2)
+        #expect(contents.bytes == 123)
+        let empty = DownloadManager.folderContents(home.downloads.appendingPathComponent("absent"))
+        #expect(empty.files == 0 && empty.bytes == 0, "a missing folder measures nothing")
+    }
+
     @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen")
     func theDirectoryCarriesTheExclusion() async throws {
         let home = try home()
