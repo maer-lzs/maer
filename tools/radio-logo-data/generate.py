@@ -210,12 +210,45 @@ def vouched():
         return json.load(handle)
 
 
+def names_only_station(name, title):
+    """The probe of the table (`RadioLogoLookup.fileNamesOnlyTheLabel`): the
+    file name carries the station name AND names nothing else, only generic
+    words and digits around it. Measured: each of these carried the name
+    and showed something else: "WFUV" a stadium photo, "Radio 1" the BBC
+    logo, "All India Radio, Kolkata" an interview photo, "Antenne Tirol" a
+    T-shirt."""
+    wanted, folded = fold(name), fold(re.sub(r"\.[A-Za-z0-9]+$", "", title))
+    if len(wanted) < 4:
+        return False
+    start = folded.find(wanted)
+    while start >= 0:
+        if only_generic_words(folded[:start]) and only_generic_words(folded[start + len(wanted):]):
+            return True
+        start = folded.find(wanted, start + 1)
+    return False
+
+
+def only_generic_words(rest):
+    """Whether a folded rest splits entirely into generic words and digits."""
+    reachable = [True] + [False] * len(rest)
+    for end in range(1, len(rest) + 1):
+        if rest[end - 1].isdigit() and reachable[end - 1]:
+            reachable[end] = True
+            continue
+        for word in GENERIC_EXTRA:
+            if len(word) <= end and reachable[end - len(word)] and rest[end - len(word):end] == word:
+                reachable[end] = True
+                break
+    return reachable[len(rest)]
+
+
 def label_ok(name, file_name, held):
-    """The probe of the runtime (`RadioLogoLookup.fileCarriesLabel`) on the
-    final choice of every stage, or the vouched entry for exactly this file.
-    Measured: the table booked Wikidata P154 files without it, and "Ö 3"
-    carried the logo of a football club."""
-    if carries_name(name, file_name):
+    """The probe of the table (`names_only_station`) on the final choice of
+    every stage, or the vouched entry for exactly this file. Measured: the
+    table booked Wikidata P154 files without a probe, and "Ö 3" carried the
+    logo of a football club; with the looser probe of the runtime (the name
+    carried anywhere) it booked photos whose names held the station name."""
+    if names_only_station(name, file_name):
         return True
     entry = held.get(name)
     return bool(entry) and entry.get("file") == file_name and bool(entry.get("reason"))
@@ -295,9 +328,12 @@ EXTRA_NAMES = [
 
 def core_names():
     """The target set: every station name in the core tables (the app's own
-    data). Comments are cut first and country codes skipped: read as names,
-    "Beliebt in …" from a comment and "DE" from a `case "DE":` were searched
-    and booked logos of strangers."""
+    data). Comments are cut first, country codes skipped, and so are the keys
+    of the regional tables (a key that opens a block, `"Bayern": [` at the
+    end of its line): read as names, "Beliebt in …" from a comment, "DE"
+    from a `case "DE":` and "Bayern" from its block were searched and booked
+    logos of strangers (a football club, party logos). A key with its
+    aliases on the same line (`"Österreich 1": ["Ö1"]`) is a station."""
     out = list(EXTRA_NAMES)
     for name in ("RadioListenerCores.swift", "RadioWikidataCores.swift"):
         path = os.path.join(ROOT, "Sources", "Models", name)
@@ -305,7 +341,10 @@ def core_names():
             text = handle.read()
         code = "\n".join(line.split("//", 1)[0] if not line.lstrip().startswith("///") else ""
                          for line in text.split("\n"))
-        for hit in re.findall(r'"((?:[^"\\]|\\.)*)"', code):
+        for match in re.finditer(r'"((?:[^"\\]|\\.)*)"', code):
+            hit = match.group(1)
+            if re.match(r"\s*:\s*\[[ \t]*\n", code[match.end():]):
+                continue
             if re.fullmatch(r"[A-Z]{2}", hit):
                 continue
             if len(hit) >= 2 and not hit.endswith(":") and hit not in out:
@@ -439,7 +478,8 @@ def swift_file(entries, names, failures, single=None, check=False):
                    f"\n// entry comes unchanged from the last full run.")
     if check:
         single_note = ("\n// CHECK RUN: no source was asked. The entries of the last run were"
-                       "\n// held to the label probe; what failed it and is not vouched left.")
+                       "\n// held to the table probe (the file names the station and nothing"
+                       "\n// else); what failed it and is not vouched left.")
     return f'''// Mär — an audio player for self-hosted open ecosystems
 // Copyright (C) 2026 Laurenz Schröder
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -470,9 +510,9 @@ nonisolated enum RadioLogoData {{
 {chr(10).join(lines)}
     ]
 
-    /// Entries whose file name does not carry the station name, kept with
+    /// Entries whose file name does not name the station alone, kept with
     /// their reason (tools/radio-logo-data/belegt.json). Every other entry
-    /// passes `RadioLogoLookup.fileCarriesLabel`.
+    /// passes `RadioLogoLookup.fileNamesOnlyTheLabel`.
     static let vouched: [String: (file: String, reason: String)] = [
 {chr(10).join(vouched_lines)}
     ]
@@ -486,7 +526,7 @@ nonisolated enum RadioLogoData {{
 
 
 def offline_check(dry):
-    """`--pruefen`: the last run's entries held to the label probe, without
+    """`--pruefen`: the last run's entries held to the table probe, without
     asking any source. What fails and is not vouched leaves the table."""
     previous = existing_mapping()
     if not previous:

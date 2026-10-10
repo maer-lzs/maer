@@ -103,6 +103,60 @@ nonisolated enum RadioLogoLookup {
         return foldedLabel.count >= 4 && fold(fileName).contains(foldedLabel)
     }
 
+    /// The words a logo file name may carry besides the station name: what
+    /// names the file as a logo, its format, a size. The same set as
+    /// `GENERIC_EXTRA` in tools/radio-logo-data/generate.py; a fence holds
+    /// the two equal.
+    static let genericFileWords: Set<String> = [
+        "logo", "logos", "klein", "gross", "big", "small", "neu", "new",
+        "radio", "svg", "png", "jpg", "jpeg", "gif", "de", "the", "of",
+        "final", "rgb", "official", "icon", "wortmarke", "bildmarke",
+    ]
+
+    /// The probe of the generated table, stricter than the runtime's: the
+    /// file name carries the station name AND names nothing else, only
+    /// generic words and digits around it. Measured: each of these carried
+    /// the name and showed something else: "WFUV" a stadium photo
+    /// ("WakeForest-GrovesStadium-WFUvsVT"), "Radio 1" the BBC logo,
+    /// "All India Radio, Kolkata" an interview photo, "Antenne Tirol" a
+    /// T-shirt.
+    static func fileNamesOnlyTheLabel(_ fileName: String, label: String) -> Bool {
+        let wanted = fold(label)
+        guard wanted.count >= 4 else { return false }
+        var stem = Substring(fileName)
+        if let dot = stem.lastIndex(of: "."), stem.index(after: dot) < stem.endIndex,
+           stem[stem.index(after: dot)...].allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) {
+            stem = stem[..<dot]
+        }
+        let name = fold(String(stem))
+        var search = name.startIndex..<name.endIndex
+        while let hit = name.range(of: wanted, range: search) {
+            if onlyGenericWords(name[..<hit.lowerBound]), onlyGenericWords(name[hit.upperBound...]) { return true }
+            search = name.index(after: hit.lowerBound)..<name.endIndex
+        }
+        return false
+    }
+
+    /// Whether a folded rest splits entirely into generic words and digits.
+    private static func onlyGenericWords(_ rest: Substring) -> Bool {
+        let characters = Array(rest)
+        guard !characters.isEmpty else { return true }
+        var reachable = [Bool](repeating: false, count: characters.count + 1)
+        reachable[0] = true
+        for end in 1...characters.count {
+            if characters[end - 1].isNumber, reachable[end - 1] {
+                reachable[end] = true
+                continue
+            }
+            for word in genericFileWords where word.count <= end && reachable[end - word.count]
+                && String(characters[(end - word.count)..<end]) == word {
+                reachable[end] = true
+                break
+            }
+        }
+        return reachable[characters.count]
+    }
+
     private static func fold(_ raw: String) -> String {
         raw.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .lowercased()
