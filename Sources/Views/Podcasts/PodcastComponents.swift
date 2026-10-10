@@ -373,11 +373,11 @@ struct PodcastEpisodeRow: View {
             if showsDownload {
                 PodcastDownloadButton(item: item, showsDownloadedState: false)
                     .opacity(textOnly ? 0 : 1)
-                    .allowsHitTesting(!textOnly)
+                    .takesInput(!textOnly)
             }
-            EpisodeRowPlayButton(item: item, playerCoordinator: playerCoordinator)
+            EpisodeRowPlayButton(item: item, playerCoordinator: playerCoordinator, playable: !textOnly)
                 .opacity(textOnly ? 0 : 1)
-                .allowsHitTesting(!textOnly)
+                .takesInput(!textOnly)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -520,6 +520,9 @@ struct PodcastEpisodeRow: View {
 struct EpisodeRowPlayButton: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Whether the episode has anything to play. A text-only episode keeps
+    /// the button's slot, invisible; a tap that still reaches it opens nothing.
+    var playable = true
 
     private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
     private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
@@ -544,6 +547,8 @@ struct EpisodeRowPlayButton: View {
             playerCoordinator.viewModel?.pause()
         } else if isCurrent {
             playerCoordinator.viewModel?.play()
+        } else if !playable {
+            return
         } else if podcastRestartsOnPlay(item) {
             // Replay a finished episode from the beginning + mark unplayed.
             // `restart` writes 0 through on every source (server + iCloud/gpodder).

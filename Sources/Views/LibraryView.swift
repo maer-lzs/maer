@@ -1591,7 +1591,7 @@ struct LibraryView: View {
             // slight pop-in without overshoot.
             .offset(y: barCollapsed ? -72 : 0)
             .opacity(barCollapsed ? 0 : 1)
-            .allowsHitTesting(!barCollapsed)
+            .takesInput(!barCollapsed)
             .animation(.spring(response: 0.35, dampingFraction: 0.9),
                        value: barCollapsed)
         }
