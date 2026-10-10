@@ -387,11 +387,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
     }
 
+    /// The title cannot play: the sentence stands in the full player and,
+    /// through the channel, over the mini bar until the next start.
+    private func cannotPlay(_ sentence: String) {
+        errorMessage = sentence
+        showSourceHint(.cannotPlay(sentence))
+    }
+
     private func activateAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            errorMessage = String(localized: "Audio session could not be activated: \(ErrorSentence.of(error))")
+            cannotPlay(String(localized: "Audio session could not be activated: \(ErrorSentence.of(error))"))
         }
     }
 
@@ -448,7 +455,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         chaptersAreFallback = resolvedChapters.isFallback
 
         guard !sortedTracks.isEmpty else {
-            errorMessage = String(localized: "No playable track found.")
+            cannotPlay(String(localized: "No playable track found."))
             return
         }
 
@@ -537,7 +544,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
-            errorMessage = String(localized: "Audiobook could not be loaded.")
+            cannotPlay(String(localized: "Audiobook could not be loaded."))
             return
         }
 

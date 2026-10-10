@@ -36,7 +36,10 @@ final class PlayerCoordinator: ObservableObject {
             // keeps the pill, its timer and the log; every start of playback
             // lets a stopping error fall there. Another title, or none,
             // takes the old one's stopping error with it.
-            hintCancellable = viewModel?.$sourceHint.dropFirst().compactMap { $0 }.sink { [weak self] notice in
+            // The value present at the attach counts too: the model is
+            // attached after its load, and a notice of the load (position
+            // adopted, title not playable) stands there already.
+            hintCancellable = viewModel?.$sourceHint.compactMap { $0 }.sink { [weak self] notice in
                 self?.notices.show(notice, title: self?.viewModel?.item?.media.metadata?.title)
             }
             startsCancellable = viewModel?.playbackStarts.sink { [weak self] in self?.notices.played() }
@@ -220,7 +223,8 @@ final class PlayerCoordinator: ObservableObject {
     /// foreign shape on purpose.
     func _seedActivePlayerForUITest(item: LibraryItem, detail: LibraryItemDetail,
                                     chapters: [ABSChapter], currentChapterIndex: Int,
-                                    isFallback: Bool, openedHere: Bool = false) {
+                                    isFallback: Bool, openedHere: Bool = false,
+                                    noticeBeforeAttach: PlaybackNotice? = nil) {
         let vm = PlayerViewModel(provider: provider)
         vm.item = detail
         vm.chapters = chapters
@@ -228,6 +232,9 @@ final class PlayerCoordinator: ObservableObject {
         vm.chaptersAreFallback = isFallback
         vm.duration = detail.media.duration ?? 0
         vm.currentTime = vm.currentChapter?.start ?? 0
+        // As in `start(detail:)`: a notice of the load is said before the
+        // model is attached.
+        if let noticeBeforeAttach { vm.showSourceHint(noticeBeforeAttach) }
         viewModel = vm
         activeItem = item
         if openedHere { ownOpenedAtMs = Date().timeIntervalSince1970 * 1000 }
@@ -314,10 +321,24 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// The one exit of a failed open: always a line, a sentence only after
-    /// a gesture.
-    private func openFailed(_ sentence: String, reason: String, item: LibraryItem, origin: OpenOrigin) {
+    /// a gesture. The sentence is the channel's pill, like every other
+    /// notice; `loadError` carries it for the full player's screen as long.
+    private func openFailed(_ sentence: String, reason: String, item: LibraryItem, origin: OpenOrigin,
+                            cause: NoticeCause) {
         Logger.player.notice("OPEN failed origin=\(String(describing: origin), privacy: .public) reason=\(reason, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
-        if origin.saysFailure { loadError = sentence }
+        guard origin.saysFailure else { return }
+        sayOpenFailure(sentence, cause: cause, title: item.title)
+    }
+
+    /// A tap that opens nothing says why, in the channel; the full player's
+    /// screen shows the same sentence for the pill's time.
+    func sayOpenFailure(_ sentence: String, cause: NoticeCause, title: String?) {
+        notices.show(.openFailed(sentence, cause), title: title)
+        loadError = sentence
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if self?.loadError == sentence { self?.loadError = nil }
+        }
     }
 
     /// Opens an id through the one resolver (the seam); a view need not
@@ -363,7 +384,7 @@ final class PlayerCoordinator: ObservableObject {
             isConnected: NetworkMonitor.shared.isConnected,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id)) {
             openFailed(String(localized: "Offline. This title is not downloaded."),
-                       reason: "offlineNotDownloaded", item: item, origin: origin)
+                       reason: "offlineNotDownloaded", item: item, origin: origin, cause: .network)
             return
         }
 
@@ -453,7 +474,8 @@ final class PlayerCoordinator: ObservableObject {
                             carriedSleep: carriedSleep, generation: generation)
             } else {
                 openFailed(ErrorSentence.of(error),
-                           reason: FailureReason.of(error), item: item, origin: origin)
+                           reason: FailureReason.of(error), item: item, origin: origin,
+                           cause: NoticeCause.of(error, online: NetworkMonitor.shared.isConnected))
                 activeItem = nil
                 // The item never opened, so the pointer that went out at
                 // the gesture is withdrawn with it. `activeItem` was

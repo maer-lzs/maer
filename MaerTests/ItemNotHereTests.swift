@@ -154,7 +154,8 @@ struct ItemNotHereTests {
         let writes = flat.components(separatedBy: "loadError = ").dropFirst().map { String($0.prefix(8)) }
         #expect(writes.filter { !$0.hasPrefix("nil") } == ["sentence"],
                 "every sentence goes through openFailed, which asks the origin; found \(writes)")
-        #expect(flat.contains("if origin.saysFailure { loadError = sentence }"))
+        #expect(flat.contains("guard origin.saysFailure else { return } sayOpenFailure(sentence, cause: cause, title: item.title)"),
+                "the exit no longer asks the origin before it speaks")
         #expect(flat.contains("if fetched != nil { await subscriptions.absorb(fresh, showId: showId) }"),
                 "the ladder keeps what its fetch found")
     }

@@ -30,6 +30,7 @@ struct PlaybackNoticesTests {
             .conflict: (true, false, true), .downloadUnreadable: (true, false, true),
             .trackFailed: (true, true, true), .streamFailed: (true, true, true),
             .loadFailed: (true, true, true), .downloadUnreadableOffline: (true, true, true),
+            .syncFailed: (true, false, true), .openFailed: (true, false, true), .cannotPlay: (true, true, true),
         ]
         #expect(Set(table.keys) == Set(PlaybackNotice.Kind.allCases), "a case without a row, or a row without a case")
         for (kind, row) in table {
@@ -176,6 +177,55 @@ struct PlaybackNoticesTests {
         #expect(naming == ["PlaybackNotices.swift"], "\(naming)")
         let literal = files.filter { $0.text.contains("\"playback-notices\"") }.map(\.name)
         #expect(literal == ["PlaybackNotices.swift"], "the document is named elsewhere: \(literal)")
+    }
+
+    @Test("eine Meldung aus dem Laden kommt an, obwohl das Modell erst danach am Koordinator haengt")
+    func aNoticeOfTheLoadArrives() throws {
+        let id = "rss:notice-load:\(UUID().uuidString)"
+        let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+        let (notices, folder) = channel(expiry: 60)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let coordinator = PlayerCoordinator(provider: MockProvider(), notices: notices)
+        coordinator._seedActivePlayerForUITest(item: LibraryItem(id: id, media: media, addedAt: nil),
+                                               detail: LibraryItemDetail(id: id, media: media, userMediaProgress: nil),
+                                               chapters: [], currentChapterIndex: 0, isFallback: false,
+                                               noticeBeforeAttach: .localUsed)
+        #expect(notices.shown == .localUsed, "a notice said during the load was lost at the attach")
+        #expect(notices.log.map(\.kind) == [.localUsed])
+    }
+
+    @Test("ein Titel ohne Spur sagt es ueber dem Mini-Player, bis zum naechsten Start")
+    func aTitleThatCannotPlaySaysSo() async {
+        let id = "rss:notice-cannot:\(UUID().uuidString)"
+        let detail = LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil),
+                                       userMediaProgress: nil)
+        let model = PlayerViewModel(provider: MockProvider())
+        await model.load(item: detail)
+        #expect(model.sourceHint?.kind == .cannotPlay, "the load error stayed in the full player only")
+        #expect(model.errorMessage == model.sourceHint?.label, "pill and full player say different sentences")
+        #expect(NoticeRule.answer(.cannotPlay).holdsUntilPlay)
+    }
+
+    @Test("ein gescheitertes Oeffnen ist die Pille des Kanals, der grosse Player zeigt denselben Satz")
+    func aFailedOpenIsThePill() {
+        let (notices, folder) = channel(expiry: 60)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let coordinator = PlayerCoordinator(provider: MockProvider(), notices: notices)
+        coordinator.sayOpenFailure("Offline. Nicht geladen.", cause: .network, title: "Buch")
+        #expect(notices.shown == .openFailed("Offline. Nicht geladen.", .network))
+        #expect(notices.shown?.icon == "wifi.exclamationmark")
+        #expect(coordinator.loadError == "Offline. Nicht geladen.")
+        #expect(notices.log.last?.title == "Buch")
+    }
+
+    @Test("Sync-Fehler und Oeffnen laufen durch den Kanal, keine eigene Zeile mehr", .needsTheSources)
+    func syncAndOpenGoThroughTheChannel() throws {
+        let root = SourceTree.root
+        let sync = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8))
+        #expect(sync.components(separatedBy: "if syncStatus != .failed { showSourceHint(.syncFailed) }").count - 1 == 2,
+                "a sync failure that says nothing over the mini bar, or says it on every round")
+        let library = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
+        #expect(!library.contains("playerCoordinator.loadError"), "the library shows a failed open on a line of its own")
     }
 }
 #endif

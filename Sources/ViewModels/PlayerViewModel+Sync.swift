@@ -250,8 +250,10 @@ extension PlayerViewModel {
                 if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
-                // A real error (e.g. expired token, server problem). Surface it.
+                // A real error (e.g. expired token, server problem). Surface it,
+                // over the mini bar too, once per change into the failure.
                 errorMessage = String(localized: "Sync failed: \(ErrorSentence.of(error))")
+                if syncStatus != .failed { showSourceHint(.syncFailed) }
                 syncStatus = .failed
             }
             // The state is persisted in the queue = locally committed: treat it
@@ -408,6 +410,7 @@ extension PlayerViewModel {
                 syncStatus = .queued
             } else {
                 errorMessage = ErrorSentence.of(error)
+                if syncStatus != .failed { showSourceHint(.syncFailed) }
                 syncStatus = .failed
             }
         }

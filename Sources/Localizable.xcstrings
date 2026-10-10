@@ -8548,6 +8548,16 @@
         }
       }
     },
+    "Progress is not being saved" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritt wird nicht gespeichert"
+          }
+        }
+      }
+    },
     "Progress saved" : {
       "localizations" : {
         "de" : {

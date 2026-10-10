@@ -156,6 +156,7 @@ struct SyncPlanTests {
         "if syncStatus != .synced {",
         "if NetworkStatus.isOfflineError(error) {",
         "if syncStatus != .queued { showSourceHint(.queued) }",
+        "if syncStatus != .failed { showSourceHint(.syncFailed) }",
     ]
 
     nonisolated static func ownDecisions(in body: String) -> [String] {

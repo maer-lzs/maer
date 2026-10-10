@@ -24,12 +24,22 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
     case downloadUnreadable
     /// A downloaded file could not be read and nothing can take over.
     case downloadUnreadableOffline
+    /// Saving the position failed for another reason than the network
+    /// (an expired sign-in, a server error).
+    case syncFailed
+    /// A title could not be opened; the sentence says why, the cause picks
+    /// the symbol.
+    case openFailed(String, NoticeCause)
+    /// The player holds a title it cannot play (no track, not loadable, no
+    /// audio session); the sentence says which.
+    case cannotPlay(String)
 
     /// The case without its payload, so a table can name every case and a
     /// new one without a row is caught.
     enum Kind: String, CaseIterable, Sendable, Codable {
         case saved, serverAdopted, localUsed, queued, offline, conflict
         case trackFailed, streamFailed, loadFailed, downloadUnreadable, downloadUnreadableOffline
+        case syncFailed, openFailed, cannotPlay
     }
 
     var kind: Kind {
@@ -45,6 +55,9 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .loadFailed: return .loadFailed
         case .downloadUnreadable: return .downloadUnreadable
         case .downloadUnreadableOffline: return .downloadUnreadableOffline
+        case .syncFailed: return .syncFailed
+        case .openFailed: return .openFailed
+        case .cannotPlay: return .cannotPlay
         }
     }
 
@@ -61,6 +74,9 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .loadFailed: return String(localized: "Could not load. Tap play to try again.")
         case .downloadUnreadable: return String(localized: "Download unreadable, playing from the server")
         case .downloadUnreadableOffline: return String(localized: "Download unreadable. Online it plays from the server.")
+        case .syncFailed: return String(localized: "Progress is not being saved")
+        case .openFailed(let sentence, _): return sentence
+        case .cannotPlay(let sentence): return sentence
         }
     }
 
@@ -77,6 +93,9 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .loadFailed(let cause): return cause.icon
         case .downloadUnreadable: return "icloud.and.arrow.down"
         case .downloadUnreadableOffline: return "exclamationmark.triangle"
+        case .syncFailed: return "exclamationmark.icloud"
+        case .openFailed(_, let cause): return cause.icon
+        case .cannotPlay: return "exclamationmark.triangle"
         }
     }
 }
@@ -149,9 +168,9 @@ nonisolated enum NoticeRule {
             return Answer(pops: false, holdsUntilPlay: false, isError: false)
         case .serverAdopted, .localUsed:
             return Answer(pops: true, holdsUntilPlay: false, isError: false)
-        case .conflict, .downloadUnreadable:
+        case .conflict, .downloadUnreadable, .syncFailed, .openFailed:
             return Answer(pops: true, holdsUntilPlay: false, isError: true)
-        case .trackFailed, .streamFailed, .loadFailed, .downloadUnreadableOffline:
+        case .trackFailed, .streamFailed, .loadFailed, .downloadUnreadableOffline, .cannotPlay:
             return Answer(pops: true, holdsUntilPlay: true, isError: true)
         }
     }

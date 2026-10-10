@@ -838,23 +838,9 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var banner: some View {
-        // Coordinator-level load errors ("Offline — not downloaded") appear
-        // HERE too. The player screen that also renders them may not be
-        // mounted when a tap on an unavailable title is rejected.
-        if let error = playerCoordinator.loadError {
-            Label(error, systemImage: "wifi.slash")
-                .font(.footnote)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                .task {
-                    try? await Task.sleep(nanoseconds: 4_000_000_000)
-                    playerCoordinator.loadError = nil
-                }
-                .onTapGesture { playerCoordinator.loadError = nil }
-        }
         // The one channel, observed by the pill itself: it draws when a
-        // notice arrives and shows nothing otherwise.
+        // notice arrives and shows nothing otherwise. A failed open is one
+        // of its notices too, not a line of its own.
         ResumeMessageBanner(notices: playerCoordinator.notices)
     }
 
@@ -985,10 +971,11 @@ struct LibraryView: View {
     }
 
     /// A music hit that no longer resolves must not
-    /// die silently. Brief haptic + the existing transient banner.
+    /// die silently. Brief haptic + the channel's pill.
     private func searchResultUnavailable() {
         Haptics.tap()
-        playerCoordinator.loadError = String(localized: "This result is no longer available.")
+        playerCoordinator.sayOpenFailure(String(localized: "This result is no longer available."),
+                                         cause: .unknown, title: nil)
     }
 
     /// The bottom search field (iOS 26 pattern). Morphs from the
