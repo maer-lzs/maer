@@ -112,7 +112,16 @@ final class PlayerCoordinator: ObservableObject {
     /// `notices`: a witness hands in a channel of its own (own log file).
     init(provider: any AudioProvider, notices: PlaybackNotices? = nil) {
         self.provider = provider
-        self.notices = notices ?? PlaybackNotices()
+        if let notices {
+            self.notices = notices
+        } else {
+            // The app's channel follows the account like the families: built
+            // with the coordinator at launch, enrolled, and handed to the
+            // account signed in now.
+            let own = AccessFollowers.enrolled(PlaybackNotices(shelf: MaerDatabase.restingShelf))
+            own.followAtStart()
+            self.notices = own
+        }
         // A load failure that stopped playback is built anew once the
         // network carries again, without starting: the next play then plays.
         NetworkMonitor.shared.onChange { [weak self] path in
