@@ -75,6 +75,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Every start of playback, from any way (button, lock screen, AirPods,
     /// CarPlay, Siri): the channel lets a stopping error fall on it.
     let playbackStarts = PassthroughSubject<Void, Never>()
+    /// The player waits to play because the stream does not deliver, not
+    /// because it is paused: mid-play when it stopped, and at the start while
+    /// the first bytes come (measured, the same reason both times). A state
+    /// for the channel, which times the hint; this model keeps no timer for it.
+    @Published private(set) var waitsOnTheStream = false
 
     @Published var isPlaying = false
     /// Absolute position in the WHOLE book, in seconds. Regardless of whether
@@ -160,6 +165,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
     /// (playback never begins). It would stall silently. Rebuilt per queue.
     private var itemStatusObservers: [NSKeyValueObservation] = []
+    /// KVO on the queue player's `timeControlStatus`: a stream that stops
+    /// delivering mid-play leaves `isPlaying` true and never fails (measured
+    /// over 100 s); only the wait shows it. Rebuilt per queue.
+    private var stallObserver: NSKeyValueObservation?
     /// Track indices that already got their ONE automatic recovery attempt.
     /// Guards against a rebuild loop on a persistently broken track.
     private var trackRetryAttempts: Set<Int> = []
@@ -739,6 +748,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTrackIndex = startIndex
 
         addTimeObserver()
+        observeStalls(of: newPlayer)
         observeBookEnd(lastItem: items.last)
 
         if seekWithin > 0.5 {
@@ -748,6 +758,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
             newPlayer.rate = playbackRate
         }
         return true
+    }
+
+    /// Watches the new queue player for a wait on the stream. @Sendable: KVO
+    /// fires on an arbitrary thread; only the Bool crosses onto the main actor.
+    private func observeStalls(of newPlayer: AVQueuePlayer) {
+        waitsOnTheStream = false
+        stallObserver = newPlayer.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] observed, _ in
+            let waits = observed.timeControlStatus == .waitingToPlayAtSpecifiedRate
+                && observed.reasonForWaitingToPlay == .toMinimizeStalls
+            Task { @MainActor [weak self] in
+                guard let self, self.waitsOnTheStream != waits else { return }
+                self.waitsOnTheStream = waits
+                Logger.player.notice("STALL \(waits ? "waiting on the stream" : "stream runs or paused", privacy: .public)")
+            }
+        }
     }
 
     /// Detects the BOOK end (last item finished): sync as finished immediately
@@ -1524,6 +1549,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         heldAhead = nil
         for observer in itemStatusObservers { observer.invalidate() }
         itemStatusObservers.removeAll()
+        stallObserver?.invalidate()
+        stallObserver = nil
+        waitsOnTheStream = false
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()

@@ -33,13 +33,16 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
     /// The player holds a title it cannot play (no track, not loadable, no
     /// audio session); the sentence says which.
     case cannotPlay(String)
+    /// Playback waits on a stream that stopped delivering; it stands while
+    /// the wait lasts.
+    case waitingForNetwork
 
     /// The case without its payload, so a table can name every case and a
     /// new one without a row is caught.
     enum Kind: String, CaseIterable, Sendable, Codable {
         case saved, serverAdopted, localUsed, queued, offline, conflict
         case trackFailed, streamFailed, loadFailed, downloadUnreadable, downloadUnreadableOffline
-        case syncFailed, openFailed, cannotPlay
+        case syncFailed, openFailed, cannotPlay, waitingForNetwork
     }
 
     var kind: Kind {
@@ -58,6 +61,7 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .syncFailed: return .syncFailed
         case .openFailed: return .openFailed
         case .cannotPlay: return .cannotPlay
+        case .waitingForNetwork: return .waitingForNetwork
         }
     }
 
@@ -77,6 +81,7 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .syncFailed: return String(localized: "Progress is not being saved")
         case .openFailed(let sentence, _): return sentence
         case .cannotPlay(let sentence): return sentence
+        case .waitingForNetwork: return String(localized: "Waiting for the network…")
         }
     }
 
@@ -96,6 +101,7 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
         case .syncFailed: return "exclamationmark.icloud"
         case .openFailed(_, let cause): return cause.icon
         case .cannotPlay: return "exclamationmark.triangle"
+        case .waitingForNetwork: return "wifi.exclamationmark"
         }
     }
 }
@@ -172,6 +178,10 @@ nonisolated enum NoticeRule {
             return Answer(pops: true, holdsUntilPlay: false, isError: true)
         case .trackFailed, .streamFailed, .loadFailed, .downloadUnreadableOffline, .cannotPlay:
             return Answer(pops: true, holdsUntilPlay: true, isError: true)
+        case .waitingForNetwork:
+            // It describes a state, the wait, so it holds; it is no error,
+            // so it pushes no error aside. The stream running again ends it.
+            return Answer(pops: true, holdsUntilPlay: true, isError: false)
         }
     }
 
@@ -189,6 +199,9 @@ nonisolated enum NoticeRule {
         case played
         /// Another title took over: the old one's error is not its error.
         case titleChanged
+        /// The stream delivers again, or the wait ended otherwise: the wait
+        /// no longer describes the state; a stopping error stays.
+        case streamResumed
     }
 
     static func next(_ state: State, _ event: Event) -> State {
@@ -208,8 +221,26 @@ nonisolated enum NoticeRule {
         case .played, .titleChanged:
             if let held = state.held, state.shown == held { state.shown = nil }
             state.held = nil
+        case .streamResumed:
+            guard state.held == .waitingForNetwork else { return state }
+            if state.shown == .waitingForNetwork { state.shown = nil }
+            state.held = nil
         }
         return state
+    }
+}
+
+/// When a stalled stream says so. Pure: the channel asks it when its timer
+/// fires, with how long the player has waited on the stream. A wait never
+/// stops playback: AVFoundation fetches a stalled stream again by itself
+/// (measured after about 60 s, then every 4 to 30 s) and plays on, and a
+/// stop would turn that into a start by hand.
+nonisolated enum StallRule {
+    /// Waiting this long on the stream shows `waitingForNetwork`.
+    static let hintAfterSeconds: Double = 5
+
+    static func hints(waitedSeconds: Double, hintAfter: Double = hintAfterSeconds) -> Bool {
+        waitedSeconds >= hintAfter
     }
 }
 

@@ -31,6 +31,7 @@ struct PlaybackNoticesTests {
             .trackFailed: (true, true, true), .streamFailed: (true, true, true),
             .loadFailed: (true, true, true), .downloadUnreadableOffline: (true, true, true),
             .syncFailed: (true, false, true), .openFailed: (true, false, true), .cannotPlay: (true, true, true),
+            .waitingForNetwork: (true, true, false),
         ]
         #expect(Set(table.keys) == Set(PlaybackNotice.Kind.allCases), "a case without a row, or a row without a case")
         for (kind, row) in table {

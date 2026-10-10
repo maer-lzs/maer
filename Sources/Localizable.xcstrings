@@ -12752,6 +12752,16 @@
         }
       }
     },
+    "Waiting for the network…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet auf das Netz …"
+          }
+        }
+      }
+    },
     "Warn When Not on Wi-Fi" : {
       "localizations" : {
         "de" : {

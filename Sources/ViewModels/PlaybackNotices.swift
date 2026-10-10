@@ -18,6 +18,9 @@ final class PlaybackNotices: ObservableObject {
 
     private var state = NoticeRule.State()
     private let expirySeconds: Double
+    private let stallHintSeconds: Double
+    /// When the player began to wait on the stream; nil while it does not.
+    private var stallSince: Date?
     private let ablage: Ablage
     private let now: () -> Date
     private var pendingSave: Task<Void, Never>?
@@ -26,8 +29,10 @@ final class PlaybackNotices: ObservableObject {
     /// or the choices: it stays on this device.
     static let documentName = "playback-notices"
 
-    init(expirySeconds: Double = 4, ablage: Ablage = .documents, now: @escaping () -> Date = Date.init) {
+    init(expirySeconds: Double = 4, stallHintSeconds: Double = StallRule.hintAfterSeconds,
+         ablage: Ablage = .documents, now: @escaping () -> Date = Date.init) {
         self.expirySeconds = expirySeconds
+        self.stallHintSeconds = stallHintSeconds
         self.ablage = ablage
         self.now = now
         let read = ablage.loadNow([NoticeLogEntry].self, name: Self.documentName)
@@ -43,10 +48,27 @@ final class PlaybackNotices: ObservableObject {
         append(notice, title: title)
         apply(.show(notice))
         guard shown == notice, !NoticeRule.answer(notice.kind).holdsUntilPlay else { return }
-        let seconds = expirySeconds
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            self?.apply(.expired(notice))
+        later(expirySeconds) { [weak self] in self?.apply(.expired(notice)) }
+    }
+
+    /// The player waits on the stream, or no longer does. The model only
+    /// says so; the hint comes from here once the wait has lasted the rule's
+    /// time, and goes when the wait ends.
+    func streamWaits(_ waits: Bool, title: String?) {
+        guard waits else {
+            stallSince = nil
+            apply(.streamResumed)
+            return
+        }
+        guard stallSince == nil else { return }
+        let since = now()
+        stallSince = since
+        later(stallHintSeconds) { [weak self] in
+            guard let self, self.stallSince == since,
+                  StallRule.hints(waitedSeconds: self.now().timeIntervalSince(since), hintAfter: self.stallHintSeconds)
+            else { return }
+            // The hint stands until the wait ends; playback is never stopped.
+            self.show(.waitingForNetwork, title: title)
         }
     }
 
@@ -54,7 +76,19 @@ final class PlaybackNotices: ObservableObject {
     func played() { apply(.played) }
 
     /// Another title took over (or none is held any more).
-    func titleChanged() { apply(.titleChanged) }
+    func titleChanged() {
+        stallSince = nil
+        apply(.titleChanged)
+    }
+
+    /// The channel's one timer: the end of a short notice and the time a
+    /// wait on the stream takes before the hint.
+    private func later(_ seconds: Double, _ action: @escaping @MainActor () -> Void) {
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            action()
+        }
+    }
 
     private func apply(_ event: NoticeRule.Event) {
         let next = NoticeRule.next(state, event)

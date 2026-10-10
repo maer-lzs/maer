@@ -47,6 +47,11 @@ final class PlayerCoordinator: ObservableObject {
                 self?.notices.show(notice, title: self?.viewModel?.item?.media.metadata?.title)
             }
             startsCancellable = viewModel?.playbackStarts.sink { [weak self] in self?.notices.played() }
+            // A wait on the stream goes to the channel as a state; the
+            // channel times the hint and lets it go when the wait ends.
+            waitCancellable = viewModel?.$waitsOnTheStream.removeDuplicates().sink { [weak self] waits in
+                self?.notices.streamWaits(waits, title: self?.viewModel?.item?.media.metadata?.title)
+            }
             if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
         }
     }
@@ -77,6 +82,7 @@ final class PlayerCoordinator: ObservableObject {
     private var icyCancellable: AnyCancellable?
     private var hintCancellable: AnyCancellable?
     private var startsCancellable: AnyCancellable?
+    private var waitCancellable: AnyCancellable?
     private var standbyCancellable: AnyCancellable?
     /// One progress refresh per foreign-claimed library item, then one
     /// per minute at most (see `ClaimRefreshThrottle`).
