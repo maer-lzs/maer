@@ -114,6 +114,47 @@ struct DownloadManagerRowsTests {
         #expect(again.totalDownloadsSize == 20)
     }
 
+    @Test("die Regel fuer unfertige Downloads: geraeumt nur ohne Marke, ohne Lauf, mit gelesenen Marken und nach sieben Tagen")
+    func theRemnantRule() {
+        let now = Date(timeIntervalSince1970: 1_000_000_000)
+        let old = now.addingTimeInterval(-8 * 24 * 3600)
+        let young = now.addingTimeInterval(-6 * 24 * 3600)
+        #expect(DownloadManager.remnantClears(marksRead: true, complete: false, active: false, changed: old, now: now))
+        #expect(!DownloadManager.remnantClears(marksRead: true, complete: false, active: false, changed: young, now: now))
+        #expect(!DownloadManager.remnantClears(marksRead: true, complete: true, active: false, changed: old, now: now))
+        #expect(!DownloadManager.remnantClears(marksRead: true, complete: false, active: true, changed: old, now: now))
+        #expect(!DownloadManager.remnantClears(marksRead: false, complete: false, active: false, changed: old, now: now),
+                "marks not read make every download look unfinished")
+        #expect(!DownloadManager.remnantClears(marksRead: true, complete: false, active: false, changed: nil, now: now),
+                "no age, no verdict")
+    }
+
+    @Test("ein unfertiger Download, sieben Tage unberuehrt, wird beim Start geraeumt; ein juengerer und ein fertiger bleiben")
+    func anOldRemnantIsClearedAtStart() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        try await home.plant("done", bytes: 300)
+        try await home.plant("old", bytes: 100, mark: false)
+        try await home.plant("young", bytes: 100, mark: false)
+        func age(_ id: String, days: Double) throws {
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-days * 24 * 3600)],
+                                                  ofItemAtPath: home.downloads.appendingPathComponent(id).path)
+        }
+        try age("done", days: 30)
+        try age("old", days: 8)
+        try age("young", days: 6)
+        let manager = home.manager()
+        await manager.ensureScanned()
+        await manager.awaitPendingWrites()
+        func exists(_ id: String) -> Bool {
+            FileManager.default.fileExists(atPath: home.downloads.appendingPathComponent(id).path)
+        }
+        #expect(!exists("old"), "a remnant untouched for eight days stays")
+        #expect(exists("young"), "a remnant of six days was cleared")
+        #expect(exists("done"), "a complete download was cleared")
+        #expect(manager.downloadedItemIds == ["done"])
+    }
+
     @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen")
     func theDirectoryCarriesTheExclusion() async throws {
         let home = try home()

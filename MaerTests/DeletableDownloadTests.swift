@@ -80,9 +80,10 @@ struct DeletableDownloadTests {
                     + "downloadedItemIds selbst auf, also die richtige Menge: lokale Dateien "
                     + "stehen dort nie drin"),
             "Sources/Networking/DownloadManager.swift":
-                (4, "die Fassungen fuer einen und fuer viele, deleteDownload ueber deleteDownloads, "
+                (5, "die Fassungen fuer einen und fuer viele, deleteDownload ueber deleteDownloads, "
                     + "und deleteAllDownloads, das ueber downloadedItemIds laeuft und damit per Bau "
-                    + "nur echte Downloads trifft"),
+                    + "nur echte Downloads trifft; dazu clearOldRemnants, das nur Ordner ohne Marke "
+                    + "trifft und vorher remnantClears fragt (Marken gelesen, nichts laeuft, sieben Tage)"),
         ]
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()

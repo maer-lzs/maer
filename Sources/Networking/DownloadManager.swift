@@ -175,6 +175,7 @@ final class DownloadManager {
             } else {
                 self.recalculateTotalSize()
             }
+            self.clearOldRemnants(scan.remnants, now: Date())
         }
     }
 
@@ -248,25 +249,32 @@ final class DownloadManager {
     /// their folder present) plus the size of each in one walk.
     /// The walk over the download folders. `readable` is false when the
     /// folder itself could not be listed: then the empty answer means
-    /// "unknown", never "no downloads".
+    /// "unknown", never "no downloads". `remnants` are the folders without
+    /// a mark, with the moment they were last changed.
     nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
-        -> (ids: Set<String>, sizes: [String: Int64], readable: Bool) {
+        -> (ids: Set<String>, sizes: [String: Int64], readable: Bool, remnants: [String: Date]) {
         let dirs: [URL]
         do {
             dirs = try FileManager.default.contentsOfDirectory(
-                at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey])
+                at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey])
         } catch {
             Logger.library.error("DOWNLOADS scan unreadable reason=\(String(describing: error), privacy: .public)")
-            return ([], [:], false)
+            return ([], [:], false, [:])
         }
         var ids = Set<String>()
         var sizes: [String: Int64] = [:]
+        var remnants: [String: Date] = [:]
         for dir in dirs
         where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let itemId = dir.lastPathComponent
             // The mark is written only after a complete download. A folder
             // without a mark is an aborted remnant (kept for resume, not counted).
-            guard marked.contains(itemId) else { continue }
+            guard marked.contains(itemId) else {
+                if let changed = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate {
+                    remnants[itemId] = changed
+                }
+                continue
+            }
             ids.insert(itemId)
             let files = (try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
@@ -274,7 +282,35 @@ final class DownloadManager {
                 sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
             }
         }
-        return (ids, sizes, true)
+        return (ids, sizes, true, remnants)
+    }
+
+    /// How long an unfinished download is kept for a resume.
+    nonisolated static let remnantKeepSeconds: TimeInterval = 7 * 24 * 3600
+
+    /// Whether an unfinished download folder is cleared at the start: the
+    /// marks were read, there is no mark of a complete download, nothing runs
+    /// or is paused for it in this session, and it is untouched for seven
+    /// days. Marks not read make every complete download look unfinished,
+    /// so then nothing is cleared; a folder whose last change is unknown
+    /// stays too: no age, no verdict.
+    nonisolated static func remnantClears(marksRead: Bool, complete: Bool, active: Bool,
+                                          changed: Date?, now: Date) -> Bool {
+        guard marksRead, !complete, !active, let changed else { return false }
+        return now.timeIntervalSince(changed) >= remnantKeepSeconds
+    }
+
+    /// The remnants of the start scan that are old enough go through the one
+    /// delete of the downloads, with a line.
+    private func clearOldRemnants(_ remnants: [String: Date], now: Date) {
+        let marksRead = !startIncomplete
+        let old = remnants.filter { itemId, changed in
+            Self.remnantClears(marksRead: marksRead, complete: details[itemId] != nil,
+                               active: phase[itemId] != nil, changed: changed, now: now)
+        }.keys
+        guard !old.isEmpty else { return }
+        Logger.library.notice("DOWNLOADS remnants cleared count=\(old.count), untouched for seven days")
+        deleteDownloads(Set(old))
     }
 
     /// The size of every download, measured on the disk, and their sum. Run
