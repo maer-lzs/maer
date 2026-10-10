@@ -86,11 +86,85 @@ struct LocalSubscribeDoorTests {
     func theRulesWhileTheServerIsUnread() {
         #expect(ServerHolding.whileUnread(byPerson: true) == .subscribeNoted)
         #expect(ServerHolding.whileUnread(byPerson: false) == .setOut)
-        #expect(ServerHolding.settle(.notThere, everyStateBridged: true) == .noteGoes)
-        #expect(ServerHolding.settle(.unread, everyStateBridged: true) == .waits)
-        #expect(ServerHolding.settle(.held(title: "S"), everyStateBridged: true) == .handOver)
-        #expect(ServerHolding.settle(.held(title: "S"), everyStateBridged: false) == .keepsLocal,
-                "a state without an episode there keeps the local subscription")
+        func settle(_ holding: ServerHolding, _ bridged: Bool = true,
+                    _ stock: ServerHolding.StockRead = .whole, here: Bool = true) -> ServerHolding.Settle {
+            ServerHolding.settle(holding, everyStateBridged: bridged, stock: stock, showHere: here)
+        }
+        #expect(settle(.notThere) == .noteGoes)
+        #expect(settle(.unread) == .waits)
+        #expect(settle(.held(title: "S")) == .handOver)
+        #expect(settle(.held(title: "S"), false) == .keepsLocal, "a state without an episode there keeps the local subscription")
+        #expect(settle(.held(title: "S"), here: false) == .noteGoes, "a show unsubscribed here kept its note")
+        // A store not read whole answers nothing: no note goes, nothing is handed over.
+        for stock in [ServerHolding.StockRead.unread, .incomplete] {
+            for holding in [ServerHolding.notThere, .unread, .held(title: "S")] {
+                for here in [true, false] {
+                    #expect(settle(holding, true, stock, here: here) == .waits, "\(stock) \(holding) here=\(here)")
+                }
+            }
+        }
+    }
+
+    /// The server reads in the start window, before the store has loaded,
+    /// or after its start read failed: the show is missing from the memory
+    /// only because nobody read it. The note stays, nothing is handed over,
+    /// nothing goes; the next run settles.
+    @Test("ein Abgleich ueber einem ungeladenen oder ganz ungelesenen Speicher: der Vermerk bleibt, nichts geht, nichts wird uebergeben")
+    func aStoreNotReadAnswersNothing() async throws {
+        for failure in ["unloaded", "readFailed"] {
+            let (rig, state) = try await settling()
+            defer { rig.cleanup() }
+            let subs = rig.subs
+            #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
+            let key = PodcastSubscriptions.feedKey(rig.feed)
+            let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
+            ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
+            let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
+            rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+                                                                     enclosure: nil)
+            // The memory as an unread store holds it: the show is not there.
+            let held = subs.shows
+            subs._seedForUITest([])
+            if failure == "unloaded" { subs._testSetLoaded(false) } else { subs._testRowsUnread() }
+            await subs.settleUnchecked()
+            let notes = subs.uncheckedFeedKeys()
+            #expect(notes == [key], "\(failure): the note went over a store nobody read: \(notes)")
+            #expect(rig.server.writes.isEmpty, "\(failure): a state was handed over")
+            // Read again: the show is back and the note settles it.
+            subs._seedForUITest(held)
+            subs._testSetLoaded(true)
+            if failure == "readFailed" { continue }
+            await subs.settleUnchecked()
+            #expect(rig.server.progress[episode]?.currentTime == 600, "the next run did not settle")
+            #expect(!subs.shows.contains { $0.feedURL == rig.feed })
+        }
+    }
+
+    /// Rows stood that did not decode: a heard state may stand in an episode
+    /// the memory does not hold. The show is held there and every state the
+    /// memory knows would bridge; still the local subscription stays.
+    @Test("ein Abgleich ueber einem unvollstaendig gelesenen Speicher nimmt das lokale Abo nicht und laesst den Vermerk stehen")
+    func anIncompleteStoreKeepsTheLocalSubscription() async throws {
+        let (rig, state) = try await settling()
+        defer { rig.cleanup() }
+        let subs = rig.subs
+        #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
+        let key = PodcastSubscriptions.feedKey(rig.feed)
+        let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
+        ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
+        // A state heard in an episode of the show the memory does not hold.
+        let unreadEpisode = "\(rig.feed)#unread-\(UUID().uuidString.prefix(6))"
+        ListeningStore.store(unreadEpisode, entry: [300, 5_000_000, 1800], in: rig.defaults)
+        defer { ListeningStore.clearBackup(unreadEpisode, in: rig.defaults) }
+        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+                                                                 enclosure: nil)
+        subs._testRowsMissed()
+        #expect(subs.startIncomplete, "the precondition: the rows hold more than the memory")
+        await subs.settleUnchecked()
+        #expect(subs.shows.contains { $0.feedURL == rig.feed }, "the local subscription went over rows nobody read")
+        #expect(subs.uncheckedFeedKeys() == [key], "the note went")
+        #expect(rig.server.writes.isEmpty, "a state was handed over from a store not read whole")
     }
 
     /// A store whose server is unread, then read and holding the feed with

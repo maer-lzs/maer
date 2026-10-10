@@ -509,6 +509,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// Drive the wipe guard + load gate deterministically.
     func _testPersist(_ snapshot: [PodcastShow]) { persist(emptying: .refused) { snapshot } }
     func _testSetLoaded(_ value: Bool) { isLoaded = value }
+    /// The rows as after a start read that failed as a whole, or one that
+    /// missed rows it could not decode.
+    func _testRowsUnread() { rowChain.startReadFailedAsAWhole(reason: "witness") }
+    func _testRowsMissed() { rowChain.noteRowsNotRead() }
     func _testSave() { save() }
     var _testFileURL: URL { fileURL }
     /// Where this store's rows and settings keys live, so a test can show
@@ -2075,22 +2079,28 @@ final class PodcastSubscriptions: ObservableObject {
     /// there keeps the local subscription, so nothing heard is lost.
     func settleUnchecked() async {
         for key in uncheckedFeedKeys().sorted() {
-            guard let show = shows.first(where: { Self.feedKey($0.feedURL) == key }) else {
-                noteUnchecked(key, false)
-                continue
-            }
+            // Asked per show: the hand-over of a show before awaits the server.
+            let stock: ServerHolding.StockRead = !isLoaded || rowChain.startReadFailed ? .unread
+                : rowChain.startIncomplete ? .incomplete : .whole
+            let show = shows.first(where: { Self.feedKey($0.feedURL) == key })
             let holding = serverHolding(feedKey: key)
             var bridged = true
-            if case .held = holding,
+            if stock == .whole, let show, case .held = holding,
                let serverShow = serverShows().first(where: { Self.feedKey($0.feedURL) == key }) {
                 bridged = await handOverStates(of: show, to: serverShow)
             }
-            switch ServerHolding.settle(holding, everyStateBridged: bridged) {
+            switch ServerHolding.settle(holding, everyStateBridged: bridged, stock: stock, showHere: show != nil) {
             case .noteGoes:
                 noteUnchecked(key, false)
-                Logger.rss.notice("SETTLE not on Audiobookshelf, stays here: \(key, privacy: .private(mask: .hash))")
+                if show == nil {
+                    Logger.rss.notice("SETTLE no longer subscribed here, note goes: \(key, privacy: .private(mask: .hash))")
+                } else {
+                    Logger.rss.notice("SETTLE not on Audiobookshelf, stays here: \(key, privacy: .private(mask: .hash))")
+                }
             case .waits:
-                break
+                if stock != .whole {
+                    Logger.rss.notice("SETTLE waits: the subscriptions here are not read whole stock=\(String(describing: stock), privacy: .public) key=\(key, privacy: .private(mask: .hash))")
+                }
             case .handOver:
                 shows.removeAll { Self.feedKey($0.feedURL) == key }
                 save()

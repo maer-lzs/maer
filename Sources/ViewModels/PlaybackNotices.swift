@@ -39,9 +39,10 @@ final class PlaybackNotices: ObservableObject {
     /// and added once the log belongs to the account they were said under.
     private var waitingLines: [NoticeLogEntry] = []
     /// The document stands but could not be read (its rights, its
-    /// protection before the first unlock). Nothing is saved over it, since
-    /// a save would replace lines nobody read, and a hand-over holds, until
-    /// a read succeeds.
+    /// protection before the first unlock). No save is tried over it: for
+    /// missing rights the seam's replace refuses anyway, so the stop spares
+    /// a failing attempt per line and says why; a hand-over holds, until a
+    /// read succeeds.
     private var unread = false
 
     /// The document the log lives in. It stands in no list of the carriers

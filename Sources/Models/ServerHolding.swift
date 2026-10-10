@@ -43,9 +43,11 @@ nonisolated enum ServerHolding: Equatable, Sendable {
     /// What the next read does with a show subscribed while the server was
     /// unread.
     enum Settle: Equatable, Sendable {
-        /// The server does not hold it: the note goes, the subscription stays.
+        /// The server does not hold it, or the person unsubscribed here
+        /// meanwhile: the note goes, the subscription stays as it is.
         case noteGoes
-        /// Still unread: everything stays for the next read.
+        /// The server or the subscriptions here are not read whole:
+        /// everything stays for the next read.
         case waits
         /// The server holds it and every state found its episode there: the
         /// states went over, the local subscription goes (the two sources
@@ -56,11 +58,28 @@ nonisolated enum ServerHolding: Equatable, Sendable {
         case keepsLocal
     }
 
-    static func settle(_ holding: ServerHolding, everyStateBridged: Bool) -> Settle {
+    /// How far the subscriptions here are read.
+    enum StockRead: Equatable, Sendable {
+        case whole
+        /// Not loaded yet, or the start read failed as a whole.
+        case unread
+        /// Read, but rows stood that did not decode: a show or an episode
+        /// of it may be missing from the memory.
+        case incomplete
+    }
+
+    /// `stock`: a store not read whole answers no question of the settling,
+    /// since a show missing from it may only be unread, and its heard states
+    /// may stand in episodes nobody read; nothing goes, the note waits.
+    /// `showHere`: the show still stands among the subscriptions here.
+    static func settle(_ holding: ServerHolding, everyStateBridged: Bool,
+                       stock: StockRead, showHere: Bool) -> Settle {
+        guard stock == .whole else { return .waits }
+        guard showHere else { return .noteGoes }
         switch holding {
-        case .notThere: .noteGoes
-        case .unread: .waits
-        case .held: everyStateBridged ? .handOver : .keepsLocal
+        case .notThere: return .noteGoes
+        case .unread: return .waits
+        case .held: return everyStateBridged ? .handOver : .keepsLocal
         }
     }
 }
