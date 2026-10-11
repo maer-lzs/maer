@@ -829,19 +829,6 @@ struct RadioView: View {
     /// dedupe by station id, first (best-voted of the winner name) stays.
     /// It answers the rows and whether the fetch failed as a whole (every
     /// name variant failed both lists, `RadioStore.regionFailed`).
-    /// One list of a region variant: its stations, or nil with the reason
-    /// the request failed.
-    private struct RegionList: Sendable {
-        let stations: [RadioStation]?
-        let reason: String?
-        var logged: String { stations.map { String($0.count) } ?? "failed(\(reason ?? "-"))" }
-    }
-
-    private static func regionList(_ fetch: @Sendable () async throws -> [RadioStation]) async -> RegionList {
-        do { return RegionList(stations: try await fetch(), reason: nil) }
-        catch { return RegionList(stations: nil, reason: FailureReason.of(error)) }
-    }
-
     private static func stateStations(_ state: String?, countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {
         guard let state, !state.isEmpty else { return ([], false) }
         let names = AppStorageKeys.stringArray(AppStorageKeys.radioRegionQueryNames)
@@ -854,15 +841,15 @@ struct RadioView: View {
         var answered: [Bool] = []
         // A list that failed is nil, not empty: an empty answer is an answer.
         // A failed list keeps its reason for the log line.
-        await withTaskGroup(of: (Int, RegionList, RegionList).self) { group in
+        await withTaskGroup(of: (Int, RadioRegionList, RadioRegionList).self) { group in
             var active = 0
             var index = 0
-            var results: [Int: (RegionList, RegionList)] = [:]
+            var results: [Int: (RadioRegionList, RadioRegionList)] = [:]
             func launch(_ i: Int) {
                 let name = names[i]
                 group.addTask {
-                    async let v = Self.regionList { try await RadioBrowserClient.byState(state: name) }
-                    async let c = Self.regionList { try await RadioBrowserClient.byStateClicktrend(state: name) }
+                    async let v = RadioRegionList.fetch { try await RadioBrowserClient.byState(state: name) }
+                    async let c = RadioRegionList.fetch { try await RadioBrowserClient.byStateClicktrend(state: name) }
                     return (i, await v, await c)
                 }
             }
@@ -919,5 +906,19 @@ struct RadioView: View {
             limit: 12, socket: .votes, minTrendVotes: 50)
         Logger.library.notice("RADIO regional composed pool=\(votesUnique.count)+\(trendMerged.count) out=\(composed.map { RadioMapping.displayName($0.name) }.joined(separator: " · "), privacy: .public)")
         return (composed, false)
+    }
+}
+
+/// One list of a region variant: its stations, or nil with the reason the
+/// request failed. `logged` is its part of the log line of the variant:
+/// the count of an answer, `failed(<reason>)` for a failure.
+nonisolated struct RadioRegionList: Sendable {
+    let stations: [RadioStation]?
+    let reason: String?
+    var logged: String { stations.map { String($0.count) } ?? "failed(\(reason ?? "-"))" }
+
+    static func fetch(_ fetch: @Sendable () async throws -> [RadioStation]) async -> RadioRegionList {
+        do { return RadioRegionList(stations: try await fetch(), reason: nil) }
+        catch { return RadioRegionList(stations: nil, reason: FailureReason.of(error)) }
     }
 }

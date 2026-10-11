@@ -95,10 +95,26 @@ struct UserEdgeErrorTests {
         #expect(radio.contains("if regionalFailed {"), "the region section has no failed state")
         // Each region list keeps the reason it failed for the log line.
         #expect(!radio.contains("try? await RadioBrowserClient.byState"), "a region list swallows its reason")
-        #expect(radio.contains("catch { return RegionList(stations: nil, reason: FailureReason.of(error)) }"),
-                "a failed region list does not keep its reason")
+        #expect(radio.contains("RadioRegionList.fetch { try await RadioBrowserClient.byState(state: name) }")
+                && radio.contains("RadioRegionList.fetch { try await RadioBrowserClient.byStateClicktrend(state: name) }"),
+                "a region list is fetched past the one that keeps its reason")
         #expect(radio.contains("votes=\\(v.logged, privacy: .public) trend=\\(c.logged, privacy: .public)"),
                 "the log line of a variant does not carry the reason")
+    }
+
+    /// The part of a region list in the log line: a failure names its
+    /// reason, an answer its count (an empty answer is an answer).
+    @Test("eine gescheiterte Liste der Region sagt in der Logzeile failed mit ihrem Grund, eine beantwortete ihre Zahl")
+    func aRegionListLogsItsReason() async {
+        let failure = URLError(.timedOut)
+        let failed = await RadioRegionList.fetch { throw failure }
+        #expect(failed.stations == nil)
+        #expect(failed.logged == "failed(\(FailureReason.of(failure)))", "the log line lost the reason: \(failed.logged)")
+        let station = RadioStation(id: "radio:manual:probe", name: "Probe", streamURL: "https://probe.example/stream")
+        let answered = await RadioRegionList.fetch { [station, station] }
+        #expect(answered.logged == "2")
+        let empty = await RadioRegionList.fetch { [] }
+        #expect(empty.logged == "0", "an empty answer reads as a failure")
     }
 
     /// A handed sentence is said by the one alert (`sentenceAlert`), not by
