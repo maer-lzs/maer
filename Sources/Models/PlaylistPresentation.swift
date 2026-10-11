@@ -83,6 +83,15 @@ nonisolated enum PlaylistPresentation {
         return h > 0 ? String(format: "%d:%02d", h, m) : String(format: "%d:%02d", m, sec)
     }
 
+    /// The running time a server states for a playlist, in whole seconds;
+    /// nil when it states none (Jellyfin without run time ticks, Subsonic
+    /// without a duration) or nothing above zero, so the line carries the
+    /// count alone instead of "0:00".
+    static func knownSeconds(_ duration: Double?) -> Int? {
+        guard let duration, duration >= 1 else { return nil }
+        return Int(duration)
+    }
+
     /// ISO-8601 `changed` timestamp → Date for the sort; nil when absent/unparsable.
     static func changedDate(_ iso: String?) -> Date? {
         guard let iso, !iso.isEmpty else { return nil }

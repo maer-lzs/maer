@@ -270,7 +270,7 @@ extension PlaylistCardSource {
             title: playlist.name ?? String(localized: "Playlist"),
             changedAtMs: playlist.changedAt,
             songCount: playlist.songCount ?? 0,
-            durationSeconds: Int(playlist.duration ?? 0),
+            durationSeconds: PlaylistPresentation.knownSeconds(playlist.duration),
             detailRoute: .album(playlistLibraryItem(playlist)),
             open: { coordinator in await coordinator.open(item: playlistLibraryItem(playlist)) },
             shufflePool: { await music.songItems(forItemId: itemId) },

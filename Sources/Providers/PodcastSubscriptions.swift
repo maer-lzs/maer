@@ -74,7 +74,13 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// A set lookup, cheap enough for a cell.
     func isAccessRefused(_ show: PodcastShow) -> Bool {
-        !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(Self.feedKey(show.feedURL))
+        isAccessRefused(feedURL: show.feedURL)
+    }
+
+    /// The same by the feed's address, for surfaces that hold an episode
+    /// and its feed, not the show (Continue card, Latest Episodes).
+    func isAccessRefused(feedURL: String) -> Bool {
+        !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(Self.feedKey(feedURL))
     }
 
     /// Refusals in a row for the show's notice. A page read, not a cell's.

@@ -28,6 +28,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// The premium lock is anchored BY THE COMPONENT. On the cover, at
     /// the family position, never at the text. Call sites only say yes/no.
     var isPremium: Bool = false
+    /// The feed's access is lastingly refused: the lock carries the warning.
+    var isRefused: Bool = false
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
     /// Third text line (the library card's time line). Laid out
@@ -64,7 +66,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
 
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, isPremium: Bool = false,
+         cornerBadgeURL: URL? = nil, isPremium: Bool = false, isRefused: Bool = false,
          progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
@@ -77,6 +79,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.imageContentMode = imageContentMode
         self.cornerBadgeURL = cornerBadgeURL
         self.isPremium = isPremium
+        self.isRefused = isRefused
         self.progress = progress
         self.unavailable = unavailable
         self.meta = meta
@@ -101,7 +104,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 // tile's play control, so the lock takes
                 // the free top one. The show tiles, which have no corner
                 // control, keep the bottom position.
-                .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium) }
+                .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium, refused: isRefused) }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
                 // Two places at the bottom-left, never one over the other:
@@ -225,7 +228,7 @@ extension MediaTile where CoverOverride == EmptyView {
     /// Corner-carrying tiles without a cover override (the standard grid tile).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, isPremium: Bool = false,
+         cornerBadgeURL: URL? = nil, isPremium: Bool = false, isRefused: Bool = false,
          progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
@@ -233,7 +236,7 @@ extension MediaTile where CoverOverride == EmptyView {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  isPremium: isPremium,
+                  isPremium: isPremium, isRefused: isRefused,
                   progress: progress, unavailable: unavailable,
                   meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText,
                   badgeSystemImage: badgeSystemImage, coverOverride: nil,

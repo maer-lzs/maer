@@ -49,3 +49,24 @@ struct DownloadRing: View {
             .frame(width: 22, height: 22)
     }
 }
+
+/// The running download as a ring that cancels when tapped: one control for
+/// the album and the episode. The ring alone is a shape, so the control
+/// carries its name and, when the size is known, its progress for VoiceOver.
+/// The caller sets the button style (a toolbar keeps its own).
+struct CancelDownloadRing: View {
+    let fraction: Double
+    /// The tap target around the ring; nil keeps the ring's own size.
+    var side: CGFloat? = nil
+    let cancel: () -> Void
+
+    var body: some View {
+        Button(action: cancel) {
+            DownloadRing(fraction: fraction)
+                .frame(width: side, height: side)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Text("Cancel Download"))
+        .accessibilityValue(fraction >= 0 ? Text(fraction.formatted(.percent.precision(.fractionLength(0)))) : Text(verbatim: ""))
+    }
+}

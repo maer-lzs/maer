@@ -55,12 +55,13 @@ struct LatestEpisodesGrid: View {
         // Same cell-cost rule: the premium classification is a
         // keychain/defaults lookup. Resolved ONCE per render for the shown
         // episodes, handed to the tiles as a value. Starts "Latest Episodes"
-        // was the one episode surface without the lock (measured).
-        let premiumEpisodes = Set(shown.compactMap { item -> String? in
-            guard let feed = PodcastSubscriptions.shared.feedURL(forEpisodeId: item.id),
-                  PodcastSubscriptions.isPremiumFeed(feed) else { return nil }
-            return item.id
-        })
+        // was the one episode surface without the lock (measured). A lasting
+        // refusal of the feed turns the lock into the warning, as on the
+        // show tiles.
+        let subs = PodcastSubscriptions.shared
+        let feeds = shown.compactMap { item in subs.feedURL(forEpisodeId: item.id).map { (id: item.id, feed: $0) } }
+        let premiumEpisodes = Set(feeds.filter { PodcastSubscriptions.isPremiumFeed($0.feed) }.map(\.id))
+        let refusedEpisodes = Set(feeds.filter { subs.isAccessRefused(feedURL: $0.feed) }.map(\.id))
         VStack(alignment: .leading, spacing: 10) {
             if !alwaysExpanded {
                 // The heading carries the page chevron (counted.
@@ -76,6 +77,7 @@ struct LatestEpisodesGrid: View {
                 ForEach(shown) { item in
                     episodeTile(item, mirrored: mirrored,
                                 isPremium: premiumEpisodes.contains(item.id),
+                                isRefused: refusedEpisodes.contains(item.id),
                                 coListened: CoListenedShows.feedKey(forEpisodeId: item.id, among: coListened)
                                     .flatMap { key in coListened.first { $0.feedKey == key } })
                 }
@@ -105,7 +107,7 @@ struct LatestEpisodesGrid: View {
     }
 
     private func episodeTile(_ item: LibraryItem, mirrored: Set<String>,
-                             isPremium: Bool, coListened: CoListened.Show? = nil) -> some View {
+                             isPremium: Bool, isRefused: Bool, coListened: CoListened.Show? = nil) -> some View {
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             MediaTile(
                 title: item.title,
@@ -114,6 +116,7 @@ struct LatestEpisodesGrid: View {
                 // The tile anchors the lock itself. On the cover, not
                 // over the title text (where the outer modifier put it).
                 isPremium: isPremium,
+                isRefused: isRefused,
                 progress: episodeProgress(item),
                 unavailable: unavailable,
                 // Origin capsule for mirrored episodes (host-computed

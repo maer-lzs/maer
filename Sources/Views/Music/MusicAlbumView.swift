@@ -260,6 +260,10 @@ struct MusicAlbumView: View {
                         Image(systemName: starred ? "heart.fill" : "heart")
                     }
                     .tint(starred ? .red : nil)
+                    // The state rides on the picture alone otherwise:
+                    // VoiceOver says the name and whether it is on.
+                    .accessibilityLabel(Text("Favorite"))
+                    .accessibilityAddTraits(starred ? .isSelected : [])
                 }
                 if isPlaylist {
                     Menu {
@@ -548,10 +552,8 @@ private struct AlbumDownloadButton: View {
         } else if case .downloading(let fraction) = downloadManager.phase[itemId] {
             // Show the actual progress (ring) instead of a bare stop icon;
             // tapping still cancels.
-            Button {
+            CancelDownloadRing(fraction: fraction) {
                 downloadManager.cancelDownload(itemId: itemId)
-            } label: {
-                DownloadRing(fraction: fraction)
             }
         }
         // Not downloaded: nothing here. The outline arrow beside the stored

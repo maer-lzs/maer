@@ -61,13 +61,16 @@ struct PodcastFeaturedCard: View {
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         // The Continue card carries the lock too. A free and a
-        // premium copy of the SAME show can sit next to each other here
-        //, and then the mark tells them apart. It sits
+        // premium copy of the SAME show can sit next to each other here,
+        // and then the mark tells them apart. It sits
         // on the COVER (the card's cover fills the top), never at the text;
         // the bottom corners carry the info pill and the download badge.
+        // A lasting refusal of the feed turns the lock into the warning, as
+        // on the show tiles.
         .overlay(alignment: .topTrailing) {
-            PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
-                PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""))
+            let feed = PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""
+            PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(feed),
+                             refused: PodcastSubscriptions.shared.isAccessRefused(feedURL: feed))
         }
         // The SHARED download/offline badge family at the card corner,
         // identical to the book card.
@@ -589,15 +592,10 @@ struct PodcastDownloadButton: View {
             }
         } else if case .downloading(let f) = downloads.phase[item.id] {
             // Tapping the running ring cancels, like the album download button.
-            Button {
+            CancelDownloadRing(fraction: f, side: CoverBadge.detailControl) {
                 downloads.cancelDownload(itemId: item.id)
-            } label: {
-                DownloadRing(fraction: f)
-                    .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("Cancel Download"))
         }
     }
 }
