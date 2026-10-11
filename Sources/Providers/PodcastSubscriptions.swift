@@ -87,7 +87,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// Episodes). The premium classification is a keychain and defaults
     /// lookup, so a grid asks once per render, not per cell.
     func lock(feedURL: String) -> FeedLock {
-        FeedLock.of(isPremium: Self.isPremiumFeed(feedURL), isRefused: isAccessRefused(feedURL: feedURL))
+        FeedLock.of(isPremium: Self.isPremiumFeed(feedURL, defaults: defaults), isRefused: isAccessRefused(feedURL: feedURL))
     }
 
     /// Refusals in a row for the show's notice. A page read, not a cell's.

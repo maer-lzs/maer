@@ -74,10 +74,25 @@ def get(url, raw=False, timeout=25):
 
 
 def image_size(data):
-    """Width and height of a PNG, GIF, JPEG or WebP, read from its header with
-    the standard library; None for anything else or a header too short."""
+    """Width and height of a PNG, GIF, JPEG, WebP, ICO or BMP, read from its
+    header with the standard library; None for anything else or a header too
+    short. ICO and BMP because the app reads them (`ImageProbe` over
+    `CGImageSource`; a station's own site often serves its icon as ICO): an
+    ICO answers its largest entry, a width or height byte of 0 meaning 256."""
     if not data:
         return None
+    if data[:4] == b"\x00\x00\x01\x00" and len(data) >= 6:
+        count = struct.unpack("<H", data[4:6])[0]
+        sizes = []
+        for entry in range(count):
+            start = 6 + 16 * entry
+            if start + 2 > len(data):
+                break
+            sizes.append((data[start] or 256, data[start + 1] or 256))
+        return max(sizes, key=lambda size: size[0] * size[1]) if sizes else None
+    if data[:2] == b"BM" and len(data) >= 26:
+        width, height = struct.unpack("<ii", data[18:26])
+        return abs(width), abs(height)
     if data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) >= 24:
         return struct.unpack(">II", data[16:24])
     if data[:6] in (b"GIF87a", b"GIF89a") and len(data) >= 10:

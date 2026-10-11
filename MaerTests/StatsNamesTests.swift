@@ -61,13 +61,21 @@ struct StatsNamesTests {
     }
 
     @Test("GT-26: unter einer Minute steht nichts in meistgehoert und nimmt keinen Platz")
-    @MainActor func nothingUnderAMinute() {
+    @MainActor func nothingUnderAMinute() throws {
         #expect(StatsView.shortest == 60)
         // The limit leaves room, so only the floor can keep the 59 out.
         let shows = ListeningByClass.top(["a": 59, "b": 60, "c": 0, "d": 500], limit: 3,
                                          atLeast: Double(StatsView.shortest))
         #expect(shows.map(\.id) == ["d", "b"])
-        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
+        // A database of its own: the default is the app's shared one, where
+        // other suites leave items (measured: "loadfail-…" from FailedLoadTests).
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stats-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()),
+                                        database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
+                                        history: ListeningStatsSyncTests.RecordingHistory())
         for (id, seconds) in [("radio:rb:a", 20), ("radio:rb:b", 3600), ("radio:rb:c", 60)] {
             stats.addSeconds(seconds, itemId: id)
         }
