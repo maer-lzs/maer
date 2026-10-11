@@ -8,13 +8,13 @@ import Foundation
 /// A hand-over of a log to an account that could not happen yet (rows or a
 /// document unread, a rest not laid), and what was written down meanwhile.
 /// The log tries the hand-over again before its next entry and at every
-/// change of way (`retry`); an entry that comes while it holds waits here,
-/// out of the holder's log, and comes back in order once the log belongs to
-/// the account it was made under (`handedOver`).
+/// change of way (its `followIfHeld`); an entry that comes while it holds
+/// waits here, out of the holder's log, and comes back in order once the
+/// log belongs to the account it was made under (`handedOver`).
 ///
 /// One shape for every log that follows the account (`PodcastListenLog`,
-/// `PlaybackNotices`): `Pending` is what one waits with (a note to run
-/// again, a line to add).
+/// `PlaybackNotices`, `ListenHistory`): `Pending` is what one waits with (a
+/// note to run again, a line to add).
 nonisolated struct HandOverHold<Pending> {
     /// The account the hand-over is for and the owner before it.
     private(set) var target: (scope: String, previous: String?)?

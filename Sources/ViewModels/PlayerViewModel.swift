@@ -630,6 +630,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 id)
     }
 
+    /// The song this hearing entered into the listening history already
+    /// (item and song id), so one hearing writes once.
+    private var historyNotedSong: String?
+
+    /// The listening history at the five second tick: a book whose
+    /// position crossed into played, a server song past half of it or four
+    /// minutes (`ListenHistory.songHeard`).
+    private func noteListeningHistory(id: String, phaseBefore: ProgressMark.PlayState.Phase,
+                                      phaseAfter: ProgressMark.PlayState.Phase) {
+        let history = ListenHistory.shared
+        if phaseAfter == .played, phaseBefore != .played,
+           MediaFamily.booksTabMember(id, markedForm: ListeningStore.backup(id).flatMap(ProgressMark.markedForm)) {
+            history.noteHeard(id: id, family: .book, title: item?.media.metadata?.title ?? "",
+                              subtitle: item?.media.metadata?.authorName ?? "")
+        }
+        guard let song = currentMusicSong else { return }
+        let step = ListenHistory.songHeard(song: "\(song.itemId)#\(song.id)", position: currentTime - song.start,
+                                           duration: song.duration, noted: historyNotedSong)
+        historyNotedSong = step.noted
+        guard step.enter else { return }
+        history.noteHeard(id: AppSession.shared.musicProvider(for: song.itemId).itemId(songId: song.id),
+                          family: .music, title: song.title ?? "", subtitle: song.artist ?? "")
+    }
+
     private func trackAbsoluteStart(_ index: Int) -> Double {
         TrackMath.trackStart(index: index, tracks: tracks, bookDuration: duration)
     }
@@ -1268,8 +1292,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     ListeningStore.record(id, position: self.currentTime,
                                           duration: self.duration, atMs: now * 1000, epoch: self.standEpoch)
-                    if ItemNamespace.isPodcastEpisode(id),
-                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase != phaseBefore {
+                    let phaseAfter = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
+                    self.noteListeningHistory(id: id, phaseBefore: phaseBefore, phaseAfter: phaseAfter)
+                    if ItemNamespace.isPodcastEpisode(id), phaseAfter != phaseBefore {
                         PodcastProgressStore.shared.reload()
                         // A change of phase is one of the pot's occasions.
                         self.sendStateToPot(deliberate: true)

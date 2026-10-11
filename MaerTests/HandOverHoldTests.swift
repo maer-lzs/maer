@@ -39,22 +39,37 @@ struct HandOverHoldTests {
         #expect(again.isEmpty, "a hand-over gives an entry twice")
     }
 
-    /// The two logs that follow the account keep their hold in the one
-    /// type; no log keeps a hold of its own.
+    /// A held target typed as the tuple of the hold, under any name.
+    /// Parameter lists (`hold(scope:previous:)`, `follow(owner scope:...)`)
+    /// are no type annotation and do not count.
+    nonisolated static func ownHolds(in code: String) -> Int {
+        code.matches(of: #/:\s*\(\s*scope:\s*String\s*,\s*previous:\s*String\?\s*\)/#).count
+    }
+
+    /// The logs that follow the account keep their hold in the one type;
+    /// no log keeps a hold of its own, whatever it calls it.
     @Test("kein Protokoll fuehrt eine eigene gehaltene Uebergabe neben HandOverHold")
     func noLogKeepsAHoldOfItsOwn() {
         var own: [String] = []
         var taking: [String] = []
-        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
-            let code = FetchAnswerTests.squeezed(text)
-            if code.contains("var held: (scope: String, previous: String?)") { own.append(name) }
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "HandOverHold.swift" {
+            let code = SyncContractFenceTests.stripped(text)
+            if Self.ownHolds(in: code) > 0 { own.append(name) }
             if code.contains("HandOverHold<") { taking.append(name) }
         }
         #expect(own.isEmpty, "a log keeps its own held hand-over again: \(own)")
-        #expect(Set(taking).isSuperset(of: ["PodcastListenLog.swift", "PlaybackNotices.swift"]),
+        #expect(Set(taking).isSuperset(of: ["PodcastListenLog.swift", "PlaybackNotices.swift", "ListenHistory.swift"]),
                 "a log that follows the account does not take the one hold: \(taking.sorted())")
-        #expect(FetchAnswerTests.squeezed("private var held: (scope: String, previous: String?)?")
-            .contains("var held: (scope: String, previous: String?)"))
+        let caught = Self.ownHolds(in: """
+            private var held: (scope: String, previous: String?)?
+            private var pendingOwner: (scope: String, previous: String?)
+            """)
+        let passed = Self.ownHolds(in: """
+            func follow(owner scope: String, previous: String? = nil) -> Bool {
+            mutating func hold(scope: String, previous: String?) {
+            """)
+        #expect(caught == 2, "the fence misses the form under another name: \(caught)")
+        #expect(passed == 0, "the fence counts a parameter list: \(passed)")
     }
 }
 #endif

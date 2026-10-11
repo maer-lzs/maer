@@ -59,9 +59,11 @@ enum AppHousekeeping {
         // starts where the six start; until this line nobody started it,
         // and the page showed a code that carried nothing.
         FeedAuthSync.shared.startIfConfigured(by: "housekeeping")
-        // The listen log follows the account like the families: enrolled
-        // before any sign-in can come, so it hears the change at its moment.
+        // The listen log and the listening history follow the account like
+        // the families: enrolled before any sign-in can come, so they hear
+        // the change at its moment.
         PodcastListenLog.shared.followAtStart()
+        ListenHistory.shared.followAtStart()
         // MetricKit only where its gate lets it (Xcode, TestFlight). The
         // gate may ask the App Store for the environment, so in its own
         // task: nothing here waits on the network.

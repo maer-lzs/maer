@@ -477,7 +477,7 @@ struct RowKeeperTests {
             #expect(here == adopted, "\(file.lastPathComponent): \(here) keepers and chains, \(adopted) adoptions")
             built += here
         }
-        #expect(built == 11, "nine keepers and two chains of their own counted: \(built)")
+        #expect(built == 12, "ten keepers and two chains of their own counted: \(built)")
     }
 
     /// The mechanism "read first over unread rows, adopt, then write" stands

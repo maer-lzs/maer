@@ -123,6 +123,10 @@ enum BookFinishMark {
         }
         // Out of Up Next only once the mark is written or queued.
         if target { PlayQueue.shared.markedPlayed(entry.id) }
+        // The listening history the same way: finished comes in, taken
+        // back leaves the page until a newer hearing.
+        ListenHistory.shared.noteFinished(target, id: entry.id, title: entry.item.media?.metadata?.title ?? "",
+                                          subtitle: entry.item.media?.metadata?.authorName ?? "")
         // The list shows the mark at once, from what it already holds and
         // without the network: a catalogue mark is read from the device, a
         // server mark was just noted. The server's own answer follows when

@@ -29,6 +29,7 @@ struct CounterTablesFenceTests {
         "sync_last_checked": (.wholeValue, "one stamp per service"),
         "local_library": (.wholeValue, "one local title per key"),
         "download_meta": (.wholeValue, "one finished download per book"),
+        "listen_history": (.wholeValue, "one entry per book or song, merged before the write"),
     ]
 
     @Test("jede Tabelle ist eingeordnet, keine Einordnung ohne Tabelle")
