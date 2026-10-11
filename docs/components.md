@@ -743,7 +743,7 @@ gelesen; keine von ihnen beginnt eine Familie. Zaun
 `UnreadableStoreTests.noAsideKeyTravels` (die Kopie jedes Familienstamms
 und jedes Familienschluessels beginnt keine Familie; keine Familie und kein
 reisender Wert beginnt mit `corrupt.`) und `onlyTheStoreNamesAsideKeys`
-(kein `".corrupt"` und kein `"corrupt.` im Code ausserhalb `CorruptStore`).
+(kein Literal, das auf `.corrupt` endet oder mit `corrupt.` beginnt oder nach einer Interpolation weitergeht, im Code ausserhalb `CorruptStore`; seit 4004-a auch `"\(key).corrupt"`, `buildsAsideKey` mit Proben am Text).
 
 **W-Sammel 12a (09.10.2026), eine vorhandene, nicht lesbare Datei ist nie
 `.fresh`:** vorher hiess eine Datei, die da ist und nicht gelesen werden kann

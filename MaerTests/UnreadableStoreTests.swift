@@ -66,14 +66,25 @@ struct UnreadableStoreTests {
         #expect(scalars.isEmpty, "a traveling value begins with the aside prefix: \(scalars)")
     }
 
-    @Test("ein Beiseite-Schluessel entsteht nur in CorruptStore", .needsTheSources)
+    /// A literal that ends in `.corrupt` or begins (or goes on after an
+    /// interpolation) with `corrupt.`: every spelling of an aside key,
+    /// glued (`key + ".corrupt"`) or interpolated (`"\(key).corrupt"`).
+    nonisolated static func buildsAsideKey(_ code: String) -> Bool {
+        code.contains(".corrupt\"") || code.contains("\"corrupt.") || code.contains(")corrupt.")
+    }
+
+    @Test("ein Beiseite-Schluessel entsteht nur in CorruptStore, auch nicht ueber Interpolation", .needsTheSources)
     func onlyTheStoreNamesAsideKeys() throws {
         var builders: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "CorruptStore.swift" {
-            let code = SyncContractFenceTests.stripped(text)
-            if code.contains("\".corrupt\"") || code.contains("\"corrupt.") { builders.append(name) }
+            if Self.buildsAsideKey(SyncContractFenceTests.stripped(text)) { builders.append(name) }
         }
         #expect(builders.isEmpty, "a file builds an aside key past CorruptStore.asideKey: \(builders)")
+        #expect(Self.buildsAsideKey(#"let k = key + ".corrupt""#))
+        #expect(Self.buildsAsideKey(#"let k = "\(key).corrupt""#))
+        #expect(Self.buildsAsideKey(#"let k = "corrupt.\(key)""#))
+        #expect(Self.buildsAsideKey(#"let k = "\(prefix)corrupt.\(key)""#))
+        #expect(!Self.buildsAsideKey(#"url.appendingPathExtension("corrupt")"#), "the file aside is no key")
     }
 
     @Test("unlesbare Radio-Listen und Zaehler liegen beiseite, der neue Sender steht", .needsTheSources)
