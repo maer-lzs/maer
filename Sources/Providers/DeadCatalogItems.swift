@@ -40,23 +40,38 @@ nonisolated enum DeadCatalogItems {
         case unknown
     }
 
-    // MARK: - Store (identifier → marked-at timestamp)
+    // MARK: - Store (key → marked-at timestamp)
 
+    /// The one key of an entry, whichever form a caller holds: an archive
+    /// item by its identifier, raw (the metadata fetch) or as item id
+    /// (`lva:X`, a song `lva:X#n`, playback and resolving); any other
+    /// catalog's entry by its album id. Before, the fetch wrote the raw
+    /// form and playback the item id, and each reader asked one of them:
+    /// a mark learned on one side never reached the other.
+    static func key(_ id: String) -> String {
+        FreeCatalog.archiveIdentifier(of: id) ?? CatalogSongID.album(of: id)
+    }
+
+    /// The marks by their one key; a mark an older build stored under the
+    /// other form reads the same (the newer moment wins) and is written in
+    /// the one form with the next note.
     static func marked(defaults: UserDefaults = .standard) -> [String: Double] {
-        (defaults.dictionary(forKey: storeKey) as? [String: Double]) ?? [:]
+        let stored = (defaults.dictionary(forKey: storeKey) as? [String: Double]) ?? [:]
+        return Dictionary(stored.map { (key($0.key), $0.value) }, uniquingKeysWith: max)
     }
 
     static func isDead(_ identifier: String, now: Date = Date(),
                        defaults: UserDefaults = .standard) -> Bool {
-        guard let markedAt = marked(defaults: defaults)[identifier] else { return false }
+        guard let markedAt = marked(defaults: defaults)[key(identifier)] else { return false }
         return now.timeIntervalSince1970 - markedAt < ttlDays * 86_400
     }
 
     /// Apply a liveness result. `unknown` writes NOTHING. That is the whole
     /// point of the ladder.
-    static func note(_ liveness: Liveness, for identifier: String,
+    static func note(_ liveness: Liveness, for id: String,
                      now: Date = Date(), defaults: UserDefaults = .standard) {
         var store = marked(defaults: defaults)
+        let identifier = key(id)
         switch liveness {
         case .unknown:
             return

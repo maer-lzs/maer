@@ -55,5 +55,72 @@ struct DeadCatalogItemsTests {
         DeadCatalogItems.note(.alive, for: "x", now: now, defaults: defaults)
         #expect(!DeadCatalogItems.isDead("x", now: now, defaults: defaults))
     }
+
+    @Test("eine Tot-Marke hat einen Schluessel: roh, als Kennung und als Song-Adresse dasselbe Archiv-Stueck")
+    func aMarkHasOneKey() {
+        let raw = "gbia7002555a"
+        let item = FreeCatalog.archivePrefix + raw
+        #expect(DeadCatalogItems.key(raw) == raw)
+        #expect(DeadCatalogItems.key(item) == raw)
+        #expect(DeadCatalogItems.key(CatalogSongID.make(album: item, index: 3)) == raw)
+        let jamendo = FreeCatalog.jamendoPrefix + "1234"
+        #expect(DeadCatalogItems.key(jamendo) == jamendo, "another catalog's id changed its form")
+    }
+
+    /// The metadata fetch writes the raw identifier; the Continue row reads
+    /// the item id. The mark reaches it.
+    @Test("die beim Metadaten-Abruf gelernte Marke (roh) nimmt das Stueck aus der Weiterhoeren-Reihe")
+    func aRawMarkReachesTheContinueRow() {
+        let defaults = freshDefaults()
+        let raw = "witness-\(UUID().uuidString)"
+        let item = FreeCatalog.archivePrefix + raw
+        let history: [String: Any] = ["localPosition.\(item)": [12.0, 1_756_000_000_000.0, 180.0, 1.0]]
+        let before = ContinueSources.positionless(in: history, serverKnows: [], deadStore: defaults)
+        #expect(before.count == 1, "the probe measures nothing, the row is empty")
+        DeadCatalogItems.note(.dead, for: raw, defaults: defaults)
+        let after = ContinueSources.positionless(in: history, serverKnows: [], deadStore: defaults)
+        #expect(after.isEmpty, "the raw mark did not reach the row that reads the item id")
+    }
+
+    /// The real writer of the item id (`ArchiveMetadataLoader.isWithdrawn`)
+    /// and the reader of the curated rows, which asks the raw identifier.
+    @Test("die beim Aufloesen gelernte Marke (Kennung) erreicht die kuratierten Reihen, die roh fragen")
+    func anItemMarkReachesTheCuratedRows() async throws {
+        let defaults = freshDefaults()
+        let raw = "witness-\(UUID().uuidString)"
+        let item = FreeCatalog.archivePrefix + raw
+        let withdrawn = await ArchiveMetadataLoader.isWithdrawn(
+            itemId: item, using: CatalogLoaderWitness.answering(liveness: .dead), defaults: defaults)
+        #expect(withdrawn)
+        #expect(DeadCatalogItems.isDead(raw, defaults: defaults), "the curated rows do not see the mark")
+        #expect(DeadCatalogItems.isDead(CatalogSongID.make(album: item, index: 2), defaults: defaults),
+                "a song of the withdrawn item does not see the mark")
+    }
+
+    @Test("eine Marke in der anderen Form eines aelteren Baus zaehlt und wird beim naechsten Schrieb in der einen Form gefuehrt")
+    func anOlderFormIsReadAndRewritten() {
+        let defaults = freshDefaults()
+        let now = Date()
+        let raw = "gbia7009999a"
+        defaults.set([FreeCatalog.archivePrefix + raw: now.timeIntervalSince1970], forKey: DeadCatalogItems.storeKey)
+        #expect(DeadCatalogItems.isDead(raw, now: now, defaults: defaults))
+        DeadCatalogItems.note(.dead, for: "other", now: now, defaults: defaults)
+        let stored = (defaults.dictionary(forKey: DeadCatalogItems.storeKey) as? [String: Double]) ?? [:]
+        #expect(Set(stored.keys) == [raw, "other"], "the store keeps two forms: \(stored.keys.sorted())")
+    }
+
+    /// Every reader and writer asks through `isDead` and `note`, which take
+    /// the one key; nobody reads the marks or their store beside them.
+    /// `DerivedStores` names the key only to list it.
+    @Test("niemand liest die Tot-Marken an isDead und note vorbei", .needsTheSources)
+    func nobodyReadsTheMarksBeside() {
+        var beside: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "DeadCatalogItems.swift" {
+            let code = SyncContractFenceTests.stripped(text)
+            if code.contains("DeadCatalogItems.marked(") { beside.append("\(name): marked") }
+            if code.contains("DeadCatalogItems.storeKey"), name != "DerivedStores.swift" { beside.append("\(name): storeKey") }
+        }
+        #expect(beside.isEmpty, "the marks are read beside the one key: \(beside)")
+    }
 }
 #endif
