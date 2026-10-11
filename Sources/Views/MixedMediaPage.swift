@@ -200,6 +200,7 @@ struct MixedMediaPage: View {
                       subtitle: entry.item.author,
                       coverURL: router.coverURL(id),
                       placeholderSystemImage: "book.closed",
+                      lock: .none,
                       progress: entry.progress?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: entry.item) } })
                 .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
@@ -212,6 +213,7 @@ struct MixedMediaPage: View {
                       coverURL: router.coverURL(id),
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
+                      lock: .none,
                       onTap: { Task { await playerCoordinator.open(item: item) } })
                 .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         }

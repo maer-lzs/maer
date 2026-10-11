@@ -10,18 +10,20 @@ import SwiftUI
 /// "Latest Episodes". One component instead of copies, so the next
 /// surface inherits the mark rather than forgetting it.
 ///
-/// **Cell cost:** the caller passes the already-resolved `isPremium`. The
+/// It draws what `PodcastSubscriptions.lock(feedURL:)` answered (`FeedLock`),
+/// with no default: a surface cannot show the premium lock and leave the
+/// refusal out.
+///
+/// **Cell cost:** the caller passes the already-resolved lock. The
 /// classification is a keychain/UserDefaults lookup, and resolving it PER
-/// CELL is what the grid's cell-cost rule warns about. Grids resolve the set
-/// once per render and ask it here.
+/// CELL is what the grid's cell-cost rule warns about. Grids resolve the
+/// locks once per render and hand them here.
 struct PremiumLockBadge: View {
-    let isPremium: Bool
-    /// The feed's access is lastingly refused: the lock carries the
-    /// warning, on every surface that shows the badge.
-    var refused: Bool = false
+    let lock: FeedLock
 
     var body: some View {
-        if refused {
+        switch lock {
+        case .refused:
             Image(systemName: "lock.trianglebadge.exclamationmark.fill")
                 .font(.caption2)
                 .foregroundStyle(.white)
@@ -29,7 +31,7 @@ struct PremiumLockBadge: View {
                 .background(Circle().fill(Color.orange))
                 .padding(6)
                 .accessibilityLabel(Text("Access refused"))
-        } else if isPremium {
+        case .premium:
             Image(systemName: "lock.fill")
                 .font(.caption2)
                 .foregroundStyle(.white)
@@ -37,13 +39,15 @@ struct PremiumLockBadge: View {
                 .background(Circle().fill(.black.opacity(0.55)))
                 .padding(6)
                 .accessibilityLabel(Text("Premium Feed"))
+        case .none:
+            EmptyView()
         }
     }
 }
 
 extension View {
     /// The badge at its canonical place: bottom-trailing on the artwork.
-    func premiumLock(_ isPremium: Bool, refused: Bool = false) -> some View {
-        overlay(alignment: .bottomTrailing) { PremiumLockBadge(isPremium: isPremium, refused: refused) }
+    func premiumLock(_ lock: FeedLock) -> some View {
+        overlay(alignment: .bottomTrailing) { PremiumLockBadge(lock: lock) }
     }
 }

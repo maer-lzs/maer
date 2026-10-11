@@ -25,11 +25,11 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// Small badge at the image's bottom-left (e.g. the show cover on an
     /// episode tile). Hidden when nil.
     var cornerBadgeURL: URL? = nil
-    /// The premium lock is anchored BY THE COMPONENT. On the cover, at
-    /// the family position, never at the text. Call sites only say yes/no.
-    var isPremium: Bool = false
-    /// The feed's access is lastingly refused: the lock carries the warning.
-    var isRefused: Bool = false
+    /// The lock is anchored BY THE COMPONENT. On the cover, at the family
+    /// position, never at the text. Call sites hand the answer of
+    /// `PodcastSubscriptions.lock(feedURL:)`, or `.none` for what is no
+    /// feed; there is no default, so no feed tile forgets its lock.
+    let lock: FeedLock
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
     /// Third text line (the library card's time line). Laid out
@@ -66,7 +66,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
 
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, isPremium: Bool = false, isRefused: Bool = false,
+         cornerBadgeURL: URL? = nil, lock: FeedLock,
          progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
@@ -78,8 +78,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.placeholderSystemImage = placeholderSystemImage
         self.imageContentMode = imageContentMode
         self.cornerBadgeURL = cornerBadgeURL
-        self.isPremium = isPremium
-        self.isRefused = isRefused
+        self.lock = lock
         self.progress = progress
         self.unavailable = unavailable
         self.meta = meta
@@ -104,7 +103,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 // tile's play control, so the lock takes
                 // the free top one. The show tiles, which have no corner
                 // control, keep the bottom position.
-                .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium, refused: isRefused) }
+                .overlay(alignment: .topTrailing) { PremiumLockBadge(lock: lock) }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
                 // Two places at the bottom-left, never one over the other:
@@ -228,7 +227,7 @@ extension MediaTile where CoverOverride == EmptyView {
     /// Corner-carrying tiles without a cover override (the standard grid tile).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, isPremium: Bool = false, isRefused: Bool = false,
+         cornerBadgeURL: URL? = nil, lock: FeedLock,
          progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
@@ -236,7 +235,7 @@ extension MediaTile where CoverOverride == EmptyView {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  isPremium: isPremium, isRefused: isRefused,
+                  lock: lock,
                   progress: progress, unavailable: unavailable,
                   meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText,
                   badgeSystemImage: badgeSystemImage, coverOverride: nil,
@@ -248,14 +247,14 @@ extension MediaTile where Corner == EmptyView {
     /// Cover-override tiles without a corner (the playlist poster card).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         cornerBadgeURL: URL? = nil, lock: FeedLock, progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          coverOverride: CoverOverride,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable,
+                  lock: lock, progress: progress, unavailable: unavailable,
                   meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: coverOverride,
                   onTap: onTap, corner: { EmptyView() })
     }
@@ -265,13 +264,13 @@ extension MediaTile where Corner == EmptyView, CoverOverride == EmptyView {
     /// Plain tiles (no corner, no override).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         cornerBadgeURL: URL? = nil, lock: FeedLock, progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable,
+                  lock: lock, progress: progress, unavailable: unavailable,
                   meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: nil,
                   onTap: onTap, corner: { EmptyView() })
     }

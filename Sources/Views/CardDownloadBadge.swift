@@ -44,6 +44,7 @@ struct CardDownloadBadge: View {
         if isOfflineUnavailable {
             badge {
                 Image(systemName: "wifi.slash").font(.subheadline.weight(.semibold))
+                    .accessibilityLabel(Text("Not available offline"))
             }
         } else if let fraction = downloads.phase[itemId]?.progress {
             let paused: Bool = { if case .paused = downloads.phase[itemId] { return true } else { return false } }()

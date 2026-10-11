@@ -923,6 +923,7 @@ struct RediscoverTile: View {
                     subtitle: Self.subtitle(pick.reason),
                     coverURL: show.artworkURL.flatMap { URL(string: $0) },
                     placeholderSystemImage: "mic",
+                    lock: .none,
                     onTap: { pushRoute(.show(feedURL: feedURL)) }
                 )
                 .kindGlyph(.podcasts)
@@ -934,6 +935,7 @@ struct RediscoverTile: View {
                     subtitle: Self.subtitle(pick.reason),
                     coverURL: router.coverURL(entry.id),
                     placeholderSystemImage: "book.closed",
+                    lock: .none,
                     progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
                     unavailable: unavailable,
                     onTap: { pushBook(entry.id) }
@@ -948,6 +950,7 @@ struct RediscoverTile: View {
                     title: item.title,
                     subtitle: Self.subtitle(pick.reason),
                     coverURL: router.coverURL(item.id),
+                    lock: .none,
                     progress: {
                         if case .inProgress(let fraction, _) = podcastPlayState(for: item) { return fraction }
                         return nil

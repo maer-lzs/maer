@@ -189,16 +189,19 @@ struct UnobservedReadFenceTests {
     /// store announces a change of it on its own publisher, so a view that
     /// shows it observes the store itself, or the lock it draws stays as it
     /// was after a marking until something else redraws the view.
-    static let premiumPattern = #"PodcastSubscriptions\.(?:isPremiumFeed|isManuallyMarkedPremium)\("#
+    /// The one question of the lock (`lock(feedURL:)`) reads the marking
+    /// too, whatever it is called on.
+    static let premiumPattern = #"PodcastSubscriptions\.(?:isPremiumFeed|isManuallyMarkedPremium)\(|\.lock\(feedURL:"#
 
-    /// Premium reads per file, measured. The numbers may only fall.
+    /// Premium reads per file, measured; the stock is the count.
     ///
     /// Why each one still stands: `PodcastComponents.swift` draws the lock on
-    /// the featured card, `RecentShowTile` and `ShowTile`;
-    /// `LatestEpisodesGrid.swift` picks the premium episodes for its row.
-    /// Each relies on a page above that observes the store; the tiles do not.
+    /// the featured card; `LatestEpisodesGrid.swift` asks the locks for its
+    /// row. Each relies on a page above that observes the store. The show
+    /// tiles left this list: their hosts ask the lock while observing the
+    /// store and hand it down.
     static let premiumStock = [
-        "PodcastComponents.swift": 3,
+        "PodcastComponents.swift": 1,
         "LatestEpisodesGrid.swift": 1,
     ]
 

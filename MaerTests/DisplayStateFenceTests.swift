@@ -28,25 +28,44 @@ struct DisplayStateFenceTests {
         #expect(!card.contains("Int(playlist.duration ?? 0)"), "the unknown running time turns into zero again")
     }
 
-    /// Every lock asks the refusal, not only the show tiles.
+    /// Which lock a feed carries is asked in one place
+    /// (`PodcastSubscriptions.lock(feedURL:)`); every surface hands its
+    /// answer on, and no lock has a default a surface could fall back to.
     @Test("jedes Schloss fragt die dauerhafte Verweigerung, nicht nur die Sendungs-Kacheln", .needsTheSources)
     func everyLockAsksTheRefusal() throws {
-        var bare: [String] = []
-        var locks = 0
+        var deciders: [String] = []
+        var handWritten: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
-            let code = FetchAnswerTests.squeezed(text)
-            for part in code.components(separatedBy: "PremiumLockBadge(isPremium:").dropFirst() {
-                locks += 1
-                if !part.prefix(160).contains("refused:") { bare.append("\(name): \(part.prefix(60))") }
+            let code = StockDriftTests.squeezed(SyncContractFenceTests.stripped(text))
+            if code.contains("FeedLock.of(") { deciders.append(name) }
+            guard name != "PremiumBadge.swift", name != "FeedLock.swift" else { continue }
+            for literal in ["lock:.premium", "lock:.refused", "FeedLock.premium", "FeedLock.refused", "premiumLock(.premium", "premiumLock(.refused"]
+            where code.contains(literal) {
+                handWritten.append("\(name): \(literal)")
             }
         }
-        #expect(locks >= 3, "the fence found the locks it guards: \(locks)")
-        #expect(bare.isEmpty, "a lock that does not ask the refusal: \(bare)")
-        let grid = try code("Sources/Views/Podcasts/LatestEpisodesGrid.swift")
-        #expect(grid.contains("subs.isAccessRefused(feedURL:"), "Latest Episodes does not ask the refusal")
-        let card = try code("Sources/Views/Podcasts/PodcastComponents.swift")
-        #expect(card.contains("refused: PodcastSubscriptions.shared.isAccessRefused(feedURL: feed)"),
-                "the Continue card does not ask the refusal")
+        #expect(deciders == ["PodcastSubscriptions.swift"], "the lock is decided beside the one question: \(deciders)")
+        #expect(handWritten.isEmpty, "a surface writes a lock instead of asking: \(handWritten)")
+        let badge = StockDriftTests.squeezed(try code("Sources/Views/Podcasts/PremiumBadge.swift"))
+        let tile = StockDriftTests.squeezed(try code("Sources/Views/MediaTile.swift"))
+        #expect(badge.contains("letlock:FeedLock") && !badge.contains("lock:FeedLock="), "the badge has a default lock")
+        #expect(tile.contains("letlock:FeedLock") && !tile.contains("lock:FeedLock="), "the tile has a default lock")
+        // The flag form, not the word: the badge's `case .refused:` stays.
+        #expect(!badge.contains("refused:Bool") && !tile.contains("isRefused:Bool") && !tile.contains("isPremium:Bool"),
+                "a separate premium or refusal flag came back")
+        let grid = StockDriftTests.squeezed(try code("Sources/Views/Podcasts/LatestEpisodesGrid.swift"))
+        #expect(grid.contains("subs.lock(feedURL:") && grid.contains("lock:locks[item.id]??.none"),
+                "Latest Episodes does not hand on the one answer")
+        let card = StockDriftTests.squeezed(try code("Sources/Views/Podcasts/PodcastComponents.swift"))
+        #expect(card.contains("PremiumLockBadge(lock:PodcastSubscriptions.shared.lock("), "the Continue card does not ask the one question")
+        #expect(card.components(separatedBy: ".premiumLock(lock)").count == 3, "a show tile does not draw the lock it was handed")
+        let list = StockDriftTests.squeezed(try code("Sources/Views/PodcastsView.swift"))
+        #expect(list.components(separatedBy: "lock:subs.lock(feedURL:").count == 7, "a show tile caller does not ask the one question")
+        // The rule itself: a lasting refusal wins over premium.
+        #expect(FeedLock.of(isPremium: true, isRefused: true) == .refused)
+        #expect(FeedLock.of(isPremium: true, isRefused: false) == .premium)
+        #expect(FeedLock.of(isPremium: false, isRefused: true) == .refused)
+        #expect(FeedLock.of(isPremium: false, isRefused: false) == .none)
     }
 
     /// The heart and the running ring carry their state for VoiceOver, and
@@ -72,6 +91,32 @@ struct DisplayStateFenceTests {
         let ring = try code("Sources/Views/DownloadRing.swift")
         #expect(ring.contains(".accessibilityLabel(Text(\"Cancel Download\"))") && ring.contains(".accessibilityValue("),
                 "the ring control has no name or no progress")
+    }
+
+    /// A state a glyph alone carries is named: the offline mark wherever it
+    /// stands without a text beside it, the subscribed check, the actions
+    /// menu of a playlist.
+    @Test("ein Zustand, den nur ein Zeichen traegt, hat einen Namen: Offline-Zeichen, Abo-Haken, Aktionen-Menue", .needsTheSources)
+    func glyphStatesAreNamed() throws {
+        var unnamed: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
+            let code = SyncContractFenceTests.stripped(text)
+            for part in code.components(separatedBy: "Image(systemName: \"wifi.slash\")").dropFirst() {
+                let near = part.prefix(400)
+                if !near.contains(".accessibilityLabel(") && !near.contains("Text(\"") { unnamed.append(name) }
+            }
+        }
+        #expect(unnamed.isEmpty, "an offline mark without a name or a text beside it: \(unnamed)")
+        let components = try code("Sources/Views/Podcasts/PodcastComponents.swift")
+        let tight = StockDriftTests.squeezed(components)
+        let check = try #require(tight.range(of: "Image(systemName:\"checkmark.circle.fill\").foregroundStyle(.white,.green)"),
+                                 "the subscribed check is gone or spelled another way")
+        #expect(tight[check.upperBound...].prefix(160).contains(".accessibilityLabel(Text(\"Subscribed\"))"),
+                "the subscribed check has no name")
+        #expect(!components.contains("Image(systemName: \"wifi.slash\")"), "the show tile draws its own offline mark again")
+        let album = try code("Sources/Views/Music/MusicAlbumView.swift")
+        let menu = try #require(album.range(of: "label: { Image(systemName: \"ellipsis.circle\") }"), "the actions menu is gone")
+        #expect(album[menu.upperBound...].prefix(120).contains(".accessibilityLabel(Text(\"Actions\"))"), "the actions menu has no name")
     }
 }
 #endif

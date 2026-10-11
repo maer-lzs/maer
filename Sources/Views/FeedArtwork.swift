@@ -106,6 +106,7 @@ struct FreeCatalogBookTile: View {
             subtitle: FreeCatalog.displayableAuthor(item.author),
             coverURL: router.coverURL(item.id),
             placeholderSystemImage: placeholderSystemImage,
+            lock: .none,
             // Year first, then runtime. For catalog items whose
             // rights status the source does not state, the year is the only
             // hint the user has.

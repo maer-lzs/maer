@@ -472,7 +472,7 @@ RowHeading(title: "Recommended",
                 ) {
                     ForEach(recentShowsPreview) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                            RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
+                            RecentShowTile(info: info, lock: subs.lock(feedURL: info.show.feedURL))
                         }
                         .buttonStyle(.plain)
                         .podcastShowMenu(info.show)
@@ -526,7 +526,7 @@ RowHeading(title: "Recommended",
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(RowPreview.cut(mirroredShows)) { info in
                             NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                                RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
+                                RecentShowTile(info: info, lock: subs.lock(feedURL: info.show.feedURL))
                             }
                             .buttonStyle(.plain)
                             .cardRowSlot(spacing: 14)
@@ -625,7 +625,7 @@ RowHeading(title: "Recommended",
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(shows)) { show in
                             NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
-                                ShowTile(show: show, refused: subs.isAccessRefused(show))
+                                ShowTile(show: show, lock: subs.lock(feedURL: show.feedURL))
                             }
                             .buttonStyle(.plain)
                             .podcastShowMenu(show)
@@ -801,7 +801,7 @@ struct PremiumShowsPage: View {
             CoverGrid(columns: columns) {
                 ForEach(shows) { show in
                     NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
-                        ShowTile(show: show, refused: subs.isAccessRefused(show))
+                        ShowTile(show: show, lock: subs.lock(feedURL: show.feedURL))
                     }
                     .buttonStyle(.plain)
                     .podcastShowMenu(show)
@@ -833,6 +833,7 @@ struct PodcastContinuePage: View {
                               subtitle: item.author,
                               coverURL: router.coverURL(item.id),
                               placeholderSystemImage: "waveform.and.mic",
+                              lock: .none,
                               onTap: { Task { await playerCoordinator.open(item: item) } })
                         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
                                             showsContinueHide: true)
@@ -1139,7 +1140,7 @@ struct PodcastSubscriptionsPage: View {
                 ) {
                     ForEach(infos) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                            RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
+                            RecentShowTile(info: info, lock: subs.lock(feedURL: info.show.feedURL))
                         }
                         .buttonStyle(.plain)
                         .podcastShowMenu(info.show)
@@ -1215,7 +1216,7 @@ struct PinchflatGroupPage: View {
             ) {
                 ForEach(infos) { info in
                     NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                        RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
+                        RecentShowTile(info: info, lock: subs.lock(feedURL: info.show.feedURL))
                     }
                     .buttonStyle(.plain)
                     .contextMenu {

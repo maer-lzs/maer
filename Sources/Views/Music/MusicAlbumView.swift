@@ -275,6 +275,7 @@ struct MusicAlbumView: View {
                             showDeleteConfirm = true
                         } label: { Label("Delete Playlist", systemImage: "trash") }
                     } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel(Text("Actions"))
                     .accessibilityIdentifier("playlist-actions")
                 }
             }

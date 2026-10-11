@@ -133,6 +133,7 @@ struct MediaRowContent<CoverOverride: View>: View {
                     .font(.caption2)
                     .foregroundStyle(.white)   // full symbol white
                     .padding(3)
+                    .accessibilityLabel(Text("Not available offline"))
             }
         }
         .overlay(alignment: .bottomTrailing) {

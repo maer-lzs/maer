@@ -39,7 +39,7 @@ nonisolated enum PlaylistPresentation {
         min(max(coverCount, 0), 3)
     }
 
-    /// Korrektur 01.08 (pure, tested): pick the mosaic cover ids from a
+    /// Pure, tested: pick the mosaic cover ids from a
     /// playlist's songs. UNIQUE per ALBUM, never per cover-art id. Navidrome
     /// hands every song its own coverArt id (`mf-…`) even when they all show
     /// the same album cover, so deduping by cover id built mosaics of three
@@ -98,8 +98,6 @@ nonisolated enum PlaylistPresentation {
         return ServerTimestamp.date(iso)
     }
 
-    /// Sort playlists newest-changed first; ones without a timestamp sort last,
-    /// then stably by their existing order (index tiebreak).
     /// The playlist's most frequent artists (by track count), pure.
     /// Key is case-/diacritic-folded (display keeps the first-seen spelling);
     /// ties keep first appearance; empties drop. The card renders the result
@@ -126,6 +124,8 @@ nonisolated enum PlaylistPresentation {
             .compactMap { display[$0] }
     }
 
+    /// Sort playlists newest-changed first; ones without a timestamp sort last,
+    /// then stably by their existing order (index tiebreak).
     static func sortedByChanged<T>(_ items: [T], changed: (T) -> Date?) -> [T] {
         items.enumerated().sorted { a, b in
             switch (changed(a.element), changed(b.element)) {

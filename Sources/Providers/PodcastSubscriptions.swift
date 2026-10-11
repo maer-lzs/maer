@@ -77,10 +77,17 @@ final class PodcastSubscriptions: ObservableObject {
         isAccessRefused(feedURL: show.feedURL)
     }
 
-    /// The same by the feed's address, for surfaces that hold an episode
-    /// and its feed, not the show (Continue card, Latest Episodes).
+    /// The same by the feed's address.
     func isAccessRefused(feedURL: String) -> Bool {
         !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(Self.feedKey(feedURL))
+    }
+
+    /// THE question which lock a feed's artwork carries; every surface that
+    /// shows the lock asks here (show tiles, Continue card, Latest
+    /// Episodes). The premium classification is a keychain and defaults
+    /// lookup, so a grid asks once per render, not per cell.
+    func lock(feedURL: String) -> FeedLock {
+        FeedLock.of(isPremium: Self.isPremiumFeed(feedURL), isRefused: isAccessRefused(feedURL: feedURL))
     }
 
     /// Refusals in a row for the show's notice. A page read, not a cell's.

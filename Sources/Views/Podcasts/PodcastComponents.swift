@@ -69,8 +69,7 @@ struct PodcastFeaturedCard: View {
         // on the show tiles.
         .overlay(alignment: .topTrailing) {
             let feed = PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""
-            PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(feed),
-                             refused: PodcastSubscriptions.shared.isAccessRefused(feedURL: feed))
+            PremiumLockBadge(lock: PodcastSubscriptions.shared.lock(feedURL: feed))
         }
         // The SHARED download/offline badge family at the card corner,
         // identical to the book card.
@@ -171,9 +170,9 @@ struct PodcastFeaturedCard: View {
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
-    /// The feed's access is lastingly refused. Resolved by the host,
-    /// like the other cell facts.
-    var refused: Bool = false
+    /// The lock of the feed (`PodcastSubscriptions.lock(feedURL:)`),
+    /// resolved by the host like the other cell facts; no default.
+    let lock: FeedLock
     /// The app-wide choice for the number on the tile.
     @AppStorage(AppStorageKeys.podcastTileCountMode) private var tileCountMode = PodcastTileCount.standard.rawValue
 
@@ -206,14 +205,11 @@ struct RecentShowTile: View {
                 .opacity(unavailable ? 0.5 : 1)
                 .overlay(alignment: .topLeading) {
                     if unavailable {
-                        Image(systemName: "wifi.slash")
-                            .font(.caption)
-                            .foregroundStyle(.white, .secondary)
-                            .padding(8)
+                        OfflineUnavailableBadge().padding(5)
                     }
                 }
                 // THE premium badge (shared component).
-                .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL), refused: refused)
+                .premiumLock(lock)
                 // The mirror's own glyph, the one its source carries in the
                 // settings: folded into the subscriptions, a Pinchflat show
                 // says where it comes from. Bottom-leading is the corner
@@ -265,8 +261,8 @@ struct PinchflatGlyph: View {
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
-    /// See `RecentShowTile.refused`.
-    var refused: Bool = false
+    /// See `RecentShowTile.lock`.
+    let lock: FeedLock
     // The fixed tile width stays, but accessibility sizes get more
     // lines so titles remain readable instead of truncating to a fragment.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -276,7 +272,7 @@ struct ShowTile: View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
                 // Same shared badge as the recent-shows grid.
-                .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL), refused: refused)
+                .premiumLock(lock)
             Text(show.title)
                 .font(.caption)
                 // Jank convention: reserved lines. A short title must not
@@ -619,6 +615,7 @@ struct PodcastSubscribeBadge: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.white, .green)
                 .background(Circle().fill(.black.opacity(0.25)))
+                .accessibilityLabel(Text("Subscribed"))
         } else if subscribing {
             ProgressView().controlSize(.small)
                 .padding(4).background(Circle().fill(.black.opacity(0.35)))
@@ -747,6 +744,7 @@ struct RecommendationTile: View {
                 title: result.title,
                 subtitle: subtitle,
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
+                lock: .none,
                 unavailable: unavailable,
                 badgeText: badgeText,
                 // A result WITHOUT artwork resolves it from the feed. The

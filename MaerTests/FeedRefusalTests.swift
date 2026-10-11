@@ -191,12 +191,11 @@ struct FeedRefusalTests {
         #expect(seite.contains("subs.replaceShowLink(showId:"))
         #expect(seite.contains("subs.recheckAccess(showId:"))
         let kacheln = try sourceText("Sources/Views/Podcasts/PodcastComponents.swift")
-        #expect(kacheln.components(separatedBy: ".premiumLock(PodcastSubscriptions.isPremiumFeed(").count == 3
-                && kacheln.components(separatedBy: "refused: refused)").count == 3,
+        #expect(kacheln.components(separatedBy: ".premiumLock(lock)").count == 3,
                 "beide Kacheln tragen das Zeichen")
         let liste = try sourceText("Sources/Views/PodcastsView.swift")
-        #expect(liste.components(separatedBy: "refused: subs.isAccessRefused(").count == 7,
-                "alle sechs Kachel-Rufer reichen den Zustand hinein")
+        #expect(liste.components(separatedBy: "lock: subs.lock(feedURL:").count == 7,
+                "alle sechs Kachel-Rufer reichen das Schloss aus der einen Frage hinein")
         #expect(liste.contains(".alert(\"Enter new link\""), "die Abfrage der Liste")
         #expect(liste.contains("NotFollowedRow("))
         #expect(try sourceText("Sources/Views/Podcasts/NotFollowedRow.swift").contains("Button(\"Enter new link\""),

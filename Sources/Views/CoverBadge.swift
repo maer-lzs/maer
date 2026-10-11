@@ -41,6 +41,8 @@ struct OfflineUnavailableBadge: View {
             .foregroundStyle(.white)
             .frame(width: diameter, height: diameter)
             .background(.black.opacity(0.45), in: Circle())
+            // The disc is the state; VoiceOver hears it as such.
+            .accessibilityLabel(Text("Not available offline"))
     }
 }
 
