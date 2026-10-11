@@ -32,10 +32,12 @@ nonisolated enum LibraryListRoute: Hashable {
     case groups(BookGroupKind)
     /// The files on this device, managed (`LocalFilesView`).
     case localFiles
+    /// The books this person finished, newest first (`ListenHistoryScreen`).
+    case history
 
     /// The entries of the books tab's tile deck, in order. Genres stand
     /// in the search deck only.
-    static let bookTabEntries: [LibraryListRoute] = [.groups(.series), .groups(.authors), .localFiles]
+    static let bookTabEntries: [LibraryListRoute] = [.groups(.series), .groups(.authors), .localFiles, .history]
 
     /// The books of one group of a kind: the route a row of the groups page
     /// opens, the same a typed hit opens.
@@ -58,6 +60,7 @@ nonisolated enum LibraryListRoute: Hashable {
         case .genre(let name):   name
         case .groups(let kind):  kind.title
         case .localFiles:        String(localized: "Local Files")
+        case .history:           String(localized: "Listening History")
         }
     }
 
@@ -67,6 +70,7 @@ nonisolated enum LibraryListRoute: Hashable {
         switch self {
         case .groups(let kind): kind.systemImage
         case .localFiles: "folder"
+        case .history: ListenHistory.systemImage
         case .continueListening, .recentlyAdded, .allBooks, .author, .series, .genre: nil
         }
     }
@@ -76,6 +80,7 @@ nonisolated enum LibraryListRoute: Hashable {
         switch self {
         case .groups(let kind): "books-tab-\(kind.rawValue)"
         case .localFiles: "books-tab-local-files"
+        case .history: "books-tab-history"
         case .continueListening, .recentlyAdded, .allBooks, .author, .series, .genre: "books-tab-route"
         }
     }

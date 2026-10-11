@@ -43,15 +43,15 @@ import Foundation
 /// paragraph had lost its own sentence halfway through. A fence against stale
 /// numbers whose head goes stale is the proof of its own rule.
 struct SharedGrowthFenceTests {
-    /// Grips on singletons in `Sources/Views`, measured 373 today. It has
-    /// fallen from 630 over the view cut; three times it was PAID rather than
-    /// lowered, by folding a duplicated grip in the same neighbourhood, and
-    /// three times it rose and was written back as measured instead of hidden
-    /// behind a default.
-    nonisolated static let stock = 371
+    /// Grips on singletons in `Sources/Views`, measured 368. It has fallen
+    /// from 630 over the view cut; four times it was PAID rather than
+    /// lowered, by folding or removing a grip in the same neighbourhood (the
+    /// page of the listening history paid with a grip nobody read), and it
+    /// rose and was written back as measured instead of hidden behind a default.
+    nonisolated static let stock = 368
 
     /// The same count over all of `Sources`, measured 724 with the
-    /// listening history (its store, its start and its two ways in). This is the
+    /// listening history (its store, its start, its two ways in, its page). This is the
     /// number that tells a move from a collapse, and it is allowed to RISE:
     /// a store that moves into the database gains one grip on the one
     /// database, and if nothing in its neighbourhood was written twice there

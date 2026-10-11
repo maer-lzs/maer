@@ -151,9 +151,8 @@ enum AppHousekeeping {
             // The cover cap on returning is NOT here: it hangs on the calm
             // gate, and „when is the scrolling calm" is the view's question.
             // A type that is no view and schedules UI work is exactly the
-            // layering violation `ScrollCalmFenceTests` counts down (Weg B),
-            // and moving it in here would have raised that stock. It caught
-            // this, one run before the commit.
+            // layering violation `ScrollCalmFenceTests` counts down, and
+            // moving it in here would raise that stock.
         case .background:
             pot.reconcile(caller: "scene background")
             // Re-run the cover-cache cap on backgrounding, not only at

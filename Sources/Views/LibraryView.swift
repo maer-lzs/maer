@@ -17,7 +17,6 @@ struct LibraryView: View {
     /// only reacts to the CHANGE (refill the stale offline cache, flush the
     /// queues) and never renders from it.
     @Environment(\.isOnline) private var isOnline
-    private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
@@ -72,9 +71,6 @@ struct LibraryView: View {
     /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var systemColorScheme
-    /// Fixed-width carousel tiles get extra text lines at accessibility
-    /// sizes instead of truncating titles to fragments.
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Cover accent of the ACTIVE book. Shared with every glass element in
     /// the bottom bar (mini player, search button, pill) via environment.
     // The bar accent persists across sessions. It only ever changes
@@ -340,6 +336,8 @@ struct LibraryView: View {
                     BookGroupsScreen(kind: kind, entries: viewModel.entries)
                 case .localFiles:
                     LocalFilesView()
+                case .history:
+                    ListenHistoryScreen(family: .book)
                 }
             }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
@@ -1156,6 +1154,16 @@ struct LibraryView: View {
         }
     }
 
+    /// Serverless: the listening history as a row at the end of the tab.
+    /// The same route the tile deck opens with a server.
+    private var historySection: some View {
+        NavigationLink(value: LibraryListRoute.history) {
+            Label(LibraryListRoute.history.title, systemImage: ListenHistory.systemImage)
+                .padding(.horizontal)
+        }
+        .accessibilityIdentifier(LibraryListRoute.history.tileId)
+    }
+
     /// With a server: the entries into the own library as the SAME deck of
     /// tiles the music tab and the search show (series, authors, local
     /// files; genres stand in the search deck only). No numeral: the groups
@@ -1241,6 +1249,7 @@ struct LibraryView: View {
                     if catalogRowVisible {
                         FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
                     }
+                    historySection
                 } else {
                     // 🔴 A doubted session says so HERE, right under what
                     // you are hearing. The tab keeps its content (the token
@@ -1633,9 +1642,9 @@ struct LibraryView: View {
         case .continueListening: viewModel.continueListening
         case .recentlyAdded:     viewModel.recentlyAdded
         // .allBooks renders AllBooksPage (grid follows the live sort state
-        // itself), the groups and local files pages read on their own. They
-        // never reach this list helper.
-        case .allBooks, .groups, .localFiles: []
+        // itself), the groups, local files and history pages read on their
+        // own. They never reach this list helper.
+        case .allBooks, .groups, .localFiles, .history: []
         // The books of one author, of one series, of one genre: asked in
         // ONE place, next to the groups their page counts.
         case .author(let name): LibraryViewModel.books(of: .authors, named: name, in: viewModel.entries)

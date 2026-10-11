@@ -37,12 +37,6 @@ struct MusicView: View {
     /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
-    /// Which 78rpm shelf the row below the tiles shows. Never empty. The
-    /// area exists only as named shelves.
-
-    /// The selected shelf, falling back to the first one. A missing key must
-    /// resolve to a shelf, never to the undivided collection.
-
 
     /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
     /// at the "Free Catalogs" area of the source map > archive.org service
@@ -248,6 +242,8 @@ struct MusicView: View {
                       route: .playlists(sortedPlaylists)),
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
             deckEntry(String(localized: "Downloaded"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
+            deckEntry(String(localized: "Listening History"), systemImage: ListenHistory.systemImage, count: nil,
+                      route: .history),
         ]
         // No free shelf here: the deck is
         // the way into the OWN library, and one of ten Archive shelves sat

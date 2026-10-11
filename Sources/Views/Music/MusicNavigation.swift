@@ -12,8 +12,9 @@ import SwiftUI
 /// `NavigationLink { destination }` pushes, which are NOT in the path and stayed
 /// put. So from an album/artist page the tab bar could not switch library.
 ///
-/// `Hashable` is implemented by id, so the associated values (LibraryItem,
-/// the payloads hash by id, so their types stay simple.
+/// `Hashable` is implemented by hand: the associated values (a library
+/// item, artists, playlists) compare and hash by their id, so their types
+/// need not be hashable themselves.
 enum MusicRoute: Hashable {
     case album(LibraryItem)
     case artist(MusicArtist)
@@ -58,8 +59,10 @@ enum MusicRoute: Hashable {
     /// active catalog (classical · Jamendo), each heading onto its existing
     /// page. netlabels/78rpm/LMA grow in here later.
     case freeCatalogArea
+    /// The songs this person listened to, newest first (`ListenHistoryScreen`).
+    case history
 
-    static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
+    static func ==(lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
         case let (.album(a), .album(b)):         return a.id == b.id
         case let (.artist(a), .artist(b)):       return a.id == b.id
@@ -67,7 +70,7 @@ enum MusicRoute: Hashable {
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
              (.genres, .genres), (.shellacArea, .shellacArea),
-             (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea):
+             (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea), (.history, .history):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
@@ -104,6 +107,7 @@ enum MusicRoute: Hashable {
         case .archiveMusicShelf(let a, let sh):
             hasher.combine(17); hasher.combine(a); hasher.combine(sh)
         case .archiveMusicPopular(let a): hasher.combine(18); hasher.combine(a)
+        case .history:          hasher.combine(19)
         }
     }
 
@@ -130,6 +134,7 @@ enum MusicRoute: Hashable {
         case .jamendoShelf: return "music-route-jamendo-shelf"
         case .archiveMusicShelf: return "music-route-archive-music-shelf"
         case .archiveMusicPopular: return "music-route-archive-music-popular"
+        case .history: return "music-route-history"
         }
     }
 }
@@ -214,6 +219,8 @@ extension View {
                 MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
             case .freeJamendo:
                 FreeJamendoPage(playerCoordinator: playerCoordinator)
+            case .history:
+                ListenHistoryScreen(family: .music)
             }
         }
     }

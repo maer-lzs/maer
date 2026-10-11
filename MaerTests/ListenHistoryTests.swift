@@ -52,6 +52,56 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.historyList(entries, family: .book).map(\.id) == ["b2", "b1"])
         #expect(ListenHistory.historyList(entries, family: .music).map(\.id) == ["s1"])
     }
+
+    @Test("die Seite zeigt 200 Zeilen und je 200 mehr, sobald das Ende erscheint, hoechstens alle; ein Datum vor 2000 steht nicht")
+    func thePageGrowsInSteps() {
+        let first = ListenHistory.pageStep
+        let second = ListenHistory.shownAfterEnd(first, of: 20_000)
+        let last = ListenHistory.shownAfterEnd(19_900, of: 20_000)
+        let few = ListenHistory.shownAfterEnd(first, of: 150)
+        #expect(first == 200 && second == 400, "the page does not grow by one step: \(first), \(second)")
+        #expect(last == 20_000 && few == 150, "the page grows past its entries: \(last), \(few)")
+        let old = ListenHistory.Entry(id: "x", family: .book, title: "X", subtitle: "", heardAt: 3600)
+        let now = ListenHistory.Entry(id: "y", family: .book, title: "Y", subtitle: "", heardAt: 1_700_000_000_000)
+        #expect(ListenHistory.shownDate(old) == nil, "a date before 2000 is shown")
+        #expect(ListenHistory.shownDate(now) == Date(timeIntervalSince1970: 1_700_000_000))
+    }
+
+    /// Both tabs open the one page, each with its family, the serverless
+    /// books tab by a row at its end; the episode history and this page
+    /// draw the one row.
+    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, ohne Server als Zeile am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
+    func bothTabsOpenTheOnePage() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        #expect(LibraryListRoute.bookTabEntries.last == .history, "the books tab deck has no history tile")
+        #expect(LibraryListRoute.history.title == String(localized: "Listening History"))
+        #expect(MusicRoute.history.accessibilityId == "music-route-history")
+        let library = try code("Sources/Views/LibraryView.swift")
+        #expect(FetchAnswerTests.squeezed(library).contains("case .history: ListenHistoryScreen(family: .book)"),
+                "the books route opens another page")
+        #expect(library.contains("NavigationLink(value: LibraryListRoute.history)"), "the serverless tab has no history row")
+        let music = try code("Sources/Views/Music/MusicNavigation.swift")
+        #expect(FetchAnswerTests.squeezed(music).contains("case .history: ListenHistoryScreen(family: .music)"),
+                "the music route opens another page")
+        let deck = try code("Sources/Views/Music/MusicView.swift")
+        #expect(FetchAnswerTests.squeezed(deck).contains("route: .history)"), "the music deck has no history tile")
+        var rows: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
+            if SyncContractFenceTests.stripped(text).contains("\"Title unknown\"") { rows.append(name) }
+        }
+        #expect(rows == ["HistoryRow.swift"], "a history row is drawn twice: \(rows.sorted())")
+        let podcasts = try code("Sources/Views/Podcasts/PodcastHistoryView.swift")
+        #expect(podcasts.contains("HistoryRow(title: entry.episodeTitle"), "the episode history draws a row of its own")
+        // Read and sorted once per opening; a step shows more of the one
+        // sorted list and never asks the history again.
+        let screen = FetchAnswerTests.squeezed(try code("Sources/Views/ListenHistoryScreen.swift"))
+        #expect(screen.components(separatedBy: ".history(family)").count == 2, "the page asks the history more than once")
+        #expect(screen.contains(".onAppear { guard !loaded else { return } entries = ListenHistory.shared.history(family)"),
+                "the page sorts again whenever it appears")
+        #expect(screen.contains("shown = ListenHistory.shownAfterEnd(shown, of: entries.count)"), "a step does not grow the shown rows")
+    }
 }
 
 @MainActor

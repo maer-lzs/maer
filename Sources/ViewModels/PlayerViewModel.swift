@@ -393,7 +393,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Only set the category. setActive(true) only on actual playback (play):
         // otherwise the silent restore of the last session at app start would
         // already interrupt other apps' music.
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        } catch {
+            Logger.player.error("AUDIO category failed reason=\(FailureReason.of(error), privacy: .public)")
+        }
     }
 
     /// The title cannot play: the sentence stands in the pill of the channel,
@@ -1383,7 +1387,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// one place for both failure paths, mid-play and at load.
     private func dropLocalFile(at index: Int) {
         guard let local = localTrackFiles[index] else { return }
-        try? FileManager.default.removeItem(at: local)
+        do {
+            try FileManager.default.removeItem(at: local)
+        } catch {
+            // The download skips a track that is there, so a file left here
+            // is not fetched again; the line says so.
+            Logger.player.error("LOCAL failed track not removed index=\(index) reason=\(FailureReason.of(error), privacy: .public)")
+        }
         localTrackFiles[index] = nil
         if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
             let provider = self.provider

@@ -80,9 +80,13 @@ struct ListenHistoryHealTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHistoryView.swift"), encoding: .utf8))
         let row = try #require(functionBody(of: "private func rowContent(", in: view))
         #expect(row.contains("PodcastListenLog.shownDate(entry)"))
-        #expect(row.contains("String(localized: \"Title unknown\")"))
-        #expect(row.contains("if !entry.showTitle.isEmpty {"))
+        #expect(row.contains("subtitle: entry.showTitle"), "the show is not the second line")
         #expect(!row.contains("Date(timeIntervalSince1970: entry.playedAt"), "no date is drawn past the rule")
+        // The row itself is the one row of both histories.
+        let shared = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HistoryRow.swift"), encoding: .utf8))
+        #expect(shared.contains("String(localized: \"Title unknown\")"))
+        #expect(shared.contains("if !subtitle.isEmpty {"))
     }
 }
 #endif

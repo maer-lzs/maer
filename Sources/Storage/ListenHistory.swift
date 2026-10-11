@@ -99,6 +99,26 @@ final class ListenHistory {
         return (true, song)
     }
 
+    /// The page shows its rows in steps: opening it read and sorted 20,000
+    /// entries in about 110 ms (measured on the simulator, debug build), so
+    /// it draws the first step and the next one once the end appears.
+    nonisolated static let pageStep = 200
+
+    /// The glyph of the tile that opens the history, in both tabs.
+    nonisolated static let systemImage = "clock.arrow.circlepath"
+
+    /// How many rows the page shows once its last shown row appeared: one
+    /// step more, at most all.
+    nonisolated static func shownAfterEnd(_ shown: Int, of total: Int) -> Int {
+        min(total, shown + pageStep)
+    }
+
+    /// The moment a row shows, or nil when it cannot be true (before 2000).
+    nonisolated static func shownDate(_ entry: Entry) -> Date? {
+        guard entry.heardAt >= PodcastListenLog.earliestPlausibleMs else { return nil }
+        return Date(timeIntervalSince1970: entry.heardAt / 1000)
+    }
+
     /// The page of one family: heard entries, newest first.
     nonisolated static func historyList(_ entries: [String: Entry], family: Family) -> [Entry] {
         entries.values.filter { $0.family == family && $0.isHeard }.sorted { $0.heardAt > $1.heardAt }
