@@ -7,13 +7,16 @@ import SwiftUI
 
 /// What a surface shows when its fetch failed (`FetchAnswer.failed`): the
 /// sentence and a way to ask again. A failed load is not "no results": the
-/// empty text stays for an answer that was empty. Two forms, one wording:
+/// empty text stays for an answer that was empty. Three forms, one wording:
 /// a whole page (the content-unavailable form with the page's title and
-/// glyph) and a line inside a list or below the rows already read.
+/// glyph), a line below the rows already read, and a row of a list section,
+/// which takes the look of the section's empty text beside it ("No
+/// playlists yet."), so the two states of one card read alike.
 struct LoadFailedView: View {
     enum Form {
         case page(title: Text, systemImage: String)
         case line
+        case row
     }
 
     let form: Form
@@ -41,6 +44,14 @@ struct LoadFailedView: View {
                     .accessibilityIdentifier("load-failed-retry")
             }
             .frame(maxWidth: .infinity)
+        case .row:
+            HStack(spacing: 10) {
+                Text(sentence)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("Retry", action: retry)
+                    .accessibilityIdentifier("load-failed-retry")
+            }
         }
     }
 }

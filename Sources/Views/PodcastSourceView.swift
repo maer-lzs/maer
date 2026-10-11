@@ -213,7 +213,7 @@ struct PodcastSourceView: View {
             if isSearching {
                 HStack { ProgressView(); Text("Searching…").foregroundStyle(.secondary) }
             } else if searchAnswer?.failed == true {
-                LoadFailedView(form: .line) {
+                LoadFailedView(form: .row) {
                     let term = searchText.trimmingCharacters(in: .whitespaces)
                     if term.count >= 2 { Task { await runSearch(term) } }
                 }

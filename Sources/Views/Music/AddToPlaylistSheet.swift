@@ -392,7 +392,7 @@ struct AddToPlaylistSheet: View {
                         if loadingServer {
                             HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                         } else if serverFailed {
-                            LoadFailedView(form: .line, sentence: "Playlists could not be loaded.") {
+                            LoadFailedView(form: .row, sentence: "Playlists could not be loaded.") {
                                 Task { await loadServer() }
                             }
                         } else if serverPlaylists.isEmpty {

@@ -98,7 +98,7 @@ struct ABSSourceView: View {
                 } else if librariesFailed {
                     // The list could not be read: not "one library".
                     Section("Library") {
-                        LoadFailedView(form: .line) { Task { await loadLibraries() } }
+                        LoadFailedView(form: .row) { Task { await loadLibraries() } }
                     }
                 }
             }

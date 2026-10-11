@@ -143,5 +143,25 @@ struct UserEdgeErrorTests {
         #expect(!RadioStore.regionFailed(variantAnswered: [false, true]), "one answer was not enough")
         #expect(!RadioStore.regionFailed(variantAnswered: [true]))
     }
+
+    /// In a list section the failure reads like the empty text beside it
+    /// ("No playlists yet."): body size, leading, Retry at the end. The small
+    /// centred line stays for the places below rows already read.
+    @Test("in einem Listen-Abschnitt steht ein Ladefehler in der Form der Leerzeile daneben, nicht als kleine Zeile in der Mitte", .needsTheSources)
+    func aFailureInAListReadsLikeItsEmptyText() throws {
+        let view = try code("Sources/Views/LoadFailedView.swift")
+        let row = try #require(view.range(of: "case .row:"), "the failure has no row form")
+        let rowBody = view[row.upperBound...]
+        #expect(rowBody.contains(".frame(maxWidth: .infinity, alignment: .leading)"), "the row is not leading")
+        #expect(!rowBody.contains(".font(.footnote)"), "the row is smaller than the empty text beside it")
+        let users = ["Sources/Views/Music/AddToPlaylistSheet.swift": "LoadFailedView(form: .row, sentence: \"Playlists could not be loaded.\")",
+                     "Sources/Views/PodcastSourceView.swift": "LoadFailedView(form: .row) {",
+                     "Sources/Views/ABSSourceView.swift": "LoadFailedView(form: .row) { Task { await loadLibraries() } }"]
+        for (path, call) in users {
+            let source = try code(path)
+            #expect(source.contains(call), "\(path) shows its failure in another form than its empty text")
+            #expect(!source.contains("LoadFailedView(form: .line"), "\(path) still has a small centred line in a list")
+        }
+    }
 }
 #endif
