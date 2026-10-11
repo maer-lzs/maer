@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal Audiobookshelf stand-in for the null-start measurement (c59e96e/ac97fb6).
+"""Minimal Audiobookshelf stand-in for the null-start measurement.
 
 It is NOT a general ABS emulation — it serves exactly the endpoints the app
 touches when opening a downloaded book, and it RECORDS every progress write.

@@ -128,5 +128,7 @@ if [[ -n "${MAER_BERICHTE_DIR:-}" && -d "$MAER_BERICHTE_DIR/.git" ]]; then
     cp "$SUMMARY" "$MAER_BERICHTE_DIR/$STAMP-journeys.md"
     (cd "$MAER_BERICHTE_DIR" && git add "$STAMP-journeys.md" && git commit -q -m "Journeys $STAMP" && git push -q) \
         || echo "report not pushed (see $SUMMARY)"
+elif [[ -n "${MAER_BERICHTE_DIR:-}" ]]; then
+    echo "report not pushed: $MAER_BERICHTE_DIR is no git checkout (see $SUMMARY)"
 fi
 exit $rc

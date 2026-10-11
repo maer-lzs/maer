@@ -1,22 +1,33 @@
 #!/bin/bash
-# Null-Start-Messung (c59e96e / ac97fb6) — reproduzierbare Abfolge.
+# Null-Start-Messung, reproduzierbare Abfolge.
 #
 # Stellt EINMAL den Zustand her, den der echte Vorfall hatte (heruntergeladen,
 # ohne lokalen Zeugen, gecachtes Detail vom Download-Zeitpunkt), und oeffnet das
 # Buch danach in jedem der vier Server-Zustaende. Zwischen den Faellen wird der
-# Simulator NICHT geloescht — sonst waere der Zustand weg, der gemessen wird.
+# Simulator NICHT geloescht, sonst waere der Zustand weg, der gemessen wird.
+#
+# Braucht, was nicht im Baum liegt: die Journey `NullStartMeasurement` (der
+# Fahrer, siehe README) und die TLS-Dateien `ca.pem` und `srv-chain.pem` neben
+# `server.py`. Fehlt eines, endet der Lauf auf 2 und misst nichts.
 set -u
-S="$(cd "$(dirname "$0")/.." && pwd)"
-M="$S/absmock"
+M="$(cd "$(dirname "$0")" && pwd)"
 D="${SIM_ID:-62909F86-CC2C-483A-9471-A255EB70B844}"
 REPO="${REPO:-$(cd "$(dirname "$0")/../.." && pwd)}"
-DD="$S/dd-meas"
-OUT="$M/ergebnis.md"
+W="${MESSUNG_DIR:-$(mktemp -d -t nullstart-messung)}"
+DD="$W/dd-meas"
+OUT="$W/ergebnis.md"
+if ! grep -rqs "class NullStartMeasurement" "$REPO/MaerUITests"; then
+  echo "NICHT GEMESSEN: der Fahrer fehlt (Journey NullStartMeasurement in MaerUITests)" >&2
+  exit 2
+fi
+for datei in ca.pem srv-chain.pem; do
+  [ -r "$M/$datei" ] || { echo "NICHT GEMESSEN: $M/$datei fehlt" >&2; exit 2; }
+done
 
 mock_start() {   # $1 = Modus, $2 = Serverstand
-  pkill -f "absmock/server.py" 2>/dev/null; sleep 1
+  pkill -f "nullstart-messung/server.py" 2>/dev/null; sleep 1
   MOCK_MODE="$1" MOCK_SERVER_TIME="$2" MOCK_PORT=8770 MOCK_CERT="$M/srv-chain.pem" \
-    python3 "$M/server.py" > "$M/run-$1.log" 2>&1 &
+    python3 "$M/server.py" > "$W/run-$1.log" 2>&1 &
   sleep 2
 }
 writes() { curl -s --cacert "$M/ca.pem" https://127.0.0.1:8770/__writes; }
@@ -47,7 +58,7 @@ witness() {
 run_case() { # $1 = Testname
   xcodebuild test-without-building -project "$REPO/Maer.xcodeproj" -scheme Maer \
     -destination "id=$D" -derivedDataPath "$DD" -parallel-testing-enabled NO \
-    -only-testing:"MaerUITests/NullStartMeasurement/$1" > "$M/$1-${MODUS:-A}.log" 2>&1
+    -only-testing:"MaerUITests/NullStartMeasurement/$1" > "$W/$1-${MODUS:-A}.log" 2>&1
   echo $?
 }
 

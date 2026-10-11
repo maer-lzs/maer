@@ -11,7 +11,9 @@
 #
 # The invariant: the table has as many rows as the run executed journeys
 # (xcodebuild's own „Executed N tests"). If it does not, this prints why and
-# exits 3, so the run is not green on a summary that counted nothing.
+# exits 3, so the run is not green on a summary that counted nothing. A run
+# that executed no journey at all is no green run either (an `--only` that
+# matched nothing, a build that never started the tests): it exits 3 too.
 #
 # Usage: journeys-summary.py <log>      rows on stdout
 #        journeys-summary.py --selbstprobe
@@ -48,7 +50,9 @@ def table(text):
     lines = [f"| {n} | {'ROT' if r == 'failed' else 'grün'} | {d:.0f} s |" for n, r, d in found]
     ran = executed(text)
     error = None
-    if ran != len(found):
+    if ran == 0 and not found:
+        error = "LAUF UNGUELTIG: xcodebuild meldet keine ausgefuehrte Journey, die Tabelle misst nichts"
+    elif ran != len(found):
         error = f"LAUF UNGUELTIG: xcodebuild meldet {ran} ausgefuehrte Journeys, die Tabelle hat {len(found)} Zeilen"
     return lines, error
 
@@ -68,8 +72,10 @@ def selbstprobe():
     # The failure this reader had: tests ran, the table stayed empty.
     lines, error = table("\t Executed 10 tests, with 1 failure (0 unexpected) in 1 (1) seconds\n")
     assert lines == [] and error and "10" in error, error
-    # A run that executed nothing is no table and no error of the reader.
-    assert table("") == ([], None)
+    # A run that executed nothing measured nothing: no table, and an error.
+    for empty in ("", "\t Executed 0 tests, with 0 failures (0 unexpected) in 0.0 (0.0) seconds\n"):
+        lines, error = table(empty)
+        assert lines == [] and error and "keine" in error, error
     print("selbstprobe: gruen")
 
 

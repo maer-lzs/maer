@@ -66,6 +66,23 @@ struct ListenHistoryTargetTests {
         #expect(routed.isEmpty, "a book that is gone opened something")
     }
 
+    /// The handler the router calls pushes the one catalog book page for
+    /// `.catalogBook`, in the books tab; swallowing the target would leave the
+    /// opener green and the tap without a page.
+    @Test("der Griff schiebt fuer ein Katalog-Buch die eine Detailseite, im Reiter Hoerbuecher", .needsTheSources)
+    func theHandlerPushesTheCatalogBookPage() throws {
+        let library = try code("Sources/Views/LibraryView.swift")
+        // The router's handler only: the search handler pushes the same
+        // route for its own hits and would answer for it.
+        let start = try #require(library.range(of: "PlayerSourceRouter.shared.handler = {"), "the handler is gone")
+        let end = try #require(library.range(of: "case .catalogAlbum(let itemId):", range: start.upperBound..<library.endIndex))
+        let handler = String(library[start.upperBound..<end.lowerBound])
+        #expect(StockDriftTests.squeezed(handler).contains(
+            StockDriftTests.squeezed("case .catalogBook(let itemId):\n pushToActive(FreeAudiobooksRoute.catalogBook(itemId: itemId))")),
+            "the handler does not push the catalog book page")
+        #expect(PlayerSourceTarget.catalogBook(itemId: "lv:1").tab == .audiobooks)
+    }
+
     /// The page: every row is a button into the one opener, and every
     /// outcome of it is handled; nothing that cannot open stays silent.
     @Test("die Seite: jede Zeile oeffnet ueber die eine Tuer, jeder Ausgang wird gesagt", .needsTheSources)

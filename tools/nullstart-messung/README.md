@@ -1,9 +1,12 @@
-# Null-Start-Messung (Auftraege efc68ca / c59e96e / ac97fb6)
+# Null-Start-Messung
 
-**Ohne Fahrer seit B3 (17.09.2026):** die Journey `NullStartMeasurement`, die
-`messung.sh` faehrt, ist mit den zehn bleibenden Journeys gestrichen. Das
-Werkzeug bleibt als Verfahren und Server-Attrappe; wer die Messung wieder
-braucht, schreibt die Journey neu (Schema `Maer`, Ziel `MaerUITests`).
+**Ohne Fahrer:** die Journey `NullStartMeasurement`, die `messung.sh` faehrt,
+steht nicht mehr unter den Journeys, und die TLS-Dateien `ca.pem` und
+`srv-chain.pem` liegen nicht im Baum. `messung.sh` sagt beides und endet auf 2.
+Das Werkzeug bleibt als Verfahren und Server-Attrappe; wer die Messung wieder
+braucht, schreibt die Journey neu (Schema `Maer`, Ziel `MaerUITests`) und legt
+die beiden Dateien neben `server.py`. Logs und Ergebnis gehen in einen
+Arbeitsordner (`MESSUNG_DIR`, sonst ein frischer Temp-Ordner), nicht in den Baum.
 
 Misst, wo ein HERUNTERGELADENES Buch startet, wenn es keinen lokalen Zeugen
 mehr hat, und was die App in dieser Lage zum Server schreibt.

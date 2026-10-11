@@ -3,13 +3,11 @@
 # Copyright (C) 2026 Laurenz Schröder
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# 🟡 f291df3: HARDENED generator — replaces the version that wrote
-# unconditionally. A valid but EMPTY WDQS answer (HTTP 200, no bindings —
-# it happens during endpoint hiccups) used to overwrite the real table with
-# an empty one, report "0 countries" and exit 0: a failure that looked like
-# a measurement and destroyed the stock with a success message. The queries
-# (EBU = Q166400, anchors, the two-stage toplist) are unchanged; the four
-# gates around them are the point:
+# Generator of the Wikidata popularity cores. A valid but EMPTY WDQS answer
+# (HTTP 200, no bindings, it happens during endpoint hiccups) must never
+# overwrite the real table: a failure that looks like a measurement would
+# destroy the stock with a success message. The queries (EBU = Q166400,
+# anchors, the two-stage toplist) stand inside four gates:
 #   1. every query returns (rows, verdict) — the ladder asks "was anything
 #      measured at all?" BEFORE it asks what was measured;
 #   2. the file is written ATOMICALLY (os.replace) and ONLY on a real
@@ -22,50 +20,27 @@
 #
 # Usage: python3 tools/radio-wikidata-cores/generate.py
 #        (defaults to Sources/Models/RadioWikidataCores.swift in this repo)
-"""Ballon 41 — Wikidata-Kerne fuer die Radio-Reihen (Nicht-DACH), gehaertet.
+"""Wikidata-Kerne fuer die Radio-Reihen (ausserhalb von DE, AT, CH).
 
-## Warum dieses Werkzeug das vorhandene Skript nicht ersetzt, sondern uebernimmt
+Die Abfragen tragen die am echten Endpunkt verifizierte Form (EBU = Q166400,
+Sitelink-Rang, Anker fuer Maerkte ausserhalb der EBU) und die zweistufige
+Toplist (erst ranken ohne Label-Dienst, dann nur die Spitze beschriften, die
+Antwort auf ein 504).
 
-Der Auftrag loest den Generator aus einem anderen Auftrag heraus („Verdrahten und
-Generieren sind getrennt vergeben"). Das Skript lag auf `dev@52744e8` bereits
-als `tools/radio-wikidata-cores/generate.py` vor. Ein zweiter Generator
-daneben waere genau die Doppelfassung, die ich in Ballon 39 als Begruendung gegen
-einen Nachbau geschrieben habe — zwei Fassungen derselben Liste driften.
+## Kein Weg von einer Antwort zu Daten ohne Urteil
 
-Die ABFRAGEN stammen deshalb unveraendert aus diesem Skript; sie tragen die am
-echten Endpunkt verifizierte Form (EBU = Q166400, Sitelink-Rang, Anker fuer
-Nicht-EBU-Maerkte) und die zweistufige Toplist (erst ranken ohne Label-Dienst,
-dann nur die Spitze beschriften, die Antwort auf ein 504). Was hier dazukommt,
-ist das, was die vier Tore des Auftrags verlangen und was messbar fehlte.
+Jede einzelne Abfrage geht durch `u2_antworturteil.antwort_urteil`: die Leiter
+stellt ZUERST die Frage „wurde ueberhaupt gemessen?" und erst danach die nach
+dem Inhalt. Es gibt in diesem Werkzeug keine Stelle, an der eine Zeilenliste
+ohne dieses Urteil weiterwandert. Die Rohzahlen vor der Kappung (`MAX_KERN`)
+stehen im Laufbericht, damit sie gegen die gemessenen Groessenordnungen
+(etwa „DE 117“) abgleichbar sind; Laender unter `MIN_KERN` werden genannt,
+nicht still verworfen; die Stichprobenlaender berichten zehn Namen.
 
-## Was gemessen fehlte (Attrappenlauf vom 15.08., Belege in `ergebnisse/`)
-
-**Eine gueltige, LEERE Antwort schrieb eine leere Tabelle ueber die 567 Zeilen
-echter Daten, meldete „0 countries" und kehrte normal zurueck — Exit 0.** Das ist
-Always-On-Test Nr. 4 in Reinform: ein Fehlschlag, der wie ein Messwert aussieht,
-und hier zerstoert er obendrein den Bestand. (Die andere Haelfte hielt: ein
-unerreichbares Ziel warf sichtbar und liess die Datei unangetastet.)
-
-Dazu drei kleinere, aber gleichartige Stellen:
-* `MAX_CORE` kappte die Zahlen VOR jeder Ausgabe — gegen die gemessene Groessenordnung
-  „DE 117" laesst sich eine gekappte 30 nicht abgleichen. Die Rohzahl wurde nie
-  festgehalten, also war Tor 1 gar nicht erfuellbar.
-* Laender unter `MIN_CORE` verschwanden STILL. Wer „UK fehlt" liest, erfaehrt
-  nicht, ob nicht gemessen oder weggefiltert wurde.
-* Der Lauf berichtete fuenf Namen je Land; Tor 4 verlangt zehn fuer die
-  Stichprobenlaender.
-
-## Der Kern der Haertung: kein Weg von einer Antwort zu Daten ohne Urteil
-
-Jede einzelne Abfrage geht durch `u2_antworturteil.antwort_urteil` — die Leiter
-stellt ZUERST die Frage „wurde ueberhaupt gemessen?" und erst danach die nach dem
-Inhalt (Verdikt-Umdeutungs-Regel A). Es gibt in diesem Werkzeug keine Stelle, an
-der eine Zeilenliste ohne dieses Urteil weiterwandert.
-
-Scheitert die EBU-Abfrage — das Rueckgrat —, wird **nichts geschrieben** und der
+Scheitert die EBU-Abfrage, das Rueckgrat, wird **nichts geschrieben** und der
 Lauf endet auf 2. Scheitert eine Laender-Abfrage, ist dieses Land
-`nicht_geprueft` und ausdruecklich NICHT 0 (Always-On Nr. 4, Regel C: ein
-gescheiterter Vorbereitungsschritt entwertet den Befund, er fusst ihn nicht an).
+`nicht_geprueft` und ausdruecklich NICHT 0: ein gescheiterter
+Vorbereitungsschritt entwertet den Befund, er stuetzt ihn nicht.
 
 Aufruf:
 
@@ -94,15 +69,14 @@ from u1_laenderurteil import laender_urteil    # noqa: E402
 from u2_antworturteil import antwort_urteil    # noqa: E402
 from u3_swifttabelle import swift_tabelle      # noqa: E402
 
-# --- unveraendert aus dem Skript auf dev@52744e8 ---------------------------
 ENDPUNKT_VORGABE = "https://query.wikidata.org/sparql"
 KENNUNG = "Maer/1.0 (+https://maer.fm)"
 ERSTHAND = {"DE", "AT", "CH"}          # dort gelten die Ersthand-Tabellen
 # Anker-Laender: der EBU-Mitgliedschaftsfilter wird hier durch eine benannte
 # Anstalt ersetzt. `None` heisst: fuer dieses Land greift kein Anker, der Kern
-# kommt allein aus der laenderweiten Toplist — beim NPR-Anker war das der
-# gemessene Ballon-41-Befund (NPR ist ein VERBUND; die Mitgliedssender gehoeren
-# ihm nicht ueber P127/P137/P749), e9ee804 nimmt ihn deshalb ersatzlos raus.
+# kommt allein aus der laenderweiten Toplist. So fuer die USA: NPR ist ein
+# VERBUND, die Mitgliedssender gehoeren ihm nicht ueber P127/P137/P749, ein
+# NPR-Anker faende keinen von ihnen.
 ANKER = {
     "US": None,          # NPR greift strukturell nicht (Verbund)
     "AU": "Q781365",     # Australian Broadcasting Corporation
@@ -112,8 +86,7 @@ ANKER = {
     "ZA": "Q1419926",    # South African Broadcasting Corporation
     "IN": "Q1321122",    # All India Radio
 }
-# e9ee804 (ENTSCHEID, Option A): DATEN-Flag, kein Code-Sonderweg —
-# in diesen Laendern verlangt die Toplist zusaetzlich die Inlands-Lizenzstadt
+# DATEN-Flag, kein Code-Sonderweg: in diesen Laendern verlangt die Toplist zusaetzlich die Inlands-Lizenzstadt
 # (`wdt:P1408`, "licensed to broadcast to"). Sitelinks messen BEKANNTHEIT:
 # ohne den Filter fuehren die Auslandsdienste (VOA/RFE/RFA/TWR) die US-Liste
 # an, obwohl sie kein US-Publikum haben. Mit dem Filter fallen sie
@@ -126,14 +99,14 @@ MIN_KERN = 5
 MAX_KERN = 30
 LABEL_SPRACHEN = ("en,fr,de,it,es,pl,cs,nl,sv,da,no,fi,pt,hu,ro,el,tr,uk,ja,ko,zh")
 
-# Die Groessenordnungen, am echten Endpunkt gemessen (Auftrag Ballon 41).
-# Das ist die Referenz fuer Tor 1 — sie steht hier als DATEN, damit eine
-# Korrektur ein Diff ist und kein Programmierakt.
+# Die Groessenordnungen, am echten Endpunkt gemessen: die Referenz des ersten
+# Tors. Sie steht hier als DATEN, damit eine Korrektur ein Diff ist und kein
+# Programmierakt.
 #
-# ACHTUNG beim Schluessel: der Auftrag nennt das Vereinigte Koenigreich "UK",
-# Wikidatas P297 liefert aber "GB". Gegen "UK" verglichen stand das Land im
-# ersten Referenzlauf dauerhaft und faelschlich auf `fehlt` — der Schluessel
-# MUSS der ISO-Code der Abfrage sein, nicht der Umgangsname aus dem Auftrag.
+# ACHTUNG beim Schluessel: Wikidatas P297 liefert fuer das Vereinigte
+# Koenigreich "GB", nicht "UK"; gegen "UK" verglichen stuende das Land
+# dauerhaft und faelschlich auf `fehlt`. Der Schluessel MUSS der ISO-Code der
+# Abfrage sein, nicht der Umgangsname.
 REFERENZ = {"DE": 117, "GB": 47, "FR": 31, "CZ": 31, "PL": 24, "BE": 20,
             "CH": 17, "AT": 15, "IT": 14}
 TOLERANZ = 0.35
@@ -252,7 +225,7 @@ SELECT ?station ?stationLabel ?sitelinks WHERE {{
 def _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen):
     """Die zweistufige Landes-Toplist (erst ranken ohne Label-Dienst, dann nur
     die Spitze beschriften — die Antwort auf ein 504). EINE Stelle fuer beide
-    Wege: mit Anker und ohne (e9ee804). `schlafen` kommt wie ueberall von
+    Wege: mit Anker und ohne. `schlafen` kommt wie ueberall von
     aussen herein, damit ein Test die Pause nicht wirklich abwartet."""
     r_zeilen, r_urteil = _mit_urteil(abfrage_toplist_rang(ccode), endpunkt,
                                      "toplist", **kw)
@@ -333,9 +306,10 @@ def messen(endpunkt, schlafen=time.sleep, oeffnen=None, nur_laender=None,
         if nur_laender and ccode not in nur_laender:
             continue
         if anker is None:
-            # Datenlage, kein Fehlschlag: dieses Land traegt seinen Kern
-            # allein aus der Toplist (siehe ANKER-Kommentar).
-            anker_ohne_treffer.append(ccode)
+            # Datenlage, kein Fehlschlag und kein Befund: dieses Land hat
+            # keinen Anker und traegt seinen Kern allein aus der Toplist
+            # (siehe ANKER-Kommentar). Als „Anker ohne Treffer“ gezaehlt
+            # endete jeder volle Lauf auf 1, und die 1 sagte nichts mehr.
             schlafen(pause)
             _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen)
             continue
@@ -394,19 +368,19 @@ KOPF = """// Mär — an audio player for self-hosted open ecosystems
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
-// GENERATED by tools/radio-wikidata-cores/generate.py — edit the script,
+// GENERATED by tools/radio-wikidata-cores/generate.py. Edit the script,
 // not this file. Run date: {datum}.
 
 import Foundation
 
-/// 72d233f/9913bcd: Wikidata popularity cores for countries WITHOUT a
-/// first-hand survey table — public-broadcaster flagships via EBU
+/// Wikidata popularity cores for countries WITHOUT a
+/// first-hand survey table. Public-broadcaster flagships via EBU
 /// membership (plus named anchors and the country sitelink top for
 /// non-EBU markets), ranked by SITELINK COUNT (verified proxy: the CH
 /// probe matched Mediapulse's order). Names in rank order, the QID rides
-/// as a comment; sitelink numbers are deliberately NOT frozen (cb8bac1).
+/// as a comment; sitelink numbers are deliberately NOT frozen.
 /// Resolution against the live catalog and the core-first mixing are the
-/// SAME mechanism as the first-hand cores — the cores are exchangeable
+/// SAME mechanism as the first-hand cores. The cores are exchangeable
 /// data, not a second code path.
 nonisolated enum RadioWikidataCores {{
     static func national(countryCode: String?) -> [String]? {{
@@ -502,7 +476,7 @@ def _schluss(a, e):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Ballon 41 — Wikidata-Kerne, gehaertet")
+    p = argparse.ArgumentParser(description="Wikidata-Kerne der Radio-Reihen")
     p.add_argument("--endpunkt", default=ENDPUNKT_VORGABE)
     p.add_argument("--aus", default=os.path.join(
                        os.path.dirname(os.path.dirname(HIER)),

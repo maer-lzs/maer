@@ -17,7 +17,7 @@
 
 import Foundation
 
-/// 🔴 The logos of the CORE stations as generated DATA: the logo (P154) of
+/// The logos of the CORE stations as generated DATA: the logo (P154) of
 /// the one Wikidata object of the class radio station a name means, held to
 /// the table probe, or vouched for exactly its bound file.
 /// Only the file NAME is stored; the width is applied at read time from

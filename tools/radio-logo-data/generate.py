@@ -413,6 +413,15 @@ def resolve(name, fact, radio, isos, held):
     return None, None, "none", reason, failed
 
 
+def kept_entry(file_name, failed, before):
+    """The entry a name keeps in the table: a failed question is no verdict,
+    so the stock entry stays when the run found nothing for it. Only an
+    answered question may drop an entry."""
+    if file_name or not failed:
+        return file_name
+    return before
+
+
 def swift_file(entries, names, single=None, check=False, search_path=None):
     """The data file. Names to Commons FILE NAME; the width is applied at read
     time from the app's one constant. The vouched entries travel along, so
@@ -456,7 +465,7 @@ def swift_file(entries, names, single=None, check=False, search_path=None):
 
 import Foundation
 
-/// 🔴 The logos of the CORE stations as generated DATA: the logo (P154) of
+/// The logos of the CORE stations as generated DATA: the logo (P154) of
 /// the one Wikidata object of the class radio station a name means, held to
 /// the table probe, or vouched for exactly its bound file.
 /// Only the file NAME is stored; the width is applied at read time from
@@ -586,9 +595,12 @@ def full_run(dry, report_path, search_path=False):
         for index, name in enumerate(measured, 1):
             file_name, entity_id, status, reason, failed = resolve(name, facts.get(name), radio, isos, held)
             failures += failed
+            before = previous.get(name)
+            if failed and not file_name and before:
+                reason = f"kept on failure: {reason}"
+            file_name = kept_entry(file_name, failed, before)
             if file_name:
                 entries[name] = file_name
-            before = previous.get(name)
             change = ("kept" if before == file_name else "new" if before is None and file_name
                       else "dropped" if file_name is None and before else "changed" if file_name else "none")
             countries = sorted(isos.get(c, c) for c in OBJECT_COUNTRIES.get(entity_id, ())) if entity_id else []
@@ -658,6 +670,16 @@ def self_check():
         held = file_name == expected
         failed += not held
         print(f"{'ok ' if held else 'ROT'} {title}: {file_name or reason}")
+    # A failed question keeps the stock entry; an answered one decides.
+    for title, args, expected in [
+        ("a failed question keeps the stock entry", (None, True, "Alt.svg"), "Alt.svg"),
+        ("an answered question without a logo drops it", (None, False, "Alt.svg"), None),
+        ("a found logo replaces the stock entry", ("Neu.svg", True, "Alt.svg"), "Neu.svg"),
+        ("a failed question without a stock entry stays empty", (None, True, None), None),
+    ]:
+        held = kept_entry(*args) == expected
+        failed += not held
+        print(f"{'ok ' if held else 'ROT'} {title}: {kept_entry(*args)}")
     return 1 if failed else 0
 
 

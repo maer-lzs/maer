@@ -3,7 +3,7 @@
 # Copyright (C) 2026 Laurenz Schröder
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# 🔴 8360dac: END-TO-END audit of the radio logo chain, with a NUMBER.
+# END-TO-END audit of the radio logo chain, with a NUMBER.
 # Seven stage fixes did not close the topic because none of them defined
 # what "solved" means. This does: it walks the WHOLE chain per station of
 # the target set and counts every stage's losses.
@@ -19,14 +19,30 @@
 # NONE) and, on failure, the STAGE that lost it.
 
 import argparse
-import io
+import importlib.util
 import json
+import os
 import re
 import sys
 import time
-import unicodedata
 import urllib.parse
 import urllib.request
+
+
+def _logo_generator():
+    """The logo generator's module, for its two readers: the audit measures an
+    image and folds a name exactly as the generator does, with the standard
+    library only (no third-party image library)."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "radio-logo-data", "generate.py")
+    spec = importlib.util.spec_from_file_location("radio_logo_generate", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+GENERATOR = _logo_generator()
+fold = GENERATOR.fold
 
 UA = "Maer/1.0 (+https://maer.fm)"
 MIN_SIDE = 64            # RadioFaviconGate.minSide (favicons)
@@ -47,12 +63,6 @@ def get(url, timeout=20):
         return None, None
 
 
-def fold(raw):
-    text = unicodedata.normalize("NFKD", raw or "")
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    return "".join(c for c in text.lower() if c.isalnum())
-
-
 def search_terms(name):
     """RadioLogoLookup.searchTerms, replicated."""
     terms = [name]
@@ -67,15 +77,10 @@ def search_terms(name):
 
 
 def image_side(data):
-    """Shortest side in pixels, or None when undecodable (SVG included)."""
-    if not data:
-        return None
-    try:
-        from PIL import Image
-        with Image.open(io.BytesIO(data)) as image:
-            return min(image.size)
-    except Exception:
-        return None
+    """Shortest side in pixels, or None when undecodable (SVG included):
+    PNG, GIF, JPEG and WebP are read from their header."""
+    size = GENERATOR.image_size(data)
+    return min(size) if size else None
 
 
 def wikidata_entity(term, language, station_name):
@@ -83,12 +88,14 @@ def wikidata_entity(term, language, station_name):
         {"action": "wbsearchentities", "search": term, "language": language,
          "format": "json", "limit": 10})
     status, body = get(url)
+    if status is None:
+        return None, "wikidata-search-unreachable"
     if status != 200 or not body:
-        return None, ("wikidata-search" if status is None else None)
+        return None, f"wikidata-search-http-{status}"
     try:
         hits = json.loads(body).get("search", [])
-    except Exception:
-        return None, None
+    except ValueError:
+        return None, "wikidata-search-unreadable"
     wanted = fold(station_name)
     for hit in hits:
         have = fold(hit.get("label", ""))
@@ -98,15 +105,22 @@ def wikidata_entity(term, language, station_name):
 
 
 def p154_file(entity):
+    """(file, failure): the entity's logo file, or None with no failure when
+    it has none; a transport or reading failure is named, never a finding."""
     url = f"https://www.wikidata.org/wiki/Special:EntityData/{entity}.json"
     status, body = get(url)
+    if status is None:
+        return None, "wikidata-entity-unreachable"
     if status != 200 or not body:
-        return None
+        return None, f"wikidata-entity-http-{status}"
     try:
         claims = json.loads(body)["entities"][entity].get("claims", {})
-        return claims["P154"][0]["mainsnak"]["datavalue"]["value"]
-    except Exception:
-        return None
+    except (ValueError, KeyError, AttributeError):
+        return None, "wikidata-entity-unreadable"
+    try:
+        return claims["P154"][0]["mainsnak"]["datavalue"]["value"], None
+    except (KeyError, IndexError, TypeError):
+        return None, None
 
 
 def commons_thumb(file_name, width=COMMONS_WIDTH):
@@ -169,14 +183,23 @@ def audit_station(station, pause):
 
     # --- stage B: Wikidata P154 ---------------------------------------------
     entity = None
+    search_failures = []
     for term in search_terms(name):
         for language in ("de", "en"):
             entity, failure = wikidata_entity(term, language, name)
             time.sleep(pause)
+            if failure:
+                search_failures.append(failure)
             if entity:
                 break
         if entity:
             break
+    if not entity and search_failures:
+        # The search did not answer: no entity was found, none was refuted.
+        if fallback_to_favicon():
+            return result
+        result["stage"] = f"{favicon_stage} + {search_failures[0]}"
+        return result
     if not entity:
         icon, why = touch_icon(station.get("homepage"), pause)
         if icon:
@@ -188,8 +211,13 @@ def audit_station(station, pause):
         result["stage"] = f"{favicon_stage} + wikidata-no-entity + {why}"
         return result
 
-    file_name = p154_file(entity)
+    file_name, entity_failure = p154_file(entity)
     time.sleep(pause)
+    if entity_failure:
+        if fallback_to_favicon():
+            return result
+        result["stage"] = f"{favicon_stage} + {entity_failure} ({entity})"
+        return result
     if not file_name:
         icon, why = touch_icon(station.get("homepage"), pause)
         if icon:
@@ -362,8 +390,6 @@ def main():
     stages = {}
     for row in rows:
         if row["source"] == "NONE" and row["stage"]:
-            key = row["stage"].split(" + ")[-1].split("-")[0] + "-" + \
-                  row["stage"].split(" + ")[-1].split("-")[1] if "-" in row["stage"] else row["stage"]
             stages[row["stage"]] = stages.get(row["stage"], 0) + 1
     if stages:
         print("\nlosses by stage:")

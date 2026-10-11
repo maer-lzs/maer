@@ -17,8 +17,10 @@
     <dict>
         <key>MAER_BERICHTE_DIR</key>
         <string>/PATH/TO/implementer-reports</string>
+        <!-- One clone: more clones on one machine turn journeys red under
+             load (see the WORKERS note in scripts/journeys.sh). -->
         <key>MAER_JOURNEY_WORKERS</key>
-        <string>3</string>
+        <string>1</string>
     </dict>
     <key>StartCalendarInterval</key>
     <dict>

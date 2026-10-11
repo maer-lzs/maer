@@ -16,8 +16,10 @@
 # otherwise carry an unnoticed change into the app as if it were the data.
 #
 # Exit 0: the null run holds. Exit 1: the file moved (git diff below).
-# Exit 2: not measured (the target was dirty before the run, or the
-# generator itself did not measure, which is its own exit 2).
+# Exit 2: not measured (the target was dirty before the run, the generator
+# itself did not measure, which is its own exit 2, or it ended in a way
+# that is no run at all: a crash with a traceback, or an exit code that
+# generator never gives for a run).
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT" || exit 2
@@ -25,14 +27,19 @@ case "${1:-}" in
   logo-data)
     TARGET=Sources/Models/RadioLogoData.swift
     RUN=(python3 tools/radio-logo-data/generate.py)
+    RAN='0'
     IGNORE='^// .*Run date: ' ;;
   wikidata-cores)
     TARGET=Sources/Models/RadioWikidataCores.swift
     RUN=(python3 tools/radio-wikidata-cores/generate.py)
+    # 1 is a run with a finding (an anchor without a hit, a country off the reference).
+    RAN='0 1'
     IGNORE='^// .*Run date: ' ;;
   weltsender)
     TARGET=Sources/Models/RadioWorldServices.swift
     RUN=(python3 tools/radio-weltsender/generate.py)
+    # 1 is a run in which single stations failed their check.
+    RAN='0 1'
     IGNORE='' ;;
   *)
     echo "usage: tools/nulllauf.sh logo-data | wikidata-cores | weltsender" >&2
@@ -44,12 +51,21 @@ if ! git diff --quiet -- "$TARGET"; then
   echo "NOT MEASURED: $TARGET carries uncommitted changes; commit or discard them first" >&2
   exit 2
 fi
-"${RUN[@]}"
+errors=$(mktemp)
+"${RUN[@]}" 2> >(tee "$errors" >&2)
 rc=$?
+wait
 if [ "$rc" -eq 2 ]; then
   echo "NOT MEASURED: the generator did not measure (exit 2), the target is untouched by design" >&2
-  exit 2
+  rm -f "$errors"; exit 2
 fi
+# A crash leaves the target as it was and would read as a held null run.
+if grep -q '^Traceback (most recent call last):' "$errors" || ! [[ " $RAN " == *" $rc "* ]]; then
+  echo "NOT MEASURED: the generator did not run to its end (exit $rc, traceback above if any)" >&2
+  git checkout -- "$TARGET"
+  rm -f "$errors"; exit 2
+fi
+rm -f "$errors"
 if [ -n "$IGNORE" ]; then
   changed=$(git diff -I "$IGNORE" --stat -- "$TARGET")
 else
