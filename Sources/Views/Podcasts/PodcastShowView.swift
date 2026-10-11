@@ -338,12 +338,7 @@ struct PodcastShowView: View {
         } message: {
             if let downloadError { Text(downloadError) }
         }
-        .alert(Text(deleteError ?? ""), isPresented: Binding(
-            get: { deleteError != nil },
-            set: { if !$0 { deleteError = nil } }
-        )) {
-            Button("OK", role: .cancel) { deleteError = nil }
-        }
+        .sentenceAlert($deleteError)
         .task { await loadIfBrowsed() }
         .task(id: preferencesSlot) { readPreferences() }
         // Another device changed this show's sort or filter: read it again.

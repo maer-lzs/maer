@@ -16,4 +16,16 @@ extension View {
             Button("OK", role: .cancel) {}
         }
     }
+
+    /// The one way a surface says a sentence it was handed (a refused mark,
+    /// a refused delete, a row that cannot open): the sentence is the title,
+    /// OK dismisses it, and dismissing clears it.
+    func sentenceAlert(_ sentence: Binding<String?>) -> some View {
+        alert(Text(verbatim: sentence.wrappedValue ?? ""), isPresented: Binding(
+            get: { sentence.wrappedValue != nil },
+            set: { if !$0 { sentence.wrappedValue = nil } }
+        )) {
+            Button("OK", role: .cancel) { sentence.wrappedValue = nil }
+        }
+    }
 }

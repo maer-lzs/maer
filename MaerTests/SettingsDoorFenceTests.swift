@@ -59,7 +59,10 @@ struct SettingsDoorFenceTests {
     /// of a store that is not behind the door yet.
     nonisolated static let seamStock: [String: Int] = ["RadioModels.swift": 29, "PodcastSubscriptions.swift": 12, "PodcastHelpers.swift": 9, "ForeignMarks.swift": 8, "BrowsedEpisodes.swift": 5, "KnownServers.swift": 5, "PodcastFeedAuth.swift": 5, "ContinueHidden.swift": 4, "FeedAdoptionPending.swift": 4, "FeedRefusal.swift": 4, "RecentSearches.swift": 4, "AppRows.swift": 3, "DeadCatalogItems.swift": 3, "FreeCatalogClients.swift": 3, "PlayedTail.swift": 3, "PodcastShowMode.swift": 3, "ContinueSources.swift": 2, "CorruptStore.swift": 2, "ExternalSources.swift": 2, "NavidromeRekeyRun.swift": 2, "RadioGenreSources.swift": 2, "RadioLogoService.swift": 2, "ResolutionCacheStore.swift": 2, "AccessFollowers.swift": 1, "ArchiveMetadataLoader.swift": 1, "BookmarkMeasure.swift": 1, "DerivedStores.swift": 1, "FreeCatalogLoader.swift": 1, "MaerSyncSignIn.swift": 1, "PodcastCloudSync.swift": 1, "PodcastComponents.swift": 1, "PodcastServerSave.swift": 1, "PodcastShowSettingsSheet.swift": 1, "UserChoiceCloudSync.swift": 1]
 
-    @Test("die Vorgabe UserDefaults = .standard im Funktionskopf ist als Pruefnaht gezaehlt, je Datei gleich der Zaehlung")
+    // Both counts read the source tree: without it they are skipped, never
+    // red (a stock with entries) and never green (an empty stock). The
+    // readers are probed apart from them and run everywhere.
+    @Test("die Vorgabe UserDefaults = .standard im Funktionskopf ist als Pruefnaht gezaehlt, je Datei gleich der Zaehlung", .needsTheSources)
     func theSeamDefaultIsCounted() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
@@ -69,13 +72,21 @@ struct SettingsDoorFenceTests {
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.seamStock)
         #expect(drift.isEmpty, "a seam default reaches the store past the door unseen, or a stock above the count: \(drift)")
+    }
+
+    @Test("die Leser beider Zaehlungen: die Vorgabe im Funktionskopf, das Literal, die Heimaten")
+    func theReadersRead() {
         #expect(Self.seamSites(in: "func f(defaults: UserDefaults = .standard) {}") == 1)
         #expect(Self.seamSites(in: "func f(defaults:UserDefaults=.standard) {}") == 1)
         #expect(Self.seamSites(in: "// func f(defaults: UserDefaults = .standard)") == 0)
         #expect(Self.seamSites(in: "let x = UserDefaults.standard") == 0, "the literal belongs to the other count")
+        #expect(Self.sites(in: "let x = UserDefaults.standard.bool(forKey: k)") == 1)
+        #expect(Self.sites(in: "let x = AppStorageKeys.bool(k)") == 0)
+        #expect(Self.isAHome("/x/Sources/Models/AppStorageKeys+Door.swift"))
+        #expect(!Self.isAHome("/x/Sources/Views/SettingsView.swift"))
     }
 
-    @Test("UserDefaults.standard nur in der Tuer, dem Bestand und der Ablage; der Rest schrumpft")
+    @Test("UserDefaults.standard nur in der Tuer, dem Bestand und der Ablage; der Rest schrumpft", .needsTheSources)
     func onlyTheDoorsTouchTheStore() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
@@ -85,11 +96,6 @@ struct SettingsDoorFenceTests {
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.stock)
         #expect(drift.isEmpty, "these files reach past the door, or a stock above the count: \(drift)")
-        // Red probes on the checker.
-        #expect(Self.sites(in: "let x = UserDefaults.standard.bool(forKey: k)") == 1)
-        #expect(Self.sites(in: "let x = AppStorageKeys.bool(k)") == 0)
-        #expect(Self.isAHome("/x/Sources/Models/AppStorageKeys+Door.swift"))
-        #expect(!Self.isAHome("/x/Sources/Views/SettingsView.swift"))
     }
 }
 #endif

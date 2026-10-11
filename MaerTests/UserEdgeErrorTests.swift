@@ -93,6 +93,30 @@ struct UserEdgeErrorTests {
                 "the region does not go through the discovery step")
         #expect(radio.contains("discoveryLoaded = regionStep == .replace"), "a failed region counts as loaded")
         #expect(radio.contains("if regionalFailed {"), "the region section has no failed state")
+        // Each region list keeps the reason it failed for the log line.
+        #expect(!radio.contains("try? await RadioBrowserClient.byState"), "a region list swallows its reason")
+        #expect(radio.contains("catch { return RegionList(stations: nil, reason: FailureReason.of(error)) }"),
+                "a failed region list does not keep its reason")
+        #expect(radio.contains("votes=\\(v.logged, privacy: .public) trend=\\(c.logged, privacy: .public)"),
+                "the log line of a variant does not carry the reason")
+    }
+
+    /// A handed sentence is said by the one alert (`sentenceAlert`), not by
+    /// a hand-built alert beside it.
+    @Test("ein uebergebener Satz kommt ueber die eine Meldung, keine von Hand gebaute daneben", .needsTheSources)
+    func aSentenceIsSaidByTheOneAlert() throws {
+        var handBuilt: [String] = []
+        var users = 0
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "ActionFailedAlert.swift" {
+            let squeezed = StockDriftTests.squeezed(SyncContractFenceTests.stripped(text))
+            if squeezed.range(of: #"\.alert\(Text\((verbatim:)?\w+\?\?""\),isPresented:Binding\("#, options: .regularExpression) != nil {
+                handBuilt.append(name)
+            }
+            users += squeezed.components(separatedBy: ".sentenceAlert($").count - 1
+        }
+        #expect(handBuilt.isEmpty, "a sentence alert is built by hand: \(handBuilt)")
+        #expect(users == 3, "the surfaces that say a handed sentence are not the three measured: \(users)")
+        #expect(StockDriftTests.squeezed(SyncContractFenceTests.stripped(try code("Sources/Views/Podcasts/PodcastShowView.swift"))).contains(".sentenceAlert($deleteError)"))
     }
 
     @Test("die Region ist gescheitert, wenn jede Namensvariante scheiterte; ein leerer Erfolg ist keiner, eine einzelne Antwort reicht")

@@ -829,6 +829,19 @@ struct RadioView: View {
     /// dedupe by station id, first (best-voted of the winner name) stays.
     /// It answers the rows and whether the fetch failed as a whole (every
     /// name variant failed both lists, `RadioStore.regionFailed`).
+    /// One list of a region variant: its stations, or nil with the reason
+    /// the request failed.
+    private struct RegionList: Sendable {
+        let stations: [RadioStation]?
+        let reason: String?
+        var logged: String { stations.map { String($0.count) } ?? "failed(\(reason ?? "-"))" }
+    }
+
+    private static func regionList(_ fetch: @Sendable () async throws -> [RadioStation]) async -> RegionList {
+        do { return RegionList(stations: try await fetch(), reason: nil) }
+        catch { return RegionList(stations: nil, reason: FailureReason.of(error)) }
+    }
+
     private static func stateStations(_ state: String?, countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {
         guard let state, !state.isEmpty else { return ([], false) }
         let names = AppStorageKeys.stringArray(AppStorageKeys.radioRegionQueryNames)
@@ -840,15 +853,16 @@ struct RadioView: View {
         var trendMerged: [RadioStation] = []
         var answered: [Bool] = []
         // A list that failed is nil, not empty: an empty answer is an answer.
-        await withTaskGroup(of: (Int, [RadioStation]?, [RadioStation]?).self) { group in
+        // A failed list keeps its reason for the log line.
+        await withTaskGroup(of: (Int, RegionList, RegionList).self) { group in
             var active = 0
             var index = 0
-            var results: [Int: ([RadioStation]?, [RadioStation]?)] = [:]
+            var results: [Int: (RegionList, RegionList)] = [:]
             func launch(_ i: Int) {
                 let name = names[i]
                 group.addTask {
-                    async let v: [RadioStation]? = try? await RadioBrowserClient.byState(state: name)
-                    async let c: [RadioStation]? = try? await RadioBrowserClient.byStateClicktrend(state: name)
+                    async let v = Self.regionList { try await RadioBrowserClient.byState(state: name) }
+                    async let c = Self.regionList { try await RadioBrowserClient.byStateClicktrend(state: name) }
                     return (i, await v, await c)
                 }
             }
@@ -860,11 +874,11 @@ struct RadioView: View {
             }
             for i in results.keys.sorted() {
                 let (v, c) = results[i]!
-                votesMerged.append(contentsOf: v ?? [])
-                trendMerged.append(contentsOf: c ?? [])
-                answered.append(v != nil || c != nil)
-                // Log-first: one line per name variant, a failed list named.
-                Logger.library.notice("RADIO regional name=\(names[i], privacy: .public) votes=\(v.map { String($0.count) } ?? "failed", privacy: .public) trend=\(c.map { String($0.count) } ?? "failed", privacy: .public)")
+                votesMerged.append(contentsOf: v.stations ?? [])
+                trendMerged.append(contentsOf: c.stations ?? [])
+                answered.append(v.stations != nil || c.stations != nil)
+                // Log-first: one line per name variant, a failed list named with its reason.
+                Logger.library.notice("RADIO regional name=\(names[i], privacy: .public) votes=\(v.logged, privacy: .public) trend=\(c.logged, privacy: .public)")
             }
         }
         if RadioStore.regionFailed(variantAnswered: answered) {

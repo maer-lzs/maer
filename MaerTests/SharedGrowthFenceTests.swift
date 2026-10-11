@@ -53,7 +53,7 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 374
 
-    /// The same count over all of `Sources`, measured 732 (the listening
+    /// The same count over all of `Sources`, measured 734 (the listening
     /// history, the refusal on the Continue card, then the lock on every
     /// feed surface, the search door asking it for the deck, then the player
     /// asking the books shelf whether a title is a book). This is the

@@ -43,12 +43,7 @@ struct ListenHistoryScreen: View {
                 .listStyle(.plain)
             }
         }
-        .alert(Text(openFailure ?? ""), isPresented: Binding(
-            get: { openFailure != nil },
-            set: { if !$0 { openFailure = nil } }
-        )) {
-            Button("OK", role: .cancel) { openFailure = nil }
-        }
+        .sentenceAlert($openFailure)
         .navigationTitle(Text("Listening History"))
         .navigationBarTitleDisplayMode(.large)
         // Read and sorted once per opening, off the main thread.

@@ -277,7 +277,7 @@ struct BookFinishMarkTests {
         }
         let grid = SyncContractFenceTests.stripped(try #require(views.first { $0.name == "BookGridComponents.swift" }).text)
         #expect(grid.contains("onRefused: { refusal = $0 }"), "the menu does not hand the sentence to its cell")
-        #expect(grid.contains(".alert(Text(verbatim: refusal"), "the cell does not say the sentence")
+        #expect(grid.contains(".sentenceAlert($refusal)"), "the cell does not say the sentence")
     }
 }
 #endif

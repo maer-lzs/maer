@@ -63,6 +63,18 @@ struct CatalogPlainSentenceTests {
         #expect(offline == noNetwork)
     }
 
+    /// The one transport code that is a verdict: what `isGone` writes down
+    /// as dead says on the page that it is gone, online and offline, and
+    /// does not invite another try.
+    @Test("eine Quelle, die den Titel als entfernt meldet, sagt auf der Seite, dass er weg ist, wie der Vermerk als tot")
+    func aGoneItemSaysItIsGone() {
+        let error = URLError(.resourceUnavailable)
+        #expect(FreeCatalog.isGone(error), "the precondition: the dead-item rule reads it as gone")
+        for online in [true, false] {
+            #expect(FreeCatalog.failureReason(error, online: online) == String(localized: "No longer available at the source"))
+        }
+    }
+
     @Test("Drosselung: eine Quelle, die um eine Pause bittet, sagt das in eigenen Worten")
     func aThrottledSourceSaysItIsBusy() {
         let busy = String(localized: "The source is busy. Please try again later.")

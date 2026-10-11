@@ -139,7 +139,7 @@ struct HTTPDoorFenceTests {
     /// or is not written, and a healed one is written back.
     // BESTAND OHNE EINZELGRUENDE: ein reines Inventar ueber 21 Dateien, gleich der
     // Zaehlung; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
-    nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 6, "RadioView.swift": 5, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 2, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PodcastEpisodeDetailView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
+    nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 6, "RadioView.swift": 3, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 2, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PodcastEpisodeDetailView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
 
     @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft")
     func viewTryCarriesAReasonOrShrinks() throws {

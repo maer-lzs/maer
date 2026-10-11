@@ -208,12 +208,7 @@ struct BookCellContextMenu: ViewModifier {
         } preview: {
             BookContextPreview(entry: entry)
         }
-        .alert(Text(verbatim: refusal ?? ""), isPresented: Binding(
-            get: { refusal != nil },
-            set: { if !$0 { refusal = nil } }
-        )) {
-            Button("OK", role: .cancel) { refusal = nil }
-        }
+        .sentenceAlert($refusal)
     }
 }
 

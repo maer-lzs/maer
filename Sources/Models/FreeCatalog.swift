@@ -630,6 +630,10 @@ nonisolated enum FreeCatalog {
         // Says only why: the pages put it under a title that already says
         // the load failed ("Couldn't load tracks", "Could not load …").
         let unreachable = String(localized: "The source did not answer.")
+        let gone = String(localized: "No longer available at the source")
+        // The one transport code that is a verdict: the same that `isGone`
+        // writes down as dead, so the page does not invite another try.
+        if isGone(error), error is URLError { return gone }
         if error is URLError {
             return online
                 ? unreachable
@@ -637,7 +641,7 @@ nonisolated enum FreeCatalog {
         }
         if let code = httpStatus(error) {
             switch StatusMeaning.from(status: code) {
-            case .notFound: return String(localized: "No longer available at the source")
+            case .notFound: return gone
             case .throttled: return String(localized: "The source is busy. Please try again later.")
             case .signIn, .server: return unreachable
             }

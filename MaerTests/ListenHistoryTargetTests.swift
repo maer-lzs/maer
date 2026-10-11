@@ -93,7 +93,7 @@ struct ListenHistoryTargetTests {
         #expect(page.contains("case .unavailable(let reason): openFailure = MaerPlaylistPage.reasonText(reason)"),
                 "a row that leads nowhere is not said with the sentence of the travelled lists")
         #expect(page.contains("case .failed(let sentence): openFailure = sentence"), "a failed question is not said")
-        #expect(page.contains(".alert(Text(openFailure"), "the page has no place to say it")
+        #expect(page.contains(".sentenceAlert($openFailure)"), "the page has no place to say it")
         // The opener routes every target through the one route of the source pages.
         let opener = try code("Sources/ViewModels/ListenHistoryOpen.swift")
         for route in [".book(itemId: itemId)", ".catalogBook(itemId: itemId)", ".catalogAlbum(itemId: itemId)", ".musicAlbum(album)"] {
