@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import OSLog
 
 /// Large "Up Next" card (Apple Podcasts): episode cover with show badge, below
 /// it a text area in the cover's average color (soft transition from the image).
@@ -650,24 +651,38 @@ struct PodcastSubscribeBadge: View {
         // the server sets: read first, or a cold start subscribes here what
         // the person wants on the server.
         await PodcastShowSources.readAbsShows()
+        let tap: SubscribeTap
         if AppStorageKeys.absPodcastsEnabledValue, ABSPodcastProvider.shared.hasPodcasts {
-            _ = await ABSPodcastProvider.shared.subscribeOnServer(feedURL: feedURL)
+            tap = .server(failure: await ABSPodcastProvider.shared.subscribeOnServer(feedURL: feedURL))
         } else {
-            // The badge has no line of its own: a subscription set out
-            // because the server could not be read is said by the root's host.
-            let subs = PodcastSubscriptions.shared
-            if await subs.subscribeUnlessOnServer(urlString: feedURL) == .setOut { subs.serverUnreadNotice = true }
+            tap = .local(await PodcastSubscriptions.shared.subscribeUnlessOnServer(urlString: feedURL))
             await GPodderSync.shared.reconcile()   // push the new subscription to the server
         }
-        PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
-        // A subscription takes the show over. From here the subscription store
-        // answers for its episodes, so the browsed halves step aside instead of
-        // becoming a second truth about the same feed. Both halves go by the
-        // FEED: the server branch has no local show to find, and the feed is
-        // what the person subscribed to, under whatever scheme or query it
-        // was browsed.
-        BrowsedEpisodes.shared.forget(feedURL: feedURL)
-        BrowsedEpisodes.shared.forgetListened(feedURL: feedURL)
+        settle(tap, feedURL: feedURL)
+    }
+
+    /// What a tap leaves behind. The badge has no line of its own: a tap
+    /// that subscribed nothing is said by the root's host. Only a
+    /// subscription that stands takes the show over (`SubscribeTap`): from
+    /// there the subscription store answers for its episodes, so the browsed
+    /// halves step aside instead of becoming a second truth about the same
+    /// feed. Both halves go by the FEED: the server branch has no local show
+    /// to find, and the feed is what the person subscribed to, under
+    /// whatever scheme or query it was browsed.
+    static func settle(_ tap: SubscribeTap, feedURL: String,
+                       browsed: BrowsedEpisodes = .shared, defaults: UserDefaults = .standard) {
+        let subs = PodcastSubscriptions.shared
+        switch tap {
+        case .subscribed, .heldOnServer:
+            PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
+            browsed.forget(feedURL: feedURL)
+            browsed.forgetListened(feedURL: feedURL, defaults: defaults)
+        case .setOut:
+            subs.serverUnreadNotice = true
+        case .failed(let sentence):
+            Logger.rss.notice("SUBSCRIBE tap subscribed nothing, browsed episodes kept")
+            subs.tapFailureNotice = sentence
+        }
     }
 }
 

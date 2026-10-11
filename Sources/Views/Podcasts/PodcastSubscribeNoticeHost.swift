@@ -17,7 +17,8 @@ import SwiftUI
 /// Hosted in `RootView` beside `playlistDialogs()`, the established seat for
 /// something that belongs to no single screen. It also says a subscription
 /// the badge set out because Audiobookshelf could not be read
-/// (`serverUnreadNotice`); the badge has no line of its own.
+/// (`serverUnreadNotice`), and a subscribe tap that subscribed nothing
+/// (`tapFailureNotice`); the badge has no line of its own.
 private struct PodcastSubscribeNoticeHost: ViewModifier {
     @ObservedObject private var subs = PodcastSubscriptions.shared
 
@@ -41,6 +42,13 @@ private struct PodcastSubscribeNoticeHost: ViewModifier {
             Button("OK", role: .cancel) { subs.serverUnreadNotice = false }
         } message: {
             Text("Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
+        }
+        // A subscribe tap that subscribed nothing (`SubscribeTap.failed`).
+        .alert("Subscribe failed", isPresented: Binding(get: { subs.tapFailureNotice != nil },
+                                                         set: { if !$0 { subs.tapFailureNotice = nil } })) {
+            Button("OK", role: .cancel) { subs.tapFailureNotice = nil }
+        } message: {
+            Text(verbatim: subs.tapFailureNotice ?? "")
         }
     }
 }

@@ -54,6 +54,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// (`LocalSubscription.setOut`); the same host says it.
     @Published var serverUnreadNotice = false
 
+    /// A subscribe tap on such a surface that subscribed nothing (the server
+    /// refused, the feed did not load): the sentence the same host says.
+    @Published var tapFailureNotice: String?
+
     /// Feeds from the account this device could not follow yet (feed key
     /// ⇒ address and reason). The Podcasts tab shows them with the reason;
     /// the adoption skips them until the person retries, signs in or

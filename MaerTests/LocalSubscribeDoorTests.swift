@@ -374,7 +374,12 @@ struct LocalSubscribeDoorTests {
             let choice = try #require(body.range(of: "hasPodcasts"))
             #expect(read.upperBound <= choice.lowerBound, "the \(name) chooses before it reads")
         }
-        #expect(badge.contains("== .setOut { subs.serverUnreadNotice = true }"), "the badge sets out in silence")
+        // The badge hands every answer to `settle`, which says a set out.
+        let settle = try #require(ABSPodcastRefreshTests.body(
+            of: "static func settle(", in: try code("Sources/Views/Podcasts/PodcastComponents.swift")))
+        #expect(badge.contains("settle(tap, feedURL: feedURL)"), "the badge keeps an answer from settle")
+        let squeezedSettle = settle.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        #expect(squeezedSettle.contains("case .setOut: subs.serverUnreadNotice = true"), "the badge sets out in silence")
         let host = try code("Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift")
         #expect(host.contains("subs.serverUnreadNotice"), "no host says the set out")
     }
