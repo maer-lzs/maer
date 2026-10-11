@@ -650,7 +650,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                           onBookShelf: AppSession.shared.libraryViewModel.entry(id: id) != nil)
         switch family {
         case .book:
-            guard phaseAfter == .played, phaseBefore != .played else { return }
+            guard ListenHistory.bookFinished(before: phaseBefore, after: phaseAfter) else { return }
             history.noteHeard(id: id, family: .book, title: item?.media.metadata?.title ?? "",
                               subtitle: item?.media.metadata?.authorName ?? "")
         case .music:

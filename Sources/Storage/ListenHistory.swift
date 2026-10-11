@@ -46,6 +46,12 @@ final class ListenHistory {
     /// Title id to entry; the latest hearing wins.
     private(set) var entries: [String: Entry] = [:]
     private var loaded = false
+
+    /// Where the start read of the rows ran: on the main thread (a hearing,
+    /// a hand-over, the start follow) or on a background task (the page).
+    nonisolated enum StartRead: Equatable, Sendable { case main, background }
+    /// Nil until the rows were read; a witness asks it.
+    private(set) var startRead: StartRead?
     /// The rows, one per title, and their one write chain; a witness hands
     /// in a database file of its own.
     private let keeper: RowKeeper<Entry>
@@ -89,6 +95,14 @@ final class ListenHistory {
         if MusicSourceRule.isServerMusic(id) { return .music }
         if MediaFamily.of(id) == .catalog, MediaFamily.isMusicByForm(id, markedForm: markedForm) { return .music }
         return nil
+    }
+
+    /// Whether this tick finishes a book for the history: its phase turned
+    /// into played now. A book that stood played already does not come in
+    /// again with every tick; a new finish after it was taken back does.
+    nonisolated static func bookFinished(before: ProgressMark.PlayState.Phase,
+                                         after: ProgressMark.PlayState.Phase) -> Bool {
+        after == .played && before != .played
     }
 
     /// The row id of a catalog song: a track of a release takes its song
@@ -294,12 +308,14 @@ final class ListenHistory {
         return Self.historyList(entries, family: family)
     }
 
-    /// The page of one family for the screen: the rows read and the list
-    /// sorted on background tasks, never on the main thread (20,000
-    /// entries took about 110 ms there, measured on the simulator, debug
-    /// build). Only taking the read rows touches the main actor; a start
+    /// The page of one family for the screen: the list sorted on a
+    /// background task; the rows read on one too, when nothing read them
+    /// before. Only taking the read rows touches the main actor; a start
     /// that came first in the meantime (a hearing while the read ran) keeps
-    /// its rows, and the page sorts what the store holds.
+    /// its rows, and the page sorts what the store holds. NOT off the main
+    /// thread: the start read of a signed-in person, which the start follow
+    /// (`followAtStart`, hand-over, `loadIfNeeded`) runs on the main thread
+    /// at app start, and the read of a hearing or a finish that came first.
     func historyOffMain(_ family: Family) async -> [Entry] {
         if !loaded {
             let started = Date()
@@ -310,6 +326,7 @@ final class ListenHistory {
             }.value
             if !loaded {
                 loaded = true
+                startRead = .background
                 if let rows = keeper.started(with: read) {
                     entries = rows
                     let ms = Int(Date().timeIntervalSince(started) * 1000)
@@ -332,6 +349,7 @@ final class ListenHistory {
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
+        startRead = .main
         let started = Date()
         guard let rows = keeper.startNow() else { return }
         entries = rows

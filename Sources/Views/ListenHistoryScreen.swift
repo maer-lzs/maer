@@ -7,9 +7,10 @@ import SwiftUI
 
 /// The listening history of one family (books in the books tab, songs in
 /// the music tab), newest first, in the row of the episode history. One
-/// continuous list, no limit, no button, no loading steps: the rows are
-/// read and sorted off the main thread (`ListenHistory.historyOffMain`)
-/// and the list draws only the rows on screen.
+/// continuous list, no limit, no button, no loading steps: the page sorts
+/// off the main thread and reads there when nothing read the rows before
+/// (`ListenHistory.historyOffMain`, which names where that is not so), and
+/// the list draws only the rows on screen.
 struct ListenHistoryScreen: View {
     let family: ListenHistory.Family
     @State private var entries: [ListenHistory.Entry] = []

@@ -71,6 +71,29 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.catalogSongId(itemId: single, trackIndex: 0, trackCount: 1) == single, "a one-track title took an index")
     }
 
+    /// A book enters once, when its phase turns into played: not with every
+    /// tick while it stands played, again after a finish taken back.
+    @Test("ein Buch kommt einmal herein, wenn es nach gehoert wechselt; nicht bei jedem Takt danach, wieder nach einem zurueckgenommenen Fertig", .needsTheSources)
+    func aBookEntersWhenItTurnsPlayed() throws {
+        typealias P = ProgressMark.PlayState.Phase
+        let cases: [(P, P, Bool)] = [
+            (.inProgress, .played, true),
+            (.unplayed, .played, true),
+            (.played, .played, false),
+            (.played, .inProgress, false),
+            (.inProgress, .inProgress, false),
+            (.unplayed, .inProgress, false),
+        ]
+        for (before, after, expected) in cases {
+            let finished = ListenHistory.bookFinished(before: before, after: after)
+            #expect(finished == expected, "\(before) to \(after) finished \(finished)")
+        }
+        let player = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)))
+        #expect(player.contains("guardListenHistory.bookFinished(before:phaseBefore,after:phaseAfter)"),
+                "the player decides a finished book beside the rule")
+    }
+
     /// The player asks the one rule with the books shelf, and a catalog song
     /// takes its row id from the one rule.
     @Test("der Player fragt die eine Regel mit dem Buch-Regal, ein Katalog-Lied nimmt seine Kennung aus der Regel", .needsTheSources)
@@ -196,8 +219,10 @@ struct ListenHistoryStoreTests {
         }
         first.noteHeard(id: "book-1", family: .book, title: "B", subtitle: "", at: 1_700_000_500_000)
         await first.awaitPendingWrites()
+        #expect(first.startRead == .main, "a hearing read its rows somewhere else")
         let later = ListenHistory(database: rig.database, identity: { nil })
         let page = await later.historyOffMain(.music).map(\.id)
+        #expect(later.startRead == .background, "the page read the rows on the main thread")
         #expect(page == ["sub:song:c", "sub:song:b", "sub:song:a"], "the page read another list: \(page)")
         let bookPage = await later.historyOffMain(.book).map(\.id)
         #expect(bookPage == ["book-1"])
