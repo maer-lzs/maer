@@ -38,44 +38,23 @@ struct ItemRouterFenceTests {
             }.count
     }
 
-    /// Der Bestand des Tages, an dem der Zaun gebaut wurde: fuenf Griffe in
-    /// fuenf Dateien. Er darf nur fallen, und jeder Eintrag traegt seinen
-    /// Grund NEBEN SICH statt in einem Absatz darueber. Das ist die Form,
-    /// die `AblageFenceTests` und `PublicLogAddressFenceTests` schon
-    /// fuehren, und sie ist die bessere: ein Grund, der im Eintrag steht,
-    /// kann nicht von ihm abdriften, und die Frage „nennt die Begruendung
-    /// dieselben Dateien wie der Bestand" stellt sich gar nicht erst.
-    /// Fuer alle vier ausser der Tuer gilt: sie bekommen die Antwort als
-    /// Parameter, wenn ihre Rufer an der Reihe sind (Podcast-Scheibe des
-    /// Tab-Schnitts).
-    nonisolated static let stock: [String: (count: Int, reason: String)] = [
-        "ItemRouterEnvironment.swift":
-            (5, "IST die Tuer; hier stehen die fuenf Griffe, die die sechzig anderen ersetzt haben"),
-        "PlaylistCard.swift":
-            (1, "baut die Kachel-Mosaike in einer Erweiterung von PlaylistCardSource, also in einem "
-                + "Wert und nicht in einer Ansicht; dort gibt es keine Umgebung, und der Rufer "
-                + "muesste die Adresse hineinreichen, was ein Umbau der Karte waere"),
-        "PodcastNavigation.swift":
-            (1, "der Griff sitzt in einem extension-View-Helfer ohne eigenes self"),
-        "PodcastPlayState.swift":
-            (1, "ein Speicher, der nur unter Sources/Views wohnt"),
-        "PodcastHelpers.swift":
-            (2, "ein Griff in einem extension-View-Helfer ohne eigenes self, der zweite in der "
-                + "Regel PodcastAutoDownload, die gar keine Ansicht ist"),
-    ]
+    /// The views that still ask the session one of the five questions, each
+    /// with its reason in its entry. Empty, measured: the four helpers of
+    /// the day the fence was built lost their grips, and the door itself
+    /// asks through its own handle (`liveSession`), which this finder does
+    /// not read. A new grip in the spelled form is red; a grip through a
+    /// handle of its own is not seen here.
+    nonisolated static let stock: [String: (count: Int, reason: String)] = [:]
 
     @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt")
     func theRouterLeafIsAskedForNotBuilt() throws {
-        var offenders: [String] = []
-        var total = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let count = Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
-            total += count
-            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(offenders.isEmpty, "eine Ansicht fragt die Sitzung wieder selbst: \(offenders)")
-        #expect(total <= Self.stock.values.reduce(0) { $0 + $1.count })
+        // Per file both ways, so the total is the stock's total as well.
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
+        #expect(drift.isEmpty, "a view asks the session itself again, or a stock above the count: \(drift)")
         // Rot-Probe in beide Richtungen, ueber alle fuenf Fragen: der
         // Pruefer sieht jeden Griff…
         #expect(Self.reaches(in: "let u = AppSession.shared.coverURL(forItemId: id)") == 1)

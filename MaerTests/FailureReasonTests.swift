@@ -93,8 +93,6 @@ struct FailureReasonTests {
     func theBlindFallbackOnlyStandsWhereItIsReasoned() throws {
         let bestand: [String: String] = [
             "FailureReason.swift": "die Regel selbst, letzter Ausweg fuer einen Swift-Fehler",
-            "FreeCatalog.swift": "eigene Katalog-Sprache, sie endet in einem Satz fuer die Flaeche",
-            "CatalogStockService.swift": "Rueckfall NEBEN FreeCatalog.failureReason, gleiche Sprache",
             "CloudZoneDatabase.swift": "uebersetzt in einen eigenen Transport-Fall, kein Log-Grund",
             "GlobalSearchModel.swift": "Name einer Suchquelle fuer EINE Logzeile, nie ein Satz fuer die Flaeche",
         ]
@@ -113,12 +111,9 @@ struct FailureReasonTests {
             let treffer = ausdruck.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
             if treffer > 0 { gefunden[datei.lastPathComponent] = treffer }
         }
-        for (name, zahl) in gefunden.sorted(by: { $0.key < $1.key }) {
-            #expect(bestand[name] != nil, "\(name) faellt neu auf den Klassennamen zurueck")
-            #expect(zahl <= 1, "\(name) traegt den blinden Rueckfall \(zahl) mal")
-        }
-        #expect(gefunden.count <= bestand.count,
-                "der Bestand darf nur fallen (gefunden \(gefunden.count), erlaubt \(bestand.count))")
+        // One blind fallback per file of the stock, no file beside it.
+        let drift = StockDrift.findings(counts: gefunden, stock: bestand.mapValues { _ in 1 })
+        #expect(drift.isEmpty, "a file falls back to the type name, or a stock above the count: \(drift)")
     }
 
     /// The measure of the fence above, on samples.

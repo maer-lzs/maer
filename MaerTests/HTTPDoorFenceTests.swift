@@ -14,8 +14,8 @@ import Foundation
 /// downloads) and the app delegate's background-session hook are the homes;
 /// everything else asks `HTTP`. Comment lines do not count. And a `try?`
 /// on a network path in Networking or Providers carries a reason
-/// ("tragbar, weil …") or is red: the stock below is the inventory of the
-/// day the fence was built and may only shrink.
+/// ("tragbar, weil …") or is red: the stock below is the count, both ways
+/// (`StockDrift`).
 struct HTTPDoorFenceTests {
 
     /// Die Heimaten der Tuer, jede mit ihrem Grund IM Eintrag. Der Kopf
@@ -98,25 +98,24 @@ struct HTTPDoorFenceTests {
         #expect(Self.sessionSites(in: "var currentTask: URLSessionDownloadTask?") == 0)
     }
 
-    /// The stock of `try?` without a reason in Networking and Providers on
-    /// the day the fence was built. A file may only lose lines.
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Bautages ueber 44 Dateien, das
-    // nur fallen darf. Warum ein einzelnes `try?` tragbar ist, gehoert laut
+    /// The stock of `try?` without a reason in Networking and Providers,
+    /// measured; it is the count, a file below it is red as much as above.
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar ueber 32 Dateien, gleich der
+    // Zaehlung. Warum ein einzelnes `try?` tragbar ist, gehoert laut
     // Inventar-Konvention an die Stelle selbst.
-    nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 33, "SubsonicProvider.swift": 23, "ImageCache.swift": 22, "JellyfinProvider.swift": 19, "LocalLibrary.swift": 17, "MaerPlaylists.swift": 12, "LibriVoxImporter.swift": 10, "PodcastSubscriptions.swift": 10, "RadioLogoService.swift": 10, "JellyfinClient.swift": 6, "PodcastRecommendationsStore.swift": 6, "SyncHistoryStore.swift": 6, "APIClient.swift": 5, "GPodderSync.swift": 4, "PlayQueue.swift": 5, "ArtistPortraitService.swift": 3, "CatalogStockStore.swift": 4, "GPodderClient.swift": 4, "PlaybackContext.swift": 4, "RadioArtworkService.swift": 2, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "FeedArtworkService.swift": 3, "FreeCatalogClients.swift": 3, "ResolutionCacheStore.swift": 3, "Retry.swift": 3, "CoverArtArchive.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "SyncQueue.swift": 2, "CatalogShuffle.swift": 1, "CatalogStockFetch.swift": 1, "DeadCatalogItems.swift": 1, "FreeCatalogProvider.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioDiagnostics.swift": 1, "RadioProvider.swift": 1, "SourceBudget.swift": 1]
+    nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 22, "SubsonicProvider.swift": 18, "ImageCache.swift": 17, "JellyfinProvider.swift": 16, "LocalLibrary.swift": 13, "LibriVoxImporter.swift": 8, "JellyfinClient.swift": 6, "MaerPlaylists.swift": 6, "PodcastRecommendationsStore.swift": 5, "GPodderClient.swift": 4, "GPodderSync.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "CatalogStockStore.swift": 3, "PodcastSubscriptions.swift": 3, "ResolutionCacheStore.swift": 3, "APIClient.swift": 2, "ArtistPortraitService.swift": 2, "FreeCatalogClients.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "CatalogShuffle.swift": 1, "DeadCatalogItems.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioArtworkService.swift": 1, "Retry.swift": 1, "SourceBudget.swift": 1]
 
     @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft")
     func tryCarriesAReasonOrShrinks() throws {
-        var grown: [String] = []
+        var counts: [String: Int] = [:]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles()
         where file.path.contains("/Sources/Networking/") || file.path.contains("/Sources/Providers/") {
             seen.insert(file.lastPathComponent)
-            let count = Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.tryStock[file.lastPathComponent] ?? 0
-            if count > allowed { grown.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(grown.isEmpty, "these files swallow more errors than the stock allows: \(grown)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.tryStock)
+        #expect(drift.isEmpty, "these files swallow more errors than the stock allows, or the stock is above the count: \(drift)")
         // A stock entry for a file that is gone is a claim about nothing,
         // and it stayed green when the file left (17.09.2026): the stock
         // must name only files that are still there.
@@ -135,25 +134,24 @@ struct HTTPDoorFenceTests {
     }
 
     /// The stock of `try?` without a reason in the views, measured after
-    /// the surfaces that showed a failure as empty were healed. A file may
-    /// only lose lines; a new swallowed error in a view carries its reason
-    /// at the line or is not written.
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Messtages ueber 23 Dateien, das
-    // nur fallen darf; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
+    /// the surfaces that showed a failure as empty were healed. It is the
+    /// count; a new swallowed error in a view carries its reason at the line
+    /// or is not written, and a healed one is written back.
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar ueber 23 Dateien, gleich der
+    // Zaehlung; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
     nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 6, "RadioView.swift": 6, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 2, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookDetailScreen.swift": 1, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PlayerView.swift": 1, "PodcastEpisodeDetailView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
 
     @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft")
     func viewTryCarriesAReasonOrShrinks() throws {
-        var grown: [String] = []
+        var counts: [String: Int] = [:]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
             seen.insert(file.lastPathComponent)
-            let count = Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.viewTryStock[file.lastPathComponent] ?? 0
-            if count > allowed { grown.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
         }
         #expect(seen.contains("LibraryView.swift"), "the finder does not see the views")
-        #expect(grown.isEmpty, "these views swallow more errors than the stock allows: \(grown)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.viewTryStock)
+        #expect(drift.isEmpty, "these views swallow more errors than the stock allows, or the stock is above the count: \(drift)")
         let ghosts = Self.viewTryStock.keys.filter { !seen.contains($0) }.sorted()
         #expect(ghosts.isEmpty, "the stock names views that are gone: \(ghosts)")
     }

@@ -11,9 +11,8 @@ import Foundation
 /// `UserDefaults.standard` has three homes: the settings door
 /// (`AppStorageKeys` and its extensions), the listening stock
 /// (`ListeningStore`) and the storage layer (Ablage, Storage). Everything
-/// else asks the door. The stock below is the inventory of the day the
-/// fence was built; a file may only lose sites, never gain them, and the
-/// list shrinks to nothing as the move proceeds.
+/// else asks the door. The stock below is the count, both ways
+/// (`StockDrift`); it is empty since the move is complete.
 struct SettingsDoorFenceTests {
     /// Die drei Heimaten des Schluessel-Topfs, jede mit ihrem Grund IM
     /// Eintrag. `AppStorageKeys` steht als PRAEFIX, weil die Tuer auf
@@ -44,17 +43,14 @@ struct SettingsDoorFenceTests {
 
     @Test("UserDefaults.standard nur in der Tuer, dem Bestand und der Ablage; der Rest schrumpft")
     func onlyTheDoorsTouchTheStore() throws {
-        var grown: [String] = []
-        var remaining = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
             let count = Self.sites(in: try String(contentsOf: file, encoding: .utf8))
             guard count > 0 else { continue }
-            remaining += count
-            let allowed = Self.stock[file.lastPathComponent] ?? 0
-            if count > allowed { grown.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += count
         }
-        #expect(grown.isEmpty, "these files reach past the door (or grew): \(grown)")
-        #expect(remaining <= Self.stock.values.reduce(0, +), "the stock outside the door must not grow")
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock)
+        #expect(drift.isEmpty, "these files reach past the door, or a stock above the count: \(drift)")
         // Red probes on the checker.
         #expect(Self.sites(in: "let x = UserDefaults.standard.bool(forKey: k)") == 1)
         #expect(Self.sites(in: "let x = AppStorageKeys.bool(k)") == 0)

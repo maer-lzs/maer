@@ -14,8 +14,7 @@ import Foundation
 /// excluded: `UIImage(data:` (decoding bytes), `lane: .cover` (the cover
 /// lane of the HTTP door), `CGImageSource` and `import ImageIO` (the
 /// downsampler). Measured the day the door was built (06.09.2026): eleven
-/// files carried a marker, now three; the stock is the inventory of that
-/// day and may only shrink. The widget extension is its own target with
+/// files carried a marker; the stock is the count, both ways. The widget extension is its own target with
 /// the app group as the hand-over place, outside `Sources` and outside
 /// this fence by design. And `ImageCache.shared` is the door's own
 /// business: only the door and the cache itself name it.
@@ -51,13 +50,12 @@ struct ArtworkDoorFenceTests {
 
     @Test("Bildbytes werden nur hinter der Tuer dekodiert, der Bestand faellt nur")
     func markersLiveBehindTheDoor() throws {
-        var offenders: [String] = []
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let found = Self.markerSites(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.stock[file.lastPathComponent] ?? 0
-            if found > allowed { offenders.append("\(file.lastPathComponent): \(found) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.markerSites(in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(offenders.isEmpty, "picture markers outside the door: \(offenders)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock)
+        #expect(drift.isEmpty, "picture markers outside the door, or a stock above the count: \(drift)")
         #expect(Self.markerSites(in: "let image = UIImage(data: bytes)") == 1)
         #expect(Self.markerSites(in: "try await HTTP.data(from: url, lane: .cover)") == 1)
         #expect(Self.markerSites(in: "import ImageIO\nlet source = CGImageSourceCreateWithData(data as CFData, nil)") == 2)

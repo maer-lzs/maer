@@ -10,8 +10,8 @@ import Foundation
 
 /// Documents go through the seam (`Ablage`) or the rows (`Sources/Storage`).
 /// Outside them, every `Data(contentsOf:` and `.write(to:` is a counted
-/// site with a reason in the stock; the stock may only shrink, a new site
-/// is red. Comment lines do not count.
+/// site with a reason in the stock; the stock is the count (`StockDrift`),
+/// a new site and a free place are red. Comment lines do not count.
 struct AblageFenceTests {
     /// Die Heimaten der Naht, jede mit ihrem Grund IM Eintrag.
     nonisolated static let homes: [(suffix: String, reason: String)] = [
@@ -37,7 +37,7 @@ struct AblageFenceTests {
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
         "ImageCache.swift": (5, "cover bytes in the image cache, not a document"),
         "WidgetShared.swift": (4, "the app-group snapshot the widget reads, outside the app's own container"),
-        "PlayerViewModel+Widget.swift": (2, "artwork bytes for the widget in the app group"),
+        "PlayerViewModel+Widget.swift": (1, "artwork bytes for the widget in the app group"),
         "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
         "UITestSeed.swift": (1, "the silent fixture the harness plays"),
         "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note"),
@@ -45,19 +45,26 @@ struct AblageFenceTests {
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
         "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
         "APIClient.swift": (1, "a file mapped for a multipart upload"),
+        "ContinueListeningWidget.swift": (1, "the widget reads the cover bytes the app left in the app group"),
     ]
 
     @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund")
     func filesOnlyThroughTheSeam() throws {
-        var offenders: [String] = []
+        var counts: [String: Int] = [:]
         var seen: Set<String> = []
-        for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
-            seen.insert(file.lastPathComponent)
-            let count = Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+        // The app and the widget target: a widget reads and writes the app
+        // group as much as the app does.
+        for folder in ["Sources", "LiveActivityWidget"] {
+            let walker = try #require(FileManager.default.enumerator(
+                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil), "\(folder) is not there")
+            for case let file as URL in walker where file.pathExtension == "swift" && !Self.isAHome(file.path) {
+                seen.insert(file.lastPathComponent)
+                counts[file.lastPathComponent, default: 0] += Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
+            }
         }
-        #expect(offenders.isEmpty, "files past the seam: \(offenders)")
+        #expect(seen.isSuperset(of: ["WidgetShared.swift", "ContinueListeningWidget.swift"]), "the fence read the app and the widget")
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
+        #expect(drift.isEmpty, "files past the seam, or a stock above the count: \(drift)")
         // The stock names only files that are still there; an entry for a
         // file that left is a claim about nothing and stays green forever.
         let ghosts = Self.stock.keys.filter { !seen.contains($0) }.sorted()

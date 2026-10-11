@@ -79,7 +79,8 @@ struct SharedGrowthFenceTests {
             if count > 0 { perFile[file.lastPathComponent] = count }
         }
         let heaviest = perFile.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key): \($0.value)" }
-        #expect(total <= Self.stock, "views reach singletons on \(total) lines, stock is \(Self.stock); heaviest: \(heaviest)")
+        let drift = StockDrift.total(total, stock: Self.stock)
+        #expect(drift == nil, "views reach singletons on \(total) lines, stock is \(Self.stock) (\(drift ?? "")); heaviest: \(heaviest)")
         #expect(Self.sharedLines(in: "let vm = PlayerViewModel.shared\n// PlayerViewModel.shared in a comment\nlet x = sharedCount") == 1)
     }
 
@@ -93,10 +94,11 @@ struct SharedGrowthFenceTests {
             if count > 0 { perFile[file.lastPathComponent] = count }
         }
         let heaviest = perFile.sorted { $0.value > $1.value }.prefix(5).map { "\($0.key): \($0.value)" }
-        #expect(total <= Self.sourcesStock,
+        let drift = StockDrift.total(total, stock: Self.sourcesStock)
+        #expect(drift == nil,
                 """
                 singletons are reached on \(total) lines across Sources, stock is \
-                \(Self.sourcesStock); heaviest: \(heaviest). If the views count fell \
+                \(Self.sourcesStock) (\(drift ?? "")); heaviest: \(heaviest). If the views count fell \
                 while this one did not, the grips only moved behind a door and no \
                 coupling was solved
                 """)

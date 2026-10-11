@@ -213,11 +213,8 @@ struct UnobservedReadFenceTests {
                                        unlessObserving: "PodcastSubscriptions.shared")
             if !lines.isEmpty { counts[file.lastPathComponent] = lines }
         }
-        for (name, lines) in counts.sorted(by: { $0.key < $1.key }) {
-            let cap = Self.premiumStock[name] ?? 0
-            #expect(lines.count <= cap,
-                    "\(name) liest den Premium-Status \(lines.count) mal ohne zu beobachten, Bestand ist \(cap): Zeilen \(lines)")
-        }
+        let premiumDrift = StockDrift.findings(counts: counts.mapValues(\.count), stock: Self.premiumStock)
+        #expect(premiumDrift.isEmpty, "the premium mark is read without observing, or a stock above the count: \(premiumDrift) \(counts)")
         for name in Self.premiumStock.keys.sorted() {
             #expect(counts[name] != nil, "\(name) steht im Bestand, liest aber nicht mehr: aus der Liste nehmen")
         }
@@ -255,11 +252,8 @@ struct UnobservedReadFenceTests {
             #expect(exemptionsSeen.contains(exemption.file + "/" + exemption.function),
                     "die Ausnahme \(exemption.file) \(exemption.function) liest nicht mehr: aus der Liste nehmen")
         }
-        for (name, lines) in counts.sorted(by: { $0.key < $1.key }) {
-            let cap = Self.stock[name] ?? 0
-            #expect(lines.count <= cap,
-                    "\(name) liest den Download-Zustand \(lines.count) mal ohne zu beobachten, Bestand ist \(cap): Zeilen \(lines)")
-        }
+        let drift = StockDrift.findings(counts: counts.mapValues(\.count), stock: Self.stock)
+        #expect(drift.isEmpty, "the download state is read without observing, or a stock above the count: \(drift) \(counts)")
         for name in Self.stock.keys.sorted() {
             #expect(counts[name] != nil, "\(name) steht im Bestand, liest aber nicht mehr: aus der Liste nehmen")
         }

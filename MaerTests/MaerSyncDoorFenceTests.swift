@@ -80,23 +80,15 @@ struct MaerSyncDoorFenceTests {
 
     @Test("die Sitzung wird nur von den Traegern und den Fabriken genannt")
     func theSessionIsNamedOnlyBehindTheSeam() throws {
-        var offenders: [String] = []
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let count = Self.lines(naming: "MaerSyncSession", in: try String(contentsOf: file, encoding: .utf8))
             guard count > 0 else { continue }
-            found[file.lastPathComponent] = count
-            let allowed = Self.sessionStock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            found[file.lastPathComponent, default: 0] += count
         }
         #expect(!found.isEmpty, "the fence still finds the session")
-        #expect(offenders.isEmpty, "the session is reached past the seam: \(offenders)")
-        // The other direction: an entry whose file names the session less
-        // often, or not at all, stays in the stock unseen otherwise. The
-        // stock only falls, and it falls by writing the measured number.
-        let stale = Self.sessionStock.filter { found[$0.key, default: 0] < $0.value.count }
-            .map { "\($0.key): \(found[$0.key, default: 0]) < \($0.value.count)" }.sorted()
-        #expect(stale.isEmpty, "the stock allows more than the file holds: \(stale)")
+        let drift = StockDrift.findings(counts: found, stock: Self.sessionStock.mapValues(\.count))
+        #expect(drift.isEmpty, "the session is reached past the seam, or a stock above the count: \(drift)")
     }
 
     @Test("keine Adresse des Dienstes traegt das Zeichen, und ein Zeichen in der Adresse wird abgewiesen")

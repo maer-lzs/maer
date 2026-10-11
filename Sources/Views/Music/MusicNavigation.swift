@@ -62,7 +62,7 @@ enum MusicRoute: Hashable {
     /// The songs this person listened to, newest first (`ListenHistoryScreen`).
     case history
 
-    static func ==(lhs: MusicRoute, rhs: MusicRoute) -> Bool {
+    static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
         case let (.album(a), .album(b)):         return a.id == b.id
         case let (.artist(a), .artist(b)):       return a.id == b.id

@@ -1395,12 +1395,12 @@ extension ProjectFileIntegrityTests {
         // difference itself: adding a second READ of an already-persisted type
         // is harmless, while a new TYPE is the decision worth noticing, because
         // adding a field to it is a migration that can cost a history without
-        // producing a single error.
-        // 20: mit dem Ende der Bruecken-Aera fielen Manifest und Summary
-        // der Faehre wieder aus dem Bestand; die Ratsche geht auf den
-        // Stand davor zurueck.
-        #expect(found.count <= 20,
-                "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found.sorted())")
+        // producing a single error. 8, measured: the stores that moved into
+        // the rows left this count, and a ratchet above the count lets that
+        // many new types in unseen.
+        let drift = StockDrift.total(found.count, stock: 8)
+        #expect(drift == nil,
+                "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform, oder der Bestand liegt ueber der Zaehlung (\(drift ?? "")): \(found.sorted())")
     }
 
     @Test("der Persistenz-Zaun trennt Ablage von Netzantwort")
@@ -1769,19 +1769,11 @@ extension ProjectFileIntegrityTests {
                 for hit in Self.letterShorthands(in: comment) { perFile[name, default: []].append("\(number + 1) \(hit)") }
             }
         }
-        var grown: [String] = []
-        for (name, hits) in perFile where hits.count > Self.letterShorthandStock[name, default: 0] {
-            grown.append("\(name): \(hits.count) > \(Self.letterShorthandStock[name, default: 0]) \(hits)")
-        }
-        #expect(grown.isEmpty, "a shorthand says nothing to a stranger; write the reason instead: \(grown)")
+        let drift = StockDrift.findings(counts: perFile.mapValues(\.count), stock: Self.letterShorthandStock)
+        #expect(drift.isEmpty, "a shorthand says nothing to a stranger, write the reason instead; or the stock fell, write it back as measured: \(drift) \(perFile)")
         let names = Set(files.map(\.name))
         let ghosts = Self.letterShorthandStock.keys.filter { !names.contains($0) }.sorted()
         #expect(ghosts.isEmpty, "the stock names files that are gone: \(ghosts)")
-        let fallen = Self.letterShorthandStock.compactMap { name, stock -> String? in
-            let now = perFile[name]?.count ?? 0
-            return now < stock ? "\(name) \(stock) -> \(now)" : nil
-        }.sorted()
-        #expect(fallen.isEmpty, "the stock fell, write it back as measured: \(fallen)")
     }
 
     /// A comment without its code spans. A test names a fixture (`B1`) or
@@ -1959,7 +1951,8 @@ extension ProjectFileIntegrityTests {
                 for hit in Self.planSteps(in: comment) { found.append("\(name):\(number + 1) \(hit)") }
             }
         }
-        #expect(found.count <= Self.planStepStock, "a plan step names history, not the code: \(found)")
+        let drift = StockDrift.total(found.count, stock: Self.planStepStock)
+        #expect(drift == nil, "a plan step names history, not the code (\(drift ?? "")): \(found)")
     }
 
     private static func matches(of pattern: String, in line: String) -> [String] {
@@ -2396,11 +2389,8 @@ extension ProjectFileIntegrityTests {
         }
         // Derselbe Riegel, den dieser Zaun einfordert, an ihm selbst.
         #expect(checked > 0, "der Zaun hat keine Testdatei gelesen, also misst er nichts")
-        for (name, hits) in found.sorted(by: { $0.key < $1.key }) {
-            let allowed = stock[name]?.count ?? 0
-            #expect(hits <= allowed,
-                    "\(name) kehrt an \(hits) Stellen still zurueck, erlaubt sind \(allowed)")
-        }
+        let drift = StockDrift.findings(counts: found, stock: stock.mapValues(\.count))
+        #expect(drift.isEmpty, "a case returns silently, or a stock above the count: \(drift)")
         // Rot-Probe im Fall selbst: der Sucher saehe die Form ueberhaupt.
         let sample = "        guard names.isEmpty else { return }"
         #expect(sample.trimmingCharacters(in: .whitespaces).hasPrefix("guard "))

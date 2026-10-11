@@ -14,9 +14,9 @@ import Foundation
 /// `DispatchQueue` says "queue because" (an API that hands over a queue
 /// or wants a synchronous answer), a `Task.detached` says "detached
 /// because", a `nonisolated(unsafe)` says "unsafe because". Comment lines
-/// do not count. The stocks below are the
-/// inventory of the day the fence was built and may only shrink; the
-/// `Task.sleep` stock is the inventory of the ticks, waits and polls.
+/// do not count. The stocks below are the count, both ways
+/// (`StockDrift`); the `Task.sleep` stock is the inventory of the ticks,
+/// waits and polls.
 struct ConcurrencyFenceTests {
 
     /// Non-comment lines that name the token.
@@ -49,7 +49,7 @@ struct ConcurrencyFenceTests {
     nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
     // Fall darunter erzwungen.
-    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 5, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 5, "LibraryViewModel.swift": 2, "DownloadManager.swift": 1, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("unsafe because") und wird vom
     // Fall darunter erzwungen; gemessen am 27.09.2026, 18 Stellen in 8 Dateien, seit
     // `ServerTimestamp` 15 in 6.
@@ -57,23 +57,23 @@ struct ConcurrencyFenceTests {
     // BESTAND OHNE EINZELGRUENDE: ein reines Inventar der Ticks, Warten und Polls ueber 30
     // Dateien; hier gibt es keinen Marker am Fundort, und 30 abgeschriebene
     // Saetze waeren 30 Stellen zum Abdriften.
-    nonisolated static let sleepStock: [String: Int] = ["Retry.swift": 2, "HostCourtesy.swift": 1, "LibraryView.swift": 2, "BottomBarState.swift": 3, "UITestSeed.swift": 2, "PodcastsView.swift": 2, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 1, "PlaybackNotices.swift": 1, "SubsonicClient.swift": 1, "SourceBudget.swift": 1, "SearchModels.swift": 1, "TileDwell.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSourceView.swift": 1, "PodcastShowView.swift": 1, "PodcastServerSave.swift": 1, "StandCarrier.swift": 1, "PlayerViewModel+SleepTimer.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "PlayerCoordinator.swift": 2, "NavigationBarNudge.swift": 1, "MusicViewModel.swift": 1, "MusicView.swift": 1, "GPodderClient.swift": 1, "GlobalSearchModel.swift": 1, "DriveMode.swift": 1, "Artwork.swift": 1, "AuthViewModel.swift": 1]
+    nonisolated static let sleepStock: [String: Int] = ["Retry.swift": 2, "HostCourtesy.swift": 1, "LibraryView.swift": 2, "BottomBarState.swift": 3, "UITestSeed.swift": 2, "PodcastsView.swift": 2, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 1, "PlaybackNotices.swift": 1, "SubsonicClient.swift": 1, "SourceBudget.swift": 1, "SearchModels.swift": 1, "TileDwell.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSourceView.swift": 1, "PodcastShowView.swift": 1, "PodcastServerSave.swift": 1, "StandCarrier.swift": 1, "PlayerViewModel+SleepTimer.swift": 1, "PlayerCoordinator.swift": 2, "NavigationBarNudge.swift": 1, "MusicViewModel.swift": 1, "MusicView.swift": 1, "GPodderClient.swift": 1, "GlobalSearchModel.swift": 1, "DriveMode.swift": 1, "Artwork.swift": 1, "AuthViewModel.swift": 1]
 
     /// Every file against a stock: no file may hold more sites than the
     /// stock names, and each site carries its marker.
     static func offenders(token: String, marker: String?, stock: [String: Int]) throws -> [String] {
         var out: [String] = []
         var seen: Set<String> = []
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             seen.insert(file.lastPathComponent)
             let text = try String(contentsOf: file, encoding: .utf8)
-            let count = Self.sites(of: token, in: text)
-            let allowed = stock[file.lastPathComponent] ?? 0
-            if count > allowed { out.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.sites(of: token, in: text)
             if let marker, Self.unreasoned(token: token, marker: marker, in: text) > 0 {
                 out.append("\(file.lastPathComponent): without \"\(marker)\"")
             }
         }
+        out += StockDrift.findings(counts: counts, stock: stock)
         // A stock entry for a file that is gone is a claim about nothing and
         // stayed green when the file left (17.09.2026).
         for ghost in stock.keys.filter({ !seen.contains($0) }).sorted() {

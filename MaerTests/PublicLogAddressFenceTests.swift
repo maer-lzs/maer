@@ -50,13 +50,15 @@ struct PublicLogAddressFenceTests {
 
     @Test("Keine oeffentliche Logzeile traegt eine Adresse mit Zugangsdaten")
     func publicLinesCarryNoAddress() throws {
-        var offenders: [String] = []
+        var counts: [String: Int] = [:]
+        var found: [String: [String]] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let found = Self.addressInterpolations(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
-            if found.count > allowed { offenders.append("\(file.lastPathComponent): \(found)") }
+            let sites = Self.addressInterpolations(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += sites.count
+            if !sites.isEmpty { found[file.lastPathComponent, default: []] += sites }
         }
-        #expect(offenders.isEmpty, "addresses in public log lines: \(offenders)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
+        #expect(drift.isEmpty, "addresses in public log lines, or a stock above the count: \(drift) \(found)")
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"COVER \\(url.absoluteString, privacy: .public)\")") == ["url.absoluteString"])
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"feed=\\(feedURL, privacy: .public)\")") == ["feedURL"])
         // The door's own trace must never print the address it fetched.

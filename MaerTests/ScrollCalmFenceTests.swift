@@ -41,8 +41,8 @@ struct ScrollCalmFenceTests {
     ]
 
     /// **Weg B, der benannte Rest mit Zahl.** Typen, die KEINE Ansicht sind
-    /// und trotzdem UI-Arbeit einplanen. Er darf nur fallen; null heisst,
-    /// dass Weg B getan ist.
+    /// und trotzdem UI-Arbeit einplanen. Er ist die Zaehlung; ein leerer
+    /// Bestand heisst, dass kein solcher Typ mehr einplant.
     ///
     /// Gezaehlt wird am umschliessenden TYP, nicht an der Datei: eine Datei
     /// haelt oft einen Speicher UND seine Ansichten, und eine Zaehlung je
@@ -64,13 +64,12 @@ struct ScrollCalmFenceTests {
 
     @Test("Die Warteschlange der Leiste ruft nur die Tuer")
     func onlyTheDoorAsksTheQueue() throws {
-        var offenders: [String] = []
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.calls(of: "runWhenCalm", in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.queueStock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.calls(of: "runWhenCalm", in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(offenders.isEmpty, "ein Rufer fragt die Leiste wieder selbst: \(offenders)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.queueStock.mapValues(\.count))
+        #expect(drift.isEmpty, "a caller asks the bar itself again, or a stock above the count: \(drift)")
         // Rot-Probe in beide Richtungen.
         #expect(Self.calls(of: "runWhenCalm", in: "BottomBarState.shared.runWhenCalm { x() }") == 1)
         #expect(Self.calls(of: "runWhenCalm", in: "// war BottomBarState.shared.runWhenCalm") == 0)
@@ -113,20 +112,16 @@ struct ScrollCalmFenceTests {
 
     @Test("Weg B: Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger")
     func storesThatScheduleUIWorkOnlyShrink() throws {
-        var offenders: [String] = []
-        var total = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             for (type, count) in Self.schedulingNonViews(in: try String(contentsOf: file, encoding: .utf8)) {
-                total += count
-                let allowed = Self.schedulingStoresStock[type]?.count ?? 0
-                if count > allowed { offenders.append("\(type): \(count) > \(allowed)") }
+                counts[type, default: 0] += count
             }
         }
-        #expect(offenders.isEmpty, "ein neuer Speicher plant UI-Arbeit ein: \(offenders)")
-        // Der Rest ist gemessen, nicht behauptet: solange hier eine Zahl
-        // ueber null steht, ist Weg B offen.
-        #expect(total == Self.schedulingStoresStock.values.reduce(0) { $0 + $1.count },
-                "der Rest von Weg B steht bei \(total)")
+        // Measured, not claimed: per type both ways, so the rest is the
+        // stock's total as well.
+        let drift = StockDrift.findings(counts: counts, stock: Self.schedulingStoresStock.mapValues(\.count))
+        #expect(drift.isEmpty, "a new store schedules UI work, or a stock above the count: \(drift)")
         // Rot-Probe: eine Ansicht darf einplanen, das ist ihre Aufgabe; ein
         // Speicher daneben nicht.
         let mixed = """

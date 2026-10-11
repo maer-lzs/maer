@@ -13,8 +13,8 @@ import SwiftUI
 /// Griff an eine Wache. Die Naht kommt mit ihrem Zaun: er haelt fest, dass
 /// der Wert an genau EINER Stelle gesetzt wird (ein vergessenes Reichen
 /// waere sonst still, weil der Vorgabewert „online" ist), und er
-/// inventarisiert die Stellen, die die Wache noch selbst fragen, damit der
-/// Bestand nur fallen kann.
+/// inventarisiert die Stellen, die die Wache noch selbst fragen; der
+/// Bestand ist die Zaehlung, in beide Richtungen.
 struct OnlineValueFenceTests {
     private static func source(_ name: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -31,8 +31,8 @@ struct OnlineValueFenceTests {
             }.count
     }
 
-    /// Der Bestand des Tages, an dem der Zaun gebaut wurde, je Datei. Er
-    /// darf nur fallen, und jeder Eintrag traegt seinen Grund NEBEN SICH.
+    /// Der Bestand je Datei, gleich der Zaehlung; jeder Eintrag traegt
+    /// seinen Grund NEBEN SICH.
     ///
     /// Das Musik-Kontextmenue stand hier einmal mit dem Grund „Helfer ohne
     /// eigenes `self`" und zu Unrecht: seine zwei Griffe sassen in einem
@@ -58,16 +58,13 @@ struct OnlineValueFenceTests {
 
     @Test("Die Wache wird in den Ansichten nur noch im Bestand gefragt")
     func viewsAskTheMonitorOnlyWhereTheStockSaysSo() throws {
-        var offenders: [String] = []
-        var total = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let count = Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
-            total += count
-            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(offenders.isEmpty, "die Wache ist zurueck in einer Ansicht: \(offenders)")
-        #expect(total <= Self.stock.values.reduce(0) { $0 + $1.count })
+        // Per file both ways, so the total is the stock's total as well.
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
+        #expect(drift.isEmpty, "the monitor is back in a view, or a stock above the count: \(drift)")
         // Rot-Probe in beide Richtungen: der Pruefer sieht den Griff…
         #expect(Self.reaches(in: "guard NetworkMonitor.shared.isConnected else { return }") == 1)
         // …und einen Kommentar ueber den Griff sieht er NICHT.

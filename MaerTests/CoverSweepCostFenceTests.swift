@@ -54,13 +54,12 @@ struct CoverSweepCostFenceTests {
 
     @Test("Nach der Cache-Groesse fragt nur, wer die Antwort zeigt")
     func onlyTheSurfaceThatShowsItAsks() throws {
-        var offenders: [String] = []
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.asks(in: try String(contentsOf: file, encoding: .utf8))
-            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += Self.asks(in: try String(contentsOf: file, encoding: .utf8))
         }
-        #expect(offenders.isEmpty, "eine Flaeche fragt wieder nach der Groesse: \(offenders)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
+        #expect(drift.isEmpty, "a surface asks for the size again, or a stock above the count: \(drift)")
         // Rot-Probe in beide Richtungen, ueber BEIDE Namen: der Pruefer
         // saehe den gebundenen…
         #expect(Self.asks(in: "if cacheSizeBytes() > cap { sweep() }") == 1)

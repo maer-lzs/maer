@@ -186,11 +186,10 @@ struct ObserverPlaceFenceTests {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zaun hat den Ansichtsbaum nicht gelesen")
         let offenders = try Self.misplaced()
-        for (name, cap) in Self.stock.sorted(by: { $0.key < $1.key }) {
-            let found = offenders[name] ?? []
-            #expect(found.count <= cap,
-                    "\(name) wird an \(found.count) falschen Orten beobachtet, Bestand ist \(cap): \(found)")
-        }
+        // A kind at 0 is no entry of the stock: it names a publisher the
+        // finder watches with none allowed, so any place is growth.
+        let drift = StockDrift.findings(counts: offenders.mapValues(\.count), stock: Self.stock.filter { $0.value > 0 })
+        #expect(drift.isEmpty, "observed in the wrong place, or a stock above the count: \(drift) \(offenders)")
     }
 
     /// The reader itself, in both directions. Without this the fence could

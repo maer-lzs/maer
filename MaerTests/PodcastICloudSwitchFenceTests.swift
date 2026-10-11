@@ -74,17 +74,15 @@ struct PodcastICloudSwitchFenceTests {
 
     @Test("den Apple-Namen liest nur, wer wirklich Apple meint")
     func onlyAppleCarriersReadTheAppleName() throws {
-        var offenders: [String] = []
-        var named = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let count = Self.lines(naming: "podcastICloudSyncEnabled", in: try String(contentsOf: file, encoding: .utf8))
             guard count > 0 else { continue }
-            named += 1
-            let allowed = Self.appleReaders[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += count
         }
-        #expect(named >= 1, "der Sucher findet den Namen ueberhaupt noch: \(named) Dateien")
-        #expect(offenders.isEmpty, "hier liest jemand den Apple-Namen fuer eine wege-uebergreifende Frage: \(offenders)")
+        #expect(!counts.isEmpty, "der Sucher findet den Namen ueberhaupt noch")
+        let drift = StockDrift.findings(counts: counts, stock: Self.appleReaders.mapValues(\.count))
+        #expect(drift.isEmpty, "the Apple name is read for a question across the ways, or a stock above the count: \(drift)")
     }
 
     @Test("ueber den Traegern fragt jeder die Tuer, und keiner den Apple-Namen")
@@ -107,17 +105,15 @@ struct PodcastICloudSwitchFenceTests {
 
     @Test("der Schluessel wird nur dort genannt, wo er gebunden oder eingestuft wird")
     func theKeyIsNamedOnlyWhereItIsBound() throws {
-        var offenders: [String] = []
-        var named = 0
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let count = Self.linesNamingTheKey(in: try String(contentsOf: file, encoding: .utf8))
             guard count > 0 else { continue }
-            named += 1
-            let allowed = Self.keyHolders[file.lastPathComponent]?.count ?? 0
-            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            counts[file.lastPathComponent, default: 0] += count
         }
-        #expect(named >= 1, "der Sucher findet den Schluessel ueberhaupt noch: \(named) Dateien")
-        #expect(offenders.isEmpty, "hier wird der Schluessel an der Tuer vorbei gelesen: \(offenders)")
+        #expect(!counts.isEmpty, "der Sucher findet den Schluessel ueberhaupt noch")
+        let drift = StockDrift.findings(counts: counts, stock: Self.keyHolders.mapValues(\.count))
+        #expect(drift.isEmpty, "the key is read past the door, or a stock above the count: \(drift)")
         // The counter to the stripping: a line that carries only the reader
         // is NOT a key use, or every reading site would count twice.
         #expect(Self.linesNamingTheKey(in: "let x = AppStorageKeys.podcastICloudSyncEnabled") == 0)
