@@ -68,6 +68,29 @@ struct DisplayStateFenceTests {
         #expect(FeedLock.of(isPremium: false, isRefused: false) == .none)
     }
 
+    /// Tiles that name no lock by hand, per file; the stock is the count. A
+    /// new surface that shows a feed and writes `.none` shows up here.
+    static let noLockStock: [String: (count: Int, reason: String)] = [
+        "FeedArtwork.swift": (1, "catalog titles, no feed"),
+        "HomeView.swift": (3, "a book pick has no feed; the show pick and the episode pick hold a feed, whether they carry the lock is open as a product question"),
+        "MixedMediaPage.swift": (2, "a book has no feed; the other title may be an episode, open as a product question"),
+        "PodcastComponents.swift": (1, "a search result holds its feed, open as a product question"),
+        "PodcastsView.swift": (1, "the Continue page of episodes, whose card asks the lock; open as a product question"),
+        "SearchScreen.swift": (1, "the show grid of the search holds the feed, open as a product question"),
+    ]
+
+    @Test("jede Kachel, die das Schloss von Hand auf keins setzt, ist je Datei gezaehlt", .needsTheSources)
+    func everyHandWrittenNoLockIsCounted() throws {
+        var counts: [String: Int] = [:]
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            let code = StockDriftTests.squeezed(SyncContractFenceTests.stripped(text))
+            let found = code.components(separatedBy: "lock:.none").count - 1
+            if found > 0 { counts[name] = found }
+        }
+        let drift = StockDrift.findings(counts: counts, stock: Self.noLockStock.mapValues(\.count))
+        #expect(drift.isEmpty, "a tile names no lock unseen, or the stock stands above the count: \(drift)")
+    }
+
     /// The heart and the running ring carry their state for VoiceOver, and
     /// the ring is one control.
     @Test("das Herz sagt Namen und Zustand, der laufende Ring ist ein Bauteil mit Namen und Fortschritt", .needsTheSources)

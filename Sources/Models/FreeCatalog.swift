@@ -508,21 +508,6 @@ nonisolated enum FreeCatalog {
         return !haystack.contains("librivox")
     }
 
-    /// Is this Gutenberg audio a real AUDIOBOOK? Measured
-    /// on the full stock (1.124 entries): the readings live under
-    /// `/files/<id>/mp3/…` (885) and `/files/<id>/<id>-m/…` (184), while
-    /// `/files/<id>/<id>-h/audio/…` holds MUSIC EXAMPLES inside scholarly
-    /// texts ("Navaho Legends", "The Lhota Nagas"). Those would go wrong in
-    /// an audiobook row. Same class as the LibriVox junk filter: the path
-    /// tells them apart, no guessing needed.
-    /// The cover that rides in Gutendex' `formats` map. Pure so the choice of
-    /// key (and the https guard) is testable. Measured 05.08.: every entry on
-    /// page 1 carries `image/jpeg`.
-    /// The tile's meta line. Recording year and runtime, whichever
-    /// is known. Pure so the "absent stays absent" rule is testable: where the
-    /// source states no year we show none, we do not guess one. For sources
-    /// without a licence field the year is the user's ONLY means of judging a
-    /// recording's age, so it leads.
     /// What we may say about a catalog title's rights. As a PURE
     /// decision, because it is the same question on every catalog surface.
     ///
@@ -591,18 +576,6 @@ nonisolated enum FreeCatalog {
         let answerPrefix: String
     }
 
-    /// The PURE classification of a source failure: nil = cancellation (NOT
-    /// a failure; the next task run fetches again), otherwise a short reason
-    /// for log AND error line. One look then tells 429 / HTML answer /
-    /// transport apart, so a cancelled task is never booked as a broken
-    /// source.
-    /// Does this failure say the entry is gone, or only that it could not be
-    /// asked right now? Only the first may mark an entry as dead; the second
-    /// has to stay repeatable, otherwise a dead spot empties the row. The
-    /// same three-way split as the negative-cache rule: data, empty, failed.
-    /// Does this id belong to one of the free catalogs? Only for those may a
-    /// failure be recorded as gone. A book on a server is the server's
-    /// business.
     /// Is this a multi-author COLLECTION? They rank high in many shelves and
     /// push single works out of the first places.
     ///
@@ -619,11 +592,18 @@ nonisolated enum FreeCatalog {
         return creator.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "various"
     }
 
+    /// Does this id belong to one of the free catalogs? Only for those may a
+    /// failure be recorded as gone. A book on a server is the server's
+    /// business.
     static func isCatalogId(_ id: String) -> Bool {
         [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
             .contains { id.hasPrefix($0) }
     }
 
+    /// Does this failure say the entry is gone, or only that it could not be
+    /// asked right now? Only the first may mark an entry as dead; the second
+    /// has to stay repeatable, otherwise a dead spot empties the row. The
+    /// same three-way split as the negative-cache rule: data, empty, failed.
     static func isGone(_ error: Error) -> Bool {
         if let url = error as? URLError { return url.code == .resourceUnavailable }
         if let api = error as? APIError, case .http(let code, _) = api { return StatusMeaning.from(status: code).isAbsence }
@@ -671,6 +651,11 @@ nonisolated enum FreeCatalog {
         return nil
     }
 
+    /// The tile's meta line. Recording year and runtime, whichever
+    /// is known. Pure so the "absent stays absent" rule is testable: where the
+    /// source states no year we show none, we do not guess one. For sources
+    /// without a licence field the year is the user's ONLY means of judging a
+    /// recording's age, so it leads.
     static func catalogMetaLine(year: String?, runtime: String?,
                                 readingVersion: Int? = nil) -> String {
         // The reading marker is a META fact ("Lesung 2"), never part of
@@ -683,6 +668,9 @@ nonisolated enum FreeCatalog {
         return parts.isEmpty ? " " : parts.joined(separator: " · ")
     }
 
+    /// The cover that rides in Gutendex' `formats` map. Pure so the choice of
+    /// key (and the https guard) is testable. Measured 05.08.: every entry on
+    /// page 1 carries `image/jpeg`.
     static func gutenbergCoverURL(formats: [String: String]?) -> URL? {
         guard let raw = formats?["image/jpeg"] ?? formats?["image/png"],
               let url = URL(string: raw), url.scheme == "https" else { return nil }
@@ -715,6 +703,13 @@ nonisolated enum FreeCatalog {
         return unstatedRights
     }
 
+    /// Is this Gutenberg audio a real AUDIOBOOK? Measured
+    /// on the full stock (1.124 entries): the readings live under
+    /// `/files/<id>/mp3/…` (885) and `/files/<id>/<id>-m/…` (184), while
+    /// `/files/<id>/<id>-h/audio/…` holds MUSIC EXAMPLES inside scholarly
+    /// texts ("Navaho Legends", "The Lhota Nagas"). Those would go wrong in
+    /// an audiobook row. Same class as the LibriVox junk filter: the path
+    /// tells them apart, no guessing needed.
     static func isGutenbergAudiobook(_ audioURL: String) -> Bool {
         !audioURL.contains("-h/audio/")
     }
@@ -815,7 +810,8 @@ nonisolated enum FreeCatalog {
         return names.isEmpty ? nil : names.joined(separator: ", ")
     }
 
-    /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime, archive length).
+    /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime). An archive
+    /// file's length has its own reader, `fileLength`.
     static func seconds(_ raw: String?) -> Double? {
         guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
         let parts = raw.split(separator: ":").map(String.init)
