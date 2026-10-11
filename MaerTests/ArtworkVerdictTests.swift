@@ -11,6 +11,11 @@ import UIKit
 /// Die Bild-Tuer sagt, ob sie ein Bild hat, ob die Adresse keines nennt,
 /// oder ob sie nichts gelernt hat. Nur das saubere Nein darf jemand als
 /// „kein Bild“ merken; alles andere wird beim naechsten Mal wieder gefragt.
+///
+/// `.serialized`: several cases set the one disk hook of the shared cache
+/// (`ImageCache.shared.testDiskHold`); run side by side, one case's hook
+/// replaced another's, and that case waited for a hold that never came.
+@Suite(.serialized)
 struct ArtworkVerdictTests {
     private static func name(_ verdict: Artwork.Verdict) -> String {
         switch verdict {
@@ -420,6 +425,12 @@ struct ArtworkVerdictTests {
         defer { served.stop() }
         let picture = Self.url(served, "picture")
         #expect(Self.name(await Artwork.verdict(for: picture)) == "picture:net")
+        // The disk write lands after the verdict (measured in every one of
+        // fifty repetitions); until then only the memory cache holds the
+        // picture, and the system may empty that at any time. The claim is
+        // the disk, so the case waits for the write.
+        await ImageCache.shared.testDiskSettled(picture)
+        #expect(ImageCache.shared.testCacheBytes(picture) != nil, "the picture did not reach the disk")
         #expect(await Artwork.full(for: picture) != nil, "the picture did not reach the cache")
         #expect(Self.name(await Artwork.verdict(for: picture)) == "picture:full", "the second look asked the network again")
     }
