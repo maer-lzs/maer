@@ -159,7 +159,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
             fallback.storeBlob(blob)
         }
         guard !stopped, !fellBack else { return }
-        enqueue(Self.records(for: blob))
+        enqueue(Self.records(for: blob), held: Self.heldAsTheyAre(in: blob))
         Task { await self.send(by: "store") }
     }
 
@@ -334,14 +334,14 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         Logger.library.error("CHOICE cloud failed reason=\(String(describing: error), privacy: .public) by=\(caller, privacy: .public); queued=\(self.queue.count) removals=\(self.removals.count)")
     }
 
-    /// Only the records that differ from the mirror go to the queue; a key
-    /// the mirror holds and the runner dropped goes to the removals.
-    private func enqueue(_ desired: [String: CloudChoiceRecord]) {
-        for (key, record) in desired where mirror[key] != record {
+    /// What `changes` says, into the queue and the removals.
+    private func enqueue(_ desired: [String: CloudChoiceRecord], held: Set<String>) {
+        let changes = Self.changes(desired: desired, mirror: mirror, held: held)
+        for (key, record) in changes.save {
             queue[key] = record
             removals.remove(key)
         }
-        for key in mirror.keys where desired[key] == nil {
+        for key in changes.remove {
             removals.insert(key)
             queue[key] = nil
         }
@@ -350,11 +350,37 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
 
     // MARK: - Pure
 
+    /// What a store sends: the records that differ from the mirror, and the
+    /// keys the mirror holds that the runner dropped. A key in `held` is
+    /// neither: its entry is of an unknown kind and has no record payload
+    /// here (it came from the key-value blob or the service), so the record
+    /// in the cloud stays as it is; a removal would delete a newer device's
+    /// statement.
+    nonisolated static func changes(desired: [String: CloudChoiceRecord],
+                                    mirror: [String: CloudChoiceRecord],
+                                    held: Set<String>) -> (save: [String: CloudChoiceRecord], remove: Set<String>) {
+        let save = desired.filter { key, record in mirror[key] != record }
+        let remove = Set(mirror.keys.filter { desired[$0] == nil && !held.contains($0) })
+        return (save, remove)
+    }
+
+    /// The keys of a blob whose entry is of an unknown kind without a record
+    /// payload: `records(for:)` makes no record for them, and the cloud keeps
+    /// the one it has.
+    nonisolated static func heldAsTheyAre(in blob: [String: Any]) -> Set<String> {
+        Set(blob.compactMap { key, raw -> String? in
+            guard let entry = UserChoiceEntry.from(plist: raw), entry.unknownKind,
+                  (raw as? [String: Any])?[UserChoiceEntry.rawRecordKey] == nil else { return nil }
+            return key
+        })
+    }
+
     /// The desired record set for a blob: a value becomes a value record, a
     /// cleared key a tombstone with the clear's moment. An entry the blob
     /// cannot read is not a record. An entry of an unknown kind keeps the
     /// record payload it came with; one from another carrier has none and
-    /// is left out, never sent as a tombstone.
+    /// is left out, never sent as a tombstone, and its record stays in the
+    /// cloud (`heldAsTheyAre`).
     nonisolated static func records(for blob: [String: Any]) -> [String: CloudChoiceRecord] {
         var out: [String: CloudChoiceRecord] = [:]
         for (key, raw) in blob {

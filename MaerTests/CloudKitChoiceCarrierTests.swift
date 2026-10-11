@@ -148,6 +148,43 @@ struct CloudKitChoiceCarrierTests {
         #expect(woken > wokenBefore)
     }
 
+    /// An entry of an unknown kind that came from the key-value blob (or the
+    /// service) has no record payload, so the store makes no record for it.
+    /// Read as "the runner dropped it", its record would leave the cloud,
+    /// and that record is a newer device's statement.
+    @Test("ein Eintrag unbekannter Art ohne Nutzlast des Datensatzes loescht den Datensatz nicht")
+    func anUnknownEntryWithoutAPayloadDeletesNoRecord() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let zone = FakeZone()
+        let carrier = carrier(zone, defaults)
+        await carrier.refresh(by: "witness")
+        let held = CloudChoiceRecord(key: "sort.books", payload: CloudChoicePayload.encode(.string("title")),
+                                     t: 1000, tombstone: false)
+        zone.foreignWrite(held)
+        await carrier.refresh(by: "fetch")
+        #expect(entries(carrier.loadBlob())["sort.books"]?.value == .string("title"), "the precondition: the mirror holds the record")
+
+        // The blob as the runner hands it back: the key carries a newer
+        // entry of an unknown kind in the key-value form, and a second key
+        // the runner really dropped is gone.
+        let unknown: [String: Any] = ["sort.books": ["t": 9000.0, "v": Date()]]
+        #expect(CloudKitChoiceCarrier.records(for: unknown).isEmpty, "the precondition: no record is made for it")
+        carrier.storeBlob(unknown)
+        await carrier.refresh(by: "settle")
+        #expect(zone.record(forKey: "sort.books") == held, "the record stays as the other device wrote it")
+        #expect(zone.deleted[CloudStandNaming.recordName(for: "sort.books")] == nil, "no removal went out")
+
+        // The rule, pure: a held key is neither saved nor removed, a dropped
+        // key still leaves.
+        let dropped = CloudChoiceRecord(key: "playbackRate.a", payload: CloudChoicePayload.encode(.double(1.5)),
+                                        t: 500, tombstone: false)
+        let changes = CloudKitChoiceCarrier.changes(desired: [:], mirror: ["sort.books": held, "playbackRate.a": dropped],
+                                                    held: CloudKitChoiceCarrier.heldAsTheyAre(in: unknown))
+        #expect(changes.save.isEmpty)
+        #expect(changes.remove == ["playbackRate.a"], "\(changes.remove)")
+    }
+
     @Test("ein gekappter Schluessel kommt nicht aus dem eingefrorenen Blob zurueck; was ein aelterer Bau danach schreibt, kommt an")
     func aPrunedKeyDoesNotReturnFromTheFrozenBlob() async throws {
         let (defaults, name) = suite()
