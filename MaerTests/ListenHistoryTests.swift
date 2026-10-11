@@ -53,14 +53,8 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.historyList(entries, family: .music).map(\.id) == ["s1"])
     }
 
-    @Test("die Seite zeigt 200 Zeilen und je 200 mehr, sobald das Ende erscheint, hoechstens alle; ein Datum vor 2000 steht nicht")
-    func thePageGrowsInSteps() {
-        let first = ListenHistory.pageStep
-        let second = ListenHistory.shownAfterEnd(first, of: 20_000)
-        let last = ListenHistory.shownAfterEnd(19_900, of: 20_000)
-        let few = ListenHistory.shownAfterEnd(first, of: 150)
-        #expect(first == 200 && second == 400, "the page does not grow by one step: \(first), \(second)")
-        #expect(last == 20_000 && few == 150, "the page grows past its entries: \(last), \(few)")
+    @Test("ein Datum vor 2000 steht nicht")
+    func noDateBefore2000() {
         let old = ListenHistory.Entry(id: "x", family: .book, title: "X", subtitle: "", heardAt: 3600)
         let now = ListenHistory.Entry(id: "y", family: .book, title: "Y", subtitle: "", heardAt: 1_700_000_000_000)
         #expect(ListenHistory.shownDate(old) == nil, "a date before 2000 is shown")
@@ -94,13 +88,20 @@ struct ListenHistoryRuleTests {
         #expect(rows == ["HistoryRow.swift"], "a history row is drawn twice: \(rows.sorted())")
         let podcasts = try code("Sources/Views/Podcasts/PodcastHistoryView.swift")
         #expect(podcasts.contains("HistoryRow(title: entry.episodeTitle"), "the episode history draws a row of its own")
-        // Read and sorted once per opening; a step shows more of the one
-        // sorted list and never asks the history again.
+        // Read and sorted once per opening, off the main thread; one
+        // continuous list without steps or a spinner.
         let screen = FetchAnswerTests.squeezed(try code("Sources/Views/ListenHistoryScreen.swift"))
-        #expect(screen.components(separatedBy: ".history(family)").count == 2, "the page asks the history more than once")
-        #expect(screen.contains(".onAppear { guard !loaded else { return } entries = ListenHistory.shared.history(family)"),
-                "the page sorts again whenever it appears")
-        #expect(screen.contains("shown = ListenHistory.shownAfterEnd(shown, of: entries.count)"), "a step does not grow the shown rows")
+        #expect(screen.contains(".task { guard !loaded else { return } entries = await ListenHistory.shared.historyOffMain(family)"),
+                "the page does not read off the main thread, or reads again whenever it appears")
+        #expect(!screen.contains(".history(family)"), "the page reads on the main thread again")
+        #expect(!screen.contains("ProgressView") && !screen.contains("prefix("), "the page loads in steps again")
+        // The store reads and sorts on background tasks.
+        let store = try code("Sources/Storage/ListenHistory.swift")
+        let offMain = try #require(store.range(of: "func historyOffMain"), "the off-main read is gone")
+        let body = store[offMain.upperBound...].prefix(1400)
+        #expect(body.components(separatedBy: "Task.detached").count == 3, "the read or the sort runs on the main thread")
+        #expect(body.contains("RowKeeper<Entry>.readNow(") && body.contains("Self.historyList(snapshot"),
+                "the background tasks do not read and sort")
     }
 }
 
@@ -139,6 +140,26 @@ struct ListenHistoryStoreTests {
         #expect(songs(later) == ["sub:song:a", "sub:song:b"], "a restart read another history: \(songs(later))")
         let top = later.history(.music).first?.heardAt
         #expect(top == 1_700_000_200_000, "the row does not carry the latest hearing")
+    }
+
+    @Test("die Seite liest abseits des Hauptstrangs dieselbe Liste wie der Speicher; danach haengt ein Hoeren oben an, ohne zweites Lesen")
+    func thePageReadsOffTheMainThread() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let first = ListenHistory(database: rig.database, identity: { nil })
+        for (index, id) in ["sub:song:a", "sub:song:b", "sub:song:c"].enumerated() {
+            first.noteHeard(id: id, family: .music, title: id, subtitle: "", at: 1_700_000_000_000 + Double(index) * 1000)
+        }
+        first.noteHeard(id: "book-1", family: .book, title: "B", subtitle: "", at: 1_700_000_500_000)
+        await first.awaitPendingWrites()
+        let later = ListenHistory(database: rig.database, identity: { nil })
+        let page = await later.historyOffMain(.music).map(\.id)
+        #expect(page == ["sub:song:c", "sub:song:b", "sub:song:a"], "the page read another list: \(page)")
+        let bookPage = await later.historyOffMain(.book).map(\.id)
+        #expect(bookPage == ["book-1"])
+        later.noteHeard(id: "sub:song:d", family: .music, title: "D", subtitle: "", at: 1_700_001_000_000)
+        #expect(songs(later) == ["sub:song:d", "sub:song:c", "sub:song:b", "sub:song:a"],
+                "the store read again over its rows or lost them: \(songs(later))")
     }
 
     @Test("fertig zurueckgenommen nimmt das Buch von der Seite, ein neueres Hoeren bringt es zurueck, ein aelteres nicht")

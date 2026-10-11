@@ -101,13 +101,27 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     /// Rows that are there but do not decode leave the base unknown, and
     /// the store gets what did decode.
     func startNow() -> Rows? {
-        do {
-            let reader = try database.readerNow()
-            let load = try reader.map { try KeyedRowStore<Value>.loadNow(table: table, reader: $0) }
-                ?? KeyedRowStore<Value>.Load(rows: [:], skipped: 0)
+        started(with: Result { try Self.readNow(database: database, table: table) })
+    }
+
+    /// The start read alone, without the main actor: a store that may not
+    /// read on the main thread runs it on a background task and hands the
+    /// result to `started(with:)`.
+    nonisolated static func readNow(database: MaerDatabase,
+                                    table: KeyedRowStore<Value>.Table) throws -> KeyedRowStore<Value>.Load {
+        let reader = try database.readerNow()
+        return try reader.map { try KeyedRowStore<Value>.loadNow(table: table, reader: $0) }
+            ?? KeyedRowStore<Value>.Load(rows: [:], skipped: 0)
+    }
+
+    /// A start read taken: the chain learns its base, the store gets the
+    /// rows (nil when the table holds nothing or the read failed).
+    func started(with read: Result<KeyedRowStore<Value>.Load, Error>) -> Rows? {
+        switch read {
+        case .success(let load):
             chain.started(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
             return load.rows.isEmpty ? nil : load.rows
-        } catch {
+        case .failure(let error):
             chain.startReadFailedAsAWhole(reason: String(describing: error))
             return nil
         }

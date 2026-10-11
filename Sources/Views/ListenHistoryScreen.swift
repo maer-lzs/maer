@@ -6,13 +6,13 @@
 import SwiftUI
 
 /// The listening history of one family (books in the books tab, songs in
-/// the music tab), newest first, in the row of the episode history. No
-/// limit and no button: the rows come in steps (`ListenHistory.pageStep`),
-/// the next step once the end of the list appears, with a short spinner.
+/// the music tab), newest first, in the row of the episode history. One
+/// continuous list, no limit, no button, no loading steps: the rows are
+/// read and sorted off the main thread (`ListenHistory.historyOffMain`)
+/// and the list draws only the rows on screen.
 struct ListenHistoryScreen: View {
     let family: ListenHistory.Family
     @State private var entries: [ListenHistory.Entry] = []
-    @State private var shown = ListenHistory.pageStep
     @State private var loaded = false
 
     var body: some View {
@@ -27,26 +27,18 @@ struct ListenHistoryScreen: View {
                     }
                 }
             } else {
-                List {
-                    ForEach(entries.prefix(shown), id: \.id) { entry in
-                        HistoryRow(title: entry.title, subtitle: entry.subtitle, date: ListenHistory.shownDate(entry))
-                    }
-                    if shown < entries.count {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .onAppear { shown = ListenHistory.shownAfterEnd(shown, of: entries.count) }
-                    }
+                List(entries, id: \.id) { entry in
+                    HistoryRow(title: entry.title, subtitle: entry.subtitle, date: ListenHistory.shownDate(entry))
                 }
                 .listStyle(.plain)
             }
         }
         .navigationTitle(Text("Listening History"))
         .navigationBarTitleDisplayMode(.large)
-        // Read and sorted once per opening, on the main actor: the steps
-        // only show more of this one sorted list, they never sort again.
-        .onAppear {
+        // Read and sorted once per opening, off the main thread.
+        .task {
             guard !loaded else { return }
-            entries = ListenHistory.shared.history(family)
+            entries = await ListenHistory.shared.historyOffMain(family)
             loaded = true
         }
     }

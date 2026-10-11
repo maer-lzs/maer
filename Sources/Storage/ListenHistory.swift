@@ -99,19 +99,8 @@ final class ListenHistory {
         return (true, song)
     }
 
-    /// The page shows its rows in steps: opening it read and sorted 20,000
-    /// entries in about 110 ms (measured on the simulator, debug build), so
-    /// it draws the first step and the next one once the end appears.
-    nonisolated static let pageStep = 200
-
     /// The glyph of the tile that opens the history, in both tabs.
     nonisolated static let systemImage = "clock.arrow.circlepath"
-
-    /// How many rows the page shows once its last shown row appeared: one
-    /// step more, at most all.
-    nonisolated static func shownAfterEnd(_ shown: Int, of total: Int) -> Int {
-        min(total, shown + pageStep)
-    }
 
     /// The moment a row shows, or nil when it cannot be true (before 2000).
     nonisolated static func shownDate(_ entry: Entry) -> Date? {
@@ -282,6 +271,34 @@ final class ListenHistory {
     func history(_ family: Family) -> [Entry] {
         loadIfNeeded()
         return Self.historyList(entries, family: family)
+    }
+
+    /// The page of one family for the screen: the rows read and the list
+    /// sorted on background tasks, never on the main thread (20,000
+    /// entries took about 110 ms there, measured on the simulator, debug
+    /// build). Only taking the read rows touches the main actor; a start
+    /// that came first in the meantime (a hearing while the read ran) keeps
+    /// its rows, and the page sorts what the store holds.
+    func historyOffMain(_ family: Family) async -> [Entry] {
+        if !loaded {
+            let started = Date()
+            let database = self.database
+            // detached because the start read is file work off the MainActor
+            let read = await Task.detached(priority: .userInitiated) {
+                Result { try RowKeeper<Entry>.readNow(database: database, table: .listenHistory) }
+            }.value
+            if !loaded {
+                loaded = true
+                if let rows = keeper.started(with: read) {
+                    entries = rows
+                    let ms = Int(Date().timeIntervalSince(started) * 1000)
+                    Logger.library.notice("HISTORY start off the main thread: entries=\(rows.count) ms=\(ms)")
+                }
+            }
+        }
+        let snapshot = entries
+        // detached because sorting the history is CPU work off the MainActor
+        return await Task.detached(priority: .userInitiated) { Self.historyList(snapshot, family: family) }.value
     }
 
     // MARK: - Persistence
