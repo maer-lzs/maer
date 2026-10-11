@@ -40,6 +40,50 @@ struct ListenHistoryRuleTests {
         #expect(other.enter, "the next song did not count after the one before")
     }
 
+    /// Which page a playing title belongs to: books of the books tab and
+    /// titles on the books shelf (Booksonic) as books; server music and the
+    /// music of the open catalogs song by song; podcasts and radio nowhere.
+    @Test("Buch, Buch auf dem Buch-Regal (Booksonic), Server-Musik und Katalog-Musik gehen je auf ihre Seite; Podcast und Radio nirgends")
+    func eachTitleGoesToItsPage() {
+        let archive = FreeCatalog.archivePrefix + "release"
+        let cases: [(String, ProgressMark.StartedForm?, Bool, ListenHistory.Family?)] = [
+            ("abs-book-1", nil, false, .book),
+            ("local:file", nil, false, .book),
+            (FreeCatalog.librivoxPrefix + "1", nil, false, .book),
+            ("sub:album:a", nil, true, .book),
+            ("sub:album:a", nil, false, .music),
+            ("jf:song:s", nil, false, .music),
+            (archive, .album, false, .music),
+            (archive, nil, false, .book),
+            (CatalogSongID.make(album: archive, index: 2), nil, false, .music),
+            (FreeCatalog.jamendoPrefix + "1", nil, false, .music),
+            ("rss:feed:ep", nil, false, nil),
+            ("radio:rb:x", nil, false, nil),
+        ]
+        for (id, form, shelf, expected) in cases {
+            let family = ListenHistory.family(of: id, markedForm: form, onBookShelf: shelf)
+            #expect(family == expected, "\(id) form \(String(describing: form)) shelf \(shelf) goes to \(String(describing: family))")
+        }
+        #expect(ListenHistory.catalogSongId(itemId: archive, trackIndex: 2, trackCount: 5) == CatalogSongID.make(album: archive, index: 2))
+        let song = CatalogSongID.make(album: archive, index: 4)
+        #expect(ListenHistory.catalogSongId(itemId: song, trackIndex: 0, trackCount: 1) == song, "a song address took another")
+        let single = FreeCatalog.jamendoPrefix + "7"
+        #expect(ListenHistory.catalogSongId(itemId: single, trackIndex: 0, trackCount: 1) == single, "a one-track title took an index")
+    }
+
+    /// The player asks the one rule with the books shelf, and a catalog song
+    /// takes its row id from the one rule.
+    @Test("der Player fragt die eine Regel mit dem Buch-Regal, ein Katalog-Lied nimmt seine Kennung aus der Regel", .needsTheSources)
+    func thePlayerAsksTheRule() throws {
+        let player = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)))
+        #expect(player.contains("ListenHistory.family(of:id,") && player.contains("onBookShelf:AppSession.shared.libraryViewModel.entry(id:id)!=nil"),
+                "the player decides the page beside the rule or without the books shelf")
+        #expect(player.contains("ListenHistory.catalogSongId(itemId:id,"), "a catalog song takes another row id")
+        #expect(player.components(separatedBy: "MediaFamily.booksTabMember(").count == 1,
+                "the player asks the books tab beside the rule")
+    }
+
     @Test("die Seite zeigt je Familie die gehoerten Eintraege, neueste zuerst, ohne zurueckgenommene")
     func thePageList() {
         typealias E = ListenHistory.Entry

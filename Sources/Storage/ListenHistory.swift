@@ -78,6 +78,27 @@ final class ListenHistory {
 
     // MARK: - The rules (pure)
 
+    /// Which page a playing title belongs to, nil for none (a podcast, a
+    /// radio station). A book of the books tab, or a title the books shelf
+    /// holds (a Booksonic album there is a book, not songs), counts when it
+    /// is finished; server music and music of the open catalogs (archive
+    /// albums and tracks, Jamendo) count song by song.
+    nonisolated static func family(of id: String, markedForm: ProgressMark.StartedForm?,
+                                   onBookShelf: Bool) -> Family? {
+        if MediaFamily.booksTabMember(id, markedForm: markedForm) || onBookShelf { return .book }
+        if MusicSourceRule.isServerMusic(id) { return .music }
+        if MediaFamily.of(id) == .catalog, MediaFamily.isMusicByForm(id, markedForm: markedForm) { return .music }
+        return nil
+    }
+
+    /// The row id of a catalog song: a track of a release takes its song
+    /// address, a title that is one song (a song address already, or a
+    /// release of one track) keeps its id.
+    nonisolated static func catalogSongId(itemId: String, trackIndex: Int, trackCount: Int) -> String {
+        guard !CatalogSongID.isSong(itemId), trackCount > 1 else { return itemId }
+        return CatalogSongID.make(album: itemId, index: trackIndex)
+    }
+
     /// The seconds after which a song counts as heard: half of it, at most
     /// four minutes. A song without a known length never counts.
     nonisolated static func songThreshold(duration: Double) -> Double? {

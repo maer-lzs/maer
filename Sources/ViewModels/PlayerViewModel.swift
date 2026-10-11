@@ -638,24 +638,47 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// (item and song id), so one hearing writes once.
     private var historyNotedSong: String?
 
-    /// The listening history at the five second tick: a book whose
-    /// position crossed into played, a server song past half of it or four
-    /// minutes (`ListenHistory.songHeard`).
+    /// The listening history at the five second tick, by the family of the
+    /// title (`ListenHistory.family`): a book, or a title the books shelf
+    /// holds, whose position crossed into played; a song of a music server
+    /// or of an open catalog past half of it or four minutes
+    /// (`ListenHistory.songHeard`).
     private func noteListeningHistory(id: String, phaseBefore: ProgressMark.PlayState.Phase,
                                       phaseAfter: ProgressMark.PlayState.Phase) {
         let history = ListenHistory.shared
-        if phaseAfter == .played, phaseBefore != .played,
-           MediaFamily.booksTabMember(id, markedForm: ListeningStore.backup(id).flatMap(ProgressMark.markedForm)) {
+        let family = ListenHistory.family(of: id, markedForm: ListeningStore.backup(id).flatMap(ProgressMark.markedForm),
+                                          onBookShelf: AppSession.shared.libraryViewModel.entry(id: id) != nil)
+        switch family {
+        case .book:
+            guard phaseAfter == .played, phaseBefore != .played else { return }
             history.noteHeard(id: id, family: .book, title: item?.media.metadata?.title ?? "",
                               subtitle: item?.media.metadata?.authorName ?? "")
+        case .music:
+            guard let song = historySong(id: id) else { return }
+            let step = ListenHistory.songHeard(song: song.key, position: currentTime - song.start,
+                                               duration: song.duration, noted: historyNotedSong)
+            historyNotedSong = step.noted
+            guard step.enter else { return }
+            history.noteHeard(id: song.rowId, family: .music, title: song.title, subtitle: song.artist)
+        case nil:
+            return
         }
-        guard let song = currentMusicSong else { return }
-        let step = ListenHistory.songHeard(song: "\(song.itemId)#\(song.id)", position: currentTime - song.start,
-                                           duration: song.duration, noted: historyNotedSong)
-        historyNotedSong = step.noted
-        guard step.enter else { return }
-        history.noteHeard(id: AppSession.shared.musicProvider(for: song.itemId).itemId(songId: song.id),
-                          family: .music, title: song.title ?? "", subtitle: song.artist ?? "")
+    }
+
+    /// The song playing now as the history counts it: its key for one
+    /// hearing, its start within the item, its length, and the id its row
+    /// keeps (the server's song id, or the catalog song address).
+    private func historySong(id: String) -> (key: String, start: Double, duration: Double, rowId: String,
+                                             title: String, artist: String)? {
+        if let song = currentMusicSong {
+            return ("\(song.itemId)#\(song.id)", song.start, song.duration,
+                    AppSession.shared.musicProvider(for: song.itemId).itemId(songId: song.id),
+                    song.title ?? "", song.artist ?? "")
+        }
+        guard tracks.indices.contains(currentTrackIndex) else { return nil }
+        let rowId = ListenHistory.catalogSongId(itemId: id, trackIndex: currentTrackIndex, trackCount: tracks.count)
+        return (rowId, trackAbsoluteStart(currentTrackIndex), tracks[currentTrackIndex].duration ?? 0, rowId,
+                currentChapter?.title ?? item?.media.metadata?.title ?? "", item?.media.metadata?.authorName ?? "")
     }
 
     private func trackAbsoluteStart(_ index: Int) -> Double {
