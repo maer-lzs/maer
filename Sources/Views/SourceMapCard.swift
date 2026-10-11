@@ -17,6 +17,7 @@ import SwiftUI
 /// login form; in the settings it leads to the full source page.
 struct SourceMapCard: View {
     let facts: SourceMapFacts
+    @Environment(\.dynamicTypeSize) private var typeSize
     let destination: (SourceMapArea) -> AnyView
 
     var body: some View {
@@ -31,7 +32,8 @@ struct SourceMapCard: View {
                         Spacer()
                         // The tick is measured, not remembered: a server
                         // of the user's own answers for the area.
-                        if Self.isConnected(area, facts: facts) {
+                        if Self.showsTick(connected: Self.isConnected(area, facts: facts),
+                                          accessibilitySize: typeSize.isAccessibilitySize) {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.secondary)
                                 .accessibilityLabel(Text("Connected"))
@@ -51,11 +53,11 @@ struct SourceMapCard: View {
             NavigationLink {
                 MaerSyncSettingsView()
             } label: {
-                let line = SourceMapSyncLine.of(facts.syncStanding, host: facts.syncHost)
+                let line = SourceMapSyncLine.of(facts.syncStanding, host: facts.syncHost.map(Self.breakableHost))
                 HStack {
                     SourceMapRowLabel(title: "Mär Sync", symbol: "server.rack", line: Text(line.text))
                     Spacer()
-                    if line.connected {
+                    if Self.showsTick(connected: line.connected, accessibilitySize: typeSize.isAccessibilitySize) {
                         Image(systemName: "checkmark")
                             .foregroundStyle(.secondary)
                             .accessibilityLabel(Text("Connected"))
@@ -87,14 +89,28 @@ struct SourceMapCard: View {
         }
     }
 
+    /// A host that may break after each dot. Without a break chance a long
+    /// host is hyphenated at a large text size, and "example.in-valid" reads
+    /// as another address.
+    nonisolated static func breakableHost(_ host: String) -> String {
+        host.replacingOccurrences(of: ".", with: ".\u{200B}")
+    }
+
+    /// The tick beside a connected row, left out at an accessibility size:
+    /// the line already says "Connected", and the tick's width split the
+    /// title and the host into hyphenated pieces.
+    nonisolated static func showsTick(connected: Bool, accessibilitySize: Bool) -> Bool {
+        connected && !accessibilitySize
+    }
+
     /// The one line per area: what it needs, or what answers for it. An area
     /// without a server says what it would need.
     static func stateLine(_ area: SourceMapArea, facts: SourceMapFacts) -> Text {
         switch facts.state(of: area) {
         case .connected(let host):
-            return Text("Connected to \(host)")
+            return Text("Connected to \(breakableHost(host))")
         case .readySynced(let host):
-            return Text("No account needed · synced with \(host)")
+            return Text("No account needed · synced with \(breakableHost(host))")
         case .needsServer:
             return area == .audiobooks
                 ? Text("Needs an Audiobookshelf server")

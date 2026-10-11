@@ -21,20 +21,23 @@ struct HistoryRow: View {
                 .font(.body.weight(.medium))
                 .foregroundStyle(title.isEmpty ? .secondary : .primary)
                 .lineLimit(2)
-            HStack(spacing: 4) {
-                if !subtitle.isEmpty {
-                    Text(subtitle).lineLimit(1)
-                }
-                if !subtitle.isEmpty, date != nil {
-                    Text(verbatim: "·")
-                }
-                if let date {
-                    Text(date.formatted(.relative(presentation: .named)))
-                }
+            let second = Self.secondLine(subtitle: subtitle,
+                                         when: date?.formatted(.relative(presentation: .named)))
+            if !second.isEmpty {
+                // One text, so at a large size it wraps as one line instead
+                // of standing as two columns side by side.
+                Text(verbatim: second)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+    }
+
+    /// The second line: who, then how long ago, joined by a dot; either
+    /// alone when the other is missing, empty when both are.
+    nonisolated static func secondLine(subtitle: String, when: String?) -> String {
+        [subtitle, when ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

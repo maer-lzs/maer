@@ -114,5 +114,15 @@ struct CategoryDeckTests {
         #expect(search.contains("CategoryTile(title: String(localized: \"Audiobooks\")"))
         #expect(search.contains(".accessibilityLabel(Text(\"Audiobooks and Radio Plays\"))"))
     }
+
+    /// Every tile of a deck in the same size: a long title takes a second
+    /// line instead of shrinking (seen at the standard size: "Listening
+    /// History" stood smaller than its neighbours).
+    @Test("eine Kachel mit langem Titel nimmt eine zweite Zeile, statt kleiner zu werden", .needsTheSources)
+    func aLongTitleWrapsInsteadOfShrinking() throws {
+        let tile = SyncContractFenceTests.stripped(try sourceText("Sources/Views/CategoryTile.swift"))
+        #expect(!tile.contains("minimumScaleFactor"), "a tile title shrinks again")
+        #expect(tile.contains(".lineLimit(2)"), "a long tile title is cut instead of wrapping")
+    }
 }
 #endif

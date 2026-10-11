@@ -86,7 +86,18 @@ struct ListenHistoryHealTests {
         let shared = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HistoryRow.swift"), encoding: .utf8))
         #expect(shared.contains("String(localized: \"Title unknown\")"))
-        #expect(shared.contains("if !subtitle.isEmpty {"))
+        #expect(shared.contains("Self.secondLine(subtitle: subtitle"), "the second line is built beside the one rule")
+        #expect(!shared.contains("HStack"), "the second line stands as columns again")
+    }
+
+    /// The second line is one text: who, then how long ago. At a large size
+    /// it wraps as one line instead of two columns side by side.
+    @Test("die zweite Zeile ist ein Text: wer, dann wie lange her; fehlt eins, steht das andere allein")
+    func theSecondLineIsOneText() {
+        #expect(HistoryRow.secondLine(subtitle: "Seed Artist", when: "11 minutes ago") == "Seed Artist · 11 minutes ago")
+        #expect(HistoryRow.secondLine(subtitle: "", when: "last month") == "last month")
+        #expect(HistoryRow.secondLine(subtitle: "Ada Author", when: nil) == "Ada Author")
+        #expect(HistoryRow.secondLine(subtitle: "", when: nil) == "")
     }
 }
 #endif

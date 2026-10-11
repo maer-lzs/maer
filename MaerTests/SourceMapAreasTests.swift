@@ -90,6 +90,22 @@ struct SourceMapAreasTests {
     /// The tick means "available", not "has a server": radio, the free
     /// catalogs and podcasts without a sync server are ready the moment
     /// the app starts. Only an area that still needs a server stays empty.
+    /// At an accessibility size the card had no room: the tick took width,
+    /// and "example.invalid" broke as "example.in-valid". The host may break
+    /// after a dot, and the tick stays out where the line says it.
+    @Test("ein Host bricht nach einem Punkt statt mit Trennstrich, und bei Bedienhilfe-Groessen steht kein Haken")
+    func theHostBreaksAtADot() throws {
+        #expect(SourceMapCard.breakableHost("example.invalid") == "example.\u{200B}invalid")
+        #expect(SourceMapCard.breakableHost("abs.home.example.net") == "abs.\u{200B}home.\u{200B}example.\u{200B}net")
+        #expect(SourceMapCard.showsTick(connected: true, accessibilitySize: false))
+        #expect(!SourceMapCard.showsTick(connected: true, accessibilitySize: true))
+        #expect(!SourceMapCard.showsTick(connected: false, accessibilitySize: false))
+        let card = SyncContractFenceTests.stripped(try sourceText("Sources/Views/SourceMapCard.swift"))
+        #expect(card.components(separatedBy: "breakableHost(host)").count - 1 == 2, "an area line names its host unbroken")
+        #expect(card.contains("host: facts.syncHost.map(Self.breakableHost)"), "the sync line names its host unbroken")
+        #expect(card.components(separatedBy: "Self.showsTick(connected:").count - 1 == 2, "a row draws its tick past the rule")
+    }
+
     @Test("Bereit ist abgehakt; nur ein Bereich, der einen Server braucht, bleibt ohne Haken")
     func readyAreasAreTicked() {
         let none = SourceMapFacts()

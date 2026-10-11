@@ -34,12 +34,13 @@ struct CategoryTile: View {
                     .font(.body)
                     .foregroundStyle(AppTheme.accent)
                     .frame(width: glyphWidth)
-                // One line on every width: a long title shrinks a little
-                // before it is cut ("Nachrichten" on a 393 pt phone).
+                // Every tile in the same size: a title too long for its
+                // width takes a second line instead of shrinking, which
+                // made one tile of a deck smaller than its neighbours
+                // ("Listening History" in a half-width tile).
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .lineLimit(2)
                 Spacer(minLength: 6)
                 if let count {
                     Text("\(count)")
