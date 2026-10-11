@@ -32,8 +32,41 @@ struct UserEdgeErrorTests {
         #expect(before.components(separatedBy: "takeOver(item.id").count == 2
                 && before[shortcut.upperBound...].contains("takeOver(item.id"),
                 "a take over stands before the refusal outside the shortcut")
-        let after = coordinator[refusal.upperBound...].prefix(900)
-        #expect(after.contains("takeOver(item.id, preservesContext: preservesContext)"), "an open that goes on does not take the lists over")
+        // After the shortcut the lists are taken over at ONE point: in
+        // `start`, behind the check that the open is still the current one.
+        #expect(coordinator.components(separatedBy: "takeOver(item.id").count == 3, "a take over stands outside the shortcut and the start")
+        let start = try #require(coordinator.range(of: "private func start(detail:"), "the start is gone")
+        let body = coordinator[start.upperBound...].prefix(2500)
+        let guardLine = try #require(body.range(of: "guard generation == openGeneration else { newViewModel.stop(); return }"))
+        let take = try #require(body.range(of: "takeOver(item.id, preservesContext: preservesContext)"), "the start does not take the lists over")
+        #expect(guardLine.upperBound <= take.lowerBound, "the start takes the lists over before it knows the open stands")
+    }
+
+    /// The real open, online, of a title whose detail cannot be fetched and
+    /// that has no stored detail: it ends in the sentence, and the context
+    /// and Up Next stand as they were. The late refusal, after the offline
+    /// check, used to empty the context and take the title out of Up Next.
+    @MainActor
+    @Test("ein Oeffnen, dessen Detail nicht kommt, laesst Kontext und Up Next stehen")
+    func aFailedFetchLeavesTheLists() async {
+        let id = "jf:album:w4010-\(UUID().uuidString)"
+        let other = "jf:album:w4010-other-\(UUID().uuidString)"
+        let context = PlaybackContext.shared
+        let before = (ids: context.ids, title: context.sourceTitle)
+        defer {
+            context.replace(ids: before.ids, source: before.title)
+            PlayQueue.shared.remove(id)
+        }
+        context.replace(ids: [other, id], source: "witness")
+        PlayQueue.shared.playLast(id)
+        let coordinator = PlayerCoordinator(provider: MockProvider())
+        let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+        await Reachability.$assumed.withValue(true) {
+            await coordinator.open(item: LibraryItem(id: id, media: media, addedAt: nil))
+        }
+        #expect(coordinator.viewModel == nil && coordinator.loadError != nil, "the precondition: the open failed at the fetch")
+        #expect(PlayQueue.shared.contains(id), "a failed open took the title out of Up Next")
+        #expect(context.ids == [other, id], "a failed open changed the context: \(context.ids)")
     }
 
     /// The silent spots of the order: each now has its line, and the visible

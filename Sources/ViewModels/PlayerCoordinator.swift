@@ -405,9 +405,9 @@ final class PlayerCoordinator: ObservableObject {
                        reason: "offlineNotDownloaded", item: item, origin: origin, cause: .network)
             return
         }
-        // Only a tap that is not turned away takes the lists over: a refused
-        // one used to empty the context and take the title out of Up Next.
-        takeOver(item.id, preservesContext: preservesContext)
+        // The lists are taken over only where the open stands (`start`): a
+        // tap turned away here, a detail that cannot be fetched or an open
+        // overtaken by a newer one leaves the context and Up Next as they were.
 
         // Capture a running fixed-minutes sleep timer BEFORE tearing down the
         // old session, so it can continue on the next title.
@@ -458,7 +458,7 @@ final class PlayerCoordinator: ObservableObject {
             guard generation == openGeneration else { return }
             await start(detail: detail, item: item, provider: itemProvider,
                         offlineFallback: true, autoplay: autoplay, restart: restart,
-                        carriedSleep: carriedSleep, generation: generation)
+                        carriedSleep: carriedSleep, preservesContext: preservesContext, generation: generation)
             // The server side follows AFTERWARDS and corrects the position
             // through the existing server-wins/echo-guard mechanics. It must
             // never hard-jump a RUNNING playback (that rule lives in
@@ -470,7 +470,7 @@ final class PlayerCoordinator: ObservableObject {
             guard generation == openGeneration else { return }
             await start(detail: detail, item: item, provider: itemProvider,
                         offlineFallback: false, autoplay: autoplay, restart: restart,
-                        carriedSleep: carriedSleep, generation: generation)
+                        carriedSleep: carriedSleep, preservesContext: preservesContext, generation: generation)
         } catch {
             // The playback start is where liveness is LEARNED, when the
             // detail is fetched fresh; a catalogue detail answered from the
@@ -492,7 +492,7 @@ final class PlayerCoordinator: ObservableObject {
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
                 await start(detail: cached, item: item, provider: itemProvider,
                             offlineFallback: true, autoplay: autoplay, restart: restart,
-                            carriedSleep: carriedSleep, generation: generation)
+                            carriedSleep: carriedSleep, preservesContext: preservesContext, generation: generation)
             } else {
                 openFailed(ErrorSentence.of(error),
                            reason: FailureReason.of(error), item: item, origin: origin,
@@ -532,7 +532,7 @@ final class PlayerCoordinator: ObservableObject {
     private func start(detail: LibraryItemDetail, item: LibraryItem,
                        provider: any AudioProvider, offlineFallback: Bool,
                        autoplay: Bool, restart: Bool,
-                       carriedSleep: TimeInterval?, generation: Int) async {
+                       carriedSleep: TimeInterval?, preservesContext: Bool, generation: Int) async {
         let newViewModel = PlayerViewModel(provider: provider)
         // A finished title has nothing left to resume. Its saved
         // position is the end. A deliberate play (autoplay) therefore restarts
@@ -547,6 +547,9 @@ final class PlayerCoordinator: ObservableObject {
         await newViewModel.load(item: detail, isOfflineFallback: offlineFallback,
                                 restart: effectiveRestart)
         guard generation == openGeneration else { newViewModel.stop(); return }
+        // The one point where the open stands: only here are the lists
+        // taken over (`takeOver`), never before a refusal or a failed fetch.
+        takeOver(item.id, preservesContext: preservesContext)
         if effectiveRestart { onItemRestarted?(item.id) }   // clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
@@ -637,8 +640,9 @@ final class PlayerCoordinator: ObservableObject {
 
     /// What starting a title does to the lists: a start that brings no
     /// context of its own ends the old one, and whatever you START playing
-    /// leaves both lists (audiobooks, podcasts and music alike). Called once
-    /// the open is sure to go on, never before a rejection.
+    /// leaves both lists (audiobooks, podcasts and music alike). Called where
+    /// the open stands (`start`, and the shortcut for the title already
+    /// open), never before a refusal, a failed fetch or an overtaken open.
     private func takeOver(_ id: String, preservesContext: Bool) {
         if !preservesContext { PlaybackContext.shared.clear() }
         leaveBothLists(id)
