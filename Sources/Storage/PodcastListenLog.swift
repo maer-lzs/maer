@@ -63,15 +63,12 @@ final class PodcastListenLog {
     private let follower: ShelfFollower?
     /// The account signed in now; a witness hands in its own.
     private let identity: () -> String?
-    /// A hand-over that could not happen (rows unread, a rest not laid):
-    /// the account it was for and the owner before it. Tried again before
-    /// every note and at every change of way.
-    private var held: (scope: String, previous: String?)?
-    /// Notes taken while a hand-over is held, kept out of the holder's log
-    /// and written once the log belongs to the account they were heard
-    /// under. In memory only: the log is derived from the stands, so a note
-    /// lost to a kill comes back at the next transition.
-    private var waitingNotes: [@MainActor () -> Void] = []
+    /// A hand-over that could not happen (rows unread, a rest not laid),
+    /// tried again before every note and at every change of way, and the
+    /// notes taken meanwhile, written once the log belongs to the account
+    /// they were heard under. In memory only: the log is derived from the
+    /// stands, so a note lost to a kill comes back at the next transition.
+    private var hold = HandOverHold<@MainActor () -> Void>()
     /// Waiting notes after their hand-over, written in chunks with a yield
     /// between them and one write at the end, like the bulk entry
     /// (`noteReconciled(batched:)`). A next hand-over writes what is left
@@ -136,14 +133,13 @@ final class PodcastListenLog {
         replayAllNow()
         let handed = handOver(to: scope, previous: previous)
         guard handed else {
-            held = (scope, previous)
+            hold.hold(scope: scope, previous: previous)
             return false
         }
-        held = nil
-        guard !waitingNotes.isEmpty else { return true }
-        Logger.rss.notice("LISTENLOG notes written after the hand-over count=\(self.waitingNotes.count)")
-        replayQueue += waitingNotes
-        waitingNotes = []
+        let waited = hold.handedOver()
+        guard !waited.isEmpty else { return true }
+        Logger.rss.notice("LISTENLOG notes written after the hand-over count=\(waited.count)")
+        replayQueue += waited
         guard replaying == nil else { return true }
         replaying = Task { [weak self] in
             while self?.replayNextChunk() == true { await Task.yield() }
@@ -229,17 +225,16 @@ final class PodcastListenLog {
 
     /// A held hand-over, tried again.
     private func followIfHeld() {
-        guard let held else { return }
-        follow(owner: held.scope, previous: held.previous)
+        guard let target = hold.target else { return }
+        follow(owner: target.scope, previous: target.previous)
     }
 
     /// Whether a note waits for a held hand-over: tried again first; while
     /// it still holds, the note is kept for after it.
     private func waitsForHandOver(_ note: @escaping @MainActor () -> Void) -> Bool {
         followIfHeld()
-        guard held != nil else { return false }
-        waitingNotes.append(note)
-        Logger.rss.notice("LISTENLOG note waits for the hand-over waiting=\(self.waitingNotes.count)")
+        guard hold.keep(note) else { return false }
+        Logger.rss.notice("LISTENLOG note waits for the hand-over waiting=\(self.hold.waiting.count)")
         return true
     }
 

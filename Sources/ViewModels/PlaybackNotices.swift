@@ -32,12 +32,10 @@ final class PlaybackNotices: ObservableObject {
     /// The account signed in now; a witness hands in its own.
     private let identity: () -> String?
     /// A hand-over that could not happen (the document lies unread, the
-    /// shelf did not take the rest): the account it was for and the owner
-    /// before it, tried again before every line and at every change of way.
-    private var held: (scope: String, previous: String?)?
-    /// Lines said while a hand-over is held: kept out of the holder's log
-    /// and added once the log belongs to the account they were said under.
-    private var waitingLines: [NoticeLogEntry] = []
+    /// shelf did not take the rest), tried again before every line and at
+    /// every change of way, and the lines said meanwhile, added once the
+    /// log belongs to the account they were said under.
+    private var hold = HandOverHold<NoticeLogEntry>()
     /// The document stands but could not be read (its rights, its
     /// protection before the first unlock). No save is tried over it: for
     /// missing rights the seam's replace refuses anyway, so the stop spares
@@ -105,20 +103,19 @@ final class PlaybackNotices: ObservableObject {
             current: { log },
             replace: { rest, _, name in replace(with: rest, replacement: name) })
         guard let step, step != .unread else {
-            held = (scope, previous)
+            hold.hold(scope: scope, previous: previous)
             Logger.player.notice("NOTICES owner held unread=\(self.unread), tried again before the next line")
             return false
         }
-        held = nil
+        let waited = hold.handedOver()
         switch step {
         case .kept, .unread: break
         case .first: Logger.player.notice("NOTICES owner first lines=\(before)")
         case .moved: Logger.player.notice("NOTICES owner moved rested=\(before) lines=\(self.log.count)")
         }
-        if !waitingLines.isEmpty {
-            Logger.player.notice("NOTICES lines added after the hand-over count=\(self.waitingLines.count)")
-            log = NoticeLogEntry.trimmed(log + waitingLines, now: now().timeIntervalSince1970)
-            waitingLines = []
+        if !waited.isEmpty {
+            Logger.player.notice("NOTICES lines added after the hand-over count=\(waited.count)")
+            log = NoticeLogEntry.trimmed(log + waited, now: now().timeIntervalSince1970)
             queueSave(log)
         }
         return true
@@ -140,8 +137,8 @@ final class PlaybackNotices: ObservableObject {
 
     /// A held hand-over, tried again.
     private func followIfHeld() {
-        guard let held else { return }
-        follow(owner: held.scope, previous: held.previous)
+        guard let target = hold.target else { return }
+        follow(owner: target.scope, previous: target.previous)
     }
 
     /// A notice happened. It goes into the log; the rule says whether and
@@ -203,9 +200,8 @@ final class PlaybackNotices: ObservableObject {
         readAgainIfUnread()
         let at = now().timeIntervalSince1970
         let line = NoticeLogEntry(id: UUID(), at: at, kind: notice.kind, label: notice.label, icon: notice.icon, title: title)
-        guard held == nil else {
-            waitingLines.append(line)
-            Logger.player.notice("NOTICES line waits for the hand-over waiting=\(self.waitingLines.count)")
+        guard !hold.keep(line) else {
+            Logger.player.notice("NOTICES line waits for the hand-over waiting=\(self.hold.waiting.count)")
             return
         }
         log = NoticeLogEntry.trimmed(log + [line], now: at)
