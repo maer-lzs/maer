@@ -95,20 +95,20 @@ struct SourceLibrariesTests {
     }
 
     /// An unreadable stored list is not silently "none": its bytes rest
-    /// under `.corrupt`, it reads as not fetched yet, and only once.
+    /// under `CorruptStore.asideKey`, it reads as not fetched yet, and only once.
     @Test("eine unlesbare Bibliotheksliste wird beiseitegelegt und liest sich als noch nicht geholt")
     func anUnreadableListIsKeptAside() {
         let key = AppStorageKeys.subsonicLibraries
         let defaults = UserDefaults.standard
-        let was = defaults.object(forKey: key), aside = defaults.object(forKey: key + ".corrupt")
+        let was = defaults.object(forKey: key), aside = defaults.object(forKey: CorruptStore.asideKey(key))
         defer {
             if let was { defaults.set(was, forKey: key) } else { defaults.removeObject(forKey: key) }
-            if let aside { defaults.set(aside, forKey: key + ".corrupt") } else { defaults.removeObject(forKey: key + ".corrupt") }
+            if let aside { defaults.set(aside, forKey: CorruptStore.asideKey(key)) } else { defaults.removeObject(forKey: CorruptStore.asideKey(key)) }
         }
         let broken = Data("not a list".utf8)
         defaults.set(broken, forKey: key)
         #expect(AppStorageKeys.subsonicKnownLibraries.isEmpty)
-        #expect(defaults.data(forKey: key + ".corrupt") == broken, "the unreadable list was not kept aside")
+        #expect(defaults.data(forKey: CorruptStore.asideKey(key)) == broken, "the unreadable list was not kept aside")
         #expect(defaults.data(forKey: key) == nil, "the key stayed, so every read sets aside and logs again")
         #expect(AppStorageKeys.subsonicKnownLibraries.isEmpty)
         // A list the server answers later is read as written.

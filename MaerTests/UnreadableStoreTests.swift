@@ -9,7 +9,7 @@ import Foundation
 @testable import Maer
 
 /// A store that stands and does not decode is read as none; the next write
-/// sets it aside under `.corrupt` and writes the new state: favorites, own
+/// sets it aside under `CorruptStore.asideKey` and writes the new state: favorites, own
 /// stations, the last heard, the play counts and the known servers take the
 /// write, and the unreadable value stays recoverable.
 struct UnreadableStoreTests {
@@ -29,7 +29,7 @@ struct UnreadableStoreTests {
     func theWriteRule() throws {
         let defaults = try fresh()
         let key = "probe"
-        let aside = key + ".corrupt"
+        let aside = CorruptStore.asideKey(key)
         CorruptStore.setAsideUnreadable([String].self, defaultsKey: key, defaults: defaults, label: "test")
         #expect(defaults.object(forKey: aside) == nil, "an empty key set something aside")
         defaults.set(try JSONEncoder().encode(["a"]), forKey: key)
@@ -45,6 +45,37 @@ struct UnreadableStoreTests {
         #expect(later == 42, "a later unreadable value did not replace the aside copy (the last failure is kept)")
     }
 
+    /// The aside copy must never travel: the sync takes a key by family
+    /// prefix (`hasPrefix`), and a store key one letter short of a family
+    /// (`radioFavorites`, `recentSearches`, `knownServers`) with `.corrupt`
+    /// behind it stood one letter away. The hardest key is the family stem
+    /// itself; its aside copy begins no family either.
+    @Test("kein Beiseite-Schluessel faellt in eine reisende Familie, auch nicht der des Familienstamms; keine Familie und kein reisender Wert beginnt mit dem Beiseite-Praefix")
+    func noAsideKeyTravels() {
+        let families = UserChoiceCatalog.travelingPrefixes + UserChoiceCatalog.familyPrefixes
+        let asidePrefix = CorruptStore.asideKey("")
+        for family in families {
+            for key in [String(family.dropLast()), family + "probe"] {
+                let aside = CorruptStore.asideKey(key)
+                let travels = families.filter { aside.hasPrefix($0) }
+                #expect(travels.isEmpty, "the aside key \(aside) falls into \(travels)")
+            }
+            #expect(!family.hasPrefix(asidePrefix), "the family \(family) begins with the aside prefix")
+        }
+        let scalars = UserChoiceCatalog.travelingScalars.filter { $0.hasPrefix(asidePrefix) }
+        #expect(scalars.isEmpty, "a traveling value begins with the aside prefix: \(scalars)")
+    }
+
+    @Test("ein Beiseite-Schluessel entsteht nur in CorruptStore", .needsTheSources)
+    func onlyTheStoreNamesAsideKeys() throws {
+        var builders: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "CorruptStore.swift" {
+            let code = SyncContractFenceTests.stripped(text)
+            if code.contains("\".corrupt\"") || code.contains("\"corrupt.") { builders.append(name) }
+        }
+        #expect(builders.isEmpty, "a file builds an aside key past CorruptStore.asideKey: \(builders)")
+    }
+
     @Test("unlesbare Radio-Listen und Zaehler liegen beiseite, der neue Sender steht", .needsTheSources)
     func radioListsAreSetAside() throws {
         let defaults = try fresh()
@@ -56,7 +87,7 @@ struct UnreadableStoreTests {
         RadioStore.recordRecent(station, defaults: defaults)
         RadioStore.recordPlay(station, defaults: defaults)
         for key in keys {
-            let aside = defaults.data(forKey: key + ".corrupt")
+            let aside = defaults.data(forKey: CorruptStore.asideKey(key))
             #expect(aside == Self.unreadable, "\(key) was not set aside")
         }
         let favorites = RadioStore.favorites(defaults: defaults).map(\.id)
@@ -67,7 +98,7 @@ struct UnreadableStoreTests {
                 "the new state did not stand")
         // A second write finds a readable list and leaves the aside copy as it is.
         RadioStore.replaceFavorites([], defaults: defaults)
-        let stillAside = defaults.data(forKey: RadioStore.favoritesKey + ".corrupt")
+        let stillAside = defaults.data(forKey: CorruptStore.asideKey(RadioStore.favoritesKey))
         #expect(stillAside == Self.unreadable, "a second write replaced the aside copy")
     }
 
@@ -76,7 +107,7 @@ struct UnreadableStoreTests {
         let defaults = try fresh()
         defaults.set(Self.unreadable, forKey: KnownServers.storeKey)
         KnownServers.remember("https://abs.example", service: .audiobookshelf, defaults: defaults)
-        let aside = defaults.data(forKey: KnownServers.storeKey + ".corrupt")
+        let aside = defaults.data(forKey: CorruptStore.asideKey(KnownServers.storeKey))
         #expect(aside == Self.unreadable, "the server list was not set aside")
         let remembered = KnownServers.all(defaults: defaults).map(\.url)
         #expect(remembered == ["https://abs.example"], "the login did not stand")

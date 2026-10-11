@@ -77,11 +77,11 @@ import Foundation
         defaults.set(Data("nicht mal ansatzweise JSON".utf8), forKey: key)
         defer {
             defaults.removeObject(forKey: key)
-            defaults.removeObject(forKey: key + ".corrupt")
+            defaults.removeObject(forKey: CorruptStore.asideKey(key))
         }
         let outcome = CorruptStore.load([Item].self, defaultsKey: key, label: "test")
         #expect(outcome.blocksEmptySave)
-        #expect(defaults.data(forKey: key + ".corrupt") != nil)
+        #expect(defaults.data(forKey: CorruptStore.asideKey(key)) != nil)
     }
 
     /// The last failure is the interesting one. Two backups nobody can tell

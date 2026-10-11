@@ -69,7 +69,7 @@ nonisolated enum CorruptStore {
     }
 
     /// The same for a store that lives in `UserDefaults` (no file to move.
-    /// The raw data is kept under a sibling key, so it is still recoverable).
+    /// The raw data is kept under `asideKey(key)`, so it is still recoverable).
     static func load<T: Decodable>(_ type: T.Type, defaultsKey key: String,
                                    defaults: UserDefaults = .standard,
                                    label: String,
@@ -78,15 +78,24 @@ nonisolated enum CorruptStore {
         if let decoded = try? JSONDecoder().decode(type, from: data) {
             return .loaded(decoded)
         }
-        defaults.set(data, forKey: key + ".corrupt")
-        log.error("\(label, privacy: .public) undecodable — preserved under .corrupt, NOT overwritten")
+        defaults.set(data, forKey: asideKey(key))
+        log.error("\(label, privacy: .public) undecodable — preserved under \(asideKey(key), privacy: .public), NOT overwritten")
         return .corrupt
     }
 
+    /// The key an unreadable value is kept under. It starts with its own
+    /// prefix, so it can never begin like a family that travels between
+    /// devices (`UserChoiceCatalog.travelingPrefixes` and `familyPrefixes`,
+    /// matched with `hasPrefix`): as a suffix (`<key>.corrupt`) the copy of
+    /// `radioFavorites`, `radioRecents`, `recentSearches` or `knownServers`
+    /// stood one letter away from a family. Fence
+    /// `UnreadableStoreTests.noAsideKeyTravels`.
+    static func asideKey(_ key: String) -> String { "corrupt." + key }
+
     /// The write rule of a store that is read, changed and written back
     /// whole, called before its write: a value under `key` that does not
-    /// decode as `type` (or is no data at all) is first set aside under the
-    /// sibling key `.corrupt`, the same place `load` keeps it, with its
+    /// decode as `type` (or is no data at all) is first set aside under
+    /// `asideKey(key)`, the same place `load` keeps it, with its
     /// line; then the write goes on. Its reader saw nothing there, so the
     /// write would replace the unreadable value for good; set aside, it
     /// stays recoverable, and the person's new state is kept instead of
@@ -98,10 +107,10 @@ nonisolated enum CorruptStore {
                                                  log: Logger = Logger.library) {
         guard let stored = defaults.object(forKey: key) else { return }
         if let data = stored as? Data, (try? JSONDecoder().decode(type, from: data)) != nil { return }
-        let aside = key + ".corrupt"
+        let aside = asideKey(key)
         let replaces = defaults.object(forKey: aside) != nil
         defaults.set(stored, forKey: aside)
-        log.error("\(label, privacy: .public) unreadable, set aside under .corrupt\(replaces ? " (replaces the earlier aside copy)" : "", privacy: .public), the new state is written")
+        log.error("\(label, privacy: .public) unreadable, set aside under \(aside, privacy: .public)\(replaces ? " (replaces the earlier aside copy)" : "", privacy: .public), the new state is written")
     }
 
     /// Move the unreadable file aside, replacing an older backup: the LAST

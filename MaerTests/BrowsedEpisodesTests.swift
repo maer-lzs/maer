@@ -59,7 +59,7 @@ struct BrowsedEpisodesTests {
 
     /// A kept list that stands and does not decode is set aside before the
     /// keep writes: the keep stands, the unreadable list lies under
-    /// `.corrupt`, and the forget after it finds a readable list.
+    /// `CorruptStore.asideKey`, and the forget after it finds a readable list.
     @Test("eine gemerkte Liste, die nicht dekodiert, liegt beiseite; Merken und Vergessen schreiben den neuen Stand")
     func anUnreadableListIsSetAside() {
         let suite = "browsed-\(UUID().uuidString)"
@@ -75,12 +75,12 @@ struct BrowsedEpisodesTests {
         store.keepListened(guid: guid, defaults: defaults)
         let kept = store.listened(guid: guid, defaults: defaults)
         #expect(kept != nil, "the keep did not stand")
-        let aside = defaults.data(forKey: "browsedEpisodesListened.corrupt")
+        let aside = defaults.data(forKey: CorruptStore.asideKey("browsedEpisodesListened"))
         #expect(aside == garbage, "the unreadable list was not set aside")
         store.forgetListened(feedURL: "https://z.example/feed", defaults: defaults)
         let gone = store.listened(guid: guid, defaults: defaults)
         #expect(gone == nil, "the forget did not stand")
-        let stillAside = defaults.data(forKey: "browsedEpisodesListened.corrupt")
+        let stillAside = defaults.data(forKey: CorruptStore.asideKey("browsedEpisodesListened"))
         #expect(stillAside == garbage, "the forget replaced the aside copy")
     }
 }

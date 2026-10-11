@@ -713,8 +713,8 @@ Schreibsperre dient dem Menschen.
 **`CorruptStore.setAsideUnreadable` (11.10.2026, entschieden „b“), die
 Schreibregel der Ablagen, die gelesen, geaendert und ganz zurueckgeschrieben
 werden:** steht unter dem Schluessel ein Wert, der nicht dekodiert (oder einer
-anderer Art), legt der Schrieb ihn zuerst unter dem Geschwister-Schluessel
-`.corrupt` ab (dieselbe Stelle wie `load`), mit Zeile, und schreibt dann den
+anderer Art), legt der Schrieb ihn zuerst unter dem Beiseite-Schluessel
+`asideKey(key)` ab (dieselbe Stelle wie `load`), mit Zeile, und schreibt dann den
 neuen Stand; ein spaeterer unlesbarer Wert ersetzt die Beiseite-Kopie, und
 die Zeile sagt es (die letzte Panne ist die aufschlussreiche, wie bei
 `preserve`). Dieselbe Linie wie `maySave` und die Lesezeichen-Warteschlange:
@@ -723,7 +723,7 @@ Rufer: `RadioStore` (Favoriten, eigene Sender, Zuletzt gehoert, Meistgehoert
 und ihre Zaehler), `KnownServers.write` (die Liste, die auch Eintrag fuer
 Eintrag nicht lesbar ist), `BrowsedEpisodes.writableRecords`. Sichtbar: auf
 einer unlesbaren Favoritenliste steht ein neuer Favorit, die alten liegen
-unsichtbar unter `.corrupt`. (Vom 11.10. bis zum Entscheid sperrte die Regel
+unsichtbar unter `corrupt.radioFavorites`. (Vom 11.10. bis zum Entscheid sperrte die Regel
 den Schrieb, `mayReplace`.) Zaun `UnreadableStoreTests`: jede Stelle in Sources, die einen
 gespeicherten Wert unlesbar als leer liest, ist je Datei gezaehlt (Bestand
 gleich der Zaehlung, je Datei ein Grund), die Speicher einer Person rufen
@@ -731,6 +731,19 @@ die Regel; Zeugen mit gepflanzten unlesbaren Werten. Im selben Paket sagt
 `CorruptStore.preserve`, ob die Datei beiseite liegt, und die Zeile von `load`
 sagt es auch (vorher meldete sie „preserved“ auch nach gescheitertem
 Verschieben).
+
+**Der Beiseite-Schluessel (W-Sammel 4004, 11.10.2026):** `CorruptStore.asideKey(key)`
+ist `corrupt.<key>` und die EINE Stelle, die ihn baut (`load` und
+`setAsideUnreadable`). Vorher stand er als `<key>.corrupt` hinter dem
+Schluessel, und die Kopie von `radioFavorites`, `radioRecents`,
+`recentSearches` und `knownServers` lag einen Buchstaben vor einer Familie,
+die zwischen Geraeten reist (Abgleich mit `hasPrefix`). Alte Kopien unter
+`<key>.corrupt` bleiben auf den Geraeten liegen und werden nicht mehr
+gelesen; keine von ihnen beginnt eine Familie. Zaun
+`UnreadableStoreTests.noAsideKeyTravels` (die Kopie jedes Familienstamms
+und jedes Familienschluessels beginnt keine Familie; keine Familie und kein
+reisender Wert beginnt mit `corrupt.`) und `onlyTheStoreNamesAsideKeys`
+(kein `".corrupt"` und kein `"corrupt.` im Code ausserhalb `CorruptStore`).
 
 **W-Sammel 12a (09.10.2026), eine vorhandene, nicht lesbare Datei ist nie
 `.fresh`:** vorher hiess eine Datei, die da ist und nicht gelesen werden kann
