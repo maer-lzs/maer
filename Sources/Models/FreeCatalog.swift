@@ -287,18 +287,34 @@ nonisolated enum FreeCatalog {
     static func runtimeSeconds(fromFiles files: [(format: String?, length: String?)]) -> Double? {
         var byFormat: [String: Double] = [:]
         for file in files {
-            guard let format = file.format, let raw = file.length,
-                  let seconds = fileLength(raw), seconds > 0 else { continue }
+            guard let format = file.format, let seconds = fileLength(file.length) else { continue }
             byFormat[format, default: 0] += seconds
         }
         return byFormat.values.max()
     }
 
-    /// archive.org writes lengths as plain seconds ("1573.21") or as
-    /// "MM:SS"/"H:MM:SS" depending on the derivative.
-    static func fileLength(_ raw: String) -> Double? {
+    /// The one reader of archive.org's `length` on a file: plain seconds
+    /// with a fraction ("640.61") or "MM:SS"/"H:MM:SS" ("10:40"), depending
+    /// on the derivative (measured on three items). A dot is the fraction of
+    /// the last place, never a separator: "16:31.09" is 991.09 s. The track
+    /// list and the runtime from the files ask here, so a file's length is
+    /// the same on both. Seconds and a middle place above 59 mean the text
+    /// is no duration; nothing above zero is no length either.
+    static func fileLength(_ raw: String?) -> Double? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
         if let plain = Double(raw) { return plain > 0 ? plain : nil }
-        return runtimeSeconds(raw)
+        let parts = raw.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+        guard (2...3).contains(parts.count), let last = Double(parts[parts.count - 1]), last >= 0, last < 60 else {
+            return nil
+        }
+        var total = 0.0
+        for (index, part) in parts.dropLast().enumerated() {
+            guard let value = Int(part), value >= 0 else { return nil }
+            if parts.count == 3, index == 1, value > 59 { return nil }
+            total = total * 60 + Double(value)
+        }
+        total = total * 60 + last
+        return total > 0 ? total : nil
     }
 
     /// LibriVox catalog titles arrive as
@@ -1033,7 +1049,7 @@ nonisolated enum FreeCatalog {
             let encoded = name.split(separator: "/", omittingEmptySubsequences: false)
                 .map { encodedPathSegment(String($0)) }
                 .joined(separator: "/")
-            let duration = seconds(file.length)
+            let duration = fileLength(file.length)
             out.append(ABSAudioTrack(
                 index: out.count, startOffset: start, duration: duration,
                 contentUrl: "https://archive.org/download/\(encodedId)/\(encoded)",

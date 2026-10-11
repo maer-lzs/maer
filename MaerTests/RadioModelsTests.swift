@@ -438,6 +438,29 @@ func radioBrowserCancellationPropagates() async {
 
 
 
+/// A failed discovery run never replaces the rows that stand, nor the
+/// cache they came from, and does not count as loaded.
+struct RadioDiscoveryStepTests {
+    @Test("ein gescheiterter Entdecken-Lauf ersetzt weder die stehende Reihe noch den Zwischenstand und zaehlt nicht als geladen; ohne Reihe sagt er es", .needsTheSources)
+    func aFailedRunKeepsWhatStands() throws {
+        #expect(RadioStore.discoveryStep(failed: false, standing: true) == .replace)
+        #expect(RadioStore.discoveryStep(failed: false, standing: false) == .replace)
+        #expect(RadioStore.discoveryStep(failed: true, standing: true) == .keep, "a failed run replaced the standing rows")
+        #expect(RadioStore.discoveryStep(failed: true, standing: false) == .failed)
+        // The view asks the rule before it writes the cache or the rows,
+        // and the step that keeps returns before both.
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/Views/Radio/RadioView.swift"), encoding: .utf8))
+        let step = try #require(code.range(of: "RadioStore.discoveryStep(failed: topFailed, standing: !popular.isEmpty)"),
+                                "the view does not ask the rule")
+        let save = try #require(code.range(of: "RadioStore.saveDiscovery(popular: topResult"), "the view writes no cache")
+        #expect(step.lowerBound < save.lowerBound, "the cache is written before the rule is asked")
+        let keep = try #require(code.range(of: "case .keep:", range: step.upperBound..<save.lowerBound), "no step keeps")
+        let keepBody = String(code[keep.upperBound..<save.lowerBound]).components(separatedBy: "case .replace:").first ?? ""
+        #expect(keepBody.contains("return"), "the step that keeps goes on to write the cache")
+    }
+}
+
 /// Region rework: the new state endpoints as pure query data.
 struct RadioStateQueryTests {
     @Test("states/byState query shapes")

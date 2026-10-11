@@ -494,6 +494,32 @@ struct FreeCatalogSelectionTests {
         #expect(FreeCatalog.fileLength("nonsense") == nil)
     }
 
+    /// The raw values of archive.org's `length` as measured on three items
+    /// (a LibriVox book, a 78 rpm record): plain seconds with a fraction and
+    /// "MM:SS". A dot is the fraction of the last place, so the track list
+    /// and the runtime of the card read one file the same.
+    @Test("die Laenge einer archive.org-Datei: gemessene Rohwerte, der Punkt ist ein Bruchteil, beide Wege lesen dasselbe", .needsTheSources)
+    func oneReaderOfAFileLength() throws {
+        #expect(FreeCatalog.fileLength("640.61") == 640.61)
+        #expect(FreeCatalog.fileLength("10:40") == 640)
+        #expect(FreeCatalog.fileLength("195.44") == 195.44)
+        #expect(FreeCatalog.fileLength("03:15") == 195)
+        #expect(FreeCatalog.fileLength("1:02:03") == 3723)
+        let dotted = try #require(FreeCatalog.fileLength("16:31.09"))
+        #expect(abs(dotted - 991.09) < 0.001, "a dot read as a separator: \(dotted)")
+        #expect(FreeCatalog.fileLength("0") == nil && FreeCatalog.fileLength(nil) == nil && FreeCatalog.fileLength("") == nil)
+        #expect(FreeCatalog.fileLength("10:75") == nil && FreeCatalog.fileLength("1:75:00") == nil, "a place above 59 is no duration")
+        // The runtime of the whole item keeps its own reading of a typed text.
+        #expect(FreeCatalog.runtimeSeconds("16:31.09") == Double(16 * 3600 + 31 * 60 + 9))
+        let card = FreeCatalog.runtimeSeconds(fromFiles: [(format: "VBR MP3", length: "16:31.09")]) ?? 0
+        #expect(abs(card - 991.09) < 0.001, "the card reads the file length another way: \(card)")
+        // Both ways to a file length go through the one reader.
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/Models/FreeCatalog.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "fileLength(file.length)").count - 1 == 2, "a way to a file length reads it itself")
+        #expect(!code.contains("seconds(file.length)"), "the track list reads the length another way again")
+    }
+
     @Test("b81949f: the shared resolution cache never stores a FAILED lookup")
     func resolutionCacheRule() {
         let suite = "resolution-cache-\(UUID().uuidString)"

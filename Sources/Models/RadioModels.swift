@@ -564,6 +564,25 @@ nonisolated enum RadioStore {
         var day: Int
     }
 
+    /// What a discovery run does with its answer.
+    nonisolated enum DiscoveryStep: Equatable, Sendable {
+        /// The run answered: its rows replace the shown ones and the cache.
+        case replace
+        /// The run failed while rows stand (shown or from the cache): they
+        /// stay, the cache is not written, and the run does not count as
+        /// loaded, so the next try stays free. Stale beats blank.
+        case keep
+        /// The run failed and nothing stands: the section says so with a
+        /// way back in.
+        case failed
+    }
+
+    /// The step of a run, pure: a failed run never replaces what stands.
+    nonisolated static func discoveryStep(failed: Bool, standing: Bool) -> DiscoveryStep {
+        guard failed else { return .replace }
+        return standing ? .keep : .failed
+    }
+
     static func saveDiscovery(popular: [RadioStation], regional: [RadioStation],
                               day: Int, defaults: UserDefaults = .standard) {
         let cache = DiscoveryCache(popular: popular, regional: regional, day: day)

@@ -640,12 +640,19 @@ struct RadioView: View {
         async let regionTask = Self.stateStations(chosenState, countryCode: regionEffectiveCode)
         let (topResult, topFailed) = await topTask
         let regionResult = await regionTask
-        // A throw is not an end: the failed run does NOT count as loaded, the
-        // section says so with a way back in, and the next attempt is free.
-        if topFailed, topResult.isEmpty, popular.isEmpty {
+        // A throw is not an end: the failed run does NOT count as loaded and
+        // the next attempt is free. Rows that stand stay, cache included; with
+        // none the section says so with a way back in.
+        switch RadioStore.discoveryStep(failed: topFailed, standing: !popular.isEmpty) {
+        case .failed:
             discoveryFailed = true
-            Logger.library.error("RADIO discovery failed — retry offered, not counted as loaded")
+            Logger.library.error("RADIO discovery failed, retry offered, not counted as loaded")
             return
+        case .keep:
+            Logger.library.error("RADIO discovery failed, the standing rows and the cache stay, not counted as loaded")
+            return
+        case .replace:
+            break
         }
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
         warmLogos(topResult + regionResult)
