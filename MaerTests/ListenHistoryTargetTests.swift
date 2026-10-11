@@ -25,8 +25,13 @@ struct ListenHistoryTargetTests {
         // A book: on the shelf it opens, gone from it says so.
         #expect(T.target(of: entry("li_book1", .book), onShelf: true, sourceConfigured: true) == .book(itemId: "li_book1"))
         #expect(T.target(of: entry("li_book1", .book), onShelf: false, sourceConfigured: true) == .unavailable(.notInLibrary))
-        #expect(T.target(of: entry("lv:123", .book), onShelf: true, sourceConfigured: true) == .book(itemId: "lv:123"),
-                "a catalog book on the shelf is a book")
+        // A catalog book opens its detail page from its id: it never stands
+        // in the shelf's entries, so the shelf is not asked.
+        for id in ["lv:123", "lva:radioplay", "gut:84"] {
+            for onShelf in [true, false] {
+                #expect(T.target(of: entry(id, .book), onShelf: onShelf, sourceConfigured: false) == .catalogBook(itemId: id))
+            }
+        }
         // A catalog song opens its release; a title of one song is its own.
         let track = CatalogSongID.make(album: "lva:release", index: 3)
         #expect(T.target(of: entry(track, .music), onShelf: false, sourceConfigured: false) == .catalogAlbum(itemId: "lva:release"))
@@ -38,6 +43,27 @@ struct ListenHistoryTargetTests {
                 == .unavailable(.sourceNotConfigured(source: "sub:")))
         // Nobody knows the id: a reason, not silence.
         #expect(T.target(of: entry("zzz:1", .music), onShelf: false, sourceConfigured: true) == .unavailable(.unknownSource))
+    }
+
+    /// The opener as the page calls it, with the shelf the app has: a heard
+    /// catalog audiobook opens its detail page (the shelf's entries never
+    /// hold a catalog work), a server book no longer on the shelf says why.
+    @MainActor
+    @Test("am Rufer: ein gehoertes Katalog-Hoerbuch oeffnet seine Seite, ein Server-Buch ausser Regal sagt den Grund")
+    func theOpenerOpensACatalogBook() async {
+        let router = PlayerSourceRouter.shared
+        let before = router.handler
+        defer { router.handler = before }
+        var routed: [String] = []
+        router.handler = { routed.append(String(describing: $0)) }
+        for id in ["lv:history-witness-1", "lva:history-witness-2"] {
+            #expect(AppSession.shared.libraryViewModel.entry(id: id) == nil, "the shelf holds no catalog work")
+            #expect(await ListenHistoryOpen.open(entry(id, .book)) == .opened, "a catalog book row does not open: \(id)")
+        }
+        #expect(routed == ["catalogBook(itemId: \"lv:history-witness-1\")", "catalogBook(itemId: \"lva:history-witness-2\")"])
+        routed = []
+        #expect(await ListenHistoryOpen.open(entry("li_history_witness_gone", .book)) == .unavailable(.notInLibrary))
+        #expect(routed.isEmpty, "a book that is gone opened something")
     }
 
     /// The page: every row is a button into the one opener, and every
@@ -53,7 +79,7 @@ struct ListenHistoryTargetTests {
         #expect(page.contains(".alert(Text(openFailure"), "the page has no place to say it")
         // The opener routes every target through the one route of the source pages.
         let opener = try code("Sources/ViewModels/ListenHistoryOpen.swift")
-        for route in [".book(itemId: itemId)", ".catalogAlbum(itemId: itemId)", ".musicAlbum(album)"] {
+        for route in [".book(itemId: itemId)", ".catalogBook(itemId: itemId)", ".catalogAlbum(itemId: itemId)", ".musicAlbum(album)"] {
             #expect(opener.contains("router.open(\(route))"), "a target does not open: \(route)")
         }
         #expect(opener.contains("return .unavailable(.notInLibrary)"), "a song without an album on the server is silent")

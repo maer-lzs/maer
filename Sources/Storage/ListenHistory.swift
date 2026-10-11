@@ -167,8 +167,11 @@ final class ListenHistory {
     /// album. A row that leads nowhere on this device names its reason
     /// (`UnavailableReason`), never silence.
     nonisolated enum Target: Equatable, Sendable {
-        /// A book on this device's shelf.
+        /// A book on this device's shelf (a server book or a local file).
         case book(itemId: String)
+        /// A catalog audiobook: self-describing, it opens from its id on
+        /// its detail page. It never stands in the shelf's entries.
+        case catalogBook(itemId: String)
         /// The page of an open catalog release; a title that is one song
         /// is its own release.
         case catalogAlbum(itemId: String)
@@ -179,11 +182,13 @@ final class ListenHistory {
     }
 
     /// - Parameters:
-    ///   - onShelf: whether the books shelf holds the title now.
+    ///   - onShelf: whether the shelf's entries hold the title now (server
+    ///     books and local files; catalog works never stand there).
     ///   - sourceConfigured: whether the server the id names is set up here.
     nonisolated static func target(of entry: Entry, onShelf: Bool, sourceConfigured: Bool) -> Target {
         switch entry.family {
         case .book:
+            if MediaFamily.of(entry.id) == .catalog { return .catalogBook(itemId: entry.id) }
             return onShelf ? .book(itemId: entry.id) : .unavailable(.notInLibrary)
         case .music:
             if MusicSourceRule.isServerMusic(entry.id) {

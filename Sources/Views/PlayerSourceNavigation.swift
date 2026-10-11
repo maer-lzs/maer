@@ -13,6 +13,10 @@ import OSLog
 /// global search already uses. No second deep-link mechanism.
 nonisolated enum PlayerSourceTarget {
     case book(itemId: String)
+    /// A catalog audiobook: its one detail page, catalog entrance. A
+    /// catalog work never stands in the library's entries, so `.book`
+    /// would find nothing to show.
+    case catalogBook(itemId: String)
     case podcastShow(feedURL: String)
     case podcastEpisode(itemId: String)
     case musicAlbum(LibraryItem)
@@ -33,7 +37,7 @@ extension PlayerSourceTarget {
     /// `default`: a new target does not compile until it names its tab.
     nonisolated var tab: MediaType {
         switch self {
-        case .book: .audiobooks
+        case .book, .catalogBook: .audiobooks
         case .podcastShow, .podcastEpisode, .podcastLatest: .podcasts
         case .musicAlbum, .musicArtist, .catalogAlbum: .music
         case .radioStation: .radio

@@ -30,6 +30,8 @@ enum ListenHistoryOpen {
         switch target {
         case .book(let itemId):
             router.open(.book(itemId: itemId))
+        case .catalogBook(let itemId):
+            router.open(.catalogBook(itemId: itemId))
         case .catalogAlbum(let itemId):
             router.open(.catalogAlbum(itemId: itemId))
         case .serverSong(let itemId):

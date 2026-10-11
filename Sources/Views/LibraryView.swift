@@ -769,6 +769,8 @@ struct LibraryView: View {
             switch target {
             case .book(let itemId):
                 pushToActive(itemId)
+            case .catalogBook(let itemId):
+                pushToActive(FreeAudiobooksRoute.catalogBook(itemId: itemId))
             case .podcastShow(let feedURL):
                 pushToActive(PodcastRoute.show(feedURL: feedURL))
             case .podcastEpisode(let itemId):
