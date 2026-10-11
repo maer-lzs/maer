@@ -163,6 +163,41 @@ final class ListenHistory {
         read.merging(run) { fromRows, fromRun in merged(read: fromRows, run: fromRun) }
     }
 
+    /// Where a row leads: a book row to the book, a song row to the song's
+    /// album. A row that leads nowhere on this device names its reason
+    /// (`UnavailableReason`), never silence.
+    nonisolated enum Target: Equatable, Sendable {
+        /// A book on this device's shelf.
+        case book(itemId: String)
+        /// The page of an open catalog release; a title that is one song
+        /// is its own release.
+        case catalogAlbum(itemId: String)
+        /// A song of a music server set up here. Its row keeps the song id
+        /// only, so the album is asked of the server when the row is tapped.
+        case serverSong(itemId: String)
+        case unavailable(UnavailableReason)
+    }
+
+    /// - Parameters:
+    ///   - onShelf: whether the books shelf holds the title now.
+    ///   - sourceConfigured: whether the server the id names is set up here.
+    nonisolated static func target(of entry: Entry, onShelf: Bool, sourceConfigured: Bool) -> Target {
+        switch entry.family {
+        case .book:
+            return onShelf ? .book(itemId: entry.id) : .unavailable(.notInLibrary)
+        case .music:
+            if MusicSourceRule.isServerMusic(entry.id) {
+                return sourceConfigured
+                    ? .serverSong(itemId: entry.id)
+                    : .unavailable(.sourceNotConfigured(source: ItemNamespace.of(entry.id) ?? "music"))
+            }
+            if MediaFamily.of(entry.id) == .catalog {
+                return .catalogAlbum(itemId: CatalogSongID.album(of: entry.id))
+            }
+            return .unavailable(.unknownSource)
+        }
+    }
+
     // MARK: - Owner (the history follows the account like every family)
 
     /// What rests for an account: its entries, and its rows this build

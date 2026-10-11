@@ -54,6 +54,10 @@ protocol MusicProvider: AudioProvider {
     func albumShelf(shelf: MusicShelf, size: Int) async throws -> [LibraryItem]
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem]
     func albumInfo(itemId: String) async -> MusicAlbumInfo?
+    /// The album a song belongs to, asked of the server (a song id carries
+    /// no album). Nil when the server knows the song without an album, or
+    /// does not know it; throws when the server could not be asked.
+    func album(ofSong songItemId: String) async throws -> LibraryItem?
 
     // MARK: Artists
     func allArtists() async throws -> [MusicArtist]

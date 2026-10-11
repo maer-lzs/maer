@@ -553,7 +553,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         guard let status = refusalStatus(error) else { return ErrorSentence.of(error) }
         return StatusMeaning.from(status: status) == .signIn
             ? String(localized: "Your server rejected the saved sign-in.")
-            : String(localized: "Something went wrong. Please try again.")
+            : String(localized: "The server refused the request.")
     }
 
     /// The measured reason of a failed server step for the log line: the

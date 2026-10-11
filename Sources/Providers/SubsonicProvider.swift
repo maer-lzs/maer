@@ -584,6 +584,20 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return (try? await client.albumInfo(id: albumId)).map(Self.domainAlbumInfo)
     }
 
+    func album(ofSong songItemId: String) async throws -> LibraryItem? {
+        guard let songId = Self.id(songItemId, kind: "song") else { return nil }
+        guard let client else { throw SubsonicClient.SubsonicError.network }
+        guard let song = try await client.song(id: songId), let albumId = song.albumId else { return nil }
+        return LibraryItem(
+            id: Self.itemId(albumId: albumId),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: song.album, authorName: song.artist, narratorName: nil,
+                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+    }
+
     /// Top songs of an artist as playable one-song items. Subsonic's
     /// getTopSongs is addressed by NAME. The id resolves via the route
     /// cache (the artist page has the artist loaded) or one artist fetch.

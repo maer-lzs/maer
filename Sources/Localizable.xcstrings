@@ -11509,6 +11509,16 @@
         }
       }
     },
+    "The server refused the request." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server hat die Anfrage abgelehnt."
+          }
+        }
+      }
+    },
     "The server rejected the API token. Please check the token or create a new one." : {
       "localizations" : {
         "de" : {

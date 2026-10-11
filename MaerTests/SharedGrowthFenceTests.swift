@@ -63,7 +63,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 732
+    nonisolated static let sourcesStock = 734
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

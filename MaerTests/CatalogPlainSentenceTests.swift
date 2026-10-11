@@ -82,7 +82,8 @@ struct CatalogPlainSentenceTests {
             #expect(ABSPodcastProvider.logReason(APIError.http(status, "detail")) == "HTTP \(status)")
         }
         #expect(ABSPodcastProvider.serverSentence(APIError.http(401, "")) == String(localized: "Your server rejected the saved sign-in."))
-        #expect(ABSPodcastProvider.serverSentence(APIError.http(500, "")) == String(localized: "Something went wrong. Please try again."))
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(500, "")) == String(localized: "The server refused the request."))
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(409, "")) == String(localized: "The server refused the request."))
         let offline = URLError(.notConnectedToInternet)
         #expect(ABSPodcastProvider.serverSentence(offline) == ErrorSentence.of(offline), "a failure without an answer keeps its sentence")
         #expect(ABSPodcastProvider.logReason(offline) == FailureReason.of(offline))

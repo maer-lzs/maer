@@ -320,6 +320,7 @@ final class MusicUnion: MusicProvider {
     // MARK: MusicProvider, by item id
 
     func albumInfo(itemId: String) async -> MusicAlbumInfo? { await source(for: itemId).albumInfo(itemId: itemId) }
+    func album(ofSong songItemId: String) async throws -> LibraryItem? { try await source(for: songItemId).album(ofSong: songItemId) }
     func cacheSearchedArtist(_ artist: MusicArtist) { source(for: artist.itemId).cacheSearchedArtist(artist) }
     func trackPlayCounts(forItemId itemId: String) -> [Int?] { source(for: itemId).trackPlayCounts(forItemId: itemId) }
     func addSongs(_ songIds: [String], toPlaylistItemId playlistItemId: String) async throws {

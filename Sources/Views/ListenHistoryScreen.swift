@@ -15,6 +15,8 @@ struct ListenHistoryScreen: View {
     let family: ListenHistory.Family
     @State private var entries: [ListenHistory.Entry] = []
     @State private var loaded = false
+    /// The sentence of a row that could not open; the alert says it.
+    @State private var openFailure: String?
 
     var body: some View {
         Group {
@@ -28,11 +30,24 @@ struct ListenHistoryScreen: View {
                     }
                 }
             } else {
+                // Every row opens its target: the book, or the song's album
+                // (`ListenHistoryOpen`); one that cannot says why.
                 List(entries, id: \.id) { entry in
-                    HistoryRow(title: entry.title, subtitle: entry.subtitle, date: ListenHistory.shownDate(entry))
+                    Button {
+                        Task { await open(entry) }
+                    } label: {
+                        HistoryRow(title: entry.title, subtitle: entry.subtitle, date: ListenHistory.shownDate(entry))
+                    }
+                    .foregroundStyle(.primary)
                 }
                 .listStyle(.plain)
             }
+        }
+        .alert(Text(openFailure ?? ""), isPresented: Binding(
+            get: { openFailure != nil },
+            set: { if !$0 { openFailure = nil } }
+        )) {
+            Button("OK", role: .cancel) { openFailure = nil }
         }
         .navigationTitle(Text("Listening History"))
         .navigationBarTitleDisplayMode(.large)
@@ -41,6 +56,14 @@ struct ListenHistoryScreen: View {
             guard !loaded else { return }
             entries = await ListenHistory.shared.historyOffMain(family)
             loaded = true
+        }
+    }
+
+    private func open(_ entry: ListenHistory.Entry) async {
+        switch await ListenHistoryOpen.open(entry) {
+        case .opened, .cancelled: openFailure = nil
+        case .unavailable(let reason): openFailure = MaerPlaylistPage.reasonText(reason)
+        case .failed(let sentence): openFailure = sentence
         }
     }
 }

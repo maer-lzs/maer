@@ -59,6 +59,7 @@ struct MusicUnionTests {
             return Array(albums.dropFirst(offset).prefix(size))
         }
         func albumInfo(itemId: String) async -> MusicAlbumInfo? { asked.append("info \(itemId)"); return nil }
+        func album(ofSong songItemId: String) async throws -> LibraryItem? { asked.append("album \(songItemId)"); return nil }
         func allArtists() async throws -> [MusicArtist] {
             try list("artists")
             return [MusicArtist(id: "1", itemId: "\(prefix)artist:1", name: "Cure", albumCount: 1)]
@@ -329,8 +330,9 @@ struct MusicUnionTests {
         try await union.addSongs(["x"], toPlaylistItemId: "jf:playlist:2")
         try await union.updateProgress(itemId: "jf:album:Cure", currentTime: 1, duration: 2, isFinished: false)
         union.cacheSearchedArtist(MusicArtist(id: "4", itemId: "jf:artist:4", name: "B", albumCount: nil))
+        _ = try await union.album(ofSong: "sub:song:9")
         #expect(jf.asked == ["songIds jf:album:Cure", "add jf:playlist:2", "progress jf:album:Cure", "cache jf:artist:4"])
-        #expect(sub.asked == ["delete sub:playlist:7"])
+        #expect(sub.asked == ["delete sub:playlist:7", "album sub:song:9"])
         #expect(union.kind(of: "jf:album:1") == .album && union.owns(itemId: "sub:x") && !union.owns(itemId: "abs:x"))
     }
 

@@ -486,6 +486,20 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return MusicAlbumInfo(notes: overview, musicBrainzId: nil)
     }
 
+    func album(ofSong songItemId: String) async throws -> LibraryItem? {
+        guard let songId = Self.id(songItemId, kind: "song") else { return nil }
+        guard let client else { throw JellyfinClient.JellyfinError.network }
+        guard let song = try await client.item(id: songId), let albumId = song.albumId else { return nil }
+        return LibraryItem(
+            id: Self.itemId(albumId: albumId),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: song.album, authorName: song.albumArtist, narratorName: nil,
+                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+    }
+
     // MARK: - Artists
 
     func allArtists() async throws -> [MusicArtist] {
