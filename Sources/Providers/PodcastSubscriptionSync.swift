@@ -19,9 +19,21 @@ enum PodcastSubscriptionSync {
         var reactivated = 0     // reactivated an archived server entry
         var alreadySynced = 0   // already on the server
         var failed: [String] = []
+        /// No pass ran: one was already on its way (the automatic one). Not
+        /// "nothing to sync", which only a pass can know.
+        var alreadyRunning = false
 
-        var isEmpty: Bool {
-            pushed == 0 && reactivated == 0 && alreadySynced == 0 && failed.isEmpty
+        /// The status line of the page's button; nil when no pass ran, so
+        /// the line says nothing instead of "Nothing to sync.".
+        var summary: String? {
+            guard !alreadyRunning else { return nil }
+            var lines: [String] = []
+            if pushed > 0 { lines.append(String(localized: "\(pushed) subscriptions mirrored to server")) }
+            if reactivated > 0 { lines.append(String(localized: "\(reactivated) reactivated")) }
+            if alreadySynced > 0 { lines.append(String(localized: "\(alreadySynced) already synced")) }
+            if !failed.isEmpty { lines.append(String(localized: "\(failed.count) failed")) }
+            if lines.isEmpty { lines.append(String(localized: "Nothing to sync.")) }
+            return lines.joined(separator: "\n")
         }
     }
 
@@ -38,7 +50,10 @@ enum PodcastSubscriptionSync {
     @discardableResult
     static func reconcile(refreshExistingCovers: Bool = false) async -> Report {
         var report = Report()
-        guard !isRunning else { return report }
+        guard !isRunning else {
+            report.alreadyRunning = true
+            return report
+        }
         isRunning = true
         defer { isRunning = false }
 

@@ -344,8 +344,9 @@ final class MusicUnion: MusicProvider {
     }
     func songItems(forItemId itemId: String) async -> [LibraryItem] { await source(for: itemId).songItems(forItemId: itemId) }
     func isStarred(itemId: String) async -> Bool { await source(for: itemId).isStarred(itemId: itemId) }
-    @discardableResult
-    func toggleStar(itemId: String) async -> Bool { await source(for: itemId).toggleStar(itemId: itemId) }
+    func setStar(itemId: String, starred: Bool) async throws {
+        try await source(for: itemId).setStar(itemId: itemId, starred: starred)
+    }
     func libraryItem(forId itemId: String) -> LibraryItem? { source(for: itemId).libraryItem(forId: itemId) }
 
     nonisolated func owns(itemId: String) -> Bool { sources.contains { $0.owns(itemId: itemId) } }

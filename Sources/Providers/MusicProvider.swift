@@ -129,8 +129,9 @@ protocol MusicProvider: AudioProvider {
 
     // MARK: Favorites
     func isStarred(itemId: String) async -> Bool
-    @discardableResult
-    func toggleStar(itemId: String) async -> Bool
+    /// Sets the album's favorite state on the server; throws when the server
+    /// did not take it, and the cached state then stays as it was.
+    func setStar(itemId: String, starred: Bool) async throws
 
     // MARK: Item cache
     /// Best-effort id → item resolution from the session cache.

@@ -386,8 +386,12 @@ struct MaerSyncSettingsView: View {
         isWorking = true
         Task {
             defer { isWorking = false }
-            show(await MaerSyncSignIn.changePassword(address: serverURL, owner: owner, current: secret,
-                                                     new: newPassword, repeated: repeatedPassword))
+            // A press gets the answer of now, like the test and the sign-in,
+            // even during the rest after a refused connection.
+            show(await LookupOccasion.deliberate {
+                await MaerSyncSignIn.changePassword(address: serverURL, owner: owner, current: secret,
+                                                    new: newPassword, repeated: repeatedPassword)
+            })
         }
     }
 

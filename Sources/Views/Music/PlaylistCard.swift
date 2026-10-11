@@ -39,9 +39,10 @@ struct PlaylistCardSource: Identifiable {
     /// they come from the same source.
     let mosaic: () async -> (covers: [URL], artists: [String])
     /// nil = this world cannot rename/delete here; the menu entry then stays
-    /// away instead of offering something that fails.
-    let rename: ((String) async -> Void)?
-    let delete: (() async -> Void)?
+    /// away instead of offering something that fails. A server that does
+    /// not take the change throws, and the card says so.
+    let rename: ((String) async throws -> Void)?
+    let delete: (() async throws -> Void)?
     /// The capsule on the card's cover naming where the list lives: "Mär"
     /// on a device list; the server's name on a server list while two music
     /// servers are active; nothing on a server list otherwise.
@@ -63,6 +64,7 @@ struct PlaylistCard: View {
     @State private var showRename = false
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
+    @State private var actionFailed = false
     @State private var coverURLs: [URL] = []
     /// The playlist's most frequent artists as ONE truncating line
     /// (empty = no data → blank, height reserved so the card never jiggles).
@@ -206,16 +208,25 @@ struct PlaylistCard: View {
             TextField("Name", text: $renameText)
             Button("Rename") {
                 let name = renameText
-                Task { await source.rename?(name) }
+                Task {
+                    guard let rename = source.rename else { return }
+                    let done = await FetchAnswer.of("playlist rename", logger: .music) { try await rename(name) }
+                    if done.failed { actionFailed = true }
+                }
             }
             Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm,
                             titleVisibility: .visible) {
             Button("Delete Playlist", role: .destructive) {
-                Task { await source.delete?() }
+                Task {
+                    guard let delete = source.delete else { return }
+                    let done = await FetchAnswer.of("playlist delete", logger: .music) { try await delete() }
+                    if done.failed { actionFailed = true }
+                }
             }
         }
+        .actionFailedAlert($actionFailed)
         .task(id: source.id + source.mosaicKey) {
             let loaded = await source.mosaic()
             coverURLs = loaded.covers
@@ -269,13 +280,15 @@ extension PlaylistCardSource {
                     await music.playlistArtistNames(forItemId: itemId))
                 return (ids.compactMap { music.coverURL(coverArtId: $0) }, artists)
             },
+            // Server truth either way: the row re-reads the list after a
+            // change and after a refusal.
             rename: { newName in
-                try? await music.renamePlaylist(itemId: itemId, newName: newName)
-                music.librarySynced.send()
+                defer { music.librarySynced.send() }
+                try await music.renamePlaylist(itemId: itemId, newName: newName)
             },
             delete: {
-                try? await music.deletePlaylist(itemId: itemId)
-                music.librarySynced.send()
+                defer { music.librarySynced.send() }
+                try await music.deletePlaylist(itemId: itemId)
             },
             // Its server's name while two music servers are active; the
             // row asks its router and hands it in.

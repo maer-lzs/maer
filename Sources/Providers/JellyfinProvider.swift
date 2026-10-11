@@ -714,13 +714,12 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return favoriteAlbumIds?.contains(albumId) ?? false
     }
 
-    @discardableResult
-    func toggleStar(itemId: String) async -> Bool {
-        guard let client, let albumId = Self.id(itemId, kind: "album") else { return false }
-        let newValue = !(favoriteAlbumIds?.contains(albumId) ?? false)
-        try? await client.setFavorite(itemId: albumId, on: newValue)
-        if newValue { favoriteAlbumIds?.insert(albumId) } else { favoriteAlbumIds?.remove(albumId) }
-        return newValue
+    /// Sets the album's favorite state on the server; the cached set follows
+    /// only what the server took.
+    func setStar(itemId: String, starred: Bool) async throws {
+        guard let client, let albumId = Self.id(itemId, kind: "album") else { throw JellyfinClient.JellyfinError.network }
+        try await client.setFavorite(itemId: albumId, on: starred)
+        if starred { favoriteAlbumIds?.insert(albumId) } else { favoriteAlbumIds?.remove(albumId) }
     }
 
     // MARK: - Progress (scrobble; playlist continue = local backups only)

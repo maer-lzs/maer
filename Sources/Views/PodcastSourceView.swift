@@ -723,7 +723,7 @@ struct PodcastSourceView: View {
                 isSyncing = true
                 Task {
                     let r = await PodcastSubscriptionSync.reconcile(refreshExistingCovers: true)
-                    syncMessage = syncSummary(r)
+                    syncMessage = r.summary
                     isSyncing = false
                 }
             } label: {
@@ -741,16 +741,6 @@ struct PodcastSourceView: View {
         } footer: {
             Text("Mirrors your local subscriptions to Audiobookshelf so they sync across devices. Nothing is deleted; archived shows are reactivated. Runs automatically too.")
         }
-    }
-
-    private func syncSummary(_ r: PodcastSubscriptionSync.Report) -> String {
-        var lines: [String] = []
-        if r.pushed > 0 { lines.append(String(localized: "\(r.pushed) subscriptions mirrored to server")) }
-        if r.reactivated > 0 { lines.append(String(localized: "\(r.reactivated) reactivated")) }
-        if r.alreadySynced > 0 { lines.append(String(localized: "\(r.alreadySynced) already synced")) }
-        if !r.failed.isEmpty { lines.append(String(localized: "\(r.failed.count) failed")) }
-        if lines.isEmpty { lines.append(String(localized: "Nothing to sync.")) }
-        return lines.joined(separator: "\n")
     }
 
     /// Read the selected file into the common library and open its

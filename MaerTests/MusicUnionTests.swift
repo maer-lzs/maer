@@ -99,7 +99,12 @@ struct MusicUnionTests {
         func shuffleLibrarySongItems(limit: Int) async -> [LibraryItem] { Array(albums.prefix(limit)) }
         func lyrics(songId: String) async -> SongLyrics? { nil }
         func isStarred(itemId: String) async -> Bool { false }
-        func toggleStar(itemId: String) async -> Bool { false }
+        /// A server that does not take the favorite throws this.
+        var starError: Error?
+        func setStar(itemId: String, starred: Bool) async throws {
+            asked.append("star \(itemId) \(starred)")
+            if let starError { throw starError }
+        }
         func libraryItem(forId itemId: String) -> LibraryItem? { albums.first { $0.id == itemId } }
         var cachedAlbumItems: [LibraryItem] { albums }
         nonisolated func owns(itemId: String) -> Bool { itemId.hasPrefix(prefix) }
@@ -156,6 +161,19 @@ struct MusicUnionTests {
     func fromTheFrontIsTheMergedSequence() async throws {
         let all = try await Self.fromTheFront(size: 3)
         #expect(all == ["Abba", "Björk", "Cure", "Cure", "Dylan", "Eno", "Fugazi", "Genesis", "Isis", "Kraan", "Muse"])
+    }
+
+    /// A favorite goes to the album's own server, and a server that does
+    /// not take it throws through the union: the album page then turns the
+    /// heart back and says so, instead of showing a state the server never had.
+    @Test("ein Favorit geht an den Server des Albums, und ein Scheitern kommt beim Rufer an")
+    func aFavoriteThatFailsReachesTheCaller() async {
+        let (union, sub, jf) = Self.pair()
+        await #expect(throws: Never.self) { try await union.setStar(itemId: "jf:album:Dylan", starred: true) }
+        #expect(jf.asked.contains("star jf:album:Dylan true"))
+        #expect(!sub.asked.contains { $0.hasPrefix("star") }, "the other server was asked")
+        sub.starError = Stand.Down()
+        await #expect(throws: Stand.Down.self) { try await union.setStar(itemId: "sub:album:Cure", starred: true) }
     }
 
     @Test("Seite 3 zuerst gefragt ist dieselbe Seite wie beim Blaettern von vorn")

@@ -889,14 +889,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return starredAlbumIds?.contains(albumId) ?? false
     }
 
-    /// Toggles the album's starred state on the server; returns the new state.
-    @discardableResult
-    func toggleStar(itemId: String) async -> Bool {
-        guard let client, let albumId = Self.id(itemId, kind: "album") else { return false }
-        let newValue = !(starredAlbumIds?.contains(albumId) ?? false)
-        try? await client.star(id: albumId, starred: newValue)
-        if newValue { starredAlbumIds?.insert(albumId) } else { starredAlbumIds?.remove(albumId) }
-        return newValue
+    /// Sets the album's starred state on the server; the cached set follows
+    /// only what the server took.
+    func setStar(itemId: String, starred: Bool) async throws {
+        guard let client, let albumId = Self.id(itemId, kind: "album") else { throw SubsonicClient.SubsonicError.network }
+        try await client.star(id: albumId, starred: starred)
+        if starred { starredAlbumIds?.insert(albumId) } else { starredAlbumIds?.remove(albumId) }
     }
 
 
@@ -967,9 +965,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
         guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
         // Scrobble once per song change (play counts). Unchanged.
+        // A scrobble the server did not take is logged and asked again at the
+        // next call, not booked as done.
         if song.id != lastScrobbledSong[itemId] {
             lastScrobbledSong[itemId] = song.id
-            try? await client.scrobble(id: song.id, submission: true)
+            do {
+                try await client.scrobble(id: song.id, submission: true)
+            } catch {
+                lastScrobbledSong[itemId] = nil
+                Logger.music.error("SCROBBLE failed song=\(song.id, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+            }
         }
         // Continue-listening bookmark for playlists and albums; a Booksonic
         // book IS an album, so its stand travels between devices the same
@@ -985,8 +990,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
         lastBookmarkedSong[itemId] = song.id
         let positionMs = Int(max(0, currentTime - song.start) * 1000)
-        try? await client.createBookmark(songId: song.id, positionMs: positionMs, comment: Self.canonicalItemId(itemId))
-        Logger.music.notice("BOOKMARK write item=\(itemId, privacy: .private(mask: .hash)) song=\(song.id, privacy: .private(mask: .hash)) pos=\(positionMs)ms")
+        // The line says what happened: a refused write is no write. It is not
+        // thrown on: the caller's queue replays through the book server's
+        // door, which is not this server's. The next call (about 30 s) writes
+        // the bookmark again.
+        do {
+            try await client.createBookmark(songId: song.id, positionMs: positionMs, comment: Self.canonicalItemId(itemId))
+            Logger.music.notice("BOOKMARK write item=\(itemId, privacy: .private(mask: .hash)) song=\(song.id, privacy: .private(mask: .hash)) pos=\(positionMs)ms")
+        } catch {
+            Logger.music.error("BOOKMARK write failed item=\(itemId, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+        }
         bookmarksCache = nil   // our own write invalidates the cache
     }
 

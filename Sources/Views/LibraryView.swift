@@ -1502,25 +1502,48 @@ struct LibraryView: View {
 
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
-        // Siri "Play <book>": a specific book beats "continue last".
+        // Siri "Play <book>": a specific book beats "continue last". A title
+        // not found while the library still loads waits for the call after
+        // the load (`.task`) instead of being dropped.
         if let itemId = ResumeRequest.pendingItemId {
+            guard let item = item(forId: itemId) else {
+                guard !viewModel.isLoading else { return }
+                ResumeRequest.pendingItemId = nil
+                ResumeRequest.pending = false
+                resumeTargetMissing("item")
+                return
+            }
             ResumeRequest.pendingItemId = nil
             ResumeRequest.pending = false
-            if let item = item(forId: itemId) {
-                await playerCoordinator.open(item: item)
-            }
+            await playerCoordinator.open(item: item)
             return
         }
         guard ResumeRequest.pending else { return }
-        ResumeRequest.pending = false
         // Already active (e.g. paused in the mini player): just play.
         if let vm = playerCoordinator.viewModel {
+            ResumeRequest.pending = false
             await vm.playWithServerCheck()
             return
         }
         guard let lastId = AppStorageKeys.lastPlayedItemIdValue,
-              let item = item(forId: lastId) else { return }
+              let item = item(forId: lastId) else {
+            guard !viewModel.isLoading else { return }
+            ResumeRequest.pending = false
+            resumeTargetMissing("last played")
+            return
+        }
+        ResumeRequest.pending = false
         await playerCoordinator.open(item: item)
+    }
+
+    /// A shortcut, a quick action or the widget asked for a title this
+    /// device cannot find: said like a search hit that no longer resolves,
+    /// never a silent tap.
+    private func resumeTargetMissing(_ what: String) {
+        Logger.library.notice("RESUME request found no title what=\(what, privacy: .public)")
+        Haptics.tap()
+        playerCoordinator.sayOpenFailure(String(localized: "Audiobook could not be loaded."),
+                                         cause: .unknown, title: nil)
     }
 
     /// Item for an id across sources (audiobook list OR podcast provider). For

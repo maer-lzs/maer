@@ -75,6 +75,8 @@ struct MusicAlbumView: View {
     @State private var showRename = false
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
+    /// A change the server did not take (`actionFailedAlert`).
+    @State private var actionFailed = false
     @Environment(\.dismiss) private var dismissView
     @Environment(\.isOnline) private var isOnline
     /// Albums can be starred; playlists cannot.
@@ -106,8 +108,10 @@ struct MusicAlbumView: View {
                             if isPlaylist {
                                 Button(role: .destructive) {
                                     Task {
-                                        try? await music
-                                            .removeSongs(at: [index], fromPlaylistItemId: item.id)
+                                        let done = await FetchAnswer.of("playlist remove song", logger: .music) {
+                                            try await music.removeSongs(at: [index], fromPlaylistItemId: item.id)
+                                        }
+                                        if done.failed { actionFailed = true }
                                         await loadDetail()
                                     }
                                 } label: { Label("Remove from Playlist", systemImage: "minus.circle") }
@@ -239,7 +243,19 @@ struct MusicAlbumView: View {
                                     provider: detail.map { router.provider($0.id) })
                 if isAlbum {
                     Button {
-                        Task { starred = await music.toggleStar(itemId: item.id) }
+                        // The heart turns at the tap; a server that does not
+                        // take it turns it back and says so.
+                        let target = !starred
+                        starred = target
+                        Task {
+                            let done = await FetchAnswer.of("favorite", logger: .music) {
+                                try await music.setStar(itemId: item.id, starred: target)
+                            }
+                            if done.failed {
+                                starred = !target
+                                actionFailed = true
+                            }
+                        }
                     } label: {
                         Image(systemName: starred ? "heart.fill" : "heart")
                     }
@@ -263,8 +279,11 @@ struct MusicAlbumView: View {
             TextField("Name", text: $renameText)
             Button("Rename") {
                 Task {
-                    try? await music
-                        .renamePlaylist(itemId: item.id, newName: renameText)
+                    let name = renameText
+                    let done = await FetchAnswer.of("playlist rename", logger: .music) {
+                        try await music.renamePlaylist(itemId: item.id, newName: name)
+                    }
+                    if done.failed { actionFailed = true }
                     await loadDetail()
                     // Server truth: the tab's playlist row re-reads the list.
                     music.librarySynced.send()
@@ -275,12 +294,17 @@ struct MusicAlbumView: View {
         .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete Playlist", role: .destructive) {
                 Task {
-                    try? await music.deletePlaylist(itemId: item.id)
+                    let done = await FetchAnswer.of("playlist delete", logger: .music) {
+                        try await music.deletePlaylist(itemId: item.id)
+                    }
                     music.librarySynced.send()
-                    dismissView()
+                    // The page closes only on a deleted list; a refused delete
+                    // leaves it standing and says so.
+                    if done.failed { actionFailed = true } else { dismissView() }
                 }
             }
         }
+        .actionFailedAlert($actionFailed)
         .task(id: "\(item.id)-\(hiResCovers)") {
             if !hiResCovers { highResCover = nil }
             await loadDetail()
