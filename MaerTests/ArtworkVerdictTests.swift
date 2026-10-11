@@ -71,7 +71,13 @@ struct ArtworkVerdictTests {
         defer { ImageCache.shared.removePersistent(coverURL: url) }
         #expect(Self.name(await Artwork.verdict(for: url)) == "picture:full", "the precondition: the kept cover answers")
         Artwork.invalidate(url)
-        #expect(Self.name(await Artwork.verdict(for: url)) == "picture:net", "the old kept cover answered after the invalidation")
+        // Measured once in 309 runs: "picture:kept" after six transport
+        // timeouts against this stand. The count tells the next one apart:
+        // 0 means no request reached the stand (the test host), more means
+        // the stand was asked and its answer did not arrive.
+        let fresh = Self.name(await Artwork.verdict(for: url))
+        #expect(fresh == "picture:net",
+                "the old kept cover answered after the invalidation: \(fresh), the stand was asked \(served.requestCount) times")
         #expect(try await Self.persistentWidth(url, becomes: 24) == 24, "the server's picture did not replace the kept one")
         #expect(!ImageCache.shared.testIsRefreshing(url), "the address still waits for the network")
     }
