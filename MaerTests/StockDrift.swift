@@ -67,19 +67,21 @@ struct StockDriftTests {
             // lines that can declare a stock (all of them over every line of
             // the suite took a minute).
             let fixtureEdge = raw.contains("\"\"\"")
-            let candidate = raw.contains("let ") && (raw.contains("[") || raw.contains("tock"))
+            let candidate = raw.contains("let") && (raw.contains("[") || raw.contains("tock"))
             guard fixtureEdge || candidate else { continue }
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            let quotes = fixtureEdge ? line.components(separatedBy: "\"\"\"").count - 1 : 0
+            let quotes = fixtureEdge ? raw.components(separatedBy: "\"\"\"").count - 1 : 0
             defer { if quotes % 2 == 1 { inFixture.toggle() } }
+            // Without any whitespace, so no pattern hangs on one way of
+            // spacing a declaration (`[String:Int]` and `[String: Int]`).
+            let line = Self.squeezed(raw)
             guard candidate, !inFixture, !line.hasPrefix("//") else { continue }
             // A count per name is a stock when it is declared on the type;
             // with a reason per entry it is one wherever it is declared. A
             // local `[String: Int]` is a value the case works with.
-            if let match = line.firstMatch(of: #/^(?:nonisolated )?(?:private )?static let (\w+): \[String: Int\]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated )?(?:private )?(?:static )?let (\w+): \[String: \(count: Int, reason: String\)\]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated )?(?:private )?static let (\w+) = \["[^"]+": [0-9]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated )?(?:private )?static let (\w*[Ss]tock\w*)(?:: Int)? = [0-9]/#) {
+            if let match = line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w+):\[String:Int\]/#)
+                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?(?:static)?let(\w+):\[String:\(count:Int,reason:String\)\]/#)
+                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w+)=\["[^"]+":[0-9]/#)
+                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w*[Ss]tock\w*)(?::Int)?=[0-9]/#) {
                 names.append(String(match.1))
             }
         }
@@ -98,17 +100,23 @@ struct StockDriftTests {
         guard !stocks.isEmpty else { return [] }
         let code = SyncContractFenceTests.stripped(text)
         let readsTheDrift = code.contains("StockDrift.findings(") || code.contains("StockDrift.total(")
+        let lines = code.split(separator: "\n").map { Self.squeezed($0) }
         return stocks.filter { name in
-            let lines = code.split(separator: "\n").map(String.init).filter { $0.contains(name) }
-            let byDrift = readsTheDrift && lines.contains { line in
-                line.contains("StockDrift.") || line.contains("stock: Self.\(name)") || line.contains("stock: \(name)")
+            let naming = lines.filter { $0.contains(name) }
+            let byDrift = readsTheDrift && naming.contains { line in
+                line.contains("StockDrift.") || line.contains("stock:Self.\(name)") || line.contains("stock:\(name)")
             }
-            let byEquality = lines.contains { line in
-                line.contains("== Self.\(name)") || line.contains("== \(name)")
-                    || line.contains("Self.\(name) ==") || line.contains("Self.\(name).mapValues(\\.count) ==")
+            let byEquality = naming.contains { line in
+                line.contains("==Self.\(name)") || line.contains("==\(name)")
+                    || line.contains("Self.\(name)==") || line.contains("Self.\(name).mapValues(\\.count)==")
             }
             return !(byDrift || byEquality)
         }
+    }
+
+    /// A line without any whitespace.
+    nonisolated static func squeezed(_ line: some StringProtocol) -> String {
+        String(line.filter { !$0.isWhitespace })
     }
 
     /// Every numeric stock of the suite goes through `StockDrift` or is
@@ -138,6 +146,15 @@ struct StockDriftTests {
         #expect(Self.unchecked(in: upward) == ["fooStock"], "the fence misses a stock that locks upward only")
         #expect(Self.unchecked(in: drift).isEmpty && Self.unchecked(in: equal).isEmpty, "the fence counts a checked stock")
         #expect(Self.numericStocks(in: fixture).isEmpty, "the fence reads a fixture text as a stock")
+        // The same stocks written without spaces: no pattern hangs on spacing.
+        let tight = "nonisolated static " + "let barStock:[String:Int]=[\"A.swift\":2]\nif count>(Self.barStock[name] ?? 0) { bad() }"
+        let tightEqual = "static " + "let marks:[String:(count:Int,reason:String)]=[:]\n#expect(found==Self.marks.mapValues(\\.count))"
+        let tightSum = "nonisolated static " + "let sumStock=5\nlet d = StockDrift.total(n, stock:Self.sumStock)"
+        #expect(Self.unchecked(in: tight) == ["barStock"], "the fence misses a stock written without spaces")
+        #expect(Self.numericStocks(in: tightEqual) == ["marks"] && Self.unchecked(in: tightEqual).isEmpty,
+                "the fence misreads a checked stock written without spaces")
+        #expect(Self.numericStocks(in: tightSum) == ["sumStock"] && Self.unchecked(in: tightSum).isEmpty,
+                "the fence misreads a sum stock written without spaces")
     }
 }
 #endif
