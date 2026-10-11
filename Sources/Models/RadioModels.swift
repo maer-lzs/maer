@@ -389,7 +389,11 @@ nonisolated enum RadioStore {
         return stations
     }
 
+    /// A list that stands and does not decode reads as none (`load`), and is
+    /// not written over: the next add would replace it with one row.
     private static func save(_ stations: [RadioStation], _ key: String, defaults: UserDefaults) {
+        guard CorruptStore.mayReplace([RadioStation].self, defaultsKey: key, defaults: defaults,
+                                      label: "RADIO \(key)") else { return }
         if let data = try? JSONEncoder().encode(stations) {
             defaults.set(data, forKey: key)
         }
@@ -605,6 +609,8 @@ nonisolated enum RadioStore {
     }
 
     private static func savePlayCounts(_ counts: [String: Int], defaults: UserDefaults) {
+        guard CorruptStore.mayReplace([String: Int].self, defaultsKey: playCountsKey, defaults: defaults,
+                                      label: "RADIO play counts") else { return }
         if let data = try? JSONEncoder().encode(counts) { defaults.set(data, forKey: playCountsKey) }
     }
 
@@ -907,10 +913,9 @@ nonisolated enum RadioRotation {
         var rank: [String: Int] = [:]
         var byKey: [String: RadioStation] = [:]
         var order: [String] = []
-        for (list, offset) in [(clicktrend, 0), (votes, 0)] {
-            for (index, station) in list.enumerated() {
+        for list in [clicktrend, votes] {
+            for (r, station) in list.enumerated() {
                 let key = RadioMapping.displayIdentityKey(station)
-                let r = index + offset
                 if let existing = rank[key] {
                     rank[key] = min(existing, r)
                 } else {

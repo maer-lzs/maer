@@ -699,6 +699,24 @@ wohl — das ist der Nutzer, der neu aufbaut, und ihn dauerhaft zu blockieren
 waere ein eigener Defekt. Die Aufbewahrung allein dient der Forensik, die
 Schreibsperre dient dem Menschen.
 
+**`CorruptStore.mayReplace` (11.10.2026), die Schreibregel der Ablagen, die
+gelesen, geaendert und ganz zurueckgeschrieben werden:** steht unter dem
+Schluessel ein Wert, der nicht dekodiert (oder einer anderer Art), unterbleibt
+der Schrieb mit Zeile, und der Wert bleibt, wie er ist. Dort liegt kein
+Original beiseite, ein Schrieb ersetzte ihn fuer immer; so liest auch ein
+spaeterer Build seine Form wieder ganz. Rufer: `RadioStore` (Favoriten, eigene
+Sender, Zuletzt gehoert, Meistgehoert und ihre Zaehler), `KnownServers.write`
+(die Liste, die auch Eintrag fuer Eintrag nicht lesbar ist),
+`BrowsedEpisodes.writableRecords` (dieselbe Regel, vorher in eigener Form).
+Sichtbar: auf einer unlesbaren Favoritenliste bleibt ein neuer Favorit nicht
+stehen. Zaun `UnreadableStoreTests`: jede Stelle in Sources, die einen
+gespeicherten Wert unlesbar als leer liest, ist je Datei gezaehlt (Bestand
+gleich der Zaehlung, je Datei ein Grund), die Speicher einer Person rufen
+die Regel; Zeugen mit gepflanzten unlesbaren Werten. Im selben Paket sagt
+`CorruptStore.preserve`, ob die Datei beiseite liegt, und die Zeile von `load`
+sagt es auch (vorher meldete sie „preserved“ auch nach gescheitertem
+Verschieben).
+
 **W-Sammel 12a (09.10.2026), eine vorhandene, nicht lesbare Datei ist nie
 `.fresh`:** vorher hiess eine Datei, die da ist und nicht gelesen werden kann
 (Datenschutzklasse vor dem ersten Entsperren, Rechte, ein Ordner an ihrer

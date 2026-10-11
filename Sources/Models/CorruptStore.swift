@@ -60,8 +60,11 @@ nonisolated enum CorruptStore {
         if let decoded = try? JSONDecoder().decode(type, from: data) {
             return .loaded(decoded)
         }
-        preserve(url: url)
-        log.error("\(label, privacy: .public) undecodable — preserved as .corrupt, NOT overwritten")
+        if preserve(url: url) {
+            log.error("\(label, privacy: .public) undecodable — preserved as .corrupt, NOT overwritten")
+        } else {
+            log.error("\(label, privacy: .public) undecodable — could not be moved aside, kept in place, NOT overwritten")
+        }
         return .corrupt
     }
 
@@ -80,13 +83,46 @@ nonisolated enum CorruptStore {
         return .corrupt
     }
 
+    /// The write rule of a store that is read, changed and written back
+    /// whole: no write while a value stands under `key` that does not
+    /// decode as `type`. Its reader saw nothing there, so whatever it would
+    /// write (one new row, or the empty list) replaces the unreadable value
+    /// for good. The value stays as it is and the refusal has its line; a
+    /// cause that passes (a later build's form read by an older one) then
+    /// finds it whole.
+    static func mayReplace<T: Decodable>(_ type: T.Type, defaultsKey key: String,
+                                         defaults: UserDefaults = .standard,
+                                         label: String,
+                                         log: Logger = Logger.library) -> Bool {
+        guard let data = defaults.data(forKey: key) else {
+            // Something other than data under the key is no fresh start either.
+            guard defaults.object(forKey: key) == nil else {
+                log.error("\(label, privacy: .public) holds no data, NOT written over")
+                return false
+            }
+            return true
+        }
+        guard (try? JSONDecoder().decode(type, from: data)) != nil else {
+            log.error("\(label, privacy: .public) undecodable, NOT written over")
+            return false
+        }
+        return true
+    }
+
     /// Move the unreadable file aside, replacing an older backup: the LAST
     /// failure is the interesting one, and two backups nobody can tell apart
-    /// help no one.
-    static func preserve(url: URL) {
+    /// help no one. Answers whether the file now lies aside.
+    @discardableResult
+    static func preserve(url: URL) -> Bool {
         let backup = url.appendingPathExtension("corrupt")
+        // bearable, because a missing older backup is the usual case
         try? FileManager.default.removeItem(at: backup)
-        try? FileManager.default.moveItem(at: url, to: backup)
+        do {
+            try FileManager.default.moveItem(at: url, to: backup)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// The save rule in one place: an EMPTY state must not overwrite a store

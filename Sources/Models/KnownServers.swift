@@ -153,7 +153,12 @@ nonisolated enum KnownServers {
         return text
     }
 
+    /// A list that does not decode even entry by entry (no list at all)
+    /// reads as none and is not written over.
     private static func write(_ list: [KnownServer], defaults: UserDefaults, removed: String? = nil) {
+        guard CorruptStore.mayReplace([Stored].self, defaultsKey: storeKey, defaults: defaults,
+                                      label: "KNOWN servers") else { return }
+        // bearable, because text and a finite date always encode
         guard var data = try? JSONEncoder().encode(list) else { return }
         // Entries this build cannot read go back as they were.
         let unreadable = entries(defaults: defaults).compactMap(\.raw)

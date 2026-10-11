@@ -98,7 +98,11 @@ nonisolated final class BrowsedEpisodes: Sendable {
                             duration: found.episode.duration,
                             artworkURL: PodcastCover.source(episodeImage: found.episode.imageURL,
                                                             showArtwork: found.show.artworkURL))
-        guard let data = try? JSONEncoder().encode(stored) else { return }
+        // A duration that is not finite does not encode; then nothing is written.
+        guard let data = try? JSONEncoder().encode(stored) else {
+            Logger.rss.error("BROWSED kept list not encodable, not written")
+            return
+        }
         defaults.set(data, forKey: Self.storeKey)
     }
 
@@ -129,10 +133,9 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// decode, so no write replaces it with what this run knows (the next
     /// keep would have written the empty list plus one row over it).
     private static func writableRecords(_ defaults: UserDefaults) -> [String: Kept]? {
-        guard let stored = records(defaults) else {
-            Logger.rss.error("BROWSED kept list unreadable, not written over")
-            return nil
-        }
+        guard CorruptStore.mayReplace([String: Kept].self, defaultsKey: storeKey, defaults: defaults,
+                                      label: "BROWSED kept list", log: Logger.rss),
+              let stored = records(defaults) else { return nil }
         return stored
     }
 
@@ -151,7 +154,11 @@ nonisolated final class BrowsedEpisodes: Sendable {
         let stored = all.filter {
             PodcastSubscriptions.normalizeFeedURL($0.value.feedURL) != key
         }
-        guard let data = try? JSONEncoder().encode(stored) else { return }
+        // A duration that is not finite does not encode; then nothing is written.
+        guard let data = try? JSONEncoder().encode(stored) else {
+            Logger.rss.error("BROWSED kept list not encodable, not written")
+            return
+        }
         defaults.set(data, forKey: Self.storeKey)
     }
 
