@@ -175,25 +175,15 @@ final class CloudKitStandCarrier: StandCarrier {
         Logger.library.notice("STAND cloud migrate offered=\(offered) written=\(written) ms=\(Int(Date().timeIntervalSince(started) * 1000)) by=\(caller, privacy: .public)")
     }
 
-    /// Flushes form a chain, one in flight at a time, the same construction
-    /// the service carrier's rounds use. `write` starts a flush for every
-    /// call, and two of them in flight at once could land in the other
-    /// order: the cloud's save policy takes the last write, so the OLDER
-    /// batch would overwrite the newer position. Found by the witness that
-    /// holds a `modify` open; the guard on the queue alone did not close it.
-    private var flushRun: Task<Int, Never>?
+    /// Flushes form a chain, one in flight at a time (`SendChain`); the
+    /// guard on the queue alone did not close the reordering.
+    private let sends = SendChain()
 
     /// Sends the queue in batches. What the cloud takes leaves the queue;
     /// what fails stays for the next round.
     @discardableResult
     private func flush(by caller: String) async -> Int {
-        let previous = flushRun
-        let run = Task { [weak self] in
-            _ = await previous?.value
-            return await self?.flushNow(by: caller) ?? 0
-        }
-        flushRun = run
-        return await run.value
+        await sends.run { [weak self] in await self?.flushNow(by: caller) ?? 0 }
     }
 
     private func flushNow(by caller: String) async -> Int {

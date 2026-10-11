@@ -115,6 +115,19 @@ nonisolated enum StandMirrorStore {
         // bearable, because a list of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
+
+    /// The record rows of the choice, playlist and stats carriers (each
+    /// record as a row of text, per key), in the same key door.
+    static func loadRows(_ key: String, defaults: UserDefaults) -> [String: [String]] {
+        guard let data = defaults.data(forKey: key) else { return [:] }
+        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
+        return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
+    }
+
+    static func saveRows(_ value: [String: [String]], key: String, defaults: UserDefaults) {
+        // bearable, because a dictionary of text always encodes
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+    }
 }
 
 /// The key-value store as carrier: ONE consolidated key holding a dict

@@ -112,8 +112,8 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = Self.records(of: Self.load(Self.mirrorKey, defaults: defaults))
-        queue = Self.records(of: Self.load(Self.queueKey, defaults: defaults))
+        mirror = Self.records(of: StandMirrorStore.loadRows(Self.mirrorKey, defaults: defaults))
+        queue = Self.records(of: StandMirrorStore.loadRows(Self.queueKey, defaults: defaults))
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
@@ -221,6 +221,13 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     /// queue; what fails stays for the next round.
     @discardableResult
     private func flush(by caller: String) async -> Int {
+        await sends.run { [weak self] in await self?.flushNow(by: caller) ?? 0 }
+    }
+
+    /// Flushes form a chain, one in flight at a time (`SendChain`).
+    private let sends = SendChain()
+
+    private func flushNow(by caller: String) async -> Int {
         guard !stopped, !fellBack, zoneReady else { return 0 }
         var written = 0
         while !queue.isEmpty {
@@ -233,9 +240,11 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
                 persist()
                 return written
             }
-            for id in batchIds {
-                if let record = queue[id] { mirror[id] = record }
-                queue[id] = nil
+            // Only what was SENT leaves the queue and enters the mirror: a
+            // store while `modify` was in flight holds a newer list.
+            for record in records {
+                mirror[record.listId] = record
+                if queue[record.listId] == record { queue[record.listId] = nil }
             }
             written += records.count
             persist()
@@ -356,8 +365,8 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     /// type of their own, so a field added to a list later is not a silent
     /// migration of a document only a mirror ever held.
     private func persist() {
-        Self.save(Self.rows(of: mirror), key: Self.mirrorKey, defaults: defaults)
-        Self.save(Self.rows(of: queue), key: Self.queueKey, defaults: defaults)
+        StandMirrorStore.saveRows(Self.rows(of: mirror), key: Self.mirrorKey, defaults: defaults)
+        StandMirrorStore.saveRows(Self.rows(of: queue), key: Self.queueKey, defaults: defaults)
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
 
@@ -376,16 +385,5 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
             out[id] = CloudPlaylistRecord(listId: id, payload: payload, t: t, tombstone: row[1] == "1")
         }
         return out
-    }
-
-    nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [String]] {
-        guard let data = defaults.data(forKey: key) else { return [:] }
-        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
-        return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
-    }
-
-    nonisolated private static func save(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // bearable, because a dictionary of text always encodes
-        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

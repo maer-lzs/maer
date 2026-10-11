@@ -26,6 +26,8 @@ struct CloudKitChoiceCarrierTests {
         var deleted: [String: Int] = [:]
         var version = 0
         var refuseEveryModify: CloudStandFailure?
+        let hold = ModifyHold()
+        var saves: [[CloudChoiceRecord]] = []
         var modifies = 0
 
         func accountAvailable() async -> Bool { available }
@@ -40,7 +42,9 @@ struct CloudKitChoiceCarrierTests {
             return out
         }
         func modify(save: [CloudChoiceRecord], delete recordNames: [String]) async throws {
+            await hold.enter()
             if let failure = refuseEveryModify { throw failure }
+            saves.append(save)
             modifies += 1
             for record in save {
                 version += 1

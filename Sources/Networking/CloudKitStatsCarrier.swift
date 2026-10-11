@@ -194,9 +194,20 @@ final class CloudKitStatsCarrier: StatsCarrier {
 
     // MARK: - The rounds
 
+    /// Flushes form a chain, one in flight at a time (`SendChain`): an older
+    /// pot that lands last would stand in the cloud.
+    private let sends = SendChain()
+
     /// Sends the queued own record. What the cloud takes leaves the queue
     /// and marks the fold done; what fails stays for the next round.
     private func flush(by caller: String) async {
+        await sends.run { [weak self] in
+            await self?.flushNow(by: caller)
+            return 0
+        }
+    }
+
+    private func flushNow(by caller: String) async {
         guard !stopped, !fellBack, zoneReady, let record = queued else { return }
         do {
             try await database.modify(save: [record], delete: [])
@@ -269,8 +280,8 @@ final class CloudKitStatsCarrier: StatsCarrier {
     /// their own, so a field added later is not a silent migration of a
     /// document that only a mirror ever held.
     private func persist() {
-        Self.save(Self.rows(of: Array(mirror.values)), key: Self.mirrorKey, defaults: defaults)
-        Self.save(Self.rows(of: queued.map { [$0] } ?? []), key: Self.queueKey, defaults: defaults)
+        StandMirrorStore.saveRows(Self.rows(of: Array(mirror.values)), key: Self.mirrorKey, defaults: defaults)
+        StandMirrorStore.saveRows(Self.rows(of: queued.map { [$0] } ?? []), key: Self.queueKey, defaults: defaults)
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
 
@@ -289,22 +300,11 @@ final class CloudKitStatsCarrier: StatsCarrier {
     }
 
     nonisolated private static func loadMirror(defaults: UserDefaults) -> [String: CloudStatsRecord] {
-        records(of: load(Self.mirrorKey, defaults: defaults))
+        records(of: StandMirrorStore.loadRows(Self.mirrorKey, defaults: defaults))
     }
 
     nonisolated private static func loadQueued(defaults: UserDefaults) -> CloudStatsRecord? {
-        records(of: load(Self.queueKey, defaults: defaults)).values.first
-    }
-
-    nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [String]] {
-        guard let data = defaults.data(forKey: key) else { return [:] }
-        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
-        return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
-    }
-
-    nonisolated private static func save(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // bearable, because a dictionary of text always encodes
-        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+        records(of: StandMirrorStore.loadRows(Self.queueKey, defaults: defaults)).values.first
     }
 }
 

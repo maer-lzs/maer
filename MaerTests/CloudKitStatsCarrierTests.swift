@@ -26,6 +26,7 @@ struct CloudKitStatsCarrierTests {
         var deleted: [String: Int] = [:]
         var version = 0
         var refuseEveryModify: CloudStandFailure?
+        let hold = ModifyHold()
         var modifies: [[CloudStatsRecord]] = []
 
         func accountAvailable() async -> Bool { available }
@@ -40,6 +41,7 @@ struct CloudKitStatsCarrierTests {
             return out
         }
         func modify(save: [CloudStatsRecord], delete recordNames: [String]) async throws {
+            await hold.enter()
             if let failure = refuseEveryModify { throw failure }
             modifies.append(save)
             for record in save {

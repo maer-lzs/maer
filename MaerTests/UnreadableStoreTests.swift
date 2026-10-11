@@ -90,21 +90,18 @@ struct UnreadableStoreTests {
     /// * `BookmarkQueue.swift`: the offline copy of the server's bookmarks,
     ///   replaced whole by the next answer (the queue itself reads through
     ///   `CorruptStore.load`).
-    /// * the three cloud carriers and `StandCarrier.swift` (2): mirrors of
-    ///   the other side, an unreadable one costs a full pull.
+    /// * `StandCarrier.swift` (3, `StandMirrorStore` for every carrier):
+    ///   mirrors of the other side, an unreadable one costs a full pull.
     /// * `PodcastTranscript.swift`: parses a downloaded document, writes
     ///   nothing back.
     static let decodeToEmptyStock = [
         "Artwork+Memo.swift": 1,
         "BookmarkQueue.swift": 1,
-        "CloudKitChoiceCarrier.swift": 1,
-        "CloudKitPlaylistCarrier.swift": 1,
-        "CloudKitStatsCarrier.swift": 1,
         "KnownServers.swift": 1,
         "PodcastTranscript.swift": 1,
         "RadioModels.swift": 2,
         "ResolutionCacheStore.swift": 2,
-        "StandCarrier.swift": 2,
+        "StandCarrier.swift": 3,
     ]
 
     /// The stores above that hold what a person made; their writes ask.
