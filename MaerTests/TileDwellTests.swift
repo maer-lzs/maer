@@ -147,20 +147,21 @@ struct TileDwellTests {
 
     @Test("Zaun: jede Netzstelle einer Kachel-Frage steht erst, jede Kachel markiert ihre Fragen, beide Bestaende fallen nur", .needsTheSources)
     func everyTileQuestionStandsFirst() throws {
-        for (token, stock) in [("TileDwell.stood(", Self.networkSites), ("TileDwell.standing", Self.tileSites)] {
-            var seen: [String: Int] = [:]
-            for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "TileDwell.swift" {
-                let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-                let sites = text.components(separatedBy: token).count - 1
-                if sites > 0 { seen[file.lastPathComponent] = sites }
-            }
-            for (file, entry) in stock {
-                #expect(seen[file] == entry.count, "\(token) in \(file): \(seen[file] ?? 0) sites, stock \(entry.count)")
-            }
-            for (file, sites) in seen where stock[file] == nil {
-                #expect(Bool(false), "\(token) in \(file) (\(sites)) is not in the stock")
-            }
+        let network = StockDrift.findings(counts: try Self.sites(of: "TileDwell.stood("), stock: Self.networkSites.mapValues(\.count))
+        #expect(network.isEmpty, "TileDwell.stood(: \(network)")
+        let tiles = StockDrift.findings(counts: try Self.sites(of: "TileDwell.standing"), stock: Self.tileSites.mapValues(\.count))
+        #expect(tiles.isEmpty, "TileDwell.standing: \(tiles)")
+    }
+
+    /// The sites of `token` per file, outside the type itself.
+    private static func sites(of token: String) throws -> [String: Int] {
+        var seen: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "TileDwell.swift" {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let sites = text.components(separatedBy: token).count - 1
+            if sites > 0 { seen[file.lastPathComponent, default: 0] += sites }
         }
+        return seen
     }
 
     nonisolated final class Count: Sendable {

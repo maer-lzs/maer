@@ -685,13 +685,9 @@ struct RadioStateQueryTests {
                 && drawings.contains { $0.file == "Sources/Views/Radio/RadioStationDetailView.swift" },
                 "the fence found the lists it guards: \(drawings.map(\.file))")
         let byOtherKey = drawings.filter { !$0.line.contains("streamURL") }
-        let unheld = byOtherKey.filter { Self.listsByOtherKey[$0.file] == nil }
-        #expect(unheld.isEmpty, "a variant list is drawn by another key: \(unheld)")
-        let wrongCount = Self.listsByOtherKey.compactMap { file, held -> String? in
-            let count = byOtherKey.filter { $0.file == file }.count
-            return count == held.count ? nil : "\(file): held \(held.count), found \(count)"
-        }
-        #expect(wrongCount.isEmpty, "a held file has another number of lists by another key: \(wrongCount)")
+        let counts = Dictionary(byOtherKey.map { ($0.file, 1) }, uniquingKeysWith: +)
+        let drift = StockDrift.findings(counts: counts, stock: Self.listsByOtherKey.mapValues(\.count))
+        #expect(drift.isEmpty, "a variant list is drawn by another key, or a held file has fewer: \(drift) \(byOtherKey)")
     }
 
     /// The statements that draw a list of variants: a `ForEach` whose first

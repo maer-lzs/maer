@@ -1923,11 +1923,8 @@ extension ProjectFileIntegrityTests {
             let count = Self.comments(in: text).filter { !Self.decisionWords(in: $0.comment).isEmpty }.count
             if count > 0 { measured[name, default: 0] += count }
         }
-        let grown = measured.filter { $0.value > (Self.testDecisionStock[$0.key] ?? 0) }.map { "\($0.key): \($0.value)" }.sorted()
-        let fallen = Self.testDecisionStock.filter { (measured[$0.key] ?? 0) < $0.value }
-            .map { "\($0.key): \(measured[$0.key] ?? 0) of \($0.value)" }.sorted()
-        #expect(grown.isEmpty, "a test comment notes a decision: \(grown)")
-        #expect(fallen.isEmpty, "a test file carries fewer decision words, lower its stock: \(fallen)")
+        let drift = StockDrift.findings(counts: measured, stock: Self.testDecisionStock)
+        #expect(drift.isEmpty, "a test comment notes a decision, or a test file carries fewer and its stock is not lowered: \(drift)")
     }
 
     /// A step of a plan (`3b`, `4b`): the older comments still carry some,

@@ -24,7 +24,9 @@ struct AppearanceHostFenceTests {
 
     @Test("Jedes Blatt traegt die Wahl: je Datei so viele Bausteine wie Blaetter, Ausnahmen namentlich")
     func everyPresentedLeafCarriesTheChoice() throws {
-        var offenders: [String] = []
+        // Per file, the presentations that do not carry the choice; the
+        // exceptions are that count, both ways.
+        var uncarried: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/") {
             let text = try String(contentsOf: file, encoding: .utf8)
             let code = text.split(separator: "\n")
@@ -34,12 +36,10 @@ struct AppearanceHostFenceTests {
                 + code.components(separatedBy: ".fullScreenCover(").count - 1
             guard presentations > 0 else { continue }
             let carried = code.components(separatedBy: Self.marker).count - 1
-            let allowed = Self.exceptions[file.lastPathComponent] ?? 0
-            if carried + allowed < presentations {
-                offenders.append("\(file.lastPathComponent): \(presentations) presented, \(carried) carry the choice")
-            }
+            if presentations > carried { uncarried[file.lastPathComponent, default: 0] += presentations - carried }
         }
-        #expect(offenders.isEmpty, "these presentations do not follow the appearance: \(offenders)")
+        let drift = StockDrift.findings(counts: uncarried, stock: Self.exceptions)
+        #expect(drift.isEmpty, "these presentations do not follow the appearance, or an exception is stale: \(drift)")
     }
 
     @Test("Der Pruefer sieht den Unterschied: eine Praesentation ohne Baustein faellt auf, eine im Kommentar zaehlt nicht")

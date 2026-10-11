@@ -99,14 +99,8 @@ struct DurationTextTests {
             let count = Self.handWritten(in: code)
             if count > 0 { found[file.lastPathComponent] = count }
         }
-        var wrong: [String] = []
-        for (name, count) in found where allowed[name]?.count != count {
-            wrong.append("\(name): \(count)")
-        }
-        for (name, entry) in allowed where found[name] == nil {
-            wrong.append("\(name): 0 of \(entry.count)")
-        }
-        #expect(wrong.isEmpty, "a duration written outside the rule, or a stale exception: \(wrong.sorted())")
+        let drift = StockDrift.findings(counts: found, stock: allowed.mapValues(\.count))
+        #expect(drift.isEmpty, "a duration written outside the rule, or a stale exception: \(drift)")
     }
 }
 #endif

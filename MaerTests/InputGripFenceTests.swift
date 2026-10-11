@@ -54,10 +54,8 @@ struct InputGripFenceTests {
             if Self.fingerOnly[name] == nil { offenders += lines.map { "\(name): \($0.trimmingCharacters(in: .whitespaces))" } }
         }
         #expect(offenders.isEmpty, "these views block the finger alone; take takesInput(_:) or name the reason: \(offenders)")
-        let wrongCount = Self.fingerOnly.compactMap { name, held in
-            found[name] == held.count ? nil : "\(name): held \(held.count), found \(found[name] ?? 0)"
-        }.sorted()
-        #expect(wrongCount.isEmpty, "a held file has another number of finger locks than its reasons: \(wrongCount)")
+        let drift = StockDrift.findings(counts: found, stock: Self.fingerOnly.mapValues(\.count))
+        #expect(drift.isEmpty, "a held file has another number of finger locks than its reasons: \(drift)")
         let library = try String(contentsOf: sources.appendingPathComponent("Views/LibraryView.swift"), encoding: .utf8)
         #expect(Self.hitTestingLines(in: library, file: "LibraryView.swift").isEmpty,
                 "the library view blocks the finger alone again")

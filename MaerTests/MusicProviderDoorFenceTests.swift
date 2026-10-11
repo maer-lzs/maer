@@ -160,22 +160,9 @@ struct MusicProviderDoorFenceTests {
         // Ordnung, lange nachdem es zwei sind. Ein Grund, der zu viel deckt,
         // ist eine Ausnahme, die niemand mehr nachgesehen hat. Faellt die
         // Zahl, wird sie hier zurueckgeschrieben, wie am Wachstums-Zaun.
-        var tooMany: [String] = []
-        var stale: [String] = []
-        for (name, entry) in stock {
-            let actual = found[name] ?? 0
-            if actual > entry.count { tooMany.append("\(name): \(actual) statt \(entry.count)") }
-            if actual < entry.count { stale.append("\(name): nur noch \(actual) von \(entry.count)") }
-        }
-        for (name, count) in found where stock[name] == nil {
-            tooMany.append("\(name): \(count) ohne Eintrag im Bestand")
-        }
-        #expect(tooMany.isEmpty,
-                "eine Ansicht fragt das Geraet, wo die Kennung antwortet: \(tooMany.sorted())")
-        // Ein Literal, kein zusammengesetzter Text: der Kommentar eines
-        // `#expect` nimmt keinen.
-        #expect(stale.isEmpty,
-                "der Bestand deckt mehr, als es gibt: \(stale.sorted())")
+        let drift = StockDrift.findings(counts: found, stock: stock.mapValues(\.count))
+        #expect(drift.isEmpty,
+                "eine Ansicht fragt das Geraet, wo die Kennung antwortet, oder der Bestand liegt ueber der Zaehlung: \(drift)")
         // Gegenprobe: die Tuer, auf die geheilt wurde, gibt es wirklich, und
         // sie leitet an der Kennung.
         let session = try codeOf("Sources/AppSession.swift")

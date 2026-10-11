@@ -152,11 +152,8 @@ struct ModelsLayerFenceTests {
             let count = Self.reachingLines(in: try String(contentsOf: file, encoding: .utf8), names: names)
             if count > 0 { measured[SourceTree.relativePath(of: file)] = count }
         }
-        let grown = measured.filter { $0.value > (Self.upwardStock[$0.key] ?? 0) }.map { "\($0.key): \($0.value)" }.sorted()
-        let fallen = Self.upwardStock.filter { (measured[$0.key] ?? 0) < $0.value }
-            .map { "\($0.key): \(measured[$0.key] ?? 0) of \($0.value)" }.sorted()
-        #expect(grown.isEmpty, "a model reaches up on more lines than today: \(grown)")
-        #expect(fallen.isEmpty, "a model reaches up on fewer lines, lower its stock: \(fallen)")
+        let drift = StockDrift.findings(counts: measured, stock: Self.upwardStock)
+        #expect(drift.isEmpty, "a model reaches up on more lines than today, or fewer and its stock is not lowered: \(drift)")
     }
 }
 #endif
