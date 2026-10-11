@@ -316,7 +316,7 @@ struct CatalogStoreReadFenceTests {
                 "ein abgebrochener Lauf gilt wieder als erledigt")
         #expect(!body.contains("try? await"),
                 "ein Fehlschlag wird wieder verschluckt und sieht aus wie leer")
-        #expect(body.contains("failureReason"), "der Grund wird nicht mehr benannt")
+        #expect(body.contains("CatalogPageFailure.sentence(for:"), "der Grund wird nicht mehr benannt")
     }
 
     /// Die Faecher werden je Tag einmal geholt, fuer JEDE Quelle.

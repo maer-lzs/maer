@@ -606,20 +606,39 @@ nonisolated enum FreeCatalog {
     /// same three-way split as the negative-cache rule: data, empty, failed.
     static func isGone(_ error: Error) -> Bool {
         if let url = error as? URLError { return url.code == .resourceUnavailable }
-        if let api = error as? APIError, case .http(let code, _) = api { return StatusMeaning.from(status: code).isAbsence }
+        if let code = httpStatus(error) { return StatusMeaning.from(status: code).isAbsence }
         return false
     }
 
-    /// The reason a PAGE shows. A server error names itself in its own
-    /// sentence; a type name never reaches a page (a page once read
-    /// "(SubsonicError)"). Nil when nothing failed.
+    /// The HTTP status a source refused with, nil for any other failure.
+    /// The one place here that names the client's error type.
+    private static func httpStatus(_ error: Error) -> Int? {
+        if let api = error as? APIError, case .http(let code, _) = api { return code }
+        return nil
+    }
+
+    /// The sentence a PAGE shows, in plain words: never a measured code
+    /// ("URLError -1009", "HTTP 429"), which goes to the log (`logReason`),
+    /// and never a type name (a page once read "(SubsonicError)"). Only
+    /// sentences the catalog already has. Nil when nothing failed. Pages
+    /// reach it through `CatalogPageFailure`, which writes the log line.
     static func failureReason(_ error: Error) -> String? {
         guard !isSilent(error) else { return nil }
-        if let measured = measuredReason(error) { return measured }
-        if let sentence = (error as? LocalizedError)?.errorDescription, !sentence.isEmpty {
-            return sentence
+        // Says only why: the pages put it under a title that already says
+        // the load failed ("Couldn't load tracks", "Could not load …").
+        let unreachable = String(localized: "The source did not answer.")
+        if let url = error as? URLError {
+            return NetworkReach.isOffline(url as NSError)
+                ? String(localized: "No internet connection. Please check your network and try again.")
+                : unreachable
         }
-        return String(localized: "unexpected answer")
+        if let code = httpStatus(error) {
+            return StatusMeaning.from(status: code).isAbsence
+                ? String(localized: "No longer available at the source")
+                : unreachable
+        }
+        if error is CatalogDecodeError { return String(localized: "The server response could not be read.") }
+        return ErrorSentence.of(error)
     }
 
     /// The reason the LOG carries: the same measured forms, and for any other
@@ -641,9 +660,7 @@ nonisolated enum FreeCatalog {
     /// measurably answered.
     private static func measuredReason(_ error: Error) -> String? {
         if let urlError = error as? URLError { return "URLError \(urlError.code.rawValue)" }
-        if let apiError = error as? APIError, case .http(let code, _) = apiError {
-            return "HTTP \(code)"
-        }
+        if let code = httpStatus(error) { return "HTTP \(code)" }
         if let decode = error as? CatalogDecodeError {
             let status = decode.status.map(String.init) ?? "?"
             return "decode (HTTP \(status)): \(decode.answerPrefix.prefix(80))"

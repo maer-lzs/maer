@@ -827,7 +827,7 @@ struct RadioView: View {
     /// The query runs against ALL merged name variants (persisted at
     /// choice time). Otherwise the other spelling's stations vanish; results
     /// dedupe by station id, first (best-voted of the winner name) stays.
-    /// The regional rows, and whether the fetch failed as a whole (every
+    /// It answers the rows and whether the fetch failed as a whole (every
     /// name variant failed both lists, `RadioStore.regionFailed`).
     private static func stateStations(_ state: String?, countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {
         guard let state, !state.isEmpty else { return ([], false) }

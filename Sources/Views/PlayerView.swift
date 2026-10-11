@@ -532,7 +532,7 @@ struct PlayerView: View {
                                 openPlayerSource(.musicArtist(artist))
                             } else {
                                 Logger.player.notice("GO TO ARTIST no artist of that name among \(artists.count)")
-                                coordinator.sayOpenFailure(String(localized: "This result is no longer available."),
+                                coordinator.sayOpenFailure(String(localized: "Artist not found on this server."),
                                                            cause: .unknown, title: artistName)
                             }
                         } catch {

@@ -18,6 +18,8 @@ nonisolated enum CatalogLoaderWitness {
     /// back as.
     static let offline = URLError(.notConnectedToInternet)
     static var offlineReason: String { CatalogLoadOutcome.reason(offline) }
+    /// What a page shows for it: the plain sentence, never the code.
+    static var offlineSentence: String { FreeCatalog.failureReason(offline) ?? "" }
 
     static func track() -> JamendoTrack {
         JamendoTrack(id: "witness-\(UUID().uuidString)", name: "T", artist_name: "A", image: nil,
@@ -206,9 +208,9 @@ struct FreeCatalogLoaderWitnessTests {
         #expect(rows.problems.isEmpty, "eine Antwort ist kein Problem: \(rows.problems)")
 
         let failed = await FreeCatalogLoader.load(using: W.failing(), gates: W.allOn, dayStore: dayStore)
-        #expect(failed.problems[.books] == W.offlineReason, "der Grund ist der des geworfenen Fehlers")
-        #expect(failed.problems[.classical] == W.offlineReason)
-        #expect(failed.problems[.netlabels] == W.offlineReason)
+        #expect(failed.problems[.books] == W.offlineSentence, "die Seite sagt den Satz des geworfenen Fehlers")
+        #expect(failed.problems[.classical] == W.offlineSentence)
+        #expect(failed.problems[.netlabels] == W.offlineSentence)
         // The Jamendo row answered in the first pass and kept its day; the
         // second pass reads the day and asks nothing, as the live row does.
         #expect(failed.freeMusic.count == 2, "der Tag traegt die erste gute Antwort")
@@ -249,7 +251,7 @@ struct CatalogSourceLoaderWitnessTests {
 
         let failed = await CatalogSourceLoader.load(using: W.failing(), gates: W.allOn, keptStock: { _ in nil })
         for source in [CatalogSource.librivox, .archiveBooks, .gutenberg, .oldTimeRadio] {
-            #expect(failed.failures[source] == W.offlineReason, "\(source.rawValue) traegt den geworfenen Grund")
+            #expect(failed.failures[source] == W.offlineSentence, "\(source.rawValue) traegt den Satz des geworfenen Fehlers")
         }
     }
 }
@@ -271,7 +273,7 @@ struct CatalogPopularSourceWitnessTests {
             source: .librivox, page: 1, rows: 2, unfiltered: false, using: W.failing(), languages: []) else {
             Issue.record("ein Fehlschlag kam nicht als Fehlschlag an"); return
         }
-        #expect(reason == W.offlineReason)
+        #expect(reason == W.offlineSentence)
     }
 }
 

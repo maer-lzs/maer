@@ -493,7 +493,7 @@ struct CatalogSourcePage: View {
                     } catch {
                         // A throw came from the network: the stock and the day
                         // store answer without one.
-                        return (key, nil, FreeCatalog.failureReason(error), .network)
+                        return (key, nil, CatalogPageFailure.sentence(for: error, at: "source-section"), .network)
                     }
                 }
                 started += 1
@@ -553,7 +553,7 @@ struct CatalogSourcePage: View {
                         default: return (key, [], nil, nil, way)
                         }
                     } catch {
-                        return (key, [], nil, FreeCatalog.failureReason(error), .network)
+                        return (key, [], nil, CatalogPageFailure.sentence(for: error, at: "source-shelf"), .network)
                     }
                 }
             }
@@ -1018,6 +1018,7 @@ struct ArchiveSeriesPage: View {
                     // carries its own buttons in its row.
                     CatalogQueueButtons(itemId: itemId)
                 } label: { Image(systemName: "ellipsis.circle") }
+                .accessibilityLabel(Text("Actions"))
                 .accessibilityIdentifier("album-actions")
             }
         }
@@ -1030,7 +1031,8 @@ struct ArchiveSeriesPage: View {
     }
 
     private var listProblem: some View {
-        // The reason is the measured one (status, transport error, decode).
+        // The reason in plain words; the measured one (status, transport
+        // error, decode) is in the log line (`CatalogPageFailure`).
         (Text("Could not load the episode list. Tap to try again.")
             + Text(verbatim: failedReason.isEmpty ? "" : " (\(failedReason))"))
             .font(.footnote).foregroundStyle(.secondary)
@@ -1065,7 +1067,7 @@ struct ArchiveSeriesPage: View {
                 Logger.library.notice("CATALOG detail cancelled ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
                 return
             }
-            failedReason = FreeCatalog.failureReason(error) ?? ""
+            failedReason = CatalogPageFailure.sentence(for: error, at: "detail") ?? ""
             failed = true
         }
     }

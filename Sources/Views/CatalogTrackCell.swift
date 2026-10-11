@@ -19,12 +19,12 @@ struct CatalogTrackCell: View {
     let itemId: String
     let width: CGFloat
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// A placeholder is a TRANSITION, not an end state: the resolution runs
+    /// again whenever the placeholder cell appears (`.task` starts with each
+    /// appearance). Before, `try?` swallowed the failure, there was no
+    /// second attempt and no visible state, and the tile carried the
+    /// placeholder name permanently.
     @State private var resolved: LibraryItem?
-    /// A placeholder is a TRANSITION, not an end state. The counter lets the
-    /// resolution run again the next time the cell appears. Before, `try?`
-    /// swallowed the failure, there was no second attempt and no visible
-    /// state, and the tile carried the placeholder name permanently.
-    @State private var attempt = 0
 
     /// Fetches the name afterwards. A transport error is something other
     /// than a clear gone: the first leaves the entry standing and is
@@ -43,7 +43,7 @@ struct CatalogTrackCell: View {
             }
             resolved = router.item(itemId)
         } catch {
-            guard let reason = FreeCatalog.failureReason(error) else { return }
+            guard let reason = FreeCatalog.logReason(error) else { return }
             if FreeCatalog.isGone(error) {
                 DeadCatalogItems.note(.dead, for: itemId)
                 Logger.library.notice("FREECAT resolve \(itemId, privacy: .public) → weg: \(reason, privacy: .public)")
@@ -60,7 +60,7 @@ struct CatalogTrackCell: View {
         } else if let stub = router.playable(itemId) {
             AlbumCell(item: stub, width: width, playerCoordinator: playerCoordinator)
                 .frame(width: width, alignment: .top)
-                .task(id: attempt) { await resolve() }
+                .task { await resolve() }
         }
     }
 }

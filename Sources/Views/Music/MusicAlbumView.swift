@@ -182,8 +182,8 @@ struct MusicAlbumView: View {
                     ContentUnavailableView {
                         Label("Couldn't load tracks", systemImage: "music.note")
                     } description: {
-                        // The reason is measured, not guessed: the source's
-                        // own sentence for its answer. The title already says
+                        // The reason in plain words (`FreeCatalog.failureReason`),
+                        // its measured code in the log. The title already says
                         // it failed; the description says only why.
                         if reason.isEmpty {
                             Text("The source did not answer.")
@@ -482,7 +482,7 @@ struct MusicAlbumView: View {
                 Logger.library.notice("ALBUM detail cancelled ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
                 return
             }
-            let reason = FreeCatalog.failureReason(error) ?? ""
+            let reason = CatalogPageFailure.sentence(for: error, at: "album-detail") ?? ""
             // The stored detail stays: a refresh that fails takes nothing
             // away from what is on the device.
             guard plan == .network else {

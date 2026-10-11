@@ -50,6 +50,8 @@ struct UserEdgeErrorTests {
         let player = try code("Sources/Views/PlayerView.swift")
         #expect(!player.contains("(try? await AppSession.shared.musicProvider(for: id).allArtists())"), "Go to Artist swallows a failed list")
         #expect(player.components(separatedBy: "coordinator.sayOpenFailure(").count == 3, "Go to Artist does not say both failures")
+        #expect(player.contains("String(localized: \"Artist not found on this server.\")"),
+                "an unknown artist name does not say its own sentence")
         let show = try code("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(!show.contains("_ = await absPodcast.deleteShowOnServer"), "the delete drops its answer")
         #expect(show.contains("deleteError = ErrorSentence.of(error)"), "a refused delete does not say why")

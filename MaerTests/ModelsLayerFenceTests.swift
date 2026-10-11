@@ -63,7 +63,7 @@ struct ModelsLayerFenceTests {
         "Sources/Models/ContinueHidden.swift": 2,
         "Sources/Models/ContinueSources.swift": 1,
         "Sources/Models/DerivedStores.swift": 4,
-        "Sources/Models/FreeCatalog.swift": 2,
+        "Sources/Models/FreeCatalog.swift": 1,
         "Sources/Models/FreeTwin.swift": 1,
         "Sources/Models/LibraryRowDiff.swift": 2,
         "Sources/Models/ListeningStats.swift": 32,

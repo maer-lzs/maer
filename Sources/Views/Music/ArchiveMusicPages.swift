@@ -291,7 +291,7 @@ struct ArchiveMusicPage: View {
                         }
                         return (key, docs, total, nil)
                     } catch {
-                        return (key, [], nil, FreeCatalog.failureReason(error))
+                        return (key, [], nil, CatalogPageFailure.sentence(for: error, at: "archive-music-shelf"))
                     }
                 }
                 started += 1

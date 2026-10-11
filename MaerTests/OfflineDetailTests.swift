@@ -62,8 +62,8 @@ struct OfflineDetailTests {
         let odd = FreeCatalog.failureReason(OddFailure())
         #expect(odd != nil, "a real failure stays named")
         #expect(odd?.contains("OddFailure") == false)
-        // The measured reasons keep their form.
-        #expect(FreeCatalog.failureReason(APIError.http(429, "slow down")) == "HTTP 429")
+        // A measured reason reaches the page as a sentence, its code the log.
+        #expect(FreeCatalog.failureReason(APIError.http(429, "slow down")) == String(localized: "The source did not answer."))
         #expect(FreeCatalog.failureReason(CancellationError()) == nil)
     }
 
@@ -122,9 +122,9 @@ struct OfflineDetailTests {
         #expect(FreeCatalog.logReason(server) != server.errorDescription, "a translated sentence tells nothing in a log")
         #expect(FreeCatalog.failureReason(server) == server.errorDescription, "the page keeps its sentence")
         #expect(FreeCatalog.logReason(OddFailure()) == FailureReason.of(OddFailure()))
-        // The measured forms are shared, and nothing failed stays nil.
+        // The measured forms stay in the log, and nothing failed stays nil.
         #expect(FreeCatalog.logReason(APIError.http(429, "slow down")) == "HTTP 429")
-        #expect(FreeCatalog.logReason(URLError(.timedOut)) == FreeCatalog.failureReason(URLError(.timedOut)))
+        #expect(FreeCatalog.logReason(URLError(.timedOut)) == "URLError \(URLError.Code.timedOut.rawValue)")
         #expect(FreeCatalog.logReason(CancellationError()) == nil)
         #expect(FreeCatalog.logReason(FetchHeldBack()) == nil)
     }

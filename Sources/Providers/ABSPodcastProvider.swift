@@ -462,8 +462,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     // MARK: - Management (create / remove subscription)
 
     /// Subscribe to a podcast on the server (feed → create → reload). Returns
-    /// `nil` on success, otherwise an error message with the failed step (so
-    /// there's no blind guessing at the untested endpoint).
+    /// `nil` on success, otherwise the sentence for the person; the failed
+    /// step and its measured reason go to the log line (so there's no blind
+    /// guessing at the untested endpoint), never to the page.
     /// - Parameter coverURL: optional high-resolution feed cover (our
     ///   `itunes:image`). Set server-side after creation because ABS often takes
     ///   the smaller RSS `<image>` on import.
@@ -471,13 +472,14 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                            autoDownload: Bool = true) async -> String? {
         do {
             guard let library = try await client.fetchPodcastLibraries().first else {
-                return "Keine Podcast-Bibliothek auf dem Server."
+                Logger.library.error("ABSPOD new show step=libraries: no podcast library on the server")
+                return String(localized: "Something went wrong. Please try again.")
             }
             let metadata: PodcastFeedMetadata
             do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
             catch {
-                Logger.library.error("ABSPOD new show feed failed: \(FailureReason.of(error), privacy: .public)")
-                return "Feed (podcasts/feed): \(Self.msg(error))"
+                Logger.library.error("ABSPOD new show step=podcasts/feed failed: \(FailureReason.of(error), privacy: .public)")
+                return Self.msg(error)
             }
 
             // Folders usually come with the list endpoint; otherwise detail.
@@ -485,12 +487,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             if folders.isEmpty {
                 do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
                 catch {
-                    Logger.library.error("ABSPOD new show folders failed: \(FailureReason.of(error), privacy: .public)")
-                    return "Ordner (libraries/id): \(Self.msg(error))"
+                    Logger.library.error("ABSPOD new show step=libraries/id failed: \(FailureReason.of(error), privacy: .public)")
+                    return Self.msg(error)
                 }
             }
             guard let folder = folders.first, let folderPath = folder.fullPath else {
-                return "Kein Ordner in der Podcast-Bibliothek."
+                Logger.library.error("ABSPOD new show step=folders: no folder in the podcast library")
+                return String(localized: "This library has no folder to import into.")
             }
 
             let title = Self.sanitizePathComponent(metadata.title ?? "Podcast")
@@ -499,8 +502,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 try await client.createPodcast(libraryId: library.id, folderId: folder.id,
                                                path: path, metadata: metadata, autoDownload: autoDownload)
             } catch {
-                Logger.library.error("ABSPOD new show create failed: \(FailureReason.of(error), privacy: .public)")
-                return "Anlegen (POST podcasts): \(Self.msg(error))"
+                Logger.library.error("ABSPOD new show step=POST podcasts failed: \(FailureReason.of(error), privacy: .public)")
+                return Self.msg(error)
             }
 
             await refresh()
@@ -509,8 +512,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.image)
             return nil
         } catch {
-            Logger.library.error("ABSPOD libraries for a new show failed: \(FailureReason.of(error), privacy: .public)")
-            return "Bibliotheken: \(Self.msg(error))"
+            Logger.library.error("ABSPOD new show step=libraries failed: \(FailureReason.of(error), privacy: .public)")
+            return Self.msg(error)
         }
     }
 

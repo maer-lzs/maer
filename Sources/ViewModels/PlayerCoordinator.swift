@@ -635,10 +635,6 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
-    /// What starts or finishes leaves BOTH lists, the orders and the
-    /// context: the running title is never in either ("launchpad, not
-    /// playlist"), and what already ran is never offered again. The start
-    /// and the end call this one door, so the invariant is written once.
     /// What starting a title does to the lists: a start that brings no
     /// context of its own ends the old one, and whatever you START playing
     /// leaves both lists (audiobooks, podcasts and music alike). Called once
@@ -648,6 +644,10 @@ final class PlayerCoordinator: ObservableObject {
         leaveBothLists(id)
     }
 
+    /// What starts or finishes leaves BOTH lists, the orders and the
+    /// context: the running title is never in either ("launchpad, not
+    /// playlist"), and what already ran is never offered again. The start
+    /// and the end call this one door, so the invariant is written once.
     private func leaveBothLists(_ id: String) {
         orders.remove(id)
         PlaybackContext.shared.remove(id)

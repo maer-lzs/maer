@@ -572,8 +572,6 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Deliberate restart: a jump to 0 counts as a user action and is synced
-    /// immediately (no conflict dialog).
     /// The detail of the book (description, chapters, the download's
     /// tracks). A failure has its line and turns the page's empty
     /// description into the retry; a cancellation is no failure.
@@ -591,6 +589,8 @@ struct BookDetailScreen: View {
         isLoading = false
     }
 
+    /// Deliberate restart: a jump to 0 counts as a user action and is synced
+    /// immediately (no conflict dialog).
     private func restartFromBeginning() async {
         if coordinator.activeItem?.id == entry.id, let vm = coordinator.viewModel {
             await vm.seek(to: 0)
