@@ -292,6 +292,10 @@ extension PlayerViewModel {
             if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
                let ms = fresh.userMediaProgress?.lastUpdate {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
+            } else {
+                // The same case as after a flushed write: the echo guard
+                // holds by position, the known moment stays old.
+                Logger.player.notice("SYNC queue-drained refresh failed item=\(item.id, privacy: .private(mask: .hash)) knownMs kept=\(Int(self.lastKnownServerUpdate))")
             }
         }
     }
@@ -511,7 +515,8 @@ extension PlayerViewModel {
             syncStatus = .synced
         } catch {
             // No network etc.: just continue with the local state, no playback
-            // interruption because of a reconcile error.
+            // interruption because of a reconcile error; the line says why.
+            Logger.player.notice("RECONCILE item=\(item.id, privacy: .private(mask: .hash)) failed reason=\(FailureReason.of(error), privacy: .public), local state kept")
         }
     }
 }

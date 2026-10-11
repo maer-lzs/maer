@@ -46,7 +46,7 @@ struct PlayerView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// At accessibility sizes the fixed-spacing control rows used to
     /// overflow the screen horizontally. Spacing shrinks and the secondary/
-    /// tertiary rows fall back to a two-column grid (ViewThatFits).
+    /// tertiary rows fall back to icon-only (`MeasuredFits`, never ViewThatFits).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
 
@@ -525,10 +525,21 @@ struct PlayerView: View {
                 Button {
                     Task {
                         // Best-effort name match. The playing detail carries no
-                        // artist id; unresolvable stays a silent no-op.
-                        let artists = (try? await AppSession.shared.musicProvider(for: id).allArtists()) ?? []
-                        if let artist = artists.first(where: { $0.name == artistName }) {
-                            openPlayerSource(.musicArtist(artist))
+                        // artist id; a failed list or an unknown name says so.
+                        do {
+                            let artists = try await AppSession.shared.musicProvider(for: id).allArtists()
+                            if let artist = artists.first(where: { $0.name == artistName }) {
+                                openPlayerSource(.musicArtist(artist))
+                            } else {
+                                Logger.player.notice("GO TO ARTIST no artist of that name among \(artists.count)")
+                                coordinator.sayOpenFailure(String(localized: "This result is no longer available."),
+                                                           cause: .unknown, title: artistName)
+                            }
+                        } catch {
+                            Logger.player.notice("GO TO ARTIST artists failed reason=\(FailureReason.of(error), privacy: .public)")
+                            coordinator.sayOpenFailure(String(localized: "Artists could not be loaded."),
+                                                       cause: NoticeCause.of(error, online: await Reachability.isConnected()),
+                                                       title: artistName)
                         }
                     }
                 } label: { Label("Go to Artist", systemImage: "music.mic") }
@@ -889,7 +900,7 @@ struct PlayerView: View {
     /// two-column grid.
     /// Drive mode + mark-finished moved OUT of the "…" menu into
     /// the row. The menu emptied and is GONE. Overflow (the German-labels
-    /// worst case with a full six-item row): ViewThatFits tries the labeled
+    /// worst case with a full six-item row): `MeasuredFits` tries the labeled
     /// row first; when it cannot fit, the SAME buttons render icon-only
     /// (a11y labels intact). Never the jagged two-column grid again. With
     /// gated entries missing (no lyrics/transcript), labels usually fit.

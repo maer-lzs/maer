@@ -66,6 +66,9 @@ struct BookDetailScreen: View {
 
     @State private var detail: LibraryItemDetail?
     @State private var isLoading = true
+    /// The detail could not be fetched: the page says so and offers the
+    /// retry, instead of an empty description and a silent download button.
+    @State private var detailFailed = false
     @State private var showWiFiWarning = false
     @State private var copiedReport = false
     @State private var isFinishedOverride: Bool?
@@ -358,6 +361,9 @@ struct BookDetailScreen: View {
             .padding(.horizontal)
         } else if isLoading {
             ProgressView().padding()
+        } else if detailFailed {
+            LoadFailedView(form: .line) { Task { await loadDetail() } }
+                .padding(.horizontal)
         }
 
         // The catalog title's rights and takeover, exactly what the old
@@ -543,11 +549,7 @@ struct BookDetailScreen: View {
         } message: {
             Text("You're not on Wi-Fi. This download may use cellular data.")
         }
-        .task {
-            isLoading = true
-            detail = try? await detailProvider.fetchItemDetail(itemId: entry.id)
-            isLoading = false
-        }
+        .task { await loadDetail() }
         .task(id: entry.id) {
             await colorLoader.load(from: router.coverURL(entry.id))
         }
@@ -572,6 +574,23 @@ struct BookDetailScreen: View {
 
     /// Deliberate restart: a jump to 0 counts as a user action and is synced
     /// immediately (no conflict dialog).
+    /// The detail of the book (description, chapters, the download's
+    /// tracks). A failure has its line and turns the page's empty
+    /// description into the retry; a cancellation is no failure.
+    private func loadDetail() async {
+        isLoading = true
+        detailFailed = false
+        do {
+            detail = try await detailProvider.fetchItemDetail(itemId: entry.id)
+        } catch {
+            if !error.isCancellation {
+                detailFailed = true
+                Logger.library.notice("BOOK detail failed item=\(entry.id, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        isLoading = false
+    }
+
     private func restartFromBeginning() async {
         if coordinator.activeItem?.id == entry.id, let vm = coordinator.viewModel {
             await vm.seek(to: 0)

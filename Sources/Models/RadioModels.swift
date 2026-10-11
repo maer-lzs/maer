@@ -581,6 +581,14 @@ nonisolated enum RadioStore {
         case failed
     }
 
+    /// Whether the regional fetch failed as a whole, pure: one answer per
+    /// name variant (true when at least one of its two lists came back). A
+    /// state with no variant asked did not fail; a run in which every
+    /// variant failed did, and is no empty success.
+    nonisolated static func regionFailed(variantAnswered: [Bool]) -> Bool {
+        !variantAnswered.isEmpty && !variantAnswered.contains(true)
+    }
+
     /// The step of a run, pure: a failed run never replaces what stands.
     nonisolated static func discoveryStep(failed: Bool, standing: Bool) -> DiscoveryStep {
         guard failed else { return .replace }

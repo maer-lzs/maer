@@ -20,8 +20,6 @@ struct RadioView: View {
     // User's own stations (UserDefaults-backed store).
     @State private var favorites: [RadioStation] = []
     @State private var recents: [RadioStation] = []
-    // Teil 3: stations ranked by play frequency (net-independent. From the store).
-    @State private var mostPlayed: [RadioStation] = []
     /// The merged first row, and its full stock for the counting head.
     @State private var myStations: [RadioStation] = []
     @State private var myStationsTotal = 0
@@ -31,6 +29,9 @@ struct RadioView: View {
     @State private var popular: [RadioStation] = []
     @State private var copiedLogoReport = false
     @State private var regional: [RadioStation] = []
+    /// Every name variant of the chosen region failed and nothing stands:
+    /// the region section says so with a retry instead of a spinner.
+    @State private var regionalFailed = false
     @State private var discoveryLoaded = false
     /// Fourth instance of the throw-is-not-the-end class, mild form: the
     /// fetches swallowed their errors and `discoveryLoaded` was set
@@ -126,7 +127,7 @@ struct RadioView: View {
                 // first row and a CARD; "Recently Played" sits right below it
                 // as a small tile.
                 //
-                // The reason they stay apart is the user': recently played is a
+                // The reason they stay apart is the user's view: recently played is a
                 // STATE, my stations is a PREFERENCE. Two truths do not
                 // belong in one row. And because the last-heard station is
                 // usually also the most-heard one, the upper row leaves it
@@ -479,7 +480,6 @@ struct RadioView: View {
         ScrollCalm.run { [self] in
             favorites = favs
             recents = recs
-            mostPlayed = most
             radioSeconds = secs
             myStations = mine
             myStationsTotal = mine.count
@@ -501,10 +501,13 @@ struct RadioView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 10) {
                         Text(chosenState).font(.title3).bold()
-                        ProgressView().controlSize(.small)
+                        if !regionalFailed { ProgressView().controlSize(.small) }
                     }
-                    .padding(.horizontal)
+                    if regionalFailed {
+                        LoadFailedView(form: .line) { Task { await loadDiscovery(force: true) } }
+                    }
                 }
+                .padding(.horizontal)
             } else {
                 VStack(alignment: .leading, spacing: 4) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -636,10 +639,11 @@ struct RadioView: View {
         // Less foreign-language noise; search covers the exotics. The
         // country follows the cascade (choice beats guess).
         discoveryFailed = false
+        regionalFailed = false
         async let topTask = Self.nationalPopular(nationalEffectiveCode)
         async let regionTask = Self.stateStations(chosenState, countryCode: regionEffectiveCode)
         let (topResult, topFailed) = await topTask
-        let regionResult = await regionTask
+        let (regionFetched, regionFailed) = await regionTask
         // A throw is not an end: the failed run does NOT count as loaded and
         // the next attempt is free. Rows that stand stay, cache included; with
         // none the section says so with a way back in.
@@ -654,6 +658,21 @@ struct RadioView: View {
         case .replace:
             break
         }
+        // The region by the same step: a region whose every variant failed
+        // keeps rows that stand, otherwise says so; neither is an empty
+        // success that writes over the cache or counts as loaded.
+        let regionStep = RadioStore.discoveryStep(failed: regionFailed, standing: !regional.isEmpty)
+        let regionResult: [RadioStation]
+        switch regionStep {
+        case .replace: regionResult = regionFetched
+        case .keep:
+            regionResult = regional
+            Logger.library.error("RADIO regional failed, the standing rows stay, not counted as loaded")
+        case .failed:
+            regionResult = []
+            Logger.library.error("RADIO regional failed, retry offered, not counted as loaded")
+        }
+        regionalFailed = regionStep == .failed
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
         warmLogos(topResult + regionResult)
         // The state list of the effective country (once per session). A
@@ -667,15 +686,19 @@ struct RadioView: View {
         // Persist the composed rows. The NEXT cold start shows
         // them in frame 1 (day rides along; a new day recomputes but shows
         // the stale state until the fresh one lands, never blank).
-        RadioStore.saveDiscovery(popular: topResult, regional: regionResult,
-                                 day: Self.rotationDay())
+        // A failed region writes no cache: the cache of the last full run stays.
+        if regionStep == .replace {
+            RadioStore.saveDiscovery(popular: topResult, regional: regionResult,
+                                     day: Self.rotationDay())
+        }
         // Layout-shift: the discovery sections land as whole-section inserts.
         // Apply through the shared calm gate, never mid-scroll.
         ScrollCalm.run { [self] in
             popular = topResult
             regional = regionResult
         }
-        discoveryLoaded = true
+        // A failed region leaves the next try free, like a failed popular row.
+        discoveryLoaded = regionStep == .replace
     }
 
     /// The state list of the effective country. A failed fetch keeps the
@@ -804,8 +827,10 @@ struct RadioView: View {
     /// The query runs against ALL merged name variants (persisted at
     /// choice time). Otherwise the other spelling's stations vanish; results
     /// dedupe by station id, first (best-voted of the winner name) stays.
-    private static func stateStations(_ state: String?, countryCode: String?) async -> [RadioStation] {
-        guard let state, !state.isEmpty else { return [] }
+    /// The regional rows, and whether the fetch failed as a whole (every
+    /// name variant failed both lists, `RadioStore.regionFailed`).
+    private static func stateStations(_ state: String?, countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {
+        guard let state, !state.isEmpty else { return ([], false) }
         let names = AppStorageKeys.stringArray(AppStorageKeys.radioRegionQueryNames)
             .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
         // PARALLEL fan-out with a politeness cap of 4. The
@@ -813,15 +838,17 @@ struct RadioView: View {
         // seconds for NRW after the Sonstige stage widened the name list.
         var votesMerged: [RadioStation] = []
         var trendMerged: [RadioStation] = []
-        await withTaskGroup(of: (Int, [RadioStation], [RadioStation]).self) { group in
+        var answered: [Bool] = []
+        // A list that failed is nil, not empty: an empty answer is an answer.
+        await withTaskGroup(of: (Int, [RadioStation]?, [RadioStation]?).self) { group in
             var active = 0
             var index = 0
-            var results: [Int: ([RadioStation], [RadioStation])] = [:]
+            var results: [Int: ([RadioStation]?, [RadioStation]?)] = [:]
             func launch(_ i: Int) {
                 let name = names[i]
                 group.addTask {
-                    async let v = (try? await RadioBrowserClient.byState(state: name)) ?? []
-                    async let c = (try? await RadioBrowserClient.byStateClicktrend(state: name)) ?? []
+                    async let v: [RadioStation]? = try? await RadioBrowserClient.byState(state: name)
+                    async let c: [RadioStation]? = try? await RadioBrowserClient.byStateClicktrend(state: name)
                     return (i, await v, await c)
                 }
             }
@@ -833,11 +860,16 @@ struct RadioView: View {
             }
             for i in results.keys.sorted() {
                 let (v, c) = results[i]!
-                votesMerged.append(contentsOf: v)
-                trendMerged.append(contentsOf: c)
-                // Log-first: one line per name variant.
-                Logger.library.notice("RADIO regional name=\(names[i], privacy: .public) votes=\(v.count) trend=\(c.count)")
+                votesMerged.append(contentsOf: v ?? [])
+                trendMerged.append(contentsOf: c ?? [])
+                answered.append(v != nil || c != nil)
+                // Log-first: one line per name variant, a failed list named.
+                Logger.library.notice("RADIO regional name=\(names[i], privacy: .public) votes=\(v.map { String($0.count) } ?? "failed", privacy: .public) trend=\(c.map { String($0.count) } ?? "failed", privacy: .public)")
             }
+        }
+        if RadioStore.regionFailed(variantAnswered: answered) {
+            Logger.library.error("RADIO regional failed: every name variant failed (\(answered.count))")
+            return ([], true)
         }
         // Order by VOTES before dedupe. Survival is
         // decided by vote mass, never by fetch order.
@@ -850,8 +882,15 @@ struct RadioView: View {
         // country vote pool joins the resolution pool for exactly those.
         var core: [RadioStation] = []
         if let coreNames = RadioListenerCores.regional(countryCode: countryCode, regionName: state) {
-            let countryPool = (try? await RadioBrowserClient.byRegion(
-                countryCode: countryCode ?? "", limit: 300)) ?? []
+            let countryPool: [RadioStation]
+            do {
+                countryPool = try await RadioBrowserClient.byRegion(countryCode: countryCode ?? "", limit: 300)
+            } catch {
+                // The core resolves from the regional pool alone; its misses
+                // would otherwise read as names the catalog does not know.
+                Logger.library.notice("RADIO core country pool failed reason=\(FailureReason.of(error), privacy: .public)")
+                countryPool = []
+            }
             core = await resolveCore(coreNames,
                                      pool: votesMerged + RadioMapping.keepingCountry(countryCode ?? "", in: countryPool),
                                      countryCode: countryCode ?? "")
@@ -865,6 +904,6 @@ struct RadioView: View {
             seed: RadioRotation.seed(day: rotationDay(), countryCode: state),
             limit: 12, socket: .votes, minTrendVotes: 50)
         Logger.library.notice("RADIO regional composed pool=\(votesUnique.count)+\(trendMerged.count) out=\(composed.map { RadioMapping.displayName($0.name) }.joined(separator: " · "), privacy: .public)")
-        return composed
+        return (composed, false)
     }
 }

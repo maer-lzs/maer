@@ -600,14 +600,16 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// DELETE a show on the server (removes everything server-side incl.
     /// history. Only for the explicit "delete permanently" action, not archive).
-    func deleteShowOnServer(showId: String) async -> Bool {
+    /// Nil when the server took it; otherwise the error, so the page can stay
+    /// and say why instead of closing as if it were gone.
+    func deleteShowOnServer(showId: String) async -> Error? {
         do {
             try await client.deleteLibraryItem(itemId: Self.split(showId).show)
             await refresh()
-            return true
+            return nil
         } catch {
             Logger.library.error("ABSPOD show delete failed: \(FailureReason.of(error), privacy: .public)")
-            return false
+            return error
         }
     }
 

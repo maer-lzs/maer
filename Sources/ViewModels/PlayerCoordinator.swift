@@ -376,13 +376,10 @@ final class PlayerCoordinator: ObservableObject {
         // (pure, tested): the same title already on its way answers nil.
         guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
         defer { openGate.finish(generation) }
-        if !preservesContext { PlaybackContext.shared.clear() }
-        // Whatever you START playing leaves both lists. Covers audiobooks,
-        // podcasts and music alike.
-        leaveBothLists(item.id)
         // A restart must reload (start at 0) even if it's the active item. Don't
         // take the "already open, just resume" shortcut.
         if !restart, activeItem?.id == item.id, viewModel != nil {
+            takeOver(item.id, preservesContext: preservesContext)
             if autoplay { await viewModel?.playWithServerCheck() }
             return
         }
@@ -408,6 +405,9 @@ final class PlayerCoordinator: ObservableObject {
                        reason: "offlineNotDownloaded", item: item, origin: origin, cause: .network)
             return
         }
+        // Only a tap that is not turned away takes the lists over: a refused
+        // one used to empty the context and take the title out of Up Next.
+        takeOver(item.id, preservesContext: preservesContext)
 
         // Capture a running fixed-minutes sleep timer BEFORE tearing down the
         // old session, so it can continue on the next title.
@@ -639,6 +639,15 @@ final class PlayerCoordinator: ObservableObject {
     /// context: the running title is never in either ("launchpad, not
     /// playlist"), and what already ran is never offered again. The start
     /// and the end call this one door, so the invariant is written once.
+    /// What starting a title does to the lists: a start that brings no
+    /// context of its own ends the old one, and whatever you START playing
+    /// leaves both lists (audiobooks, podcasts and music alike). Called once
+    /// the open is sure to go on, never before a rejection.
+    private func takeOver(_ id: String, preservesContext: Bool) {
+        if !preservesContext { PlaybackContext.shared.clear() }
+        leaveBothLists(id)
+    }
+
     private func leaveBothLists(_ id: String) {
         orders.remove(id)
         PlaybackContext.shared.remove(id)

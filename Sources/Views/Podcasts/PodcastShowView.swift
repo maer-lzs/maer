@@ -48,6 +48,8 @@ struct PodcastShowView: View {
     @State private var loadingAvailable = false
     @State private var downloading: Set<String> = []
     @State private var downloadError: String?
+    /// The sentence of a delete the server did not take; the page stays.
+    @State private var deleteError: String?
     @State private var loadingHistory = false
     @State private var historyResult: String?
     @State private var showSettings = false
@@ -264,8 +266,8 @@ struct PodcastShowView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // The per-show settings slider inboard, the global
-            // A pushed page carries its OWN actions and no app settings cog.
+            // The per-show settings slider inboard, the global settings cog
+            // not: a pushed page carries its OWN actions and no app settings cog.
             // The toolbar holds three elements on a phone, and a destination
             // needed once a day must not crowd out the tools needed
             // constantly; the cog lives on every tab root instead.
@@ -335,6 +337,12 @@ struct PodcastShowView: View {
             Button("OK", role: .cancel) { downloadError = nil }
         } message: {
             if let downloadError { Text(downloadError) }
+        }
+        .alert(Text(deleteError ?? ""), isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { deleteError = nil }
         }
         .task { await loadIfBrowsed() }
         .task(id: preferencesSlot) { readPreferences() }
@@ -502,8 +510,9 @@ struct PodcastShowView: View {
         .confirmationDialog("Delete on server?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete on server", role: .destructive) {
                 Task {
-                    if let id = liveShow?.id {
-                        _ = await absPodcast.deleteShowOnServer(showId: id)
+                    if let id = liveShow?.id, let error = await absPodcast.deleteShowOnServer(showId: id) {
+                        deleteError = ErrorSentence.of(error)
+                        return
                     }
                     dismiss()
                 }
