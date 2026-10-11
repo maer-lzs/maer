@@ -88,6 +88,9 @@ final class MusicViewModel: ObservableObject {
     /// Music is on, and this device has no server to ask: the page says
     /// that instead of "your server reported an empty library".
     @Published private(set) var serverMissingHere = false
+    /// A later album page failed: the grid holds the pages read so far and
+    /// is not the whole library. The page says so below the grid.
+    @Published private(set) var albumsIncomplete = false
 
     private let source: MusicSource
     /// The attempt gate, in the CatalogLoadGate form: it counts ATTEMPTS, and
@@ -181,6 +184,7 @@ final class MusicViewModel: ObservableObject {
         // clears it, so the newest run must.
         defer { if isCurrent() { isLoading = false } }
         errorText = nil
+        albumsIncomplete = false
         lastRunCancelled = false
         serverMissingHere = !source.reachable()
         guard !serverMissingHere else {
@@ -204,12 +208,17 @@ final class MusicViewModel: ObservableObject {
             if MusicPageLoad.superseded("albums", isCurrent()) { return }
             albums = first
             isLoading = false   // grid is on screen — the rest arrives silently
-            // Remaining pages: append quietly; an abort keeps the partial list.
+            // Remaining pages: append quietly; an abort keeps the partial list,
+            // and a failed page says the list is not whole.
             var offset = first.count
             var lastCount = first.count
             while lastCount == pageSize {
-                guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
+                let page = await FetchAnswer.of("album page offset=\(offset)", logger: .music) {
+                    try await source.albumsPage(sort, offset, pageSize)
+                }
                 if MusicPageLoad.superseded("albums offset=\(offset)", isCurrent()) { return }
+                if page.failed { albumsIncomplete = true }
+                guard let next = page.value, !next.isEmpty else { break }
                 // Layout-shift fix: silent page appends grow the grid. Apply
                 // through the shared calm gate, never mid-scroll. The gate may
                 // run it later, so it asks again then.

@@ -67,12 +67,8 @@ struct RadioGenreView: View {
                         .padding()
                 } else if loadFailed {
                     // Rule 3: a failed load is not "no stations".
-                    ContentUnavailableView {
-                        Label(title, systemImage: "dot.radiowaves.left.and.right")
-                    } description: {
-                        Text("This could not be loaded. Check your connection.")
-                    } actions: {
-                        Button("Retry") { Task { await load(force: true) } }
+                    LoadFailedView(form: .page(title: Text(title), systemImage: "dot.radiowaves.left.and.right")) {
+                        Task { await load(force: true) }
                     }
                     .padding(.top, 40)
                 } else if stations.isEmpty {

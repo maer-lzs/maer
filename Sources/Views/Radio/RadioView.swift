@@ -49,6 +49,8 @@ struct RadioView: View {
     /// Curated picker list: merged variants, noise filtered,
     /// sorted by station count.
     @State private var availableStates: [RadioBrowseCuration.Curated] = []
+    /// The state list could not be fetched: not "a country without states".
+    @State private var statesFailed = false
     @State private var showRegionPicker = false
     @State private var showCountryPicker = false
     /// The NATIONAL row's own country. Independent of the region.
@@ -193,12 +195,8 @@ struct RadioView: View {
                         // A failed load is not "no stations". The old advice
                         // ("search the catalog") pointed at a catalog that had
                         // simply not arrived.
-                        ContentUnavailableView {
-                            Label("Radio", systemImage: "dot.radiowaves.left.and.right")
-                        } description: {
-                            Text("This could not be loaded. Check your connection.")
-                        } actions: {
-                            Button("Retry") { Task { await loadDiscovery(force: true) } }
+                        LoadFailedView(form: .page(title: Text("Radio"), systemImage: "dot.radiowaves.left.and.right")) {
+                            Task { await loadDiscovery(force: true) }
                         }
                         .padding(.top, 60)
                     } else if isOnline && !discoveryLoaded {
@@ -545,6 +543,12 @@ struct RadioView: View {
                 }
                 .accessibilityIdentifier("radio-region-picker")
             }
+        } else if statesFailed, isOnline {
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.plain("From Your Region")
+                LoadFailedView(form: .line) { Task { await loadStates() } }
+                    .padding(.horizontal)
+            }
         }
     }
 
@@ -652,16 +656,7 @@ struct RadioView: View {
         // Raw entries run through the pure curation (merge/filter/sort).
         // The STATE list belongs to the region layer. Its country decides
         // which states exist.
-        if availableStates.isEmpty, let countryName = effectiveCountryName {
-            let raw = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
-            // Core countries (DE/CH/AT) show their CANONICAL
-            // regions (aliases pooled, nationwide names dropped, unmapped
-            // pooled into "Other"); everyone else keeps the generic curation.
-            availableStates = RadioRegionCanon.curated(
-                raw, countryCode: regionEffectiveCode,
-                otherLabel: String(localized: "Other regions"))
-                ?? RadioBrowseCuration.curated(raw)
-        }
+        if availableStates.isEmpty { await loadStates() }
         // Persist the composed rows. The NEXT cold start shows
         // them in frame 1 (day rides along; a new day recomputes but shows
         // the stale state until the fresh one lands, never blank).
@@ -674,6 +669,28 @@ struct RadioView: View {
             regional = regionResult
         }
         discoveryLoaded = true
+    }
+
+    /// The state list of the effective country. A failed fetch keeps the
+    /// region section with the sentence and a retry; the discovery counts as
+    /// loaded all the same, its rows arrived.
+    private func loadStates() async {
+        guard let countryName = effectiveCountryName else { return }
+        switch await FetchAnswer.of("radio states", logger: .library, { try await RadioBrowserClient.states(countryName: countryName) }) {
+        case .value(let raw):
+            // Core countries (DE/CH/AT) show their CANONICAL
+            // regions (aliases pooled, nationwide names dropped, unmapped
+            // pooled into "Other"); everyone else keeps the generic curation.
+            availableStates = RadioRegionCanon.curated(
+                raw, countryCode: regionEffectiveCode,
+                otherLabel: String(localized: "Other regions"))
+                ?? RadioBrowseCuration.curated(raw)
+            statesFailed = false
+        case .failed:
+            statesFailed = true
+        case .cancelled:
+            break
+        }
     }
 
     /// Socket + daily rotation. Pool = votes + clicktrend

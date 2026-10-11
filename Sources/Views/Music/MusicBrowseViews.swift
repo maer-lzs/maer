@@ -154,6 +154,8 @@ struct MusicArtistView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var albums: [LibraryItem] = []
+    /// The albums could not be fetched: not "an artist without albums".
+    @State private var albumsFailed = false
     @State private var loading = true
     @State private var info: MusicArtistInfo?
     @State private var topSongs: [MusicTopSong] = []
@@ -170,6 +172,9 @@ struct MusicArtistView: View {
                 header
                 if loading {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                } else if albumsFailed {
+                    LoadFailedView(form: .line) { Task { await loadAlbums() } }
+                        .padding(.horizontal)
                 } else {
                     CoverGrid(columns: columns) {
                         ForEach(albums) { album in
@@ -189,8 +194,7 @@ struct MusicArtistView: View {
         .task(id: artist.id) {
             // The artist's own server answers, whichever the device uses.
             let music = AppSession.shared.musicProvider(for: artist.itemId)
-            albums = (try? await music.artistAlbums(artistId: artist.id)) ?? []
-            loading = false
+            await loadAlbums()
             info = await music.artistInfo(artistId: artist.id)
             Logger.music.notice(
                 "MUSICART surface=detail source=\(info?.imageURL == nil ? "none" : "server", privacy: .public) host=\(info?.imageURL?.host ?? "-", privacy: .public)")
@@ -205,6 +209,22 @@ struct MusicArtistView: View {
                 similarInLibrary = similar.compactMap { libraryNames[$0.lowercased()] }
             }
         }
+    }
+
+    /// The artist's albums from its own server; a failure says so on the
+    /// page and keeps what was shown.
+    private func loadAlbums() async {
+        let music = AppSession.shared.musicProvider(for: artist.itemId)
+        switch await FetchAnswer.of("artist albums", logger: .music, { try await music.artistAlbums(artistId: artist.id) }) {
+        case .value(let fetched):
+            albums = fetched
+            albumsFailed = false
+        case .failed:
+            albumsFailed = albums.isEmpty
+        case .cancelled:
+            break
+        }
+        loading = false
     }
 
     @ViewBuilder

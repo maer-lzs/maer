@@ -201,6 +201,38 @@ struct MusicViewModelTests {
         #expect(controls.pageRequests == [0, 100, 200])
         #expect(vm.albums.count == 201)
         #expect(vm.errorText == nil)
+        #expect(!vm.albumsIncomplete, "a library read to its end is whole")
+    }
+
+    /// A later page fails: the pages read stay, and the page says the list
+    /// is not whole (before, the loop broke silently and a cut library
+    /// looked complete).
+    @Test("eine spaetere Albenseite scheitert: die gelesenen Seiten bleiben, und die Liste ist als unvollstaendig markiert")
+    func aLaterFailedPageMarksTheListIncomplete() async {
+        let controls = Controls()
+        controls.albumsError = URLError(.timedOut)
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, offset, size in
+                controls.pageRequests.append(offset)
+                if offset == 0 { return (0..<size).map { self.album("p0-\($0)") } }
+                if let error = controls.albumsError { throw error }
+                return [self.album("last")]
+            },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] }
+        ))
+        await vm.reload()
+        #expect(controls.pageRequests == [0, 100], "the second page was not asked")
+        #expect(vm.albums.count == 100, "the page read before the failure is gone")
+        #expect(vm.albumsIncomplete, "a cut library is not marked as cut")
+        #expect(vm.errorText == nil, "a later page is not the page's full-screen error")
+
+        // The server answers again: the retry reads to the end and the mark goes.
+        controls.albumsError = nil
+        await vm.reload()
+        #expect(vm.albums.count == 101)
+        #expect(!vm.albumsIncomplete, "a library read to its end still says it is cut")
     }
 
     @Test("CancellationError: no errorText, albums stay, isLoading resets")

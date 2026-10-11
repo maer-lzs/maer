@@ -374,6 +374,8 @@ struct AddToPlaylistSheet: View {
     @ObservedObject private var devicePlaylists = MaerPlaylists.shared
     @State private var serverPlaylists: [MusicPlaylist] = []
     @State private var loadingServer = true
+    /// The server's lists could not be fetched: not "no playlists yet".
+    @State private var serverFailed = false
     @State private var busy = false
 
     private var places: [PlaylistPlace] { PlaylistPresenter.places(for: request.ids) }
@@ -389,6 +391,10 @@ struct AddToPlaylistSheet: View {
                     Section {
                         if loadingServer {
                             HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
+                        } else if serverFailed {
+                            LoadFailedView(form: .line, sentence: "Playlists could not be loaded.") {
+                                Task { await loadServer() }
+                            }
                         } else if serverPlaylists.isEmpty {
                             Text("No playlists yet.").foregroundStyle(.secondary)
                         } else {
@@ -486,8 +492,16 @@ struct AddToPlaylistSheet: View {
         guard showsServer, let server else { loadingServer = false; return }
         // Only the target server's lists: with two servers the union would
         // offer the other's too, and adding there finds no songs.
-        let all = (try? await AppSession.shared.musicProvider(serving: .one(server)).allPlaylists()) ?? []
-        serverPlaylists = PlaylistPresentation.realPlaylists(all)
+        let provider = AppSession.shared.musicProvider(serving: .one(server))
+        switch await FetchAnswer.of("server playlists", logger: .music, { try await provider.allPlaylists() }) {
+        case .value(let all):
+            serverPlaylists = PlaylistPresentation.realPlaylists(all)
+            serverFailed = false
+        case .failed:
+            serverFailed = serverPlaylists.isEmpty
+        case .cancelled:
+            break
+        }
         loadingServer = false
     }
 }

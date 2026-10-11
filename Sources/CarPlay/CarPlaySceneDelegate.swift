@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import CarPlay
+import OSLog
 import UIKit
 
 /// CarPlay scene: three tabs (Continue / Downloaded / Library) as lists;
@@ -149,10 +150,18 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         guard AppSession.shared.musicProvider.isAvailable,
               AppSession.shared.musicProvider.mediaTypes.contains(.music) else { return nil }
         let cap = Int(CPListTemplate.maximumItemCount)
-        let newest = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 20)) ?? []
+        // The car has no place for a failure line: a list that failed is
+        // left out and the failure stands in the log (`FetchAnswer`), so a
+        // missing music tab has a trace.
+        let provider = AppSession.shared.musicProvider
+        let newest = await FetchAnswer.of("carplay newest albums", logger: .music) {
+            try await provider.albumShelf(shelf: .newest, size: 20)
+        }.value ?? []
         // The music tab asks for MUSIC. A source that also serves audiobooks
         // must not put books in the car's album list.
-        let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(for: .music)) ?? []
+        let all = await FetchAnswer.of("carplay albums", logger: .music) {
+            try await provider.fetchLibraryItems(for: .music)
+        }.value ?? []
 
         var sections: [CPListSection] = []
         if !newest.isEmpty {

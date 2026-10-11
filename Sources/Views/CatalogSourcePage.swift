@@ -283,14 +283,8 @@ struct CatalogSourcePage: View {
         } else if isLoading {
             ProgressView().frame(maxWidth: .infinity).padding()
         } else if pageFailure != nil {
-            HStack(spacing: 10) {
-                Text("Could not load more.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Button("Retry") { Task { await load() } }
-                    .font(.footnote)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
+            LoadFailedView(form: .line, sentence: "Could not load more.") { Task { await load() } }
+                .padding()
         }
     }
 
@@ -727,14 +721,8 @@ struct CatalogPopularPage: View {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if pageFailure != nil {
                 // A failure is not exhaustion.
-                HStack(spacing: 10) {
-                    Text("Could not load more.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                    Button("Retry") { Task { await load() } }
-                        .font(.footnote)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
+                LoadFailedView(form: .line, sentence: "Could not load more.") { Task { await load() } }
+                    .padding()
             }
             Color.clear.frame(height: 1).bottomBarClearance()
         }

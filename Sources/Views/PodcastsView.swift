@@ -957,7 +957,10 @@ struct PodcastDownloadsPage: View {
 /// Same chart client as the chips (no second load path); genres are
 /// STRUCTURE here, not filter (the chips stay on the overview only).
 struct RadioPlayChartsPage: View {
+    /// The chips that answered. A chip whose fetches all failed stands in
+    /// `failedChips` instead and is asked again by the next load.
     @State private var byChip: [String: [PodcastSearchResult]] = [:]
+    @State private var failedChips: Set<String> = []
     @State private var loading = false
 
     var body: some View {
@@ -989,6 +992,9 @@ struct RadioPlayChartsPage: View {
                 }
                 if loading && byChip.isEmpty {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                } else if !loading && !failedChips.isEmpty {
+                    LoadFailedView(form: .line) { Task { await load() } }
+                        .padding()
                 }
             }
             .padding(.top, TabContentLayout.topInset)
@@ -996,20 +1002,35 @@ struct RadioPlayChartsPage: View {
         }
         .navigationTitle(Text("Popular Radio-Play Podcasts"))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            guard byChip.isEmpty else { return }
-            #if DEBUG
-            if UITestSeed.isActive { return }
-            #endif
-            loading = true
-            defer { loading = false }
-            let directory = ITunesDirectory()
-            for chip in CatalogGenreAxis.hoerspielChips {
-                var pool: [PodcastSearchResult] = []
-                for genreId in chip.genreIds {
-                    pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
-                }
+        .task { await load() }
+    }
+
+    /// Asks every chip that has not answered yet; a chip that answered is
+    /// not asked again.
+    private func load() async {
+        let open = CatalogGenreAxis.hoerspielChips.filter { byChip[$0.key] == nil }
+        guard !open.isEmpty, !loading else { return }
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        loading = true
+        defer { loading = false }
+        let directory = ITunesDirectory()
+        for chip in open {
+            var answers: [FetchAnswer<[PodcastSearchResult]>] = []
+            for genreId in chip.genreIds {
+                answers.append(await FetchAnswer.of("chart genre=\(genreId)", logger: .rss) {
+                    try await directory.topPodcasts(genreId: genreId)
+                })
+            }
+            switch FetchAnswer.joined(answers) {
+            case .value(let pool):
                 byChip[chip.key] = PodcastShowSources.excludingOwned(pool)
+                failedChips.remove(chip.key)
+            case .failed:
+                failedChips.insert(chip.key)
+            case .cancelled:
+                return
             }
         }
     }
@@ -1020,6 +1041,7 @@ struct RadioPlayChartsPage: View {
 struct ChartGenrePage: View {
     let chipKey: String
     @State private var results: [PodcastSearchResult] = []
+    @State private var failed = false
     @State private var loading = false
 
     private var chip: CatalogGenreAxis.Chip? {
@@ -1032,6 +1054,9 @@ struct ChartGenrePage: View {
         ScrollView {
             if loading && results.isEmpty {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if failed && results.isEmpty {
+                LoadFailedView(form: .line) { Task { await load() } }
+                    .padding(.top, 40)
             } else {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                     ForEach(results, id: \.feedURL) { result in
@@ -1044,19 +1069,31 @@ struct ChartGenrePage: View {
         }
         .navigationTitle(Text(verbatim: chip?.title ?? ""))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            guard results.isEmpty, let chip else { return }
-            #if DEBUG
-            if UITestSeed.isActive { return }
-            #endif
-            loading = true
-            defer { loading = false }
-            let directory = ITunesDirectory()
-            var pool: [PodcastSearchResult] = []
-            for genreId in chip.genreIds {
-                pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
-            }
+        .task { await load() }
+    }
+
+    private func load() async {
+        guard results.isEmpty, !loading, let chip else { return }
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        loading = true
+        defer { loading = false }
+        let directory = ITunesDirectory()
+        var answers: [FetchAnswer<[PodcastSearchResult]>] = []
+        for genreId in chip.genreIds {
+            answers.append(await FetchAnswer.of("chart genre=\(genreId)", logger: .rss) {
+                try await directory.topPodcasts(genreId: genreId)
+            })
+        }
+        switch FetchAnswer.joined(answers) {
+        case .value(let pool):
             results = PodcastShowSources.excludingOwned(pool)
+            failed = false
+        case .failed:
+            failed = true
+        case .cancelled:
+            break
         }
     }
 }

@@ -21,6 +21,7 @@ struct ABSSourceView: View {
     @State private var pendingSyncCount = 0
     @State private var isSyncing = false
     @State private var availableLibraries: [ABSLibrary] = []
+    @State private var librariesFailed = false
     @AppStorage(AppStorageKeys.selectedLibraryId) private var selectedLibraryId = ""
 
     var body: some View {
@@ -94,6 +95,11 @@ struct ABSSourceView: View {
                             Task { await libraryViewModel?.loadLibrary() }
                         }
                     }
+                } else if librariesFailed {
+                    // The list could not be read: not "one library".
+                    Section("Library") {
+                        LoadFailedView(form: .line) { Task { await loadLibraries() } }
+                    }
                 }
             }
         }
@@ -102,15 +108,7 @@ struct ABSSourceView: View {
         .bottomBarClearance()
         .task {
             pendingSyncCount = SyncQueue.shared.allPending().count
-            if authViewModel.isLoggedIn,
-               let libraries = try? await coordinator.provider.fetchLibraries() {
-                // ONLY book libraries. Podcast libraries belong to the podcast
-                // source, not the audiobook library picker.
-                availableLibraries = libraries.filter { !$0.isPodcast }
-                if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
-                    selectedLibraryId = availableLibraries.first?.id ?? ""
-                }
-            }
+            await loadLibraries()
         }
         .sheet(isPresented: $showABSSetup) {
             // The login form alone. Presenting the whole first screen here
@@ -125,6 +123,26 @@ struct ABSSourceView: View {
         .confirmationDialog("Log out from the server?", isPresented: $showLogoutConfirm) {
             Button("Log Out", role: .destructive) { onLogout() }
             Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    /// The server's book libraries for the picker. ONLY book libraries:
+    /// podcast libraries belong to the podcast source. A failure says so in
+    /// the library section with a retry and keeps the choice made.
+    private func loadLibraries() async {
+        guard authViewModel.isLoggedIn else { return }
+        let provider = coordinator.provider
+        switch await FetchAnswer.of("abs libraries", logger: .library, { try await provider.fetchLibraries() }) {
+        case .value(let libraries):
+            availableLibraries = libraries.filter { !$0.isPodcast }
+            librariesFailed = false
+            if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
+                selectedLibraryId = availableLibraries.first?.id ?? ""
+            }
+        case .failed:
+            librariesFailed = availableLibraries.isEmpty
+        case .cancelled:
+            break
         }
     }
 }

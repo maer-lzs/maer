@@ -32,8 +32,11 @@ struct PodcastSourceView: View {
     @State private var source: Source = .apple
 
     @State private var searchText = ""
-    @State private var results: [PodcastSearchResult] = []
+    /// The answer of the last search; nil while nothing was asked. A failed
+    /// search is not "no results".
+    @State private var searchAnswer: FetchAnswer<[PodcastSearchResult]>?
     @State private var isSearching = false
+    private var results: [PodcastSearchResult] { searchAnswer?.value ?? [] }
     @State private var subscribingFeeds: Set<String> = []
 
     @State private var showAddByURL = false
@@ -65,7 +68,7 @@ struct PodcastSourceView: View {
                 Text("Off = your Audiobookshelf server is used only for audiobooks. Turn on to also manage podcasts on it (subscribe, download, sync).")
             }
             searchSection
-            if !results.isEmpty || isSearching {
+            if isSearching || searchAnswer != nil {
                 resultsSection
             }
             addByURLSection
@@ -166,7 +169,7 @@ struct PodcastSourceView: View {
         // Debounce: wait briefly after typing, then search.
         .task(id: searchText) {
             let term = searchText.trimmingCharacters(in: .whitespaces)
-            guard term.count >= 2 else { results = []; return }
+            guard term.count >= 2 else { searchAnswer = nil; return }
             try? await Task.sleep(nanoseconds: 400_000_000)
             guard !Task.isCancelled else { return }
             await runSearch(term)
@@ -184,7 +187,7 @@ struct PodcastSourceView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 if !searchText.isEmpty {
-                    Button { searchText = ""; results = [] } label: {
+                    Button { searchText = ""; searchAnswer = nil } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
@@ -209,6 +212,11 @@ struct PodcastSourceView: View {
         Section {
             if isSearching {
                 HStack { ProgressView(); Text("Searching…").foregroundStyle(.secondary) }
+            } else if searchAnswer?.failed == true {
+                LoadFailedView(form: .line) {
+                    let term = searchText.trimmingCharacters(in: .whitespaces)
+                    if term.count >= 2 { Task { await runSearch(term) } }
+                }
             } else if results.isEmpty {
                 Text("No results.").foregroundStyle(.secondary)
             } else {
@@ -777,11 +785,15 @@ struct PodcastSourceView: View {
             )
         } else {
             // No directory may be asked. An honest empty result, no request.
-            results = []
+            searchAnswer = .value([])
             isSearching = false
             return
         }
-        results = (try? await directory.search(term)) ?? []
+        let answer = await FetchAnswer.of("podcast directory search", logger: .rss) {
+            try await directory.search(term)
+        }
+        // A cancelled search (a newer keystroke) leaves the last answer.
+        if case .cancelled = answer {} else { searchAnswer = answer }
         isSearching = false
     }
 

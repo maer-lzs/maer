@@ -132,11 +132,18 @@ final class RadioProvider: AudioProvider {
 
     /// Catalog search. Live over Radio Browser; offline, favorites and
     /// manual stations filter locally (offline-first like every provider).
-    func searchStations(query: String) async -> [RadioStation] {
+    /// A failed catalog search is not "no stations": with no local hit it
+    /// throws, so the search counts the source as failed; beside local hits
+    /// it is logged and the local hits stand.
+    func searchStations(query: String) async throws -> [RadioStation] {
         let local = (RadioStore.favorites() + RadioStore.manualStations())
             .filter { $0.name.localizedCaseInsensitiveContains(query) }
         guard await Reachability.isConnected() else { return local }
-        let remote = (try? await RadioBrowserClient.search(name: query)) ?? []
+        let answer = await FetchAnswer.of("radio search", logger: .library) {
+            try await RadioBrowserClient.search(name: query)
+        }
+        if answer.failed, !local.isEmpty { return local }
+        let remote = try answer.get()
         remember(remote)
         var seen = Set(local.map(\.id))
         return local + remote.filter { seen.insert($0.id).inserted }
@@ -153,7 +160,7 @@ extension RadioProvider: SearchableProvider {
                 .map { SearchResult(id: $0.id, kind: .radioStation, title: $0.name) }
         }
         #endif
-        return await searchStations(query: query).map { station in
+        return try await searchStations(query: query).map { station in
             SearchResult(id: station.id, kind: .radioStation, title: station.name,
                          subtitle: station.tags.first,
                          coverURL: station.faviconURL.flatMap { URL(string: $0) })

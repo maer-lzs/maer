@@ -75,6 +75,12 @@ struct MusicAlbumsPage: View {
                             }
                         }
                         .padding(.horizontal)
+                        if vm.albumsIncomplete {
+                            LoadFailedView(form: .line, sentence: "Could not load more.") {
+                                Task { await vm.reload() }
+                            }
+                            .padding(.horizontal)
+                        }
                     }
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()
@@ -564,12 +570,8 @@ struct FreeJamendoPage: View {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if items.isEmpty && loadFailed {
                 // Same rule as the shelves: a failed load is not "no music".
-                ContentUnavailableView {
-                    Label("Free Music (Jamendo)", systemImage: "music.note")
-                } description: {
-                    Text("This could not be loaded. Check your connection.")
-                } actions: {
-                    Button("Retry") { Task { await loadAll() } }
+                LoadFailedView(form: .page(title: Text("Free Music (Jamendo)"), systemImage: "music.note")) {
+                    Task { await loadAll() }
                 }
             } else if items.isEmpty {
                 ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")

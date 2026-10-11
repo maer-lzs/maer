@@ -65,7 +65,7 @@ final class GlobalSearchModel: ObservableObject {
                 // subscribe plus for "Struwwelpeter"). Every other scope keeps
                 // the directory card unchanged (there those hits ARE shows).
                 if tab == .audiobooks {
-                    return await Self.catalogBookResults(query: query)
+                    return try await Self.catalogBookResults(query: query)
                 }
                 // The ONE directory selection. It also closes a hole this
                 // site had: with Apple off and no PodcastIndex key the old
@@ -90,12 +90,14 @@ final class GlobalSearchModel: ObservableObject {
 
     /// The free-catalog book search. The three EXISTING clients
     /// (LibriVox title API, gutendex search, archive advancedsearch with a
-    /// title clause), concurrent; a failing source drops out. Gates: master
+    /// title clause), concurrent; a failing source drops out and is logged,
+    /// and when every asked source failed the search throws, so it counts
+    /// as a failed source instead of an empty one. Gates: master
     /// plus each source's service opt-out (a source that is off contributes
     /// nothing). Results are remembered in the provider, so covers, licence
     /// capsules and the detail sheet ride the existing paths.
     @MainActor
-    static func catalogBookResults(query: String) async -> [SearchResult] {
+    static func catalogBookResults(query: String) async throws -> [SearchResult] {
         let provider = FreeCatalogProvider.shared
         let librivoxOn = AppStorageKeys.librivoxActive
         let gutenbergOn = AppStorageKeys.gutenbergSourceActive
@@ -108,11 +110,14 @@ final class GlobalSearchModel: ObservableObject {
             case librivox([LibriVoxBook])
             case gutenberg([GutenbergClient.Book])
             case archive([ArchivePopularDoc])
+            /// A source that did not answer, with its log reason.
+            case failed(source: String, FetchAnswer<[SearchResult]>)
         }
         let raw = await withTaskGroup(of: RawHits.self) { group in
             if librivoxOn {
                 group.addTask {
-                    .librivox((try? await LibriVoxClient.searchBooks(title: query)) ?? [])
+                    do { return .librivox(try await LibriVoxClient.searchBooks(title: query)) }
+                    catch { return .failed(source: "librivox", .from(error)) }
                 }
             }
             // Gutenberg used to ride the LibriVox gate. With its own source
@@ -120,7 +125,8 @@ final class GlobalSearchModel: ObservableObject {
             // request still leaves.
             if gutenbergOn {
                 group.addTask {
-                    .gutenberg((try? await GutenbergClient.audiobooks(languages: [], search: query)) ?? [])
+                    do { return .gutenberg(try await GutenbergClient.audiobooks(languages: [], search: query)) }
+                    catch { return .failed(source: "gutenberg", .from(error)) }
                 }
             }
             if archiveOn {
@@ -129,30 +135,39 @@ final class GlobalSearchModel: ObservableObject {
                     // on a REBUILT base query. Now the same one truth as the
                     // row and the shelf.
                     let base = ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks) ?? ""
-                    return .archive((try? await ArchiveOrgClient.popular(
-                        query: base + " AND title:(\(query))", rows: 10)) ?? [])
+                    do {
+                        return .archive(try await ArchiveOrgClient.popular(
+                            query: base + " AND title:(\(query))", rows: 10))
+                    } catch {
+                        return .failed(source: "archive", .from(error))
+                    }
                 }
             }
             var collected: [RawHits] = []
             for await hits in group { collected.append(hits) }
             return collected
         }
-        var out: [SearchResult] = []
+        var answers: [FetchAnswer<[SearchResult]>] = []
         for hits in raw {
             switch hits {
             case .librivox(let books):
-                out += books.map { provider.remember(book: $0) }
-                    .map { Self.bookResult($0, source: "LibriVox") }
+                answers.append(.value(books.map { provider.remember(book: $0) }
+                    .map { Self.bookResult($0, source: "LibriVox") }))
             case .gutenberg(let books):
-                out += books.compactMap { provider.remember(gutenberg: $0) }
-                    .map { Self.bookResult($0, source: "Project Gutenberg") }
+                answers.append(.value(books.compactMap { provider.remember(gutenberg: $0) }
+                    .map { Self.bookResult($0, source: "Project Gutenberg") }))
             case .archive(let docs):
-                out += docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
+                answers.append(.value(docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
                     .compactMap { provider.remember(popular: $0) }
-                    .map { Self.bookResult($0, source: "Internet Archive") }
+                    .map { Self.bookResult($0, source: "Internet Archive") }))
+            case .failed(let source, let answer):
+                if case .failed(let reason) = answer {
+                    Logger.library.error("FETCH failed what=catalog search source=\(source, privacy: .public) reason=\(reason, privacy: .public)")
+                }
+                answers.append(answer)
             }
         }
-        return out
+        return try FetchAnswer.joined(answers).get()
     }
 
     /// `readingVersion` answers from the catalogue's register by default; a

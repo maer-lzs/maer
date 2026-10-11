@@ -204,7 +204,16 @@ struct SubsonicSourceView: View {
     /// otherwise be asked with the old one.
     private func loadLibraries() async {
         save()
-        libraries = (try? await SubsonicProvider.shared.refreshLibraries()) ?? libraries
+        // A failure keeps the list shown and says so in the status line,
+        // like the test and the sync.
+        switch await FetchAnswer.of("subsonic libraries", logger: .music, { try await SubsonicProvider.shared.refreshLibraries() }) {
+        case .value(let fetched):
+            libraries = fetched
+        case .failed:
+            setStatus(String(localized: "The library could not be reached. Check the server and try again."), isError: true)
+        case .cancelled:
+            break
+        }
         // Pruning may have dropped assignments for libraries that are gone.
         assignment = AppStorageKeys.subsonicAssignment
     }
