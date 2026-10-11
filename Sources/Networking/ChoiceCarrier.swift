@@ -9,7 +9,7 @@ import OSLog
 /// The transport behind the travelling user choices. A carrier holds the
 /// blob the far side has and takes the one this device merged, nothing
 /// more: every rule (per key the last user action wins by its event time,
-/// tombstones, the weakest legacy statements, adoption) stays in
+/// tombstones, adoption) stays in
 /// `UserChoiceCloudSync`. The key-value store is the first carrier; the Mär
 /// sync service and CloudKit hang in here after, the same three answers the
 /// pot, the claim, the statistics and the playlists give.
@@ -65,8 +65,7 @@ enum ChoiceCarriers {
 /// via the same `NSUbiquitousKeyValueStore` the podcast progress uses. One
 /// key, not a key per choice, stays clear of the store's 1024-key limit.
 /// Without the iCloud capability the store stays silent and everything
-/// keeps working locally. The legacy lists live in the same store under
-/// their own keys and are read as they are.
+/// keeps working locally.
 @MainActor
 final class KeyValueChoiceCarrier: ChoiceCarrier {
     let name = "kvs"

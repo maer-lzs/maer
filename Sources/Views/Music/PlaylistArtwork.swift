@@ -5,11 +5,11 @@
 
 import SwiftUI
 
-/// THE playlist cover. ALWAYS a 2×2 mosaic of the first four album covers
-/// (the server's single playlist cover is deliberately ignored for a uniform
-/// look). Graceful degradation by available cover count: 4+ full 2×2, 3 as 2+1,
-/// 2 split, 1 fills, 0 a tinted `music.note.list` glyph. Injected into the
-/// poster tile via MediaTile's `coverOverride` slot.
+/// THE playlist cover: up to three album covers, two small squares on top
+/// and one big square below (the server's single playlist cover is
+/// deliberately ignored for a uniform look); a slot without a cover takes
+/// the tint, and with none the big square carries the `music.note.list`
+/// glyph. Built directly by `PlaylistCard` and the playlist page.
 struct PlaylistArtwork: View {
     let playlistID: String
     /// Up to four album cover URLs, in order.

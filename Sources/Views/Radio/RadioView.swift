@@ -260,7 +260,8 @@ struct RadioView: View {
 
     // MARK: - Sections
 
-    /// The row itself is the shared `RadioCardRow` (also on Home).
+    /// The row itself is the shared `RadioCardRow` (also under Similar
+    /// Stations on a station page).
     private func cardRow(title: String, stations: [RadioStation]) -> some View {
         RadioCardRow(title: title, stations: stations,
                      playerCoordinator: playerCoordinator,
