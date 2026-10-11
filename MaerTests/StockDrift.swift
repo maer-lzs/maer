@@ -77,11 +77,14 @@ struct StockDriftTests {
             guard candidate, !inFixture, !line.hasPrefix("//") else { continue }
             // A count per name is a stock when it is declared on the type;
             // with a reason per entry it is one wherever it is declared. A
-            // local `[String: Int]` is a value the case works with.
-            if let match = line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w+):\[String:Int\]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?(?:static)?let(\w+):\[String:\(count:Int,reason:String\)\]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w+)=\["[^"]+":[0-9]/#)
-                ?? line.firstMatch(of: #/^(?:nonisolated)?(?:private)?staticlet(\w*[Ss]tock\w*)(?::Int)?=[0-9]/#) {
+            // local `[String: Int]` is a value the case works with. Whatever
+            // modifiers and attributes stand in front (`nonisolated`,
+            // `fileprivate`, `@MainActor`, `private(set)`) are read as one
+            // run of letters, so no list of them can leave one out.
+            if let match = line.firstMatch(of: #/^[A-Za-z@()]*?staticlet(\w+):\[String:Int\]/#)
+                ?? line.firstMatch(of: #/^[A-Za-z@()]*?let(\w+):\[String:\(count:Int,reason:String\)\]/#)
+                ?? line.firstMatch(of: #/^[A-Za-z@()]*?staticlet(\w+)=\["[^"]+":[0-9]/#)
+                ?? line.firstMatch(of: #/^[A-Za-z@()]*?staticlet(\w*[Ss]tock\w*)(?::Int)?=[0-9]/#) {
                 names.append(String(match.1))
             }
         }
@@ -155,6 +158,16 @@ struct StockDriftTests {
                 "the fence misreads a checked stock written without spaces")
         #expect(Self.numericStocks(in: tightSum) == ["sumStock"] && Self.unchecked(in: tightSum).isEmpty,
                 "the fence misreads a sum stock written without spaces")
+        // Any modifiers in front: no list of them can leave one out.
+        let modified = [
+            "nonisolated fileprivate static " + "let probeStock: [String: Int] = [\"A.swift\": 1]",
+            "@MainActor public static " + "let otherStock: [String: Int] = [:]",
+            "private(set) static " + "let thirdStock = 4",
+            "fileprivate " + "let held: [String: (count: Int, reason: String)] = [:]",
+        ].joined(separator: "\n")
+        #expect(Self.numericStocks(in: modified) == ["probeStock", "otherStock", "thirdStock", "held"],
+                "the fence misses a stock behind modifiers: \(Self.numericStocks(in: modified))")
+        #expect(Self.unchecked(in: modified) == ["probeStock", "otherStock", "thirdStock", "held"])
     }
 }
 #endif
