@@ -90,6 +90,23 @@ struct ListenHistoryHealTests {
         #expect(!shared.contains("HStack"), "the second line stands as columns again")
     }
 
+    /// The page and its tile are called "Hörverlauf" in German, the word the
+    /// owner chose; the empty page says it with the same word.
+    @Test("deutsch heisst der Verlauf Hörverlauf, auf der Kachel und auf der leeren Seite", .needsTheSources)
+    func theGermanNameIsHoerverlauf() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try #require(json["strings"] as? [String: [String: Any]])
+        func german(_ key: String) -> String? {
+            ((strings[key]?["localizations"] as? [String: Any])?["de"] as? [String: Any])
+                .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String
+        }
+        #expect(german("Listening History") == "Hörverlauf")
+        #expect(german("No listening history yet") == "Noch kein Hörverlauf")
+        let old = strings.keys.filter { german($0)?.contains("Gehört-Verlauf") == true }
+        #expect(old.isEmpty, "the old name still stands: \(old.sorted())")
+    }
+
     /// The second line is one text: who, then how long ago. At a large size
     /// it wraps as one line instead of two columns side by side.
     @Test("die zweite Zeile ist ein Text: wer, dann wie lange her; fehlt eins, steht das andere allein")
