@@ -55,16 +55,16 @@ struct OfflineDetailTests {
     @Test("Satz: ein Server-Fehler nennt sich mit seinem Satz, ein Typname erreicht nie eine Seite")
     func noTypeNameInASentence() {
         struct OddFailure: Error {}
-        let server = FreeCatalog.failureReason(SubsonicClient.SubsonicError.network)
+        let server = FreeCatalog.failureReason(SubsonicClient.SubsonicError.network, online: true)
         #expect(server == SubsonicClient.SubsonicError.network.errorDescription,
                 "was \"SubsonicError\" in GT-8")
         #expect(server?.contains("SubsonicError") == false)
-        let odd = FreeCatalog.failureReason(OddFailure())
+        let odd = FreeCatalog.failureReason(OddFailure(), online: true)
         #expect(odd != nil, "a real failure stays named")
         #expect(odd?.contains("OddFailure") == false)
         // A measured reason reaches the page as a sentence, its code the log.
-        #expect(FreeCatalog.failureReason(APIError.http(429, "slow down")) == String(localized: "The source did not answer."))
-        #expect(FreeCatalog.failureReason(CancellationError()) == nil)
+        #expect(FreeCatalog.failureReason(APIError.http(503, "down"), online: true) == String(localized: "The source did not answer."))
+        #expect(FreeCatalog.failureReason(CancellationError(), online: true) == nil)
     }
 
     // MARK: - The playlist card
@@ -120,7 +120,7 @@ struct OfflineDetailTests {
         let server = SubsonicClient.SubsonicError.network
         #expect(FreeCatalog.logReason(server) == FailureReason.of(server))
         #expect(FreeCatalog.logReason(server) != server.errorDescription, "a translated sentence tells nothing in a log")
-        #expect(FreeCatalog.failureReason(server) == server.errorDescription, "the page keeps its sentence")
+        #expect(FreeCatalog.failureReason(server, online: true) == server.errorDescription, "the page keeps its sentence")
         #expect(FreeCatalog.logReason(OddFailure()) == FailureReason.of(OddFailure()))
         // The measured forms stay in the log, and nothing failed stays nil.
         #expect(FreeCatalog.logReason(APIError.http(429, "slow down")) == "HTTP 429")

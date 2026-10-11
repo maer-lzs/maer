@@ -141,7 +141,7 @@ enum FreeCatalogLoader {
             } catch {
                 guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.books] = CatalogPageFailure.sentence(for: error, at: "discover-books") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
+                rows.problems[.books] = await CatalogPageFailure.sentence(for: error, at: "discover-books") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         let classicalOn = gates.freeClassical && archiveOn
@@ -158,7 +158,7 @@ enum FreeCatalogLoader {
             } catch {
                 guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.classical] = CatalogPageFailure.sentence(for: error, at: "discover-classical") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
+                rows.problems[.classical] = await CatalogPageFailure.sentence(for: error, at: "discover-classical") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         let netlabelsOn = gates.netlabels && archiveOn
@@ -172,7 +172,7 @@ enum FreeCatalogLoader {
             } catch {
                 guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.netlabels] = CatalogPageFailure.sentence(for: error, at: "discover-netlabels") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
+                rows.problems[.netlabels] = await CatalogPageFailure.sentence(for: error, at: "discover-netlabels") ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         if jamendoOn {

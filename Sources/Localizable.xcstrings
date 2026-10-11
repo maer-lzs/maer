@@ -11741,6 +11741,16 @@
         }
       }
     },
+    "The source is busy. Please try again later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Quelle ist gerade ausgelastet. Bitte später erneut versuchen."
+          }
+        }
+      }
+    },
     "The statistics of this account cannot be read on this device, so this device's listening time is not shown." : {
       "localizations" : {
         "de" : {
@@ -12047,6 +12057,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Server nimmt diese Art der Anmeldung nicht an. Nextcloud Music braucht als Passwort den Schlüssel aus seinen Musik-Einstellungen; Airsonic braucht ein Passwort, das mit einem dekodierbaren Verfahren gespeichert ist."
+          }
+        }
+      }
+    },
+    "This server has no podcast library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server hat keine Podcast-Bibliothek."
           }
         }
       }

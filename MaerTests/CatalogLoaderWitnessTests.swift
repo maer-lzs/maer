@@ -18,8 +18,10 @@ nonisolated enum CatalogLoaderWitness {
     /// back as.
     static let offline = URLError(.notConnectedToInternet)
     static var offlineReason: String { CatalogLoadOutcome.reason(offline) }
-    /// What a page shows for it: the plain sentence, never the code.
-    static var offlineSentence: String { FreeCatalog.failureReason(offline) ?? "" }
+    /// What a page shows for it: the plain sentence, never the code. The
+    /// unit test host counts as online (`Reachability`), and the page words
+    /// a transport failure by the device's reach.
+    static var offlineSentence: String { FreeCatalog.failureReason(offline, online: true) ?? "" }
 
     static func track() -> JamendoTrack {
         JamendoTrack(id: "witness-\(UUID().uuidString)", name: "T", artist_name: "A", image: nil,

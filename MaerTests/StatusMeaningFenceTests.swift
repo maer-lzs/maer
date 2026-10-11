@@ -36,7 +36,8 @@ struct StatusMeaningFenceTests {
         "GutenbergWorks.swift": "only an absence is kept as no record of the work; a refusal, a pause or a server error keeps nothing",
         "PodcastTranscript.swift": "a document or an absence stands for the session as the transcript's answer; a failure is asked again",
         "ABSPlayedWriteRetry.swift": "a played mark stays queued on a sign-in problem, a pause or a failing host; an absence or another refusal answers the same every time",
-        "FreeCatalog.swift": "only an absence marks a catalog item as gone; every other answer is no verdict",
+        "FreeCatalog.swift": "only an absence marks a catalog item as gone, every other answer is no verdict; a page says absence and pause in their own sentences",
+        "ABSPodcastProvider.swift": "a refused subscribe or episode download is worded by the meaning (sign in apart), the number goes to the log line",
         "DeadCatalogItems.swift": "an absence is a dead item; the body of a 200 is read on its own (a withdrawn item answers 200 with an error), any other answer is unknown",
     ]
 

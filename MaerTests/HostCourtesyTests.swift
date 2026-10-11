@@ -81,7 +81,7 @@ struct HostCourtesyTests {
             #expect(error.endedUnasked)
             #expect(!FetchHoldback.starts(after: error), "no holdback for a question never asked")
             #expect(FreeCatalog.logReason(error) == nil, "logs as held, not as failed")
-            #expect(FreeCatalog.failureReason(error) == nil)
+            #expect(FreeCatalog.failureReason(error, online: true) == nil)
         }
         #expect(!URLError(.timedOut).endedUnasked)
         #expect(FetchHoldback.starts(after: URLError(.timedOut)))

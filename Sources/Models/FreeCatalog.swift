@@ -622,20 +622,25 @@ nonisolated enum FreeCatalog {
     /// and never a type name (a page once read "(SubsonicError)"). Only
     /// sentences the catalog already has. Nil when nothing failed. Pages
     /// reach it through `CatalogPageFailure`, which writes the log line.
-    static func failureReason(_ error: Error) -> String? {
+    /// A transport failure is decided by the device's reach (`online`), not
+    /// by its code: a timeout or an unknown host while the device is online
+    /// is the source not answering, not a missing network.
+    static func failureReason(_ error: Error, online: Bool) -> String? {
         guard !isSilent(error) else { return nil }
         // Says only why: the pages put it under a title that already says
         // the load failed ("Couldn't load tracks", "Could not load …").
         let unreachable = String(localized: "The source did not answer.")
-        if let url = error as? URLError {
-            return NetworkReach.isOffline(url as NSError)
-                ? String(localized: "No internet connection. Please check your network and try again.")
-                : unreachable
+        if error is URLError {
+            return online
+                ? unreachable
+                : String(localized: "No internet connection. Please check your network and try again.")
         }
         if let code = httpStatus(error) {
-            return StatusMeaning.from(status: code).isAbsence
-                ? String(localized: "No longer available at the source")
-                : unreachable
+            switch StatusMeaning.from(status: code) {
+            case .notFound: return String(localized: "No longer available at the source")
+            case .throttled: return String(localized: "The source is busy. Please try again later.")
+            case .signIn, .server: return unreachable
+            }
         }
         if error is CatalogDecodeError { return String(localized: "The server response could not be read.") }
         return ErrorSentence.of(error)

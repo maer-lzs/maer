@@ -57,7 +57,7 @@ enum CatalogSourceLoader {
     /// hand back a `Sendable` value instead of an error existential.
     nonisolated private static func attempt<T: Sendable>(
         _ op: @escaping @Sendable () async throws -> T) async -> (T?, String?) {
-        do { return (try await op(), nil) } catch { return (nil, CatalogPageFailure.sentence(for: error, at: "source")) }
+        do { return (try await op(), nil) } catch { return (nil, await CatalogPageFailure.sentence(for: error, at: "source")) }
     }
 
     /// `clients` and `gates` are the live ones by default; a witness hands

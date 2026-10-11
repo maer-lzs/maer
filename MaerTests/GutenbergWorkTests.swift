@@ -128,7 +128,7 @@ struct GutenbergWorkTracksTests {
                                    parts: [parts[0], .init(url: parts[1].url, seconds: nil), parts[2]])
         #expect(throws: GutenbergWorkError.partUnreadable(part: 2)) { try broken.tracks() }
         #expect(broken.totalSeconds == nil)
-        let sentence = try #require(FreeCatalog.failureReason(GutenbergWorkError.partUnreadable(part: 2)))
+        let sentence = try #require(FreeCatalog.failureReason(GutenbergWorkError.partUnreadable(part: 2), online: true))
         #expect(sentence.contains("2"), "the page names the part: \(sentence)")
         // Eine einzige Datei braucht keine Dauer, um zu stehen.
         let single = GutenbergWork(title: "T", author: nil, parts: [.init(url: parts[0].url, seconds: nil)])

@@ -493,7 +493,7 @@ struct CatalogSourcePage: View {
                     } catch {
                         // A throw came from the network: the stock and the day
                         // store answer without one.
-                        return (key, nil, CatalogPageFailure.sentence(for: error, at: "source-section"), .network)
+                        return (key, nil, await CatalogPageFailure.sentence(for: error, at: "source-section"), .network)
                     }
                 }
                 started += 1
@@ -553,7 +553,7 @@ struct CatalogSourcePage: View {
                         default: return (key, [], nil, nil, way)
                         }
                     } catch {
-                        return (key, [], nil, CatalogPageFailure.sentence(for: error, at: "source-shelf"), .network)
+                        return (key, [], nil, await CatalogPageFailure.sentence(for: error, at: "source-shelf"), .network)
                     }
                 }
             }
@@ -1067,7 +1067,7 @@ struct ArchiveSeriesPage: View {
                 Logger.library.notice("CATALOG detail cancelled ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
                 return
             }
-            failedReason = CatalogPageFailure.sentence(for: error, at: "detail") ?? ""
+            failedReason = await CatalogPageFailure.sentence(for: error, at: "detail") ?? ""
             failed = true
         }
     }

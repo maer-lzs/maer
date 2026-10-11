@@ -473,13 +473,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         do {
             guard let library = try await client.fetchPodcastLibraries().first else {
                 Logger.library.error("ABSPOD new show step=libraries: no podcast library on the server")
-                return String(localized: "Something went wrong. Please try again.")
+                return String(localized: "This server has no podcast library.")
             }
             let metadata: PodcastFeedMetadata
             do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
             catch {
-                Logger.library.error("ABSPOD new show step=podcasts/feed failed: \(FailureReason.of(error), privacy: .public)")
-                return Self.msg(error)
+                Logger.library.error("ABSPOD new show step=podcasts/feed failed: \(Self.logReason(error), privacy: .public)")
+                return Self.serverSentence(error)
             }
 
             // Folders usually come with the list endpoint; otherwise detail.
@@ -487,8 +487,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             if folders.isEmpty {
                 do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
                 catch {
-                    Logger.library.error("ABSPOD new show step=libraries/id failed: \(FailureReason.of(error), privacy: .public)")
-                    return Self.msg(error)
+                    Logger.library.error("ABSPOD new show step=libraries/id failed: \(Self.logReason(error), privacy: .public)")
+                    return Self.serverSentence(error)
                 }
             }
             guard let folder = folders.first, let folderPath = folder.fullPath else {
@@ -502,8 +502,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 try await client.createPodcast(libraryId: library.id, folderId: folder.id,
                                                path: path, metadata: metadata, autoDownload: autoDownload)
             } catch {
-                Logger.library.error("ABSPOD new show step=POST podcasts failed: \(FailureReason.of(error), privacy: .public)")
-                return Self.msg(error)
+                Logger.library.error("ABSPOD new show step=POST podcasts failed: \(Self.logReason(error), privacy: .public)")
+                return Self.serverSentence(error)
             }
 
             await refresh()
@@ -512,8 +512,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.image)
             return nil
         } catch {
-            Logger.library.error("ABSPOD new show step=libraries failed: \(FailureReason.of(error), privacy: .public)")
-            return Self.msg(error)
+            Logger.library.error("ABSPOD new show step=libraries failed: \(Self.logReason(error), privacy: .public)")
+            return Self.serverSentence(error)
         }
     }
 
@@ -545,8 +545,22 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
-    private static func msg(_ error: Error) -> String {
-        ErrorSentence.of(error)
+    /// The sentence a failed subscribe or episode download hands back. A
+    /// refusal by the server is worded by its meaning and never carries the
+    /// status, which the log line has (`logReason`); any other failure keeps
+    /// its own sentence.
+    nonisolated static func serverSentence(_ error: Error) -> String {
+        guard let status = refusalStatus(error) else { return ErrorSentence.of(error) }
+        return StatusMeaning.from(status: status) == .signIn
+            ? String(localized: "Your server rejected the saved sign-in.")
+            : String(localized: "Something went wrong. Please try again.")
+    }
+
+    /// The measured reason of a failed server step for the log line: the
+    /// status of a refusal (the error type alone would not name it),
+    /// otherwise the error's kind.
+    nonisolated static func logReason(_ error: Error) -> String {
+        refusalStatus(error).map { "HTTP \($0)" } ?? FailureReason.of(error)
     }
 
     /// The HTTP status of a refusal by the server, nil when no answer came.
@@ -588,8 +602,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             try await client.downloadEpisodes(libraryItemId: Self.split(showId).show, episodes: [episode.raw])
             return nil
         } catch {
-            Logger.library.error("ABSPOD episode download failed: \(FailureReason.of(error), privacy: .public)")
-            return Self.msg(error)
+            Logger.library.error("ABSPOD episode download failed: \(Self.logReason(error), privacy: .public)")
+            return Self.serverSentence(error)
         }
     }
 

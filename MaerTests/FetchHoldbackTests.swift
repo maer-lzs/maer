@@ -94,8 +94,8 @@ struct FetchHoldbackTests {
 
     @Test("ein Zurueckhalten erreicht keinen Satz, den ein Mensch liest")
     func aHoldbackIsNeverSaid() {
-        #expect(FreeCatalog.failureReason(FetchHeldBack()) == nil)
-        #expect(FreeCatalog.failureReason(URLError(.timedOut)) != nil, "ein echter Fehlschlag bleibt benannt")
+        #expect(FreeCatalog.failureReason(FetchHeldBack(), online: true) == nil)
+        #expect(FreeCatalog.failureReason(URLError(.timedOut), online: true) != nil, "ein echter Fehlschlag bleibt benannt")
     }
 
     /// The automatic questions, measured: a cell, a queue row and a featured

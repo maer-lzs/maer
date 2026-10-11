@@ -482,7 +482,7 @@ struct MusicAlbumView: View {
                 Logger.library.notice("ALBUM detail cancelled ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
                 return
             }
-            let reason = CatalogPageFailure.sentence(for: error, at: "album-detail") ?? ""
+            let reason = await CatalogPageFailure.sentence(for: error, at: "album-detail") ?? ""
             // The stored detail stays: a refresh that fails takes nothing
             // away from what is on the device.
             guard plan == .network else {

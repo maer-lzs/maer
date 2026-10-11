@@ -853,8 +853,8 @@ struct CatalogGenreAxisTests {
     /// Grund fuer das Log (entschieden: die Seite zeigt keinen Code).
     @Test("Cancellation classifies as nil; a page reads a plain sentence, the log the measured reason")
     func failureClassification() {
-        #expect(FreeCatalog.failureReason(CancellationError()) == nil)
-        #expect(FreeCatalog.failureReason(URLError(.cancelled)) == nil)
+        #expect(FreeCatalog.failureReason(CancellationError(), online: true) == nil)
+        #expect(FreeCatalog.failureReason(URLError(.cancelled), online: false) == nil)
         // Das Log unterscheidet 429 / HTML-Antwort / Transport mit EINEM Blick.
         #expect(FreeCatalog.logReason(APIError.http(429, "slow down")) == "HTTP 429")
         #expect(FreeCatalog.logReason(URLError(.timedOut)) == "URLError \(URLError.Code.timedOut.rawValue)")
@@ -864,19 +864,16 @@ struct CatalogGenreAxisTests {
                 == "decode (HTTP ?): x")
         // Die Seite liest einen Satz, den der Katalog schon hat, ohne Code.
         let unreachable = String(localized: "The source did not answer.")
-        #expect(FreeCatalog.failureReason(APIError.http(429, "slow down")) == unreachable)
-        #expect(FreeCatalog.failureReason(APIError.http(500, "")) == unreachable)
-        #expect(FreeCatalog.failureReason(APIError.http(404, "")) == String(localized: "No longer available at the source"))
-        #expect(FreeCatalog.failureReason(URLError(.badServerResponse)) == unreachable)
-        // A timeout counts as no way out (`NetworkReach`), like no network.
-        let noNetwork = String(localized: "No internet connection. Please check your network and try again.")
-        #expect(FreeCatalog.failureReason(URLError(.timedOut)) == noNetwork)
-        #expect(FreeCatalog.failureReason(URLError(.notConnectedToInternet)) == noNetwork)
-        #expect(FreeCatalog.failureReason(decode) == String(localized: "The server response could not be read."))
+        #expect(FreeCatalog.failureReason(APIError.http(500, ""), online: true) == unreachable)
+        #expect(FreeCatalog.failureReason(APIError.http(404, ""), online: true) == String(localized: "No longer available at the source"))
+        #expect(FreeCatalog.failureReason(URLError(.badServerResponse), online: true) == unreachable)
+        #expect(FreeCatalog.failureReason(decode, online: true) == String(localized: "The server response could not be read."))
         for error: Error in [APIError.http(429, "slow down"), URLError(.timedOut), URLError(.notConnectedToInternet), decode] {
-            let sentence = FreeCatalog.failureReason(error) ?? ""
-            #expect(!sentence.contains("HTTP") && !sentence.contains("URLError") && !sentence.contains("429"),
-                    "a page shows a code: \(sentence)")
+            for online in [true, false] {
+                let sentence = FreeCatalog.failureReason(error, online: online) ?? ""
+                #expect(!sentence.contains("HTTP") && !sentence.contains("URLError") && !sentence.contains("429"),
+                        "a page shows a code: \(sentence)")
+            }
         }
     }
 

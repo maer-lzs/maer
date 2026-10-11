@@ -9,12 +9,14 @@ import OSLog
 /// The one way a catalog page turns a failure into what it shows: the
 /// plain sentence for the page (`FreeCatalog.failureReason`) and, in the
 /// same step, the measured reason in the log line (`FreeCatalog.logReason`),
-/// so the code that no longer reaches the page is never lost. Nil when
-/// nothing failed (a cancellation, a question never asked).
+/// so the code that no longer reaches the page is never lost. The device's
+/// reach is asked here, once per failure, so every page words a timeout the
+/// same way. Nil when nothing failed (a cancellation, a question never asked).
 nonisolated enum CatalogPageFailure {
-    static func sentence(for error: Error, at place: String) -> String? {
-        guard let sentence = FreeCatalog.failureReason(error) else { return nil }
-        Logger.library.notice("FREECAT page \(place, privacy: .public) failed reason=\(FreeCatalog.logReason(error) ?? "-", privacy: .public)")
+    static func sentence(for error: Error, at place: String) async -> String? {
+        let online = await Reachability.isConnected()
+        guard let sentence = FreeCatalog.failureReason(error, online: online) else { return nil }
+        Logger.library.notice("FREECAT page \(place, privacy: .public) failed reason=\(FreeCatalog.logReason(error) ?? "-", privacy: .public) online=\(online, privacy: .public)")
         return sentence
     }
 }

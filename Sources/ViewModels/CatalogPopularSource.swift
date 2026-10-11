@@ -72,7 +72,7 @@ enum CatalogPopularSource {
                 atEnd = true
             }
         } catch {
-            guard let reason = CatalogPageFailure.sentence(for: error, at: "popular") else { return .cancelled }
+            guard let reason = await CatalogPageFailure.sentence(for: error, at: "popular") else { return .cancelled }
             return .failed(reason)
         }
         return .loaded(items: fresh, unfiltered: fallback, atEnd: atEnd)
