@@ -83,11 +83,12 @@ struct DisplayStateFenceTests {
     ]
 
     /// Every spelling of a hand-written no-lock in squeezed code: short
-    /// (`.none`) or long (`FeedLock.none`), as the argument or through the
-    /// modifier. The fallback of the one answer (`locks[id] ?? .none`) asks
-    /// first and is not counted.
+    /// (`.none`) as the argument, through the modifier or as a typed value,
+    /// and the long `FeedLock.none` wherever it stands (also a value handed
+    /// on later: `let x = FeedLock.none`, then `lock: x`). The fallback of
+    /// the one answer (`locks[id] ?? .none`) asks first and is not counted.
     nonisolated static func handWrittenNoLocks(_ squeezed: String) -> Int {
-        ["lock:.none", "lock:FeedLock.none", "premiumLock(.none", "premiumLock(FeedLock.none"]
+        ["lock:.none", "premiumLock(.none", ":FeedLock=.none", "FeedLock.none"]
             .reduce(0) { $0 + squeezed.components(separatedBy: $1).count - 1 }
     }
 
@@ -100,10 +101,16 @@ struct DisplayStateFenceTests {
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.noLockStock.mapValues(\.count))
         #expect(drift.isEmpty, "a tile names no lock unseen, or the stock stands above the count: \(drift)")
+    }
+
+    @Test("der Zaehler der leeren Schloesser sieht jede Schreibweise, auch einen spaeter uebergebenen Wert, und nicht den Rueckfall der einen Antwort")
+    func theNoLockCounterReads() {
         #expect(Self.handWrittenNoLocks("lock:.none,") == 1)
         #expect(Self.handWrittenNoLocks("lock:FeedLock.none,") == 1)
         #expect(Self.handWrittenNoLocks(".premiumLock(.none)") == 1)
         #expect(Self.handWrittenNoLocks(".premiumLock(FeedLock.none)") == 1)
+        #expect(Self.handWrittenNoLocks("letx=FeedLock.none") == 1, "a value handed on later is not counted")
+        #expect(Self.handWrittenNoLocks("letx:FeedLock=.none") == 1, "a typed short value is not counted")
         #expect(Self.handWrittenNoLocks("lock:locks[item.id]??.none") == 0, "the fallback of the one answer counts")
     }
 

@@ -297,6 +297,20 @@ struct LibraryDerivedListsTests {
         // No duration known at all → space keeps the reserve.
         #expect(bookTimeLine(progress: nil, duration: nil) == " ")
     }
+
+    /// The status line under a cover: empty before the start, the time left
+    /// once started (percent without a duration), Completed at the end.
+    @Test("die Statuszeile unter dem Cover: leer vor dem Start, Restzeit danach, ohne Dauer Prozent, am Ende fertig")
+    func statusLine() {
+        let unstarted = BookProgress(fraction: 0, isFinished: false, lastUpdate: 0, currentTime: 0)
+        #expect(bookStatusText(unstarted, duration: 31_320) == "")
+        let started = BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 0, currentTime: 15_660)
+        let left = bookStatusText(started, duration: 31_320)
+        #expect(left == started.remainingText(bookDuration: 31_320), "a started book does not say its time left: \(left)")
+        #expect(bookStatusText(started, duration: nil).contains("50"), "without a duration the percent is missing")
+        let done = BookProgress(fraction: 1, isFinished: true, lastUpdate: 0, currentTime: 100)
+        #expect(bookStatusText(done, duration: 100) == String(localized: "Completed"))
+    }
 }
 #endif
 

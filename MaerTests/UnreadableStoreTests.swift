@@ -80,6 +80,10 @@ struct UnreadableStoreTests {
             if Self.buildsAsideKey(SyncContractFenceTests.stripped(text)) { builders.append(name) }
         }
         #expect(builders.isEmpty, "a file builds an aside key past CorruptStore.asideKey: \(builders)")
+    }
+
+    @Test("der Leser der Beiseite-Schluessel sieht jede Schreibweise, nicht die Datei-Endung")
+    func theAsideKeyReaderReads() {
         #expect(Self.buildsAsideKey(#"let k = key + ".corrupt""#))
         #expect(Self.buildsAsideKey(#"let k = "\(key).corrupt""#))
         #expect(Self.buildsAsideKey(#"let k = "corrupt.\(key)""#))

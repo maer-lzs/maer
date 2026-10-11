@@ -10,8 +10,8 @@ import SwiftUI
 /// grids get exactly the same look and the same menu.
 
 /// Status line below the cover ("Finished" / "x h left" / "x % listened").
-@MainActor
-func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
+/// Pure, like its sister `bookTimeLine`.
+nonisolated func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     if p.countsAsFinished { return String(localized: "Completed") }
     if p.isStarted {
         if let t = p.remainingText(bookDuration: duration) { return t }
