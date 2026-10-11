@@ -118,11 +118,11 @@ struct CategoryDeckTests {
     /// Every tile of a deck in the same size: a long title takes a second
     /// line instead of shrinking (seen at the standard size: "Listening
     /// History" stood smaller than its neighbours).
-    @Test("eine Kachel mit langem Titel nimmt eine zweite Zeile, statt kleiner zu werden", .needsTheSources)
-    func aLongTitleWrapsInsteadOfShrinking() throws {
-        let tile = SyncContractFenceTests.stripped(try sourceText("Sources/Views/CategoryTile.swift"))
-        #expect(!tile.contains("minimumScaleFactor"), "a tile title shrinks again")
-        #expect(tile.contains(".lineLimit(2)"), "a long tile title is cut instead of wrapping")
+    @Test("eine Kachel mit langem Titel aus mehreren Woertern nimmt eine zweite Zeile, ein einzelnes Wort wird nie getrennt")
+    func aLongTitleWrapsInsteadOfShrinking() {
+        #expect(CategoryTile.titleFit("Listening History") == (2, 1), "a title of several words shrinks instead of wrapping")
+        #expect(CategoryTile.titleFit("Downloaded") == (1, 0.8), "a single word may be hyphenated")
+        #expect(CategoryTile.titleFit("Hörverlauf") == (1, 0.8))
     }
 }
 #endif

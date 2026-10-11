@@ -34,13 +34,15 @@ struct CategoryTile: View {
                     .font(.body)
                     .foregroundStyle(AppTheme.accent)
                     .frame(width: glyphWidth)
-                // Every tile in the same size: a title too long for its
-                // width takes a second line instead of shrinking, which
-                // made one tile of a deck smaller than its neighbours
-                // ("Listening History" in a half-width tile).
+                // A title of several words takes a second line instead of
+                // shrinking ("Listening History" stood smaller than its
+                // neighbours); a single word keeps one line and shrinks a
+                // little, so it is never hyphenated ("Down-loaded").
+                let fit = Self.titleFit(title)
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(2)
+                    .lineLimit(fit.lines)
+                    .minimumScaleFactor(fit.minimumScale)
                 Spacer(minLength: 6)
                 if let count {
                     Text("\(count)")
@@ -58,6 +60,13 @@ struct CategoryTile: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityId ?? "category-tile-\(title)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// How a tile title fits its width: several words wrap at a space onto
+    /// a second line at full size; one word stays on one line and may
+    /// shrink a little, because the only way to wrap it is a hyphen.
+    nonisolated static func titleFit(_ title: String) -> (lines: Int, minimumScale: CGFloat) {
+        title.contains(" ") ? (2, 1) : (1, 0.8)
     }
 }
 
