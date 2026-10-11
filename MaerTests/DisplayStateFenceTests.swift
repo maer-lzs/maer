@@ -82,16 +82,29 @@ struct DisplayStateFenceTests {
         "MixedMediaPage.swift": (1, "a book, no feed"),
     ]
 
-    @Test("jede Kachel, die das Schloss von Hand auf keins setzt, ist je Datei gezaehlt", .needsTheSources)
+    /// Every spelling of a hand-written no-lock in squeezed code: short
+    /// (`.none`) or long (`FeedLock.none`), as the argument or through the
+    /// modifier. The fallback of the one answer (`locks[id] ?? .none`) asks
+    /// first and is not counted.
+    nonisolated static func handWrittenNoLocks(_ squeezed: String) -> Int {
+        ["lock:.none", "lock:FeedLock.none", "premiumLock(.none", "premiumLock(FeedLock.none"]
+            .reduce(0) { $0 + squeezed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("jede Kachel, die das Schloss von Hand auf keins setzt, ist je Datei gezaehlt, kurz oder lang geschrieben", .needsTheSources)
     func everyHandWrittenNoLockIsCounted() throws {
         var counts: [String: Int] = [:]
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
-            let code = StockDriftTests.squeezed(SyncContractFenceTests.stripped(text))
-            let found = code.components(separatedBy: "lock:.none").count - 1
+            let found = Self.handWrittenNoLocks(StockDriftTests.squeezed(SyncContractFenceTests.stripped(text)))
             if found > 0 { counts[name] = found }
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.noLockStock.mapValues(\.count))
         #expect(drift.isEmpty, "a tile names no lock unseen, or the stock stands above the count: \(drift)")
+        #expect(Self.handWrittenNoLocks("lock:.none,") == 1)
+        #expect(Self.handWrittenNoLocks("lock:FeedLock.none,") == 1)
+        #expect(Self.handWrittenNoLocks(".premiumLock(.none)") == 1)
+        #expect(Self.handWrittenNoLocks(".premiumLock(FeedLock.none)") == 1)
+        #expect(Self.handWrittenNoLocks("lock:locks[item.id]??.none") == 0, "the fallback of the one answer counts")
     }
 
     /// The heart and the running ring carry their state for VoiceOver, and
