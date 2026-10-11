@@ -744,7 +744,7 @@ struct RecommendationTile: View {
                 title: result.title,
                 subtitle: subtitle,
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
-                lock: .none,
+                lock: PodcastSubscriptions.shared.lock(feedURL: result.feedURL),
                 unavailable: unavailable,
                 badgeText: badgeText,
                 // A result WITHOUT artwork resolves it from the feed. The

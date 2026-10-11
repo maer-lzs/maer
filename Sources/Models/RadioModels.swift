@@ -389,11 +389,11 @@ nonisolated enum RadioStore {
         return stations
     }
 
-    /// A list that stands and does not decode reads as none (`load`), and is
-    /// not written over: the next add would replace it with one row.
+    /// A list that stands and does not decode reads as none (`load`); the
+    /// next write sets it aside first instead of replacing it for good.
     private static func save(_ stations: [RadioStation], _ key: String, defaults: UserDefaults) {
-        guard CorruptStore.mayReplace([RadioStation].self, defaultsKey: key, defaults: defaults,
-                                      label: "RADIO \(key)") else { return }
+        CorruptStore.setAsideUnreadable([RadioStation].self, defaultsKey: key, defaults: defaults,
+                                        label: "RADIO \(key)")
         if let data = try? JSONEncoder().encode(stations) {
             defaults.set(data, forKey: key)
         }
@@ -609,8 +609,8 @@ nonisolated enum RadioStore {
     }
 
     private static func savePlayCounts(_ counts: [String: Int], defaults: UserDefaults) {
-        guard CorruptStore.mayReplace([String: Int].self, defaultsKey: playCountsKey, defaults: defaults,
-                                      label: "RADIO play counts") else { return }
+        CorruptStore.setAsideUnreadable([String: Int].self, defaultsKey: playCountsKey, defaults: defaults,
+                                        label: "RADIO play counts")
         if let data = try? JSONEncoder().encode(counts) { defaults.set(data, forKey: playCountsKey) }
     }
 

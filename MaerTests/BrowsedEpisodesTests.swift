@@ -57,10 +57,11 @@ struct BrowsedEpisodesTests {
         #expect(store.listened(guid: guid, defaults: defaults) != nil)
     }
 
-    /// A kept list that stands and does not decode is never written over:
-    /// the next keep wrote the empty list plus one row over it.
-    @Test("eine gemerkte Liste, die nicht dekodiert, wird weder beim Merken noch beim Vergessen ueberschrieben")
-    func anUnreadableListIsNotWrittenOver() {
+    /// A kept list that stands and does not decode is set aside before the
+    /// keep writes: the keep stands, the unreadable list lies under
+    /// `.corrupt`, and the forget after it finds a readable list.
+    @Test("eine gemerkte Liste, die nicht dekodiert, liegt beiseite; Merken und Vergessen schreiben den neuen Stand")
+    func anUnreadableListIsSetAside() {
         let suite = "browsed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -72,9 +73,15 @@ struct BrowsedEpisodesTests {
         store.remember(show: browsed)
         #expect(store.episode(guid: guid) != nil, "the precondition: the episode is browsed")
         store.keepListened(guid: guid, defaults: defaults)
-        #expect(defaults.data(forKey: "browsedEpisodesListened") == garbage, "a keep wrote over the unreadable list")
+        let kept = store.listened(guid: guid, defaults: defaults)
+        #expect(kept != nil, "the keep did not stand")
+        let aside = defaults.data(forKey: "browsedEpisodesListened.corrupt")
+        #expect(aside == garbage, "the unreadable list was not set aside")
         store.forgetListened(feedURL: "https://z.example/feed", defaults: defaults)
-        #expect(defaults.data(forKey: "browsedEpisodesListened") == garbage, "a forget wrote over the unreadable list")
+        let gone = store.listened(guid: guid, defaults: defaults)
+        #expect(gone == nil, "the forget did not stand")
+        let stillAside = defaults.data(forKey: "browsedEpisodesListened.corrupt")
+        #expect(stillAside == garbage, "the forget replaced the aside copy")
     }
 }
 #endif

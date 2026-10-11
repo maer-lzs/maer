@@ -418,7 +418,7 @@ components rather than forking them.
 | `MediaTilePlayBadge` (`MediaTile.swift`) | `LatestEpisodesGrid`, weitere Kachel-Rufer (Trailing-Closure) | Die Standard-Ecke unten rechts: die kleine Play-Marke (Direktstart) |
 | `MusicArtistView` (`Music/MusicBrowseViews.swift`) | `MusicNavigation` | Seite eines Kuenstlers: Kopf mit Bild und Biografie, Alben, Top-Songs, aehnliche Kuenstler aus der eigenen Bibliothek |
 | `OfflineUnavailableBadge` (`CoverBadge.swift`) | `BookCoverView`, `offlineUnavailableBadge` (`MediaTile`), `RecentShowTile` (vorher ein eigenes `wifi.slash`) | DIE Offline-Scheibe: `wifi.slash` auf dunklem Kreis, gleich gross wie die Play-Ecke, mit dem Namen „Not available offline“ fuer VoiceOver; die Ecke der Karte (`CardDownloadBadge`) und das Cover der Zeile (`MediaRowContent`) tragen denselben Namen. Zaun `DisplayStateFenceTests.glyphStatesAreNamed` (ein Offline-Zeichen ohne Namen oder Text daneben reisst) |
-| `FeedLock` (Models, pur: `none`, `premium`, `refused`; `of(isPremium:isRefused:)`, verweigert schlaegt Premium) · `PodcastSubscriptions.lock(feedURL:)` | die EINE Frage nach dem Schloss eines Feeds; `PremiumLockBadge(lock:)` und `MediaTile(lock:)` nehmen nur ihre Antwort, ohne Vorgabe; Sendungs-Kacheln, Weiterhoeren-Karte und „Neueste Folgen“ fragen sie, jede andere Kachel nennt `.none` ausdruecklich | Vorher zwei Flaggen (`isPremium`, `refused` mit Vorgabe falsch): eine Flaeche konnte das Premium-Schloss zeigen und die Verweigerung vergessen. Zaun `DisplayStateFenceTests.everyLockAsksTheRefusal` (nur die eine Frage entscheidet, keine Ansicht schreibt ein Schloss von Hand, keine Vorgabe); `everyHandWrittenNoLockIsCounted`: jedes `lock: .none` je Datei gegen einen Bestand mit Grund (gleich der Zaehlung), damit eine neue Feed-Flaeche nicht stumm keins schreibt |
+| `FeedLock` (Models, pur: `none`, `premium`, `refused`; `of(isPremium:isRefused:)`, verweigert schlaegt Premium) · `PodcastSubscriptions.lock(feedURL:)` | die EINE Frage nach dem Schloss eines Feeds; `PremiumLockBadge(lock:)` und `MediaTile(lock:)` nehmen nur ihre Antwort, ohne Vorgabe; Sendungs-Kacheln, Weiterhoeren-Karte und „Neueste Folgen“ fragen sie, seit dem Entscheid vom 11.10. auch jede andere Feed-Flaeche (Weiterhoeren-Seite, Wiederentdecken Sendung und Folge, Empfehlungs-Kachel, eine Folge auf der gemischten Seite fragen ohne Beobachter und stehen im gemessenen Bestand der unbeobachteten Lesungen; das Sendungs-Raster der Suche bekommt die Schloesser mit dem Deck aus `SearchDoor.deck`, `SearchDeck.locks`, weil die Suchansicht keinen Speicher selbst fragt); `.none` nennen nur noch die drei Kacheln ohne Feed (Katalog, Buch-Empfehlung, Buch auf der gemischten Seite) | Vorher zwei Flaggen (`isPremium`, `refused` mit Vorgabe falsch): eine Flaeche konnte das Premium-Schloss zeigen und die Verweigerung vergessen. Zaun `DisplayStateFenceTests.everyLockAsksTheRefusal` (nur die eine Frage entscheidet, keine Ansicht schreibt ein Schloss von Hand, keine Vorgabe); `everyHandWrittenNoLockIsCounted`: jedes `lock: .none` je Datei gegen einen Bestand mit Grund (gleich der Zaehlung), damit eine neue Feed-Flaeche nicht stumm keins schreibt |
 | `OriginCapsule` (`Podcasts/PodcastComponents.swift`) | `PodcastShowView`, `MediaRowContent` (auch `sourceCapsule`), und seit F5b-4c die Musik-Zeilen: `MusicSongRow` (Titel, Genre-Titel), `MusicArtistsView`, `MusicPlaylistsView`, `MaerPlaylistPage`, die Kuenstler des Such-Decks | DIE Zeilen-Kapsel: die Herkunft gespiegelter Folgen (Vorgabe: Video-Symbol plus „YouTube", unveraendert fuer die alten Rufer) und der Name eines Musikservers (`text:`, ohne Symbol) bei zwei Musikservern. Kompakt hoehenneutral. Zeuge je TYP in `MusicSourceNameTests` (Zeilen, `MediaRowContent` zeichnet die gereichte Kapsel, Warteschlange, Suche, Albumkopf, CarPlay-Nebenzeile), und die Vorgabe bleibt. Die Suche nimmt die Zeilen-Kapsel und NICHT `SearchResult.sourceLabel`, weil die Rangfolge `sourceLabel` als Treffergrund wertet; eine Suche nach „jellyfin" faende sonst jeden Treffer. Rot-Proben: Warteschlange entdrahtet; `MediaRowContent` zeichnet die Kapsel nicht |
 | `PinchflatGroupPage` (`PodcastsView.swift`) | `PodcastNavigation` | Die Gruppenseite: das volle Raster der gespiegelten Kanaele hinter der Reihe, serverseitig nach neuestem geordnet |
 | `PinchflatHideButton` (`PodcastsView.swift`) | Kontextmenue der Reihenkachel und der Rasterzelle | Die EINE Ausblende-Geste, ueberlebt Spiegel-Laeufe; Wiederzulassen in der Server-Verwaltung |
@@ -700,17 +700,21 @@ wohl — das ist der Nutzer, der neu aufbaut, und ihn dauerhaft zu blockieren
 waere ein eigener Defekt. Die Aufbewahrung allein dient der Forensik, die
 Schreibsperre dient dem Menschen.
 
-**`CorruptStore.mayReplace` (11.10.2026), die Schreibregel der Ablagen, die
-gelesen, geaendert und ganz zurueckgeschrieben werden:** steht unter dem
-Schluessel ein Wert, der nicht dekodiert (oder einer anderer Art), unterbleibt
-der Schrieb mit Zeile, und der Wert bleibt, wie er ist. Dort liegt kein
-Original beiseite, ein Schrieb ersetzte ihn fuer immer; so liest auch ein
-spaeterer Build seine Form wieder ganz. Rufer: `RadioStore` (Favoriten, eigene
-Sender, Zuletzt gehoert, Meistgehoert und ihre Zaehler), `KnownServers.write`
-(die Liste, die auch Eintrag fuer Eintrag nicht lesbar ist),
-`BrowsedEpisodes.writableRecords` (dieselbe Regel, vorher in eigener Form).
-Sichtbar: auf einer unlesbaren Favoritenliste bleibt ein neuer Favorit nicht
-stehen. Zaun `UnreadableStoreTests`: jede Stelle in Sources, die einen
+**`CorruptStore.setAsideUnreadable` (11.10.2026, entschieden „b“), die
+Schreibregel der Ablagen, die gelesen, geaendert und ganz zurueckgeschrieben
+werden:** steht unter dem Schluessel ein Wert, der nicht dekodiert (oder einer
+anderer Art), legt der Schrieb ihn zuerst unter dem Geschwister-Schluessel
+`.corrupt` ab (dieselbe Stelle wie `load`), mit Zeile, und schreibt dann den
+neuen Stand; ein spaeterer unlesbarer Wert ersetzt die Beiseite-Kopie, und
+die Zeile sagt es (die letzte Panne ist die aufschlussreiche, wie bei
+`preserve`). Dieselbe Linie wie `maySave` und die Lesezeichen-Warteschlange:
+das Original bleibt rettbar, der neue Stand der Person wird nicht verweigert.
+Rufer: `RadioStore` (Favoriten, eigene Sender, Zuletzt gehoert, Meistgehoert
+und ihre Zaehler), `KnownServers.write` (die Liste, die auch Eintrag fuer
+Eintrag nicht lesbar ist), `BrowsedEpisodes.writableRecords`. Sichtbar: auf
+einer unlesbaren Favoritenliste steht ein neuer Favorit, die alten liegen
+unsichtbar unter `.corrupt`. (Vom 11.10. bis zum Entscheid sperrte die Regel
+den Schrieb, `mayReplace`.) Zaun `UnreadableStoreTests`: jede Stelle in Sources, die einen
 gespeicherten Wert unlesbar als leer liest, ist je Datei gezaehlt (Bestand
 gleich der Zaehlung, je Datei ein Grund), die Speicher einer Person rufen
 die Regel; Zeugen mit gepflanzten unlesbaren Werten. Im selben Paket sagt

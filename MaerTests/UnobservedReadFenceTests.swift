@@ -196,13 +196,21 @@ struct UnobservedReadFenceTests {
     /// Premium reads per file, measured; the stock is the count.
     ///
     /// Why each one still stands: `PodcastComponents.swift` draws the lock on
-    /// the featured card; `LatestEpisodesGrid.swift` asks the locks for its
-    /// row. Each relies on a page above that observes the store. The show
-    /// tiles left this list: their hosts ask the lock while observing the
-    /// store and hand it down.
+    /// the featured card and the recommendation tile; `LatestEpisodesGrid.swift`
+    /// asks the locks for its row; `HomeView.swift` on the show and the
+    /// episode pick of Rediscover; `MixedMediaPage.swift` on an episode;
+    /// `PodcastsView.swift` on the Continue page. Cells and pages that carry
+    /// no observer of the store (the cell-cost rule, and no frequent
+    /// publisher observed in a scrolling container); each relies on a
+    /// redraw from its host. The show tiles left this list: their hosts ask
+    /// the lock while observing the store. The show grid of the search gets
+    /// its locks from the search door.
     static let premiumStock = [
-        "PodcastComponents.swift": 1,
+        "PodcastComponents.swift": 2,
         "LatestEpisodesGrid.swift": 1,
+        "HomeView.swift": 2,
+        "MixedMediaPage.swift": 1,
+        "PodcastsView.swift": 1,
     ]
 
     @Test("Ansichten lesen den Premium-Status nicht, ohne den Abo-Speicher zu beobachten", .needsTheSources)

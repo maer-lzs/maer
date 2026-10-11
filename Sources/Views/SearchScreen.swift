@@ -838,7 +838,7 @@ struct SearchScreen: View {
                 MediaTile(
                     title: show.title,
                     coverURL: show.artworkURL.flatMap { URL(string: $0) },
-                    lock: .none,
+                    lock: deck.locks[show.feedURL] ?? .none,
                     onTap: {
                         onOpen(SearchResult(id: show.feedURL, kind: .show, title: show.title))
                     }

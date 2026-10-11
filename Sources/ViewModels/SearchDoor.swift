@@ -58,9 +58,15 @@ enum SearchDoor {
         // main-thread stall. The measurement that proved it is gone, its
         // question is answered.
         // detached because the deck build is CPU work off the MainActor
-        return await Task.detached(priority: .userInitiated) {
+        var deck = await Task.detached(priority: .userInitiated) {
             SearchDeck.build(entries: entries, shows: shows, albums: albums)
         }.value
+        // The lock of every show, asked once per build at the one question,
+        // so the view renders it without reaching the store.
+        let subs = PodcastSubscriptions.shared
+        deck.locks = Dictionary(deck.shows.map { ($0.feedURL, subs.lock(feedURL: $0.feedURL)) },
+                                uniquingKeysWith: { first, _ in first })
+        return deck
     }
 
     /// Content identity of everything the deck derives from (never counts.

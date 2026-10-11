@@ -833,7 +833,7 @@ struct PodcastContinuePage: View {
                               subtitle: item.author,
                               coverURL: router.coverURL(item.id),
                               placeholderSystemImage: "waveform.and.mic",
-                              lock: .none,
+                              lock: PodcastSubscriptions.shared.lock(feedURL: PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""),
                               onTap: { Task { await playerCoordinator.open(item: item) } })
                         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
                                             showsContinueHide: true)

@@ -88,7 +88,7 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// only what was actually listened to is kept.
     func keepListened(guid: String, defaults: UserDefaults = .standard) {
         guard let found = episode(guid: guid), !found.episode.audioURL.isEmpty else { return }
-        guard var stored = Self.writableRecords(defaults) else { return }
+        var stored = Self.writableRecords(defaults)
         guard stored[guid] == nil else { return }
         stored[guid] = Kept(guid: guid,
                             feedURL: found.show.feedURL,
@@ -129,14 +129,13 @@ nonisolated final class BrowsedEpisodes: Sendable {
         records(defaults) ?? [:]
     }
 
-    /// The kept rows for a write: nil while a list stands that does not
-    /// decode, so no write replaces it with what this run knows (the next
+    /// The kept rows for a write: a list that stands and does not decode is
+    /// set aside first, so the write does not replace it for good (the next
     /// keep would have written the empty list plus one row over it).
-    private static func writableRecords(_ defaults: UserDefaults) -> [String: Kept]? {
-        guard CorruptStore.mayReplace([String: Kept].self, defaultsKey: storeKey, defaults: defaults,
-                                      label: "BROWSED kept list", log: Logger.rss),
-              let stored = records(defaults) else { return nil }
-        return stored
+    private static func writableRecords(_ defaults: UserDefaults) -> [String: Kept] {
+        CorruptStore.setAsideUnreadable([String: Kept].self, defaultsKey: storeKey, defaults: defaults,
+                                        label: "BROWSED kept list", log: Logger.rss)
+        return records(defaults) ?? [:]
     }
 
     /// The decoded list, empty when none stands, nil when one stands and
@@ -150,7 +149,7 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// address then belong to the subscription stock, and that is the one truth.
     func forgetListened(feedURL: String, defaults: UserDefaults = .standard) {
         let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        guard let all = Self.writableRecords(defaults) else { return }
+        let all = Self.writableRecords(defaults)
         let stored = all.filter {
             PodcastSubscriptions.normalizeFeedURL($0.value.feedURL) != key
         }

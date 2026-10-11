@@ -8,9 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// A store that stands and does not decode is read as none, and the next
-/// write does not replace it: favorites, own stations, the last heard, the
-/// play counts and the known servers stay as they were.
+/// A store that stands and does not decode is read as none; the next write
+/// sets it aside under `.corrupt` and writes the new state: favorites, own
+/// stations, the last heard, the play counts and the known servers take the
+/// write, and the unreadable value stays recoverable.
 struct UnreadableStoreTests {
     private static let unreadable = Data("{\"not\": \"a list\"}".utf8)
 
@@ -24,66 +25,66 @@ struct UnreadableStoreTests {
     private let station = RadioStation(id: "radio:manual:probe", name: "Probe",
                                        streamURL: "https://probe.example/stream")
 
-    @Test("die Schreibregel: frei ohne Wert, frei bei lesbarem Wert, gesperrt bei unlesbarem Wert oder anderem Typ")
+    @Test("die Schreibregel: nichts beiseite ohne Wert und bei lesbarem Wert; ein unlesbarer Wert oder einer anderer Art liegt danach beiseite, ein spaeterer ersetzt die Beiseite-Kopie")
     func theWriteRule() throws {
         let defaults = try fresh()
         let key = "probe"
-        let free = CorruptStore.mayReplace([String].self, defaultsKey: key, defaults: defaults, label: "test")
-        #expect(free, "an empty key is a fresh start")
+        let aside = key + ".corrupt"
+        CorruptStore.setAsideUnreadable([String].self, defaultsKey: key, defaults: defaults, label: "test")
+        #expect(defaults.object(forKey: aside) == nil, "an empty key set something aside")
         defaults.set(try JSONEncoder().encode(["a"]), forKey: key)
-        let readable = CorruptStore.mayReplace([String].self, defaultsKey: key, defaults: defaults, label: "test")
-        #expect(readable, "a readable value may be replaced")
+        CorruptStore.setAsideUnreadable([String].self, defaultsKey: key, defaults: defaults, label: "test")
+        #expect(defaults.object(forKey: aside) == nil, "a readable value was set aside")
         defaults.set(Self.unreadable, forKey: key)
-        let blocked = CorruptStore.mayReplace([String].self, defaultsKey: key, defaults: defaults, label: "test")
-        #expect(!blocked, "an unreadable value would be written over")
+        CorruptStore.setAsideUnreadable([String].self, defaultsKey: key, defaults: defaults, label: "test")
+        let first = defaults.data(forKey: aside)
+        #expect(first == Self.unreadable, "the unreadable value was not set aside")
         defaults.set(42, forKey: key)
-        let other = CorruptStore.mayReplace([String].self, defaultsKey: key, defaults: defaults, label: "test")
-        #expect(!other, "a value of another kind would be written over")
+        CorruptStore.setAsideUnreadable([String].self, defaultsKey: key, defaults: defaults, label: "test")
+        let later = defaults.integer(forKey: aside)
+        #expect(later == 42, "a later unreadable value did not replace the aside copy (the last failure is kept)")
     }
 
-    @Test("unlesbare Radio-Listen und Zaehler bleiben stehen, wenn ein Sender dazukommt", .needsTheSources)
-    func radioListsAreNotWrittenOver() throws {
+    @Test("unlesbare Radio-Listen und Zaehler liegen beiseite, der neue Sender steht", .needsTheSources)
+    func radioListsAreSetAside() throws {
         let defaults = try fresh()
-        for key in [RadioStore.favoritesKey, RadioStore.manualKey, RadioStore.recentsKey,
-                    RadioStore.mostPlayedKey, RadioStore.playCountsKey] {
-            defaults.set(Self.unreadable, forKey: key)
-        }
+        let keys = [RadioStore.favoritesKey, RadioStore.manualKey, RadioStore.recentsKey,
+                    RadioStore.mostPlayedKey, RadioStore.playCountsKey]
+        for key in keys { defaults.set(Self.unreadable, forKey: key) }
         RadioStore.replaceFavorites([station], defaults: defaults)
         RadioStore.addManual(station, defaults: defaults)
         RadioStore.recordRecent(station, defaults: defaults)
         RadioStore.recordPlay(station, defaults: defaults)
-        for key in [RadioStore.favoritesKey, RadioStore.manualKey, RadioStore.recentsKey,
-                    RadioStore.mostPlayedKey, RadioStore.playCountsKey] {
-            let kept = defaults.data(forKey: key)
-            #expect(kept == Self.unreadable, "\(key) was written over")
+        for key in keys {
+            let aside = defaults.data(forKey: key + ".corrupt")
+            #expect(aside == Self.unreadable, "\(key) was not set aside")
         }
-        // Readable lists take the write as before.
-        let open = try fresh()
-        RadioStore.replaceFavorites([station], defaults: open)
-        RadioStore.addManual(station, defaults: open)
-        RadioStore.recordPlay(station, defaults: open)
-        let favorites = RadioStore.favorites(defaults: open).map(\.id)
-        let manual = RadioStore.manualStations(defaults: open).map(\.id)
-        let counts = RadioStore.playCounts(defaults: open)
-        #expect(favorites == [station.id] && manual == [station.id] && counts[station.id] == 1)
+        let favorites = RadioStore.favorites(defaults: defaults).map(\.id)
+        let manual = RadioStore.manualStations(defaults: defaults).map(\.id)
+        let recents = RadioStore.recents(defaults: defaults).map(\.id)
+        let counts = RadioStore.playCounts(defaults: defaults)
+        #expect(favorites == [station.id] && manual == [station.id] && recents == [station.id] && counts[station.id] == 1,
+                "the new state did not stand")
+        // A second write finds a readable list and leaves the aside copy as it is.
+        RadioStore.replaceFavorites([], defaults: defaults)
+        let stillAside = defaults.data(forKey: RadioStore.favoritesKey + ".corrupt")
+        #expect(stillAside == Self.unreadable, "a second write replaced the aside copy")
     }
 
-    @Test("eine unlesbare Server-Liste bleibt stehen, wenn eine Verbindung gelingt")
-    func knownServersAreNotWrittenOver() throws {
+    @Test("eine unlesbare Server-Liste liegt beiseite, der gelungene Login steht")
+    func knownServersAreSetAside() throws {
         let defaults = try fresh()
         defaults.set(Self.unreadable, forKey: KnownServers.storeKey)
         KnownServers.remember("https://abs.example", service: .audiobookshelf, defaults: defaults)
-        let kept = defaults.data(forKey: KnownServers.storeKey)
-        #expect(kept == Self.unreadable, "the server list was written over")
-        let open = try fresh()
-        KnownServers.remember("https://abs.example", service: .audiobookshelf, defaults: open)
-        let remembered = KnownServers.all(defaults: open).map(\.url)
-        #expect(remembered == ["https://abs.example"])
+        let aside = defaults.data(forKey: KnownServers.storeKey + ".corrupt")
+        #expect(aside == Self.unreadable, "the server list was not set aside")
+        let remembered = KnownServers.all(defaults: defaults).map(\.url)
+        #expect(remembered == ["https://abs.example"], "the login did not stand")
     }
 
     /// Where a stored value is decoded and an unreadable one becomes the
     /// empty value, per file; the stock is the count. Each one either has
-    /// its write behind `CorruptStore.mayReplace` (`guardedWriters`) or
+    /// its write behind `CorruptStore.setAsideUnreadable` (`guardedWriters`) or
     /// stands for a reason:
     /// * `Artwork+Memo.swift`, `ResolutionCacheStore.swift` (2): caches,
     ///   rebuilt from the network.
@@ -121,7 +122,7 @@ struct UnreadableStoreTests {
             let code = SyncContractFenceTests.stripped(text)
             let found = code.split(separator: "\n").filter { Self.decodesToEmpty(String($0)) }.count
             if found > 0 { counts[name] = found }
-            let guarded = code.components(separatedBy: "CorruptStore.mayReplace(").count - 1
+            let guarded = code.components(separatedBy: "CorruptStore.setAsideUnreadable(").count - 1
             if guarded > 0 { asks[name] = guarded }
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.decodeToEmptyStock)

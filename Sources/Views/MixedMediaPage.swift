@@ -213,7 +213,7 @@ struct MixedMediaPage: View {
                       coverURL: router.coverURL(id),
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
-                      lock: .none,
+                      lock: PodcastSubscriptions.shared.lock(feedURL: PodcastShowSources.show(forEpisodeId: id)?.feedURL ?? ""),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
                 .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         }

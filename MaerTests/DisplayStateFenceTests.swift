@@ -59,6 +59,12 @@ struct DisplayStateFenceTests {
         let card = StockDriftTests.squeezed(try code("Sources/Views/Podcasts/PodcastComponents.swift"))
         #expect(card.contains("PremiumLockBadge(lock:PodcastSubscriptions.shared.lock("), "the Continue card does not ask the one question")
         #expect(card.components(separatedBy: ".premiumLock(lock)").count == 3, "a show tile does not draw the lock it was handed")
+        // The search view asks no store itself: its show grid draws the
+        // locks the door asked with the deck.
+        let search = StockDriftTests.squeezed(try code("Sources/Views/SearchScreen.swift"))
+        let door = StockDriftTests.squeezed(try code("Sources/ViewModels/SearchDoor.swift"))
+        #expect(search.contains("lock:deck.locks[show.feedURL]??.none") && door.contains("subs.lock(feedURL:"),
+                "the show grid of the search does not draw the lock the door asked")
         let list = StockDriftTests.squeezed(try code("Sources/Views/PodcastsView.swift"))
         #expect(list.components(separatedBy: "lock:subs.lock(feedURL:").count == 7, "a show tile caller does not ask the one question")
         // The rule itself: a lasting refusal wins over premium.
@@ -72,11 +78,8 @@ struct DisplayStateFenceTests {
     /// new surface that shows a feed and writes `.none` shows up here.
     static let noLockStock: [String: (count: Int, reason: String)] = [
         "FeedArtwork.swift": (1, "catalog titles, no feed"),
-        "HomeView.swift": (3, "a book pick has no feed; the show pick and the episode pick hold a feed, whether they carry the lock is open as a product question"),
-        "MixedMediaPage.swift": (2, "a book has no feed; the other title may be an episode, open as a product question"),
-        "PodcastComponents.swift": (1, "a search result holds its feed, open as a product question"),
-        "PodcastsView.swift": (1, "the Continue page of episodes, whose card asks the lock; open as a product question"),
-        "SearchScreen.swift": (1, "the show grid of the search holds the feed, open as a product question"),
+        "HomeView.swift": (1, "a book pick of Rediscover, no feed"),
+        "MixedMediaPage.swift": (1, "a book, no feed"),
     ]
 
     @Test("jede Kachel, die das Schloss von Hand auf keins setzt, ist je Datei gezaehlt", .needsTheSources)

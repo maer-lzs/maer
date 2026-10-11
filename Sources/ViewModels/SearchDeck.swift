@@ -22,6 +22,9 @@ nonisolated struct SearchDeck {
     var seriesGroups: [(name: String, entries: [LibraryEntry])] = []
     var letterSections: [SearchDeckLetterSection] = []
     var shows: [PodcastShow] = []
+    /// The lock of each show by its feed, the answer of the one question
+    /// (`PodcastSubscriptions.lock(feedURL:)`), asked by the door per build.
+    var locks: [String: FeedLock] = [:]
     var albums: [LibraryItem] = []
     /// What the music source answered about its artists, nil while it has
     /// not answered. It travels WITH the deck so the view holds one state

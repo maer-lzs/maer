@@ -84,29 +84,24 @@ nonisolated enum CorruptStore {
     }
 
     /// The write rule of a store that is read, changed and written back
-    /// whole: no write while a value stands under `key` that does not
-    /// decode as `type`. Its reader saw nothing there, so whatever it would
-    /// write (one new row, or the empty list) replaces the unreadable value
-    /// for good. The value stays as it is and the refusal has its line; a
-    /// cause that passes (a later build's form read by an older one) then
-    /// finds it whole.
-    static func mayReplace<T: Decodable>(_ type: T.Type, defaultsKey key: String,
-                                         defaults: UserDefaults = .standard,
-                                         label: String,
-                                         log: Logger = Logger.library) -> Bool {
-        guard let data = defaults.data(forKey: key) else {
-            // Something other than data under the key is no fresh start either.
-            guard defaults.object(forKey: key) == nil else {
-                log.error("\(label, privacy: .public) holds no data, NOT written over")
-                return false
-            }
-            return true
-        }
-        guard (try? JSONDecoder().decode(type, from: data)) != nil else {
-            log.error("\(label, privacy: .public) undecodable, NOT written over")
-            return false
-        }
-        return true
+    /// whole, called before its write: a value under `key` that does not
+    /// decode as `type` (or is no data at all) is first set aside under the
+    /// sibling key `.corrupt`, the same place `load` keeps it, with its
+    /// line; then the write goes on. Its reader saw nothing there, so the
+    /// write would replace the unreadable value for good; set aside, it
+    /// stays recoverable, and the person's new state is kept instead of
+    /// refused. A later unreadable value replaces an earlier aside copy:
+    /// the last failure is the interesting one, and the line says so.
+    static func setAsideUnreadable<T: Decodable>(_ type: T.Type, defaultsKey key: String,
+                                                 defaults: UserDefaults = .standard,
+                                                 label: String,
+                                                 log: Logger = Logger.library) {
+        guard let stored = defaults.object(forKey: key) else { return }
+        if let data = stored as? Data, (try? JSONDecoder().decode(type, from: data)) != nil { return }
+        let aside = key + ".corrupt"
+        let replaces = defaults.object(forKey: aside) != nil
+        defaults.set(stored, forKey: aside)
+        log.error("\(label, privacy: .public) unreadable, set aside under .corrupt\(replaces ? " (replaces the earlier aside copy)" : "", privacy: .public), the new state is written")
     }
 
     /// Move the unreadable file aside, replacing an older backup: the LAST
