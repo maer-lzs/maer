@@ -90,8 +90,8 @@ struct ListenHistoryHealTests {
         #expect(!shared.contains("HStack"), "the second line stands as columns again")
     }
 
-    /// The page and its tile are called "Hörverlauf" in German, the word the
-    /// owner chose; the empty page says it with the same word.
+    /// The page and its tile are called "Hörverlauf" in German; the empty
+    /// page says it with the same word.
     @Test("deutsch heisst der Verlauf Hörverlauf, auf der Kachel und auf der leeren Seite", .needsTheSources)
     func theGermanNameIsHoerverlauf() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))

@@ -34,20 +34,28 @@ struct CategoryTile: View {
                     .font(.body)
                     .foregroundStyle(AppTheme.accent)
                     .frame(width: glyphWidth)
-                // A title of several words takes a second line instead of
-                // shrinking ("Listening History" stood smaller than its
-                // neighbours); a single word keeps one line and shrinks a
-                // little, so it is never hyphenated ("Down-loaded").
-                let fit = Self.titleFit(title)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(fit.lines)
-                    .minimumScaleFactor(fit.minimumScale)
-                Spacer(minLength: 6)
-                if let count {
-                    Text("\(count)")
-                        .font(.footnote).monospacedDigit()
-                        .foregroundStyle(.secondary)
+                // A title never shrinks. Several words wrap at a space onto a
+                // second line; a single word that does not fit beside the
+                // count moves the count under it, measured on the real row
+                // (`MeasuredFits`; `ViewThatFits` is banned).
+                if let count, Self.countMayMoveBelow(title) {
+                    MeasuredFits {
+                        HStack(spacing: 0) {
+                            titleText
+                            Spacer(minLength: 6)
+                            countText(count)
+                        }
+                    } compact: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            titleText
+                            countText(count)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    titleText
+                    Spacer(minLength: 6)
+                    if let count { countText(count) }
                 }
             }
             .padding(.horizontal, 12)
@@ -62,11 +70,29 @@ struct CategoryTile: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    /// How a tile title fits its width: several words wrap at a space onto
-    /// a second line at full size; one word stays on one line and may
-    /// shrink a little, because the only way to wrap it is a hyphen.
-    nonisolated static func titleFit(_ title: String) -> (lines: Int, minimumScale: CGFloat) {
-        title.contains(" ") ? (2, 1) : (1, 0.8)
+    private var titleText: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(Self.titleLines(title))
+    }
+
+    private func countText(_ count: Int) -> some View {
+        Text("\(count)")
+            .font(.footnote).monospacedDigit()
+            .foregroundStyle(.secondary)
+    }
+
+    /// Lines of a tile title: several words may wrap at a space onto a
+    /// second line; a single word keeps one, since the only way to wrap it
+    /// is a hyphen ("Down-loaded").
+    nonisolated static func titleLines(_ title: String) -> Int {
+        title.contains(" ") ? 2 : 1
+    }
+
+    /// Whether the count may move under the title: only beside a single
+    /// word, which can neither wrap nor shrink.
+    nonisolated static func countMayMoveBelow(_ title: String) -> Bool {
+        titleLines(title) == 1
     }
 }
 

@@ -118,11 +118,24 @@ struct CategoryDeckTests {
     /// Every tile of a deck in the same size: a long title takes a second
     /// line instead of shrinking (seen at the standard size: "Listening
     /// History" stood smaller than its neighbours).
-    @Test("eine Kachel mit langem Titel aus mehreren Woertern nimmt eine zweite Zeile, ein einzelnes Wort wird nie getrennt")
-    func aLongTitleWrapsInsteadOfShrinking() {
-        #expect(CategoryTile.titleFit("Listening History") == (2, 1), "a title of several words shrinks instead of wrapping")
-        #expect(CategoryTile.titleFit("Downloaded") == (1, 0.8), "a single word may be hyphenated")
-        #expect(CategoryTile.titleFit("Hörverlauf") == (1, 0.8))
+    @Test("ein Kacheltitel schrumpft nie: mehrere Woerter brechen am Leerzeichen, neben einem einzelnen Wort darf die Zahl unter den Titel ruecken", .needsTheSources)
+    func aLongTitleWrapsInsteadOfShrinking() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try #require(json["strings"] as? [String: [String: Any]])
+        func german(_ key: String) throws -> String {
+            try #require(((strings[key]?["localizations"] as? [String: Any])?["de"] as? [String: Any])
+                .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String, "no German value for \(key)")
+        }
+        for single in ["Downloaded", try german("Downloaded"), try german("Listening History")] {
+            #expect(CategoryTile.titleLines(single) == 1, "the single word \(single) may be hyphenated")
+            #expect(CategoryTile.countMayMoveBelow(single), "the count of \(single) stays beside it and squeezes it")
+        }
+        #expect(CategoryTile.titleLines("Listening History") == 2, "several words do not wrap at the space")
+        #expect(!CategoryTile.countMayMoveBelow("Listening History"))
+        let tile = SyncContractFenceTests.stripped(try sourceText("Sources/Views/CategoryTile.swift"))
+        #expect(!tile.contains("minimumScaleFactor"), "a tile title shrinks again")
+        #expect(tile.contains("MeasuredFits {"), "the count does not move by the measured row")
     }
 }
 #endif
