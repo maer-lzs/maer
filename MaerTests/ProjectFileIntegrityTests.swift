@@ -1952,6 +1952,47 @@ extension ProjectFileIntegrityTests {
         #expect(drift == nil, "a plan step names history, not the code (\(drift ?? "")): \(found)")
     }
 
+    /// The history shorthands of the older passes, which the order
+    /// shorthands above do not know: a numbered pass (`X²·3`, `Welle 2`,
+    /// `Teil 3`), a way of a plan (`Weg B`), a test round (`GT 3.2`, `GT-8`)
+    /// and a decision mark (`(decided)`). Each tells a stranger nothing.
+    static func historyShorthands(in line: String) -> [String] {
+        var hits: [String] = []
+        for pattern in [#"X²·[0-9]*"#, #"\bWelle [0-9]+"#, #"\bTeil [0-9]+"#,
+                        #"\bWeg [A-Z](?![A-Za-zÄÖÜäöü])"#, #"\bGT[- ]?[0-9]+(?:\.[0-9]+)?"#, #"\(decided\)"#] {
+            hits += matches(of: pattern, in: line)
+        }
+        return hits
+    }
+
+    /// The comment lines in the sources that carry such a shorthand, per
+    /// file, measured 11.10.2026 when the fence learned the forms: 80 lines
+    /// in 36 files. The stock is the count; a line rewritten lowers it.
+    /// BESTAND OHNE EINZELGRUENDE: one sentence covers every entry, each is
+    /// the count that stood on the day of measuring, none chosen on its own.
+    nonisolated static let historyShorthandStock: [String: Int] = ["RadioModels.swift": 9, "FreeAudiobooksPage.swift": 6, "PlayerView.swift": 6, "HoerspielCuration.swift": 5, "PlayerViewModel.swift": 4, "PodcastNavigation.swift": 3, "PodcastWorkOrder.swift": 3, "PodcastsView.swift": 3, "AppStorageKeys.swift": 2, "FreeCatalogClients.swift": 2, "FreeCatalogSources.swift": 2, "HomeView.swift": 2, "MusicLibraryPages.swift": 2, "MusicView.swift": 2, "MusicViewModel.swift": 2, "PlayerViewModel+NowPlaying.swift": 2, "PodcastSections.swift": 2, "PodcastSourceView.swift": 2, "RadioArtworkLookup.swift": 2, "RadioNavigation.swift": 2, "RadioProvider.swift": 2, "BookDetailScreen.swift": 1, "LibrarySortOptions.swift": 1, "LibraryView.swift": 1, "MediaTile.swift": 1, "MusicNavigation.swift": 1, "OERRCuration.swift": 1, "OERRLiveStore.swift": 1, "PodcastComponents.swift": 1, "PodcastDirectory.swift": 1, "PodcastRecommendationsStore.swift": 1, "PodcastShowSettingsSheet.swift": 1, "PodcastSubscriptions.swift": 1, "RadioStationDetailView.swift": 1, "RediscoverSections.swift": 1, "UserChoiceSync.swift": 1]
+
+    @Test("Geschichts-Kuerzel aelterer Laeufe in Kommentaren sind je Datei gezaehlt, der Bestand ist die Zaehlung", .needsTheSources)
+    func historyShorthandsAreCounted() throws {
+        let files = Self.sourceTexts()
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
+        var counts: [String: Int] = [:]
+        for (name, text) in files {
+            let lines = Self.comments(in: text).filter { !Self.historyShorthands(in: $0.comment).isEmpty }.count
+            if lines > 0 { counts[name, default: 0] += lines }
+        }
+        let drift = StockDrift.findings(counts: counts, stock: Self.historyShorthandStock)
+        #expect(drift.isEmpty, "a history shorthand says nothing to a stranger, or a stock above the count: \(drift)")
+        // The reader, both ways.
+        #expect(Self.historyShorthands(in: "/// X²·1: the CC capsule") == ["X²·1"])
+        #expect(Self.historyShorthands(in: "// Teil 3: play frequency") == ["Teil 3"])
+        #expect(Self.historyShorthands(in: "// since Welle 2 the row") == ["Welle 2"])
+        #expect(Self.historyShorthands(in: "// Weg B keeps it") == ["Weg B"])
+        #expect(Self.historyShorthands(in: "// measured in GT 3.2 and GT-8") == ["GT 3.2", "GT-8"])
+        #expect(Self.historyShorthands(in: "// the slider (decided) stays") == ["(decided)"])
+        #expect(Self.historyShorthands(in: "// a part of the way back, Wegweiser, Teilnehmer").isEmpty)
+    }
+
     private static func matches(of pattern: String, in line: String) -> [String] {
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             Issue.record("the pattern does not compile: \(pattern)")
