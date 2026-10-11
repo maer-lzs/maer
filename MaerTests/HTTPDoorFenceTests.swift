@@ -133,5 +133,29 @@ struct HTTPDoorFenceTests {
         // returning `…Entry?` is not a swallowed error.
         #expect(Self.unreasonedTryLines(in: "static func decode(_ d: Data) -> Foo.Entry? {") == 0)
     }
+
+    /// The stock of `try?` without a reason in the views, measured after
+    /// the surfaces that showed a failure as empty were healed. A file may
+    /// only lose lines; a new swallowed error in a view carries its reason
+    /// at the line or is not written.
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Messtages ueber 23 Dateien, das
+    // nur fallen darf; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
+    nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 6, "RadioView.swift": 6, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 2, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookDetailScreen.swift": 1, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PlayerView.swift": 1, "PodcastEpisodeDetailView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
+
+    @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft")
+    func viewTryCarriesAReasonOrShrinks() throws {
+        var grown: [String] = []
+        var seen: Set<String> = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
+            seen.insert(file.lastPathComponent)
+            let count = Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
+            let allowed = Self.viewTryStock[file.lastPathComponent] ?? 0
+            if count > allowed { grown.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+        }
+        #expect(seen.contains("LibraryView.swift"), "the finder does not see the views")
+        #expect(grown.isEmpty, "these views swallow more errors than the stock allows: \(grown)")
+        let ghosts = Self.viewTryStock.keys.filter { !seen.contains($0) }.sorted()
+        #expect(ghosts.isEmpty, "the stock names views that are gone: \(ghosts)")
+    }
 }
 #endif
