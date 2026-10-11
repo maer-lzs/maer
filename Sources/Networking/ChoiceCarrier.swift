@@ -40,7 +40,8 @@ protocol ChoiceCarrier: AnyObject {
 
 /// Which carrier the choices run on: the Mär sync service when the person
 /// set one up, otherwise CloudKit on a device (the key-value store as its
-/// fallback and legacy reader), and the key-value store alone on a DEBUG
+/// fallback, and the reader of a blob an older build wrote there), and the
+/// key-value store alone on a DEBUG
 /// simulator so no test writes a person's CloudKit container. The same
 /// question the pot, the claim, the statistics and the playlists ask,
 /// answered the same way.

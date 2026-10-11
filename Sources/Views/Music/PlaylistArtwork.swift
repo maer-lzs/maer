@@ -12,19 +12,18 @@ import SwiftUI
 /// glyph. Built directly by `PlaylistCard` and the playlist page.
 struct PlaylistArtwork: View {
     let playlistID: String
-    /// Up to four album cover URLs, in order.
+    /// The album cover URLs, in order; up to three are drawn.
     let coverURLs: [URL]
-    /// Korrektur 01.08: the card row embeds the mosaic flush inside a larger
-    /// rounded card. Corner 0 there; standalone uses keep the default.
+    /// The card row embeds the mosaic flush inside a larger rounded card:
+    /// corner 0 there; standalone uses keep the default.
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        // ONE portrait format for every card (~2:3, the
-        // "Kölsch" layout as the standard): two small squares on top (half
-        // width each) + one big square below (full width). Geometry gives
-        // 2:3 for free (h = w/2 + w). Fewer than three unique covers fill
-        // with the deterministic tint, NEVER stretch or stack. Every card
-        // in a row is exactly the same size.
+        // Two small squares on top (half width each) over one big square
+        // (full width), one and a half widths tall. The frame below is
+        // square, so the big square shows its upper half. Fewer than three
+        // unique covers fill with the deterministic tint, never stretch or
+        // stack. Every card in a row is exactly the same size.
         GeometryReader { geo in
             let w = geo.size.width
             let used = PlaylistPresentation.mosaicTileCount(coverURLs.count)
@@ -44,9 +43,7 @@ struct PlaylistArtwork: View {
                     }
             }
         }
-        // Musik-Tab-Neuordnung (30.07): the special portrait 2:3 yields to the
-        // shared SQUARE tile geometry. Same card size as the other libraries'
-        // card rows (MediaTile family); mosaic + text-in-card idiom stay.
+        // The square tile geometry of the other card rows (MediaTile family).
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
