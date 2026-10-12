@@ -384,6 +384,29 @@ struct AddToPlaylistSheet: View {
     private var server: MusicSourceRule.Server? { PlaylistPresenter.servers(for: request.ids).first }
     private var showsServer: Bool { places.contains(.server) && server != nil }
 
+    /// The server the sentences name: the entries' own, else the one active
+    /// music server; with two and none of their own, none.
+    private var namedServer: String? {
+        let active = PlaylistPresenter.servers(for: [])
+        let which = server ?? (active.count == 1 ? active.first : nil)
+        let type = SubsonicProvider.configuredServerKey.flatMap { SubsonicClient.reportedType(server: $0) }
+        return MusicServerName.product(which, reportedType: type)
+    }
+
+    private var mixSentence: String {
+        if let name = namedServer {
+            return String(localized: "Mär playlists stay on your devices and can mix everything: music from \(name), free catalogs and local files.")
+        }
+        return String(localized: "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files.")
+    }
+
+    private var onlyMaerSentence: String {
+        if let name = namedServer {
+            return String(localized: "These entries can only go into a Mär playlist: \(name) cannot reference a catalog or local address.")
+        }
+        return String(localized: "These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address.")
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -437,11 +460,10 @@ struct AddToPlaylistSheet: View {
                     // The explanation lands where the decision is made. And
                     // it says WHY the other world may be missing instead of
                     // leaving a silent gap.
-                    Text(showsServer
-                         ? String(localized: "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files.")
+                    Text(showsServer ? mixSentence
                          : PlaylistPresenter.mixesServers(request.ids)
                          ? String(localized: "Titles from two servers only fit into a playlist on your devices: a server playlist holds its own server's music only.")
-                         : String(localized: "These entries can only go into a device playlist: a music server cannot reference a catalog or local address."))
+                         : onlyMaerSentence)
                 }
             }
             .navigationTitle("Add to Playlist")

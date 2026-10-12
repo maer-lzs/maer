@@ -218,4 +218,34 @@ struct PlaylistSongSemanticsTests {
         #expect(PlaylistDestination.lastChanged([(.subsonic, nil), (.jellyfin, 5)]) == .jellyfin)
         #expect(PlaylistDestination.lastChanged([]) == nil)
     }
+
+    /// The sentences of the add sheet name the music server by its product,
+    /// never its address; an unknown one is "your music server".
+    @Test("die Saetze unter den Mär-Playlists nennen den Server beim Produktnamen, unbekannt heisst er dein Musikserver", .needsTheSources)
+    func theSheetNamesTheServerByProduct() throws {
+        #expect(MusicServerName.product(.subsonic, reportedType: "navidrome") == "Navidrome")
+        #expect(MusicServerName.product(.subsonic, reportedType: "Navidrome") == "Navidrome")
+        #expect(MusicServerName.product(.subsonic, reportedType: "gonic") == "gonic")
+        #expect(MusicServerName.product(.subsonic, reportedType: "some-new-server") == nil, "an unknown type is shown raw")
+        #expect(MusicServerName.product(.subsonic, reportedType: nil) == nil, "a plain Subsonic server gets a name")
+        #expect(MusicServerName.product(.jellyfin, reportedType: nil) == "Jellyfin")
+        #expect(MusicServerName.product(nil, reportedType: "navidrome") == nil)
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try #require(json["strings"] as? [String: [String: Any]])
+        func german(_ key: String) -> String? {
+            ((strings[key]?["localizations"] as? [String: Any])?["de"] as? [String: Any])
+                .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String
+        }
+        #expect(german("Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files.")
+                == "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien.")
+        #expect(german("Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files.")?
+                    .contains("deinem Musikserver") == true)
+        #expect(german("These entries can only go into a Mär playlist: %@ cannot reference a catalog or local address.")?
+                    .hasPrefix("Diese Einträge passen nur in eine Mär-Playlist: %@") == true)
+        #expect(german("These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address.")?
+                    .contains("Dein Musikserver") == true)
+        let old = strings.keys.filter { $0.contains("device playlist") || $0.hasPrefix("Device playlists") }
+        #expect(old.isEmpty, "the old sentences still stand: \(old)")
+    }
 }

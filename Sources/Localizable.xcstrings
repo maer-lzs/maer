@@ -3325,16 +3325,27 @@
         }
       }
     },
-    "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files." : {
+    "Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geräte-Playlists bleiben auf deinen Geräten und dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien."
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien."
           }
         }
       }
     },
+    "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von deinem Musikserver, freie Kataloge und lokale Dateien."
+          }
+        }
+      }
+    },
+
     "Devices appear as soon as they are paired and in range." : {
       "localizations" : {
         "de" : {
@@ -11858,16 +11869,27 @@
         }
       }
     },
-    "These entries can only go into a device playlist: a music server cannot reference a catalog or local address." : {
+    "These entries can only go into a Mär playlist: %@ cannot reference a catalog or local address." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Einträge passen nur in eine Geräte-Playlist: Ein Musikserver kann keine Katalog- oder lokale Adresse referenzieren."
+            "value" : "Diese Einträge passen nur in eine Mär-Playlist: %@ kann keine Katalog- oder lokale Adresse aufnehmen."
           }
         }
       }
     },
+    "These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Einträge passen nur in eine Mär-Playlist: Dein Musikserver kann keine Katalog- oder lokale Adresse aufnehmen."
+          }
+        }
+      }
+    },
+
     "These read what their surface currently shows; a copy here would measure something else." : {
       "localizations" : {
         "de" : {
