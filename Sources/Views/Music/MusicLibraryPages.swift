@@ -257,7 +257,7 @@ struct MusicSongRow: View {
     }
 }
 
-/// Locally downloaded music ("Downloaded" entry): every downloaded item the
+/// Locally downloaded music ("Downloads" entry): every downloaded item the
 /// music provider owns, as album cells. Reads the download registry live.
 struct MusicDownloadedPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator

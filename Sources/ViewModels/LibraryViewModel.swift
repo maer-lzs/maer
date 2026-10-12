@@ -56,7 +56,7 @@ nonisolated enum FilterOption: String, CaseIterable, Identifiable {
         case .alle: return String(localized: "All")
         case .unfertig: return String(localized: "Unfinished")
         case .fertig: return String(localized: "Finished")
-        case .heruntergeladen: return String(localized: "Downloads list")
+        case .heruntergeladen: return String(localized: "Downloaded")
         }
     }
 }

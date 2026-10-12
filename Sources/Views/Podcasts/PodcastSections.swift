@@ -46,7 +46,7 @@ nonisolated struct SubscriptionFold: Equatable, Sendable {
 /// - "Recently updated": shows by newest episode, with the count of unplayed
 ///   episodes newer than the last played one (all unplayed without one);
 ///   shows with inbox mode "off" are excluded.
-/// - "Downloaded": episodes present on device, newest first.
+/// - "Downloads": episodes present on device, newest first.
 enum PodcastSections {
 
     // MARK: - Main-actor snapshot → off-main compute

@@ -9,7 +9,7 @@ import Combine
 
 /// Music tab (Subsonic/Navidrome/Jellyfin). Musik-Tab-Neuordnung (30.07):
 /// playlist cards (shared card size) on top, then the grouped library list
-/// (Artists · Albums · Songs · Playlists · Downloaded. Apple-Music pattern;
+/// (Artists · Albums · Songs · Playlists · Downloads. Apple-Music pattern;
 /// the entries replace the old inline album grid), then two server shelves
 /// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
@@ -535,7 +535,7 @@ struct AlbumCell: View {
 }
 
 /// The music library deck. Its one number from the download stock (the
-/// "Downloaded" tile, counted by the ONE rule shared with the search deck) is
+/// "Downloads" tile, counted by the ONE rule shared with the search deck) is
 /// why it observes the download manager, so a progress publish re-runs this
 /// deck and not the whole music tab. The page builds the entries.
 private struct MusicLibraryDeck: View {

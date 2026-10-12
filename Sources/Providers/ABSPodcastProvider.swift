@@ -60,7 +60,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// states on them; the episode's own fields are the server's.
     private(set) var episodeHandles: [String: ServerEpisodeHandle] = [:]
     /// Counts changes (shows/progress). Used as a `.task` id in the UI so
-    /// "Up Next"/"Downloaded" recompute after an ABS load or "played".
+    /// "Up Next"/"Downloads" recompute after an ABS load or "played".
     @Published private(set) var changeToken = 0
     /// Archived shows (client-side): "end subscription" only hides, without
     /// deleting on the server. Show + history stay, reactivatable.

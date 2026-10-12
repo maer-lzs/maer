@@ -130,7 +130,7 @@ struct CategoryDeckTests {
         #expect(value("Downloads list", "en") == "Downloads")
         #expect(value("Downloads list", "de") == "Geladen")
         #expect(value("Downloaded", "de") == "Geladen")
-        let lists = ["Sources/ViewModels/LibraryViewModel.swift", "Sources/CarPlay/CarPlaySceneDelegate.swift",
+        let lists = ["Sources/CarPlay/CarPlaySceneDelegate.swift",
                      "Sources/Models/SearchDeckTiles.swift", "Sources/Models/AppRows.swift", "Sources/Views/PodcastsView.swift",
                      "Sources/Views/LibraryView.swift", "Sources/Views/Music/MusicView.swift", "Sources/Views/Music/MusicLibraryPages.swift"]
         for path in lists {
@@ -141,6 +141,9 @@ struct CategoryDeckTests {
         for path in ["Sources/Views/CoverBadge.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
             #expect(try sourceText(path).contains("Text(\"Downloaded\")"), "\(path) no longer says the cover state")
         }
+        // The filter of the books tab names a state, like Finished.
+        #expect(try sourceText("Sources/ViewModels/LibraryViewModel.swift").contains("case .heruntergeladen: return String(localized: \"Downloaded\")"),
+                "the filter is called like a list")
         #expect(CategoryTile.countBelowInEveryTile(.xxxLarge))
         #expect(!CategoryTile.countBelowInEveryTile(.xxLarge) && !CategoryTile.countBelowInEveryTile(.accessibility3))
     }

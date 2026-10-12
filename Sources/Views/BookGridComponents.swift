@@ -343,7 +343,7 @@ struct BrowseBooksScreen: View {
 
 /// Downloaded-audiobook row. Mirrors the podcast episode row (same
 /// `MediaRowContent` layout + a large play button, tap opens the detail page)
-/// so the audiobook "Downloaded" section reads and behaves like the podcast
+/// so the audiobook "Downloads" section reads and behaves like the podcast
 /// pendant.
 struct BookDownloadRow: View {
     @Environment(\.itemRouter) private var router
@@ -363,7 +363,7 @@ struct BookDownloadRow: View {
                     coverURL: router.coverURL(entry.id),
                     eyebrow: entry.item.author,
                     title: entry.item.title,
-                    // The Downloaded section is rebuilt by its parent
+                    // The Downloads section is rebuilt by its parent
                     // (LibraryView) when downloads change, so this row reads the
                     // flag non-observed. It never re-renders on a progress tick.
                     downloadedBadge: DownloadManager.shared.isDownloaded(itemId: entry.id),
