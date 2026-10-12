@@ -155,6 +155,10 @@ struct UserEdgeErrorTests {
         #expect(LoadFailedView.rowStacks(accessibilitySize: true) && !LoadFailedView.rowStacks(accessibilitySize: false),
                 "Retry does not move under the sentence at an accessibility size")
         #expect(rowBody.contains("if Self.rowStacks(accessibilitySize: typeSize.isAccessibilitySize)"), "the row does not ask the rule")
+        // Retry is one pill in all three forms, recognisable as a control.
+        #expect(view.components(separatedBy: "retryPill").count - 1 == 4, "a form builds its own Retry")
+        #expect(!view.contains("Button(\"Retry\""), "a plain text Retry came back")
+        #expect(view.contains(".background(Capsule()"), "Retry is no pill")
         #expect(rowBody.contains(".frame(maxWidth: .infinity, alignment: .leading)"), "the row is not leading")
         #expect(!rowBody.contains(".font(.footnote)"), "the row is smaller than the empty text beside it")
         let users = ["Sources/Views/Music/AddToPlaylistSheet.swift": "LoadFailedView(form: .row, sentence: \"Playlists could not be loaded.\")",

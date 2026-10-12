@@ -37,17 +37,14 @@ struct LoadFailedView: View {
             } description: {
                 Text(sentence)
             } actions: {
-                Button("Retry", action: retry)
-                    .accessibilityIdentifier("load-failed-retry")
+                retryPill
             }
         case .line:
             HStack(spacing: 10) {
                 Text(sentence)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Retry", action: retry)
-                    .font(.footnote)
-                    .accessibilityIdentifier("load-failed-retry")
+                retryPill
             }
             .frame(maxWidth: .infinity)
         case .row:
@@ -71,8 +68,23 @@ struct LoadFailedView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var rowRetry: some View {
-        Button("Retry", action: retry)
-            .accessibilityIdentifier("load-failed-retry")
+    private var rowRetry: some View { retryPill }
+
+    /// "Retry" as a pill: the anatomy of the card pills (glyph and word in
+    /// a capsule, `CardDetailPill`), in the accent on a light tint, because
+    /// those pills are white on a coloured card and would vanish on a list.
+    private var retryPill: some View {
+        Button(action: retry) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.clockwise").font(.caption)
+                Text("Retry").font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(AppTheme.accent)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(Capsule().fill(Color.primary.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("load-failed-retry")
     }
 }
