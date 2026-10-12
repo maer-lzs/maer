@@ -2,6 +2,127 @@
 
 ## Next build (not yet cut)
 
+## v3.4 (Build 53)
+
+**Listening History for books and music.** The Audiobooks tab and the
+Music library now have a Listening History page: the books you finished
+and the songs you played, newest first, in one continuous list. A song
+counts once half of it or four minutes have played, and playing it again
+moves it to the top. Tapping a row opens its book or the album of the
+song, also for audiobooks and music from the free catalogs. The history
+starts empty with this version and stays on this device.
+
+**Your audiobook library opens through tiles.** With a server, the
+Audiobooks tab shows a row of tiles for Series, Authors, Local Files and
+Listening History, like the tiles in Music and Search. Series, Authors and
+Genres open a page with every group and its count, and a group opens its
+books. A series page now holds every book of the series, also one whose
+series name is written differently. Without a server, Local Files and
+Listening History stand as rows on the tab.
+
+**Lists of downloaded titles are called "Downloads".** The tiles, pages
+and sections that list what is on this device, and the CarPlay tab, now
+say "Downloads". The mark on a cover still says "Downloaded", and so does
+the audiobook filter, because it names a state like "Finished".
+
+**Tile titles keep their size.** The category tiles in Audiobooks, Music
+and Search no longer shrink a long title: a title of several words takes
+a second line, and where a single word does not fit beside the count, the
+count moves under the title. At the largest standard text size, every
+tile of a row shows its count under the title.
+
+**Country codes on radio genre pages.** The line above the station lists
+of a radio genre now shows the countries of your choice as short codes,
+such as US, DE, at every text size, and VoiceOver reads the full names.
+Before, a long country name was cut off at large text sizes. The country
+picker still shows full names.
+
+**A list that could not load says so.** When a server or catalog does not
+answer, a page or list now says that it could not load and offers Retry,
+instead of showing no results, no playlists or an artist without albums.
+This covers the podcast directory search, radio drama charts, the albums
+of an artist, regions in Radio, server playlists in the add sheet, further
+pages of albums, and the server libraries in Settings. Retry is a small
+pill; inside a list, the sentence looks like the empty line beside it, and
+at large text sizes Retry stands under the sentence.
+
+**Plain sentences instead of error codes.** Catalog pages no longer show
+codes like URLError -1009 or HTTP 429. They say what happened: there is no
+network, the source did not answer, the source is busy, the title is no
+longer available there, or the answer could not be read. Subscribing on
+your server and loading an episode say when the server refused the
+request or has no podcast library, and Go to Artist says when the artist
+is not on this server.
+
+**An action the server refused is not shown as done.** Renaming or
+deleting a playlist and removing a song from it, on the card and on the
+page, now tell you when the server did not take it; a refused delete
+keeps the page open. The favourite heart of an album changes when you tap
+it and goes back if the server refuses. Mark as Finished for a book in the
+player now works like on the book page, and a refusal says so there.
+Before, these actions could look done when nothing had changed.
+
+**Opening a title that cannot play leaves Up Next alone.** A tap on a
+title that is not downloaded while you are offline, or an open whose
+details never arrive, no longer empties the rest of the album or playlist
+and no longer takes the title out of Up Next. A book page whose details
+could not load now says so with Retry, instead of an empty description
+and a download button that did nothing.
+
+**Clearer words when adding to a playlist.** The add sheet now calls your
+own lists "Mär playlists" and names your music server by its product, for
+example Navidrome or Jellyfin, when it explains which entries can only go
+into a Mär playlist. An empty playlist card shows its symbol in the middle
+of the card instead of half cut off at its lower edge.
+
+**All playback notices in one place.** Tapping the notice pill above the
+mini player or in the full player opens a list of recent notices with
+their title and time; the same list is in Settings under Notices. Routine
+sync notes such as "Progress saved" now only go into that list. A notice
+that stopped playback stays until you play again, and when progress
+cannot be saved for a reason other than the network, the pill says so
+once. In the full player the pill sits in free space and no longer covers
+a button; where there is no room, the notice stands as a line under the
+controls.
+
+**A stream that stops says it is waiting.** When a radio stream or a
+title stops delivering, the pill says "Waiting for the network" after
+five seconds, and playback goes on by itself when data comes again.
+
+**A broken download plays from the server.** When a downloaded file is
+missing or cannot be read, the title continues from the server at the same
+point and the pill says so, while the download is fetched again in the
+background. Without a network, playback stops at that file with a note
+saying the download is unreadable, instead of skipping ahead into the
+next file without a word.
+
+**Subscribing from a tile keeps your episodes.** When subscribing from a
+show tile, a show page or a co-listened show does not work, for example
+offline, the episodes you heard of that show keep their names and stay
+playable, and a note says why the subscription failed. Before, they were
+forgotten after such a tap.
+
+**gpodder after switching accounts.** When your subscriptions move to
+another account while gpodder is still signed in to the old one, Settings
+now shows that gpodder is paused, with the choice to continue with this
+account or to disconnect gpodder. Sync Now says the same instead of
+"already synced".
+
+**Damaged saved lists are kept aside.** When a stored list such as radio
+favourites, your own stations, recent stations, recent searches or known
+servers cannot be read, the next change keeps the old value aside and
+starts a new list. Before, it was overwritten without a trace.
+
+**Fewer wrong station logos.** Station logos from Wikidata now come only
+from an entry for that radio station. Photos and logos of other stations,
+clubs or companies that had matched by name are gone.
+
+**Smaller fixes.** A server playlist without a duration shows its number
+of songs instead of 0:00. An Internet Archive track listed with a length
+like 16:31.09 no longer shows as 16 hours. A request from Shortcuts, a
+quick action or a widget that finds no title now says so. A title a source
+reports as removed says it is gone instead of offering Retry.
+
 ## v3.4 (Build 52)
 
 **Next song works in a shuffled playlist.** With shuffle on, the title
