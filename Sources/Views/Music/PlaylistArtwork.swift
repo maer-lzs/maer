@@ -34,17 +34,19 @@ struct PlaylistArtwork: View {
                 }
                 slot(coverIndex: 0, used: used)
                     .frame(width: w, height: w)
-                    .overlay {
-                        if used == 0 {
-                            Image(systemName: "music.note.list")
-                                .font(.system(size: 34))
-                                .foregroundStyle(.white.opacity(0.9))
-                        }
-                    }
             }
         }
         // The square tile geometry of the other card rows (MediaTile family).
         .aspectRatio(1, contentMode: .fit)
+        // An empty playlist's glyph in the middle of the visible square; on
+        // the big square it sat on the lower edge and was cut in half.
+        .overlay {
+            if PlaylistPresentation.mosaicTileCount(coverURLs.count) == 0 {
+                Image(systemName: "music.note.list")
+                    .font(.system(size: 34))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 

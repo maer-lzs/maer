@@ -127,6 +127,18 @@ struct PlaylistPresentationTests {
         #expect(ids.count == Set(ids).count)
         #expect(ids.count == 3)
     }
+
+    /// The glyph of an empty playlist stands in the middle of the visible
+    /// square: on the big square it sat on the frame's lower edge.
+    @Test("das Symbol einer leeren Playlist steht in der Mitte des sichtbaren Quadrats, nicht auf dem grossen Feld", .needsTheSources)
+    func theEmptyGlyphIsCentredInTheFrame() throws {
+        let art = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PlaylistArtwork.swift"), encoding: .utf8))
+        let frame = try #require(art.range(of: ".aspectRatio(1, contentMode: .fit)"), "the card lost its square frame")
+        let glyph = try #require(art.range(of: "Image(systemName: \"music.note.list\")"), "the empty glyph is gone")
+        #expect(frame.upperBound < glyph.lowerBound, "the glyph hangs on a slot inside the frame again")
+        #expect(art.components(separatedBy: "Image(systemName: \"music.note.list\")").count == 2, "the glyph is drawn twice")
+    }
 }
 
 /// The playlist card's artist line. Most frequent first, folded
