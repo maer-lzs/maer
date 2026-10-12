@@ -58,7 +58,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             entries: session.libraryViewModel.continueListening
         )
         let downloadedTab = await listTemplate(
-            title: String(localized: "Downloaded"),
+            title: String(localized: "Downloads list"),
             systemImage: "arrow.down.circle",
             entries: session.libraryViewModel.downloadedEntries
         )

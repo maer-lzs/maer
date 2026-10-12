@@ -241,7 +241,7 @@ struct MusicView: View {
                       count: vm.playlists.count + maerPlaylists.playlists.count,
                       route: .playlists(sortedPlaylists)),
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
-            deckEntry(String(localized: "Downloaded"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
+            deckEntry(String(localized: "Downloads list"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
             deckEntry(String(localized: "Listening History"), systemImage: ListenHistory.systemImage, count: nil,
                       route: .history),
         ]

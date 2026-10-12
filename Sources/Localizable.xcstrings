@@ -3629,6 +3629,23 @@
         }
       }
     },
+    "Downloads list" : {
+      "comment" : "The title of every list of downloaded titles (tiles, page titles, sections, CarPlay tab); the cover state stays Downloaded.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geladen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads"
+          }
+        }
+      }
+    },
     "Draws from: %@" : {
       "localizations" : {
         "de" : {

@@ -130,7 +130,7 @@ nonisolated enum SearchDeckTiles {
             // five above it. The deck used to carry a single free shelf here
             // instead, one of ten and not the largest, while what is on the
             // device had no tile at all.
-            SearchDeckTile(id: "music-downloaded", title: String(localized: "Downloaded"),
+            SearchDeckTile(id: "music-downloaded", title: String(localized: "Downloads list"),
                            systemImage: "arrow.down.circle", count: counts.downloaded,
                            destination: .downloaded),
         ]

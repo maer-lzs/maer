@@ -1387,7 +1387,7 @@ struct LibraryView: View {
                 // Deliberately NOT RowHeading: this heading shares a padded
                 // line with the size and the expand button. The component's
                 // own horizontal padding would double up here.
-                Text("Downloaded").font(.title3).bold()
+                Text("Downloads list").font(.title3).bold()
                 // The size of exactly the titles this row shows. Mass deletion
                 // lives in the settings, per kind and once for everything; a
                 // single book is deleted from its context menu. The sizes

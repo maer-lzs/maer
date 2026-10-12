@@ -123,7 +123,7 @@ nonisolated enum AppRows {
                title: String(localized: "Local Files"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "books.downloaded", tab: .audiobooks,
-               title: String(localized: "Downloaded"),
+               title: String(localized: "Downloads list"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "books.recentlyAdded", tab: .audiobooks,
                title: String(localized: "Recently Added"),
@@ -198,7 +198,7 @@ nonisolated enum AppRows {
                // The subscription grid, in the sort chosen on its page.
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.downloaded", tab: .podcasts,
-               title: String(localized: "Downloaded"),
+               title: String(localized: "Downloads list"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.coListened", tab: .podcasts,
                title: String(localized: "Co-listened"),

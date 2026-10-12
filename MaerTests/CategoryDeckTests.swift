@@ -115,6 +115,36 @@ struct CategoryDeckTests {
         #expect(search.contains(".accessibilityLabel(Text(\"Audiobooks and Radio Plays\"))"))
     }
 
+    /// Every list of downloaded titles is called "Downloads" in English, the
+    /// state on a cover stays "Downloaded"; German says "Geladen" for both.
+    /// At XXXL the count stands under the title in every tile of a deck.
+    @Test("jede Liste geladener Titel heisst englisch Downloads, der Zustand am Cover Downloaded; bei XXXL steht die Zahl in jeder Kachel unter dem Titel", .needsTheSources)
+    func downloadListsAreCalledDownloads() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try #require(json["strings"] as? [String: [String: Any]])
+        func value(_ key: String, _ language: String) -> String? {
+            ((strings[key]?["localizations"] as? [String: Any])?[language] as? [String: Any])
+                .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String
+        }
+        #expect(value("Downloads list", "en") == "Downloads")
+        #expect(value("Downloads list", "de") == "Geladen")
+        #expect(value("Downloaded", "de") == "Geladen")
+        let lists = ["Sources/ViewModels/LibraryViewModel.swift", "Sources/CarPlay/CarPlaySceneDelegate.swift",
+                     "Sources/Models/SearchDeckTiles.swift", "Sources/Models/AppRows.swift", "Sources/Views/PodcastsView.swift",
+                     "Sources/Views/LibraryView.swift", "Sources/Views/Music/MusicView.swift", "Sources/Views/Music/MusicLibraryPages.swift"]
+        for path in lists {
+            let code = SyncContractFenceTests.stripped(try sourceText(path))
+            #expect(!code.contains("\"Downloaded\""), "\(path) still titles a list Downloaded")
+            #expect(code.contains("\"Downloads list\""), "\(path) lost its list title")
+        }
+        for path in ["Sources/Views/CoverBadge.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
+            #expect(try sourceText(path).contains("Text(\"Downloaded\")"), "\(path) no longer says the cover state")
+        }
+        #expect(CategoryTile.countBelowInEveryTile(.xxxLarge))
+        #expect(!CategoryTile.countBelowInEveryTile(.xxLarge) && !CategoryTile.countBelowInEveryTile(.accessibility3))
+    }
+
     /// Every tile of a deck in the same size: a long title takes a second
     /// line instead of shrinking (seen at the standard size: "Listening
     /// History" stood smaller than its neighbours).

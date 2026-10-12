@@ -669,7 +669,7 @@ RowHeading(title: "Recommended",
             let limit = horizontalSizeClass == .regular ? 6 : 3
             let shown = downloadedExpanded ? downloaded : Array(downloaded.prefix(limit))
             VStack(alignment: .leading, spacing: 8) {
-RowHeading(title: "Downloaded",
+RowHeading(title: "Downloads list",
                            total: downloaded.count,
                            shown: shown.count,
                            destination: PodcastRoute.downloadsAll)
@@ -947,7 +947,7 @@ struct PodcastDownloadsPage: View {
             }
             .bottomBarClearance()
         }
-        .navigationTitle(Text("Downloaded"))
+        .navigationTitle(Text("Downloads list"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

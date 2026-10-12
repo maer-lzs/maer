@@ -20,6 +20,7 @@ struct CategoryTile: View {
     var isSelected: Bool = false
     /// The glyph column grows with the text size.
     @ScaledMetric(relativeTo: .body) var glyphWidth: CGFloat = 24
+    @Environment(\.dynamicTypeSize) private var typeSize
     let action: () -> Void
 
     var body: some View {
@@ -38,7 +39,13 @@ struct CategoryTile: View {
                 // second line; a single word that does not fit beside the
                 // count moves the count under it, measured on the real row
                 // (`MeasuredFits`; `ViewThatFits` is banned).
-                if let count, Self.countMayMoveBelow(title) {
+                if let count, Self.countBelowInEveryTile(typeSize) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        titleText
+                        countText(count)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let count, Self.countMayMoveBelow(title) {
                     MeasuredFits {
                         HStack(spacing: 0) {
                             titleText
@@ -87,6 +94,13 @@ struct CategoryTile: View {
     /// is a hyphen ("Down-loaded").
     nonisolated static func titleLines(_ title: String) -> Int {
         title.contains(" ") ? 2 : 1
+    }
+
+    /// At the largest size below the accessibility sizes (XXXL, the grid
+    /// still two columns) the count stands under the title in EVERY tile of
+    /// a deck, for one look; a single word did not fit beside it there.
+    nonisolated static func countBelowInEveryTile(_ size: DynamicTypeSize) -> Bool {
+        size == .xxxLarge
     }
 
     /// Whether the count may move under the title: only beside a single

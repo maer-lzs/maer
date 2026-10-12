@@ -301,7 +301,7 @@ struct MusicDownloadedPage: View {
                 }
             }
         }
-        .navigationTitle(Text("Downloaded"))
+        .navigationTitle(Text("Downloads list"))
     }
 }
 
