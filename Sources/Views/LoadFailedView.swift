@@ -22,6 +22,12 @@ struct LoadFailedView: View {
     let form: Form
     var sentence: LocalizedStringKey = "This could not be loaded. Check your connection."
     let retry: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// At an accessibility size a row puts "Retry" under its sentence: beside
+    /// it the sentence wrapped into a narrow column (five lines in the
+    /// podcast search at AX3).
+    nonisolated static func rowStacks(accessibilitySize: Bool) -> Bool { accessibilitySize }
 
     var body: some View {
         switch form {
@@ -45,13 +51,28 @@ struct LoadFailedView: View {
             }
             .frame(maxWidth: .infinity)
         case .row:
-            HStack(spacing: 10) {
-                Text(sentence)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button("Retry", action: retry)
-                    .accessibilityIdentifier("load-failed-retry")
+            if Self.rowStacks(accessibilitySize: typeSize.isAccessibilitySize) {
+                VStack(alignment: .leading, spacing: 6) {
+                    rowSentence
+                    rowRetry
+                }
+            } else {
+                HStack(spacing: 10) {
+                    rowSentence
+                    rowRetry
+                }
             }
         }
+    }
+
+    private var rowSentence: some View {
+        Text(sentence)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var rowRetry: some View {
+        Button("Retry", action: retry)
+            .accessibilityIdentifier("load-failed-retry")
     }
 }

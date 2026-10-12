@@ -152,6 +152,9 @@ struct UserEdgeErrorTests {
         let view = try code("Sources/Views/LoadFailedView.swift")
         let row = try #require(view.range(of: "case .row:"), "the failure has no row form")
         let rowBody = view[row.upperBound...]
+        #expect(LoadFailedView.rowStacks(accessibilitySize: true) && !LoadFailedView.rowStacks(accessibilitySize: false),
+                "Retry does not move under the sentence at an accessibility size")
+        #expect(rowBody.contains("if Self.rowStacks(accessibilitySize: typeSize.isAccessibilitySize)"), "the row does not ask the rule")
         #expect(rowBody.contains(".frame(maxWidth: .infinity, alignment: .leading)"), "the row is not leading")
         #expect(!rowBody.contains(".font(.footnote)"), "the row is smaller than the empty text beside it")
         let users = ["Sources/Views/Music/AddToPlaylistSheet.swift": "LoadFailedView(form: .row, sentence: \"Playlists could not be loaded.\")",
