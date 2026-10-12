@@ -8,8 +8,9 @@ import SwiftUI
 /// THE playlist cover: up to three album covers, two small squares on top
 /// and one big square below (the server's single playlist cover is
 /// deliberately ignored for a uniform look); a slot without a cover takes
-/// the tint, and with none the big square carries the `music.note.list`
-/// glyph. Built directly by `PlaylistCard` and the playlist page.
+/// the tint, and with none the `music.note.list` glyph stands in the middle
+/// of the visible square. Built directly by `PlaylistCard` and the
+/// playlist page.
 struct PlaylistArtwork: View {
     let playlistID: String
     /// The album cover URLs, in order; up to three are drawn.
@@ -40,11 +41,16 @@ struct PlaylistArtwork: View {
         .aspectRatio(1, contentMode: .fit)
         // An empty playlist's glyph in the middle of the visible square, over
         // the frame and not on a slot, whose lower half the frame cuts off.
+        // The glyph is part of the picture, so it grows with the square like
+        // the radio placeholder (`side * 0.3`), not with the text size.
         .overlay {
             if PlaylistPresentation.mosaicTileCount(coverURLs.count) == 0 {
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 34))
-                    .foregroundStyle(.white.opacity(0.9))
+                GeometryReader { geo in
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: geo.size.width * Self.glyphShare))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: geo.size.width, height: geo.size.height)
+                }
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -71,6 +77,10 @@ struct PlaylistArtwork: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
     }
+
+    /// The empty glyph's size as a share of the square's side; on the
+    /// 211 pt card it keeps the 34 pt it had as a fixed size.
+    static let glyphShare: CGFloat = 0.16
 
     private var tint: Color { Self.color(for: playlistID) }
 

@@ -139,6 +139,17 @@ struct PlaylistPresentationTests {
         #expect(frame.upperBound < glyph.lowerBound, "the glyph hangs on a slot inside the frame again")
         #expect(art.components(separatedBy: "Image(systemName: \"music.note.list\")").count == 2, "the glyph is drawn twice")
     }
+
+    /// The empty glyph grows with the square, like the radio placeholder:
+    /// a fixed point size stayed small on the larger playlist page.
+    @Test("das Symbol einer leeren Playlist waechst mit dem Quadrat, auf der Karte bleibt es 34 pt", .needsTheSources)
+    func theEmptyGlyphScalesWithTheSquare() throws {
+        let art = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PlaylistArtwork.swift"), encoding: .utf8))
+        #expect(art.contains(".font(.system(size: geo.size.width * Self.glyphShare))"), "the glyph lost its share of the square")
+        #expect(!art.contains(".font(.system(size: 34))"), "the glyph is a fixed size again")
+        #expect(abs(CardMetrics.featuredCardWidth * PlaylistArtwork.glyphShare - 34) < 1, "the card glyph moved off 34 pt")
+    }
 }
 
 /// The playlist card's artist line. Most frequent first, folded
