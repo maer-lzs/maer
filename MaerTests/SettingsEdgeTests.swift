@@ -26,6 +26,10 @@ struct SettingsEdgeTests {
             "the button pinned below the setup form keeps the system margin; no row",
         "RowsSettingsView.swift: .padding(.leading, row.group == nil ? 0 : groupIndent)":
             "the switches of a group of shares stand in under the group's title, decided, by a scaled value",
+        "CardPillControls.swift: .padding(.horizontal, 14)":
+            "the inner padding of the glyph-and-word capsule (PillLabel), reached through the Retry of a failed load; no row",
+        "CardPillControls.swift: .padding(.horizontal, 9)":
+            "the inner padding of the card corner capsule in the same file; no row",
     ]
 
     /// Symbols measured wider than the list's icon column, each with its

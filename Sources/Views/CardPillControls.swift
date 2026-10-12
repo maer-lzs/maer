@@ -5,6 +5,29 @@
 
 import SwiftUI
 
+/// THE glyph-and-word pill: a caption glyph and a word in a capsule. The
+/// card "Details" pill draws it white on a coloured card, the "Retry" of a
+/// failed load in the accent on a list; one anatomy, one inner padding.
+struct PillLabel: View {
+    let systemImage: String
+    let title: Text
+    let foreground: Color
+    let fill: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage).font(.caption)
+            title.font(.subheadline.weight(.medium))
+        }
+        .foregroundStyle(foreground)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        // Solid, semi-transparent capsule instead of material blur. Blur
+        // is expensive per frame during horizontal scrolling.
+        .background(Capsule().fill(fill))
+    }
+}
+
 /// THE card "Details" pill. Book- and PodcastFeaturedCard carried
 /// byte-identical private copies and the playlist card is the third caller,
 /// so the anatomy lives in ONE component.
@@ -14,16 +37,8 @@ struct CardDetailPill<Value: Hashable>: View {
 
     var body: some View {
         NavigationLink(value: value) {
-            HStack(spacing: 6) {
-                Image(systemName: "info.circle").font(.caption)
-                Text("Details").font(.subheadline.weight(.medium))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            // Solid, semi-transparent capsule instead of material blur. Blur
-            // is expensive per frame during horizontal scrolling.
-            .background(Capsule().fill(.white.opacity(0.22)))
+            PillLabel(systemImage: "info.circle", title: Text("Details"),
+                      foreground: .white, fill: .white.opacity(0.22))
         }
         .buttonStyle(.plain)
     }

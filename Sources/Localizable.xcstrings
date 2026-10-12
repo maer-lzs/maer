@@ -3325,27 +3325,6 @@
         }
       }
     },
-    "Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien."
-          }
-        }
-      }
-    },
-    "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von deinem Musikserver, freie Kataloge und lokale Dateien."
-          }
-        }
-      }
-    },
-
     "Devices appear as soon as they are paired and in range." : {
       "localizations" : {
         "de" : {
@@ -5817,6 +5796,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mär-Playlisten"
+          }
+        }
+      }
+    },
+    "Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien."
+          }
+        }
+      }
+    },
+    "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von deinem Musikserver, freie Kataloge und lokale Dateien."
           }
         }
       }
