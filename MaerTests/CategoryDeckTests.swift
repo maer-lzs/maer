@@ -32,7 +32,7 @@ struct CategoryDeckTests {
         // SECHS auf beiden Flaechen: steht „Geladen“ nur auf dem Tab, prueft
         // der Zaun fuenf und behauptet sechs.
         #expect(searchTitles.count == 6, "das Such-Deck traegt nicht sechs Eintraege")
-        for title in ["Artists", "Albums", "Songs", "Playlists", "Genres", "Downloaded"] {
+        for title in ["Artists", "Albums", "Songs", "Playlists", "Genres", "Downloads list"] {
             #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
                     "entry \(title) missing on the search deck")
             #expect(music.contains("\"\(title)\""), "entry \(title) missing on the music tab")
