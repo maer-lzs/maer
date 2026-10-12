@@ -206,6 +206,17 @@ import Foundation
         #expect(RadioGenreCuration.withWorldCore(base, core: core, deviceLanguage: "de")
             .map(\.name) == ["RFI Monde", "A"])
     }
+
+    /// The country line shows the two-letter codes at every size.
+    @Test("die Laenderzeile zeigt die zweistelligen Kuerzel der Wahl, mehrere mit Komma, ein unbekanntes wie gegeben")
+    func theCountryLineShowsCodes() {
+        #expect(RadioGenreCountries.codeLine(["US"]) == "US")
+        #expect(RadioGenreCountries.codeLine(["de", "AT", "ch"]) == "DE, AT, CH")
+        #expect(RadioGenreCountries.codeLine(["XQ"]) == "XQ", "an unknown code is dropped or renamed")
+        #expect(RadioGenreCountries.codeLine(RadioGenreCountries.effectiveCodes(stored: nil, cascade: "fr")) == "FR",
+                "the line does not show the cascade's code")
+        #expect(RadioGenreCountries.codeLine([]) == "")
+    }
 }
 
 /// A Codable change on a PERSISTED type. A synthesized
@@ -336,4 +347,5 @@ import Foundation
     func mixedWithoutHitsIsCancelled() {
         #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 1, total: 3) == .cancelled)
     }
+
 }

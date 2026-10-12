@@ -134,6 +134,8 @@ struct RadioGenreView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                // VoiceOver reads the names, not the letters.
+                .accessibilityLabel(Text(countryNames))
             Spacer(minLength: 8)
             Button {
                 showCountryPicker = true
@@ -148,10 +150,14 @@ struct RadioGenreView: View {
 
     private var countryLabel: String {
         guard !isWorldwide else { return String(localized: "Worldwide") }
-        let names = effectiveCodes.map {
+        return RadioGenreCountries.codeLine(effectiveCodes)
+    }
+
+    private var countryNames: String {
+        guard !isWorldwide else { return String(localized: "Worldwide") }
+        return ListFormatter.localizedString(byJoining: effectiveCodes.map {
             Locale.current.localizedString(forRegionCode: $0) ?? $0
-        }
-        return ListFormatter.localizedString(byJoining: names)
+        })
     }
 
     /// Too few stations is shown, never hidden. With the one way out

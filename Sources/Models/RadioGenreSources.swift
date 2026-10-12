@@ -33,6 +33,15 @@ nonisolated enum RadioGenreCountries {
         effectiveCodes(stored: stored, cascade: cascade).isEmpty
     }
 
+    /// The country line over the station lists: the two-letter codes of the
+    /// selection (US, DE), comma-separated, at every text size; a full name
+    /// was cut there ("United Stat…" at AX3). A code the region list does not
+    /// know stands as given, upper case. Where one country stands alone (the
+    /// picker), the full name stays.
+    static func codeLine(_ codes: [String]) -> String {
+        codes.map { $0.uppercased() }.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
     /// Toggling in the picker: an existing code leaves, a new one joins, and
     /// removing the last one lands on worldwide (an empty list is a valid
     /// choice. It is the world).
