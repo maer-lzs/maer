@@ -11888,7 +11888,16 @@
         }
       }
     },
-
+    "These entries only fit into a Mär playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Einträge passen nur in eine Mär-Playlist."
+          }
+        }
+      }
+    },
     "These read what their surface currently shows; a copy here would measure something else." : {
       "localizations" : {
         "de" : {

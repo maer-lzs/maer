@@ -401,10 +401,8 @@ struct AddToPlaylistSheet: View {
     }
 
     private var onlyMaerSentence: String {
-        if let name = namedServer {
-            return String(localized: "These entries can only go into a Mär playlist: \(name) cannot reference a catalog or local address.")
-        }
-        return String(localized: "These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address.")
+        PlaylistOnlyMaerSentence.text(namedServer: namedServer,
+                                      anyMusicServer: !PlaylistPresenter.servers(for: []).isEmpty)
     }
 
     var body: some View {

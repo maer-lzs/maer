@@ -255,5 +255,20 @@ struct PlaylistSongSemanticsTests {
                     .contains("Dein Musikserver") == true)
         let old = strings.keys.filter { $0.contains("device playlist") || $0.hasPrefix("Device playlists") }
         #expect(old.isEmpty, "the old sentences still stand: \(old)")
+        #expect(german("These entries only fit into a Mär playlist.") == "Diese Einträge passen nur in eine Mär-Playlist.")
+    }
+
+    /// With no music server set up, the sentence under "Mär playlists"
+    /// names none: "your music server" blamed a server that is not there.
+    @Test("ohne Musikserver nennt der Satz unter den Mär-Playlists keinen Server")
+    func withoutAMusicServerTheSentenceNamesNone() {
+        // Compared with the catalog's own sentences, in whatever language the
+        // test host runs.
+        let unnamed = String(localized: "These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address.")
+        let none = PlaylistOnlyMaerSentence.text(namedServer: nil, anyMusicServer: false)
+        #expect(none == String(localized: "These entries only fit into a Mär playlist."), "a server is named although none is set up")
+        #expect(PlaylistOnlyMaerSentence.text(namedServer: nil, anyMusicServer: true) == unnamed,
+                "with a server of unknown type the sentence still says why")
+        #expect(PlaylistOnlyMaerSentence.text(namedServer: "gonic", anyMusicServer: true).contains("gonic"))
     }
 }

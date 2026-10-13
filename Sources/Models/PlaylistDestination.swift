@@ -93,3 +93,18 @@ nonisolated enum PlaylistDestination {
         return .asIs
     }
 }
+
+/// The sentence under "Mär playlists" when the entries fit only there. It
+/// names the server by its product, else "your music server"; with no music
+/// server set up at all it names none, because there is none to blame.
+nonisolated enum PlaylistOnlyMaerSentence {
+    static func text(namedServer: String?, anyMusicServer: Bool) -> String {
+        guard anyMusicServer else {
+            return String(localized: "These entries only fit into a Mär playlist.")
+        }
+        if let name = namedServer {
+            return String(localized: "These entries can only go into a Mär playlist: \(name) cannot reference a catalog or local address.")
+        }
+        return String(localized: "These entries can only go into a Mär playlist: your music server cannot reference a catalog or local address.")
+    }
+}
