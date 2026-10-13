@@ -20,12 +20,7 @@ struct ShelvesFailedLine: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Genres could not be loaded.")
-                .font(.footnote).foregroundStyle(.secondary)
-            Button("Retry", action: retry)
-                .font(.footnote)
-        }
-        .padding(.horizontal)
+        LoadFailedView(form: .line, sentence: "Genres could not be loaded.", retry: retry)
+            .padding(.horizontal)
     }
 }

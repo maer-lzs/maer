@@ -747,12 +747,9 @@ struct JamendoShelfPage: View {
                 }
                 .padding(.top, 40)
             } else if items.isEmpty && loadFailed {
-                ContentUnavailableView {
-                    Label { Text(verbatim: title) } icon: { Image(systemName: "music.note") }
-                } description: {
-                    Text("This shelf could not be loaded. Check your connection.")
-                } actions: {
-                    Button("Retry") { Task { await load(retry: true) } }
+                LoadFailedView(form: .page(title: Text(verbatim: title), systemImage: "music.note"),
+                               sentence: "This shelf could not be loaded. Check your connection.") {
+                    Task { await load(retry: true) }
                 }
                 .padding(.top, 40)
             } else if items.isEmpty && reachedEnd {

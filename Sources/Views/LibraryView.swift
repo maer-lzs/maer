@@ -1188,11 +1188,8 @@ struct LibraryView: View {
             ProgressView("Loading library…")
                 .frame(maxWidth: .infinity, minHeight: 120)
         } else if let error = viewModel.errorMessage, viewModel.entries.isEmpty {
-            VStack(spacing: 12) {
-                Text(error).multilineTextAlignment(.center)
-                Button("Try Again") {
-                    Task { await viewModel.loadLibrary() }
-                }
+            LoadFailedView(form: .row, sentence: Text(error)) {
+                Task { await viewModel.loadLibrary() }
             }
             .frame(maxWidth: .infinity)
             .padding()

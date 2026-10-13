@@ -154,7 +154,7 @@ struct SearchDoorFenceTests {
         #expect(log.contains("Logger.") && log.contains("FailureReason.of(error)"), "the line does not name the reason")
         let screen = try Self.source("Sources/Views/SearchScreen.swift")
         let failed = try #require(screen.range(of: "case .failed(_, let sentence, let retry):"))
-        #expect(screen[failed.upperBound...].prefix(500).contains("Button(\"Try Again\")"), "the failure page offers no retry")
+        #expect(screen[failed.upperBound...].prefix(500).contains("RetryPill(identifier: \"search-drill-retry\")"), "the failure page offers no retry")
         let ask = try #require(functionBody(of: "private func ask(again retry: SearchDeckRetry) {", in: screen))
         for retry in ["case .artists: go(to: .artists)", "case .playlists: go(to: .playlists)",
                       "case .podcastGenre(let genre): openPodcastGenre(genre)"] {

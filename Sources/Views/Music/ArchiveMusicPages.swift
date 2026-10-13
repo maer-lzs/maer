@@ -41,12 +41,10 @@ struct ArchiveMusicPage: View {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if items.isEmpty {
                 if loadFailed {
-                    ContentUnavailableView {
-                        Label(area.title, systemImage: area.placeholderSystemImage)
-                    } description: {
-                        Text("Could not load the catalog. Check your connection and try again.")
-                    } actions: {
-                        Button("Retry") { Task { await loadMore(reset: true) } }
+                    LoadFailedView(form: .page(title: Text(verbatim: area.title),
+                                               systemImage: area.placeholderSystemImage),
+                                   sentence: "Could not load the catalog. Check your connection and try again.") {
+                        Task { await loadMore(reset: true) }
                     }
                 } else {
                     ContentUnavailableView(area.title, systemImage: area.placeholderSystemImage)
@@ -405,12 +403,9 @@ struct ArchiveMusicShelfPage: View {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && loadFailed {
                 // A failure is not an empty shelf.
-                ContentUnavailableView {
-                    Label(title, systemImage: "music.note")
-                } description: {
-                    Text("Could not load the catalog. Check your connection and try again.")
-                } actions: {
-                    Button("Retry") { Task { await load(reset: true) } }
+                LoadFailedView(form: .page(title: Text(verbatim: title), systemImage: "music.note"),
+                               sentence: "Could not load the catalog. Check your connection and try again.") {
+                    Task { await load(reset: true) }
                 }
                 .padding(.top, 40)
             }
@@ -484,12 +479,9 @@ struct ShellacShelvesPage: View {
                 // A failed load says so and offers a retry. A
                 // caption-only page would read as "nothing here".
                 if rows.values.allSatisfy(\.isEmpty), loadFailed {
-                    ContentUnavailableView {
-                        Label("Old Records", systemImage: "opticaldisc.fill")
-                    } description: {
-                        Text("Could not load the catalog. Check your connection and try again.")
-                    } actions: {
-                        Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
+                    LoadFailedView(form: .page(title: Text("Old Records"), systemImage: "opticaldisc.fill"),
+                                   sentence: "Could not load the catalog. Check your connection and try again.") {
+                        Task { rows = [:]; loadFailed = false; await loadShelves() }
                     }
                 }
                 // The same order as everywhere: the popular row on top with

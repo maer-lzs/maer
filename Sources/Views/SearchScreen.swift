@@ -510,12 +510,11 @@ struct SearchScreen: View {
                 drillSentence(sentence)
                 // The same question once more, from the level below: the
                 // failed page goes, and the answer lands as its own drill.
-                Button("Try Again") {
+                RetryPill(identifier: "search-drill-retry") {
                     _ = drill.popLast()
                     ask(again: retry)
                 }
                 .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("search-drill-retry")
             }
         } else {
             recentsRow

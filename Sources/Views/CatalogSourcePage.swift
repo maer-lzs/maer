@@ -817,12 +817,9 @@ struct CatalogShelfPage: View {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && loadFailed {
                 // A failed load is not "this shelf is empty".
-                ContentUnavailableView {
-                    Label(title, systemImage: "books.vertical")
-                } description: {
-                    Text("Could not load the catalog. Check your connection and try again.")
-                } actions: {
-                    Button("Retry") { Task { await loadMore(reset: true) } }
+                LoadFailedView(form: .page(title: Text(verbatim: title), systemImage: "books.vertical"),
+                               sentence: "Could not load the catalog. Check your connection and try again.") {
+                    Task { await loadMore(reset: true) }
                 }
                 .padding(.top, 40)
             }

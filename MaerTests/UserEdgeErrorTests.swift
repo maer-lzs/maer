@@ -15,6 +15,37 @@ struct UserEdgeErrorTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
+    /// "Retry" is one pill everywhere: a text button that asks again does
+    /// not come back. The stock holds the places still waiting for their
+    /// slice, each with its reason; it only shrinks.
+    static let textRetryStock: [String: (count: Int, reason: String)] = [
+        "MusicAlbumView.swift": (3, "a failure with a reason of its own, offline, no tracks: slices B and C"),
+        "MusicPageBody.swift": (2, "a failure with a sentence of its own, empty: slices B and C"),
+        "MusicView.swift": (1, "no music server here, a check rather than a load: slice C"),
+        "CatalogDetailExtras.swift": (1, "a failed import goes back to its menu: slice C"),
+        "NotFollowedRow.swift": (1, "beside its two sibling buttons, which keep their look"),
+    ]
+
+    @Test("Erneut versuchen ist ueberall die Pille, kein Textknopf kommt zurueck", .needsTheSources)
+    func retryIsThePillEverywhere() throws {
+        var found: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            let text = SyncContractFenceTests.stripped(file.text)
+            let n = text.components(separatedBy: "Button(\"Retry\"").count - 1
+                + text.components(separatedBy: "Button(\"Try Again\"").count - 1
+            if n > 0 { found[file.name] = n }
+        }
+        #expect(Self.textRetryStock.mapValues(\.count) == found,
+                "text retry buttons differ from the stock: \(found)")
+        // The pages of slice A ask through the one view.
+        for path in ["Sources/Views/CatalogSourcePage.swift", "Sources/Views/Music/ArchiveMusicPages.swift",
+                     "Sources/Views/Music/MusicLibraryPages.swift", "Sources/Views/ShelvesFailedLine.swift",
+                     "Sources/Views/LibraryView.swift"] {
+            #expect(try code(path).contains("LoadFailedView("), "\(path) lost its failed view")
+        }
+        #expect(try code("Sources/Views/SearchScreen.swift").contains("RetryPill(identifier: \"search-drill-retry\")"))
+    }
+
     /// A tap offline on a title that is not downloaded is turned away
     /// before it touches the lists: the context stays and the title stays
     /// in Up Next. Only the shortcut for the title already open takes the

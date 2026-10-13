@@ -20,9 +20,22 @@ struct LoadFailedView: View {
     }
 
     let form: Form
-    var sentence: LocalizedStringKey = "This could not be loaded. Check your connection."
+    let sentence: Text
     let retry: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+
+    init(form: Form, sentence: LocalizedStringKey = "This could not be loaded. Check your connection.",
+         retry: @escaping () -> Void) {
+        self.init(form: form, sentence: Text(sentence), retry: retry)
+    }
+
+    /// A sentence that exists only at run time: a server's reason, the
+    /// message of a failed load, a search's own words.
+    init(form: Form, sentence: Text, retry: @escaping () -> Void) {
+        self.form = form
+        self.sentence = sentence
+        self.retry = retry
+    }
 
     /// At an accessibility size a row puts "Retry" under its sentence: beside
     /// it the sentence wrapped into a narrow column (five lines in the
@@ -35,13 +48,13 @@ struct LoadFailedView: View {
             ContentUnavailableView {
                 Label { title } icon: { Image(systemName: systemImage) }
             } description: {
-                Text(sentence)
+                sentence
             } actions: {
                 retryPill
             }
         case .line:
             HStack(spacing: 10) {
-                Text(sentence)
+                sentence
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 retryPill
@@ -63,22 +76,31 @@ struct LoadFailedView: View {
     }
 
     private var rowSentence: some View {
-        Text(sentence)
+        sentence
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var rowRetry: some View { retryPill }
 
-    /// "Retry" as a pill: the card pills' `PillLabel`, in the accent on a
-    /// light tint, because those pills are white on a coloured card and
-    /// would vanish on a list.
-    private var retryPill: some View {
-        Button(action: retry) {
+    private var retryPill: some View { RetryPill(action: retry) }
+}
+
+/// "Retry" as a pill: the card pills' `PillLabel`, in the accent on a light
+/// tint, because those pills are white on a coloured card and would vanish
+/// on a list. `LoadFailedView` draws it in all three forms; a surface with a
+/// sentence of its own (the search's drill page) draws it directly and keeps
+/// its own identifier.
+struct RetryPill: View {
+    var identifier = "load-failed-retry"
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             PillLabel(systemImage: "arrow.clockwise", title: Text("Retry"),
                       foreground: AppTheme.accent, fill: Color.primary.opacity(0.08))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("load-failed-retry")
+        .accessibilityIdentifier(identifier)
     }
 }
