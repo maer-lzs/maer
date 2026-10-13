@@ -28,13 +28,8 @@ struct MusicPageBody<Content: View>: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity, minHeight: loadingHeight)
         case .failed(let sentence):
-            ContentUnavailableView {
-                Label("Music unavailable", systemImage: "music.note")
-            } description: {
-                Text(sentence)
-            } actions: {
-                Button("Retry", action: retry)
-            }
+            LoadFailedView(form: .page(title: Text("Music unavailable"), systemImage: "music.note"),
+                           sentence: Text(sentence), retry: retry)
             .frame(maxWidth: .infinity)
         case .empty:
             ContentUnavailableView {

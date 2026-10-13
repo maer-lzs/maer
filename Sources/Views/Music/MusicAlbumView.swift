@@ -179,19 +179,12 @@ struct MusicAlbumView: View {
                         .accessibilityIdentifier("album-remove-from-listen-again")
                     }
                 case .transport(let reason):
-                    ContentUnavailableView {
-                        Label("Couldn't load tracks", systemImage: "music.note")
-                    } description: {
-                        // The reason in plain words (`FreeCatalog.failureReason`),
-                        // its measured code in the log. The title already says
-                        // it failed; the description says only why.
-                        if reason.isEmpty {
-                            Text("The source did not answer.")
-                        } else {
-                            Text(verbatim: reason)
-                        }
-                    } actions: {
-                        Button("Try Again") { Task { await loadDetail() } }
+                    // The reason in plain words (`FreeCatalog.failureReason`),
+                    // its measured code in the log. The title already says it
+                    // failed; the sentence says only why.
+                    LoadFailedView(form: .page(title: Text("Couldn't load tracks"), systemImage: "music.note"),
+                                   sentence: reason.isEmpty ? Text("The source did not answer.") : Text(verbatim: reason)) {
+                        Task { await loadDetail() }
                     }
                 case .offline:
                     // No network and nothing downloaded: said as such, never

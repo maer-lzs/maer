@@ -56,14 +56,14 @@ struct StringCatalogOrderTests {
 
     /// The line numbers of empty lines (only whitespace). Xcode writes none,
     /// so the next build in the IDE removes a hand-left one and the tree is
-    /// dirty after an archive. Twice a key added by hand left one behind.
+    /// dirty after an archive.
     static func blankLines(_ text: String) -> [Int] {
         text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
             .filter { $0.element.allSatisfy(\.isWhitespace) }
             .map { $0.offset + 1 }
     }
 
-    @Test("Die String-Kataloge haben keine leere Zeile, die der naechste Bau entfernen wuerde")
+    @Test("Die String-Kataloge haben keine leere Zeile, die der naechste Bau entfernen wuerde", .needsTheSources)
     func theCatalogsHaveNoEmptyLine() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for name in ["Localizable.xcstrings", "InfoPlist.xcstrings"] {
