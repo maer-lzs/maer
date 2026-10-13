@@ -97,7 +97,9 @@ nonisolated enum PlaylistDestination {
 /// The product name of a music server, for a sentence that names it
 /// ("music from Navidrome"): Jellyfin by its provider, a Subsonic server by
 /// the `type` its answers carry (OpenSubsonic; measured: a Navidrome sends
-/// "navidrome" in every answer, an error without sign-in too). A type this
+/// "navidrome" in every answer, an error without sign-in too; the other five
+/// entries are not measured, and a wrong one only falls back to the sentence
+/// without a name). A type this
 /// list does not know, or none (plain Subsonic, older Airsonic), gives nil,
 /// and the sentence says "your music server". Never the address.
 nonisolated enum MusicServerName {

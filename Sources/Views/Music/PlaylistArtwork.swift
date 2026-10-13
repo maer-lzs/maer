@@ -38,8 +38,8 @@ struct PlaylistArtwork: View {
         }
         // The square tile geometry of the other card rows (MediaTile family).
         .aspectRatio(1, contentMode: .fit)
-        // An empty playlist's glyph in the middle of the visible square; on
-        // the big square it sat on the lower edge and was cut in half.
+        // An empty playlist's glyph in the middle of the visible square, over
+        // the frame and not on a slot, whose lower half the frame cuts off.
         .overlay {
             if PlaylistPresentation.mosaicTileCount(coverURLs.count) == 0 {
                 Image(systemName: "music.note.list")

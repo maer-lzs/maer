@@ -14,9 +14,9 @@ starts empty with this version and stays on this device.
 
 **Your audiobook library opens through tiles.** With a server, the
 Audiobooks tab shows a row of tiles for Series, Authors, Local Files and
-Listening History, like the tiles in Music and Search. Series, Authors and
-Genres open a page with every group and its count, and a group opens its
-books. A series page now holds every book of the series, also one whose
+Listening History, like the tiles in Music and Search. Series and Authors,
+and Genres in Search, open a page with every group and its count, and a
+group opens its books. A series page now holds every book of the series, also one whose
 series name is written differently. Without a server, Local Files and
 Listening History stand as rows on the tab.
 
