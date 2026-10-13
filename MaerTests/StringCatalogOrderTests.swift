@@ -54,6 +54,32 @@ struct StringCatalogOrderTests {
         #expect(Self.outOfOrder(["United Kingdom", "unexpected answer"]).count == 1)
     }
 
+    /// The line numbers of empty lines (only whitespace). Xcode writes none,
+    /// so the next build in the IDE removes a hand-left one and the tree is
+    /// dirty after an archive. Twice a key added by hand left one behind.
+    static func blankLines(_ text: String) -> [Int] {
+        text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
+            .filter { $0.element.allSatisfy(\.isWhitespace) }
+            .map { $0.offset + 1 }
+    }
+
+    @Test("Die String-Kataloge haben keine leere Zeile, die der naechste Bau entfernen wuerde")
+    func theCatalogsHaveNoEmptyLine() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        for name in ["Localizable.xcstrings", "InfoPlist.xcstrings"] {
+            let text = try String(contentsOf: root.appendingPathComponent("Sources/\(name)"), encoding: .utf8)
+            #expect(text.count > 100, "the precondition: \(name) was read")
+            let blank = Self.blankLines(text)
+            #expect(blank.isEmpty, "\(name) has empty lines at \(blank.prefix(5))")
+        }
+        // The instrument: an empty line, one of spaces and one at the end
+        // are caught; a catalog in Xcode's form has none.
+        #expect(Self.blankLines("{\n  \"a\" : {\n\n  }\n}") == [3])
+        #expect(Self.blankLines("{\n    \n}") == [2])
+        #expect(Self.blankLines("{\n}\n") == [3])
+        #expect(Self.blankLines("{\n  \"a\" : {\n  }\n}").isEmpty)
+    }
+
     /// The catalog as a dictionary: key to its entry.
     static func entries() throws -> [String: [String: Any]] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
