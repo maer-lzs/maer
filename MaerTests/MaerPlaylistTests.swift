@@ -223,13 +223,21 @@ struct PlaylistSongSemanticsTests {
     /// never its address; an unknown one is "your music server".
     @Test("die Saetze unter den Mär-Playlists nennen den Server beim Produktnamen, unbekannt heisst er dein Musikserver", .needsTheSources)
     func theSheetNamesTheServerByProduct() throws {
-        #expect(MusicServerName.product(.subsonic, reportedType: "navidrome") == "Navidrome")
-        #expect(MusicServerName.product(.subsonic, reportedType: "Navidrome") == "Navidrome")
-        #expect(MusicServerName.product(.subsonic, reportedType: "gonic") == "gonic")
-        #expect(MusicServerName.product(.subsonic, reportedType: "some-new-server") == nil, "an unknown type must not be shown raw")
-        #expect(MusicServerName.product(.subsonic, reportedType: nil) == nil, "a plain Subsonic server must not get a name")
-        #expect(MusicServerName.product(.jellyfin, reportedType: nil) == "Jellyfin")
-        #expect(MusicServerName.product(nil, reportedType: "navidrome") == nil)
+        #expect(MusicSourceName.product(.subsonic, reportedType: "navidrome") == "Navidrome")
+        #expect(MusicSourceName.product(.subsonic, reportedType: "Navidrome") == "Navidrome")
+        #expect(MusicSourceName.product(.subsonic, reportedType: "gonic") == "gonic")
+        #expect(MusicSourceName.product(.subsonic, reportedType: "koel") == "Koel", "a measured type is missing")
+        #expect(MusicSourceName.product(.subsonic, reportedType: " funkwhale ") == "Funkwhale")
+        #expect(MusicSourceName.product(.subsonic, reportedType: "some-new-server") == nil, "an unknown type must not be shown raw")
+        #expect(MusicSourceName.product(.subsonic, reportedType: nil) == nil, "a plain Subsonic server must not get a name")
+        #expect(MusicSourceName.product(.jellyfin, reportedType: nil) == "Jellyfin")
+        #expect(MusicSourceName.product(nil, reportedType: "navidrome") == nil)
+        // One place answers the name of a music server: the table lives
+        // beside the capsule's name, and no second answer comes back.
+        let sources = ProjectFileIntegrityTests.sourceTexts()
+        let tables = sources.filter { $0.text.contains("\"navidrome\": \"Navidrome\"") }.map(\.name)
+        #expect(tables == ["MusicSourceName.swift"], "the table of known servers stands elsewhere or twice: \(tables)")
+        #expect(!sources.contains { $0.text.contains("enum MusicServerName") }, "a second answer to the server's name came back")
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let strings = try #require(json["strings"] as? [String: [String: Any]])

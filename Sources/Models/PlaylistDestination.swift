@@ -93,26 +93,3 @@ nonisolated enum PlaylistDestination {
         return .asIs
     }
 }
-
-/// The product name of a music server, for a sentence that names it
-/// ("music from Navidrome"): Jellyfin by its provider, a Subsonic server by
-/// the `type` its answers carry (OpenSubsonic; measured: a Navidrome sends
-/// "navidrome" in every answer, an error without sign-in too; the other five
-/// entries are not measured, and a wrong one only falls back to the sentence
-/// without a name). A type this
-/// list does not know, or none (plain Subsonic, older Airsonic), gives nil,
-/// and the sentence says "your music server". Never the address.
-nonisolated enum MusicServerName {
-    static let known: [String: String] = [
-        "navidrome": "Navidrome", "gonic": "gonic", "airsonic-advanced": "Airsonic-Advanced",
-        "ampache": "Ampache", "funkwhale": "Funkwhale", "lms": "LMS",
-    ]
-
-    static func product(_ server: MusicSourceRule.Server?, reportedType: String?) -> String? {
-        switch server {
-        case .jellyfin: return "Jellyfin"
-        case .subsonic: return reportedType.flatMap { known[$0.lowercased()] }
-        case nil: return nil
-        }
-    }
-}

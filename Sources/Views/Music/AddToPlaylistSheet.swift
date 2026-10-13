@@ -390,7 +390,7 @@ struct AddToPlaylistSheet: View {
         let active = PlaylistPresenter.servers(for: [])
         let which = server ?? (active.count == 1 ? active.first : nil)
         let type = SubsonicProvider.configuredServerKey.flatMap { SubsonicClient.reportedType(server: $0) }
-        return MusicServerName.product(which, reportedType: type)
+        return MusicSourceName.product(which, reportedType: type)
     }
 
     private var mixSentence: String {
