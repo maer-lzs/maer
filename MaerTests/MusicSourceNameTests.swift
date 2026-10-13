@@ -22,6 +22,21 @@ struct MusicSourceNameTests {
                 "Jellyfin meldet keinen Subsonic-Typ; ein fremder Wert aendert den Namen nicht")
     }
 
+    /// The capsule writes a known product as its project does, the same
+    /// spelling the sentences of the add sheet use; an unknown type keeps
+    /// its capital first letter.
+    @Test("die Kapsel schreibt einen bekannten Server wie sein Projekt, wie die Saetze des Blatts")
+    func knownServersKeepTheirSpelling() {
+        #expect(MusicSourceName.name(providerId: "sub", reportedType: "gonic") == "gonic", "gonic writes itself small")
+        #expect(MusicSourceName.name(providerId: "sub", reportedType: "lms") == "LMS")
+        #expect(MusicSourceName.name(providerId: "sub", reportedType: " Koel ") == "Koel")
+        #expect(MusicSourceName.name(providerId: "sub", reportedType: "some new server") == "Some New Server")
+        for type in MusicSourceName.known.keys {
+            #expect(MusicSourceName.presented(type) == MusicSourceName.product(.subsonic, reportedType: type),
+                    "capsule and sheet spell \(type) differently")
+        }
+    }
+
     @Test("die Kapsel nur bei zwei Musikservern")
     func capsuleOnlyWithTwo() {
         #expect(MusicSourceName.capsule(serving: .both, name: "Navidrome") == "Navidrome")

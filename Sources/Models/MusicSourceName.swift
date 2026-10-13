@@ -37,9 +37,14 @@ nonisolated enum MusicSourceName {
     static func product(_ server: MusicSourceRule.Server?, reportedType: String?) -> String? {
         switch server {
         case .jellyfin: return name(providerId: "jf", reportedType: nil)
-        case .subsonic: return reportedType.flatMap { known[$0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()] }
+        case .subsonic: return knownName(reportedType)
         case nil: return nil
         }
+    }
+
+    /// A reported type in its project's own spelling, if the table knows it.
+    static func knownName(_ reportedType: String?) -> String? {
+        reportedType.flatMap { known[$0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()] }
     }
 
     /// The source capsule of a music entry: its server's name, and only
@@ -60,12 +65,14 @@ nonisolated enum MusicSourceName {
         return capsule(serving: serving, name: name)
     }
 
-    /// A reported type as a name: trimmed, each word with a capital first
+    /// A reported type as a name: a known product in its own spelling
+    /// ("gonic", "LMS"); any other trimmed, each word with a capital first
     /// letter ("nextcloud music" becomes "Nextcloud Music"); nil for none.
     static func presented(_ reportedType: String?) -> String? {
         guard let type = reportedType?.trimmingCharacters(in: .whitespacesAndNewlines), !type.isEmpty else {
             return nil
         }
+        if let own = knownName(type) { return own }
         return type.split(separator: " ").map { word in
             word.prefix(1).uppercased() + word.dropFirst()
         }.joined(separator: " ")
