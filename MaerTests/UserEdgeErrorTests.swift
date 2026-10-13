@@ -49,6 +49,17 @@ struct UserEdgeErrorTests {
         for (path, count) in pills {
             #expect(try code(path).components(separatedBy: "RetryPill").count - 1 == count, "\(path) lost a pill")
         }
+        // Slice D: no sentence asks to be tapped; the pill beside it asks.
+        // The player's notice keeps "Tap play", because its retry is the play
+        // button itself.
+        let tapping = ProjectFileIntegrityTests.sourceTexts(in: ["Sources"])
+            .filter { $0.text.contains("Tap to try again") }.map(\.name)
+        #expect(tapping.isEmpty, "a sentence asks to be tapped again: \(tapping)")
+        let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
+        #expect(!catalog.contains("Tap to try again"), "the catalog still holds a tap sentence")
+        for path in ["Sources/Views/FreeAudiobooksPage.swift", "Sources/Views/CatalogSourcePage.swift"] {
+            #expect(!(try code(path).contains(".onTapGesture { Task { await")), "\(path) retries on a tapped sentence again")
+        }
     }
 
     /// A tap offline on a title that is not downloaded is turned away

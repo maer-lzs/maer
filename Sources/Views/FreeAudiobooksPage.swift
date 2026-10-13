@@ -168,23 +168,18 @@ struct FreeAudiobooksPage: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else if !store.sourcesFailures.isEmpty {
-                        Text("The catalogs could not be loaded. Tap to try again.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .onTapGesture { Task { await store.retrySources() } }
-                            .accessibilityIdentifier("freecat-sources-retry")
+                        LoadFailedView(form: .line, sentence: "The catalogs could not be loaded.") {
+                            Task { await store.retrySources() }
+                        }
+                        .padding()
                     } else if !store.sourcesLoaded {
                         // Ran cleanly, found nothing (language filter can do
                         // this). The exact case that used to spin forever.
-                        Text("Nothing found in the catalogs right now. Tap to try again.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .onTapGesture { Task { await store.retrySources() } }
-                            .accessibilityIdentifier("freecat-sources-retry-empty")
+                        // An empty answer, no failure; the same line and pill.
+                        LoadFailedView(form: .line, sentence: "Nothing found in the catalogs right now.") {
+                            Task { await store.retrySources() }
+                        }
+                        .padding()
                     } else {
                         // Loaded, rows still riding the calm gate. Moments.
                         ProgressView().frame(maxWidth: .infinity).padding()
@@ -260,31 +255,17 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    /// The error line is TAPPABLE (retry. "unreachable" is a normal
-    /// state for these sources and needs a visible way back, not a dead-end
-    /// label) and carries the short REASON, so one look tells 429 / HTML
-    /// answer / transport apart.
+    /// The error line offers a visible way back ("unreachable" is a normal
+    /// state for these sources, not a dead-end label). The sentence is for
+    /// the reader; the technical reason goes to the log (it is written there
+    /// already, with source and page), the rule of every failure line.
     private func failureLine(_ source: CatalogSource) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             RowHeading.plain(verbatim: source.title)
-            Button {
+            LoadFailedView(form: .row, sentence: Text("Could not load \(source.title).")) {
                 Task { await store.retrySources() }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.clockwise")
-                    // The SENTENCE is for the reader; the technical reason
-                    // goes to the log (it is written there already, with
-                    // source and page). "(URLError -1004)" on a user
-                    // surface is a developer talking to himself, and it is
-                    // the same rule the other failure lines already follow.
-                    Text("Could not load \(source.title). Tap to try again.")
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal)
         }
     }
 

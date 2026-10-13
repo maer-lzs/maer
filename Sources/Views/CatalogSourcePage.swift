@@ -1030,11 +1030,13 @@ struct ArchiveSeriesPage: View {
     private var listProblem: some View {
         // The reason in plain words; the measured one (status, transport
         // error, decode) is in the log line (`CatalogPageFailure`).
-        (Text("Could not load the episode list. Tap to try again.")
-            + Text(verbatim: failedReason.isEmpty ? "" : " (\(failedReason))"))
-            .font(.footnote).foregroundStyle(.secondary)
-            .padding(.horizontal)
-            .onTapGesture { failed = false; Task { await load() } }
+        LoadFailedView(form: .line,
+                       sentence: Text("Could not load the episode list.")
+                           + Text(verbatim: failedReason.isEmpty ? "" : " (\(failedReason))")) {
+            failed = false
+            Task { await load() }
+        }
+        .padding(.horizontal)
     }
 
     /// The cheap head: title, creator and description from the sub-path

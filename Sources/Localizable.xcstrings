@@ -2811,12 +2811,12 @@
         }
       }
     },
-    "Could not load %@. Tap to try again." : {
+    "Could not load %@." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ konnte nicht geladen werden. Zum Wiederholen tippen."
+            "value" : "%@ konnte nicht geladen werden."
           }
         }
       }
@@ -2851,12 +2851,12 @@
         }
       }
     },
-    "Could not load the episode list. Tap to try again." : {
+    "Could not load the episode list." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folgenliste konnte nicht geladen werden. Tippen zum erneuten Versuch."
+            "value" : "Folgenliste konnte nicht geladen werden."
           }
         }
       }
@@ -7241,12 +7241,12 @@
         }
       }
     },
-    "Nothing found in the catalogs right now. Tap to try again." : {
+    "Nothing found in the catalogs right now." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gerade nichts in den Katalogen gefunden. Zum erneuten Versuch tippen."
+            "value" : "Gerade nichts in den Katalogen gefunden."
           }
         }
       }
@@ -11115,12 +11115,12 @@
         }
       }
     },
-    "The catalogs could not be loaded. Tap to try again." : {
+    "The catalogs could not be loaded." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Kataloge konnten nicht geladen werden. Zum erneuten Versuch tippen."
+            "value" : "Die Kataloge konnten nicht geladen werden."
           }
         }
       }
