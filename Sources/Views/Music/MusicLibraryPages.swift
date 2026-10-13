@@ -1008,7 +1008,7 @@ struct MaerPlaylistPage: View {
                     }
                 } footer: {
                     // Explained once, calmly, not on every add.
-                    Text("Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
+                    Text(MaerPlaylistFooter.text(anyMusicServer: !PlaylistPresenter.servers(for: []).isEmpty))
                 }
             }
         }

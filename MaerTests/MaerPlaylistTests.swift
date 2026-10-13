@@ -271,4 +271,17 @@ struct PlaylistSongSemanticsTests {
                 "with a server of unknown type the sentence still says why")
         #expect(PlaylistOnlyMaerSentence.text(namedServer: "gonic", anyMusicServer: true).contains("gonic"))
     }
+
+    /// The footer of a Mär playlist's page names no server's music when no
+    /// music server is set up.
+    @Test("ohne Musikserver nennt der Fusssatz einer Mär-Playlist keine Musik eines Servers", .needsTheSources)
+    func withoutAMusicServerTheFooterNamesNone() throws {
+        #expect(MaerPlaylistFooter.text(anyMusicServer: false)
+                == String(localized: "Playlists on your devices can mix everything: free catalogs, local files and music from a server you add."))
+        #expect(MaerPlaylistFooter.text(anyMusicServer: true)
+                == String(localized: "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address."))
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
+        #expect(page.contains("MaerPlaylistFooter.text(anyMusicServer:"), "the page writes its own footer again")
+    }
 }

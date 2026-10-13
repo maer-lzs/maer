@@ -8248,6 +8248,16 @@
         }
       }
     },
+    "Playlists on your devices can mix everything: free catalogs, local files and music from a server you add." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists auf deinen Geräten dürfen alles mischen: freie Kataloge, lokale Dateien und Musik von einem Server, den du hinzufügst."
+          }
+        }
+      }
+    },
     "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
       "localizations" : {
         "de" : {
