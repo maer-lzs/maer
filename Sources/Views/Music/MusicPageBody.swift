@@ -37,7 +37,7 @@ struct MusicPageBody<Content: View>: View {
             } description: {
                 if let emptyDetail { Text(emptyDetail) }
             } actions: {
-                Button("Retry", action: retry)
+                RetryPill(action: retry)
             }
             .frame(maxWidth: .infinity)
         }

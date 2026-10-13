@@ -195,7 +195,7 @@ struct MusicAlbumView: View {
                     } description: {
                         Text("Its tracks load once this device is online again. Download it to have it offline.")
                     } actions: {
-                        Button("Try Again") { Task { await loadDetail() } }
+                        RetryPill { Task { await loadDetail() } }
                     }
                 case .empty:
                     // The source answered, and named no track: an end
@@ -205,7 +205,7 @@ struct MusicAlbumView: View {
                     } description: {
                         Text("The source answered without any audio track for this item.")
                     } actions: {
-                        Button("Try Again") { Task { await loadDetail() } }
+                        RetryPill { Task { await loadDetail() } }
                     }
                 }
             } else {

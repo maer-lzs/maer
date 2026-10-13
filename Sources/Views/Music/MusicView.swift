@@ -649,7 +649,7 @@ struct MusicServerMissingHere: View {
         } description: {
             Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")
         } actions: {
-            Button("Retry", action: retry)
+            RetryPill(action: retry)
         }
         .frame(maxWidth: .infinity)
         .accessibilityIdentifier("music-server-missing-here")

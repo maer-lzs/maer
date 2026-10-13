@@ -19,10 +19,6 @@ struct UserEdgeErrorTests {
     /// not come back. The stock holds the places still waiting for their
     /// slice, each with its reason; it only shrinks.
     static let textRetryStock: [String: (count: Int, reason: String)] = [
-        "MusicAlbumView.swift": (2, "offline and no tracks are no failure: slice C"),
-        "MusicPageBody.swift": (1, "empty is an answer, no failure: slice C"),
-        "MusicView.swift": (1, "no music server here, a check rather than a load: slice C"),
-        "CatalogDetailExtras.swift": (1, "a failed import goes back to its menu: slice C"),
         "NotFollowedRow.swift": (1, "beside its two sibling buttons, which keep their look"),
     ]
 
@@ -46,6 +42,13 @@ struct UserEdgeErrorTests {
             #expect(try code(path).contains("LoadFailedView("), "\(path) lost its failed view")
         }
         #expect(try code("Sources/Views/SearchScreen.swift").contains("RetryPill(identifier: \"search-drill-retry\")"))
+        // Slice C: no failure, the same pill all the same (offline, no
+        // tracks, empty, no music server here, a failed import).
+        let pills = ["Sources/Views/Music/MusicAlbumView.swift": 2, "Sources/Views/Music/MusicPageBody.swift": 1,
+                     "Sources/Views/Music/MusicView.swift": 1, "Sources/Views/CatalogDetailExtras.swift": 1]
+        for (path, count) in pills {
+            #expect(try code(path).components(separatedBy: "RetryPill").count - 1 == count, "\(path) lost a pill")
+        }
     }
 
     /// A tap offline on a title that is not downloaded is turned away

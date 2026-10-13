@@ -12456,16 +12456,6 @@
         }
       }
     },
-    "Try Again" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut versuchen"
-          }
-        }
-      }
-    },
     "Turn Every Source Off" : {
       "localizations" : {
         "de" : {

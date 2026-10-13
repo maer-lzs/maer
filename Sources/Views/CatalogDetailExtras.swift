@@ -137,8 +137,7 @@ struct LibriVoxTakeoverSection: View {
             VStack(spacing: 6) {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
-                Button("Try Again") { importer.reset() }
-                    .font(.caption)
+                RetryPill { importer.reset() }
             }
         default:
             let offers = LibriVoxTakeoverOffer.offers(book: book, hasServerLibraries: !absLibraries.isEmpty)
