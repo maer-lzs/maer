@@ -77,7 +77,22 @@ struct MetricGateTests {
     @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
     func theLogLineCarriesNumbers() {
         let record = Self.record(daysAgo: 1)
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035 absent=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
+    }
+
+    /// MetricKit keeps only so many signpost names a day, a limit not
+    /// measured here. Each record names the app's names that did not come
+    /// back, so a missing one is seen, not silent.
+    @Test("der Satz nennt die Signpost-Namen, die nicht kamen")
+    func aRecordNamesTheSignpostsThatDidNotCome() {
+        var record = Self.record(daysAgo: 1)
+        record.signposts = Dictionary(uniqueKeysWithValues: PerfSignpost.names.map { ($0, .init(count: 1)) })
+        #expect(record.absentSignposts.isEmpty && record.logLine.hasSuffix(" absent=none"))
+        record.signposts["feedParse"] = nil
+        record.signposts["tick"] = nil
+        #expect(record.absentSignposts == ["tick", "feedParse"], "the app's order")
+        #expect(record.logLine.hasSuffix(" absent=tick,feedParse"))
+        #expect(MetricRecord.shareText([record]).hasSuffix(" absent=tick,feedParse"), "the shared text names them too")
     }
 
     /// Hangs and crashes are what a diagnostics payload counts. A metrics
@@ -107,7 +122,7 @@ struct MetricGateTests {
         record.hangTime = .init(count: 3, seconds: 1.5)
         record.foregroundExits = ["memLimit": 1, "abnormal": 2]
         record.backgroundExits = [:]
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=-")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=- absent=" + PerfSignpost.names.joined(separator: ","))
     }
 
     @Test("Beendigungen nur mit Zahl; die Hangzeit aus dem Histogramm, ohne Klasse eine gemessene Null")

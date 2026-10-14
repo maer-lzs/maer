@@ -3,11 +3,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import MetricKit
 import OSLog
 
-/// Every measuring point of the app, in one place. Signposts show in
-/// Instruments (Logging or Points of Interest, subsystem the app's bundle
-/// id) and cost next to nothing while nobody records.
+/// Every measuring point of the app, in one place. Each category writes to
+/// a log from `MXMetricManager.makeLogHandle(category:)`, the only logs
+/// whose signposts MetricKit keeps: their names come back in the daily
+/// payload with a count and a duration. They show in Instruments as well.
+///
+/// The rare intervals in `snapshotNames` also carry MetricKit's snapshot
+/// (`mxSignpost`), so the payload has their CPU time. Apple's header calls
+/// that much more expensive than a plain signpost and asks for it
+/// sparingly, so the frequent ones (the tick and the stats merge every
+/// second, a decode per thumbnail) stay plain and their CPU time stays
+/// unknown.
 ///
 /// A site never calls a signposter itself: it calls one of the named
 /// functions below, whose parameters are enums and numbers only. So a
@@ -15,21 +24,34 @@ import OSLog
 /// fence `PerfSignpostFenceTests` holds that no signposter is touched
 /// outside this file. `nonisolated` so off-main work can signal.
 nonisolated enum PerfSignpost {
-    private static let cover = OSSignposter(subsystem: AppLogSubsystem.value, category: "cover")
-    private static let library = OSSignposter(subsystem: AppLogSubsystem.value, category: "library")
-    private static let player = OSSignposter(subsystem: AppLogSubsystem.value, category: "player")
-    private static let sync = OSSignposter(subsystem: AppLogSubsystem.value, category: "sync")
-    private static let feeds = OSSignposter(subsystem: AppLogSubsystem.value, category: "feeds")
-    private static let standing = OSSignposter(subsystem: AppLogSubsystem.value, category: "standing")
-    private static let bottomBar = OSSignposter(subsystem: AppLogSubsystem.value, category: "BottomBar")
+    private static let coverLog = MXMetricManager.makeLogHandle(category: "cover")
+    private static let libraryLog = MXMetricManager.makeLogHandle(category: "library")
+    private static let playerLog = MXMetricManager.makeLogHandle(category: "player")
+    private static let syncLog = MXMetricManager.makeLogHandle(category: "sync")
+    private static let feedsLog = MXMetricManager.makeLogHandle(category: "feeds")
+    private static let standingLog = MXMetricManager.makeLogHandle(category: "standing")
+    private static let bottomBarLog = MXMetricManager.makeLogHandle(category: "BottomBar")
+
+    private static let cover = OSSignposter(logHandle: coverLog)
+    private static let player = OSSignposter(logHandle: playerLog)
+    private static let sync = OSSignposter(logHandle: syncLog)
+    private static let standing = OSSignposter(logHandle: standingLog)
+    private static let bottomBar = OSSignposter(logHandle: bottomBarLog)
+
+    /// The intervals that carry MetricKit's snapshot, and only these.
+    static let snapshotNames = ["syncRound", "standMerge", "feedParse", "downloadedEntries-recompute", "accessRead"]
+
+    /// Every name this file writes, intervals and events. A day's record
+    /// names the ones that did not come back.
+    static let names = ["tick", "nowPlaying", "statsMerge", "syncLoop", "syncRound", "syncRoundOf", "standMerge",
+                        "feedParse", "thumb-hit", "decode", "originalCached", "downloadedEntries-recompute",
+                        "standingRead", "accessRead", "barCollapsedFlip"]
 
     /// An open interval; `end()` closes it under the name it was opened
     /// with.
     struct Interval: Sendable {
-        fileprivate let signposter: OSSignposter
-        fileprivate let state: OSSignpostIntervalState
-        fileprivate let close: @Sendable (OSSignposter, OSSignpostIntervalState) -> Void
-        func end() { close(signposter, state) }
+        fileprivate let close: @Sendable () -> Void
+        func end() { close() }
     }
 
     /// What a sync round moves. Fixed names, never a key.
@@ -49,7 +71,7 @@ nonisolated enum PerfSignpost {
     static func tick(playing: Bool) -> Interval {
         let id = player.makeSignpostID()
         let state = player.beginInterval("tick", id: id, "playing=\(playing)")
-        return Interval(signposter: player, state: state) { $0.endInterval("tick", $1) }
+        return Interval { player.endInterval("tick", state) }
     }
 
     /// The lock screen's now-playing info was set.
@@ -61,7 +83,7 @@ nonisolated enum PerfSignpost {
     static func statsMerge() -> Interval {
         let id = player.makeSignpostID()
         let state = player.beginInterval("statsMerge", id: id)
-        return Interval(signposter: player, state: state) { $0.endInterval("statsMerge", $1) }
+        return Interval { player.endInterval("statsMerge", state) }
     }
 
     /// One pass of the ten-second loop, playing or paused.
@@ -71,28 +93,24 @@ nonisolated enum PerfSignpost {
 
     // MARK: - Sync
 
-    /// One round of one family over one carrier.
+    /// One round of one family over one carrier. The snapshot carries no
+    /// words, so an event at the start names the family and the carrier
+    /// for a trace.
     static func syncRound(_ family: Family, _ carrier: Carrier) -> Interval {
-        let id = sync.makeSignpostID()
-        let state = sync.beginInterval("syncRound", id: id,
-                                       "family=\(family.rawValue, privacy: .public) carrier=\(carrier.rawValue, privacy: .public)")
-        return Interval(signposter: sync, state: state) { $0.endInterval("syncRound", $1) }
+        sync.emitEvent("syncRoundOf", "family=\(family.rawValue, privacy: .public) carrier=\(carrier.rawValue, privacy: .public)")
+        return snapshotInterval(syncLog, "syncRound")
     }
 
     /// The listening positions merged, from reading both sides to writing.
     static func standMerge(entries: Int) -> Interval {
-        let id = sync.makeSignpostID()
-        let state = sync.beginInterval("standMerge", id: id, "entries=\(entries)")
-        return Interval(signposter: sync, state: state) { $0.endInterval("standMerge", $1) }
+        snapshotInterval(syncLog, "standMerge")
     }
 
     // MARK: - Feeds
 
     /// One feed parsed, without the fetch.
     static func feedParse(bytes: Int) -> Interval {
-        let id = feeds.makeSignpostID()
-        let state = feeds.beginInterval("feedParse", id: id, "bytes=\(bytes)")
-        return Interval(signposter: feeds, state: state) { $0.endInterval("feedParse", $1) }
+        snapshotInterval(feedsLog, "feedParse")
     }
 
     // MARK: - Covers
@@ -106,7 +124,7 @@ nonisolated enum PerfSignpost {
     static func coverDecode() -> Interval {
         let id = cover.makeSignpostID()
         let state = cover.beginInterval("decode", id: id)
-        return Interval(signposter: cover, state: state) { $0.endInterval("decode", $1) }
+        return Interval { cover.endInterval("decode", state) }
     }
 
     /// A freshly loaded cover went into the memory cache at its original
@@ -119,9 +137,7 @@ nonisolated enum PerfSignpost {
 
     /// The Downloaded section's derived list recomputed.
     static func downloadedRecompute() -> Interval {
-        let id = library.makeSignpostID()
-        let state = library.beginInterval("downloadedEntries-recompute", id: id)
-        return Interval(signposter: library, state: state) { $0.endInterval("downloadedEntries-recompute", $1) }
+        snapshotInterval(libraryLog, "downloadedEntries-recompute")
     }
 
     // MARK: - The map's standing
@@ -133,9 +149,7 @@ nonisolated enum PerfSignpost {
 
     /// The service access read from the keychain.
     static func accessRead() -> Interval {
-        let id = standing.makeSignpostID()
-        let state = standing.beginInterval("accessRead", id: id)
-        return Interval(signposter: standing, state: state) { $0.endInterval("accessRead", $1) }
+        snapshotInterval(standingLog, "accessRead")
     }
 
     // MARK: - Bottom bar
@@ -145,4 +159,13 @@ nonisolated enum PerfSignpost {
     static func barCollapsedFlip(collapsed: Bool) {
         bottomBar.emitEvent("barCollapsedFlip", "\(collapsed ? "collapse" : "expand", privacy: .public)")
     }
+}
+
+/// An interval with MetricKit's snapshot at both ends, for the names in
+/// `PerfSignpost.snapshotNames` only. Outside the enum, so the fence on
+/// the measuring points' parameters reads only theirs.
+nonisolated private func snapshotInterval(_ log: OSLog, _ name: StaticString) -> PerfSignpost.Interval {
+    let id = OSSignpostID(log: log)
+    mxSignpost(.begin, log: log, name: name, signpostID: id)
+    return PerfSignpost.Interval { mxSignpost(.end, log: log, name: name, signpostID: id) }
 }

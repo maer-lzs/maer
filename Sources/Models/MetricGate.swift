@@ -204,6 +204,14 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
             + " hang=\(hangTime.map { String(format: "%.1fs/%d", $0.seconds, $0.count) } ?? "-")"
             + " exitsFg=\(exits(foregroundExits)) exitsBg=\(exits(backgroundExits))"
             + " signposts=\(marks.isEmpty ? "-" : marks)"
+            + " absent=\(absentSignposts.isEmpty ? "none" : absentSignposts.joined(separator: ","))"
+    }
+
+    /// The names the app writes that did not come back in this record, in
+    /// the app's order. MetricKit keeps only so many names a day; a name
+    /// that went missing shows here instead of silently.
+    var absentSignposts: [String] {
+        PerfSignpost.names.filter { signposts[$0] == nil }
     }
 
     /// The records as the text the measurement page shares: one line each,
