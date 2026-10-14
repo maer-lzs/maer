@@ -2,6 +2,31 @@
 
 ## Next build (not yet cut)
 
+**Retry looks the same everywhere.** Every place that asks again after
+something could not load now shows the same Retry pill: the catalog and
+archive pages, the shelves of the music library, the line that says the
+genres could not be loaded, the library section in Audiobooks, the search,
+and the page of an album or playlist whose tracks did not load. The pages
+for offline, for no tracks, for an empty music list, for no music server
+on this device and for a failed import show the same pill. Sentences no
+longer ask you to tap them; the pill stands beside them. In English the
+button says Retry everywhere.
+
+**An empty playlist's symbol grows with its cover.** On the page of a
+server playlist without covers, the symbol takes its size from the cover,
+like the placeholders of radio stations and books. On the card it stays
+as before.
+
+**Music servers keep their own spelling.** With two music servers, the
+source label on albums writes a known server the way its project does,
+for example gonic or LMS, and the add sheet uses the same names. Koel is
+now named too.
+
+**No server named that is not there.** Without a music server set up, the
+add sheet says only that the entries fit into a Mär playlist, and the
+footer of a Mär playlist page speaks of music from a server you add
+instead of your server's music.
+
 ## v3.4 (Build 53)
 
 **Listening History for books and music.** The Audiobooks tab and the
