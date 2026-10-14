@@ -33,8 +33,8 @@ struct PerfSignpostFenceTests {
         "UserChoiceCloudSync.swift": ["PerfSignpost.syncRound(.userChoices, .local)"],
         "FeedAuthSync.swift": ["PerfSignpost.syncRound(.feedAuth, .maerSync)"],
         "GPodderSync.swift": ["PerfSignpost.syncRound(.gpodder, .server)"],
-        "PodcastCloudSync.swift": ["PerfSignpost.standMerge(entries:"],
-        "PodcastSubscriptions.swift": ["PerfSignpost.feedParse(bytes:"],
+        "PodcastCloudSync.swift": ["PerfSignpost.standMerge()"],
+        "PodcastSubscriptions.swift": ["PerfSignpost.feedParse()"],
         "ImageCache.swift": ["PerfSignpost.thumbnailHit()", "PerfSignpost.coverDecode()", "PerfSignpost.coverOriginalCached("],
         "LibraryViewModel.swift": ["PerfSignpost.downloadedRecompute()"],
         "MaerSyncStandingReader.swift": ["PerfSignpost.standingRead()"],
@@ -82,13 +82,13 @@ struct PerfSignpostFenceTests {
     /// the snapshot intervals.
     static func writtenNames(_ text: String) -> [String] {
         code(text).joined(separator: "\n")
-            .matches(of: #/(?:beginInterval|emitEvent)\("([^"]+)"|snapshotInterval\(\w+, "([^"]+)"\)/#)
+            .matches(of: #/(?:beginInterval|emitEvent)\("([^"]+)"|snapshotInterval\(\.?\w+, "([^"]+)"\)/#)
             .compactMap { match in (match.1 ?? match.2).map(String.init) }
     }
 
     /// The names of the snapshot intervals, one per call.
     static func snapshotCalls(_ text: String) -> [String] {
-        code(text).joined(separator: "\n").matches(of: #/snapshotInterval\(\w+, "([^"]+)"\)/#).map { String($0.1) }
+        code(text).joined(separator: "\n").matches(of: #/snapshotInterval\(\.?\w+, "([^"]+)"\)/#).map { String($0.1) }
     }
 
     @Test("die Zaehler sehen, was sie sehen sollen")
@@ -96,9 +96,9 @@ struct PerfSignpostFenceTests {
         #expect(Self.directUse("let s = OSSignposter(subsystem: a, category: b)\n// os_signpost(.event)") == 1)
         #expect(Self.directUse("PerfSignpost.cover.emitEvent(\"x\")") == 1)
         #expect(Self.directUse("mxSignpost(.begin, log: l, name: \"x\")\nlet l = MXMetricManager.makeLogHandle(category: \"c\")") == 2)
-        #expect(Self.writtenNames("a.beginInterval(\"tick\", id: i)\nb.emitEvent(\"hit\")\nsnapshotInterval(syncLog, \"syncRound\")")
+        #expect(Self.writtenNames("a.beginInterval(\"tick\", id: i)\nb.emitEvent(\"hit\")\nsnapshotInterval(.sync, \"syncRound\")")
                 == ["tick", "hit", "syncRound"])
-        #expect(Self.snapshotCalls("return snapshotInterval(feedsLog, \"feedParse\")\nfunc snapshotInterval(_ log: OSLog") == ["feedParse"])
+        #expect(Self.snapshotCalls("return snapshotInterval(.feeds, \"feedParse\")\nfunc snapshotInterval(_ category: Category") == ["feedParse"])
         let balanced = Self.intervalBalance("let signpost = PerfSignpost.tick(playing: true)\ndefer { signpost.end() }")
         #expect(balanced.opened == 1)
         #expect(balanced.closed == 1)
@@ -140,23 +140,51 @@ struct PerfSignpostFenceTests {
         #expect(Set(types).isSubset(of: allowed), "\(Set(types).subtracting(allowed))")
     }
 
-    /// MetricKit keeps only signposts on its own logs. Every signposter
-    /// stands on one, none on a log of the app's subsystem, and the
-    /// expensive snapshot stands only at the named rare intervals.
+    /// MetricKit keeps only signposts on its own logs. Behind the open gate
+    /// every signposter stands on one, the app's own logs are the other
+    /// side, and the expensive snapshot stands only at the named rare
+    /// intervals.
     @Test("die Messstellen schreiben auf Logs von MetricKit, der Schnappschuss nur an den seltenen Intervallen")
     func theSignpostsReachMetricKit() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
         let text = try String(contentsOf: file, encoding: .utf8)
         let lines = Self.code(text)
         func count(_ form: String) -> Int { lines.filter { $0.contains(form) }.count }
-        #expect(count("OSSignposter(subsystem:") == 0, "a signposter on the app's own log is not kept by MetricKit")
-        #expect(count("OSSignposter(") == count("OSSignposter(logHandle:"), "every signposter stands on a log handle")
-        #expect(count("MXMetricManager.makeLogHandle(category:") == 7, "one log per category")
+        #expect(count("OSSignposter(subsystem:") == 1 && count("OSSignposter(logHandle:") == 1 && count("OSSignposter(") == 2,
+                "one signposter per side: the app's own logs and MetricKit's")
+        #expect(count("MXMetricManager.makeLogHandle(category:") == 1, "MetricKit's logs are made in one place")
         let calls = Self.snapshotCalls(text)
         #expect(calls.sorted() == PerfSignpost.snapshotNames.sorted(), "the snapshot only at the named list: \(calls)")
         #expect(count("mxSignpost(") == 2, "the snapshot is written in one place, its begin and its end")
         #expect(!PerfSignpost.snapshotNames.contains { ["tick", "statsMerge", "decode"].contains($0) },
                 "a frequent interval carries the snapshot")
+    }
+
+    /// The gate holds for the measuring points too: closed or undecided, no
+    /// signpost writes to a log of MetricKit and no snapshot is taken.
+    /// MetricKit's logs are reached only where the gate is asked, and the
+    /// gate opens them once, behind the receiver's gate.
+    @Test("geschlossen oder unentschieden schreibt keine Messstelle auf einen Log von MetricKit", .needsTheSources)
+    func theGateHoldsForTheMeasuringPoints() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let signposts = Self.code(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/PerfSignpost.swift"),
+                                             encoding: .utf8))
+        let reaching = signposts.filter { $0.contains("KeptLogs.") }
+        try #require(reaching.count == 2, "MetricKit's logs are reached in the signposter and the snapshot: \(reaching)")
+        #expect(reaching.allSatisfy { $0.contains("PerfSignpost.isMeasuring") }, "a line reaches MetricKit's logs without the gate: \(reaching)")
+        #expect(signposts.contains { $0.contains("OSAllocatedUnfairLock(initialState: false)") }, "the measuring points start closed")
+        let receiver = try code("Sources/Networking/MetricReceiver.swift")
+        let gate = try #require(receiver.range(of: "guard on else { return }"))
+        let open = try #require(receiver.range(of: "PerfSignpost.measure()"))
+        #expect(gate.upperBound <= open.lowerBound, "the measuring points open before the gate")
+        var opens = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            opens += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+                .components(separatedBy: "PerfSignpost.measure()").count - 1
+        }
+        #expect(opens == 1, "one place opens the measuring points")
     }
 
     /// The list a day's record checks against is every name the file

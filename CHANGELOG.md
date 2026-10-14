@@ -2,15 +2,19 @@
 
 ## Next build (not yet cut)
 
-**Retry looks the same everywhere.** Every place that asks again after
-something could not load now shows the same Retry pill: the catalog and
-archive pages, the shelves of the music library, the line that says the
-genres could not be loaded, the library section in Audiobooks, the search,
-and the page of an album or playlist whose tracks did not load. The pages
-for offline, for no tracks, for an empty music list, for no music server
-on this device and for a failed import show the same pill. Sentences no
-longer ask you to tap them; the pill stands beside them. In English the
-button says Retry everywhere.
+**Retry looks the same.** The places that ask again after something
+could not load now show the same Retry pill: the catalog and archive
+pages, the shelves of the music library, the line that says the genres
+could not be loaded, the library section in Audiobooks, the search, and
+the page of an album or playlist whose tracks did not load. The pages for
+offline, for no tracks, for an empty music list, for no music server on
+this device and for a failed import show the same pill. One row keeps
+its own button: a podcast that could not be followed shows Retry as a
+button like the Sign in and Enter new link buttons it stands among.
+Sentences no longer ask you to tap them; the pill stands beside them.
+The one exception is the note at the player after a failed load, which
+still says to tap play, because the play button is what tries again. In
+English the button says Retry everywhere.
 
 **An empty playlist's symbol grows with its cover.** On the page of a
 server playlist without covers, the symbol takes its size from the cover,
@@ -29,7 +33,7 @@ instead of your server's music.
 
 **TestFlight: the Measurements page shows more.** Each day also names the
 time spent playing in the background, the data sent and received over
-WiFi and cellular, what was written to disk, the time the app hung and
+Wi-Fi and cellular, what was written to disk, the time the app hung and
 how often it was ended, by reason. The app's own measuring points now
 arrive there with their count and duration, and each day names the ones
 that did not arrive. A day without a period and without a number is no

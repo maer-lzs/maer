@@ -53,6 +53,7 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
         decision = on ? .open : .closed
         guard on else { return }
         isOn = true
+        PerfSignpost.measure()
         MXMetricManager.shared.add(shared)
     }
 
