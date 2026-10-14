@@ -93,24 +93,61 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     /// in seconds.
     nonisolated static func reading(of metric: MXSignpostMetric) -> MetricRecord.SignpostReading {
         let data = metric.signpostIntervalData
-        let buckets = (data?.histogrammedSignpostDuration.bucketEnumerator.allObjects ?? [])
+        return MetricRecord.SignpostReading(name: metric.signpostName, count: metric.totalCount,
+                                            cpuSeconds: data?.cumulativeCPUTime?.converted(to: .seconds).value,
+                                            buckets: buckets(of: data?.histogrammedSignpostDuration))
+    }
+
+    /// A duration histogram's buckets, the edges in seconds.
+    nonisolated static func buckets(of histogram: MXHistogram<UnitDuration>?) -> [(start: Double, end: Double, count: Int)] {
+        (histogram?.bucketEnumerator.allObjects ?? [])
             .compactMap { $0 as? MXHistogramBucket<UnitDuration> }
             .map { (start: $0.bucketStart.converted(to: .seconds).value,
                     end: $0.bucketEnd.converted(to: .seconds).value,
                     count: $0.bucketCount) }
-        return MetricRecord.SignpostReading(name: metric.signpostName, count: metric.totalCount,
-                                            cpuSeconds: data?.cumulativeCPUTime?.converted(to: .seconds).value,
-                                            buckets: buckets)
+    }
+
+    /// The exits of one period by reason, foreground and background.
+    nonisolated static func exits(of metric: MXAppExitMetric) -> (foreground: [String: Int], background: [String: Int]) {
+        let front = metric.foregroundExitData, back = metric.backgroundExitData
+        return (MetricRecord.exits(["normal": front.cumulativeNormalAppExitCount,
+                                    "memLimit": front.cumulativeMemoryResourceLimitExitCount,
+                                    "badAccess": front.cumulativeBadAccessExitCount,
+                                    "abnormal": front.cumulativeAbnormalExitCount,
+                                    "illegal": front.cumulativeIllegalInstructionExitCount,
+                                    "watchdog": front.cumulativeAppWatchdogExitCount]),
+                MetricRecord.exits(["normal": back.cumulativeNormalAppExitCount,
+                                    "memLimit": back.cumulativeMemoryResourceLimitExitCount,
+                                    "memPressure": back.cumulativeMemoryPressureExitCount,
+                                    "cpuLimit": back.cumulativeCPUResourceLimitExitCount,
+                                    "badAccess": back.cumulativeBadAccessExitCount,
+                                    "abnormal": back.cumulativeAbnormalExitCount,
+                                    "illegal": back.cumulativeIllegalInstructionExitCount,
+                                    "watchdog": back.cumulativeAppWatchdogExitCount,
+                                    "lockedFile": back.cumulativeSuspendedWithLockedFileExitCount,
+                                    "taskTimeout": back.cumulativeBackgroundTaskAssertionTimeoutExitCount]))
     }
 
     nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
         let records = payloads.map { payload in
-            MetricRecord(kind: .metrics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
-                         cpuSeconds: payload.cpuMetrics?.cumulativeCPUTime.converted(to: .seconds).value,
-                         foregroundSeconds: payload.applicationTimeMetrics?.cumulativeForegroundTime.converted(to: .seconds).value,
-                         backgroundSeconds: payload.applicationTimeMetrics?.cumulativeBackgroundTime.converted(to: .seconds).value,
-                         peakMemoryMB: payload.memoryMetrics?.peakMemoryUsage.converted(to: .megabytes).value,
-                         signposts: MetricRecord.costs((payload.signpostMetrics ?? []).map(Self.reading(of:))))
+            let network = payload.networkTransferMetrics
+            let exits = payload.applicationExitMetrics.map(Self.exits(of:))
+            return MetricRecord(kind: .metrics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
+                                cpuSeconds: payload.cpuMetrics?.cumulativeCPUTime.converted(to: .seconds).value,
+                                foregroundSeconds: payload.applicationTimeMetrics?.cumulativeForegroundTime.converted(to: .seconds).value,
+                                backgroundSeconds: payload.applicationTimeMetrics?.cumulativeBackgroundTime.converted(to: .seconds).value,
+                                peakMemoryMB: payload.memoryMetrics?.peakMemoryUsage.converted(to: .megabytes).value,
+                                backgroundAudioSeconds: payload.applicationTimeMetrics?.cumulativeBackgroundAudioTime.converted(to: .seconds).value,
+                                wifiUpMB: network?.cumulativeWifiUpload.converted(to: .megabytes).value,
+                                wifiDownMB: network?.cumulativeWifiDownload.converted(to: .megabytes).value,
+                                cellularUpMB: network?.cumulativeCellularUpload.converted(to: .megabytes).value,
+                                cellularDownMB: network?.cumulativeCellularDownload.converted(to: .megabytes).value,
+                                logicalWritesMB: payload.diskIOMetrics?.cumulativeLogicalWrites.converted(to: .megabytes).value,
+                                hangTime: payload.applicationResponsivenessMetrics.map {
+                                    MetricRecord.hangTime(Self.buckets(of: $0.histogrammedApplicationHangTime))
+                                },
+                                foregroundExits: exits?.foreground, backgroundExits: exits?.background,
+                                signposts: MetricRecord.costs((payload.signpostMetrics ?? []).map(Self.reading(of:))))
         }
         let log = self.log
         // MetricKit calls on a queue of its own; the log is an actor.

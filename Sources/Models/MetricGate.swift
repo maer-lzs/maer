@@ -65,6 +65,25 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     var foregroundSeconds: Double?
     var backgroundSeconds: Double?
     var peakMemoryMB: Double?
+    /// The time the app played in the background, so the CPU time can be
+    /// set against an hour of playing.
+    var backgroundAudioSeconds: Double?
+    /// Bytes moved over the network in the period, in megabytes.
+    var wifiUpMB: Double?
+    var wifiDownMB: Double?
+    var cellularUpMB: Double?
+    var cellularDownMB: Double?
+    /// What the app wrote to the disk in the period, in megabytes.
+    var logicalWritesMB: Double?
+    /// The time the app hung in the period and how many hangs that was.
+    var hangTime: HangTime?
+    /// How often the app was ended in the foreground and in the
+    /// background, by reason; only reasons with a count. Nil where the
+    /// payload carried no exits, empty where it counted none.
+    var foregroundExits: [String: Int]?
+    var backgroundExits: [String: Int]?
+    /// Hangs and crashes are what a diagnostics record counts; a metrics
+    /// record does not measure them and its line does not name them.
     var hangs: Int = 0
     var crashes: Int = 0
     /// What each signpost name cost in the period.
@@ -85,6 +104,40 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
         var count: Int
         var cpuSeconds: Double?
         var buckets: [(start: Double, end: Double, count: Int)]
+    }
+
+    /// The hang time of one period: how many hangs, and their duration
+    /// added up.
+    struct HangTime: Codable, Equatable, Sendable {
+        var count: Int
+        var seconds: Double
+    }
+
+    /// The hang time of a histogram, each bucket counted at its middle. A
+    /// histogram without a count is a measured zero, not an unknown.
+    static func hangTime(_ buckets: [(start: Double, end: Double, count: Int)]) -> HangTime {
+        HangTime(count: buckets.reduce(0) { $0 + $1.count },
+                 seconds: buckets.reduce(0.0) { $0 + ($1.start + $1.end) / 2 * Double($1.count) })
+    }
+
+    /// The exits of one side by reason, the reasons that counted none left
+    /// out.
+    static func exits(_ counts: KeyValuePairs<String, Int>) -> [String: Int] {
+        Dictionary(counts.filter { $0.value > 0 }.map { ($0.key, $0.value) }, uniquingKeysWith: +)
+    }
+
+    /// Whether the record says anything: a period, or at least one number.
+    /// A record with neither is no measurement and is not shown.
+    var isMeasurement: Bool {
+        let numbers: [Double?] = [cpuSeconds, foregroundSeconds, backgroundSeconds, peakMemoryMB, backgroundAudioSeconds,
+                                  wifiUpMB, wifiDownMB, cellularUpMB, cellularDownMB, logicalWritesMB]
+        return end > begin || numbers.contains { $0 != nil } || hangTime != nil || foregroundExits != nil
+            || backgroundExits != nil || hangs > 0 || crashes > 0 || !signposts.isEmpty
+    }
+
+    /// The records the measurement page and its text show.
+    static func shown(_ records: [MetricRecord]) -> [MetricRecord] {
+        records.filter(\.isMeasurement)
     }
 
     /// The mean duration of a histogram, each bucket counted at its middle;
@@ -124,24 +177,42 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     }
 
     /// The record as one log line: numbers and the app's fixed signpost
-    /// names only.
+    /// names only. A diagnostics record names its hangs and crashes, a
+    /// metrics record everything else; each size added after the first
+    /// line carries its unit.
     var logLine: String {
         func number(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "-" }
         func fine(_ value: Double?) -> String { value.map { String(format: "%.4f", $0) } ?? "-" }
+        func unit(_ value: Double?, _ unit: String) -> String { value.map { String(format: "%.1f", $0) + unit } ?? "-" }
+        func exits(_ counts: [String: Int]?) -> String {
+            guard let counts else { return "-" }
+            return counts.isEmpty ? "0" : counts.keys.sorted().map { "\($0):\(counts[$0] ?? 0)" }.joined(separator: ",")
+        }
+        let head = "kind=\(kind.rawValue) hours=\(number(end.timeIntervalSince(begin) / 3_600))"
+        if kind == .diagnostics {
+            return head + " hangs=\(hangs) crashes=\(crashes)"
+        }
         let marks = signposts.keys.sorted().compactMap { name in
             signposts[name].map { "\(name)=\($0.count)/cpu=\(fine($0.cpuSeconds))/mean=\(fine($0.meanSeconds))" }
         }.joined(separator: ",")
-        return "kind=\(kind.rawValue) hours=\(number(end.timeIntervalSince(begin) / 3_600)) cpu=\(number(cpuSeconds))"
+        return head + " cpu=\(number(cpuSeconds))"
             + " fg=\(number(foregroundSeconds)) bg=\(number(backgroundSeconds)) peakMB=\(number(peakMemoryMB))"
-            + " hangs=\(hangs) crashes=\(crashes) signposts=\(marks.isEmpty ? "-" : marks)"
+            + " bgAudio=\(unit(backgroundAudioSeconds, "s"))"
+            + " wifiUp=\(unit(wifiUpMB, "MB")) wifiDown=\(unit(wifiDownMB, "MB"))"
+            + " cellUp=\(unit(cellularUpMB, "MB")) cellDown=\(unit(cellularDownMB, "MB"))"
+            + " writes=\(unit(logicalWritesMB, "MB"))"
+            + " hang=\(hangTime.map { String(format: "%.1fs/%d", $0.seconds, $0.count) } ?? "-")"
+            + " exitsFg=\(exits(foregroundExits)) exitsBg=\(exits(backgroundExits))"
+            + " signposts=\(marks.isEmpty ? "-" : marks)"
     }
 
     /// The records as the text the measurement page shares: one line each,
     /// newest first, the period's end in UTC before the numbers, so two
-    /// devices' texts read the same.
+    /// devices' texts read the same. A record that is no measurement is
+    /// left out.
     static func shareText(_ records: [MetricRecord]) -> String {
         let format = ISO8601DateFormatter()
-        return records.sorted { $0.end > $1.end }
+        return shown(records).sorted { $0.end > $1.end }
             .map { "\(format.string(from: $0.end)) \($0.logLine)" }
             .joined(separator: "\n")
     }

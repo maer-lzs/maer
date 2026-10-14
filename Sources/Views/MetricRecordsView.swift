@@ -47,7 +47,7 @@ struct MetricRecordsView: View {
             // delivery takes the note away.
             switch await load() {
             case .records(let kept):
-                records = kept
+                records = MetricRecord.shown(kept)
                 unreadable = false
             case .unreadable:
                 records = []

@@ -76,11 +76,100 @@ struct MetricGateTests {
 
     @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
     func theLogLineCarriesNumbers() {
+        let record = Self.record(daysAgo: 1)
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035")
+    }
+
+    /// Hangs and crashes are what a diagnostics payload counts. A metrics
+    /// record does not measure them, so its line never says 0 for them;
+    /// a diagnostics record names nothing else.
+    @Test("hangs und crashes stehen nur im Diagnose-Satz")
+    func hangsAndCrashesOnlyInDiagnostics() {
+        var metrics = Self.record(daysAgo: 1)
+        metrics.hangs = 2
+        #expect(!metrics.logLine.contains("hangs=") && !metrics.logLine.contains("crashes="))
+        let diagnostics = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now, hangs: 1, crashes: 2)
+        #expect(diagnostics.logLine == "kind=diagnostics hours=0.0 hangs=1 crashes=2")
+    }
+
+    /// Background audio, the network, the disk, the hang time and the
+    /// exits: each with its unit, an unknown as "-", a counted zero as 0.
+    @Test("jede neue Groesse steht mit Einheit in der Zeile")
+    func theNewSizesCarryTheirUnits() {
         var record = Self.record(daysAgo: 1)
-        record.hangs = 2
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 hangs=2 crashes=0 signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035")
+        record.signposts = [:]
+        record.backgroundAudioSeconds = 3_600
+        record.wifiUpMB = 1.2
+        record.wifiDownMB = 310
+        record.cellularUpMB = 0
+        record.cellularDownMB = 42.5
+        record.logicalWritesMB = 18
+        record.hangTime = .init(count: 3, seconds: 1.5)
+        record.foregroundExits = ["memLimit": 1, "abnormal": 2]
+        record.backgroundExits = [:]
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=-")
+    }
+
+    @Test("Beendigungen nur mit Zahl; die Hangzeit aus dem Histogramm, ohne Klasse eine gemessene Null")
+    func exitsAndHangTime() {
+        #expect(MetricRecord.exits(["normal": 0, "memPressure": 4, "memLimit": 0, "watchdog": 1]) == ["memPressure": 4, "watchdog": 1])
+        #expect(MetricRecord.exits(["normal": 0]).isEmpty, "nothing counted is an empty list, not unknown")
+        let hang = MetricRecord.hangTime([(start: 0.25, end: 0.75, count: 2), (start: 1, end: 3, count: 1)])
+        #expect(hang == .init(count: 3, seconds: 3), "each bucket at its middle: 0.5 * 2 + 2 * 1")
+        #expect(MetricRecord.hangTime([]) == .init(count: 0, seconds: 0))
+    }
+
+    /// The week's four empty records (hours=0.0, no number) are no
+    /// measurement: neither the page nor its text shows them.
+    @Test("ein Satz ohne Zeitraum und ohne Zahl ist keine Messung")
+    func aRecordWithoutPeriodOrNumberIsNotShown() {
         let empty = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now)
-        #expect(empty.logLine == "kind=diagnostics hours=0.0 cpu=- fg=- bg=- peakMB=- hangs=0 crashes=0 signposts=-")
+        let instant = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now, hangs: 1)
+        var silentDay = MetricRecord(kind: .metrics, begin: Self.now.addingTimeInterval(-86_400), end: Self.now)
+        silentDay.peakMemoryMB = nil
+        let full = Self.record(daysAgo: 1)
+        #expect(!empty.isMeasurement)
+        #expect(instant.isMeasurement, "a hang without a period is a number")
+        #expect(silentDay.isMeasurement, "a period without a number is a period")
+        #expect(MetricRecord.shown([empty, full, instant]) == [full, instant])
+        #expect(MetricRecord.shareText([empty]).isEmpty, "the text names an empty record")
+    }
+
+    /// The page takes the same rule as the shared text: what it lists is
+    /// what `shown` keeps.
+    @Test("die Messseite zeigt nur Messungen", .needsTheSources)
+    func thePageShowsOnlyMeasurements() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MetricRecordsView.swift"), encoding: .utf8))
+        #expect(page.contains("records = MetricRecord.shown(kept)"), "the page lists records that are no measurement")
+    }
+
+    /// The records already on a device were written before the new sizes
+    /// existed; they read, and what they did not carry stays unknown.
+    @Test("ein alter Satz bleibt lesbar, was er nicht trug, bleibt unbekannt")
+    func anOldRecordStaysReadable() throws {
+        let old = #"[{"kind":"metrics","begin":781092800,"end":781179200,"cpuSeconds":182,"foregroundSeconds":64,"backgroundSeconds":3600,"peakMemoryMB":726,"hangs":0,"crashes":0,"signposts":{"tick":{"count":64,"cpuSeconds":1.5,"meanSeconds":0.002}}},{"kind":"diagnostics","begin":781179200,"end":781179200,"hangs":1,"crashes":0,"signposts":{}}]"#
+        let records = try JSONDecoder().decode([MetricRecord].self, from: Data(old.utf8))
+        #expect(records.count == 2)
+        let metrics = try #require(records.first)
+        #expect(metrics.peakMemoryMB == 726 && metrics.signposts["tick"]?.count == 64)
+        #expect(metrics.backgroundAudioSeconds == nil && metrics.wifiUpMB == nil && metrics.logicalWritesMB == nil
+                && metrics.hangTime == nil && metrics.foregroundExits == nil)
+        #expect(metrics.logLine.contains("bgAudio=- wifiUp=-"))
+        #expect(records.last?.logLine == "kind=diagnostics hours=0.0 hangs=1 crashes=0")
+    }
+
+    /// What MetricKit hands over is read where it arrives; the receiver
+    /// names each size, so none of them is left out by accident.
+    @Test("der Empfang liest jede Groesse aus MetricKit", .needsTheSources)
+    func theReceiverReadsEverySize() throws {
+        let receiver = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        let sizes = ["cumulativeBackgroundAudioTime", "cumulativeWifiUpload", "cumulativeWifiDownload",
+                     "cumulativeCellularUpload", "cumulativeCellularDownload", "cumulativeLogicalWrites",
+                     "histogrammedApplicationHangTime", "applicationExitMetrics",
+                     "cumulativeMemoryPressureExitCount", "cumulativeMemoryResourceLimitExitCount"]
+        #expect(sizes.filter { !receiver.contains($0) } == [])
     }
 
     @Test("die Ablage behaelt die Eintraege ueber die Naht, ein zweiter Empfang kommt dazu")

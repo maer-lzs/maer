@@ -27,6 +27,12 @@ add sheet says only that the entries fit into a Mär playlist, and the
 footer of a Mär playlist page speaks of music from a server you add
 instead of your server's music.
 
+**TestFlight: the Measurements page shows more.** Each day also names the
+time spent playing in the background, the data sent and received over
+WiFi and cellular, what was written to disk, the time the app hung and
+how often it was ended, by reason. A day without a period and without a
+number is no longer listed.
+
 ## v3.4 (Build 53)
 
 **Listening History for books and music.** The Audiobooks tab and the
