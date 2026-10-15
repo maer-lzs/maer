@@ -13,8 +13,8 @@ import CryptoKit
 /// - `Application Support/Covers`: covers of DOWNLOADED books. Persistent, so
 ///   the offline promise does not depend on iOS cleanup runs.
 ///
-/// Images are stored as ORIGINAL bytes (no JPEG re-encode) to keep the full
-/// quality from the server.
+/// A cover larger than the display size is stored reduced to it (JPEG at
+/// 0.9); a smaller one keeps the server's original bytes.
 @MainActor
 final class ImageCache {
     static let shared = ImageCache()
@@ -118,7 +118,16 @@ final class ImageCache {
         }
         // Keep persistent covers out of backups (can be re-downloaded anytime).
         BackupExclusion.mark(persistentDirectory, label: "covers")
+        // The budget answers memory pressure: the full covers go at once.
+        // The cache lives as long as the app, so the observer does too.
+        NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
+                                               object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { ImageCache.shared.releaseFullCovers() }
+        }
     }
+
+    /// How often memory pressure released the full covers.
+    private(set) var fullCoverReleases = 0
 
     /// The query names that sign a request in or describe the client, never
     /// the picture: none of them enters a cover's file name. Each sign-in form
@@ -1403,6 +1412,22 @@ final class ImageCache {
         let startedAt = invalidationCount(for: url)
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return }
-        set(image, data: data, for: url, startedAt: startedAt)
+        // Held at display size like every fetched cover, never the original.
+        let (shown, kept) = await Self.displaySized(data, maxPixelSize: maxPixelSize) ?? (image, data)
+        set(shown, data: kept, for: url, startedAt: startedAt)
+    }
+
+    /// Under memory pressure the full covers go; the thumbnails stay, so the
+    /// cells on screen stay warm. A full cover is read from disk again on its
+    /// next display. Counted for the witness.
+    func releaseFullCovers() {
+        memoryCache.removeAllObjects()
+        fullCoverReleases += 1
+        Logger.library.notice("COVERCACHE memory pressure: full covers released")
+    }
+
+    /// Whether a full cover for `url` stands in memory now.
+    func holdsFullCover(for url: URL) -> Bool {
+        memoryCache.object(forKey: key(for: url) as NSString) != nil
     }
 }

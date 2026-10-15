@@ -62,6 +62,36 @@ struct CoverMemoryTests {
         #expect(!code.contains("Answer(image: image, pot: \"net"), "a network answer goes to the cell unsized")
     }
 
+    /// Memory pressure releases the full covers (the thumbnails are not
+    /// touched by the release). The system's own notification, as the
+    /// device sends it.
+    @Test("Speicherdruck gibt die grossen Cover frei")
+    func memoryPressureReleasesTheFullCovers() async throws {
+        let cache = ImageCache.shared
+        let url = URL(string: "https://covers.example.invalid/pressure-\(UUID().uuidString).png")!
+        let (shown, kept) = try #require(await ImageCache.displaySized(png(600), maxPixelSize: cache.displayPixelSize))
+        cache.set(shown, data: kept, for: url, startedAt: cache.invalidationCount(for: url))
+        #expect(cache.holdsFullCover(for: url), "the precondition: the cover stands in memory")
+        let releases = cache.fullCoverReleases
+        NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+        #expect(cache.fullCoverReleases == releases + 1, "the pressure reached the cache")
+        #expect(!cache.holdsFullCover(for: url), "the full cover is released")
+    }
+
+    /// No path in the network layer stores a fetched cover as it came.
+    @Test("kein Weg im Netz-Ordner legt ein frisch geladenes Cover unverkleinert ab", .needsTheSources)
+    func noPathStoresTheOriginal() {
+        var offenders: [String] = []
+        for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Networking")) where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+                Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
+                continue
+            }
+            if SyncContractFenceTests.stripped(text).contains("set(image, data: data") { offenders.append(url.lastPathComponent) }
+        }
+        #expect(offenders == [], "stores the original: \(offenders)")
+    }
+
     /// The one network path reduces before it stores and hands on: the
     /// picture `set` gets and the fetch returns is the reduced one.
     @Test("der Netzweg legt nur die verkleinerte Fassung ab und gibt nur sie weiter", .needsTheSources)
