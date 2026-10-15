@@ -1467,6 +1467,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         loadFailureNoted = true
         notePlayback("stopped", from: isRadio ? "radio item failed" : "item failed to load")
         player?.pause()
+        // The state a failure seen ahead of the track leaves: otherwise the
+        // files behind it wait in the queue. A station has none behind.
+        if !isRadio { cutQueue(from: index) }
         isPlaying = false
         updateNowPlayingInfo()
         showSourceHint(isRadio ? .streamFailed : Self.loadHint(fallback, cause: cause))
@@ -1487,9 +1490,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func holdAhead(at index: Int, then: FailedLoad.LocalFallback, cause: NoticeCause) {
         heldAhead = HeldPoint(index: index, then: then, cause: cause)
         guard let player else { return }
-        for item in player.items() where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
-            player.remove(item)
-        }
+        cutQueue(from: index)
         // What is left ends at the held point, not at the end of the book.
         // The last item left is the one before the failed track, or, when a
         // track between had no address, the one before that.
@@ -1502,6 +1503,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
            let held = heldAhead {
             Logger.player.notice("LOADFAIL ahead track=\(index) the track before has ended, holds now")
             stopAtHeldFailure(held)
+        }
+    }
+
+    /// Takes the failed track and every track behind it out of the queue.
+    /// Both ways a failure of a book's track stops playback come here, so
+    /// nothing behind the failed track is left to play, whether the failure
+    /// was seen ahead of it or only once it was the playing item.
+    private func cutQueue(from index: Int) {
+        guard let player else { return }
+        for item in player.items() where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
+            player.remove(item)
         }
     }
 

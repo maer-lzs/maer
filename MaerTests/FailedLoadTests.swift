@@ -292,6 +292,46 @@ struct FailedLoadTests {
         model.player?.pause()
     }
 
+    /// The other way the same failure is seen: the failed file is already
+    /// the playing item, because the book starts at it. Which way a failure
+    /// takes in the case above is up to the clock; here it is forced, and
+    /// it must leave the same state: nothing behind the failed file waits.
+    @Test("die gescheiterte Datei ist schon die laufende: Halt an ihrem Anfang, nichts dahinter bleibt in der Warteschlange", .needsAudio)
+    func aFailedPlayingTrackLeavesNothingBehind() async throws {
+        let first = try tone(seconds: 1)
+        let third = try tone(seconds: 1)
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: third)
+        }
+        let tracks = [
+            ABSAudioTrack(index: 0, startOffset: 0, duration: 1, contentUrl: first.path, metadata: nil),
+            ABSAudioTrack(index: 1, startOffset: 1, duration: 1, contentUrl: "second.mp3", metadata: nil),
+            ABSAudioTrack(index: 2, startOffset: 2, duration: 1, contentUrl: third.path, metadata: nil),
+        ]
+        let detail = LibraryItemDetail(
+            id: "loadfail-playing-\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 3, chapters: nil, tracks: tracks),
+            userMediaProgress: MediaProgress(currentTime: 1, duration: 3, progress: 1.0 / 3, isFinished: false, lastUpdate: nil))
+        let model = PlayerViewModel(provider: MixedProvider())
+        await model.load(item: detail)
+        let queued = model.player?.items().count ?? 0
+        #expect(queued == 2, "the precondition: the queue starts at the failed file, the third behind it")
+        model.play()
+
+        await waitFor { model.sourceHint?.kind == .loadFailed }
+        #expect(model.sourceHint?.kind == .loadFailed, "the failure says so")
+        #expect(!model.isPlaying, "playback stops at the failed file")
+        #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed file: \(model.currentTime)")
+        let left = model.player?.items().count ?? 0
+        #expect(left == 0, "nothing behind the failed file is left to play: \(left)")
+
+        model.play()
+        let rebuilt = model.player?.items().count ?? 0
+        #expect(rebuilt == 2, "the play builds the queue anew from the failed file: \(rebuilt)")
+        model.player?.pause()
+    }
+
     /// Bytes no decoder reads, under an audio name.
     private func brokenFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).mp3")
