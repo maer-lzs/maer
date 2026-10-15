@@ -543,6 +543,19 @@ final class ImageCache {
         return cg.width * cg.height * 4
     }
 
+    /// A fetched cover at display size and the bytes to keep for it, reduced
+    /// off the caller's executor before anything holds it: the original of a
+    /// large cover is never decoded in full (a 3000 px cover is 36 MB
+    /// decoded). `@concurrent`: a plain nonisolated async function would run
+    /// on the caller's actor under the project's default.
+    @concurrent
+    nonisolated static func displaySized(_ data: Data, maxPixelSize: CGFloat) async -> (UIImage, Data)? {
+        downsampled(data, maxPixelSize: maxPixelSize)
+    }
+
+    /// The size a full cover is held at (`displaySized`).
+    var displayPixelSize: CGFloat { maxPixelSize }
+
     /// Downsample images > maxPixelSize at high quality (ImageIO); leave smaller
     /// originals untouched. nonisolated + static: runs on a background thread,
     /// NOT on the MainActor (ImageIO decodes of large covers would otherwise
@@ -766,9 +779,9 @@ final class ImageCache {
         }.value
     }
 
-    /// Stores it reduced to display size (not pixelated, see maxPixelSize).
-    /// Downsampling + disk write run in the background; the memory cache is then
-    /// updated with the downsized version.
+    /// Stores a cover the load already reduced to display size
+    /// (`displaySized`): into memory at once, and its bytes to disk in the
+    /// background. The original is never held.
     /// `startedAt` is the address's invalidation count when the load began
     /// (`invalidationCount`). An answer to a request sent before an
     /// invalidation is the old picture: it is not stored at all, the address
@@ -783,18 +796,20 @@ final class ImageCache {
             Logger.library.notice("COVERCACHE answer older than its invalidation, not stored")
             return
         }
-        // Make it available immediately (original, cost-limited by NSCache).
+        // Available at once, at display size: the load reduced it before it
+        // came here (`displaySized`), so the original is never held. The
+        // measuring point names the pixels that are held.
         memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
         PerfSignpost.coverOriginalCached(pixelWidth: Int(image.size.width * image.scale),
                                          pixelHeight: Int(image.size.height * image.scale))
         let target = diskDirectory.appendingPathComponent(cacheKey)
         let kept = persistentDirectory.appendingPathComponent(cacheKey)
-        let maxSize = maxPixelSize
         #if DEBUG
         let hold = testDiskHold
         #endif
         onDisk(cacheKey) {
-            guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
+            // Already at display size, the bytes to write with it.
+            let stored = (image, data)
             let stillCurrent = await MainActor.run {
                 ImageCache.shared.invalidations[cacheKey, default: 0] == startedAt
             }

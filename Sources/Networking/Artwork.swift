@@ -278,9 +278,13 @@ enum Artwork {
                                url: url, bytes: data.count)
             return .unanswered
         }
-        tiers.set(image, data: data, for: url, startedAt: startedAt)
+        // Held and handed on at display size only, reduced off the main
+        // actor: the original of a large cover is never decoded in full.
+        // Bytes ImageIO cannot reduce (a station's `.ico`) stay as they came.
+        let (shown, kept) = await ImageCache.displaySized(data, maxPixelSize: tiers.displayPixelSize) ?? (image, data)
+        tiers.set(shown, data: kept, for: url, startedAt: startedAt)
         CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
-        return .picture(image)
+        return .picture(shown)
     }
 }
 
