@@ -332,6 +332,48 @@ struct FailedLoadTests {
         model.player?.pause()
     }
 
+    /// The third way: a track fails in the middle of playing it
+    /// (`AVPlayerItemFailedToPlayToEndTime`), is built anew once, and fails
+    /// again. The simulator does not make a file fail in the middle (a cut
+    /// download fails at load there, measured), so the case sends the note
+    /// the player hears, for the item that plays. The hold it leaves is the
+    /// one of the other two ways: the position stays, nothing from the failed
+    /// track on waits in the queue, and the next play builds anew at the held
+    /// position instead of resuming the item that failed.
+    @Test("eine Datei scheitert mitten im Hoeren, nach ihrem einen Versuch erneut: Halt an der Stelle, nichts bleibt in der Warteschlange, das naechste Play baut dort neu", .needsAudio)
+    func aTrackFailingMidwayTwiceHoldsLikeTheOthers() async throws {
+        let first = try tone(seconds: 3)
+        let second = try tone(seconds: 2)
+        defer { for url in [first, second] { try? FileManager.default.removeItem(at: url) } }
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: detail([(first.path, 3), (second.path, 2)]))
+        model.play()
+        await waitFor({ model.currentTime >= 1 }, seconds: 5)
+        let failing = try #require(model.player?.currentItem, "the precondition: the first track plays")
+
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: failing)
+        await waitFor({ model.player?.currentItem !== failing }, seconds: 3)
+        let retried = try #require(model.player?.currentItem, "the one retry built a queue")
+        #expect(retried !== failing, "the first failure builds the track anew once")
+        #expect(model.isPlaying && model.sourceHint == nil, "the retry plays on without a hint")
+
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: retried)
+        await waitFor { model.sourceHint?.kind == .trackFailed }
+        let held = model.currentTime
+        #expect(model.sourceHint?.kind == .trackFailed, "the second failure says so")
+        #expect(!model.isPlaying, "the second failure stops playback")
+        #expect(held >= 1 && held < 3, "the position stays in the failed track: \(held)")
+        let left = model.player?.items().count ?? 0
+        #expect(left == 0, "nothing from the failed track on is left to play: \(left)")
+
+        model.play()
+        let rebuilt = try #require(model.player?.currentItem, "the play left a queue")
+        #expect(rebuilt !== retried, "the play builds the track anew instead of resuming the failed item")
+        #expect(model.player?.items().count == 2, "the rebuilt queue holds the failed track and the one behind it")
+        #expect(abs(model.currentTime - held) < 0.01, "the rebuild keeps the held position: \(model.currentTime) for \(held)")
+        model.stop()
+    }
+
     /// Bytes no decoder reads, under an audio name.
     private func brokenFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).mp3")

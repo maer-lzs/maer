@@ -1384,6 +1384,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard let index = itemTrackIndex[ObjectIdentifier(playerItem)] else { return }
         if trackRetryAttempts.contains(index) {
             pause()
+            // The hold every load failure leaves: nothing from the failed
+            // track on waits in the queue, and the next play builds anew at
+            // the held position instead of resuming the item that failed.
+            loadFailureNoted = true
+            cutQueue(from: index)
             showSourceHint(.trackFailed)
             forgetCatalogAnswer()
             return
@@ -1507,9 +1512,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Takes the failed track and every track behind it out of the queue.
-    /// Both ways a failure of a book's track stops playback come here, so
+    /// Every way a failure of a book's track stops playback comes here, so
     /// nothing behind the failed track is left to play, whether the failure
-    /// was seen ahead of it or only once it was the playing item.
+    /// was seen ahead of it, once it was the playing item, or in the middle
+    /// of it after its one retry.
     private func cutQueue(from index: Int) {
         guard let player else { return }
         for item in player.items() where (itemTrackIndex[ObjectIdentifier(item)] ?? -1) >= index {
