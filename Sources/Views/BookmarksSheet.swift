@@ -32,7 +32,10 @@ struct BookmarksSheet: View {
                         showTitleAlert = true
                     } label: {
                         Label {
-                            Text("Bookmark Current Position (\(formatted(viewModel.currentTime)))")
+                            // The position moves with the time: its own leaf.
+                            PlaybackTimeReader(clock: viewModel.clock) { time in
+                                Text("Bookmark Current Position (\(formatted(time)))")
+                            }
                         } icon: {
                             Image(systemName: "bookmark.fill")
                                 .foregroundStyle(AppTheme.accent)

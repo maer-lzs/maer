@@ -11,13 +11,14 @@ import SwiftUI
 /// versions.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// Hitch fix (second-tick): the BAR no longer observes the player. Every
-    /// published tick (currentTime, once per second) used to re-commit the whole
-    /// glass surface (measured: one dropped frame ~1×/s while scrolling). The
-    /// dynamic pieces live in SMALL observing children (`MiniPlayerLines`,
-    /// `MiniPlayerRing`, `MiniPlayerTransport`). The reliable-updates lesson
-    /// (observe the view model directly, not just the coordinator) moves into
-    /// those children unchanged.
+    /// Hitch fix (second-tick): the BAR does not observe the player. A tick
+    /// once a second used to re-commit the whole glass surface (measured: one
+    /// dropped frame ~1×/s while scrolling). The dynamic pieces live in SMALL
+    /// observing children (`MiniPlayerLines`, `MiniPlayerRing`,
+    /// `MiniPlayerTransport`); the two that show the time observe the clock
+    /// (`PlaybackClock`). The reliable-updates lesson (observe the view model
+    /// directly, not just the coordinator) moves into those children
+    /// unchanged.
     let viewModel: PlayerViewModel
     let item: LibraryItem
     /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
@@ -85,7 +86,7 @@ struct MiniPlayerBar: View {
                         // "Wir sind der Westen", so the bar lost the one name
                         // that says WHERE the sound comes from. The full
                         // player always showed both.
-                        MiniPlayerLines(viewModel: viewModel, coordinator: coordinator)
+                        MiniPlayerLines(viewModel: viewModel, clock: viewModel.clock, coordinator: coordinator)
                     }
                     Spacer(minLength: 0)
                 }
@@ -124,7 +125,7 @@ struct MiniPlayerBar: View {
 
     /// Cover with the observing progress ring child around it.
     private var coverWithProgressRing: some View {
-        MiniPlayerRing(viewModel: viewModel, itemId: item.id)
+        MiniPlayerRing(viewModel: viewModel, clock: viewModel.clock, itemId: item.id)
     }
 }
 
@@ -137,6 +138,8 @@ struct MiniPlayerBar: View {
 /// the same claim once.
 private struct MiniPlayerLines: View {
     @ObservedObject var viewModel: PlayerViewModel
+    /// The running time: this leaf shows it, so it observes the clock.
+    @ObservedObject var clock: PlaybackClock
     /// For the one claim this device could not name after a play tap.
     @ObservedObject var coordinator: PlayerCoordinator
     /// Takeover hint: observed HERE, in the small ticking leaf.
@@ -226,7 +229,7 @@ private struct MiniPlayerLines: View {
                 if let icy = viewModel.icyNowPlaying?.title, !icy.isEmpty {
                     Text(verbatim: icy).lineLimit(1).truncationMode(.tail)
                 } else {
-                    Text(Self.shortTimer(viewModel.currentTime))
+                    Text(Self.shortTimer(clock.time))
                         .monospacedDigit()
                 }
             }
@@ -245,7 +248,7 @@ private struct MiniPlayerLines: View {
     }
 
     private var remainingText: String {
-        DurationText.remaining(seconds: max(viewModel.duration - viewModel.currentTime, 0))
+        DurationText.remaining(seconds: max(viewModel.duration - clock.time, 0))
     }
 
     private var timeText: String {
@@ -254,7 +257,7 @@ private struct MiniPlayerLines: View {
             let t = Int(s); let h = t / 3600; let m = (t % 3600) / 60; let sec = t % 60
             return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%02d:%02d", m, sec)
         }
-        return "\(fmt(viewModel.currentTime)) / \(fmt(viewModel.duration))"
+        return "\(fmt(clock.time)) / \(fmt(viewModel.duration))"
     }
 }
 
@@ -275,6 +278,8 @@ private struct LiveBadgeInline: View {
 private struct MiniPlayerRing: View {
     @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: PlayerViewModel
+    /// The ring moves with the time: this leaf observes the clock.
+    @ObservedObject var clock: PlaybackClock
     let itemId: String
 
 
@@ -329,7 +334,7 @@ private struct MiniPlayerRing: View {
 
     private var fraction: Double {
         guard viewModel.duration > 0 else { return 0 }
-        return min(max(viewModel.currentTime / viewModel.duration, 0), 1)
+        return min(max(clock.time / viewModel.duration, 0), 1)
     }
 }
 

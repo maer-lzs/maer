@@ -224,11 +224,10 @@ struct PlayerView: View {
     }
 
     /// The cached answer of the what-plays-next line. CACHED on purpose:
-    /// `currentTime` is @Published, so this body re-evaluates every second
-    /// while playing, and computing the cascade there would put a
-    /// subscription scan on the main actor at 1 Hz on the surface the
-    /// hitch probes measure. The truth changes only when the lists, the
-    /// progress store or the title change, and exactly those recompute it.
+    /// computing the cascade in the body would put a subscription scan on
+    /// the main actor every time the body runs, on the surface the hitch
+    /// probes measure. The truth changes only when the lists, the progress
+    /// store or the title change, and exactly those recompute it.
     @State private var upNextItem: LibraryItem?
 
     /// The TRUTH of the cascade, readable without a tap: what actually
@@ -408,13 +407,16 @@ struct PlayerView: View {
             if let chapter = viewModel.currentChapter {
                 // Chapter remaining + estimated finish time at current speed.
                 // Music has no "chapters". Drop the "in chapter" phrasing.
-                let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter))
-                Text(viewModel.isMusicItem
-                     ? "\(left) · ends \(estimatedFinishTime())"
-                     : "\(left) in chapter · ends \(estimatedFinishTime())")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.55))
-                    .monospacedDigit()
+                // The one line here that moves with the time: its own leaf.
+                PlaybackTimeReader(clock: viewModel.clock) { time in
+                    let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
+                    Text(viewModel.isMusicItem
+                         ? "\(left) · ends \(estimatedFinishTime(at: time))"
+                         : "\(left) in chapter · ends \(estimatedFinishTime(at: time))")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .monospacedDigit()
+                }
             }
             }
         }
@@ -556,15 +558,15 @@ struct PlayerView: View {
         return viewModel.nowPlayingSubtitle
     }
 
-    private func chapterRemainingMinutes(_ chapter: ABSChapter) -> Int {
-        max(1, Int((max(0, chapter.end - viewModel.currentTime) / 60).rounded(.up)))
+    private func chapterRemainingMinutes(_ chapter: ABSChapter, at time: Double) -> Int {
+        max(1, Int((max(0, chapter.end - time) / 60).rounded(.up)))
     }
 
     /// Wall-clock time the BOOK finishes if playback continues at the
     /// current speed. The number night listeners actually care about.
-    private func estimatedFinishTime() -> String {
+    private func estimatedFinishTime(at time: Double) -> String {
         let rate = max(Double(viewModel.playbackRate), 0.1)
-        let remaining = max(viewModel.duration - viewModel.currentTime, 0) / rate
+        let remaining = max(viewModel.duration - time, 0) / rate
         return Date().addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened)
     }
 
@@ -586,10 +588,12 @@ struct PlayerView: View {
             LiveBadge()
             Spacer()
             if let station = liveStation { qualityMenu(for: station) }
-            Text(format(viewModel.currentTime))
-                .monospacedDigit()
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.8))
+            PlaybackTimeReader(clock: viewModel.clock) { time in
+                Text(format(time))
+                    .monospacedDigit()
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.8))
+            }
         }
         // The row stands where the scrubber stands, with the quality menu at
         // its edge: the same inset keeps it clear of the side strips.
@@ -635,7 +639,15 @@ struct PlayerView: View {
                         duration: viewModel.duration)
     }
 
+    /// The slider and its two times move every second: the leaf that
+    /// observes the clock, so the player around it is not drawn again.
     private var scrubber: some View {
+        PlaybackTimeReader(clock: viewModel.clock) { time in
+            scrubber(at: time)
+        }
+    }
+
+    private func scrubber(at time: Double) -> some View {
         VStack(spacing: 8) {
             // The ONE slider of the app, and on the Mac the system one
             // crashes inside Apple's fluid-slider haptics (six reports,
@@ -643,7 +655,7 @@ struct PlayerView: View {
             // the system Slider everywhere except there.
             PlatformScrubber(
                 value: Binding(
-                    get: { isScrubbing ? scrubValue : scrubberSpan.position(absolute: viewModel.currentTime) },
+                    get: { isScrubbing ? scrubValue : scrubberSpan.position(absolute: time) },
                     set: { scrubValue = $0 }
                 ),
                 range: 0...scrubberSpan.length,
@@ -682,9 +694,9 @@ struct PlayerView: View {
                 }
             }
             HStack {
-                Text(format(scrubberSpan.elapsed(absolute: viewModel.currentTime)))
+                Text(format(scrubberSpan.elapsed(absolute: time)))
                 Spacer()
-                Text("-" + format(scrubberSpan.remaining(absolute: viewModel.currentTime)))
+                Text("-" + format(scrubberSpan.remaining(absolute: time)))
             }
             .monospacedDigit()
             .font(.caption)

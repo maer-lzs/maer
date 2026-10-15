@@ -83,8 +83,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     @Published var isPlaying = false
     /// Absolute position in the WHOLE book, in seconds. Regardless of whether
-    /// the book consists of a single M4B file or several tracks.
-    @Published var currentTime: Double = 0
+    /// the book consists of a single M4B file or several tracks. Not
+    /// published by the model: it changes every second, and every surface
+    /// that observes the model would wake with it. The clock publishes it,
+    /// and a surface that shows the time observes the clock.
+    var currentTime: Double = 0 {
+        didSet { if clock.time != currentTime { clock.time = currentTime } }
+    }
+    /// The running time, published on its own (`PlaybackClock`).
+    let clock = PlaybackClock()
     /// Whether anything HAPPENED since this item was loaded.
     /// Playback, a deliberate restart, or a deliberate seek. The restore
     /// flush reads it: a merely-loaded episode must not re-stamp its old

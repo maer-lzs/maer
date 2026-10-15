@@ -20,9 +20,9 @@ struct LyricsPanel: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Index of the line currently being sung (synced only).
-    private var activeIndex: Int? {
+    private func activeIndex(at time: Double) -> Int? {
         guard lyrics.synced else { return nil }
-        let now = viewModel.currentTime - songStart
+        let now = time - songStart
         var active: Int?
         for (index, line) in lyrics.lines.enumerated() {
             guard let start = line.start else { continue }
@@ -31,7 +31,15 @@ struct LyricsPanel: View {
         return active
     }
 
+    /// The whole panel follows the time (the line that is sung, the scroll
+    /// to it), so it observes the clock.
     var body: some View {
+        PlaybackTimeReader(clock: viewModel.clock) { time in
+            panel(activeIndex: activeIndex(at: time))
+        }
+    }
+
+    private func panel(activeIndex: Int?) -> some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {

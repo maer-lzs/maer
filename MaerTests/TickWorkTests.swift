@@ -44,6 +44,7 @@ struct TickWorkTests {
         var nowPlayingWrites = 0
         var artworkBuilds = 0
         var publications = 0
+        var clockPublications = 0
         var statsMerges = 0
     }
 
@@ -60,12 +61,16 @@ struct TickWorkTests {
 
         var work = Work()
         var publications = 0
+        var clockPublications = 0
         let watch = model.objectWillChange.sink { _ in publications += 1 }
+        let watchClock = model.clock.objectWillChange.sink { _ in clockPublications += 1 }
         let writes = model.nowPlayingWrites, artworks = model.artworkBuilds
         let merges = ListeningStatsStore.shared.merges
         let start = model.currentTime
         try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         watch.cancel()
+        watchClock.cancel()
+        work.clockPublications = clockPublications
         work.ticks = Int((model.currentTime - start).rounded())
         work.nowPlayingWrites = model.nowPlayingWrites - writes
         work.artworkBuilds = model.artworkBuilds - artworks
@@ -83,13 +88,43 @@ struct TickWorkTests {
         #expect(work.artworkBuilds == 0, "artworks built per quiet second: \(work)")
     }
 
-    /// The model publishes a value only when it changed: in quiet playback
-    /// that is the running time, once a second, and nothing else.
-    @Test("ruhige Wiedergabe: das Modell publiziert nur die laufende Zeit, einmal je Sekunde", .needsAudio)
+    /// A value is published only when it changed, and the running time on
+    /// its own clock: in quiet playback the model publishes nothing, the
+    /// clock once a second. A surface that observes the model and not the
+    /// clock is not woken.
+    @Test("ruhige Wiedergabe: das Modell publiziert nichts, die Uhr die laufende Zeit, einmal je Sekunde", .needsAudio)
     func quietPlaybackPublishesOnlyTheTime() async throws {
         let work = try await quietWork(seconds: 3)
         #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
-        #expect(work.publications <= work.ticks + 1, "publications per quiet second: \(work)")
+        #expect(work.publications == 0, "model publications per quiet second: \(work)")
+        #expect(work.clockPublications >= 2 && work.clockPublications <= work.ticks + 1,
+                "the clock publishes the time once a second: \(work)")
+    }
+
+    /// The views read the model's time only through the clock in a leaf.
+    /// What still reads it directly, per file, with why: none of it in a
+    /// body that observes the model.
+    static let directTimeReads: [String: (count: Int, reason: String)] = [
+        "BookmarksSheet.swift": (1, "an action: the position at the tap, never drawn"),
+        "PlayerView.swift": (1, "an action: where a drag of the slider begins"),
+        "DriveModeView.swift": (3, "observes the coordinator, not the model; draws the time of its last change, as before"),
+    ]
+
+    @Test("die Ansichten lesen die Zeit des Modells nur ueber die Uhr; jede andere Stelle ist je Datei gezaehlt, mit Grund", .needsTheSources)
+    func viewsReadTheTimeThroughTheClock() {
+        var counts: [String: Int] = [:]
+        for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+                Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
+                continue
+            }
+            let code = SyncContractFenceTests.stripped(text)
+            let hits = ["viewModel.currentTime", "vm.currentTime"].map { code.components(separatedBy: $0).count - 1 }.reduce(0, +)
+            if hits > 0 { counts[url.lastPathComponent] = hits }
+        }
+        #expect(StockDrift.findings(counts: counts, stock: Self.directTimeReads.mapValues(\.count)) == [],
+                "a view reads the model's time past the clock, or a stock above the count")
+        #expect(Self.directTimeReads.values.allSatisfy { !$0.reason.isEmpty })
     }
 
     @Test("ruhige Wiedergabe: die Statistik fuehrt die Toepfe nicht je Sekunde zusammen", .needsAudio)
