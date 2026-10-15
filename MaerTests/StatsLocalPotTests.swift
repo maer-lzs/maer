@@ -47,8 +47,11 @@ struct StatsLocalPotTests {
         stats.flush()
         let after = ids.filter { stats.ownData.secondsPerItem[$0] == 1 }.count
         #expect(after == ids.count, "the local pot keeps every entry; the ceiling shapes only what travels")
-        // What travelled: the days, and no item (none of these is live).
-        #expect(carrier.published.last?.secondsPerItem.isEmpty == true)
+        // What travelled: the days, and none of these items (none of them is
+        // live). Asked of its own entries only: a live item another suite
+        // played lies in the same rows and may travel.
+        let travelled = Set(carrier.published.last?.secondsPerItem.keys.map { $0 } ?? [])
+        #expect(travelled.isDisjoint(with: ids), "an entry of this case travelled")
         #expect(carrier.published.last?.secondsPerDay.isEmpty == false)
     }
 }
