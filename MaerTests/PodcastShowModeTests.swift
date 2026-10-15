@@ -92,10 +92,8 @@ struct PodcastShowModeTests {
             .deletingLastPathComponent().deletingLastPathComponent()
         let sources = root.appendingPathComponent("Sources")
         var names: [String] = []
-        if let walker = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil) {
-            for case let url as URL in walker where url.pathExtension == "swift" {
-                names.append(url.lastPathComponent)
-            }
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
+            names.append(url.lastPathComponent)
         }
         #expect(!names.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(!names.contains("PodcastShowPreviewView.swift"),
@@ -116,7 +114,7 @@ struct PodcastShowModeTests {
     /// hereinreicht, hat sie aus einem Speicher, und damit endet die Suche.
     /// Sonst boete die Seite an, eine bereits abonnierte Sendung zu
     /// abonnieren, und das ist genau die Abnahme-Marke.
-    @Test("a show handed in by value ends the lookup, so a cold open stays subscribed")
+    @Test("a show handed in by value ends the lookup, so a cold open stays subscribed", .needsTheSources)
     func aSeededShowCountsAsSubscribed() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -133,7 +131,7 @@ struct PodcastShowModeTests {
     /// Der Download-Knopf ist im angesehenen Zustand ABWESEND, nicht
     /// abgeschaltet. Die Seite loest die Faehigkeit einmal auf und reicht sie
     /// hinunter, wie die Herkunfts-Kapsel.
-    @Test("the row asks for the download ability instead of deciding itself")
+    @Test("the row asks for the download ability instead of deciding itself", .needsTheSources)
     func theRowIsHandedItsDownloadAbility() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

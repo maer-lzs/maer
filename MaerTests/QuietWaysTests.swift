@@ -82,7 +82,7 @@ struct QuietWaysTests {
         func note(_ path: String) { all.append(path) }
     }
 
-    @Test("aelterer Dienst: die Rueckkehr in den Vordergrund fragt genau einmal neu, sonst nichts")
+    @Test("aelterer Dienst: die Rueckkehr in den Vordergrund fragt genau einmal neu, sonst nichts", .needsTheSources)
     func theReturnAsksOnce() throws {
         let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")
         let ask = try #require(housekeeping.range(of: "MaerSyncCarriers.session.askAgainOnReturn()"))
@@ -118,7 +118,7 @@ struct QuietWaysTests {
                 == .tooManyAttempts(retryAfter: 30))
     }
 
-    @Test("Abweisung: jeder Ausgang schreibt zuerst seine Logzeile mit Schritt, und jeder Weg nennt seinen Schritt")
+    @Test("Abweisung: jeder Ausgang schreibt zuerst seine Logzeile mit Schritt, und jeder Weg nennt seinen Schritt", .needsTheSources)
     func everyFailureWritesItsLine() throws {
         let signIn = try Self.source("Sources/Networking/MaerSyncSignIn.swift")
         let head = try #require(signIn.range(of: "nonisolated static func outcome(forSignInError error: Error, host: String?, step: Step) -> Outcome {"))

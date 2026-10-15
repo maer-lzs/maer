@@ -105,7 +105,7 @@ struct TileDwellTests {
         #expect(await stand.settledCount(expected: 1) >= 1, "the tile that stayed never asked")
     }
 
-    @Test("Flug: eine fuer die Sitzung gehaltene Antwort kommt ohne Frist, und die Metadaten-Tueren fragen sie vor der Frist")
+    @Test("Flug: eine fuer die Sitzung gehaltene Antwort kommt ohne Frist, und die Metadaten-Tueren fragen sie vor der Frist", .needsTheSources)
     func aKeptAnswerWaitsNothing() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 4, bytes: 1000))
         #expect(await flights.kept(for: "k") == nil)

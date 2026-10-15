@@ -61,8 +61,7 @@ struct SocketLaneTimeoutTests {
     @Test("eine Socket-Aufgabe entsteht nur an der einen Tuer", .needsTheSources)
     func aSocketTaskIsMadeAtOneDoorOnly() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
-        let dateien = try #require(FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let dateien = SourceTree.files(under: wurzel)
             .filter { $0.pathExtension == "swift" }
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []

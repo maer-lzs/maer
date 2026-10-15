@@ -37,7 +37,7 @@ struct PlaylistActionOnceFenceTests {
         return result
     }
 
-    @Test("Zur Playlist hinzufuegen steht in jedem Menue genau einmal")
+    @Test("Zur Playlist hinzufuegen steht in jedem Menue genau einmal", .needsTheSources)
     func onePlaylistActionPerMenu() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {

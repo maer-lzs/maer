@@ -48,7 +48,7 @@ struct PublicLogAddressFenceTests {
         "RadioDiagnostics.swift": (1, "radio stream from the public catalogue, no credentials (the ICY check)"),
     ]
 
-    @Test("Keine oeffentliche Logzeile traegt eine Adresse mit Zugangsdaten")
+    @Test("Keine oeffentliche Logzeile traegt eine Adresse mit Zugangsdaten", .needsTheSources)
     func publicLinesCarryNoAddress() throws {
         var counts: [String: Int] = [:]
         var found: [String: [String]] = [:]

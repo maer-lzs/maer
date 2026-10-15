@@ -98,7 +98,7 @@ struct PlayRestartAtTrueEndTests {
         #expect(commentSites.asked + commentSites.unasked == 0)
     }
 
-    @Test("jeder Neustart in einer Ansicht fragt das echte Ende")
+    @Test("jeder Neustart in einer Ansicht fragt das echte Ende", .needsTheSources)
     func everyRestartInAViewAsksTheTrueEnd() throws {
         let views = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(!views.isEmpty, "no view source was read")

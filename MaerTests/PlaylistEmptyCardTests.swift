@@ -25,7 +25,7 @@ struct PlaylistEmptyCardTests {
         #expect(PlaylistPresentation.offersShuffle(trackCount: 42))
     }
 
-    @Test("Die Karte rendert die Regel, statt eine zweite zu erfinden")
+    @Test("Die Karte rendert die Regel, statt eine zweite zu erfinden", .needsTheSources)
     func theCardRendersTheRule() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

@@ -112,7 +112,7 @@ struct SignInDerivationTests {
         #expect(seen.withLock { $0 } == [false], "the probe ran once, off the main thread")
     }
 
-    @Test("Messzeile: jede Dehnung schreibt ihre Dauer, Runden und Zweck, und sonst nichts")
+    @Test("Messzeile: jede Dehnung schreibt ihre Dauer, Runden und Zweck, und sonst nichts", .needsTheSources)
     func everyStretchWritesItsMeasurementLineAndNothingElse() async throws {
         let lines = OSAllocatedUnfairLock<[String]>(initialState: [])
         let vector = try #require(try Self.fixture().vectors.first)

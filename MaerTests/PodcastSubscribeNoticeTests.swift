@@ -42,17 +42,15 @@ struct PodcastSubscribeNoticeTests {
     /// Die Meldung existiert EINMAL. Wer eine zweite Darstellung baut, muss
     /// diesen Bestand anfassen — genau das war die Auflage („bau die Meldung
     /// einmal statt dreimal"), und ein Bestand haelt sie, eine Absicht nicht.
-    @Test("Es gibt genau einen Wirt fuer die Meldung")
+    @Test("Es gibt genau einen Wirt fuer die Meldung", .needsTheSources)
     func exactlyOneHostShowsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
         var readers: [String: Int] = [:]
         var setters: [String: Int] = [:]
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let lines = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+        for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
+            let path = SourceTree.relativePath(of: url)
+            let lines = try String(contentsOf: url, encoding: .utf8)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             // Die DEKLARATION ist weder Lesen noch Setzen. Mein erster
@@ -64,9 +62,9 @@ struct PodcastSubscribeNoticeTests {
             guard !hits.isEmpty else { continue }
             // Die Zuweisung `= …` ist das Setzen, alles andere liest.
             let written = hits.filter { $0.contains("emptyFeedNotice = ") && !$0.contains("== nil") }
-            if !written.isEmpty { setters["Sources/" + name] = written.count }
+            if !written.isEmpty { setters[path] = written.count }
             let read = hits.count - written.count
-            if read > 0 { readers["Sources/" + name] = read }
+            if read > 0 { readers[path] = read }
         }
         #expect(Set(readers.keys) == ["Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift"],
                 "die Meldung wird an mehr als einer Stelle gezeigt: \(readers.keys.sorted())")
@@ -82,7 +80,7 @@ struct PodcastSubscribeNoticeTests {
     /// lieh sich `notesCloud` als Stellvertreter, und der Import ruft mit dem
     /// Vorgabewert. Ein geliehenes Merkmal ist eine Behauptung ueber alle
     /// heutigen UND kuenftigen Rufer.
-    @Test("Jeder Abo-Rufer sagt, ob er ein Einzel-Akt ist")
+    @Test("Jeder Abo-Rufer sagt, ob er ein Einzel-Akt ist", .needsTheSources)
     func everySubscribeCallerSaysWhetherItIsASingleAct() throws {
         let bulk: [String: String] = [
             "Sources/Networking/GPodderSync.swift":
@@ -104,11 +102,9 @@ struct PodcastSubscribeNoticeTests {
         var foundSingle: Set<String> = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let flat = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+        for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
+            let path = SourceTree.relativePath(of: url)
+            let flat = try String(contentsOf: url, encoding: .utf8)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("///") }
                 .joined(separator: " ")
@@ -128,8 +124,8 @@ struct PodcastSubscribeNoticeTests {
                 let call = String(calls[range.upperBound..<to])
                 // Bis zur schliessenden Klammer des Aufrufs reicht das Fenster;
                 // die Frage wird LOKAL gestellt, nicht in der Nachbarschaft.
-                if call.contains("isSingleUserAct: false") { foundBulk.insert("Sources/" + name) }
-                else { foundSingle.insert("Sources/" + name) }
+                if call.contains("isSingleUserAct: false") { foundBulk.insert(path) }
+                else { foundSingle.insert(path) }
             }
         }
         #expect(foundBulk == Set(bulk.keys),
@@ -141,7 +137,7 @@ struct PodcastSubscribeNoticeTests {
     /// Der Satz steht im Katalog, mit deutscher Uebersetzung. Ohne diesen Fall
     /// faellt eine fehlende Uebersetzung erst am Geraet auf, und dort steht
     /// dann Englisch in einer deutschen App.
-    @Test("Der Satz ist uebersetzt")
+    @Test("Der Satz ist uebersetzt", .needsTheSources)
     func theSentenceIsTranslated() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))

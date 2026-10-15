@@ -197,8 +197,7 @@ struct PlaylistDeviceNameTests {
     @Test("DeviceIdentity.name steht nur als Vorgabe einer Naht oder an der benannten Stelle", .needsTheSources)
     func theDeviceNameIsReadOnlyAtASeam() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
 

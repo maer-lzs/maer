@@ -38,7 +38,7 @@ struct StringCatalogOrderTests {
         }
     }
 
-    @Test("Der String-Katalog liegt in Xcodes Ordnung, sonst macht der naechste Bau den Baum schmutzig")
+    @Test("Der String-Katalog liegt in Xcodes Ordnung, sonst macht der naechste Bau den Baum schmutzig", .needsTheSources)
     func theCatalogIsInXcodesOrder() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
@@ -98,7 +98,7 @@ struct StringCatalogOrderTests {
             + ServerGuides.localizedKeys
     }
 
-    @Test("Der String-Katalog traegt keinen stale-Schluessel: was der Bau nicht ausgibt, ist weg (GOAL-3-4 Platz 8)")
+    @Test("Der String-Katalog traegt keinen stale-Schluessel: was der Bau nicht ausgibt, ist weg (GOAL-3-4 Platz 8)", .needsTheSources)
     func theCatalogCarriesNoStaleKey() throws {
         let entries = try Self.entries()
         #expect(entries.count > 1000, "the precondition: the keys were read")
@@ -147,9 +147,8 @@ struct StringCatalogOrderTests {
         let entries = try Self.entries()
         var source = ""
         for folder in ["Sources", "LiveActivityWidget"] {
-            let files = try #require(FileManager.default.enumerator(
-                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
-                .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+            let files = SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
+                .filter { $0.pathExtension == "swift" }
             #expect(!files.isEmpty, "the fence read \(folder)")
             for file in files { source += try String(contentsOf: file, encoding: .utf8) + "\n" }
         }
@@ -176,7 +175,7 @@ struct StringCatalogOrderTests {
         #expect(try !found("Playing on %@: %@"), "a longer key is not taken for a shorter literal")
     }
 
-    @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen")
+    @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen", .needsTheSources)
     func everyDynamicGuideKeyIsHeldManual() throws {
         let entries = try Self.entries()
         let keys = Set(Self.dynamicKeys)

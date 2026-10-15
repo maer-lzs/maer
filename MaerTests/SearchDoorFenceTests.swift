@@ -49,7 +49,7 @@ struct SearchDoorFenceTests {
         hits(providerReaches, in: text)
     }
 
-    @Test("Die Suchansicht fragt keinen Provider selbst")
+    @Test("Die Suchansicht fragt keinen Provider selbst", .needsTheSources)
     func theSearchViewAsksNoProvider() throws {
         #expect(Self.reaches(in: try Self.source("Sources/Views/SearchScreen.swift")).isEmpty)
         // Rot-Probe in beide Richtungen: der Prüfer sieht den Griff…
@@ -59,7 +59,7 @@ struct SearchDoorFenceTests {
         #expect(Self.reaches(in: "// uses AppSession.shared.musicProvider").isEmpty)
     }
 
-    @Test("Die Ansicht entscheidet kein Ziel mehr: kein switch über die Trefferart")
+    @Test("Die Ansicht entscheidet kein Ziel mehr: kein switch über die Trefferart", .needsTheSources)
     func theViewDecidesNoTarget() throws {
         // `LibraryView` führt das Ziel aus, aber die ENTSCHEIDUNG steht in
         // `SearchRouting`. Erkennungsmerkmal ist der Griff auf die ART.
@@ -79,7 +79,7 @@ struct SearchDoorFenceTests {
         "Task.detached",
     ]
 
-    @Test("Die Suchansicht baut das Deck nicht selbst")
+    @Test("Die Suchansicht baut das Deck nicht selbst", .needsTheSources)
     func theSearchViewDoesNotBuildTheDeck() throws {
         let view = try Self.source("Sources/Views/SearchScreen.swift")
         let found = Self.hits(Self.deckReaches, in: view)
@@ -93,7 +93,7 @@ struct SearchDoorFenceTests {
         #expect(Self.hits(Self.deckReaches, in: "// was PodcastAutoContinue.allShows()").isEmpty)
     }
 
-    @Test("Die Ansicht entscheidet nicht, welche Kacheln ein Bereich hat")
+    @Test("Die Ansicht entscheidet nicht, welche Kacheln ein Bereich hat", .needsTheSources)
     func theViewDoesNotDecideTheTiles() throws {
         let view = try Self.source("Sources/Views/SearchScreen.swift")
         // Die Einstiege standen als Listen von Verschluessen in der Ansicht,

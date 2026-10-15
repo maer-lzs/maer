@@ -84,7 +84,7 @@ struct StatsNamesTests {
                 "der Sender mit 0 Min. steht nicht da und verdraengt keinen")
     }
 
-    @Test("GT-25/26: die Seite zeigt nie eine Kennung, die Dauer steht in einer Zeile rechts, beide Listen tragen die Minute")
+    @Test("GT-25/26: die Seite zeigt nie eine Kennung, die Dauer steht in einer Zeile rechts, beide Listen tragen die Minute", .needsTheSources)
     func thePageWiresTheRules() throws {
         let view = try Self.source("Sources/Views/StatsView.swift")
         #expect(!view.contains("?? entry.id") && !view.contains("?? showId"), "keine Kennung als Ersatz")

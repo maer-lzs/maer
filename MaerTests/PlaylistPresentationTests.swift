@@ -54,7 +54,7 @@ struct PlaylistPresentationTests {
 
     /// ONE playlist row: server and device lists share it, the device lists
     /// carry the capsule, the "+" card stands once at the end.
-    @Test("Eine Playlist-Reihe: Kapsel nur an Geraete-Listen, das Plus einmal")
+    @Test("Eine Playlist-Reihe: Kapsel nur an Geraete-Listen, das Plus einmal", .needsTheSources)
     @MainActor
     func onePlaylistRow() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

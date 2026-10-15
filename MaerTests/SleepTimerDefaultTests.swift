@@ -42,7 +42,7 @@ struct SleepTimerDefaultTests {
     /// Gemerkt wird an der EINEN Stelle, an der eine Uhr-Dauer startet.
     /// Laege es am Menue, merkte der Fahrmodus oder ein spaeterer Aufrufer
     /// nichts, und die Vorgabe waere je nach Weg eine andere.
-    @Test("gemerkt wird beim Starten, nicht im Menue")
+    @Test("gemerkt wird beim Starten, nicht im Menue", .needsTheSources)
     func theStartRemembersIt() throws {
         let quelle = try String(
             contentsOf: URL(fileURLWithPath: #filePath)

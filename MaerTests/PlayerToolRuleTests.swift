@@ -70,7 +70,7 @@ struct PlayerToolRuleTests {
         return ["!= .music", "!isMusic", "!= .liveStream", "!= .spokenWord"].filter { code.contains($0) }
     }
 
-    @Test("die Regel enthaelt keine Verneinung einer Art")
+    @Test("die Regel enthaelt keine Verneinung einer Art", .needsTheSources)
     func ruleIsWrittenPositively() throws {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

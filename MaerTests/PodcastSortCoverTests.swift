@@ -43,7 +43,7 @@ struct PodcastSortCoverTests {
         }
     }
 
-    @Test("Folgen-Cover: kein Leser waehlt das Bild mehr mit ??, und der Import von PodcastIndex speichert kein leeres")
+    @Test("Folgen-Cover: kein Leser waehlt das Bild mehr mit ??, und der Import von PodcastIndex speichert kein leeres", .needsTheSources)
     func everyReaderAsksTheRule() throws {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -79,7 +79,7 @@ struct PodcastSortCoverTests {
                                             defaults: defaults).newestFirst == PodcastShowPreferences.default.newestFirst)
     }
 
-    @Test("Sortierung: die Sendungsseite liest und schreibt nur unter preferencesId und liest bei jedem Wechsel neu")
+    @Test("Sortierung: die Sendungsseite liest und schreibt nur unter preferencesId und liest bei jedem Wechsel neu", .needsTheSources)
     func theShowPageUsesOneId() throws {
         let page = try Self.source("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.components(separatedBy: "PodcastShowPreferences.load(").count - 1 == 1)
@@ -100,7 +100,7 @@ struct PodcastSortCoverTests {
 
     // MARK: - The image of a previous address
 
-    @Test("Bild: eine Ladung, deren Adresse gewechselt hat, schreibt ihr Bild nicht mehr")
+    @Test("Bild: eine Ladung, deren Adresse gewechselt hat, schreibt ihr Bild nicht mehr", .needsTheSources)
     func aCancelledLoadWritesNothing() throws {
         let view = try Self.source("Sources/Views/CachedAsyncImage.swift")
         let call = try #require(view.range(of: "await Artwork.image("))

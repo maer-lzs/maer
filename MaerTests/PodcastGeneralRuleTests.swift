@@ -55,7 +55,7 @@ struct PodcastGeneralRuleTests {
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 
-    @Test("Neue Folgen und die Richtung reisen, Ein/Aus und Anzahl der Automatik bleiben auf dem Geraet")
+    @Test("Neue Folgen und die Richtung reisen, Ein/Aus und Anzahl der Automatik bleiben auf dem Geraet", .needsTheSources)
     func whatTravels() throws {
         #expect(UserChoiceCatalog.statics[AppStorageKeys.podcastInboxModeAll] == .travels)
         #expect(UserChoiceCatalog.travelingScalars.contains(AppStorageKeys.podcastInboxModeAll))

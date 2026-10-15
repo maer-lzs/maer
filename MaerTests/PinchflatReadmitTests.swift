@@ -55,7 +55,7 @@ struct PinchflatReadmitTests {
     /// The page asks the membership of the channel, not the sum, and gates
     /// the button while a pass runs: a source fence, because the page is a
     /// view and the decision above is what it asks.
-    @Test("die Seite fragt die Mitgliedschaft dieses Kanals und sperrt den Knopf waehrend des Durchgangs")
+    @Test("die Seite fragt die Mitgliedschaft dieses Kanals und sperrt den Knopf waehrend des Durchgangs", .needsTheSources)
     func thePageAsksTheMembershipAndGatesTheButton() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/PodcastSourceView.swift"), encoding: .utf8)

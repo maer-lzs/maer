@@ -119,7 +119,7 @@ struct StandCarrierTests {
         #expect(carrier.writes.count == 3, "the cadence is due again")
     }
 
-    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher und den Blob") @MainActor
+    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher und den Blob", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/PodcastCloudSync.swift"), encoding: .utf8)

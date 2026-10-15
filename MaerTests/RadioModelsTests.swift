@@ -695,8 +695,7 @@ struct RadioStateQueryTests {
         #expect(models.contains("station.variantList.contains(where: { $0.streamURL == selectedURL })"),
                 "the choice is not read by address")
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
         var drawings: [(file: String, line: String)] = []
@@ -1122,7 +1121,7 @@ struct NowPlayingTitleSourceTests {
     /// ITEM-Aufloesung nehmen. Die liefert fuer Katalog-Kennungen einen
     /// Stub mit Platzhalter, und genau so trug die Mini-Leiste einen
     /// Platzhalternamen, waehrend der grosse Player recht hatte.
-    @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item")
+    @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item", .needsTheSources)
     func surfacesReadTheSessionTitle() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

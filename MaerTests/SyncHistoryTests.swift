@@ -50,8 +50,7 @@ struct SyncHistoryTests {
     @Test("jeder Dienst, der den Verlauf schreibt, hat seinen Platz in der Kopfzeile, Ausnahmen mit Grund", .needsTheSources)
     func everyStampedServiceHasItsRank() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var named: Set<String> = []
         for file in files {
             named.formUnion(Self.stampedServices(in: SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))))

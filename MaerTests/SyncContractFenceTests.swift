@@ -188,7 +188,7 @@ struct SyncContractFenceTests {
     /// Gelesen wird der RUMPF der zwei Funktionen, nicht die Datei: ein
     /// Fenster ueber die ganze Datei faende die Zeichen-Tuer der vier
     /// anderen Wege und waere immer rot.
-    @Test("die zwei Sitzungs-Wege setzen kein Zeichen")
+    @Test("die zwei Sitzungs-Wege setzen kein Zeichen", .needsTheSources)
     func theTwoSessionWaysSetNoToken() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -218,7 +218,7 @@ struct SyncContractFenceTests {
     /// fehlt: die drei Wege mit Zeichen gehen durch die EINE Stelle, die es
     /// in den Kopf legt, die Steckdose legt es in ihren ersten Rahmen, und
     /// die Anmeldung geht an beiden vorbei, weil sie noch keines hat.
-    @Test("die anderen Wege setzen sehr wohl ein Zeichen, und seit Fassung 5 nur noch im Rahmen")
+    @Test("die anderen Wege setzen sehr wohl ein Zeichen, und seit Fassung 5 nur noch im Rahmen", .needsTheSources)
     func theOtherWaysDoSetATokenAfterAll() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -255,7 +255,7 @@ struct SyncContractFenceTests {
         #expect(MaerSyncSignIn.contractVersion == 6, "die App nennt dieselbe Fassung, die sie hier liest")
     }
 
-    @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")
+    @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch", .needsTheSources)
     func everyPromisedPathIsCalled() throws {
         let text = try Self.sources()
         for path in Self.declared(in: try Self.contractText())["paths"] ?? [] {
@@ -271,7 +271,7 @@ struct SyncContractFenceTests {
     /// wird. Ein Pfad, den die App ruft und der Vertrag nicht nennt, blieb
     /// gruen. Beide Richtungen in einem Fall, mit dem Melder fuer das eigene
     /// Loch: sieht der Sucher weniger Pfade als erklaert, sagt er es.
-    @Test("jeden Pfad, den diese App ruft, verspricht auch der Vertrag")
+    @Test("jeden Pfad, den diese App ruft, verspricht auch der Vertrag", .needsTheSources)
     func everyPathThisAppCallsIsInTheContract() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -296,7 +296,7 @@ struct SyncContractFenceTests {
                 "der Sucher sieht erklaerte Pfade nicht, also sagt sein Schweigen nichts: \(declared.subtracting(called).sorted())")
     }
 
-    @Test("jede Kopfzeile, die diese App nennt, verspricht auch der Vertrag")
+    @Test("jede Kopfzeile, die diese App nennt, verspricht auch der Vertrag", .needsTheSources)
     func everyHeaderThisAppNamesIsInTheContract() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -322,7 +322,7 @@ struct SyncContractFenceTests {
                 "der Sucher sieht erklaerte Koepfe nicht: \(declared.subtracting(named).sorted())")
     }
 
-    @Test("jede Kopfzeile des Vertrags setzt oder liest diese App")
+    @Test("jede Kopfzeile des Vertrags setzt oder liest diese App", .needsTheSources)
     func everyPromisedHeaderIsUsed() throws {
         let text = try Self.sources()
         for header in Self.declared(in: try Self.contractText())["headers"] ?? [] {
@@ -330,7 +330,7 @@ struct SyncContractFenceTests {
         }
     }
 
-    @Test("jede Sorte des Vertrags kennt diese App beim Namen")
+    @Test("jede Sorte des Vertrags kennt diese App beim Namen", .needsTheSources)
     func everyKindIsNamedHere() throws {
         // Die GEGENRICHTUNG zum Zaun auf der Dienst-Seite, und die
         // Asymmetrie ist die Sache selbst: der Dienst darf keine Sorte
@@ -343,7 +343,7 @@ struct SyncContractFenceTests {
         }
     }
 
-    @Test("die Socket-Nachricht ist die, die im Vertrag steht")
+    @Test("die Socket-Nachricht ist die, die im Vertrag steht", .needsTheSources)
     func theSocketMessageIsTheOneInTheContract() throws {
         // Fassung 2. Bis dahin waren sich die zwei Seiten durch Zufall der
         // Umsetzung einig, nicht durch eine geschriebene Vereinbarung: ein
@@ -358,7 +358,7 @@ struct SyncContractFenceTests {
             .contains("{\"kind\": \"<kind>\", \"scope\": \"<scope>\", \"version\": \"<etag>\"}"))
     }
 
-    @Test("die Antworten, auf die der Vertrag die App festlegt, behandelt sie")
+    @Test("die Antworten, auf die der Vertrag die App festlegt, behandelt sie", .needsTheSources)
     func thePromisedAnswersAreHandled() throws {
         let text = Self.stripped(try Self.sources())
         let declared = Self.declared(in: try Self.contractText())["status"] ?? []

@@ -36,7 +36,7 @@ struct SourceMapAreasTests {
     /// Ohne diesen Fall koennte eine der beiden Seiten sich eine eigene
     /// Fassung bauen, und der Rueckweg fuehrte auf etwas anderes als die
     /// Karte von damals.
-    @Test("Einrichtung und Einstellungen erreichen DIESELBE Karte")
+    @Test("Einrichtung und Einstellungen erreichen DIESELBE Karte", .needsTheSources)
     func bothDoorsReachTheSameCard() throws {
         for tuer in Self.doors {
             let text = try sourceText(tuer)
@@ -74,7 +74,7 @@ struct SourceMapAreasTests {
     /// Die Karte traegt KEINEN Bereichs-Schalter mehr — ein einzelner
     /// zurueckgekehrter Schalter schriebe an der Aufraeum-Regel vorbei
     /// (der eine Schreibweg ist `AppRows.setVisible`).
-    @Test("the source map card carries no area switch any more")
+    @Test("the source map card carries no area switch any more", .needsTheSources)
     func noAreaToggleOnTheCard() throws {
         let text = try sourceText("Sources/Views/SourceMapCard.swift")
         let pattern = try NSRegularExpression(
@@ -93,7 +93,7 @@ struct SourceMapAreasTests {
     /// At an accessibility size the card had no room: the tick took width,
     /// and "example.invalid" broke as "example.in-valid". The host may break
     /// after a dot, and the tick stays out where the line says it.
-    @Test("ein Host bricht nach einem Punkt statt mit Trennstrich, und bei Bedienhilfe-Groessen steht kein Haken")
+    @Test("ein Host bricht nach einem Punkt statt mit Trennstrich, und bei Bedienhilfe-Groessen steht kein Haken", .needsTheSources)
     func theHostBreaksAtADot() throws {
         #expect(SourceMapCard.breakableHost("example.invalid") == "example.\u{200B}invalid")
         #expect(SourceMapCard.breakableHost("abs.home.example.net") == "abs.\u{200B}home.\u{200B}example.\u{200B}net")
@@ -125,7 +125,7 @@ struct SourceMapAreasTests {
     /// symbol, and at the usual size too): it is part of the label's title.
     /// Both kinds of row on the card, the areas and Mär Sync, go through
     /// the one row label.
-    @Test("die Unterzeile einer Kartenzeile steht bei jeder Groesse an der Titelkante, beide Zeilenarten nehmen denselben Baustein")
+    @Test("die Unterzeile einer Kartenzeile steht bei jeder Groesse an der Titelkante, beide Zeilenarten nehmen denselben Baustein", .needsTheSources)
     func theLineKeepsTheTitleEdge() throws {
         let card = SyncContractFenceTests.stripped(try sourceText("Sources/Views/SourceMapCard.swift"))
         let uses = card.components(separatedBy: "SourceMapRowLabel(title:").count - 1
@@ -175,7 +175,7 @@ struct SourceMapAreasTests {
     /// gleich), fuehrt zur Mär-Sync-Seite und liest ihren Zustand ueber den
     /// einen Leser; der liest den Zugang ueber `stored()`, und die Seite des
     /// Dienstes tut dasselbe statt am Token vorbei.
-    @Test("Die Karte fuehrt zu Mär Sync und liest den Zustand ueber den einen Leser")
+    @Test("Die Karte fuehrt zu Mär Sync und liest den Zustand ueber den einen Leser", .needsTheSources)
     func syncRowWiring() throws {
         let karte = try sourceText("Sources/Views/SourceMapCard.swift")
         for teil in ["MaerSyncSettingsView()", "SourceMapSyncLine.of(facts.syncStanding",

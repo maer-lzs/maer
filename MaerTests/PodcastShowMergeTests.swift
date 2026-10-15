@@ -175,17 +175,14 @@ struct PodcastShowMergeTests {
     /// `excludingSubscribed` zu geben. Sie waren sich einig, was Glueck war:
     /// eine Menge, der eine Adresse fehlt, stellt eine Sendung, der jemand
     /// schon folgt, zurueck in seine Empfehlungen.
-    @Test("Niemand baut die Besitz-Vereinigung noch selbst")
+    @Test("Niemand baut die Besitz-Vereinigung noch selbst", .needsTheSources)
     func nobodyBuildsTheOwnedUnionByHand() throws {
         let allowed = "Sources/ViewModels/PodcastShowSources.swift"
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             if relative == allowed { continue }
             // Zwischenraeume zusammengeschoben, damit ein Umbruch mitten im
             // Ausdruck den Fund nicht verbirgt.
@@ -203,17 +200,14 @@ struct PodcastShowMergeTests {
 
     /// Die Zwischengröße der handgeschriebenen Fassung. Wer die Liste wieder
     /// selbst zusammensetzt, braucht sie; wer die Regel ruft, nicht.
-    @Test("Niemand setzt die quellenuebergreifende Liste noch selbst zusammen")
+    @Test("Niemand setzt die quellenuebergreifende Liste noch selbst zusammen", .needsTheSources)
     func nobodyBuildsTheMergeByHand() throws {
         let allowed = ["Sources/Models/PodcastShowMerge.swift"]
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             if allowed.contains(relative) { continue }
             let text = try sourceText(relative)
             if text.contains("absFeeds") { offenders.append(relative) }
@@ -225,7 +219,7 @@ struct PodcastShowMergeTests {
     /// `activeShows` heißt „nicht archiviert" und weiß nichts vom Quellen-
     /// schalter. Genau in dieser Lücke sind die drei ungetorten Kopien
     /// gelandet. Der Bestand nennt je Leser den Grund, warum er ihn liest.
-    @Test("activeShows wird nur an zwei Stellen gelesen, und beide sagen warum")
+    @Test("activeShows wird nur an zwei Stellen gelesen, und beide sagen warum", .needsTheSources)
     func activeShowsHasTwoReadersWithReasons() throws {
         let expected: [String: String] = [
             "Sources/ViewModels/PodcastShowSources.swift":
@@ -238,11 +232,8 @@ struct PodcastShowMergeTests {
         var found: Set<String> = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             let body = try sourceText(relative)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }

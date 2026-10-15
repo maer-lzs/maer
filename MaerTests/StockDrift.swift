@@ -127,11 +127,9 @@ struct StockDriftTests {
     /// come back where a search for one spelling of the check did not look.
     @Test("jeder Zahlen-Bestand der Tests geht ueber StockDrift oder wird auf Gleichheit verglichen", .needsTheSources)
     func everyStockLocksBothWays() throws {
-        let walker = try #require(FileManager.default.enumerator(
-            at: SourceTree.root.appendingPathComponent("MaerTests"), includingPropertiesForKeys: nil))
         var declared = 0
         var oneWay: [String] = []
-        for case let file as URL in walker where file.pathExtension == "swift" && file.lastPathComponent != "StockDrift.swift" {
+        for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("MaerTests")) where file.pathExtension == "swift" && file.lastPathComponent != "StockDrift.swift" {
             let text = try String(contentsOf: file, encoding: .utf8)
             let stocks = Self.numericStocks(in: text)
             declared += stocks.count

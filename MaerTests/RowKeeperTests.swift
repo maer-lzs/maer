@@ -221,8 +221,7 @@ struct RowKeeperTests {
     @Test("ausserhalb der Kette haelt niemand eine Abwertung als Zustand", .needsTheSources)
     func noStoreKeepsANarrowingOfItsOwn() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
         let keepers = try files.filter { $0.lastPathComponent != "RowChain.swift" }.filter {
             SyncContractFenceTests.stripped(try String(contentsOf: $0, encoding: .utf8)).contains(Self.storedNarrowing)
@@ -465,8 +464,7 @@ struct RowKeeperTests {
     @Test("jeder Keeper und jede eigene Kette in den Quellen hat die Uebernahme ihres Speichers", .needsTheSources)
     func everyKeeperHasItsAdoption() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { $0.pathExtension == "swift" && !["RowKeeper.swift", "RowChain.swift"].contains($0.lastPathComponent) }
         var built = 0
         for file in files {
@@ -494,8 +492,7 @@ struct RowKeeperTests {
     @Test("die Mechanik lesen, uebernehmen, schreiben steht an einer Stelle", .needsTheSources)
     func theMechanismStandsInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
         var reckoning: [String] = []
         var ownChains: [String] = []

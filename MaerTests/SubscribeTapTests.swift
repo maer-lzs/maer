@@ -78,7 +78,7 @@ struct SubscribeTapTests {
 
     /// The badge's one way: both branches hand their answer to `settle`, no
     /// forgetting outside it, no discarded server answer.
-    @Test("der Abo-Weg des Abzeichens vergisst nur in settle und verwirft keine Antwort")
+    @Test("der Abo-Weg des Abzeichens vergisst nur in settle und verwirft keine Antwort", .needsTheSources)
     func theBadgeForgetsOnlyInSettle() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/Podcasts/PodcastComponents.swift"),

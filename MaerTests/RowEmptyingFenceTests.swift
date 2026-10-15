@@ -31,8 +31,7 @@ struct RowEmptyingFenceTests {
     @Test("jede Zeilen-Schrift, die leeren darf, steht mit Grund im Bestand, in beide Richtungen", .needsTheSources)
     func onlyTheStockMayEmpty() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowKeeper.swift" }, "the fence read the sources")
         var found: [String: Int] = [:]
         for file in files {
@@ -59,8 +58,7 @@ struct RowEmptyingFenceTests {
     @Test("jede eigene Schreibkette fragt die eine Regel, und keine Quelle vergleicht von Hand gegen nichts", .needsTheSources)
     func everyChainAsksTheRule() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var asking: Set<String> = []
         var byHand: [String] = []
         for file in files {

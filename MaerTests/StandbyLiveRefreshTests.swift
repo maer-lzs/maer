@@ -284,7 +284,7 @@ struct StandbyLiveRefreshTests {
                 "zurueck kommt der Titel, der wirklich lief")
     }
 
-    @Test("der gelungene Weg ruft die Bestaetigung wirklich auf")
+    @Test("der gelungene Weg ruft die Bestaetigung wirklich auf", .needsTheSources)
     func theSuccessfulPathCallsTheConfirmation() throws {
         // Der Fall darunter treibt confirmOwnSession() selbst und belegt
         // damit die METHODE, nicht ihre Verdrahtung: eine Rot-Probe, die

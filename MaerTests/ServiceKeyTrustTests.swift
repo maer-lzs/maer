@@ -112,7 +112,7 @@ struct ServiceKeyTrustTests {
     /// A source fence, because a behaviour case in the simulator cannot see
     /// whether an item would reach the iCloud keychain on a device. Same
     /// construction as the fence over the device link code.
-    @Test("die Ablage nennt den Reise-Parameter nie und haelt geraete-lokal")
+    @Test("die Ablage nennt den Reise-Parameter nie und haelt geraete-lokal", .needsTheSources)
     func theStoreNeverNamesTheTravelParameterAndHoldsLocally() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "ServiceKeyPin.swift" })

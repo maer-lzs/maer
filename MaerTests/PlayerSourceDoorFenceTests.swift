@@ -30,7 +30,7 @@ struct PlayerSourceDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Nur die Registrierung fasst den Rueckruf an, alle anderen gehen durch die Tuer")
+    @Test("Nur die Registrierung fasst den Rueckruf an, alle anderen gehen durch die Tuer", .needsTheSources)
     func onlyTheRegistrationTouchesTheClosure() throws {
         let ownFile = "Sources/Views/PlayerSourceNavigation.swift"
         let expected: [String: (count: Int, reason: String)] = [
@@ -41,11 +41,8 @@ struct PlayerSourceDoorFenceTests {
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             if relative == ownFile { continue }
             let count = try codeOf(relative)
                 .split(separator: "\n", omittingEmptySubsequences: false)
@@ -60,7 +57,7 @@ struct PlayerSourceDoorFenceTests {
     /// Und die Gegenrichtung, damit der Bestand oben nicht deshalb stimmt,
     /// weil die Tuer verschwunden ist: `open(_:)` ruft den Verschluss wirklich
     /// und protokolliert davor.
-    @Test("Die Tuer protokolliert und ruft dann")
+    @Test("Die Tuer protokolliert und ruft dann", .needsTheSources)
     func theDoorLogsAndThenCalls() throws {
         let code = try codeOf("Sources/Views/PlayerSourceNavigation.swift")
         guard let door = code.range(of: "func open(_ target: PlayerSourceTarget)"),

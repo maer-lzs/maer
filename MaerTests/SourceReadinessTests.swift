@@ -99,8 +99,7 @@ struct SourceReadinessTests {
     @Test("kein Provider baut sich seinen eigenen Bereitschafts-Satz", .needsTheSources)
     func noProviderBuildsItsOwnReadinessSentence() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
-        let dateien = try #require(FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let dateien = SourceTree.files(under: wurzel)
             .filter { $0.pathExtension == "swift" }
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []
@@ -121,8 +120,7 @@ struct SourceReadinessTests {
     @Test("kein Rufer reicht einen zusammengesetzten Wert als Schalter durch", .needsTheSources)
     func noCallerPassesAComposedValueAsTheSwitch() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
-        let dateien = try #require(FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let dateien = SourceTree.files(under: wurzel)
             .filter { $0.pathExtension == "swift" }
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []

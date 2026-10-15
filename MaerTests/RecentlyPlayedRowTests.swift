@@ -170,7 +170,7 @@ struct RecentlyPlayedRowTests {
     /// Der Zaun: BEIDE Flaechen nennen die Tueren, und KEINE baut die
     /// Abbildung noch einmal von Hand. Beide sind namentlich genannt, damit
     /// eine dritte nicht stumm danebenlaeuft.
-    @Test("keine Flaeche beantwortet die Frage ein zweites Mal")
+    @Test("keine Flaeche beantwortet die Frage ein zweites Mal", .needsTheSources)
     func noSurfaceAnswersTheQuestionASecondTime() throws {
         let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "MusicView.swift"]
         var seen: Set<String> = []

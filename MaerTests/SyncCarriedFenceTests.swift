@@ -34,7 +34,7 @@ struct SyncCarriedFenceTests {
             }.count
     }
 
-    @Test("Ein Katalog-Stub entsteht nur in SyncCarried")
+    @Test("Ein Katalog-Stub entsteht nur in SyncCarried", .needsTheSources)
     func stubOnlyInTheSeam() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/SyncCarried.swift") {
@@ -46,7 +46,7 @@ struct SyncCarriedFenceTests {
         #expect(Self.stubSites(in: "let x = LibraryItem(id: id, media: detail.media, addedAt: nil)") == 0)
     }
 
-    @Test("Views und ViewModels fragen den Aufloeser, nie die Praefix-Liste")
+    @Test("Views und ViewModels fragen den Aufloeser, nie die Praefix-Liste", .needsTheSources)
     func viewsAskTheResolver() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()

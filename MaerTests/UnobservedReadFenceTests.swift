@@ -272,7 +272,7 @@ struct UnobservedReadFenceTests {
 
     /// The instrument, in both directions, and the member list against the
     /// manager's source.
-    @Test("der Zaehler sieht die Lesung, und nur die ohne Beobachtung")
+    @Test("der Zaehler sieht die Lesung, und nur die ohne Beobachtung", .needsTheSources)
     func theCounterSeesTheReadAndOnlyTheUnobservedOne() throws {
         let members = ["isDownloaded", "phase"]
         let bare = """

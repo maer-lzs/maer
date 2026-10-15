@@ -61,7 +61,7 @@ struct SubscriptionRemovalRecordTests {
     /// zurueckgekommen, waere der ganze Zug sinnlos und gefaehrlich, und kein
     /// Verhaltens-Fall wuerde es merken, weil beide Wege dasselbe Ergebnis
     /// haetten, solange nichts schiefgeht.
-    @Test("Die Ableitung eines Abo-Grabsteins bleibt verweigert")
+    @Test("Die Ableitung eines Abo-Grabsteins bleibt verweigert", .needsTheSources)
     func theDerivationStaysRefused() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let code = try String(contentsOf: root.appendingPathComponent("Sources/Networking/UserChoiceCloudSync.swift"),

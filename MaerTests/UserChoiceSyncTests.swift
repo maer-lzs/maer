@@ -48,7 +48,7 @@ struct UserChoiceMergeTests {
                 == .init(local: 1, document: 2, removed: 1, unheld: 1, push: 1))
     }
 
-    @Test("TF-1b: der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich")
+    @Test("TF-1b: der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich", .needsTheSources)
     func theCountsAreSaid() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func flat(_ relative: String) throws -> String {
@@ -935,8 +935,7 @@ struct UserChoiceGateTests {
             "goforward.": "an SF Symbol name for the skip button, never stored",
         ]
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: root)
             .filter { $0.pathExtension == "swift" }
         try #require(files.count > 100, "the fence did not read the source tree")
         var families: Set<String> = []
@@ -950,7 +949,7 @@ struct UserChoiceGateTests {
         #expect(stale.isEmpty, "named as no key, but no longer in the sources: \(stale.sorted())")
     }
 
-    @Test("Every stored key in the key-bearing files is classified")
+    @Test("Every stored key in the key-bearing files is classified", .needsTheSources)
     func everyKeyIsClassified() throws {
         let files = ["Sources/Models/AppStorageKeys.swift",
                      "Sources/Models/RadioModels.swift",

@@ -95,7 +95,7 @@ struct QueueTrackEndTests {
         #expect(!PlayerCoordinator.resolvesToRestart(explicitRestart: false, autoplay: false, isFinished: true))
     }
 
-    @Test("Titelende: der Start fragt die Regel mit der lokalen Marke, nicht nur den Server")
+    @Test("Titelende: der Start fragt die Regel mit der lokalen Marke, nicht nur den Server", .needsTheSources)
     func theStartAsksTheRule() throws {
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("isFinished: Self.isFinishedAtOpen("))
@@ -121,7 +121,7 @@ struct QueueTrackEndTests {
     /// session, no session while loading, the new session), never show the
     /// spinner once a session was shown; a load that fails shows its error,
     /// and a first open still spins.
-    @Test("Grosser Player: ein Titelwechsel zeigt keinen Ladekreis zwischen zwei Titeln, der alte Titel bleibt bis zum neuen")
+    @Test("Grosser Player: ein Titelwechsel zeigt keinen Ladekreis zwischen zwei Titeln, der alte Titel bleibt bis zum neuen", .needsTheSources)
     func aTitleChangeShowsNoSpinnerBetweenTitles() throws {
         let change: [(hasSession: Bool, isLoading: Bool, loadError: String?)] = [
             (true, false, nil), (false, true, nil), (false, true, nil), (true, false, nil),
@@ -156,7 +156,7 @@ struct QueueTrackEndTests {
     /// already stopped (claim, lock screen and widget for the old title). It
     /// takes no input of any kind, and the one grip that says so blocks the
     /// accessibility tree with the finger.
-    @Test("Grosser Player: der gehaltene alte Titel nimmt keine Eingabe an, weder Finger noch VoiceOver noch Schaltersteuerung")
+    @Test("Grosser Player: der gehaltene alte Titel nimmt keine Eingabe an, weder Finger noch VoiceOver noch Schaltersteuerung", .needsTheSources)
     func theHeldPlayerTakesNoInput() throws {
         let screen = try Self.source("Sources/Views/PlayerScreen.swift")
         #expect(screen.contains(".takesInput(content == .player)"), "the held player is not closed by the input grip")
@@ -173,7 +173,7 @@ struct QueueTrackEndTests {
     /// measured, a hint that came without a change of `isPlaying` showed only
     /// on an unrelated redraw. Every notice of the model goes into the one
     /// channel, which the pill observes itself, in both places.
-    @Test("Statushinweis: jeder Hinweis des Modells kommt im Kanal an, beide Pillen lesen ihn dort")
+    @Test("Statushinweis: jeder Hinweis des Modells kommt im Kanal an, beide Pillen lesen ihn dort", .needsTheSources)
     @MainActor
     func theChannelCarriesTheHint() throws {
         let id = "rss:hint-carry:\(UUID().uuidString)"
@@ -206,7 +206,7 @@ struct QueueTrackEndTests {
 
     /// An open by id that resolves nothing starts nothing; the line is the
     /// only trace of that tap.
-    @Test("Oeffnen per Kennung, die nicht aufloest: nichts spielt, eine Zeile sagt es")
+    @Test("Oeffnen per Kennung, die nicht aufloest: nichts spielt, eine Zeile sagt es", .needsTheSources)
     func anUnresolvedOpenLeavesALine() throws {
         let source = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         let start = try #require(source.range(of: "func open(itemId: String) async {"), "the open by id is gone")
@@ -223,7 +223,7 @@ struct QueueTrackEndTests {
                 "the resolver's failed fetch leaves no line with its reason")
     }
 
-    @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden")
+    @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden", .needsTheSources)
     func thePlayerClosesOnNothing() throws {
         let overlay = try Self.source("Sources/Views/FullPlayerOverlay.swift")
         #expect(overlay.contains(".onChange(of: coordinator.screenContent == .nothing, initial: true)"))
@@ -239,7 +239,7 @@ struct QueueTrackEndTests {
         #expect(!coordinator.contains("defer { isLoading = false }"))
     }
 
-    @Test("Grosser Player: Als gehoert markieren leert die Sitzung nur, wenn nichts folgt")
+    @Test("Grosser Player: Als gehoert markieren leert die Sitzung nur, wenn nichts folgt", .needsTheSources)
     func markingHandsOverWhenSomethingFollows() throws {
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         let start = try #require(coordinator.range(of: "func markPlayedAndAdvance(itemId: String) {"))
@@ -263,7 +263,7 @@ struct QueueTrackEndTests {
         }
     }
 
-    @Test("Musik: kein isSubsonic, wo Musik gemeint ist, und der Liedtext fragt den Server des Titels")
+    @Test("Musik: kein isSubsonic, wo Musik gemeint ist, und der Liedtext fragt den Server des Titels", .needsTheSources)
     func noSubsonicStandsForMusic() throws {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/ItemNamespace.swift")
@@ -279,7 +279,7 @@ struct QueueTrackEndTests {
                 "a bare song id carries no namespace and reached the first server")
     }
 
-    @Test("Warteschlange: die Ansicht holt das Detail ueber die eine Frage und zeigt jeden Eintrag")
+    @Test("Warteschlange: die Ansicht holt das Detail ueber die eine Frage und zeigt jeden Eintrag", .needsTheSources)
     func theQueueViewShowsEveryEntry() throws {
         let view = try Self.source("Sources/Views/PlayQueueView.swift")
         #expect(view.contains("guard SyncCarried.resolvesOnDemand("))

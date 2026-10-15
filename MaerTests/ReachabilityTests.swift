@@ -77,8 +77,7 @@ struct ReachabilityTests {
         var files: [URL] = []
         for folder in ["Sources/Networking", "Sources/Providers"] {
             let root = SourceTree.root.appendingPathComponent(folder)
-            files += try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-                .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+            files += SourceTree.files(under: root).filter { $0.pathExtension == "swift" }
         }
         #expect(files.contains { $0.lastPathComponent == "Reachability.swift" }, "the fence read Networking")
         #expect(files.contains { $0.lastPathComponent == "ProviderSearch.swift" }, "the fence read Providers")
@@ -127,8 +126,7 @@ struct ReachabilityTests {
     @Test("nur TestProcess beantwortet, ob der Prozess unter einem Test laeuft", .needsTheSources)
     func oneAnswerToUnderTest() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var reading: [String] = []
         for file in files where file.lastPathComponent != "TestProcess.swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

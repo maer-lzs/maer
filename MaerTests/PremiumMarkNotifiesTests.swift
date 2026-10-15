@@ -45,7 +45,7 @@ struct PremiumMarkNotifiesTests {
 
     /// Und der Bestand: kein Rufer stoesst den Publisher noch selbst an. Wer
     /// es wieder tut, hat die Pflicht zurueck auf die Rufer verteilt.
-    @Test("Keine Flaeche stoesst den Abo-Publisher nach einer Markierung selbst an")
+    @Test("Keine Flaeche stoesst den Abo-Publisher nach einer Markierung selbst an", .needsTheSources)
     func noSurfacePokesThePublisher() throws {
         let allowed: [String: String] = [
             "Sources/Providers/PodcastSubscriptions.swift":
@@ -56,13 +56,10 @@ struct PremiumMarkNotifiesTests {
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             if allowed[relative] != nil { continue }
-            let code = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+            let code = try String(contentsOf: url, encoding: .utf8)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")

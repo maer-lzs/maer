@@ -72,7 +72,7 @@ struct PodcastICloudSwitchFenceTests {
             }.count
     }
 
-    @Test("den Apple-Namen liest nur, wer wirklich Apple meint")
+    @Test("den Apple-Namen liest nur, wer wirklich Apple meint", .needsTheSources)
     func onlyAppleCarriersReadTheAppleName() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -85,7 +85,7 @@ struct PodcastICloudSwitchFenceTests {
         #expect(drift.isEmpty, "the Apple name is read for a question across the ways, or a stock above the count: \(drift)")
     }
 
-    @Test("ueber den Traegern fragt jeder die Tuer, und keiner den Apple-Namen")
+    @Test("ueber den Traegern fragt jeder die Tuer, und keiner den Apple-Namen", .needsTheSources)
     func everythingAboveTheCarriersAsksTheDoor() throws {
         var offenders: [String] = []
         var seen = 0
@@ -103,7 +103,7 @@ struct PodcastICloudSwitchFenceTests {
         #expect(offenders.isEmpty, "\(offenders)")
     }
 
-    @Test("der Schluessel wird nur dort genannt, wo er gebunden oder eingestuft wird")
+    @Test("der Schluessel wird nur dort genannt, wo er gebunden oder eingestuft wird", .needsTheSources)
     func theKeyIsNamedOnlyWhereItIsBound() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -120,7 +120,7 @@ struct PodcastICloudSwitchFenceTests {
         #expect(Self.linesNamingTheKey(in: "let k = AppStorageKeys.podcastICloudSync") == 1)
     }
 
-    @Test("die Tuer reicht denselben Wert weiter, sie entscheidet nichts eigenes")
+    @Test("die Tuer reicht denselben Wert weiter, sie entscheidet nichts eigenes", .needsTheSources)
     func theDoorForwardsTheSameValue() throws {
         // Two witnesses, because one alone would not hold. At runtime the
         // two names must agree; that catches a door that decides something

@@ -23,10 +23,8 @@ struct ServerAnswersFenceTests {
     /// Every answer file, by its path below `ServerAnswers`.
     static func files() throws -> Set<String> {
         let folder = SourceTree.root.appendingPathComponent("MaerTests/Fixtures/ServerAnswers")
-        let walker = try #require(FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey]))
         var found: Set<String> = []
-        for case let url as URL in walker where !url.lastPathComponent.hasPrefix(".")
-            && (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
+        for url in SourceTree.files(under: folder) where !url.lastPathComponent.hasPrefix(".") {
             found.insert(String(SourceTree.relativePath(of: url).dropFirst("MaerTests/Fixtures/ServerAnswers/".count)))
         }
         return found
@@ -53,9 +51,7 @@ struct ServerAnswersFenceTests {
         #expect(keys.subtracting(files).isEmpty, "an origin whose answer is gone: \(keys.subtracting(files).sorted())")
         var read: Set<String> = []
         for folder in ["MaerTests", "MaerUITests"] {
-            let walker = try #require(FileManager.default.enumerator(
-                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
-            for case let url as URL in walker where url.pathExtension == "swift" {
+            for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where url.pathExtension == "swift" {
                 read.formUnion(Self.readFiles(in: SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))))
             }
         }

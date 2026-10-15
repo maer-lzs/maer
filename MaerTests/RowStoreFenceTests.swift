@@ -65,7 +65,7 @@ struct RowStoreFenceTests {
         ["KeyedRowStore<"] + code.matches(of: #/typealias\s+(\w+)\s*=\s*KeyedRowStore</#).map { String($0.1) }
     }
 
-    @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")
+    @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug", .needsTheSources)
     func rowsHaveOneHome() throws {
         var offenders: [String] = []
         var importers: Set<String> = []

@@ -84,17 +84,15 @@ nonisolated enum SharedCases {
 struct SharedCasesFenceTests {
     static func files() throws -> [URL] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/Shared")
-        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else { return [] }
-        return walk.compactMap { $0 as? URL }.filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
+        return SourceTree.files(under: root).filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
     }
 
     /// `area/name.json` of every `SharedCases.cases("name", area: …)` in the
     /// witnesses; the area defaults to `abos`, as in `cases`.
     static func namedFiles() throws -> Set<String> {
         let tests = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        guard let walk = FileManager.default.enumerator(at: tests, includingPropertiesForKeys: nil) else { return [] }
         var named: Set<String> = []
-        for case let url as URL in walk where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: tests) where url.pathExtension == "swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
             for match in code.matches(of: #/SharedCases\.cases\("([^"]+)"(?:, area: "([^"]+)")?\)/#) {
                 named.insert("\(match.output.2.map(String.init) ?? "abos")/\(match.output.1).json")

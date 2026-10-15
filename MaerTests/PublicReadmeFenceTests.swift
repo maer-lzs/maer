@@ -532,10 +532,7 @@ struct PublicReadmeFenceTests {
         var found: [(String, String)] = []
         for folder in ["docs", "tools", "scripts", "MaerTests"] {
             let directory = SourceTree.root.appendingPathComponent(folder)
-            guard let walker = FileManager.default.enumerator(at: directory,
-                                                              includingPropertiesForKeys: nil)
-            else { continue }
-            for case let url as URL in walker {
+            for url in SourceTree.files(under: directory) {
                 let name = url.lastPathComponent
                 guard !fenceFiles.contains(name),
                       // Measured, not assumed: these are every extension in

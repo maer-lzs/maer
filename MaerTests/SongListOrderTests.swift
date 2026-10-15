@@ -189,7 +189,7 @@ struct SongListOrderTests {
         #expect(serverMisordered == 17, "measured: 5, 1, 0, 5 and 6 pairs in the server's Name order")
     }
 
-    @Test("GT-2: Navidrome sortiert auf dem Geraet, ein Fehlschlag ist ein Satz, die Seite nennt den Stand")
+    @Test("GT-2: Navidrome sortiert auf dem Geraet, ein Fehlschlag ist ein Satz, die Seite nennt den Stand", .needsTheSources)
     func theWiring() throws {
         let subsonic = try Self.source("Sources/Providers/SubsonicProvider.swift")
         #expect(subsonic.contains("sorted = SongOrder.sorted(catalog.entries.map(Self.topSong(from:)), by: sort)"))

@@ -48,8 +48,7 @@ struct TransportSecurityFenceTests {
     @Test("die alte Klartext-Behauptung kommt nicht mehr vor, und die zwei neuen Saetze haengen am Katalog", .needsTheSources)
     func theSentencesAreTheMeasuredOnes() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { ["swift", "xcstrings"].contains($0.pathExtension) }
         try #require(files.count > 100, "the source tree was not read")
         var oldHits: [String] = []

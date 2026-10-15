@@ -40,9 +40,8 @@ struct SettingsEdgeTests {
     /// Every source of the app, comments cut, by its path below the root.
     static func sources() throws -> [String: String] {
         let folder = SourceTree.root.appendingPathComponent("Sources")
-        let walker = try #require(FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil))
         var code: [String: String] = [:]
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: folder) where url.pathExtension == "swift" {
             code[SourceTree.relativePath(of: url)] = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
         }
         return code

@@ -31,9 +31,7 @@ struct RelativePathFenceTests {
         var offenders: [String] = []
         var read = 0
         for folder in ["MaerTests", "MaerUITests"] {
-            let walker = try #require(FileManager.default.enumerator(
-                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
-            for case let url as URL in walker where url.pathExtension == "swift"
+            for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where url.pathExtension == "swift"
                 && url.lastPathComponent != "RelativePathFenceTests.swift" {
                 read += 1
                 let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))

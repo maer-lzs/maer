@@ -29,7 +29,7 @@ struct UnsubscribeDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Nur die eine Handlung und zwei abgeleitete Rufer fassen das Abbestellen an")
+    @Test("Nur die eine Handlung und zwei abgeleitete Rufer fassen das Abbestellen an", .needsTheSources)
     func onlyTheOneActionUnsubscribes() throws {
         let expected: [String: (count: Int, reason: String)] = [
             "Sources/Views/Podcasts/PodcastHelpers.swift":
@@ -48,15 +48,13 @@ struct UnsubscribeDoorFenceTests {
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let count = try codeOf("Sources/" + name)
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
+            let count = try codeOf(relative)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { $0.contains("unsubscribe(id:") && !$0.contains("func unsubscribe") }
                 .count
-            if count > 0 { found["Sources/" + name] = count }
+            if count > 0 { found[relative] = count }
         }
         #expect(found == expected.mapValues(\.count),
                 "eine Flaeche bestellt an der einen Handlung vorbei ab")
@@ -65,7 +63,7 @@ struct UnsubscribeDoorFenceTests {
     /// Gegenprobe: die eine Handlung tut wirklich beide Hälften. Ohne diesen
     /// Fall könnte der Bestand oben stimmen, während `podcastUnsubscribe`
     /// selbst auf die RSS-Hälfte zusammengeschrumpft ist.
-    @Test("Die eine Handlung raeumt beide Seiten")
+    @Test("Die eine Handlung raeumt beide Seiten", .needsTheSources)
     func theOneActionClearsBothSides() throws {
         let code = try codeOf("Sources/Views/Podcasts/PodcastHelpers.swift")
         guard let action = code.range(of: "func podcastUnsubscribe") else {

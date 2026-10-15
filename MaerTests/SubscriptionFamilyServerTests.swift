@@ -128,7 +128,7 @@ struct SubscriptionFamilyServerTests {
     /// What the round applies locally is noted to the family (the fence on
     /// the two call sites, because the shared family runner stays silent in
     /// the test host and cannot witness the note itself).
-    @Test("die gpodder-Runde notiert, was sie lokal anwendet, in die Familie")
+    @Test("die gpodder-Runde notiert, was sie lokal anwendet, in die Familie", .needsTheSources)
     func theRoundNotesItsLocalChangesToTheFamily() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8)

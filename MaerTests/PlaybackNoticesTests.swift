@@ -326,7 +326,7 @@ struct PlaybackNoticesTests {
     /// The two notices of an unreadable download say the decided sentences,
     /// and those stand in the catalog, in German too; a change of the wording
     /// is a decision, not an edit.
-    @Test("die zwei Meldungen eines unlesbaren Downloads sagen die entschiedenen Saetze, und die stehen im Katalog")
+    @Test("die zwei Meldungen eines unlesbaren Downloads sagen die entschiedenen Saetze, und die stehen im Katalog", .needsTheSources)
     func theUnreadableDownloadSentencesStandAsDecided() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]

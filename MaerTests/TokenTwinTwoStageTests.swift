@@ -61,7 +61,7 @@ struct TokenTwinTwoStageTests {
         }
     }
 
-    @Test("Die Kopf-Stufe faltet nicht: zwischen den Koepfen und den vollen Zeilen ruft der Start migrated nicht")
+    @Test("Die Kopf-Stufe faltet nicht: zwischen den Koepfen und den vollen Zeilen ruft der Start migrated nicht", .needsTheSources)
     func theHeadStageDoesNotFold() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"),

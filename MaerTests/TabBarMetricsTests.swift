@@ -53,13 +53,11 @@ import UIKit
     /// `ViewThatFits(` does not appear in Sources at all. `MeasuredFits` /
     /// `MeasuredLadder` are the replacements. They decide on the main
     /// render path and need no off-main guarantee.
-    @Test func viewThatFitsIsBannedRepoWide() throws {
+    @Test(.needsTheSources) func viewThatFitsIsBannedRepoWide() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        let enumerator = FileManager.default.enumerator(at: sources,
-                                                        includingPropertiesForKeys: nil)!
-        for case let url as URL in enumerator where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             let text = try String(contentsOf: url, encoding: .utf8)
             #expect(!text.contains("ViewThatFits("),
                     "\(url.lastPathComponent): ViewThatFits ist nach vier Geraete-Crashes verboten (e111072) — MeasuredFits/MeasuredLadder nehmen")

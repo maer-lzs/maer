@@ -31,9 +31,8 @@ struct SourcePrefixFenceTests {
     private static let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
 
     private static func files(under folder: String) -> [URL] {
-        FileManager.default.enumerator(at: root.appendingPathComponent("Sources/\(folder)"),
-                                       includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        SourceTree.files(under: root.appendingPathComponent("Sources/\(folder)"))
+            .filter { $0.pathExtension == "swift" }
     }
 
     /// The files directly in `Sources`: the app, the router, the seed.
@@ -43,7 +42,7 @@ struct SourcePrefixFenceTests {
             .filter { $0.pathExtension == "swift" }
     }
 
-    @Test("Views, ViewModels, CarPlay, Models, Networking und die Wurzel buchstabieren keinen Quell-Praefix")
+    @Test("Views, ViewModels, CarPlay, Models, Networking und die Wurzel buchstabieren keinen Quell-Praefix", .needsTheSources)
     func surfacesSpellNoPrefix() throws {
         var offenders: [String] = []
         var files = try Self.rootFiles()
@@ -73,7 +72,7 @@ struct SourcePrefixFenceTests {
         "PlayQueue.swift": ["radio:"],
     ]
 
-    @Test("Ein Provider buchstabiert nur seine eigene Quelle")
+    @Test("Ein Provider buchstabiert nur seine eigene Quelle", .needsTheSources)
     func providersSpellOnlyTheirOwnSource() throws {
         var offenders: [String] = []
         for file in Self.files(under: "Providers") {

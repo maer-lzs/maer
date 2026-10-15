@@ -71,7 +71,7 @@ struct ProjectFileIntegrityTests {
         return !line.contains("=")
     }
 
-    @Test("no player or sync call in a view body expression")
+    @Test("no player or sync call in a view body expression", .needsTheSources)
     func viewBodiesDoNotDrivePlayerOrSync() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -131,9 +131,7 @@ struct ProjectFileIntegrityTests {
         var checked = 0
         for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
             let dir = root.appendingPathComponent(folder)
-            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-            else { continue }
-            for case let url as URL in walker where url.pathExtension == "swift" {
+            for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 checked += 1
                 let head = text.prefix(400)
@@ -178,9 +176,7 @@ struct ProjectFileIntegrityTests {
         var checked = 0
         for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
             let dir = root.appendingPathComponent(folder)
-            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-            else { continue }
-            for case let url as URL in walker where url.pathExtension == "swift" {
+            for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 checked += 1
                 // Ein JWT im Quelltext: "eyJ" gefolgt von base64 und einem Punkt.
@@ -205,15 +201,10 @@ struct ProjectFileIntegrityTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else {
-            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
-            return
-        }
         var literals: [String] = []
         var definitions = 0
         var checked = 0
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             checked += 1
             if url.lastPathComponent == "AppUserAgent.swift" {
@@ -241,14 +232,9 @@ struct ProjectFileIntegrityTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources/Views")
-        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else {
-            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
-            return
-        }
         var offenders: [String] = []
         var checked = 0
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             checked += 1
             let lines = text.components(separatedBy: "\n")
@@ -300,14 +286,9 @@ struct ProjectFileIntegrityTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else {
-            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
-            return
-        }
         var offenders: [String] = []
         var checked = 0
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
             if url.lastPathComponent == "AppStorageKeys.swift" { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             checked += 1
@@ -345,13 +326,12 @@ struct ProjectFileIntegrityTests {
     /// The fence knows the KEY, not the number: `count == 2` is perfectly
     /// correct elsewhere (byte frames in the download manager, URL parts, lyric
     /// timestamps) and must not be caught with it.
-    @Test("no reader of localPosition checks for count == 2")
+    @Test("no reader of localPosition checks for count == 2", .needsTheSources)
     func noPositionReaderChecksForExactlyTwo() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let sources = root.appendingPathComponent("Sources")
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
@@ -414,13 +394,12 @@ struct ProjectFileIntegrityTests {
         return nil
     }
 
-    @Test("no array literal is written to a localPosition key")
+    @Test("no array literal is written to a localPosition key", .needsTheSources)
     func noRawArrayIsWrittenToAPositionKey() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let sources = root.appendingPathComponent("Sources")
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
@@ -528,13 +507,12 @@ struct ProjectFileIntegrityTests {
         return offenders
     }
 
-    @Test("the played decision is not reimplemented anywhere")
+    @Test("the played decision is not reimplemented anywhere", .needsTheSources)
     func playedDecisionIsNotReimplemented() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let sources = root.appendingPathComponent("Sources")
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files where file.lastPathComponent != "ProgressMark.swift" {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
@@ -617,13 +595,12 @@ extension ProjectFileIntegrityTests {
         return offenders
     }
 
-    @Test("gpodder's visible-subscription rule lives in exactly one place")
+    @Test("gpodder's visible-subscription rule lives in exactly one place", .needsTheSources)
     func gpodderVisibilityRuleIsNotCopied() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let sources = root.appendingPathComponent("Sources")
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files {
             // The one sanctioned home carries the rule itself.
@@ -690,7 +667,7 @@ extension ProjectFileIntegrityTests {
         return offenders
     }
 
-    @Test("kuratierte Vorschau-Reihen beziehen ihre Picks ueber den geprobten Eintrittspunkt")
+    @Test("kuratierte Vorschau-Reihen beziehen ihre Picks ueber den geprobten Eintrittspunkt", .needsTheSources)
     func previewPicksComeFromTheProbedEntryPoint() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -722,7 +699,7 @@ extension ProjectFileIntegrityTests {
 // MARK: - Das Instrument fragt die Regel, es kopiert sie nicht
 
 extension ProjectFileIntegrityTests {
-    @Test("die Fortschritts-Diagnose vergleicht nicht selbst")
+    @Test("die Fortschritts-Diagnose vergleicht nicht selbst", .needsTheSources)
     func diagnosisAsksTheSharedRule() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -741,7 +718,7 @@ extension ProjectFileIntegrityTests {
     /// judged by the SHARED rules. The same reason as above, and the same
     /// failure mode: identical today, silently divergent the day a tolerance
     /// moves.
-    @Test("der Start fragt beide Zeugen-Regeln, statt selbst zu vergleichen")
+    @Test("der Start fragt beide Zeugen-Regeln, statt selbst zu vergleichen", .needsTheSources)
     func startAsksTheSharedWitnessRules() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -758,7 +735,7 @@ extension ProjectFileIntegrityTests {
     /// The witness only helps if it SURVIVES the sync. The deletion is the
     /// shipped shape that caused the null start; it may not come back without
     /// the tombstone beside it.
-    @Test("der Sync loescht den Zeugen nicht ersatzlos")
+    @Test("der Sync loescht den Zeugen nicht ersatzlos", .needsTheSources)
     func syncKeepsAWitness() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -778,7 +755,7 @@ extension ProjectFileIntegrityTests {
     /// same class as a stale constant. It must keep a SECOND writer, the
     /// one that carries the
     /// server's answer into it.
-    @Test("das gecachte Detail wird nicht nur beim Herunterladen geschrieben")
+    @Test("das gecachte Detail wird nicht nur beim Herunterladen geschrieben", .needsTheSources)
     func cachedDetailIsKeptCurrent() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -923,13 +900,12 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("nur der geteilte Schlitz spannt eine Kachelreihe auf")
+    @Test("nur der geteilte Schlitz spannt eine Kachelreihe auf", .needsTheSources)
     func cardRowsAskTheSharedSlot() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-        let sources = FileManager.default.enumerator(
-            at: root.appendingPathComponent("Sources"), includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let sources = SourceTree.files(under: root.appendingPathComponent("Sources"))
+            .filter { $0.pathExtension == "swift" }
         #expect(!sources.isEmpty)
         var offenders: [String] = []
         for file in sources where file.lastPathComponent != "TabContentLayout.swift" {
@@ -961,12 +937,11 @@ extension ProjectFileIntegrityTests {
 
     /// Every source file, so a sweep sees the whole class instead of the
     /// files someone remembered.
-    static func sourceFiles() -> [URL] {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-        return FileManager.default.enumerator(
-            at: root.appendingPathComponent("Sources"), includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+    /// Through the one walk, so a run without the sources is red here
+    /// unless the case's head skips it.
+    static func sourceFiles(sourceLocation: SourceLocation = #_sourceLocation) -> [URL] {
+        SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"), sourceLocation: sourceLocation)
+            .filter { $0.pathExtension == "swift" }
     }
 
     /// The surfaces that used to carry their own way into the playlists: a
@@ -979,7 +954,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("keine Flaeche haelt sich einen eigenen Playlist-Weg")
+    @Test("keine Flaeche haelt sich einen eigenen Playlist-Weg", .needsTheSources)
     func playlistRoutesAreShared() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1015,7 +990,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("angelegt wird an genau einer Stelle")
+    @Test("angelegt wird an genau einer Stelle", .needsTheSources)
     func creatingHappensInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "AddToPlaylistSheet.swift" {
@@ -1052,7 +1027,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("keine Feed-Anfrage baut ihre Adresse selbst")
+    @Test("keine Feed-Anfrage baut ihre Adresse selbst", .needsTheSources)
     func feedRequestsAskTheSharedAddress() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "PodcastFeedAddress.swift" {
@@ -1144,7 +1119,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("ausserhalb des Bestands baut niemand einen Fortschritts-Schluessel")
+    @Test("ausserhalb des Bestands baut niemand einen Fortschritts-Schluessel", .needsTheSources)
     func onlyTheStockBuildsProgressKeys() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles()
@@ -1170,7 +1145,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.progressKeyBuilders(in: "ListeningStore.mark(item.id)") == 0)
     }
 
-    @Test("keine Flaeche fasst die Fortschritts-Schluessel selbst an")
+    @Test("keine Flaeche fasst die Fortschritts-Schluessel selbst an", .needsTheSources)
     func everySurfaceAsksTheStock() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles()
@@ -1210,7 +1185,7 @@ extension ProjectFileIntegrityTests {
     /// The ticker is class-blind by construction. The moment a call-site
     /// condition appears around it, one class loses its local truth again, and
     /// that asymmetry is where the whole null-start family came from.
-    @Test("der Sekundenschreiber kennt keine Klassen-Ausnahme")
+    @Test("der Sekundenschreiber kennt keine Klassen-Ausnahme", .needsTheSources)
     func theTickerWritesForEveryClass() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -1228,7 +1203,7 @@ extension ProjectFileIntegrityTests {
         }
     }
 
-    @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos")
+    @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos", .needsTheSources)
     func noPathRemovesAListeningState() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
@@ -1282,7 +1257,7 @@ extension ProjectFileIntegrityTests {
         return count
     }
 
-    @Test("kein festes Datumsformat ohne festes Gebietsschema")
+    @Test("kein festes Datumsformat ohne festes Gebietsschema", .needsTheSources)
     func fixedFormatsCarryAFixedLocale() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1330,7 +1305,7 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("kein Einstellungs-Schluessel steht als roher String im Baum")
+    @Test("kein Einstellungs-Schluessel steht als roher String im Baum", .needsTheSources)
     func storageKeysComeFromTheOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1383,7 +1358,7 @@ extension ProjectFileIntegrityTests {
     /// value back is how a read error becomes permanent loss. The file is
     /// overwritten with the emptiness. This is the shape worth naming; the
     /// fence only counts it, the report ranks it.
-    @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet")
+    @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet", .needsTheSources)
     func persistedTypesAreKnown() throws {
         var found: Set<String> = []
         for file in Self.sourceFiles() {
@@ -1465,7 +1440,7 @@ extension ProjectFileIntegrityTests {
         }
     }
 
-    @Test("keine Zaehlung in einer Aufloesungs-Funktion")
+    @Test("keine Zaehlung in einer Aufloesungs-Funktion", .needsTheSources)
     func resolvingNeverCounts() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1518,7 +1493,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("den alten Inhaltstyp befragt nur noch die Ablage selbst")
+    @Test("den alten Inhaltstyp befragt nur noch die Ablage selbst", .needsTheSources)
     func legacyContentTypeIsNotAnAnswer() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1562,7 +1537,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("der Name mediaType gehoert der String-Ebene, nicht dem Aufzaehlungstyp")
+    @Test("der Name mediaType gehoert der String-Ebene, nicht dem Aufzaehlungstyp", .needsTheSources)
     func mediaTypeNameIsNotAmbiguous() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1588,7 +1563,7 @@ extension ProjectFileIntegrityTests {
             in: "func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem]") == 0)
     }
 
-    @Test("kein Provider gibt seinen Typ noch als Einzelwert heraus")
+    @Test("kein Provider gibt seinen Typ noch als Einzelwert heraus", .needsTheSources)
     func providersAnswerWithASet() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1611,9 +1586,7 @@ extension ProjectFileIntegrityTests {
         var found: [(String, String)] = []
         for folder in folders {
             let dir = root.appendingPathComponent(folder)
-            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-            else { continue }
-            for case let url as URL in walker where url.pathExtension == "swift" {
+            for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 found.append((url.lastPathComponent, text))
             }
@@ -2113,7 +2086,7 @@ extension ProjectFileIntegrityTests {
     /// Quellen-Wache uebersetzt unseren echten Dekodierer auf Linux,
     /// Foundation-only, und verweigerte die Datei). Der Typ ist unschuldig,
     /// die Adresse war es nicht.
-    @Test("Codable-Domaenentypen wohnen nicht in Framework-Dateien")
+    @Test("Codable-Domaenentypen wohnen nicht in Framework-Dateien", .needsTheSources)
     func codableTypesLiveInPureFiles() throws {
         // Die BESTANDSAUFNAHME (Aufzaehlpflicht des Entscheids): diese
         // vier wohnen heute noch in Framework-Dateien. Sie sind kein
@@ -2195,7 +2168,7 @@ extension ProjectFileIntegrityTests {
         return module
     }
 
-    @Test("die Dateien der Quellen-Pruefung importieren nur, was Linux hat")
+    @Test("die Dateien der Quellen-Pruefung importieren nur, was Linux hat", .needsTheSources)
     func pureSourcesImportOnlyWhatLinuxHas() throws {
         let list = try Self.pureSources()
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -2233,7 +2206,7 @@ extension ProjectFileIntegrityTests {
     /// to https; a call site that reads from the session directly would
     /// be refused by App Transport Security on every feed with `http://`
     /// images and show a placeholder instead.
-    @Test("Bildbytes kommen nur durch die eine Tuer, die http auf https hebt")
+    @Test("Bildbytes kommen nur durch die eine Tuer, die http auf https hebt", .needsTheSources)
     func coverBytesPassTheOneDoor() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "URLSession+Maer.swift" {
@@ -2254,7 +2227,7 @@ extension ProjectFileIntegrityTests {
     /// The archive.org identifier is cut out of an item id in ONE place,
     /// which knows the song address. A surface that drops the prefix itself
     /// sends `%23<index>` into every link for a song.
-    @Test("die archive.org-Kennung wird nur an einer Stelle aus der Id geschnitten")
+    @Test("die archive.org-Kennung wird nur an einer Stelle aus der Id geschnitten", .needsTheSources)
     func archiveIdentifierIsCutInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "FreeCatalog.swift" {
@@ -2270,7 +2243,7 @@ extension ProjectFileIntegrityTests {
         #expect("String(id.dropFirst(FreeCatalog.archivePrefix.count))".contains("dropFirst(FreeCatalog.archivePrefix.count)"))
     }
 
-    @Test("Slider steht in Sources nur im PlatformScrubber")
+    @Test("Slider steht in Sources nur im PlatformScrubber", .needsTheSources)
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {
@@ -2295,7 +2268,7 @@ extension ProjectFileIntegrityTests {
     /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
     /// Kommentars, weil die naechste Detailseite ihn sonst wieder
     /// mitbringt.
-    @Test("das Zahnrad steht an genau EINER Stelle im Quelltext")
+    @Test("das Zahnrad steht an genau EINER Stelle im Quelltext", .needsTheSources)
     func settingsGearLivesOnlyAtTheTabRoot() throws {
         var fundstellen: [String] = []
         for file in Self.sourceFiles() {
@@ -2316,7 +2289,7 @@ extension ProjectFileIntegrityTests {
         #expect("            Image(systemName: \"gearshape\")".contains("gearshape"))
     }
 
-    @Test("der alte Stamm kommt in Sources nicht mehr vor")
+    @Test("der alte Stamm kommt in Sources nicht mehr vor", .needsTheSources)
     func oldIdentityStemIsGone() throws {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
         var offenders: [String] = []
@@ -2360,10 +2333,7 @@ extension ProjectFileIntegrityTests {
         var files = try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("docs"),
                                                                 includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "md" }
-        files += FileManager.default.enumerator(at: root.appendingPathComponent("tools"),
-                                                includingPropertiesForKeys: [.isRegularFileKey])?
-            .compactMap { $0 as? URL }
-            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true } ?? []
+        files += SourceTree.files(under: root.appendingPathComponent("tools"))
         // The precondition names what the finder must see, not a count: a
         // count was a value without a reason, and it held on a working
         // tree with an untracked file while a clean checkout has exactly
@@ -2412,11 +2382,9 @@ extension ProjectFileIntegrityTests {
                 (1, "ein guard INNERHALB eines Fixture-Textes, den ein anderer Zaun liest"),
         ]
         let directory = SourceTree.root.appendingPathComponent("MaerTests")
-        let walker = try #require(FileManager.default.enumerator(at: directory,
-                                                                includingPropertiesForKeys: nil))
         var checked = 0
         var found: [String: Int] = [:]
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: directory) where url.pathExtension == "swift" {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             checked += 1
             let hits = text.split(separator: "\n", omittingEmptySubsequences: false).filter {

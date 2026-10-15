@@ -47,8 +47,7 @@ struct UploadLaneTests {
         var callers: [String] = []
         var wrong: [String] = []
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
             for call in Self.uploadCalls(in: code) {
                 callers.append(url.lastPathComponent)

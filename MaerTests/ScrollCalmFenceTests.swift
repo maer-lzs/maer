@@ -62,7 +62,7 @@ struct ScrollCalmFenceTests {
             (1, "das Bibliotheks-Modell wendet seine berechnete Ausgabe selbst an"),
     ]
 
-    @Test("Die Warteschlange der Leiste ruft nur die Tuer")
+    @Test("Die Warteschlange der Leiste ruft nur die Tuer", .needsTheSources)
     func onlyTheDoorAsksTheQueue() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -110,7 +110,7 @@ struct ScrollCalmFenceTests {
         return nil
     }
 
-    @Test("Weg B: Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger")
+    @Test("Weg B: Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger", .needsTheSources)
     func storesThatScheduleUIWorkOnlyShrink() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
