@@ -374,6 +374,44 @@ struct FailedLoadTests {
         model.stop()
     }
 
+    /// The same third way for a station: the note comes from the one
+    /// observer for every item, a station included, and its hold takes the
+    /// station out of the queue as well. The next play builds it anew, one
+    /// item, instead of resuming the stream that failed.
+    @Test("ein Sender scheitert mitten im Strom, nach seinem einen Versuch erneut: Halt mit Hinweis, das naechste Play baut ihn neu", .needsAudio)
+    func aStationFailingMidwayTwiceIsBuiltAnew() async throws {
+        let stream = try tone(seconds: 5)
+        defer { try? FileManager.default.removeItem(at: stream) }
+        let station = LibraryItemDetail(
+            id: "radio:\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 5, chapters: nil, tracks: [
+                ABSAudioTrack(index: 0, startOffset: 0, duration: 5, contentUrl: stream.path, metadata: nil),
+            ]),
+            userMediaProgress: nil)
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: station)
+        model.play()
+        await waitFor({ model.currentTime >= 0.5 }, seconds: 5)
+        let failing = try #require(model.player?.currentItem, "the precondition: the station plays")
+
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: failing)
+        await waitFor({ model.player?.currentItem !== failing }, seconds: 3)
+        let retried = try #require(model.player?.currentItem, "the one retry built the station anew")
+        #expect(retried !== failing && model.isPlaying, "the first failure builds the station anew once and plays on")
+
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: retried)
+        await waitFor { model.sourceHint?.kind == .trackFailed }
+        #expect(model.sourceHint?.kind == .trackFailed, "the second failure says so")
+        #expect(!model.isPlaying, "the second failure stops the station")
+        #expect((model.player?.items().count ?? 0) == 0, "the failed stream does not wait in the queue")
+
+        model.play()
+        let rebuilt = try #require(model.player?.currentItem, "the play left a queue")
+        #expect(rebuilt !== retried, "the play builds the station anew instead of resuming the failed stream")
+        #expect(model.player?.items().count == 1, "one item: the station")
+        model.stop()
+    }
+
     /// Bytes no decoder reads, under an audio name.
     private func brokenFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).mp3")
