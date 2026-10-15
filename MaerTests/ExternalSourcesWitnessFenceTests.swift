@@ -96,7 +96,7 @@ struct ExternalSourcesWitnessFenceTests {
         return found
     }
 
-    @Test("Kein Zeuge laesst die PodcastIndex-Tatsache aus der Umgebung kommen")
+    @Test("Kein Zeuge laesst die PodcastIndex-Tatsache aus der Umgebung kommen", .needsTheTests)
     func noWitnessReadsTheConfiguredFactFromItsEnvironment() throws {
         var offenders: [String] = []
         var explicitCalls = 0

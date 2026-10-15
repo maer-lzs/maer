@@ -306,13 +306,13 @@ struct MaerSyncVersion6Tests {
         return out
     }
 
-    @Test("Fassung 6: die Fall-Datei ist die, gegen die der Dienst laeuft")
+    @Test("Fassung 6: die Fall-Datei ist die, gegen die der Dienst laeuft", .needsTheTests)
     func theCasesAreTheServicesFile() throws {
         let digest = SHA256.hash(data: try Data(contentsOf: Self.casesURL())).map { String(format: "%02x", $0) }.joined()
         #expect(digest == Self.casesDigest)
     }
 
-    @Test("Fassung 6: jede Anmelde-Anfrage der Faelle, die die App bauen darf, baut die echte Tuer genauso")
+    @Test("Fassung 6: jede Anmelde-Anfrage der Faelle, die die App bauen darf, baut die echte Tuer genauso", .needsTheTests)
     @MainActor
     func theDoorBuildsTheCasesRequests() async throws {
         let base = URL(string: "https://\(UUID().uuidString.lowercased()).test")!

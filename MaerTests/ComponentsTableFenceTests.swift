@@ -56,7 +56,7 @@ struct ComponentsTableFenceTests {
         return out
     }
 
-    @Test("keine Tabellenzeile des Inventars hat mehr Zellen als ihr Kopf")
+    @Test("keine Tabellenzeile des Inventars hat mehr Zellen als ihr Kopf", .needsTheDocs)
     func noRowHasMoreCellsThanItsHeader() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("docs/components.md"), encoding: .utf8)

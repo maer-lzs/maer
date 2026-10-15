@@ -173,7 +173,7 @@ struct SongListOrderTests {
         return (1..<songs.count).filter { SongOrder.inOrder(songs[$0], songs[$0 - 1], by: sort) }.count
     }
 
-    @Test("GT2-1: die Seite des Pruefstands, durch den Anbieter gegeben, ist in jeder Ordnung dieselbe wie nach SongOrder")
+    @Test("GT2-1: die Seite des Pruefstands, durch den Anbieter gegeben, ist in jeder Ordnung dieselbe wie nach SongOrder", .needsTheTests)
     func theBenchPageIsInSongOrder() throws {
         var serverMisordered = 0
         for (sort, file) in Self.benchFiles {

@@ -794,7 +794,7 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("die Journeys rollen die Scroll-Suche nicht selbst")
+    @Test("die Journeys rollen die Scroll-Suche nicht selbst", .needsTheUITests)
     func journeysUseTheSharedScrollHelper() throws {
         #expect(Self.handRolledScrollLoops(in: try Self.journeyText()) == 0,
                 "a journey searches with its own swipe loop again instead of waitScrollingTo")
@@ -833,7 +833,7 @@ extension ProjectFileIntegrityTests {
 
     /// The start precondition belongs in `launchSeeded`. One place, not
     /// twelve copies, and none that bets on an element below the fold.
-    @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start")
+    @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start", .needsTheUITests)
     func launchPreconditionLivesInLaunchSeeded() throws {
         let text = try Self.journeyText()
         #expect(Self.blindSeedBookWaits(in: text) == 0,
@@ -860,7 +860,7 @@ extension ProjectFileIntegrityTests {
     /// Exactly ONE place may build the app. The shared `launch`. Everything
     /// else forgot the foreground wait once already, which is why the radio
     /// journeys tapped into a launch animation.
-    @Test("nur der geteilte Start baut die App auf")
+    @Test("nur der geteilte Start baut die App auf", .needsTheUITests)
     func journeysLaunchThroughTheSharedEntry() throws {
         let builds = Self.appBuildSites(in: try Self.journeyText())
         #expect(builds == 1, "a journey builds the app itself again (\(builds) places)")

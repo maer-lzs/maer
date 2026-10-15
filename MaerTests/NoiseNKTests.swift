@@ -70,7 +70,7 @@ struct NoiseNKTests {
 
     // MARK: - Somebody else's numbers
 
-    @Test("beide veroeffentlichten Vektoren kommen Byte fuer Byte heraus")
+    @Test("beide veroeffentlichten Vektoren kommen Byte fuer Byte heraus", .needsTheTests)
     func bothPublishedVectorsAreReproducedByteForByte() throws {
         let vectors = try Self.fixture().vectors
         // The precondition, and without it this file could pass while

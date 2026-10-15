@@ -93,7 +93,7 @@ struct StockReasonFenceTests {
         return out
     }
 
-    @Test("Jeder Datei-Bestand traegt seine Gruende im Eintrag, oder sagt dass er keine hat")
+    @Test("Jeder Datei-Bestand traegt seine Gruende im Eintrag, oder sagt dass er keine hat", .needsTheTests)
     func everyFileStockCarriesItsReasons() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let files = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)

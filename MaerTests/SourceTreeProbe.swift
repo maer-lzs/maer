@@ -54,6 +54,22 @@ nonisolated enum SourceTree {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("MaerTests").path)
     }
 
+    /// Ob die Dokumente beiliegen: Inventar und Vertrag.
+    static var hasDocs: Bool {
+        FileManager.default.fileExists(atPath: root.appendingPathComponent("docs").path)
+    }
+
+    /// Ob die UI-Tests beiliegen.
+    static var hasUITests: Bool {
+        FileManager.default.fileExists(atPath: root.appendingPathComponent("MaerUITests").path)
+    }
+
+    /// Ob die Info.plist der App als Datei beiliegt (gebaut steckt sie im
+    /// Paket, aber nicht in der Form, die die Faelle lesen).
+    static var hasInfoPlist: Bool {
+        FileManager.default.fileExists(atPath: root.appendingPathComponent("Maer-Info.plist").path)
+    }
+
     /// The path below the repository root, built from the path COMPONENTS
     /// after both sides are resolved. The one way the tests name a walked
     /// file; `RelativePathFenceTests` holds that no test cuts a path by text.
@@ -95,8 +111,8 @@ nonisolated enum SourceTree {
 }
 
 /// The one walk is loud: over nothing it records its issue, over files it
-/// says nothing and returns each. Neither case reads the tree, so neither
-/// carries a condition.
+/// says nothing and returns each. Neither of these two reads the tree, so
+/// neither carries a condition; the count of walks reads the tests.
 struct SourceTreeWalkTests {
     @Test("ein Lauf ueber einen Ordner, den es nicht gibt, meldet ein Issue")
     func aWalkOverNothingSaysSo() {
@@ -115,6 +131,35 @@ struct SourceTreeWalkTests {
         try Data("b".utf8).write(to: folder.appendingPathComponent("inner/b.swift"))
         #expect(SourceTree.files(under: folder).map(\.lastPathComponent).sorted() == ["a.swift", "b.swift"])
     }
+
+    /// The run without the tree sees a case that reads the tree only when
+    /// the read fails loudly. A new walk of its own that comes back empty
+    /// without a word would pass there, so the test tree walks through
+    /// `files(under:)` alone. Each other walk is counted, with why.
+    static let ownWalks: [String: (count: Int, reason: String)] = [
+        "SourceTreeProbe.swift": (1, "the one walk itself"),
+        "FeedAuthOwnerTests.swift": (1, "the folder of a test rig, not the tree"),
+    ]
+
+    @Test("kein Test laeuft selbst ueber einen Ordner, ausser dem einen Lauf und dem Ordner eines Pruefstands", .needsTheTests)
+    func everyWalkGoesThroughTheOne() {
+        // Built from two parts, so this file does not count its own search.
+        let token = "FileManager.default." + "enumerator("
+        var counts: [String: Int] = [:]
+        for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("MaerTests")) where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+                Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
+                continue
+            }
+            let hits = text.split(separator: "\n").filter {
+                !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") && $0.contains(token)
+            }.count
+            if hits > 0 { counts[url.lastPathComponent] = hits }
+        }
+        #expect(StockDrift.findings(counts: counts, stock: Self.ownWalks.mapValues(\.count)) == [],
+                "a walk past files(under:), or a stock above the count")
+        #expect(Self.ownWalks.values.allSatisfy { !$0.reason.isEmpty })
+    }
 }
 
 extension Trait where Self == ConditionTrait {
@@ -129,9 +174,24 @@ extension Trait where Self == ConditionTrait {
         .enabled(if: SourceTree.hasProjectFile, "die Projektdatei liegt dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest den Testordner.
+    /// Der Fall liest den Testordner, auch seine Fixtures.
     static var needsTheTests: Self {
         .enabled(if: SourceTree.hasTests, "der Testordner liegt dieser Kopie nicht bei")
+    }
+
+    /// Der Fall liest die Dokumente.
+    static var needsTheDocs: Self {
+        .enabled(if: SourceTree.hasDocs, "die Dokumente liegen dieser Kopie nicht bei")
+    }
+
+    /// Der Fall liest die UI-Tests.
+    static var needsTheUITests: Self {
+        .enabled(if: SourceTree.hasUITests, "die UI-Tests liegen dieser Kopie nicht bei")
+    }
+
+    /// Der Fall liest die Info.plist der App als Datei.
+    static var needsTheInfoPlist: Self {
+        .enabled(if: SourceTree.hasInfoPlist, "die Info.plist liegt dieser Kopie nicht als Datei bei")
     }
 }
 #endif

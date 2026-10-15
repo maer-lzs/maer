@@ -135,7 +135,7 @@ struct SyncContractFenceTests {
         try Data(contentsOf: url).sha256Hexed
     }
 
-    @Test("der Vertrag ist die vereinbarten Bytes")
+    @Test("der Vertrag ist die vereinbarten Bytes", .needsTheDocs)
     func theContractIsTheAgreedBytes() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -144,7 +144,7 @@ struct SyncContractFenceTests {
                 "der Vertrag hat sich geaendert. Das ist erlaubt und nie einseitig: denselben neuen Abdruck in den Zaun des Dienst-Repos schreiben und dieselbe Datei hinuebertragen, sonst beschreiben die zwei Enden still nicht mehr denselben Dienst")
     }
 
-    @Test("die veroeffentlichten Vektoren sind die vereinbarten Bytes")
+    @Test("die veroeffentlichten Vektoren sind die vereinbarten Bytes", .needsTheTests)
     func theVectorsAreTheAgreedBytes() throws {
         let here = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         #expect(try Self.digest(ofFileAt: here.appendingPathComponent("Fixtures/Noise/noise-nk.json"))
@@ -167,7 +167,7 @@ struct SyncContractFenceTests {
     /// Proxy und tun es. Daher kommt die Gestalt: am Betrieb gemessen statt
     /// begruendet. Dieser Fall haelt den naechsten in derselben Gestalt,
     /// statt es dem zu ueberlassen, der ihn hinzufuegt.
-    @Test("kein erklaerter Kopfname traegt einen Unterstrich")
+    @Test("kein erklaerter Kopfname traegt einen Unterstrich", .needsTheDocs)
     func noDeclaredHeaderNameCarriesAnUnderscore() throws {
         let headers = Self.declared(in: try Self.contractText())["headers"] ?? []
         #expect(!headers.isEmpty, "ohne Koepfe misst dieser Fall nichts")
@@ -245,7 +245,7 @@ struct SyncContractFenceTests {
         #expect(MaerSyncPaths.session(base).absoluteString == "https://sync.example.com/v1/session")
     }
 
-    @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
+    @Test("der Vertrag liegt hier und nennt seine Fassung zweimal", .needsTheDocs)
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
         #expect(Self.declared(in: text)["version"] == ["6"])

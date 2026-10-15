@@ -50,7 +50,7 @@ struct AppShortcutPhrasesTests {
         #expect(!Self.namesTheApp("Höre mein Hörbuch in Maer weiter, appetitlich"), "a word containing app is not the word")
     }
 
-    @Test("die Info.plist nennt gesprochene Alternativen des Namens, JE MIT ihrem Laut")
+    @Test("die Info.plist nennt gesprochene Alternativen des Namens, JE MIT ihrem Laut", .needsTheInfoPlist)
     func infoPlistOffersAlternativeAppNames() throws {
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))
         let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
@@ -75,7 +75,7 @@ struct AppShortcutPhrasesTests {
         #expect(!(spoken ?? "").isEmpty, "CFBundleSpokenName fehlt oder ist leer")
     }
 
-    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant", .needsTheSources)
+    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant", .needsTheSources, .needsTheInfoPlist)
     func everyCatalogEntryEitherIsAKeyOrSaysItIsNotTranslated() throws {
         // `InfoPlist.strings` ersetzt anhand des Info.plist-SCHLUESSELS. Ein
         // Eintrag, dessen Name ein WERT ist, erzeugt eine Zeile, die nichts

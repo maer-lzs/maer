@@ -38,14 +38,14 @@ struct SignInDerivationTests {
         try JSONDecoder().decode(Vectors.self, from: try Data(contentsOf: fixtureURL()))
     }
 
-    @Test("Fassung 6: die Anmelde-Vektoren sind die Bytes des Dienstes")
+    @Test("Fassung 6: die Anmelde-Vektoren sind die Bytes des Dienstes", .needsTheTests)
     func vectorsAreTheServicesBytes() throws {
         let data = try Data(contentsOf: Self.fixtureURL())
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         #expect(digest == Self.vectorsDigest, "the vectors are copied from the service repository; a change belongs in both")
     }
 
-    @Test("Fassung 6: Dehnung, Beweis und Feed-Schluessel gleich allen Vektoren")
+    @Test("Fassung 6: Dehnung, Beweis und Feed-Schluessel gleich allen Vektoren", .needsTheTests)
     func derivationMatchesEveryVector() throws {
         let vectors = try Self.fixture().vectors
         try #require(vectors.count == 3, "the three published vectors")
@@ -62,7 +62,7 @@ struct SignInDerivationTests {
         }
     }
 
-    @Test("Fassung 6: zerlegt eingegeben wird zusammengesetzt abgeleitet, nichts wird getrimmt")
+    @Test("Fassung 6: zerlegt eingegeben wird zusammengesetzt abgeleitet, nichts wird getrimmt", .needsTheTests)
     func normalizationIsNFCAndNothingTrimmed() throws {
         let vectors = try Self.fixture().vectors
         let nfd = try #require(vectors.first { $0.name == "nfd input becomes nfc" })
@@ -99,7 +99,7 @@ struct SignInDerivationTests {
         #expect(keys.proof.count == 32)
     }
 
-    @Test("Fassung 6: die Dehnung laeuft nicht auf dem Hauptthread, auch wenn der Hauptakteur fragt")
+    @Test("Fassung 6: die Dehnung laeuft nicht auf dem Hauptthread, auch wenn der Hauptakteur fragt", .needsTheTests)
     @MainActor
     func stretchRunsOffTheMainThread() async throws {
         let seen = OSAllocatedUnfairLock<[Bool]>(initialState: [])

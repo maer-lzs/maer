@@ -68,7 +68,7 @@ struct CloudKeyValueTests {
         return count
     }
 
-    @Test("Jede Startstelle der UI-Tests setzt ein Harness-Argument")
+    @Test("Jede Startstelle der UI-Tests setzt ein Harness-Argument", .needsTheUITests)
     func everyUILaunchCarriesTheMarker() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let files = SourceTree.files(under: root.appendingPathComponent("MaerUITests"))
