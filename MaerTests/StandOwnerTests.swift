@@ -85,11 +85,7 @@ struct StandOwnerTests {
         let defaults = rig.defaults
         let rows = try await StandStore(connection: try SQLiteConnection(path: ":memory:"))
         let mirror = StandMirror(store: rows)
-        defer {
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
-            ListeningStore.installReplacementHook(nil)
-        }
+        defer { ListeningStore.listen(to: defaults, nil) }
         mirror.start(defaults: defaults)
         try await withSyncOn {
             var scope: String? = "account-a"
@@ -187,11 +183,7 @@ struct StandOwnerTests {
         let connection = try SQLiteConnection(path: ":memory:")
         let rows = try await StandStore(connection: connection)
         let mirror = StandMirror(store: rows)
-        defer {
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
-            ListeningStore.installReplacementHook(nil)
-        }
+        defer { ListeningStore.listen(to: defaults, nil) }
         mirror.start(defaults: defaults)
         let shelf = rig.shelf
         try await withSyncOn {
@@ -410,10 +402,8 @@ struct StandOwnerTests {
         return (rows, connection, mirror)
     }
 
-    private func unhook() {
-        ListeningStore.onWrite = nil
-        ListeningStore.onFlushedWrite = nil
-        ListeningStore.installReplacementHook(nil)
+    private func unhook(_ defaults: UserDefaults) {
+        ListeningStore.listen(to: defaults, nil)
     }
 
     @Test("Schriebe nicht wandernder Kennungen, die eine offene Ersetzung landen, gehen nicht verloren: das Loeschen eines Hoerbuch-Stands und ein Musik-Stand stehen danach richtig in der Tabelle")
@@ -422,7 +412,7 @@ struct StandOwnerTests {
         defer { rig.cleanup() }
         let defaults = rig.defaults
         let (rows, connection, mirror) = try await mirrored(defaults)
-        defer { unhook() }
+        defer { unhook(defaults) }
         try await withSyncOn {
             var scope = "account-a"
             let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
@@ -472,7 +462,7 @@ struct StandOwnerTests {
         defer { rig.cleanup() }
         let defaults = rig.defaults
         let (rows, connection, mirror) = try await mirrored(defaults)
-        defer { unhook() }
+        defer { unhook(defaults) }
         try await withSyncOn {
             var scope = "account-a"
             let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,
@@ -523,7 +513,7 @@ struct StandOwnerTests {
         defer { rig.cleanup() }
         let defaults = rig.defaults
         let (rows, connection, mirror) = try await mirrored(defaults)
-        defer { unhook() }
+        defer { unhook(defaults) }
         try await withSyncOn {
             var scope = "account-a"
             let runner = PodcastCloudSync(carrier: AccountCarrier(scope: { scope }), defaults: defaults,

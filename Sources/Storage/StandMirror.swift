@@ -75,15 +75,11 @@ nonisolated final class StandMirror: Sendable {
     func start(defaults: UserDefaults = .standard) {
         let followed = ObjectIdentifier(defaults)
         state.withLock { $0.followed = followed }
-        ListeningStore.onWrite = { [weak self] itemId, entry, written in
-            self?.note(itemId: itemId, entry: entry, in: written)
-        }
-        ListeningStore.installReplacementHook { [weak self] replacement, written in
-            self?.replace(replacement, in: written) ?? false
-        }
-        ListeningStore.onFlushedWrite = { [weak self] itemId, entry, written in
-            self?.noteFlushed(itemId: itemId, entry: entry, in: written)
-        }
+        // The listener of this stock only: a mirror on another stock keeps its own.
+        ListeningStore.listen(to: defaults, ListeningStore.Listener(
+            wrote: { [weak self] itemId, entry in self?.note(itemId: itemId, entry: entry, in: followed) },
+            wroteFlushed: { [weak self] itemId, entry in self?.noteFlushed(itemId: itemId, entry: entry, in: followed) },
+            replaces: { [weak self] replacement in self?.replace(replacement, in: followed) ?? false }))
         let moved = ListeningStore.isMoved(in: defaults)
         let movesNow = loadNow != nil && !moved
         let resumes = movesNow && ListeningStore.isMoveStarted(in: defaults)

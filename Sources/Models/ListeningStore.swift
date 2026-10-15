@@ -55,7 +55,7 @@ nonisolated enum ListeningClasses {
 /// its own defaults key, and on a domain of tens of thousands of them any
 /// read right after a write cost about 23 ms in the simulator. So the stock
 /// of a defaults object is loaded ONCE and held in memory; a write goes to
-/// memory and, through `onWrite`/`onFlushedWrite`, to the rows of the
+/// memory and, through the stock's `Listener`, to the rows of the
 /// database. The defaults keys are no longer written.
 ///
 /// **Where the stock comes from.** The row copy installs a synchronous read
@@ -284,32 +284,41 @@ nonisolated enum ListeningStore {
         return stock
     }
 
-    /// The row copy listens here: every write of a position (an entry, or
-    /// nil for a removal) is announced with the defaults it went into, by
-    /// identity. Installed once at app start by the mirror, nil in a test
-    /// that does not ask for it. A hook rather than a call into the row
+    /// What the row copy of one stock hears: every write of a position (an
+    /// entry, or nil for a removal), every write of what this device last
+    /// pushed (`flushedPosition`), and a replacement of the stock, which it
+    /// answers whether it took. A listener rather than a call into the row
     /// backend, so this file keeps to Foundation and the direction of the
     /// dependency stays Storage to Models.
-    // unsafe because the mirror sets it once, synchronously in
-    // `MaerApp.init`, and witnesses set and clear it around their own
-    // serial runs; everything else only reads it. A `Mutex` would make that
-    // a guarantee instead of an order.
-    nonisolated(unsafe) static var onWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
-                                                        _ defaults: ObjectIdentifier) -> Void)?
+    struct Listener: Sendable {
+        let wrote: @Sendable (_ itemId: String, _ entry: [Double]?) -> Void
+        let wroteFlushed: @Sendable (_ itemId: String, _ entry: [Double]?) -> Void
+        let replaces: @Sendable (Replacement) -> Bool
+    }
+
+    /// One listener per stock, by the identity of its defaults. The app has
+    /// one stock and one mirror on it; a witness that starts a mirror on a
+    /// stock of its own takes no other stock's listener, so no witness
+    /// depends on which other suite last started one.
+    private static let listeners = Mutex<[ObjectIdentifier: Listener]>([:])
+
+    /// Sets the listener of the stock in `defaults`; nil removes it.
+    static func listen(to defaults: UserDefaults, _ listener: Listener?) {
+        listeners.withLock { $0[ObjectIdentifier(defaults)] = listener }
+    }
+
+    private static func listener(of defaults: UserDefaults) -> Listener? {
+        listeners.withLock { $0[ObjectIdentifier(defaults)] }
+    }
 
     /// The one place a position write is announced from. Every path that
     /// touches the `localPosition` key of a title ends here.
     private static func announce(_ itemId: String, _ entry: [Double]?, in defaults: UserDefaults) {
-        onWrite?(itemId, entry, ObjectIdentifier(defaults))
+        listener(of: defaults)?.wrote(itemId, entry)
     }
 
-    /// The same for what this device last pushed (`flushedPosition`).
-    // unsafe because it is set and cleared exactly like `onWrite`.
-    nonisolated(unsafe) static var onFlushedWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
-                                                               _ defaults: ObjectIdentifier) -> Void)?
-
     private static func announceFlushed(_ itemId: String, _ entry: [Double]?, in defaults: UserDefaults) {
-        onFlushedWrite?(itemId, entry, ObjectIdentifier(defaults))
+        listener(of: defaults)?.wroteFlushed(itemId, entry)
     }
 
     /// One local state, with names instead of indices.
@@ -603,16 +612,6 @@ nonisolated enum ListeningStore {
         let landed: @Sendable () -> Void
     }
 
-    /// Where a replacement goes instead of one write per entry: the rows
-    /// (`StandMirror`), installed with the other hooks; it answers whether
-    /// it took the replacement. Behind a lock, so its setting at start and
-    /// in witnesses needs no promise of order.
-    private static let replacementHook = Mutex<(@Sendable (Replacement, ObjectIdentifier) -> Bool)?>(nil)
-
-    static func installReplacementHook(_ hook: (@Sendable (Replacement, ObjectIdentifier) -> Bool)?) {
-        replacementHook.withLock { $0 = hook }
-    }
-
     static func replaceForNewOwner(with incoming: Resting?, where travels: (String) -> Bool,
                                    in defaults: UserDefaults = .standard, replacement: Replacement? = nil) {
         let changes = withStock(defaults) { stock -> (backups: [(String, [Double]?)], flushed: [(String, [Double]?)]) in
@@ -640,7 +639,9 @@ nonisolated enum ListeningStore {
         // With rows that take a replacement whole, it goes as one write with
         // its mark; else every change is announced as before.
         if let replacement {
-            if let hook = replacementHook.withLock({ $0 }), hook(replacement, ObjectIdentifier(defaults)) {
+            // Where a replacement goes instead of one write per entry: the
+            // listener of this stock, the rows (`StandMirror`).
+            if listener(of: defaults)?.replaces(replacement) == true {
                 return
             }
             // No rows take the stock here: the replacement has landed.

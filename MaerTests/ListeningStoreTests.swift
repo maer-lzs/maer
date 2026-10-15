@@ -181,23 +181,48 @@ struct ListeningStoreTests {
         let flushed = ListeningStore.flushed("rss:e1", in: d)
         #expect(stand != nil && flushed != nil, "Stand und Fluss-Eintrag stehen, sonst misst der Fall nichts")
         let announced = Mutex(0)
-        let mine = ObjectIdentifier(d)
-        ListeningStore.onWrite = { _, _, defaults in
-            if defaults == mine { announced.withLock { $0 += 1 } }
-        }
-        ListeningStore.onFlushedWrite = { _, _, defaults in
-            if defaults == mine { announced.withLock { $0 += 1 } }
-        }
-        defer {
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
-        }
+        ListeningStore.listen(to: d, ListeningStore.Listener(
+            wrote: { _, _ in announced.withLock { $0 += 1 } },
+            wroteFlushed: { _, _ in announced.withLock { $0 += 1 } },
+            replaces: { _ in false }))
+        defer { ListeningStore.listen(to: d, nil) }
 
         ListeningStore.move(from: "rss:e1", to: "rss:e1", in: d)
 
         #expect(ListeningStore.backup("rss:e1", in: d) == stand, "der Stand steht")
         #expect(ListeningStore.flushed("rss:e1", in: d) == flushed, "der Fluss-Eintrag steht")
         #expect(announced.withLock { $0 } == 0, "keine Meldung")
+    }
+
+    /// One listener per stock. A suite that sets its listener after this
+    /// one, on a stock of its own, as a parallel run does, takes nothing
+    /// from this stock; removing it leaves this one. With one place for all
+    /// stocks, the later listener took every write and every replacement.
+    @Test("ein Zuhoerer je Bestand: ein spaeterer auf einem anderen Bestand nimmt diesem weder Schreiben noch Fluss noch Ersetzen")
+    func oneListenerPerStock() {
+        let mine = suite(), other = suite()
+        let heard = Mutex<[String]>([])
+        func listener(_ name: String) -> ListeningStore.Listener {
+            ListeningStore.Listener(
+                wrote: { id, _ in heard.withLock { $0.append("\(name) wrote \(id)") } },
+                wroteFlushed: { id, _ in heard.withLock { $0.append("\(name) flushed \(id)") } },
+                replaces: { replacement in heard.withLock { $0.append("\(name) replaces \(replacement.name)") }; return true })
+        }
+        defer {
+            ListeningStore.listen(to: mine, nil)
+            ListeningStore.listen(to: other, nil)
+        }
+        ListeningStore.listen(to: mine, listener("mine"))
+        ListeningStore.listen(to: other, listener("other"))
+
+        ListeningStore.record("rss:m", position: 30, duration: 600, atMs: 1_000, in: mine)
+        ListeningStore.noteFlushed("rss:m", position: 30, atMs: 1_000, in: mine)
+        ListeningStore.replaceForNewOwner(with: nil, where: { _ in true }, in: mine, replacement: ListeningStore.Replacement(
+            family: "podcasts", name: "to-b", travels: { _ in true }, landed: {}))
+        ListeningStore.listen(to: other, nil)
+        ListeningStore.record("rss:n", position: 40, duration: 600, atMs: 2_000, in: mine)
+
+        #expect(heard.withLock { $0 } == ["mine wrote rss:m", "mine flushed rss:m", "mine replaces to-b", "mine wrote rss:n"])
     }
 
     @Test("ein Umzug auf ein leeres Ziel traegt den Stand hinueber")

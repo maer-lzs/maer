@@ -83,8 +83,7 @@ struct PositionStockTests {
         defer {
             defaults.removePersistentDomain(forName: name)
             try? FileManager.default.removeItem(at: file)
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
+            ListeningStore.listen(to: defaults, nil)
         }
         // The old keys, as a build before this one left them.
         defaults.set([300.0, 1_000.0, 600.0], forKey: "localPosition.rss:move:a")
@@ -122,8 +121,7 @@ struct PositionStockTests {
         defer {
             defaults.removePersistentDomain(forName: name)
             try? FileManager.default.removeItem(at: file)
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
+            ListeningStore.listen(to: defaults, nil)
         }
         // Moved already, and the retirement was cut short: old keys stand,
         // one of them for an entry the table no longer holds (it was
@@ -153,8 +151,7 @@ struct PositionStockTests {
         defer {
             defaults.removePersistentDomain(forName: name)
             try? FileManager.default.removeItem(at: file)
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
+            ListeningStore.listen(to: defaults, nil)
         }
         // What a first start leaves when it breaks off before its marker:
         // the record that the move began, the old keys, and rows written in
@@ -242,8 +239,7 @@ struct PositionStockTests {
         let (defaults, name) = suite()
         defer {
             defaults.removePersistentDomain(forName: name)
-            ListeningStore.onWrite = nil
-            ListeningStore.onFlushedWrite = nil
+            ListeningStore.listen(to: defaults, nil)
         }
         let store = try await StandStore(connection: try SQLiteConnection(path: ":memory:"))
         // The table as an earlier run left it.

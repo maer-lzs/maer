@@ -10,8 +10,7 @@ import Foundation
 
 /// The mirror follows every write path of the stock in order, pours the
 /// defaults into the table once at start, and leaves the keys where they are.
-/// Serialized: the hook on the stock is one global, and each witness installs
-/// its own mirror on it.
+/// Serialized: the two starts of one witness follow each other on one stock.
 @Suite(.serialized)
 struct StandMirrorTests {
     private func suite() -> UserDefaults {
@@ -27,7 +26,7 @@ struct StandMirrorTests {
     func everyWritePathLandsInOrder() async throws {
         let defaults = suite()
         let (mirror, store) = try await mirror()
-        defer { ListeningStore.onWrite = nil }
+        defer { ListeningStore.listen(to: defaults, nil) }
         mirror.start(defaults: defaults)
         let t = 1_700_000_000_000.0
         ListeningStore.record("rss:a", position: 600, duration: 3600, atMs: t, in: defaults)
@@ -61,7 +60,7 @@ struct StandMirrorTests {
                                          "abs:four": [30, t + 2, 0, 1], "radio:live": [5, t + 3]]
         for (id, entry) in stock { defaults.set(entry, forKey: AppStorageKeys.localPosition(id)) }
         let (first, store) = try await mirror()
-        defer { ListeningStore.onWrite = nil }
+        defer { ListeningStore.listen(to: defaults, nil) }
         first.start(defaults: defaults)
         await first.awaitPendingWrites()
         #expect(try await store.count() == 3, "a live stream keeps no position, the class filter of the stock applies")
