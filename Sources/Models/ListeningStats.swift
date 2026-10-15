@@ -49,8 +49,16 @@ final class ListeningStatsStore: ObservableObject {
     @Published private(set) var ownData: ListeningStatsData
 
     /// What the surfaces read: this device plus every other device's published
-    /// pot. Summed on READ, never on write.
-    private(set) var data: ListeningStatsData
+    /// pot. Summed on READ, never on write: a change only drops the sum, and
+    /// the next read merges again. The tick adds a second every second;
+    /// merging every pot on each of them, read or not, was the work.
+    var data: ListeningStatsData {
+        if let composed { return composed }
+        let merged = compose()
+        composed = merged
+        return merged
+    }
+    private var composed: ListeningStatsData?
 
     /// Other devices' pots as last seen. Refreshed when the carrier reports
     /// a change; kept as a value so a read never touches the store.
@@ -143,7 +151,7 @@ final class ListeningStatsStore: ObservableObject {
         let stock = loaded ?? ListeningStatsData()
         ownData = stock
         // What is shown is the holding account's part from the first read.
-        data = ListeningStatsSync.owned(device: stock, carried: loadedLedger.carried, since: loadedLedger.since)
+        composed = ListeningStatsSync.owned(device: stock, carried: loadedLedger.carried, since: loadedLedger.since)
         rowBase = base
         if case .unknown = base { startMissedRows = true } else { startMissedRows = false }
         unreadDays = days == nil
@@ -512,14 +520,18 @@ final class ListeningStatsStore: ObservableObject {
     /// per-second work.
     private(set) var merges = 0
 
+    /// Something the sum is made of changed: the sum is dropped, a surface
+    /// that reads it merges again.
     private func recompose() {
+        composed = nil
+        objectWillChange.send()
+    }
+
+    private func compose() -> ListeningStatsData {
         let signpost = PerfSignpost.statsMerge()
         defer { signpost.end() }
         merges += 1
-        data = ListeningStatsSync.merged(local: ownerPot,
-                                         ownDeviceId: SyncHistoryStore.deviceId,
-                                         foreign: foreign)
-        objectWillChange.send()
+        return ListeningStatsSync.merged(local: ownerPot, ownDeviceId: SyncHistoryStore.deviceId, foreign: foreign)
     }
 
     /// The day key is STORED data, so it must not depend on the device.

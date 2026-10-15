@@ -92,6 +92,44 @@ struct TickWorkTests {
         #expect(work.publications <= work.ticks + 1, "publications per quiet second: \(work)")
     }
 
+    @Test("ruhige Wiedergabe: die Statistik fuehrt die Toepfe nicht je Sekunde zusammen", .needsAudio)
+    func quietPlaybackMergesNoPots() async throws {
+        let work = try await quietWork(seconds: 3)
+        #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
+        #expect(work.statsMerges == 0, "merges per quiet second while nobody reads: \(work)")
+    }
+
+    private final class QuietCarrier: StatsCarrier {
+        let name = "quiet-fake"
+        var hasRoomLimit = false
+        func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {}
+        func pots() -> [String: ListeningStatsData] { [:] }
+        func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    /// Summed on read: seconds added without a reader merge nothing, the
+    /// next read merges once and carries every second.
+    @Test("die Statistik fuehrt beim Lesen zusammen, einmal, mit jeder Sekunde")
+    func theStatsMergeWhenRead() {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tick-stats-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let stats = ListeningStatsStore(carrier: QuietCarrier(),
+                                        database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        let id = "tick:merge:\(UUID().uuidString)"
+        _ = stats.data
+        let before = stats.merges
+        for _ in 0..<5 { stats.addSeconds(1, itemId: id) }
+        #expect(stats.merges == before, "no reader, no merge")
+        #expect(stats.data.secondsPerItem[id] == 5, "the read carries every second")
+        #expect(stats.merges == before + 1, "one merge for the read")
+        _ = stats.data
+        #expect(stats.merges == before + 1, "a second read without a change merges nothing")
+    }
+
     /// What the lock screen shows still moves at once with every change: a
     /// new chapter on the tick it begins, a jump with the jump. Read from
     /// what this model wrote, not from the shared info centre, which other
