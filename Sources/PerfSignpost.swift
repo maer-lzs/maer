@@ -52,7 +52,7 @@ nonisolated enum PerfSignpost {
     /// Every name this file writes, intervals and events. A day's record
     /// names the ones that did not come back.
     static let names = ["tick", "nowPlaying", "statsMerge", "syncLoop", "syncRound", "syncRoundOf", "standMerge",
-                        "feedParse", "thumb-hit", "decode", "originalCached", "downloadedEntries-recompute",
+                        "standMergeOf", "feedParse", "thumb-hit", "decode", "originalCached", "downloadedEntries-recompute",
                         "standingRead", "accessRead", "barCollapsedFlip"]
 
     /// An open interval; `end()` closes it under the name it was opened
@@ -111,8 +111,11 @@ nonisolated enum PerfSignpost {
     }
 
     /// The listening positions merged, from reading both sides to writing.
-    static func standMerge() -> Interval {
-        snapshotInterval(.sync, "standMerge")
+    /// The snapshot carries no number, so an event at the start names how
+    /// many positions this device brought.
+    static func standMerge(entries: Int) -> Interval {
+        signposter(.sync).emitEvent("standMergeOf", "entries=\(entries)")
+        return snapshotInterval(.sync, "standMerge")
     }
 
     // MARK: - Feeds

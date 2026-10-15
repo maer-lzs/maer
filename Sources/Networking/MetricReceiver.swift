@@ -133,6 +133,12 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
         let records = payloads.map { payload in
             let network = payload.networkTransferMetrics
             let exits = payload.applicationExitMetrics.map(Self.exits(of:))
+            let launch = payload.applicationLaunchMetrics
+            let animation = payload.animationMetrics
+            var hitch: MetricRecord.Ratio?
+            if #available(iOS 26.0, *), let ratio = animation?.hitchTimeRatio {
+                hitch = MetricRecord.ratio(ratio.value, symbol: ratio.unit.symbol)
+            }
             return MetricRecord(kind: .metrics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
                                 cpuSeconds: payload.cpuMetrics?.cumulativeCPUTime.converted(to: .seconds).value,
                                 foregroundSeconds: payload.applicationTimeMetrics?.cumulativeForegroundTime.converted(to: .seconds).value,
@@ -147,6 +153,12 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
                                 hangTime: payload.applicationResponsivenessMetrics.map {
                                     MetricRecord.hangTime(Self.buckets(of: $0.histogrammedApplicationHangTime))
                                 },
+                                firstDraw: launch.map { MetricRecord.durations(Self.buckets(of: $0.histogrammedTimeToFirstDraw)) },
+                                resume: launch.map { MetricRecord.durations(Self.buckets(of: $0.histogrammedApplicationResumeTime)) },
+                                scrollHitch: animation.map {
+                                    MetricRecord.ratio($0.scrollHitchTimeRatio.value, symbol: $0.scrollHitchTimeRatio.unit.symbol)
+                                },
+                                hitch: hitch,
                                 foregroundExits: exits?.foreground, backgroundExits: exits?.background,
                                 signposts: MetricRecord.costs((payload.signpostMetrics ?? []).map(Self.reading(of:))))
         }

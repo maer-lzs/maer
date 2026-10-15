@@ -227,7 +227,7 @@ final class PodcastCloudSync {
 
         // Collect local positions, from the store's stock.
         let local = ListeningStore.positions(in: defaults).filter { Self.potCarries($0.key) }
-        let signpost = PerfSignpost.standMerge()
+        let signpost = PerfSignpost.standMerge(entries: local.count)
         defer { signpost.end() }
 
         // What the carrier holds.

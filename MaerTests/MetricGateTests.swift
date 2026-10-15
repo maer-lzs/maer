@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import MetricKit
 @testable import Maer
 
 /// MetricKit only in TestFlight and from Xcode, never in the App Store: the
@@ -77,22 +78,43 @@ struct MetricGateTests {
     @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
     func theLogLineCarriesNumbers() {
         let record = Self.record(daysAgo: 1)
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035 absent=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035 unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
     }
 
     /// MetricKit keeps only so many signpost names a day, a limit not
     /// measured here. Each record names the app's names that did not come
-    /// back, so a missing one is seen, not silent.
-    @Test("der Satz nennt die Signpost-Namen, die nicht kamen")
+    /// back, so a missing one is seen, not silent. The device does not
+    /// note what fired, so the word says both readings: never fired in the
+    /// period, or fired and not kept.
+    @Test("der Satz nennt die Signpost-Namen, die nicht kamen, und sagt, dass sie nicht feuerten oder verloren gingen")
     func aRecordNamesTheSignpostsThatDidNotCome() {
         var record = Self.record(daysAgo: 1)
         record.signposts = Dictionary(uniqueKeysWithValues: PerfSignpost.names.map { ($0, .init(count: 1)) })
-        #expect(record.absentSignposts.isEmpty && record.logLine.hasSuffix(" absent=none"))
+        #expect(record.absentSignposts.isEmpty && record.logLine.hasSuffix(" unfiredOrLost=none"))
         record.signposts["feedParse"] = nil
         record.signposts["tick"] = nil
         #expect(record.absentSignposts == ["tick", "feedParse"], "the app's order")
-        #expect(record.logLine.hasSuffix(" absent=tick,feedParse"))
-        #expect(MetricRecord.shareText([record]).hasSuffix(" absent=tick,feedParse"), "the shared text names them too")
+        #expect(record.logLine.hasSuffix(" unfiredOrLost=tick,feedParse"))
+        #expect(MetricRecord.shareText([record]).hasSuffix(" unfiredOrLost=tick,feedParse"), "the shared text names them too")
+    }
+
+    /// The launch to the first frame and the return to the app, each as
+    /// how many times the mean; the hitch ratios with the unit MetricKit
+    /// handed over, its spaces taken out.
+    @Test("Start, Rueckkehr und Hitch stehen mit Einheit in der Zeile")
+    func launchAndHitchCarryTheirUnits() {
+        let draws = MetricRecord.durations([(start: 0.5, end: 1, count: 3), (start: 1, end: 2, count: 1)])
+        #expect(draws == .init(count: 4, meanSeconds: 0.9375), "each bucket at its middle: (0.75 * 3 + 1.5) / 4")
+        #expect(MetricRecord.durations([]) == .init(count: 0, meanSeconds: nil), "none counted has no mean")
+        #expect(MetricRecord.ratio(5, symbol: "ms per s") == .init(value: 5, unit: "mspers"))
+        var record = Self.record(daysAgo: 1)
+        record.signposts = [:]
+        record.firstDraw = draws
+        record.resume = .init(count: 0, meanSeconds: nil)
+        record.scrollHitch = MetricRecord.ratio(2.5, symbol: "ms per s")
+        #expect(record.logLine.contains(" hang=- firstDraw=4x0.938s resume=0 scrollHitch=2.5000mspers hitch=- exitsFg=-"),
+                "\(record.logLine)")
+        #expect(record.isMeasurement && MetricRecord.shareText([record]).contains(" firstDraw=4x0.938s "))
     }
 
     /// Hangs and crashes are what a diagnostics payload counts. A metrics
@@ -122,7 +144,7 @@ struct MetricGateTests {
         record.hangTime = .init(count: 3, seconds: 1.5)
         record.foregroundExits = ["memLimit": 1, "abnormal": 2]
         record.backgroundExits = [:]
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=- absent=" + PerfSignpost.names.joined(separator: ","))
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=- unfiredOrLost=" + PerfSignpost.names.joined(separator: ","))
     }
 
     @Test("Beendigungen nur mit Zahl; die Hangzeit aus dem Histogramm, ohne Klasse eine gemessene Null")
@@ -146,6 +168,9 @@ struct MetricGateTests {
         #expect(!empty.isMeasurement)
         #expect(instant.isMeasurement, "a hang without a period is a number")
         #expect(silentDay.isMeasurement, "a period without a number is a period")
+        var launchOnly = empty
+        launchOnly.firstDraw = .init(count: 1, meanSeconds: 0.4)
+        #expect(launchOnly.isMeasurement, "a launch without a period is a number")
         #expect(MetricRecord.shown([empty, full, instant]) == [full, instant])
         #expect(MetricRecord.shareText([empty]).isEmpty, "the text names an empty record")
     }
@@ -170,7 +195,9 @@ struct MetricGateTests {
         #expect(metrics.peakMemoryMB == 726 && metrics.signposts["tick"]?.count == 64)
         #expect(metrics.backgroundAudioSeconds == nil && metrics.wifiUpMB == nil && metrics.logicalWritesMB == nil
                 && metrics.hangTime == nil && metrics.foregroundExits == nil)
+        #expect(metrics.firstDraw == nil && metrics.resume == nil && metrics.scrollHitch == nil && metrics.hitch == nil)
         #expect(metrics.logLine.contains("bgAudio=- wifiUp=-"))
+        #expect(metrics.logLine.contains(" firstDraw=- resume=- scrollHitch=- hitch=- "))
         #expect(records.last?.logLine == "kind=diagnostics hours=0.0 hangs=1 crashes=0")
     }
 
@@ -183,8 +210,58 @@ struct MetricGateTests {
         let sizes = ["cumulativeBackgroundAudioTime", "cumulativeWifiUpload", "cumulativeWifiDownload",
                      "cumulativeCellularUpload", "cumulativeCellularDownload", "cumulativeLogicalWrites",
                      "histogrammedApplicationHangTime", "applicationExitMetrics",
-                     "cumulativeMemoryPressureExitCount", "cumulativeMemoryResourceLimitExitCount"]
+                     "cumulativeMemoryPressureExitCount", "cumulativeMemoryResourceLimitExitCount",
+                     "histogrammedTimeToFirstDraw", "histogrammedApplicationResumeTime", "scrollHitchTimeRatio",
+                     "hitchTimeRatio"]
         #expect(sizes.filter { !receiver.contains($0) } == [])
+    }
+
+    /// The groups of a payload MetricKit hands over and the receiver does
+    /// not read, each with why. A group nobody reads and nobody excepted is
+    /// a size lost by accident; an exception for a group that is read is a
+    /// reason that no longer holds.
+    static let unreadGroups: [String: String] = [
+        "gpuMetrics": "an audio player draws little of its own on the GPU; the measuring plan asks for CPU, not GPU time",
+        "cellularConditionMetrics": "the signal bars of the network say how the cell was, not what the app did",
+        "locationActivityMetrics": "the app asks for no location",
+        "displayMetrics": "the mean pixel luminance of an OLED screen; the plan does not ask about the screen",
+        "diskSpaceUsageMetrics": "the space the app takes on disk; the plan measures what it writes, which diskIOMetrics carries",
+        // The runtime of iOS 27.0 carries these three; the header of SDK
+        // 27.0 declares none of them, so there is no public type to read.
+        "intervalMetrics": "in the runtime, not in the SDK's header: no public type to read it",
+        "metalFrameRateMetrics": "in the runtime, not in the SDK's header: no public type to read it",
+        "stateMetrics": "in the runtime, not in the SDK's header: no public type to read it",
+    ]
+
+    /// The properties of `MXMetricPayload` as the runtime has them, without
+    /// NSObject's and without the frame (period, version, metadata): what is
+    /// left are the groups.
+    static func payloadGroups() -> (groups: Set<String>, frameFound: Bool) {
+        func properties(_ type: AnyClass) -> Set<String> {
+            var count: UInt32 = 0
+            guard let list = class_copyPropertyList(type, &count) else { return [] }
+            defer { free(list) }
+            return Set((0..<Int(count)).map { String(cString: property_getName(list[$0])) })
+        }
+        let frame: Set = ["latestApplicationVersion", "includesMultipleApplicationVersions", "timeStampBegin",
+                          "timeStampEnd", "metaData"]
+        let all = properties(MXMetricPayload.self).subtracting(properties(NSObject.self))
+        return (all.subtracting(frame), frame.isSubset(of: all))
+    }
+
+    @Test("jede Gruppe der Nutzlast hat einen Leser oder eine Ausnahme mit Grund, nie beides", .needsTheSources)
+    func everyGroupOfThePayloadIsReadOrExcepted() throws {
+        let receiver = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        let (groups, frameFound) = Self.payloadGroups()
+        try #require(frameFound && groups.contains("cpuMetrics"), "the payload's properties were not read: \(groups)")
+        let read = groups.filter { receiver.contains("payload.\($0)") }
+        let unread = groups.subtracting(read)
+        #expect(unread.subtracting(Self.unreadGroups.keys).sorted() == [], "a group nobody reads and nobody excepted")
+        #expect(read.intersection(Self.unreadGroups.keys).sorted() == [], "an exception for a group that is read")
+        #expect(Set(Self.unreadGroups.keys).subtracting(groups).sorted() == [], "an exception names no group of the payload")
+        #expect(Self.unreadGroups.values.allSatisfy { !$0.isEmpty }, "an exception without a reason")
+        #expect(read.isSuperset(of: ["applicationLaunchMetrics", "animationMetrics"]), "launch and hitch are read")
     }
 
     @Test("die Ablage behaelt die Eintraege ueber die Naht, ein zweiter Empfang kommt dazu")

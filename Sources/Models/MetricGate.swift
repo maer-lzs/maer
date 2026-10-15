@@ -77,6 +77,15 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     var logicalWritesMB: Double?
     /// The time the app hung in the period and how many hangs that was.
     var hangTime: HangTime?
+    /// How long a launch took to its first frame, and a return from the
+    /// background to the app: how many, and their mean.
+    var firstDraw: Durations?
+    var resume: Durations?
+    /// The share of the time the app hitched while scrolling, and (iOS 26
+    /// and later) during any tracked animation, in the unit MetricKit
+    /// hands over.
+    var scrollHitch: Ratio?
+    var hitch: Ratio?
     /// How often the app was ended in the foreground and in the
     /// background, by reason; only reasons with a count. Nil where the
     /// payload carried no exits, empty where it counted none.
@@ -113,6 +122,33 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
         var seconds: Double
     }
 
+    /// Durations of one kind in one period: how many, and how long one took
+    /// on average; no mean where none was counted.
+    struct Durations: Codable, Equatable, Sendable {
+        var count: Int
+        var meanSeconds: Double?
+    }
+
+    /// A ratio as MetricKit hands it over: the value and its unit's symbol,
+    /// spaces taken out so the line keeps one word per size. The header
+    /// calls the hitch ratios dimensionless; which unit a device reports is
+    /// not measured, so the record keeps the one it got.
+    struct Ratio: Codable, Equatable, Sendable {
+        var value: Double
+        var unit: String
+    }
+
+    /// The durations of a histogram: the count, and the mean with each
+    /// bucket at its middle.
+    static func durations(_ buckets: [(start: Double, end: Double, count: Int)]) -> Durations {
+        Durations(count: buckets.reduce(0) { $0 + $1.count }, meanSeconds: meanSeconds(buckets))
+    }
+
+    /// A ratio with its unit's symbol, spaces taken out.
+    static func ratio(_ value: Double, symbol: String) -> Ratio {
+        Ratio(value: value, unit: symbol.filter { !$0.isWhitespace })
+    }
+
     /// The hang time of a histogram, each bucket counted at its middle. A
     /// histogram without a count is a measured zero, not an unknown.
     static func hangTime(_ buckets: [(start: Double, end: Double, count: Int)]) -> HangTime {
@@ -131,7 +167,8 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     var isMeasurement: Bool {
         let numbers: [Double?] = [cpuSeconds, foregroundSeconds, backgroundSeconds, peakMemoryMB, backgroundAudioSeconds,
                                   wifiUpMB, wifiDownMB, cellularUpMB, cellularDownMB, logicalWritesMB]
-        return end > begin || numbers.contains { $0 != nil } || hangTime != nil || foregroundExits != nil
+        return end > begin || numbers.contains { $0 != nil } || hangTime != nil || firstDraw != nil || resume != nil
+            || scrollHitch != nil || hitch != nil || foregroundExits != nil
             || backgroundExits != nil || hangs > 0 || crashes > 0 || !signposts.isEmpty
     }
 
@@ -188,6 +225,13 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
             guard let counts else { return "-" }
             return counts.isEmpty ? "0" : counts.keys.sorted().map { "\($0):\(counts[$0] ?? 0)" }.joined(separator: ",")
         }
+        // How many, times the mean: 12x0.850s is twelve at 0.850 s each on
+        // average.
+        func durations(_ value: Durations?) -> String {
+            guard let value else { return "-" }
+            return value.meanSeconds.map { "\(value.count)x" + String(format: "%.3f", $0) + "s" } ?? "\(value.count)"
+        }
+        func ratio(_ value: Ratio?) -> String { value.map { String(format: "%.4f", $0.value) + $0.unit } ?? "-" }
         let head = "kind=\(kind.rawValue) hours=\(number(end.timeIntervalSince(begin) / 3_600))"
         if kind == .diagnostics {
             return head + " hangs=\(hangs) crashes=\(crashes)"
@@ -202,14 +246,18 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
             + " cellUp=\(unit(cellularUpMB, "MB")) cellDown=\(unit(cellularDownMB, "MB"))"
             + " writes=\(unit(logicalWritesMB, "MB"))"
             + " hang=\(hangTime.map { String(format: "%.1fs/%d", $0.seconds, $0.count) } ?? "-")"
+            + " firstDraw=\(durations(firstDraw)) resume=\(durations(resume))"
+            + " scrollHitch=\(ratio(scrollHitch)) hitch=\(ratio(hitch))"
             + " exitsFg=\(exits(foregroundExits)) exitsBg=\(exits(backgroundExits))"
             + " signposts=\(marks.isEmpty ? "-" : marks)"
-            + " absent=\(absentSignposts.isEmpty ? "none" : absentSignposts.joined(separator: ","))"
+            + " unfiredOrLost=\(absentSignposts.isEmpty ? "none" : absentSignposts.joined(separator: ","))"
     }
 
     /// The names the app writes that did not come back in this record, in
     /// the app's order. MetricKit keeps only so many names a day; a name
-    /// that went missing shows here instead of silently.
+    /// that went missing shows here instead of silently. The device does
+    /// not note which names fired, so a name here either never fired in
+    /// the period or fired and was not kept, and the line's word says both.
     var absentSignposts: [String] {
         PerfSignpost.names.filter { signposts[$0] == nil }
     }

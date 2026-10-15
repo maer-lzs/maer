@@ -34,10 +34,12 @@ instead of your server's music.
 **TestFlight: the Measurements page shows more.** Each day also names the
 time spent playing in the background, the data sent and received over
 Wi-Fi and cellular, what was written to disk, the time the app hung and
-how often it was ended, by reason. The app's own measuring points now
-arrive there with their count and duration, and each day names the ones
-that did not arrive. A day without a period and without a number is no
-longer listed.
+how often it was ended, by reason, how long a launch took to its first
+frame and a return to the app, and how much of the scrolling hitched.
+The app's own measuring points now arrive there with their count and
+duration, and each day names the ones that did not arrive, which either
+did not run that day or were not kept. A day without a period and
+without a number is no longer listed.
 
 ## v3.4 (Build 53)
 
