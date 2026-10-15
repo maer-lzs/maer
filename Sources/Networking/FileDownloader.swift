@@ -175,14 +175,17 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         // length or a chunked body lost its last chunk (measured): the size
         // the source states decides. An orphan has no stated size here; the
         // resume and the player hold the file to it later.
-        if let stated = handler?.statedBytes, let bytes = TrackFileSize.bytes(at: location) {
+        if let stated = handler?.statedBytes {
+            let bytes = TrackFileSize.bytes(at: location)
             switch TrackFileSize.verdict(bytes: bytes, stated: stated) {
             case .short:
-                Logger.library.error("DOWNLOAD short file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes) stated=\(stated), not kept")
-                handler?.continuation.resume(throwing: ShortDownloadError(bytes: bytes, stated: stated))
+                Logger.library.error("DOWNLOAD short file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes ?? 0) stated=\(stated), not kept")
+                handler?.continuation.resume(throwing: ShortDownloadError(bytes: bytes ?? 0, stated: stated))
                 return
             case .larger:
-                Logger.library.notice("DOWNLOAD larger file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes) stated=\(stated), kept")
+                Logger.library.notice("DOWNLOAD larger file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes ?? 0) stated=\(stated), kept")
+            case .unread:
+                Logger.library.error("DOWNLOAD size unread file=\(destination.lastPathComponent, privacy: .public) stated=\(stated), kept")
             case .whole, .unstated:
                 break
             }

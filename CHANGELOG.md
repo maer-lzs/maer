@@ -36,6 +36,9 @@ track of an Audiobookshelf book or podcast arrives with fewer bytes than
 the server names for it, the download says it failed instead of keeping
 the shorter file. A track that is already stored too short is fetched
 again and plays from the server until then, so no part of it is skipped.
+Without a connection the stored file stays and playback stops at that
+track with the note that the download is unreadable and plays from the
+server once you are online.
 
 **TestFlight: the Measurements page shows more.** Each day also names the
 time spent playing in the background, the data sent and received over

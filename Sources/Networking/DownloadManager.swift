@@ -752,12 +752,17 @@ final class DownloadManager {
                 // unless one holds fewer bytes than its source states; that
                 // one is loaded again.
                 if let existing = existingTracks[index] {
-                    let bytes = TrackFileSize.bytes(at: existing) ?? 0
-                    if TrackFileSize.verdict(bytes: bytes, stated: stated) == .short {
-                        Logger.library.error("DOWNLOAD resume short track=\(index) bytes=\(bytes) stated=\(stated ?? 0), loaded again")
+                    let bytes = TrackFileSize.bytes(at: existing)
+                    let verdict = TrackFileSize.verdict(bytes: bytes, stated: stated)
+                    if verdict == .short {
+                        Logger.library.error("DOWNLOAD resume short track=\(index) bytes=\(bytes ?? 0) stated=\(stated ?? 0), loaded again")
                         // bearable, because the new download replaces the file and a file left here is held to its size again before it plays
                         try? FileManager.default.removeItem(at: existing)
                     } else {
+                        // A size that cannot be read is no verdict: the track stays.
+                        if verdict == .unread {
+                            Logger.library.error("DOWNLOAD resume size unread track=\(index) stated=\(stated ?? 0), kept")
+                        }
                         completedFraction += perTrackWeight
                         phase[itemId] = .downloading(completedFraction)
                         continue

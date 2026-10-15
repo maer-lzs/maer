@@ -29,6 +29,30 @@ struct TrackFileSizeTests {
         #expect(TrackFileSize.verdict(bytes: 60_000, stated: 60_000) == .whole)
         #expect(TrackFileSize.verdict(bytes: 70_000, stated: 60_000) == .larger, "more than stated is kept")
         #expect(TrackFileSize.verdict(bytes: 50_000, stated: nil) == .unstated)
+        #expect(TrackFileSize.verdict(bytes: nil, stated: 60_000) == .unread, "a size that cannot be read is no verdict, never short")
+        #expect(TrackFileSize.verdict(bytes: nil, stated: nil) == .unstated)
+    }
+
+    /// The capability is stated by the real sources, not by a test double:
+    /// a source that loses it drops the rule in silence, one that gains it
+    /// throws away every transcoded download.
+    @Test("die Faehigkeit an den echten Anbietern: nur Audiobookshelf laedt die Datei selbst")
+    func theRealSourcesStateTheCapability() {
+        let abs = APIClient(baseURL: URL(string: "https://abs.example.invalid")!, token: nil)
+        #expect(abs.capabilities.contains(.downloadsTheOriginalFile), "Audiobookshelf books")
+        #expect(ABSPodcastProvider.shared.capabilities.contains(.downloadsTheOriginalFile), "Audiobookshelf podcasts")
+        let others: [(String, ProviderCapabilities)] = [
+            ("Subsonic", SubsonicProvider.shared.capabilities),
+            ("Jellyfin", JellyfinProvider.shared.capabilities),
+            ("RSS", RSSProvider.shared.capabilities),
+            ("free catalogue", FreeCatalogProvider.shared.capabilities),
+            ("local", LocalProvider.shared.capabilities),
+            ("radio", RadioProvider.shared.capabilities),
+            ("music union", MusicUnion(sources: [SubsonicProvider.shared, JellyfinProvider.shared]).capabilities),
+            ("unknown", UnknownSourceProvider.shared.capabilities),
+        ]
+        #expect(others.filter { $0.1.contains(.downloadsTheOriginalFile) }.map(\.0) == [],
+                "a source whose download may not be the file, or that states no size")
     }
 
     /// Bytes that read as an MPEG audio file to the download's sniffing.
@@ -220,6 +244,42 @@ struct TrackFileSizeTests {
         #expect(playedURL(model)?.path == server.path, "the track plays from the server: \(String(describing: playedURL(model)))")
         #expect(model.currentTime == 0, "the position did not move")
         model.stop()
+    }
+
+    /// Without network a short stored track is what a local file that
+    /// cannot load is: it stays, it is not played, and playback holds with
+    /// the hint that the download is unavailable offline. The next load
+    /// with network drops it and plays from the server.
+    @Test("ohne Netz: die kurze Spur bleibt liegen, wird nicht gespielt, Halt mit dem Offline-Hinweis; mit Netz geht sie", .needsAudio)
+    func offlineAShortStoredTrackStaysAndHolds() async throws {
+        let server = try tone(seconds: 2)
+        let (local, stated) = try shortCopy(of: server)
+        defer { for url in [server, local] { try? FileManager.default.removeItem(at: url) } }
+        let id = "trackfile-\(UUID().uuidString)"
+        // Offline the server cannot be reached: its address is dead.
+        let offline = PlayerViewModel(provider: SizedProvider(original: true), localTracks: { _ in [0: local] }, isOnline: { false })
+        await offline.load(item: Self.book(id, path: "http://127.0.0.1:1/0.caf", size: stated, seconds: 2))
+        #expect(playedURL(offline)?.path != local.path, "the short file is not played")
+        offline.play()
+        await waitFor { offline.sourceHint != nil }
+        #expect(offline.sourceHint?.kind == .downloadUnreadableOffline,
+                "the hold of a local file that cannot load offline: \(String(describing: offline.sourceHint))")
+        #expect(!offline.isPlaying, "playback holds")
+        #expect(FileManager.default.fileExists(atPath: local.path), "without network the file stays")
+        offline.stop()
+
+        let online = PlayerViewModel(provider: SizedProvider(original: true), localTracks: { _ in [0: local] }, isOnline: { true })
+        await online.load(item: Self.book(id, path: server.path, size: stated, seconds: 2))
+        #expect(!FileManager.default.fileExists(atPath: local.path), "the next load with network drops it")
+        #expect(playedURL(online)?.path == server.path)
+        online.stop()
+    }
+
+    private func waitFor(_ condition: () -> Bool, seconds: Double = 10) async {
+        let deadline = Date().addingTimeInterval(seconds)
+        while !condition(), Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 
     @Test("eine Quelle, deren Download umkodiert sein kann: die kleinere Datei bleibt und wird abgespielt", .needsAudio)

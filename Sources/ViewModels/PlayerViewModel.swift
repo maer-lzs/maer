@@ -212,6 +212,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Local files of a downloaded book, keyed by track index. Strict
     /// mapping, immune to stray files in the folder.
     private var localTrackFiles: [Int: URL] = [:]
+    /// Tracks whose stored file is too short and was kept because there was
+    /// no network (`dropShortLocalFiles`): a failure of the track counts as
+    /// one of a local file, so it holds as unavailable offline.
+    private var shortLocalTracks: Set<Int> = []
 
     /// True while a write to the server is in flight.
     var syncInFlight = false
@@ -474,6 +478,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
 
         localTrackFiles = localTracks(item.id)
+        shortLocalTracks = []
         dropShortLocalFiles(tracks: sortedTracks)
         trackRetryAttempts.removeAll()
         observeTrackFailures()
@@ -1413,16 +1418,31 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// A stored track with fewer bytes than its source states for the file is
     /// no finished track (`TrackFileSize`), also one stored before this rule:
-    /// it goes like a failed local file, before it ever plays. The track
-    /// plays from the server, and the self-heal of the load fetches it again.
+    /// it goes like a failed local file, before it ever plays. With network
+    /// the file goes, the track plays from the server, and the self-heal of
+    /// the load fetches it again. Without network the file stays and is not
+    /// played: the track is held like a local file that cannot load
+    /// (`.downloadUnreadableOffline`), and the next load with network drops
+    /// it. A size that cannot be read is no verdict: the file plays.
     private func dropShortLocalFiles(tracks: [ABSAudioTrack]) {
         let original = provider.capabilities.contains(.downloadsTheOriginalFile)
+        let online = isOnline()
         for (index, file) in localTrackFiles.sorted(by: { $0.key < $1.key }) where tracks.indices.contains(index) {
             let stated = TrackFileSize.stated(tracks[index].metadata?.size, downloadsTheOriginalFile: original)
-            let bytes = TrackFileSize.bytes(at: file) ?? 0
-            guard TrackFileSize.verdict(bytes: bytes, stated: stated) == .short else { continue }
-            Logger.player.error("LOCAL short track=\(index) bytes=\(bytes) stated=\(stated ?? 0), plays from the server")
-            dropLocalFile(at: index, fetchAgain: false)
+            let bytes = TrackFileSize.bytes(at: file)
+            switch TrackFileSize.verdict(bytes: bytes, stated: stated) {
+            case .short where online:
+                Logger.player.error("LOCAL short track=\(index) bytes=\(bytes ?? 0) stated=\(stated ?? 0), plays from the server")
+                dropLocalFile(at: index, fetchAgain: false)
+            case .short:
+                Logger.player.error("LOCAL short track=\(index) bytes=\(bytes ?? 0) stated=\(stated ?? 0), offline: kept, not played")
+                localTrackFiles[index] = nil
+                shortLocalTracks.insert(index)
+            case .unread:
+                Logger.player.error("LOCAL size unread track=\(index) stated=\(stated ?? 0), kept")
+            case .whole, .larger, .unstated:
+                break
+            }
         }
     }
 
@@ -1466,7 +1486,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
         let inCurrentQueue = itemTrackIndex[failedItem] != nil
         let fallback = inCurrentQueue && index >= currentTrackIndex && !isRadio
-            ? FailedLoad.localFallback(fromLocalFile: localTrackFiles[index] != nil,
+            ? FailedLoad.localFallback(fromLocalFile: localTrackFiles[index] != nil || shortLocalTracks.contains(index),
                                        retried: trackRetryAttempts.contains(index), online: isOnline())
             : .none
         if fallback == .stream {

@@ -27,6 +27,9 @@ nonisolated enum TrackFileSize {
         /// No size to hold it against: the source states none, or its
         /// download is not the stated file.
         case unstated
+        /// The bytes on disk could not be read: no verdict, the file stays.
+        /// Not knowing is no reason to delete.
+        case unread
     }
 
     /// The size a stored track is held to: the stated size of the file,
@@ -36,8 +39,9 @@ nonisolated enum TrackFileSize {
         return size
     }
 
-    static func verdict(bytes: Int64, stated: Int64?) -> Verdict {
+    static func verdict(bytes: Int64?, stated: Int64?) -> Verdict {
         guard let stated else { return .unstated }
+        guard let bytes else { return .unread }
         if bytes < stated { return .short }
         return bytes > stated ? .larger : .whole
     }
