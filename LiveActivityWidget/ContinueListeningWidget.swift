@@ -37,9 +37,20 @@ struct ContinueListeningProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ContinueListeningEntry>) -> Void) {
-        // Data-driven: the app reloads on state changes. The widget itself
-        // needs no timeline of its own.
-        completion(Timeline(entries: [currentEntry()], policy: .never))
+        // The app reloads on state changes only. While playing, the
+        // snapshot carries a step per minute for the next hour, and the
+        // widget runs on by itself: one entry per minute from now.
+        let now = currentEntry()
+        guard let snapshot = now.snapshot, snapshot.isPlaying, let steps = snapshot.steps, let savedAt = snapshot.savedAt,
+              steps.count > 1 else {
+            completion(Timeline(entries: [now], policy: .never))
+            return
+        }
+        let start = Date(timeIntervalSince1970: savedAt)
+        let entries = (0..<steps.count).map { minute in
+            ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot, cover: now.cover)
+        }.filter { $0.date.addingTimeInterval(60) > Date() }
+        completion(Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never))
     }
 }
 
@@ -91,7 +102,7 @@ private struct ContinueListeningView: View {
                     .font(.caption.bold())
                     .foregroundStyle(.white)
                     .lineLimit(2)
-                ProgressView(value: snapshot.fraction)
+                ProgressView(value: snapshot.shown(at: entry.date).fraction)
                     .tint(.orange)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,12 +129,14 @@ private struct ContinueListeningView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 2)
-                if let remaining = snapshot.remainingText {
+                // The step of this entry's minute while playing.
+                let shown = snapshot.shown(at: entry.date)
+                if let remaining = shown.remainingText {
                     Text(remaining)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-                ProgressView(value: snapshot.fraction)
+                ProgressView(value: shown.fraction)
                     .tint(.orange)
             }
         }

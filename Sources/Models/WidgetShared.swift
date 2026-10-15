@@ -30,6 +30,38 @@ nonisolated struct WidgetSnapshot: Codable {
     var fraction: Double
     var remainingText: String?
     var isPlaying: Bool
+    /// While playing: what the widget shows minute by minute from `savedAt`
+    /// on, computed by the app, so the widget runs on by itself instead of
+    /// the app reloading it every minute. Optional: a snapshot written
+    /// before shows its saved values.
+    var steps: [Step]?
+    var savedAt: Double?
+
+    struct Step: Codable, Equatable {
+        var fraction: Double
+        var remainingText: String?
+    }
+
+    /// One step per minute from `position`, at `rate`, for `minutes`
+    /// minutes; the first is the position itself.
+    static func steps(position: Double, duration: Double, rate: Double, minutes: Int,
+                      remaining text: (Double) -> String?) -> [Step] {
+        guard duration > 0 else { return [] }
+        return (0...minutes).map { minute in
+            let at = min(position + Double(minute) * 60 * rate, duration)
+            return Step(fraction: min(max(at / duration, 0), 1), remainingText: text(max(duration - at, 0)))
+        }
+    }
+
+    /// What the widget shows at `date`: the step of the minute since the
+    /// write while playing, else the saved values.
+    func shown(at date: Date) -> Step {
+        guard isPlaying, let steps, !steps.isEmpty, let savedAt else {
+            return Step(fraction: fraction, remainingText: remainingText)
+        }
+        let minute = Int(max(date.timeIntervalSince1970 - savedAt, 0) / 60)
+        return steps[min(minute, steps.count - 1)]
+    }
 
     static var snapshotURL: URL? {
         AppGroup.containerURL?.appendingPathComponent("widget-snapshot.json")

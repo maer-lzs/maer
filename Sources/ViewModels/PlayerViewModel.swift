@@ -205,6 +205,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// for it was built, counted for the witnesses of the per-second work.
     var nowPlayingWrites = 0
     var artworkBuilds = 0
+    /// How often the widget's snapshot was written (and the widget reloaded).
+    var widgetWrites = 0
     /// What the lock screen got last, for the tick's question whether it is
     /// due again, and the artwork built for the image it shows.
     var lastNowPlaying: NowPlayingRefresh.Written?
@@ -598,7 +600,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             ?? AppStorageKeys.defaultPlaybackRateValue
         updateCurrentChapter()
         updateNowPlayingInfo()
-        updateWidgetSnapshot(force: true)
+        updateWidgetSnapshot()
         startSyncTimer()
         syncStatus = .synced
         // Hint only when a state was actually adopted. For a fresh book (start
@@ -875,7 +877,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // otherwise the UI shows the wrong state after a fully played book.
                 self.isFinished = true
                 self.updateNowPlayingInfo()
-                self.updateWidgetSnapshot(force: true)
+                self.updateWidgetSnapshot()
                 await self.syncProgress(.bookEnd)
                 if let finishedId = self.item?.id {
                     self.onBookFinished?(finishedId)
@@ -930,7 +932,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
-        updateWidgetSnapshot(force: true)
+        updateWidgetSnapshot()
         Haptics.tap()
     }
 
@@ -1059,7 +1061,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                              duration: duration, epoch: standEpoch)
         }
         updateNowPlayingInfo()
-        updateWidgetSnapshot(force: true)
+        updateWidgetSnapshot()
         ListeningStatsStore.shared.flush()
         Haptics.tap()
         // Only a pause of a running piece has a stand on its way; the run
@@ -1096,6 +1098,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = clamped
         updateCurrentChapter()
         updateNowPlayingInfo()
+        // The widget runs on from the last snapshot: a jump writes a new one.
+        updateWidgetSnapshot()
         if userInitiated {
             // A DELIBERATE jump picks a new position. Smart Rewind must not
             // pull away from it when playback resumes after a long pause.
@@ -1229,6 +1233,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func setPlaybackRate(_ rate: Float) {
         playbackRate = rate
         if isPlaying { player?.rate = rate }
+        // The widget runs on at the rate of its last snapshot.
+        updateWidgetSnapshot()
         // Remember per book.
         if let item {
             AppStorageKeys.set(rate, for: AppStorageKeys.playbackRate(item.id))
@@ -1357,7 +1363,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                             showTitle: detail.media.metadata?.authorName ?? "",
                             feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: detail.id) ?? "")
                     }
-                    self.updateWidgetSnapshot()
+                    // The widget runs on by itself from the snapshot of the
+                    // last state change; the tick does not reload it.
                 }
                 // The heartbeat of the claim, decided by its own rule.
                 if self.isPlaying { self.refreshClaim(forced: false) }

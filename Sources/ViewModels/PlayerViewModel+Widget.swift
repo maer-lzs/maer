@@ -9,19 +9,23 @@ import UIKit
 import WidgetKit
 
 /// Feeds the home-screen "Continue" widget: writes a snapshot (JSON) + cover
-/// thumbnail into the App Group container and triggers a widget reload.
-/// Throttled. Widget reloads have a system budget.
+/// thumbnail into the App Group container and triggers a widget reload, on
+/// state changes only: widget reloads have a system budget, and while
+/// playing the widget runs on by itself from the snapshot's steps.
 extension PlayerViewModel {
-    private static var lastWidgetWriteAt: TimeInterval = 0
     private static var lastWidgetCoverItemId: String?
 
-    /// - Parameter force: true on state changes (play/pause/load/end); false on
-    ///   the periodic tick (applies at most 1×/minute).
-    func updateWidgetSnapshot(force: Bool = false) {
+    /// How far ahead the widget runs on by itself while playing.
+    static let widgetMinutesAhead = 60
+
+    /// Written on state changes only (load, play, pause, jump, rate, end):
+    /// while playing, the snapshot carries a step per minute for the next
+    /// hour, and the widget shows them by itself (`WidgetSnapshot.steps`).
+    /// Before, the tick reloaded the widget once a minute.
+    func updateWidgetSnapshot() {
         guard let item, duration > 0 else { return }
         let now = Date().timeIntervalSince1970
-        guard force || now - Self.lastWidgetWriteAt >= 60 else { return }
-        Self.lastWidgetWriteAt = now
+        widgetWrites += 1
 
         let remaining = max(duration - currentTime, 0)
         WidgetSnapshot(
@@ -30,7 +34,12 @@ extension PlayerViewModel {
             author: item.media.metadata?.authorName,
             fraction: min(max(currentTime / duration, 0), 1),
             remainingText: Self.widgetRemainingText(remaining),
-            isPlaying: isPlaying
+            isPlaying: isPlaying,
+            steps: isPlaying
+                ? WidgetSnapshot.steps(position: currentTime, duration: duration, rate: Double(playbackRate),
+                                       minutes: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText)
+                : nil,
+            savedAt: now
         ).save()
 
         // Copy the cover only on a book change (the thumbnail tier is plenty for
