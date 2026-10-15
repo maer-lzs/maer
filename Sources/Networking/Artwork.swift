@@ -86,7 +86,7 @@ enum Artwork {
         switch await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: nil, attempt: attempt)
         }) {
-        case .picture(let image): return .picture(Answer(image: image, pot: "net"))
+        case .picture(let image): return .picture(Answer(image: await sized(image, maxPixel), pot: "net"))
         case .absent: return .absent
         case .unanswered: break
         }
@@ -96,7 +96,7 @@ enum Artwork {
         switch await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: 800_000_000, attempt: attempt)
         }) {
-        case .picture(let image): return .picture(Answer(image: image, pot: "net2"))
+        case .picture(let image): return .picture(Answer(image: await sized(image, maxPixel), pot: "net2"))
         case .absent: return .absent
         case .unanswered:
             // An invalidated downloaded cover whose fresh picture did not
@@ -229,6 +229,15 @@ enum Artwork {
     }
 
     // MARK: - The one network path
+
+    /// A picture fresh from the network, at the size the cell asked for: a
+    /// cell that asked for a thumbnail gets a thumbnail, not the cover at
+    /// display size. Not kept in memory here; the next display reads the
+    /// thumbnail from the disk the fetch wrote.
+    private static func sized(_ image: UIImage, _ maxPixel: CGFloat?) async -> UIImage {
+        guard let maxPixel else { return image }
+        return await ImageCache.reduced(image, maxPixelSize: maxPixel)
+    }
 
     private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> Fetched {
         // Offline there is nothing to fetch. Per-cell attempts during

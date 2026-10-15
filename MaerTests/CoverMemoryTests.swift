@@ -42,6 +42,26 @@ struct CoverMemoryTests {
         #expect(pixels(kept) == 300 && keptBytes == small, "a cover under the size stays as it came")
     }
 
+    /// A cell that asked for a thumbnail gets one from a fresh fetch, not
+    /// the cover at display size.
+    @Test("ein frisch geladenes Cover kommt in eine Zelle in der Groesse, die sie anfragt")
+    func aFreshCoverReachesACellAtItsSize() async throws {
+        let (display, _) = try #require(await ImageCache.displaySized(png(3000), maxPixelSize: 2000))
+        let thumb = await ImageCache.reduced(display, maxPixelSize: 400)
+        #expect(pixels(thumb) == 400, "the cell's size: \(pixels(thumb))")
+        let small = try #require(UIImage(data: png(300)))
+        #expect(await ImageCache.reduced(small, maxPixelSize: 400) === small, "a picture already as small stays")
+    }
+
+    @Test("die Bild-Tuer gibt einer Vorschau-Zelle nach dem Netz eine Vorschau", .needsTheSources)
+    func theDoorSizesTheNetworkAnswer() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/Artwork.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "Answer(image: await sized(image, maxPixel), pot: \"net").count - 1 == 2,
+                "both network answers are sized for the cell")
+        #expect(!code.contains("Answer(image: image, pot: \"net"), "a network answer goes to the cell unsized")
+    }
+
     /// The one network path reduces before it stores and hands on: the
     /// picture `set` gets and the fetch returns is the reduced one.
     @Test("der Netzweg legt nur die verkleinerte Fassung ab und gibt nur sie weiter", .needsTheSources)

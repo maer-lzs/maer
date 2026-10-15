@@ -556,6 +556,18 @@ final class ImageCache {
     /// The size a full cover is held at (`displaySized`).
     var displayPixelSize: CGFloat { maxPixelSize }
 
+    /// A cover reduced to `maxPixelSize` on its longer side, off the
+    /// caller's executor; one already as small stays. For a cell that asked
+    /// for a thumbnail and got a cover fresh from the network.
+    @concurrent
+    nonisolated static func reduced(_ image: UIImage, maxPixelSize: CGFloat) async -> UIImage {
+        let width = image.size.width * image.scale, height = image.size.height * image.scale
+        guard max(width, height) > maxPixelSize else { return image }
+        let factor = maxPixelSize / max(width, height)
+        let size = CGSize(width: (width * factor).rounded(), height: (height * factor).rounded())
+        return image.preparingThumbnail(of: size) ?? image
+    }
+
     /// Downsample images > maxPixelSize at high quality (ImageIO); leave smaller
     /// originals untouched. nonisolated + static: runs on a background thread,
     /// NOT on the MainActor (ImageIO decodes of large covers would otherwise
