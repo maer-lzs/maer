@@ -1,0 +1,49 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+
+/// Whether a stored track holds the whole file its source names.
+///
+/// Measured: a download whose body ends early still reports success when
+/// the server sends no length, and when a chunked body lacks its last
+/// chunk. The short file was then kept as a finished track, the resumed
+/// download skipped it, and playback ended it early and jumped over the
+/// rest. The one size to hold it against is the one the source states for
+/// exactly this file, and only a source whose download IS that file can be
+/// held to it: a server that transcodes while it streams sends another
+/// size on purpose.
+nonisolated enum TrackFileSize {
+    enum Verdict: Equatable {
+        /// As many bytes as the source states.
+        case whole
+        /// Fewer bytes than the source states: not a finished track.
+        case short
+        /// More bytes than stated: kept, a server that sends more loses
+        /// nothing.
+        case larger
+        /// No size to hold it against: the source states none, or its
+        /// download is not the stated file.
+        case unstated
+    }
+
+    /// The size a stored track is held to: the stated size of the file,
+    /// only where the source's download is that file.
+    static func stated(_ size: Int64?, downloadsTheOriginalFile: Bool) -> Int64? {
+        guard downloadsTheOriginalFile, let size, size > 0 else { return nil }
+        return size
+    }
+
+    static func verdict(bytes: Int64, stated: Int64?) -> Verdict {
+        guard let stated else { return .unstated }
+        if bytes < stated { return .short }
+        return bytes > stated ? .larger : .whole
+    }
+
+    /// The bytes of a file on disk, nil when it cannot be read.
+    static func bytes(at url: URL) -> Int64? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value
+    }
+}

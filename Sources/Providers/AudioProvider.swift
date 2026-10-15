@@ -32,6 +32,11 @@ nonisolated struct ProviderCapabilities: OptionSet {
     /// downloaded" is not the same as "already here". Streams (catalogue,
     /// radio) carry neither capability and are offline unavailable.
     static let alwaysLocal = ProviderCapabilities(rawValue: 1 << 5)
+    /// A download is the stored file itself, so the size the source states
+    /// for a track is the size the download must reach (`TrackFileSize`).
+    /// Stated positively: a source that may transcode while it streams, or
+    /// that states no size, does not carry it until its size is measured.
+    static let downloadsTheOriginalFile = ProviderCapabilities(rawValue: 1 << 6)
 }
 
 /// Prebuilt "Continue"/"Recently Added" rows of a source. So the top library

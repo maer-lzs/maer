@@ -14,7 +14,7 @@ extension APIClient: AudioProvider {
 
     var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities {
-        [.progressSync, .bookmarks, .passwordLogin, .downloadable]
+        [.progressSync, .bookmarks, .passwordLogin, .downloadable, .downloadsTheOriginalFile]
     }
 
     var streamAuthHeaders: [String: String] {

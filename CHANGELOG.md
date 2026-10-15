@@ -31,6 +31,12 @@ add sheet says only that the entries fit into a Mär playlist, and the
 footer of a Mär playlist page speaks of music from a server you add
 instead of your server's music.
 
+**An incomplete download no longer passes for a finished one.** When a
+track of an Audiobookshelf book or podcast arrives with fewer bytes than
+the server names for it, the download says it failed instead of keeping
+the shorter file. A track that is already stored too short is fetched
+again and plays from the server until then, so no part of it is skipped.
+
 **TestFlight: the Measurements page shows more.** Each day also names the
 time spent playing in the background, the data sent and received over
 Wi-Fi and cellular, what was written to disk, the time the app hung and

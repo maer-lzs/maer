@@ -745,12 +745,23 @@ final class DownloadManager {
                 guard let remoteURL = provider.streamURL(forContentPath: track.contentUrl) else { continue }
                 let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
+                let stated = TrackFileSize.stated(
+                    track.metadata?.size, downloadsTheOriginalFile: provider.capabilities.contains(.downloadsTheOriginalFile))
 
-                // Resume-by-skip: tracks from an earlier attempt are kept.
-                if existingTracks[index] != nil {
-                    completedFraction += perTrackWeight
-                    phase[itemId] = .downloading(completedFraction)
-                    continue
+                // Resume-by-skip: tracks from an earlier attempt are kept,
+                // unless one holds fewer bytes than its source states; that
+                // one is loaded again.
+                if let existing = existingTracks[index] {
+                    let bytes = TrackFileSize.bytes(at: existing) ?? 0
+                    if TrackFileSize.verdict(bytes: bytes, stated: stated) == .short {
+                        Logger.library.error("DOWNLOAD resume short track=\(index) bytes=\(bytes) stated=\(stated ?? 0), loaded again")
+                        // bearable, because the new download replaces the file and a file left here is held to its size again before it plays
+                        try? FileManager.default.removeItem(at: existing)
+                    } else {
+                        completedFraction += perTrackWeight
+                        phase[itemId] = .downloading(completedFraction)
+                        continue
+                    }
                 }
 
                 var request = URLRequest(url: remoteURL)
@@ -769,6 +780,7 @@ final class DownloadManager {
                     request: request,
                     to: destination,
                     resumeData: resumeData,
+                    statedBytes: stated,
                     onProgress: { fraction in
                         Task { @MainActor in
                             // -1 = indeterminate (no server size); pass the

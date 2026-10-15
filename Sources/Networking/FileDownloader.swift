@@ -4,12 +4,21 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Thrown when a download task was cancelled deliberately (pause or abort).
 /// `resumeData` is non-nil for pauses and lets the next attempt continue
 /// mid-file instead of starting the track over.
 struct DownloadCancelledError: Error {
     let resumeData: Data?
+}
+
+/// Thrown when a track arrived with fewer bytes than its source states for
+/// the file (`TrackFileSize`): it is not kept as a finished track.
+struct ShortDownloadError: LocalizedError {
+    let bytes: Int64
+    let stated: Int64
+    var errorDescription: String? { String(localized: "A track arrived incomplete. Try the download again.") }
 }
 
 /// Downloads files with progress reporting over ONE shared background
@@ -31,6 +40,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     private struct Handler {
         let onProgress: (Double) -> Void
         let continuation: CheckedContinuation<Void, Error>
+        /// The size the source states for this file, where its download is
+        /// that file; nil holds the result to no size.
+        let statedBytes: Int64?
     }
 
     // An implicitly-unwrapped `var` only because the delegate-`self` pattern
@@ -74,10 +86,13 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     /// Downloads and moves the result to `destination` itself (target folder
     /// must exist). `resumeData` continues a previously paused transfer.
     /// `onTask` hands the live task to the caller for pause/cancel control.
+    /// `statedBytes` is the size the result must reach (`TrackFileSize`):
+    /// fewer bytes are not kept and throw `ShortDownloadError`.
     func download(
         request: URLRequest,
         to destination: URL,
         resumeData: Data? = nil,
+        statedBytes: Int64? = nil,
         onProgress: @escaping (Double) -> Void,
         onTask: ((URLSessionDownloadTask) -> Void)? = nil
     ) async throws {
@@ -90,7 +105,8 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             let task = resumeData.map { session.downloadTask(withResumeData: $0) }
                 ?? session.downloadTask(with: request)
             lock.lock()
-            handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation)
+            handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation,
+                                                    statedBytes: statedBytes)
             var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
             map[String(task.taskIdentifier)] = destination.path
             AppStorageKeys.set(map, for: destinationsKey)
@@ -154,6 +170,22 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
            !(200...299).contains(http.statusCode) {
             handler?.continuation.resume(throwing: URLError(.badServerResponse))
             return
+        }
+        // A body that ended early reports success when the server sent no
+        // length or a chunked body lost its last chunk (measured): the size
+        // the source states decides. An orphan has no stated size here; the
+        // resume and the player hold the file to it later.
+        if let stated = handler?.statedBytes, let bytes = TrackFileSize.bytes(at: location) {
+            switch TrackFileSize.verdict(bytes: bytes, stated: stated) {
+            case .short:
+                Logger.library.error("DOWNLOAD short file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes) stated=\(stated), not kept")
+                handler?.continuation.resume(throwing: ShortDownloadError(bytes: bytes, stated: stated))
+                return
+            case .larger:
+                Logger.library.notice("DOWNLOAD larger file=\(destination.lastPathComponent, privacy: .public) bytes=\(bytes) stated=\(stated), kept")
+            case .whole, .unstated:
+                break
+            }
         }
         // Orphan tasks (no live handler, e.g. zombies from an earlier app
         // session) must NEVER overwrite an existing file: the book may have

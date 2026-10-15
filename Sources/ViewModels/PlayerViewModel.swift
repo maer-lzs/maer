@@ -474,6 +474,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
 
         localTrackFiles = localTracks(item.id)
+        dropShortLocalFiles(tracks: sortedTracks)
         trackRetryAttempts.removeAll()
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
@@ -1410,10 +1411,26 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// A stored track with fewer bytes than its source states for the file is
+    /// no finished track (`TrackFileSize`), also one stored before this rule:
+    /// it goes like a failed local file, before it ever plays. The track
+    /// plays from the server, and the self-heal of the load fetches it again.
+    private func dropShortLocalFiles(tracks: [ABSAudioTrack]) {
+        let original = provider.capabilities.contains(.downloadsTheOriginalFile)
+        for (index, file) in localTrackFiles.sorted(by: { $0.key < $1.key }) where tracks.indices.contains(index) {
+            let stated = TrackFileSize.stated(tracks[index].metadata?.size, downloadsTheOriginalFile: original)
+            let bytes = TrackFileSize.bytes(at: file) ?? 0
+            guard TrackFileSize.verdict(bytes: bytes, stated: stated) == .short else { continue }
+            Logger.player.error("LOCAL short track=\(index) bytes=\(bytes) stated=\(stated ?? 0), plays from the server")
+            dropLocalFile(at: index, fetchAgain: false)
+        }
+    }
+
     /// A local file that failed is dropped and fetched again in the
     /// background; until it is back, the track plays from the server. The
-    /// one place for both failure paths, mid-play and at load.
-    private func dropLocalFile(at index: Int) {
+    /// one place for every failure path, mid-play, at load and a short file;
+    /// `fetchAgain` false where the load's self-heal fetches it anyway.
+    private func dropLocalFile(at index: Int, fetchAgain: Bool = true) {
         guard let local = localTrackFiles[index] else { return }
         do {
             try FileManager.default.removeItem(at: local)
@@ -1423,7 +1440,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Logger.player.error("LOCAL failed track not removed index=\(index) reason=\(FailureReason.of(error), privacy: .public)")
         }
         localTrackFiles[index] = nil
-        if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
+        if fetchAgain, let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
             let provider = self.provider
             Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
         }
