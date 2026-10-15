@@ -201,21 +201,6 @@ struct MetricGateTests {
         #expect(records.last?.logLine == "kind=diagnostics hours=0.0 hangs=1 crashes=0")
     }
 
-    /// What MetricKit hands over is read where it arrives; the receiver
-    /// names each size, so none of them is left out by accident.
-    @Test("der Empfang liest jede Groesse aus MetricKit", .needsTheSources)
-    func theReceiverReadsEverySize() throws {
-        let receiver = SyncContractFenceTests.stripped(try String(
-            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
-        let sizes = ["cumulativeBackgroundAudioTime", "cumulativeWifiUpload", "cumulativeWifiDownload",
-                     "cumulativeCellularUpload", "cumulativeCellularDownload", "cumulativeLogicalWrites",
-                     "histogrammedApplicationHangTime", "applicationExitMetrics",
-                     "cumulativeMemoryPressureExitCount", "cumulativeMemoryResourceLimitExitCount",
-                     "histogrammedTimeToFirstDraw", "histogrammedApplicationResumeTime", "scrollHitchTimeRatio",
-                     "hitchTimeRatio"]
-        #expect(sizes.filter { !receiver.contains($0) } == [])
-    }
-
     /// The groups of a payload MetricKit hands over and the receiver does
     /// not read, each with why. A group nobody reads and nobody excepted is
     /// a size lost by accident; an exception for a group that is read is a
@@ -237,28 +222,136 @@ struct MetricGateTests {
         "stateMetrics": (27, "in the runtime, not in the SDK's header: no public type to read it"),
     ]
 
+    /// The sizes inside a read group that the receiver does not read, each
+    /// with why, as `Type.size` with the version as for the groups. Measured
+    /// by the walk below on the runtimes of iOS 27.0 and 18.6.
+    static let unreadSizes: [String: (since: Int, reason: String)] = [
+        "MXForegroundExitData.cumulativeCPUResourceLimitExitCount": (18, runtimeOnly),
+        "MXBackgroundExitData.cumulativeBackgroundFetchCompletionTimeoutExitCount": (18, runtimeOnly),
+        "MXBackgroundExitData.cumulativeBackgroundURLSessionCompletionTimeoutExitCount": (18, runtimeOnly),
+        "MXAppLaunchMetric.histogrammedExtendedLaunch": (18, "the app never extends a launch measurement, so the histogram stays empty"),
+        "MXAppLaunchMetric.histogrammedOptimizedTimeToFirstDraw": (18, "a second first draw histogram, for the launches the system optimized; the record keeps one launch number"),
+        "MXAppRunTimeMetric.cumulativeBackgroundLocationTime": (18, "the app asks for no location"),
+        "MXCPUMetric.cumulativeCPUInstructions": (18, "the measuring plan asks for CPU time; instructions count the same work in another unit"),
+        "MXMemoryMetric.averageSuspendedMemory": (18, "the measuring plan asks for the peak of memory"),
+        "MXSignpostMetric.signpostCategory": (18, "each written name stands once across the categories, so the name alone says which"),
+        "MXSignpostIntervalData.averageMemory": (18, "per signpost the plan asks for time and CPU; memory is read for the whole period"),
+        "MXSignpostIntervalData.cumulativeLogicalWrites": (18, "per signpost the plan asks for time and CPU; writes are read for the whole period"),
+        "MXSignpostIntervalData.cumulativeHitchTimeRatio": (18, "no signpost of the app marks an animation"),
+        // The runtime of iOS 27.0 carries these and 18.6 does not; 26 is
+        // not measured.
+        "MXAnimationMetric.totalAnimationTime": (27, runtimeOnly),
+        "MXAnimationMetric.totalHitchTime": (27, runtimeOnly),
+        "MXAnimationMetric.totalScrollHitchTime": (27, runtimeOnly),
+        "MXAnimationMetric.totalScrollTime": (27, runtimeOnly),
+        "MXSignpostIntervalData.totalAnimationTime": (27, runtimeOnly),
+        "MXSignpostIntervalData.totalHitchTime": (27, runtimeOnly),
+    ]
+    static let runtimeOnly = "in the runtime, not in the SDK's header: no public symbol to read it"
+
+    /// What a type carries besides its sizes: a formatter is no measurement.
+    static let notSizes: Set = ["MXSignpostIntervalData.measurementFormatter"]
+
+    /// The runtime says only `NSArray` for a list; what it lists is named
+    /// here.
+    static let elementTypes = ["signpostMetrics": "MXSignpostMetric"]
+
+    /// Types whose properties are one measurement each, not sizes to walk.
+    static let leafTypes: Set = ["MXHistogram", "MXAverage"]
+
+    /// A type's own properties as the runtime has them, without those of
+    /// its superclasses, each with the class it holds when it holds one.
+    static func ownProperties(_ type: AnyClass) -> [String: String?] {
+        func properties(_ type: AnyClass) -> [String: String?] {
+            var count: UInt32 = 0
+            guard let list = class_copyPropertyList(type, &count) else { return [:] }
+            defer { free(list) }
+            return Dictionary((0..<Int(count)).map { index -> (String, String?) in
+                // `T@"MXCPUMetric"` for an object, `TQ` for a count.
+                let attribute = String(cString: property_getAttributes(list[index])!)
+                let held = attribute.split(separator: ",").first.flatMap { type -> String? in
+                    guard type.hasPrefix("T@\"") else { return nil }
+                    return String(type.dropFirst(3).prefix { $0 != "\"" && $0 != "<" })
+                }
+                return (String(cString: property_getName(list[index])), held)
+            }, uniquingKeysWith: { first, _ in first })
+        }
+        var inherited = Set<String>()
+        var parent: AnyClass? = class_getSuperclass(type)
+        while let next = parent {
+            inherited.formUnion(properties(next).keys)
+            parent = class_getSuperclass(next)
+        }
+        return properties(type).filter { !inherited.contains($0.key) }
+    }
+
     /// The properties of `MXMetricPayload` as the runtime has them, without
     /// NSObject's and without the frame (period, version, metadata): what is
     /// left are the groups.
     static func payloadGroups() -> (groups: Set<String>, frameFound: Bool) {
-        func properties(_ type: AnyClass) -> Set<String> {
-            var count: UInt32 = 0
-            guard let list = class_copyPropertyList(type, &count) else { return [] }
-            defer { free(list) }
-            return Set((0..<Int(count)).map { String(cString: property_getName(list[$0])) })
-        }
         let frame: Set = ["latestApplicationVersion", "includesMultipleApplicationVersions", "timeStampBegin",
                           "timeStampEnd", "metaData"]
-        let all = properties(MXMetricPayload.self).subtracting(properties(NSObject.self))
+        let all = Set(ownProperties(MXMetricPayload.self).keys)
         return (all.subtracting(frame), frame.isSubset(of: all))
     }
 
-    /// Which entries a runtime of this major version must find, and which
-    /// it must not: an entry from a later version names a group this
+    /// The body of the function in `source` that takes `type`, found by
+    /// its parameter (`: Type)`, `: Type?)` or `: [Type])`), or nil.
+    static func body(in source: String, takingA type: String) -> Substring? {
+        guard let head = source.range(of: #"func [^{]*: \[?"# + type + #"\]?\??\)"#, options: .regularExpression),
+              let open = source[head.upperBound...].firstIndex(of: "{") else { return nil }
+        var depth = 0
+        for index in source[open...].indices {
+            if source[index] == "{" { depth += 1 }
+            if source[index] == "}" { depth -= 1; if depth == 0 { return source[open...index] } }
+        }
+        return nil
+    }
+
+    /// Every size the runtime carries below `groups`, as `Type.size`, with
+    /// the type whose function reads it: the type itself when the receiver
+    /// has a function that takes it, else the nearest above it, at the top
+    /// the payload. What the walk cannot enter is returned apart: a group
+    /// that holds no object, a list without a named element type, a type
+    /// the runtime does not resolve.
+    static func sizes(below groups: Set<String>, in receiver: String) -> (sizes: [String: String], unwalked: [String]) {
+        var found: [String: String] = [:]
+        var unwalked: [String] = []
+        func walk(_ typeName: String, reader: String) {
+            guard let type = NSClassFromString(typeName) else {
+                unwalked.append(typeName)
+                return
+            }
+            let reader = body(in: receiver, takingA: typeName) == nil ? reader : typeName
+            for (name, held) in ownProperties(type) {
+                if let held, held.hasPrefix("MX"), !leafTypes.contains(held) {
+                    walk(held, reader: reader)
+                } else {
+                    found["\(typeName).\(name)"] = reader
+                }
+            }
+        }
+        let payload = ownProperties(MXMetricPayload.self)
+        for group in groups.sorted() {
+            switch payload[group] ?? nil {
+            case "NSArray":
+                if let element = elementTypes[group] { walk(element, reader: "MXMetricPayload") } else { unwalked.append(group) }
+            case let held?:
+                walk(held, reader: "MXMetricPayload")
+            case nil:
+                unwalked.append(group)
+            }
+        }
+        return (found, unwalked)
+    }
+
+    /// Which entries of `table` a runtime of this major version must find,
+    /// and which it must not: an entry from a later version names what this
     /// runtime does not carry yet.
-    static func expectedExceptions(onMajor major: Int) -> (due: Set<String>, notYet: Set<String>) {
-        let due = Set(unreadGroups.filter { $0.value.since <= major }.keys)
-        return (due, Set(unreadGroups.keys).subtracting(due))
+    static func expectedExceptions(_ table: [String: (since: Int, reason: String)] = unreadGroups,
+                                   onMajor major: Int) -> (due: Set<String>, notYet: Set<String>) {
+        let due = Set(table.filter { $0.value.since <= major }.keys)
+        return (due, Set(table.keys).subtracting(due))
     }
 
     @Test("jede Gruppe der Nutzlast hat einen Leser oder eine Ausnahme mit Grund, nie beides, je Laufzeit", .needsTheSources)
@@ -281,8 +374,47 @@ struct MetricGateTests {
         #expect(read.isSuperset(of: ["applicationLaunchMetrics", "animationMetrics"]), "launch and hitch are read")
     }
 
+    /// One level below the groups: inside each group the receiver reads,
+    /// every size the runtime carries is read or excepted with a reason,
+    /// never both. A size counts as read when its name follows a dot in the
+    /// function that reads its type, so the same name in two types (the
+    /// exit counts of front and back, the writes of the disk and of a
+    /// signpost) is judged in its own function. What the walk does not see:
+    /// a size read in that function from another type of the same name.
+    @Test("je gelesene Gruppe ist jede Groesse, die die Laufzeit traegt, gelesen oder mit Grund ausgenommen, nie beides, je Laufzeit", .needsTheSources)
+    func everySizeOfAReadGroupIsReadOrExcepted() throws {
+        let receiver = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        let readGroups = Self.payloadGroups().groups.filter { receiver.contains("payload.\($0)") }
+        let (sizes, unwalked) = Self.sizes(below: readGroups, in: receiver)
+        try #require(sizes["MXCPUMetric.cumulativeCPUTime"] == "MXMetricPayload"
+                     && sizes["MXSignpostIntervalData.cumulativeCPUTime"] == "MXSignpostMetric",
+                     "the sizes were not walked: \(sizes.count)")
+        #expect(unwalked == [], "a read group, list or type the walk could not enter")
+        let read = Set(sizes.filter { key, reader in
+            guard let body = Self.body(in: receiver, takingA: reader),
+                  let size = key.split(separator: ".").last else { return false }
+            // `.hitchTimeRatio` reads, and `.scrollHitchTimeRatio` does not
+            // read it; a longer name after it is another size.
+            return body.ranges(of: "." + size).contains { found in
+                found.upperBound == body.endIndex
+                    || !(body[found.upperBound].isLetter || body[found.upperBound].isNumber || body[found.upperBound] == "_")
+            }
+        }.keys)
+        let major = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        let (due, notYet) = Self.expectedExceptions(Self.unreadSizes, onMajor: major)
+        let unread = Set(sizes.keys).subtracting(read).subtracting(Self.notSizes)
+        #expect(unread.subtracting(due).sorted() == [], "a size nobody reads and nobody excepted on iOS \(major)")
+        #expect(read.intersection(Self.unreadSizes.keys).sorted() == [], "an exception for a size that is read")
+        #expect(due.subtracting(sizes.keys).sorted() == [], "an exception names no size of the runtime on iOS \(major)")
+        #expect(notYet.intersection(sizes.keys).sorted() == [], "a size came before the version its entry names, on iOS \(major)")
+        #expect(Self.notSizes.subtracting(sizes.keys).sorted() == [], "a type carries no such formatter")
+        #expect(Self.unreadSizes.values.allSatisfy { !$0.reason.isEmpty && $0.since >= 18 }, "an exception without a reason")
+    }
+
     /// The split by version, without a runtime: on 18 only the old four
-    /// are due, on 26 the disk space joins, on 27 all eight.
+    /// groups are due, on 26 the disk space joins, on 27 all eight; of the
+    /// sizes twelve from 18 and six more from 27.
     @Test("die Ausnahmen je Laufzeit: 18, 26 und 27")
     func theExceptionsByRuntime() {
         let old: Set = ["gpuMetrics", "cellularConditionMetrics", "locationActivityMetrics", "displayMetrics"]
@@ -290,6 +422,10 @@ struct MetricGateTests {
         #expect(Self.expectedExceptions(onMajor: 26).due == old.union(["diskSpaceUsageMetrics"]))
         #expect(Self.expectedExceptions(onMajor: 27).due == Set(Self.unreadGroups.keys))
         #expect(Self.expectedExceptions(onMajor: 18).notYet.count == 4)
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).due.count == 12)
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 26).due.count == 12)
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 27).due == Set(Self.unreadSizes.keys))
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).notYet.count == 6)
     }
 
     @Test("die Ablage behaelt die Eintraege ueber die Naht, ein zweiter Empfang kommt dazu")

@@ -110,23 +110,32 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
 
     /// The exits of one period by reason, foreground and background.
     nonisolated static func exits(of metric: MXAppExitMetric) -> (foreground: [String: Int], background: [String: Int]) {
-        let front = metric.foregroundExitData, back = metric.backgroundExitData
-        return (MetricRecord.exits(["normal": front.cumulativeNormalAppExitCount,
-                                    "memLimit": front.cumulativeMemoryResourceLimitExitCount,
-                                    "badAccess": front.cumulativeBadAccessExitCount,
-                                    "abnormal": front.cumulativeAbnormalExitCount,
-                                    "illegal": front.cumulativeIllegalInstructionExitCount,
-                                    "watchdog": front.cumulativeAppWatchdogExitCount]),
-                MetricRecord.exits(["normal": back.cumulativeNormalAppExitCount,
-                                    "memLimit": back.cumulativeMemoryResourceLimitExitCount,
-                                    "memPressure": back.cumulativeMemoryPressureExitCount,
-                                    "cpuLimit": back.cumulativeCPUResourceLimitExitCount,
-                                    "badAccess": back.cumulativeBadAccessExitCount,
-                                    "abnormal": back.cumulativeAbnormalExitCount,
-                                    "illegal": back.cumulativeIllegalInstructionExitCount,
-                                    "watchdog": back.cumulativeAppWatchdogExitCount,
-                                    "lockedFile": back.cumulativeSuspendedWithLockedFileExitCount,
-                                    "taskTimeout": back.cumulativeBackgroundTaskAssertionTimeoutExitCount]))
+        (exits(of: metric.foregroundExitData), exits(of: metric.backgroundExitData))
+    }
+
+    /// Each kind of exit data is read in the one function that takes it:
+    /// both carry counts of the same name, and the fence finds a size's
+    /// reader by its type.
+    nonisolated static func exits(of data: MXForegroundExitData) -> [String: Int] {
+        MetricRecord.exits(["normal": data.cumulativeNormalAppExitCount,
+                            "memLimit": data.cumulativeMemoryResourceLimitExitCount,
+                            "badAccess": data.cumulativeBadAccessExitCount,
+                            "abnormal": data.cumulativeAbnormalExitCount,
+                            "illegal": data.cumulativeIllegalInstructionExitCount,
+                            "watchdog": data.cumulativeAppWatchdogExitCount])
+    }
+
+    nonisolated static func exits(of data: MXBackgroundExitData) -> [String: Int] {
+        MetricRecord.exits(["normal": data.cumulativeNormalAppExitCount,
+                            "memLimit": data.cumulativeMemoryResourceLimitExitCount,
+                            "memPressure": data.cumulativeMemoryPressureExitCount,
+                            "cpuLimit": data.cumulativeCPUResourceLimitExitCount,
+                            "badAccess": data.cumulativeBadAccessExitCount,
+                            "abnormal": data.cumulativeAbnormalExitCount,
+                            "illegal": data.cumulativeIllegalInstructionExitCount,
+                            "watchdog": data.cumulativeAppWatchdogExitCount,
+                            "lockedFile": data.cumulativeSuspendedWithLockedFileExitCount,
+                            "taskTimeout": data.cumulativeBackgroundTaskAssertionTimeoutExitCount])
     }
 
     nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
