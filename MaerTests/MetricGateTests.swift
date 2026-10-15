@@ -65,6 +65,29 @@ struct MetricGateTests {
         #expect(costs["tick"] == .init(count: 5, cpuSeconds: nil, meanSeconds: nil), "no CPU and no histogram stay unknown, never zero")
     }
 
+    /// What a signpost wrote to disk, where MetricKit gives it: a name in
+    /// two categories adds its writes, a reading without them adds nothing,
+    /// a name with none stays unknown and shows as "-", never 0.
+    @Test("je Signpost die Schreibmenge in MB, wo MetricKit sie gibt, sonst unbekannt, nie null; mit Einheit in Zeile und Text")
+    func theSignpostWritesCarryTheirUnit() throws {
+        let costs = MetricRecord.costs([
+            .init(name: "syncRound", count: 30, cpuSeconds: 2, buckets: [], writesMB: 1.25),
+            .init(name: "syncRound", count: 10, cpuSeconds: 1, buckets: [], writesMB: 0.5),
+            .init(name: "syncRound", count: 2, cpuSeconds: nil, buckets: []),
+            .init(name: "tick", count: 5, cpuSeconds: nil, buckets: []),
+        ])
+        #expect(costs["syncRound"]?.writesMB == 1.75, "both categories add up, the one without writes adds nothing")
+        #expect(costs["tick"]?.writesMB == nil, "no writes given stay unknown")
+        var record = Self.record(daysAgo: 1)
+        record.signposts = costs
+        #expect(record.logLine.contains("signposts=syncRound=42/cpu=3.0000/mean=-/writes=1.7500MB,tick=5/cpu=-/mean=-/writes=- "),
+                "\(record.logLine)")
+        #expect(MetricRecord.shareText([record]).contains("/writes=1.7500MB,"))
+        // Kept and read again, the writes stay.
+        let again = try JSONDecoder().decode(MetricRecord.self, from: JSONEncoder().encode(record))
+        #expect(again.signposts["syncRound"]?.writesMB == 1.75 && again.signposts["tick"]?.writesMB == nil)
+    }
+
     @Test("zwei Wochen bleiben, aelteres faellt, dieselbe Periode steht einmal, aelteste zuerst")
     func twoWeeksAreKept() {
         let held = [Self.record(daysAgo: 20), Self.record(daysAgo: 13), Self.record(.diagnostics, daysAgo: 13)]
@@ -78,7 +101,7 @@ struct MetricGateTests {
     @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
     func theLogLineCarriesNumbers() {
         let record = Self.record(daysAgo: 1)
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035 unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200/writes=-,tick=3600/cpu=12.0000/mean=0.0035/writes=- unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
     }
 
     /// MetricKit keeps only so many signpost names a day, a limit not
@@ -193,6 +216,8 @@ struct MetricGateTests {
         #expect(records.count == 2)
         let metrics = try #require(records.first)
         #expect(metrics.peakMemoryMB == 726 && metrics.signposts["tick"]?.count == 64)
+        #expect(metrics.signposts["tick"]?.writesMB == nil && metrics.logLine.contains("tick=64/cpu=1.5000/mean=0.0020/writes=-"),
+                "a signpost kept before its writes were read shows them as unknown")
         #expect(metrics.backgroundAudioSeconds == nil && metrics.wifiUpMB == nil && metrics.logicalWritesMB == nil
                 && metrics.hangTime == nil && metrics.foregroundExits == nil)
         #expect(metrics.firstDraw == nil && metrics.resume == nil && metrics.scrollHitch == nil && metrics.hitch == nil)
@@ -236,7 +261,6 @@ struct MetricGateTests {
         "MXMemoryMetric.averageSuspendedMemory": (18, "the measuring plan asks for the peak of memory"),
         "MXSignpostMetric.signpostCategory": (18, "each written name stands once across the categories, so the name alone says which"),
         "MXSignpostIntervalData.averageMemory": (18, "per signpost the plan asks for time and CPU; memory is read for the whole period"),
-        "MXSignpostIntervalData.cumulativeLogicalWrites": (18, "per signpost the plan asks for time and CPU; writes are read for the whole period"),
         "MXSignpostIntervalData.cumulativeHitchTimeRatio": (18, "no signpost of the app marks an animation"),
         // The runtime of iOS 27.0 carries these and 18.6 does not; 26 is
         // not measured.
@@ -414,7 +438,7 @@ struct MetricGateTests {
 
     /// The split by version, without a runtime: on 18 only the old four
     /// groups are due, on 26 the disk space joins, on 27 all eight; of the
-    /// sizes twelve from 18 and six more from 27.
+    /// sizes eleven from 18 and six more from 27.
     @Test("die Ausnahmen je Laufzeit: 18, 26 und 27")
     func theExceptionsByRuntime() {
         let old: Set = ["gpuMetrics", "cellularConditionMetrics", "locationActivityMetrics", "displayMetrics"]
@@ -422,8 +446,8 @@ struct MetricGateTests {
         #expect(Self.expectedExceptions(onMajor: 26).due == old.union(["diskSpaceUsageMetrics"]))
         #expect(Self.expectedExceptions(onMajor: 27).due == Set(Self.unreadGroups.keys))
         #expect(Self.expectedExceptions(onMajor: 18).notYet.count == 4)
-        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).due.count == 12)
-        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 26).due.count == 12)
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).due.count == 11)
+        #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 26).due.count == 11)
         #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 27).due == Set(Self.unreadSizes.keys))
         #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).notYet.count == 6)
     }

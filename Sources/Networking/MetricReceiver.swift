@@ -91,12 +91,13 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     }
 
     /// One signpost's numbers from MetricKit's types, the histogram's edges
-    /// in seconds.
+    /// in seconds, the writes in MB.
     nonisolated static func reading(of metric: MXSignpostMetric) -> MetricRecord.SignpostReading {
         let data = metric.signpostIntervalData
         return MetricRecord.SignpostReading(name: metric.signpostName, count: metric.totalCount,
                                             cpuSeconds: data?.cumulativeCPUTime?.converted(to: .seconds).value,
-                                            buckets: buckets(of: data?.histogrammedSignpostDuration))
+                                            buckets: buckets(of: data?.histogrammedSignpostDuration),
+                                            writesMB: data?.cumulativeLogicalWrites?.converted(to: .megabytes).value)
     }
 
     /// A duration histogram's buckets, the edges in seconds.

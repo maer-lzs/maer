@@ -99,20 +99,26 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     var signposts: [String: SignpostCost] = [:]
 
     /// One signpost name in one period: how often its interval ran, the CPU
-    /// time all of them took together, and how long one took on average.
+    /// time all of them took together, how long one took on average, and
+    /// what all of them wrote to disk in MB. MetricKit gives CPU and writes
+    /// only for an interval that carries the snapshot; without them they
+    /// stay unknown, never zero.
     struct SignpostCost: Codable, Equatable, Sendable {
         var count: Int
         var cpuSeconds: Double?
         var meanSeconds: Double?
+        var writesMB: Double?
     }
 
     /// One signpost as MetricKit hands it over: its name, its count, its
-    /// CPU time and its duration histogram (bucket edges in seconds).
+    /// CPU time, its duration histogram (bucket edges in seconds) and what
+    /// it wrote in MB.
     struct SignpostReading: Sendable {
         var name: String
         var count: Int
         var cpuSeconds: Double?
         var buckets: [(start: Double, end: Double, count: Int)]
+        var writesMB: Double?
     }
 
     /// The hang time of one period: how many hangs, and their duration
@@ -186,14 +192,16 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     }
 
     /// The readings by name. A name that comes in several categories
-    /// stands once: the counts and the CPU times add up, and the mean is
-    /// taken over all the buckets together.
+    /// stands once: the counts, the CPU times and the writes add up, and
+    /// the mean is taken over all the buckets together.
     static func costs(_ readings: [SignpostReading]) -> [String: SignpostCost] {
         Dictionary(grouping: readings, by: \.name).mapValues { group in
             let cpu = group.compactMap(\.cpuSeconds)
+            let writes = group.compactMap(\.writesMB)
             return SignpostCost(count: group.reduce(0) { $0 + $1.count },
                                 cpuSeconds: cpu.isEmpty ? nil : cpu.reduce(0, +),
-                                meanSeconds: meanSeconds(group.flatMap(\.buckets)))
+                                meanSeconds: meanSeconds(group.flatMap(\.buckets)),
+                                writesMB: writes.isEmpty ? nil : writes.reduce(0, +))
         }
     }
 
@@ -237,7 +245,10 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
             return head + " hangs=\(hangs) crashes=\(crashes)"
         }
         let marks = signposts.keys.sorted().compactMap { name in
-            signposts[name].map { "\(name)=\($0.count)/cpu=\(fine($0.cpuSeconds))/mean=\(fine($0.meanSeconds))" }
+            signposts[name].map {
+                "\(name)=\($0.count)/cpu=\(fine($0.cpuSeconds))/mean=\(fine($0.meanSeconds))"
+                    + "/writes=\($0.writesMB.map { String(format: "%.4f", $0) + "MB" } ?? "-")"
+            }
         }.joined(separator: ",")
         return head + " cpu=\(number(cpuSeconds))"
             + " fg=\(number(foregroundSeconds)) bg=\(number(backgroundSeconds)) peakMB=\(number(peakMemoryMB))"
