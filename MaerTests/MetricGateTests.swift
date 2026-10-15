@@ -219,18 +219,22 @@ struct MetricGateTests {
     /// The groups of a payload MetricKit hands over and the receiver does
     /// not read, each with why. A group nobody reads and nobody excepted is
     /// a size lost by accident; an exception for a group that is read is a
-    /// reason that no longer holds.
-    static let unreadGroups: [String: String] = [
-        "gpuMetrics": "an audio player draws little of its own on the GPU; the measuring plan asks for CPU, not GPU time",
-        "cellularConditionMetrics": "the signal bars of the network say how the cell was, not what the app did",
-        "locationActivityMetrics": "the app asks for no location",
-        "displayMetrics": "the mean pixel luminance of an OLED screen; the plan does not ask about the screen",
-        "diskSpaceUsageMetrics": "the space the app takes on disk; the plan measures what it writes, which diskIOMetrics carries",
-        // The runtime of iOS 27.0 carries these three; the header of SDK
-        // 27.0 declares none of them, so there is no public type to read.
-        "intervalMetrics": "in the runtime, not in the SDK's header: no public type to read it",
-        "metalFrameRateMetrics": "in the runtime, not in the SDK's header: no public type to read it",
-        "stateMetrics": "in the runtime, not in the SDK's header: no public type to read it",
+    /// reason that no longer holds. Each entry names the major iOS version
+    /// from which the runtime carries its group: the app runs from iOS 18,
+    /// and a runtime before that version has no such group to except.
+    static let unreadGroups: [String: (since: Int, reason: String)] = [
+        "gpuMetrics": (18, "an audio player draws little of its own on the GPU; the measuring plan asks for CPU, not GPU time"),
+        "cellularConditionMetrics": (18, "the signal bars of the network say how the cell was, not what the app did"),
+        "locationActivityMetrics": (18, "the app asks for no location"),
+        "displayMetrics": (18, "the mean pixel luminance of an OLED screen; the plan does not ask about the screen"),
+        // The header of SDK 27.0 has it from iOS 26.0.
+        "diskSpaceUsageMetrics": (26, "the space the app takes on disk; the plan measures what it writes, which diskIOMetrics carries"),
+        // The runtime of iOS 27.0 carries these three and 18.6 does not;
+        // 26 is not measured. The header of SDK 27.0 declares none of them,
+        // so there is no public type to read.
+        "intervalMetrics": (27, "in the runtime, not in the SDK's header: no public type to read it"),
+        "metalFrameRateMetrics": (27, "in the runtime, not in the SDK's header: no public type to read it"),
+        "stateMetrics": (27, "in the runtime, not in the SDK's header: no public type to read it"),
     ]
 
     /// The properties of `MXMetricPayload` as the runtime has them, without
@@ -249,19 +253,43 @@ struct MetricGateTests {
         return (all.subtracting(frame), frame.isSubset(of: all))
     }
 
-    @Test("jede Gruppe der Nutzlast hat einen Leser oder eine Ausnahme mit Grund, nie beides", .needsTheSources)
+    /// Which entries a runtime of this major version must find, and which
+    /// it must not: an entry from a later version names a group this
+    /// runtime does not carry yet.
+    static func expectedExceptions(onMajor major: Int) -> (due: Set<String>, notYet: Set<String>) {
+        let due = Set(unreadGroups.filter { $0.value.since <= major }.keys)
+        return (due, Set(unreadGroups.keys).subtracting(due))
+    }
+
+    @Test("jede Gruppe der Nutzlast hat einen Leser oder eine Ausnahme mit Grund, nie beides, je Laufzeit", .needsTheSources)
     func everyGroupOfThePayloadIsReadOrExcepted() throws {
         let receiver = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
         let (groups, frameFound) = Self.payloadGroups()
         try #require(frameFound && groups.contains("cpuMetrics"), "the payload's properties were not read: \(groups)")
+        let major = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        let (due, notYet) = Self.expectedExceptions(onMajor: major)
         let read = groups.filter { receiver.contains("payload.\($0)") }
         let unread = groups.subtracting(read)
-        #expect(unread.subtracting(Self.unreadGroups.keys).sorted() == [], "a group nobody reads and nobody excepted")
-        #expect(read.intersection(Self.unreadGroups.keys).sorted() == [], "an exception for a group that is read")
-        #expect(Set(Self.unreadGroups.keys).subtracting(groups).sorted() == [], "an exception names no group of the payload")
-        #expect(Self.unreadGroups.values.allSatisfy { !$0.isEmpty }, "an exception without a reason")
+        #expect(unread.subtracting(due).sorted() == [], "a group nobody reads and nobody excepted on iOS \(major)")
+        // Whether a group is read is the source's, on every runtime.
+        #expect(Self.unreadGroups.keys.filter { receiver.contains("payload.\($0)") }.sorted() == [],
+                "an exception for a group that is read")
+        #expect(due.subtracting(groups).sorted() == [], "an exception names no group of the payload on iOS \(major)")
+        #expect(notYet.intersection(groups).sorted() == [], "a group came before the version its entry names, on iOS \(major)")
+        #expect(Self.unreadGroups.values.allSatisfy { !$0.reason.isEmpty && $0.since >= 18 }, "an exception without a reason")
         #expect(read.isSuperset(of: ["applicationLaunchMetrics", "animationMetrics"]), "launch and hitch are read")
+    }
+
+    /// The split by version, without a runtime: on 18 only the old four
+    /// are due, on 26 the disk space joins, on 27 all eight.
+    @Test("die Ausnahmen je Laufzeit: 18, 26 und 27")
+    func theExceptionsByRuntime() {
+        let old: Set = ["gpuMetrics", "cellularConditionMetrics", "locationActivityMetrics", "displayMetrics"]
+        #expect(Self.expectedExceptions(onMajor: 18).due == old)
+        #expect(Self.expectedExceptions(onMajor: 26).due == old.union(["diskSpaceUsageMetrics"]))
+        #expect(Self.expectedExceptions(onMajor: 27).due == Set(Self.unreadGroups.keys))
+        #expect(Self.expectedExceptions(onMajor: 18).notYet.count == 4)
     }
 
     @Test("die Ablage behaelt die Eintraege ueber die Naht, ein zweiter Empfang kommt dazu")
