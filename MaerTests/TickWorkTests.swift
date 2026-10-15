@@ -83,6 +83,15 @@ struct TickWorkTests {
         #expect(work.artworkBuilds == 0, "artworks built per quiet second: \(work)")
     }
 
+    /// The model publishes a value only when it changed: in quiet playback
+    /// that is the running time, once a second, and nothing else.
+    @Test("ruhige Wiedergabe: das Modell publiziert nur die laufende Zeit, einmal je Sekunde", .needsAudio)
+    func quietPlaybackPublishesOnlyTheTime() async throws {
+        let work = try await quietWork(seconds: 3)
+        #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
+        #expect(work.publications <= work.ticks + 1, "publications per quiet second: \(work)")
+    }
+
     /// What the lock screen shows still moves at once with every change: a
     /// new chapter on the tick it begins, a jump with the jump. Read from
     /// what this model wrote, not from the shared info centre, which other

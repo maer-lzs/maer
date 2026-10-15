@@ -1291,7 +1291,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // Absolute book time = start of the current track + position
                 // within this track.
                 let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
-                self.currentTime = newTime
+                if newTime != self.currentTime { self.currentTime = newTime }
                 // Single-track items (podcasts) often ship a wrong/rounded/missing
                 // feed duration, so playback ran past the shown time. Trust the
                 // real asset duration when known, and never let the total fall
@@ -1363,10 +1363,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 PodcastServerSave.shared.playbackTick(itemId: self.item?.id, currentTime: self.currentTime)
                 // Check the buffering status here too. Uses the same clean
                 // MainActor context, no separate KVO observer needed.
+                // Published only when it changes: every set wakes each
+                // observer of the model, the same value too.
                 if let currentItem = self.player?.currentItem {
-                    self.isBuffering = self.isPlaying
+                    let buffering = self.isPlaying
                         && currentItem.isPlaybackBufferEmpty
                         && !currentItem.isPlaybackLikelyToKeepUp
+                    if buffering != self.isBuffering { self.isBuffering = buffering }
                 }
             }
         }
