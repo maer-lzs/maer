@@ -61,7 +61,7 @@ struct AutoDownloadOrderTests {
         }
     }
 
-    @Test("G14-1: angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut")
+    @Test("G14-1: angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut", .needsTheSources)
     func begunMeansHalfAMinute() throws {
         #expect(PodcastAutoDownloadRules.startedAtLeast == 30)
         #expect(PodcastAutoDownloadRules.runGap == 3)
@@ -69,7 +69,7 @@ struct AutoDownloadOrderTests {
         #expect(helpers.contains("case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration) else { return false } return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast"))
     }
 
-    @Test("Blatt: jedes Feld schreibt nur eine Aenderung, das Oeffnen schreibt nichts")
+    @Test("Blatt: jedes Feld schreibt nur eine Aenderung, das Oeffnen schreibt nichts", .needsTheSources)
     func theSheetWritesOnlyChanges() throws {
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
         for (field, guardLine) in [
@@ -93,7 +93,7 @@ struct AutoDownloadOrderTests {
         #expect(setOwn.contains("guard raw != PodcastGeneralRule.effective(stored: stored(showId), general: general) else { return }"))
     }
 
-    @Test("Messung: der Lauf schreibt je Sendung Richtung, Stichtag und Wahl, und der Bericht nennt den Zustand")
+    @Test("Messung: der Lauf schreibt je Sendung Richtung, Stichtag und Wahl, und der Bericht nennt den Zustand", .needsTheSources)
     @MainActor
     func theRunSaysWhatItRead() throws {
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")

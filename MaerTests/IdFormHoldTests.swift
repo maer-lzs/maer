@@ -308,9 +308,8 @@ struct IdFormHoldTests {
     func everyTestConstructionNamesTheForm() throws {
         var offenders: [String] = []
         var seen = 0
-        let walker = try #require(FileManager.default.enumerator(
-            at: SourceTree.root.appendingPathComponent("MaerTests"), includingPropertiesForKeys: nil))
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("MaerTests"))
+        where url.pathExtension == "swift" {
             let code = try String(contentsOf: url, encoding: .utf8)
             seen += code.components(separatedBy: "UserChoice" + "CloudSync(").count - 1
             let missing = Self.constructionsWithoutTheForm(in: code)

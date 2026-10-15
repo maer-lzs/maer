@@ -42,7 +42,7 @@ struct AuthorMatchTests {
         #expect(!AuthorMatch.field("Tolkien", names: "."), "punctuation alone names nobody")
     }
 
-    @Test("Der Autor-Treffer traegt die Route der Bibliothek, keinen eigenen Weg der Suche")
+    @Test("Der Autor-Treffer traegt die Route der Bibliothek, keinen eigenen Weg der Suche", .needsTheSources)
     func searchPushesTheLibraryRoute() throws {
         let text = try String(contentsOf: URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

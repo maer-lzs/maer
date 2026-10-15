@@ -34,10 +34,8 @@ struct CorpusFixtureTests {
     /// Every fixture file, by its path below `MaerTests/Fixtures`.
     static func fixtureFiles() throws -> [String] {
         let folder = SourceTree.root.appendingPathComponent("MaerTests/Fixtures")
-        let walker = try #require(FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey]))
         var found: [String] = []
-        for case let url as URL in walker where !url.lastPathComponent.hasPrefix(".")
-            && (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
+        for url in SourceTree.files(under: folder) where !url.lastPathComponent.hasPrefix(".") {
             found.append(String(SourceTree.relativePath(of: url).dropFirst("MaerTests/Fixtures/".count)))
         }
         return found.sorted()
@@ -85,9 +83,8 @@ struct CorpusFixtureTests {
         var named: Set<String> = []
         var wrong: [String] = []
         for folder in ["MaerTests", "MaerUITests"] {
-            let walker = try #require(FileManager.default.enumerator(
-                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil))
-            for case let url as URL in walker where url.pathExtension == "swift" {
+            for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
+            where url.pathExtension == "swift" {
                 let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
                 for call in Self.loaderCalls(in: code) {
                     // A folder built at run time (`Shared/\(area)`) is the

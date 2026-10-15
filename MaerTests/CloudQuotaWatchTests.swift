@@ -43,14 +43,9 @@ import Foundation
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(at: sources,
-                                                          includingPropertiesForKeys: nil) else {
-            Issue.record("the fence could not walk Sources, so it measured nothing")
-            return
-        }
         var offenders: [String] = []
         var seen = 0
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             guard let text = try? String(contentsOf: url, encoding: .utf8),
                   text.contains("didChangeExternallyNotification") else { continue }
             seen += 1
@@ -65,17 +60,12 @@ import Foundation
 
     /// And the counter-direction: nobody re-implements the comparison either.
     /// Two derivations of "the channel is full" would disagree on a screen.
-    @Test func nobodyElseNamesTheQuotaConstant() throws {
+    @Test(.needsTheSources) func nobodyElseNamesTheQuotaConstant() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(at: sources,
-                                                          includingPropertiesForKeys: nil) else {
-            Issue.record("the fence could not walk Sources, so it measured nothing")
-            return
-        }
         var offenders: [String] = []
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             guard url.lastPathComponent != "CloudQuotaWatch.swift",
                   let text = try? String(contentsOf: url, encoding: .utf8),
                   text.contains("NSUbiquitousKeyValueStoreQuotaViolationChange") else { continue }

@@ -18,7 +18,7 @@ struct FeedAdoptionPendingTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("TF-3: jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund")
+    @Test("TF-3: jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund", .needsTheSources)
     func eachOfferSaysItsOutcome() throws {
         #expect(FeedAdoptionPending.outcome(ok: true, held: true, reason: nil) == "followed")
         #expect(FeedAdoptionPending.outcome(ok: true, held: false, reason: nil) == "twin",
@@ -177,7 +177,7 @@ struct FeedAdoptionPendingTests {
         #expect(subs.feedsNotFollowed[keys[1]] != nil && subs.feedsNotFollowed[keys[2]] != nil)
     }
 
-    @Test("Ein neuer Link fuer denselben Feed nimmt das gerade gesagte Abo nicht zurueck")
+    @Test("Ein neuer Link fuer denselben Feed nimmt das gerade gesagte Abo nicht zurueck", .needsTheSources)
     func theSameFeedUnderANewLinkKeepsItsSubscription() throws {
         let old = "https://premium.example/feed.xml"
         #expect(!PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: old), "the same link")

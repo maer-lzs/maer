@@ -43,7 +43,7 @@ struct CloudKeyValueTests {
     // MARK: - Fences
 
     /// The only file that may name the real store is the door itself.
-    @Test("Den echten Speicher nennt nur die Tuer")
+    @Test("Den echten Speicher nennt nur die Tuer", .needsTheSources)
     func onlyTheDoorNamesTheRealStore() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CloudKeyValue.swift" {
@@ -71,9 +71,8 @@ struct CloudKeyValueTests {
     @Test("Jede Startstelle der UI-Tests setzt ein Harness-Argument")
     func everyUILaunchCarriesTheMarker() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let files = FileManager.default.enumerator(at: root.appendingPathComponent("MaerUITests"),
-                                                   includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: root.appendingPathComponent("MaerUITests"))
+            .filter { $0.pathExtension == "swift" }
         #expect(!files.isEmpty)
         var offenders: [String] = []
         for file in files {

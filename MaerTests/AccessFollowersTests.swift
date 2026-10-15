@@ -561,9 +561,8 @@ struct AccessFollowersTests {
     static func accessWriters() throws -> [String: Int] {
         let root = SourceTree.root
         let sources = root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
         var found: [String: Int] = [:]
-        for case let url as URL in files where url.pathExtension == "swift" && url.lastPathComponent != "AppStorageKeys.swift" {
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" && url.lastPathComponent != "AppStorageKeys.swift" {
             let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
             let count = text.split(separator: "\n").filter {
                 $0.contains("AppStorageKeys.setMaerSyncToken(") || $0.contains("AppStorageKeys.maerSyncURLValue =")

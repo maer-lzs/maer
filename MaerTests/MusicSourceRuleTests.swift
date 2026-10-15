@@ -143,10 +143,9 @@ struct MusicSourceRuleTests {
     @Test("ausserhalb der Anbieter baut niemand eine Kennung aus einer rohen Nummer", .needsTheSources)
     func noRawIdBuildsOutsideTheProviders() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
         var read = 0
         var found: [String] = []
-        for case let url as URL in walker where url.pathExtension == "swift"
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift"
             && !url.path.contains("/Sources/Providers/") {
             read += 1
             let count = Self.rawIdBuilds(in: try String(contentsOf: url, encoding: .utf8))

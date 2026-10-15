@@ -18,7 +18,7 @@ struct CategoryDeckTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Suchseite und Musik-Tab rendern dieselbe Kachel-Liste mit denselben Eintraegen")
+    @Test("Suchseite und Musik-Tab rendern dieselbe Kachel-Liste mit denselben Eintraegen", .needsTheSources)
     func bothHostsRenderTheOneDeck() throws {
         let search = try sourceText("Sources/Views/SearchScreen.swift")
         let music = try sourceText("Sources/Views/Music/MusicView.swift")
@@ -41,7 +41,7 @@ struct CategoryDeckTests {
 
     /// The radio genres were a hand-built copy of the tile. They render the
     /// one deck now and keep their journey handles.
-    @Test("Die Radio-Genres rendern dasselbe Kachel-Raster, kein eigenes")
+    @Test("Die Radio-Genres rendern dasselbe Kachel-Raster, kein eigenes", .needsTheSources)
     func theRadioGenresRenderTheOneDeck() throws {
         let radio = try sourceText("Sources/Views/Radio/RadioView.swift")
         #expect(radio.contains("CategoryDeckGrid(entries: RadioCatalog.genres"), "the radio genres left the deck")
@@ -52,7 +52,7 @@ struct CategoryDeckTests {
     /// At AX3 on a 393 pt phone two columns cut even a short title
     /// ("Nac…", "Mu…", measured in the picture). Every grid of category
     /// tiles takes its columns from the one rule.
-    @Test("Kachel-Raster: zwei Spalten, in den Bedienhilfe-Groessen eine, und jedes Raster fragt dieselbe Regel")
+    @Test("Kachel-Raster: zwei Spalten, in den Bedienhilfe-Groessen eine, und jedes Raster fragt dieselbe Regel", .needsTheSources)
     @MainActor
     func everyTileGridTakesTheOneColumnRule() throws {
         #expect(CategoryDeckGrid.columns(for: .large).count == 2)
@@ -81,7 +81,7 @@ struct CategoryDeckTests {
     /// Prüfer, der Zeichenketten zählt, hält sie für tot. Sie sind es
     /// nicht, und dieser Fall hält beide Hälften fest, damit die Zusage
     /// auch dann steht, wenn keine Journey läuft.
-    @Test("Die zusammengesetzten Kachel-Kennungen entstehen wirklich")
+    @Test("Die zusammengesetzten Kachel-Kennungen entstehen wirklich", .needsTheSources)
     func theComposedTileIdentifiersExist() throws {
         // Erste Haelfte, am Verhalten: die Kachel traegt die Kennung, aus
         // der die Journey ihre baut.
@@ -108,7 +108,7 @@ struct CategoryDeckTests {
     }
 
     /// The search tile carries the short title; VoiceOver says the full one.
-    @Test("die Such-Kachel heisst kurz Hoerbuecher und nennt VoiceOver den vollen Titel")
+    @Test("die Such-Kachel heisst kurz Hoerbuecher und nennt VoiceOver den vollen Titel", .needsTheSources)
     func theSearchTileSaysTheFullTitle() throws {
         let search = try sourceText("Sources/Views/SearchScreen.swift")
         #expect(search.contains("CategoryTile(title: String(localized: \"Audiobooks\")"))

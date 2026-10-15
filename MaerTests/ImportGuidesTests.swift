@@ -61,7 +61,7 @@ struct ImportGuidesTests {
     /// The password sentence is ONE key: the guide carries it as its own
     /// note sentence, and the sign-in sheet renders the same constant. A
     /// second wording on either surface would drift.
-    @Test("Der Pocket-Casts-Passwortsatz ist ein Schluessel an beiden Flaechen")
+    @Test("Der Pocket-Casts-Passwortsatz ist ein Schluessel an beiden Flaechen", .needsTheSources)
     func pocketCastsPrivacyLineIsShared() throws {
         #expect(ImportGuide.pocketCasts.notes.contains(ImportGuide.pocketCastsPrivacyLine))
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

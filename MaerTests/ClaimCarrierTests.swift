@@ -97,7 +97,7 @@ struct ClaimCarrierTests {
         #expect(sync.hint == nil)
     }
 
-    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher") @MainActor
+    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/PlaybackClaimSync.swift"), encoding: .utf8)

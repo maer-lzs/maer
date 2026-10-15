@@ -40,8 +40,7 @@ struct InputGripFenceTests {
     @Test("Wer den Finger sperrt, sperrt auch die Bedienungshilfen, ausser bei reinem Schmuck mit Grund", .needsTheSources)
     func noViewBlocksTheFingerAlone() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
         var found: [String: Int] = [:]

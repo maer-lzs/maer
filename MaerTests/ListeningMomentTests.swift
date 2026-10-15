@@ -41,7 +41,7 @@ struct ListeningMomentTests {
         #expect(ListeningMoment.label(local: 0, server: 0, playingNowMs: nil) == .none)
     }
 
-    @Test("Die Reihe der Startseite fragt dieselbe Uhr wie die Karten (eine Frage, keine zweite Rechnung)")
+    @Test("Die Reihe der Startseite fragt dieselbe Uhr wie die Karten (eine Frage, keine zweite Rechnung)", .needsTheSources)
     func oneQuestionForRowAndCard() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ path: String) throws -> String {

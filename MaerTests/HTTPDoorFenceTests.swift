@@ -85,7 +85,7 @@ struct HTTPDoorFenceTests {
         return count
     }
 
-    @Test("URLSession nur hinter der HTTP-Tuer")
+    @Test("URLSession nur hinter der HTTP-Tuer", .needsTheSources)
     func onlyTheDoorNamesTheSession() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
@@ -105,7 +105,7 @@ struct HTTPDoorFenceTests {
     // Inventar-Konvention an die Stelle selbst.
     nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 22, "SubsonicProvider.swift": 18, "ImageCache.swift": 17, "JellyfinProvider.swift": 16, "LocalLibrary.swift": 13, "LibriVoxImporter.swift": 8, "JellyfinClient.swift": 6, "MaerPlaylists.swift": 6, "PodcastRecommendationsStore.swift": 5, "GPodderClient.swift": 4, "GPodderSync.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "CatalogStockStore.swift": 3, "PodcastSubscriptions.swift": 3, "ResolutionCacheStore.swift": 3, "APIClient.swift": 2, "ArtistPortraitService.swift": 2, "FreeCatalogClients.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "CatalogShuffle.swift": 1, "DeadCatalogItems.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioArtworkService.swift": 1, "Retry.swift": 1, "SourceBudget.swift": 1]
 
-    @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft")
+    @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft", .needsTheSources)
     func tryCarriesAReasonOrShrinks() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []
@@ -141,7 +141,7 @@ struct HTTPDoorFenceTests {
     // Zaehlung; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
     nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 6, "RadioView.swift": 3, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 2, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PodcastEpisodeDetailView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
 
-    @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft")
+    @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft", .needsTheSources)
     func viewTryCarriesAReasonOrShrinks() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []

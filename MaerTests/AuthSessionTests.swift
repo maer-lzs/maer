@@ -45,7 +45,7 @@ struct AuthSessionTests {
         #expect(await offline.probeAuthorization() == .unreachable)
     }
 
-    @Test("eine erfolgreiche Neu-Anmeldung raeumt den Zweifel ab")
+    @Test("eine erfolgreiche Neu-Anmeldung raeumt den Zweifel ab", .needsTheSources)
     func successfulSignInClearsTheDoubt() {
         // Der vierte Fall: reject → Neu-Anmeldung → Zustand weg.
         // Geprueft an der QUELLE, weil der Erfolgspfad einen echten Server
@@ -64,7 +64,7 @@ struct AuthSessionTests {
         #expect(success.contains("needsReauth = false"))
     }
 
-    @Test("nur der Nutzer-Abmelde-Weg raeumt den Schluessel")
+    @Test("nur der Nutzer-Abmelde-Weg raeumt den Schluessel", .needsTheSources)
     func onlyTheUserPathDeletes() {
         // Der Zaun in Textform: der 401-Rueckruf zeigt auf markSessionSuspect,
         // niemals auf logout(). Gemessen an der Quelle, damit ein spaeterer

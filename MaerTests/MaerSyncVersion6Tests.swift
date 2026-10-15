@@ -158,7 +158,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("Rueckfallverbot: secret steht nur im Wechsel, gebaut wird es genau im Zweig der Form secret, und den alten Schluesselpfad kennt kein Code")
+    @Test("Rueckfallverbot: secret steht nur im Wechsel, gebaut wird es genau im Zweig der Form secret, und den alten Schluesselpfad kennt kein Code", .needsTheSources)
     func theWayBackIsFenced() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let net = root.appendingPathComponent("Sources/Networking")
@@ -231,7 +231,7 @@ struct MaerSyncVersion6Tests {
         !namedHarmless.contains(part) && secretWords.contains { part.lowercased().contains($0) }
     }
 
-    @Test("Geheimnisse in Logzeilen: keine Logzeile der Anmeldung setzt ein Passwort, einen Beweis oder den Feed-Schluessel ein")
+    @Test("Geheimnisse in Logzeilen: keine Logzeile der Anmeldung setzt ein Passwort, einen Beweis oder den Feed-Schluessel ein", .needsTheSources)
     func noSecretInALogLine() throws {
         let net = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Networking")

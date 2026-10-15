@@ -22,7 +22,7 @@ struct AppearanceHostFenceTests {
 
     static let marker = "followsAppearanceChoice()"
 
-    @Test("Jedes Blatt traegt die Wahl: je Datei so viele Bausteine wie Blaetter, Ausnahmen namentlich")
+    @Test("Jedes Blatt traegt die Wahl: je Datei so viele Bausteine wie Blaetter, Ausnahmen namentlich", .needsTheSources)
     func everyPresentedLeafCarriesTheChoice() throws {
         // Per file, the presentations that do not carry the choice; the
         // exceptions are that count, both ways.
@@ -60,7 +60,7 @@ struct AppearanceHostFenceTests {
                 "a marker in a comment carries nothing")
     }
 
-    @Test("Die Wahl liest EINE Stelle: system folgt dem Geraet, hell und dunkel setzen sich durch, Unbekanntes folgt dem System")
+    @Test("Die Wahl liest EINE Stelle: system folgt dem Geraet, hell und dunkel setzen sich durch, Unbekanntes folgt dem System", .needsTheSources)
     func theChoiceIsReadInOnePlace() throws {
         #expect(AppearanceChoice.of("light") == .light)
         #expect(AppearanceChoice.of("dark") == .dark)

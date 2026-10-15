@@ -52,7 +52,7 @@ struct DeletableDownloadTests {
     /// Jede Stelle, die einen Download loescht, nennt ihr Tor. Der Bestand
     /// steht je Datei MIT Grund, damit eine neue Loesch-Stelle die Frage
     /// beantworten muss, statt die naechstliegende zu nehmen.
-    @Test("Jede Loesch-Stelle nennt, was sie vorher fragt")
+    @Test("Jede Loesch-Stelle nennt, was sie vorher fragt", .needsTheSources)
     func everyDeleteSiteNamesItsGate() throws {
         let expected: [String: (count: Int, reason: String)] = [
             "Sources/Views/BookGridComponents.swift":
@@ -88,16 +88,14 @@ struct DeletableDownloadTests {
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let count = try sourceText("Sources/" + name)
+        for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
+            let path = SourceTree.relativePath(of: url)
+            let count = try sourceText(path)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .filter { $0.contains("deleteDownload(itemId:") || $0.contains("deleteDownloads(") }
                 .count
-            if count > 0 { found["Sources/" + name] = count }
+            if count > 0 { found[path] = count }
         }
         #expect(found == expected.mapValues(\.count),
                 "neue, verschwundene oder verschobene Loesch-Stelle")
@@ -107,16 +105,14 @@ struct DeletableDownloadTests {
     /// Verfuegbarkeit. Gezaehlt wird die ZEILE des Tors direkt vor einem
     /// destruktiven Knopf, nicht die Datei — eine Datei darf beide Fragen
     /// stellen, sie stehen nur an verschiedenen Stellen.
-    @Test("Kein Loesch-Tor fragt mehr die Verfuegbarkeit")
+    @Test("Kein Loesch-Tor fragt mehr die Verfuegbarkeit", .needsTheSources)
     func noDeleteGateAsksAvailability() throws {
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let lines = try sourceText("Sources/" + name)
+        for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
+            let path = SourceTree.relativePath(of: url)
+            let lines = try sourceText(path)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map(String.init)
             for (index, line) in lines.enumerated()
@@ -125,7 +121,7 @@ struct DeletableDownloadTests {
                 // macht: der Knopf traegt sie, eine Anzeige nie. Zwei Zeilen,
                 // weil zwischen Tor und Marke nur die Klammer steht.
                 let window = lines[index..<min(index + 3, lines.count)].joined(separator: " ")
-                if window.contains("role: .destructive") { offenders.append("Sources/\(name):\(index + 1)") }
+                if window.contains("role: .destructive") { offenders.append("\(path):\(index + 1)") }
             }
         }
         #expect(offenders.isEmpty,

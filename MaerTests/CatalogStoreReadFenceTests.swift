@@ -19,14 +19,13 @@ struct CatalogStoreReadFenceTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: root).filter { $0.pathExtension == "swift" }
         #expect(files.count > 50, "the sweep must see the tree, not an empty folder")
         return try files.map { (name: $0.lastPathComponent,
                                 text: try String(contentsOf: $0, encoding: .utf8)) }
     }
 
-    @Test("no surface reads the STORED rows — reading goes through the loading getter")
+    @Test("no surface reads the STORED rows — reading goes through the loading getter", .needsTheSources)
     func noSurfaceReadsStoredRowsDirectly() throws {
         var offenders: [String] = []
         for file in try sources() where file.name != "FreeCatalogStore.swift" {
@@ -50,7 +49,7 @@ struct CatalogStoreReadFenceTests {
     /// carried different conditions, so the area switch (a PRIVACY switch)
     /// was without effect. Counting the row's own tile call per file is the
     /// mechanical version of that sweep.
-    @Test("each catalog row is rendered once per surface")
+    @Test("each catalog row is rendered once per surface", .needsTheSources)
     func noDuplicateCatalogRow() throws {
         for file in try sources() {
             for row in ["rows.freeMusic", "rows.netlabels", "rows.tabBooks"] {
@@ -141,7 +140,7 @@ struct CatalogStoreReadFenceTests {
     /// whether a tile has a picture, measured at 43 s per
     /// pass. This fence holds the construction: picking is a pure cut, and
     /// no surface may reintroduce a per-tile probe on the way to a row.
-    @Test("das Bauen einer Reihe fragt das Netz NICHT je Kachel")
+    @Test("das Bauen einer Reihe fragt das Netz NICHT je Kachel", .needsTheSources)
     func buildingARowDoesNotProbePerTile() throws {
         let cut = FreeCatalogLoader.picksWithoutProbing(
             (1...30).map { LibraryItem(id: "arch:item-\($0)", media: nil, addedAt: nil) },
@@ -195,7 +194,7 @@ struct CatalogStoreReadFenceTests {
     /// drei schnellen Reihen (je rund 1 s) hingen damit an der langsamsten
     /// (LibriVox, gemessen 7-35 s), und das Veroeffentlichen je Reihe konnte
     /// gar nicht wirken. Rot-Probe: die alte Form stand genau hier.
-    @Test("der Durchlauf wartet auf Fertigstellung, nicht auf die Startreihenfolge")
+    @Test("der Durchlauf wartet auf Fertigstellung, nicht auf die Startreihenfolge", .needsTheSources)
     func theLoadWaitsForCompletionNotForStartOrder() throws {
         let text = try String(contentsOf: sourceFile("Sources/ViewModels/CatalogSourceLoader.swift"),
                               encoding: .utf8)
@@ -256,7 +255,7 @@ struct CatalogStoreReadFenceTests {
     /// falsch: es ist der einzige Weg zu `url_iarchive`, und daran haengt das
     /// COVER jeder LibriVox-Kachel (gemessen: weder `fields=` noch die nackte
     /// Form liefern es). Der Zaun haelt genau diese Abwaegung fest.
-    @Test("die langsame Quelle hat ihr eigenes Zeitlimit, und die Cover-Quelle bleibt")
+    @Test("die langsame Quelle hat ihr eigenes Zeitlimit, und die Cover-Quelle bleibt", .needsTheSources)
     func theSlowSourceCarriesItsOwnTimeout() throws {
         let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
                               encoding: .utf8)
@@ -303,7 +302,7 @@ struct CatalogStoreReadFenceTests {
     /// Zwei Klassen in einem Zaun: das Tor darf den Lauf nicht buchen,
     /// BEVOR er stattfand, und ein
     /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen.
-    @Test("das Faecher-Tor bucht nach dem Lauf, und ein Fehlschlag ist unterscheidbar")
+    @Test("das Faecher-Tor bucht nach dem Lauf, und ein Fehlschlag ist unterscheidbar", .needsTheSources)
     func theShelfGateBooksAfterwardsAndFailuresAreVisible() throws {
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
@@ -359,7 +358,7 @@ struct CatalogStoreReadFenceTests {
     /// Beliebt-Reihen der Schellack-Flaechen liefen an ihr vorbei, weil sie
     /// eigene Ladewege sind. Ohne diesen Zaun faellt der naechste neue
     /// Ladeweg genauso durch, und niemand sieht es.
-    @Test("jeder Faecher-Ladeweg geht durch die eine Tuer, nicht am Speicher vorbei")
+    @Test("jeder Faecher-Ladeweg geht durch die eine Tuer, nicht am Speicher vorbei", .needsTheSources)
     func everyShelfPathGoesThroughTheOneDoor() throws {
         let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
@@ -384,7 +383,7 @@ struct CatalogStoreReadFenceTests {
     /// kurz aufleuchtet, IST der Layout-Shift, gegen den es gebaut wurde.
     /// Die Bedingung dafuer ist, dass der Platzhalter am leeren
     /// Tages-Speicher haengt, nicht nur an der Wartezeit.
-    @Test("ein gespeicherter Tag verhindert den Platzhalter, statt ihn aufblitzen zu lassen")
+    @Test("ein gespeicherter Tag verhindert den Platzhalter, statt ihn aufblitzen zu lassen", .needsTheSources)
     func aStoredDayPreventsThePlaceholder() throws {
         let suite = "warmday-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -626,7 +625,7 @@ struct CatalogStoreReadFenceTests {
     /// und bekamen keinen Platzhalter, waehrend ihr kalter Durchgang acht
     /// Sekunden lang Luecken stehen liess, ohne etwas zu sagen. Gemessen:
     /// archive.org 8,4-17,8 s je Durchgang, gutendex 454 s kalt / 41 s warm.
-    @Test("der Platzhalter haengt an der Wartezeit des DURCHGANGS, nicht am Quellennamen")
+    @Test("der Platzhalter haengt an der Wartezeit des DURCHGANGS, nicht am Quellennamen", .needsTheSources)
     func thePlaceholderHangsOnTheMeasuredWait() throws {
         // Jede Quelle, die Faecher bedient, wartet laenger als die Schwelle
         // und sagt es deshalb.
@@ -822,7 +821,7 @@ struct CatalogStoreReadFenceTests {
     /// beiden, die sich rechnen
     /// lassen. Die dritte (Zellen holen den warmen Treffer ab) haengt an
     /// Aufrufstellen und steht im Inventar.
-    @Test("beide Speichergrenzen meinen dieselbe Zahl, und eine Ungueltigkeit raeumt nur ihren Eintrag")
+    @Test("beide Speichergrenzen meinen dieselbe Zahl, und eine Ungueltigkeit raeumt nur ihren Eintrag", .needsTheSources)
     func theCacheLimitsAgreeAndInvalidationIsTargeted() throws {
         // Die Kostenrechnung, an der die alte Konfiguration scheiterte:
         // 400 x 400 x 4 = 640 kB je Vorschau. 40 MB fassten davon ~62, waehrend
@@ -893,7 +892,7 @@ struct CatalogStoreReadFenceTests {
     /// **31.338** in 0,58 s. Faktor 9 fuer fuenf Hundertstelsekunden. Der
     /// Deckel kostete fast alles und sparte nichts. Er galt fuer Jamendos
     /// UNSCHARFE `fuzzytags`, nicht fuer `subject:`, das exakt trifft.
-    @Test("die archive.org-Faecher kuerzen ihre Begriffsliste nicht mehr")
+    @Test("die archive.org-Faecher kuerzen ihre Begriffsliste nicht mehr", .needsTheSources)
     func theArchiveShelvesDoNotCapTheirTerms() throws {
         for path in ["Sources/Networking/FreeCatalogClients.swift",
                      "Sources/Views/Music/ArchiveMusicPages.swift"] {
@@ -1123,7 +1122,7 @@ struct CatalogStoreReadFenceTests {
     /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
     /// `Various`. Exakte Gleichheit, also kann kein Teilstring hineinrutschen.
     @MainActor
-    @Test("Sammelbaende erkennt die Konvention, nicht der Titel")
+    @Test("Sammelbaende erkennt die Konvention, nicht der Titel", .needsTheSources)
     func collectionsAreRecognisedByConventionNotByTitle() throws {
         func doc(_ creator: String, _ title: String) throws -> ArchivePopularDoc {
             let json = "{\"identifier\":\"x\",\"title\":\"\(title)\",\"creator\":\"\(creator)\"}"

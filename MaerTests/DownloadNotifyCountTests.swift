@@ -204,10 +204,9 @@ struct DownloadNotifyCountTests {
     @Test("wer den Fortschritt beobachtet, liest ihn; keine Ansicht liest Groessen von der Platte", .needsTheSources)
     func progressObserversReadProgress() throws {
         let root = SourceTree.root.appendingPathComponent("Sources/Views")
-        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
         var observers: [(type: String, reads: Bool)] = []
         var diskReads: [String] = []
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let text = try String(contentsOf: url, encoding: .utf8)
             observers += Self.progressObservers(in: text)
             let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }

@@ -171,7 +171,7 @@ struct MarkGestureAtTrueEndTests {
         #expect(Self.displayReads(in: comment) == 0)
     }
 
-    @Test("jede Umschalt-Geste in einer Ansicht fragt die Regel")
+    @Test("jede Umschalt-Geste in einer Ansicht fragt die Regel", .needsTheSources)
     func everyToggleAsksTheRule() throws {
         let views = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(!views.isEmpty, "no view source was read")

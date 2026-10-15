@@ -299,7 +299,7 @@ struct FeedAuthBlockTests {
         #expect(FeedAuthRound.Hold.notListedYet.logReason == "the other devices' blocks are not listed yet")
     }
 
-    @Test("P4: der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log")
+    @Test("P4: der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log", .needsTheSources)
     func theRunnerWiresListingAndReason() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
@@ -372,14 +372,14 @@ struct FeedAuthBlockTests {
         return try String(contentsOf: file, encoding: .utf8)
     }
 
-    @Test("die Seite fragt die Regel, statt selbst zu entscheiden")
+    @Test("die Seite fragt die Regel, statt selbst zu entscheiden", .needsTheSources)
     func thePageAsksTheRule() throws {
         let text = try settingsPage()
         #expect(text.contains("FeedAuthStanding.standing("), "die Seite baut den Stand selbst")
         #expect(text.contains("FeedAuthStanding.notice("), "die Seite entscheidet den Hinweis selbst")
     }
 
-    @Test("S3: die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher")
+    @Test("S3: die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher", .needsTheSources)
     func thePageShowsNoCodeAndThePriceComesFirst() throws {
         let text = try settingsPage()
         // Der Code ist abgeschafft: nichts zu kopieren, nichts zu tippen,
@@ -401,7 +401,7 @@ struct FeedAuthBlockTests {
             .components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    @Test("S3: nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends")
+    @Test("S3: nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends", .needsTheSources)
     func theRunnerFollowsTheSignIn() throws {
         let code = try settingsCode()
         // The sign-in reaches the runner through the one place that writes
@@ -412,7 +412,7 @@ struct FeedAuthBlockTests {
         #expect(!code.contains("ensure()") && !code.contains("adopt(typed:"), "a code still comes into being")
     }
 
-    @Test("der Block wird beobachtet, nicht gespiegelt")
+    @Test("der Block wird beobachtet, nicht gespiegelt", .needsTheSources)
     func theBlockIsObservedNotMirrored() throws {
         let code = try settingsCode()
         #expect(code.contains("@ObservedObjectprivatevarfeedAuth=FeedAuthSync.shared"), "the page does not observe the runner")
@@ -424,7 +424,7 @@ struct FeedAuthBlockTests {
         #expect(text.contains("@Published private(set) var block"))
     }
 
-    @Test("der Schluesselwechsel gehoert zu seiner Adresse und faellt mit ihr")
+    @Test("der Schluesselwechsel gehoert zu seiner Adresse und faellt mit ihr", .needsTheSources)
     func theKeyChangeBelongsToItsAddress() throws {
         let change = MaerSyncSettingsView.KeyChange(held: "AAAA", offered: "BBBB", address: "https://one.example")
         #expect(change.stands(forAddress: "https://one.example"))
@@ -440,7 +440,7 @@ struct FeedAuthBlockTests {
 
     /// The page reads the session again after every change it makes,
     /// through ONE helper.
-    @Test("die Seite liest die Sitzung nach jeder eigenen Aenderung neu")
+    @Test("die Seite liest die Sitzung nach jeder eigenen Aenderung neu", .needsTheSources)
     func thePageReadsTheSessionAgainAfterItsOwnChanges() throws {
         let code = try settingsCode()
         let helper = try #require(code.range(of: "privatefuncrefreshFromSession(){"))
@@ -455,7 +455,7 @@ struct FeedAuthBlockTests {
         #expect(code[signOut.upperBound...].prefix(200).contains("refreshFromSession()"), "signing out does not read the session again")
     }
 
-    @Test("GT-24: waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert")
+    @Test("GT-24: waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert", .needsTheSources)
     func thePasswordInForceMovesIntoTheSection() throws {
         let code = try settingsCode()
         #expect(code.contains("if!settingNewPassword{CredentialField.secret(\"Password\",text:$secret,id:\"maer-sync-password\")}"),
@@ -467,7 +467,7 @@ struct FeedAuthBlockTests {
         #expect(code.components(separatedBy: "text:$secret").count - 1 == 2, "one value, one field that moves")
     }
 
-    @Test("Bei grosser Schrift steht der Titel eines Zugangsfelds ueber ihm, statt als Platzhalter geschrumpft zu werden, an allen drei Feldern")
+    @Test("Bei grosser Schrift steht der Titel eines Zugangsfelds ueber ihm, statt als Platzhalter geschrumpft zu werden, an allen drei Feldern", .needsTheSources)
     func credentialTitlesStandAboveAtLargeText() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "CredentialFields.swift" })
@@ -482,7 +482,7 @@ struct FeedAuthBlockTests {
         #expect(wrapper[large.upperBound...].prefix(300).contains("field(true)"))
     }
 
-    @Test("Geaenderte Zugangsdaten eines bekannten Feeds sind ein Eintreffen wie neue, gleiche nicht")
+    @Test("Geaenderte Zugangsdaten eines bekannten Feeds sind ein Eintreffen wie neue, gleiche nicht", .needsTheSources)
     func changedCredentialsArriveLikeNewOnes() throws {
         let mine = ["a": entry("u", "alt", at: 1)]
         #expect(FeedAuthRound.accessArrived(apply: ["a": entry("u", "neu", at: 2)], mine: mine), "a changed password")

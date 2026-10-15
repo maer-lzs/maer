@@ -354,7 +354,7 @@ struct CatalogStockTests {
     /// Genau das war passiert: die Beliebt-Vollseite trug den kompletten
     /// NSError samt Schoepf-Adresse mit Zeiger-Token, weil der Zustand
     /// nahm, was der Fehler beim Stringifizieren hergab.
-    @Test("der Fehlzustand kann keinen Rohtext mehr tragen")
+    @Test("der Fehlzustand kann keinen Rohtext mehr tragen", .needsTheSources)
     func theFailedStateCannotCarryRawText() throws {
         // Der Zustand ist eine Aufzaehlung OHNE zugeordneten Wert. Waere er
         // es nicht, liesse sich hier ein beliebiger Text hineinlegen.

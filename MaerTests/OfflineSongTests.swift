@@ -109,7 +109,7 @@ struct OfflineSongTests {
         #expect(manager.loadCachedDetail(forItemId: "sub:song:y") == nil)
     }
 
-    @Test("Offline-Lied: die Datei des Liedes ist die Datei seines Stuecks im Album, als Stueck 0")
+    @Test("Offline-Lied: die Datei des Liedes ist die Datei seines Stuecks im Album, als Stueck 0", .needsTheSources)
     func theFileIsTheAlbumsTrack() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/DownloadManager.swift"),

@@ -52,7 +52,7 @@ struct CoverSweepCostFenceTests {
                 + "Leeren; dort ist die Antwort das Angezeigte, also ist der Preis der Zweck"),
     ]
 
-    @Test("Nach der Cache-Groesse fragt nur, wer die Antwort zeigt")
+    @Test("Nach der Cache-Groesse fragt nur, wer die Antwort zeigt", .needsTheSources)
     func onlyTheSurfaceThatShowsItAsks() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {

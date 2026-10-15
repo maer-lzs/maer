@@ -24,7 +24,7 @@ struct CoListenedTests {
     /// Every view that lists the co-listened shows recomputes on the
     /// notification, so "Don't show this show" acts at once on every
     /// surface, the full page included (it used to wait for a tab switch).
-    @Test("Jede Flaeche mit mitgehoerten Sendungen hoert auf coListenedChanged")
+    @Test("Jede Flaeche mit mitgehoerten Sendungen hoert auf coListenedChanged", .needsTheSources)
     func everySurfaceListens() throws {
         var deaf: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {

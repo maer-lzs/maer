@@ -48,7 +48,7 @@ struct ArtworkDoorFenceTests {
         "Artwork.swift": 3,
     ]
 
-    @Test("Bildbytes werden nur hinter der Tuer dekodiert, der Bestand faellt nur")
+    @Test("Bildbytes werden nur hinter der Tuer dekodiert, der Bestand faellt nur", .needsTheSources)
     func markersLiveBehindTheDoor() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -63,7 +63,7 @@ struct ArtworkDoorFenceTests {
         #expect(Self.markerSites(in: "let image = await Artwork.image(for: url)?.image") == 0)
     }
 
-    @Test("ImageCache.shared kennen nur die Tuer und der Cache")
+    @Test("ImageCache.shared kennen nur die Tuer und der Cache", .needsTheSources)
     func cacheIsTheDoorsBusiness() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

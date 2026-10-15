@@ -59,8 +59,7 @@ struct ErrorSentenceTests {
         var read = 0
         for folder in ["Sources"] {
             let root = SourceTree.root.appendingPathComponent(folder)
-            let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-                .compactMap { $0 as? URL }
+            let files = SourceTree.files(under: root)
                 .filter { $0.pathExtension == "swift" }
             read += files.count
             for file in files {

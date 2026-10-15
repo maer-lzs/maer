@@ -395,8 +395,7 @@ struct ArtworkVerdictTests {
     @Test("die geschuetzte Fassung ueberspringen nur die Tore, die danach ins Netz gehen", .needsTheSources)
     func onlyNetworkGatesSkipTheKeptCopy() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var skipping: Set<String> = []
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

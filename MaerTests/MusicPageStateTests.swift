@@ -178,8 +178,7 @@ struct MusicPageStateTests {
     @Test("jede Flaeche, die den Musik-Server des Geraets fragt, zeichnet die Huelle und hoert auf die Quellen", .needsTheSources)
     func everyMusicSurfaceAsksBeforeItSaysNone() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: sources)
             .filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
         var all: [String] = []
@@ -254,8 +253,7 @@ struct MusicPageStateTests {
     @Test("jede Seite mit dem Musik-Koerper sagt, ob sie schon gefragt hat, aus ihren Laeufen", .needsTheSources)
     func everyPageSaysWhetherItAsked() throws {
         let views = SourceTree.root.appendingPathComponent("Sources/Views")
-        let files = try #require(FileManager.default.enumerator(at: views, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: views).filter { $0.pathExtension == "swift" }
         var drawing: Set<String> = []
         for file in files {
             for view in Self.musicViews(in: try String(contentsOf: file, encoding: .utf8))

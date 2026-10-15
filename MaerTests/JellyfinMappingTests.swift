@@ -101,7 +101,7 @@ struct JellyfinMappingTests {
     /// A source guard, because there is no injectable session here to prove the
     /// wiring and the live server is off-limits: no request may authorize via
     /// the legacy `X-Emby-Token` header, which Jellyfin 12 rejects.
-    @Test("no request authorizes via the legacy X-Emby-Token header")
+    @Test("no request authorizes via the legacy X-Emby-Token header", .needsTheSources)
     func noLegacyTokenHeaderRemains() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -148,7 +148,7 @@ struct JellyfinMappingTests {
     /// Emby-legacy `api_key` query name that Jellyfin 12 rejects. The image
     /// cache still lists the string to STRIP it from a cache key, which is
     /// not building a query item, so the detector looks for the constructor.
-    @Test("no media URL authorizes via the legacy api_key query item")
+    @Test("no media URL authorizes via the legacy api_key query item", .needsTheSources)
     func noLegacyApiKeyQueryRemains() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

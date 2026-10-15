@@ -46,7 +46,7 @@ struct MediaDownloadOfferTests {
     /// Der Bestand: jede Stelle, die einen Download ANBIETET, fragt vorher.
     /// Gezaehlt wird der Aufruf, der den Download startet; wer einen anbietet,
     /// ohne die Frage im selben Zweig zu stellen, faellt auf.
-    @Test("Kein Download-Angebot ohne die Frage, ob es geht")
+    @Test("Kein Download-Angebot ohne die Frage, ob es geht", .needsTheSources)
     func noOfferWithoutTheQuestion() throws {
         // Diese starten einen Download, OHNE ihn anzubieten: sie handeln auf
         // eine Entscheidung hin, die schon gefallen ist.
@@ -67,12 +67,9 @@ struct MediaDownloadOfferTests {
         var offersWithoutAsking: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
-            let code = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
+            let code = try String(contentsOf: url, encoding: .utf8)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")

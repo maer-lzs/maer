@@ -68,7 +68,7 @@ struct ArchiveMusicContractTests {
     /// und Jamendo: Kopfzeile mit Chevron, Kacheln darunter. Die
     /// Auswahl-Kapseln, die frueher das Fach IN der Reihe wechselten, stehen
     /// jetzt als Faecher auf der Flaeche hinter dem Chevron.
-    @Test("die 78er-Reihe ist eine gewoehnliche Kachelreihe, ohne Auswahl in der Reihe")
+    @Test("die 78er-Reihe ist eine gewoehnliche Kachelreihe, ohne Auswahl in der Reihe", .needsTheSources)
     func theOldRecordsRowIsAnOrdinaryTileRow() throws {
         let text = try String(
             contentsOf: URL(fileURLWithPath: #filePath)

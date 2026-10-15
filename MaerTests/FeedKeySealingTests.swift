@@ -238,7 +238,7 @@ struct FeedKeySealingTests {
         #expect(keys.code == Self.codeX, "the code stays")
     }
 
-    @Test("S3: die App liest ihre Schluessel an der Tuer des Geraets, die Seite hat keinen Code mehr")
+    @Test("S3: die App liest ihre Schluessel an der Tuer des Geraets, die Seite hat keinen Code mehr", .needsTheSources)
     func theDeviceWiring() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)

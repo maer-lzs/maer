@@ -308,7 +308,7 @@ struct FreeTwinTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Die Sendung fragt ueber den Hinweis; am Zwilling vorbei folgt nur das Umschalten")
+    @Test("Die Sendung fragt ueber den Hinweis; am Zwilling vorbei folgt nur das Umschalten", .needsTheSources)
     func wiring() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         for teil in ["freeTwin: subs.freeTwinOffer(show)", "subs.switchToFreeTwin(showId:", "subs.declineFreeTwin(show)"] {

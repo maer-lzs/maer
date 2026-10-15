@@ -32,7 +32,7 @@ struct ActionFailureTests {
         return FetchAnswerTests.squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
     }
 
-    @Test("die Handlungen, die ein Scheitern verschluckten, fragen die Antwort und sagen eine Weigerung")
+    @Test("die Handlungen, die ein Scheitern verschluckten, fragen die Antwort und sagen eine Weigerung", .needsTheSources)
     func theSwallowedActionsAskTheAnswer() throws {
         var offenders: [String] = []
         for site in Self.swallowedActions {

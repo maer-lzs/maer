@@ -146,7 +146,7 @@ struct DeviceLinkCodeTests {
     /// ob ein Schluessel in Apples iCloud-Schluesselbund landet, sieht ein
     /// Verhaltensfall im Simulator nicht. Dieselbe Bauart wie beim
     /// Zeitvergleich, der `==` und `compare_digest` nicht unterscheiden kann.
-    @Test("der Wiederherstellungs-Schluessel reist NIE ueber Apple")
+    @Test("der Wiederherstellungs-Schluessel reist NIE ueber Apple", .needsTheSources)
     func theRecoveryKeyNeverTravelsThroughApple() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "DeviceLinkCodeStore.swift" })

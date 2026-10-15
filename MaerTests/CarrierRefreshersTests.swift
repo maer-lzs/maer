@@ -127,7 +127,7 @@ struct CarrierRefreshersTests {
 
     /// The fence: the next carrier cannot be forgotten by the push and the
     /// scene, because both ask the register, and every carrier signs in.
-    @Test("jeder Traeger meldet sich an, auch der Dienst; Push und Szene fragen das Register")
+    @Test("jeder Traeger meldet sich an, auch der Dienst; Push und Szene fragen das Register", .needsTheSources)
     func everyCarrierRegistersAndBothOccasionsAskTheRegister() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let networking = root.appendingPathComponent("Sources/Networking")

@@ -31,7 +31,7 @@ struct MusicProviderDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Keine allgemeine Flaeche nennt einen konkreten Musikserver")
+    @Test("Keine allgemeine Flaeche nennt einen konkreten Musikserver", .needsTheSources)
     func noGeneralSurfaceNamesAConcreteMusicServer() throws {
         let allowed: [String: String] = [
             "Sources/AppSession.swift":
@@ -49,11 +49,8 @@ struct MusicProviderDoorFenceTests {
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let relative = "Sources/" + name
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let relative = SourceTree.relativePath(of: url)
             if allowed[relative] != nil { continue }
             let code = try codeOf(relative)
             for needle in ["SubsonicProvider.shared", "JellyfinProvider.shared",
@@ -68,7 +65,7 @@ struct MusicProviderDoorFenceTests {
     /// Gegenprobe, damit der Bestand oben nicht deshalb leer ist, weil die
     /// Tuer verschwunden ist: sie waehlt wirklich zwischen beiden, und die
     /// Bedingung ist die, auf die sich der Bestand beruft.
-    @Test("Die Tuer waehlt wirklich zwischen beiden Servern")
+    @Test("Die Tuer waehlt wirklich zwischen beiden Servern", .needsTheSources)
     func theDoorReallyChooses() throws {
         let code = try codeOf("Sources/AppSession.swift")
         #expect(code.contains("var musicProvider: any MusicProvider"))
@@ -137,11 +134,9 @@ struct MusicProviderDoorFenceTests {
         // Playlist-Kennung fragen deshalb die Tuer, keine rohe Nummer mehr.
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources/Views")
-        let walker = try #require(FileManager.default.enumerator(at: root,
-                                                                includingPropertiesForKeys: nil))
         var checked = 0
         var found: [String: Int] = [:]
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let code = try codeOf("Sources/Views/"
                                   + url.path.components(separatedBy: "Sources/Views/")[1])
             checked += 1
@@ -186,11 +181,9 @@ struct MusicProviderDoorFenceTests {
         let allowed = "ABSSourceView.swift"
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources/Views")
-        let walker = try #require(FileManager.default.enumerator(at: root,
-                                                                includingPropertiesForKeys: nil))
         var checked = 0
         var offenders: [String] = []
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let code = try codeOf("Sources/Views/"
                                   + url.path.components(separatedBy: "Sources/Views/")[1])
             checked += 1
@@ -214,7 +207,7 @@ struct MusicProviderDoorFenceTests {
     /// Und die Frage, an der der Fund haengt, am Protokoll: beide Anbieter
     /// koennen sie beantworten, es gab also nie einen Grund, einen davon zu
     /// nennen.
-    @Test("Was die drei Stellen brauchten, steht im Protokoll")
+    @Test("Was die drei Stellen brauchten, steht im Protokoll", .needsTheSources)
     func whatTheThreeSitesNeededIsInTheProtocol() throws {
         let code = try codeOf("Sources/Providers/MusicProvider.swift")
         #expect(code.contains("func songItems(forItemId itemId: String) async -> [LibraryItem]"),

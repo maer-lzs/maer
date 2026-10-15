@@ -171,7 +171,7 @@ struct ChoiceCarrierTests {
     /// primitive. What it may still say is the protocol's name in its
     /// `init`, which turns a witness's dictionary fake into the key-value
     /// carrier.
-    @Test("der Zaun: der Laeufer nennt kein Speicher-Primitiv") @MainActor
+    @Test("der Zaun: der Laeufer nennt kein Speicher-Primitiv", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/UserChoiceCloudSync.swift"),

@@ -113,7 +113,7 @@ struct MaerSyncPasswordChangeTests {
         return result as? [String: Any]
     }
 
-    @Test("feed liegt nur auf diesem Geraet: nicht in einer Sicherung, nicht im iCloud-Schluesselbund; Abmelden vergisst ihn")
+    @Test("feed liegt nur auf diesem Geraet: nicht in einer Sicherung, nicht im iCloud-Schluesselbund; Abmelden vergisst ihn", .needsTheSources)
     func feedStaysOnThisDevice() async throws {
         try await clean {
             let feed = Data(repeating: 5, count: 32)

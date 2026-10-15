@@ -82,7 +82,7 @@ struct ConcurrencyFenceTests {
         return out
     }
 
-    @Test("@unchecked Sendable nur mit Grund und nur im Bestand")
+    @Test("@unchecked Sendable nur mit Grund und nur im Bestand", .needsTheSources)
     func uncheckedSendableIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "@unchecked Sendable", marker: "unchecked because", stock: Self.uncheckedStock)
         #expect(offenders.isEmpty, "unchecked past the fence: \(offenders)")
@@ -92,7 +92,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "@unchecked Sendable", marker: "unchecked because", in: "/// unchecked because far above\n///\n///\n///\n///\nfinal class A: @unchecked Sendable {}") == 1)
     }
 
-    @Test("DispatchQueue nur, wo eine API eine Queue verlangt, mit Grund und im Bestand")
+    @Test("DispatchQueue nur, wo eine API eine Queue verlangt, mit Grund und im Bestand", .needsTheSources)
     func dispatchQueueIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "DispatchQueue", marker: "queue because", stock: Self.queueStock)
         #expect(offenders.isEmpty, "DispatchQueue past the fence: \(offenders)")
@@ -100,7 +100,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "DispatchQueue", marker: "queue because", in: "// queue because the API wants one\nmonitor.start(queue: DispatchQueue.global())") == 0)
     }
 
-    @Test("Task.detached traegt einen Grund, und der Bestand darf nur fallen")
+    @Test("Task.detached traegt einen Grund, und der Bestand darf nur fallen", .needsTheSources)
     func detachedIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "Task.detached", marker: "detached because", stock: Self.detachedStock)
         #expect(offenders.isEmpty, "detached past the fence: \(offenders)")
@@ -108,7 +108,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "// detached because the write must finish\nTask.detached { work() }") == 0)
     }
 
-    @Test("nonisolated(unsafe) traegt einen Grund, und der Bestand darf nur fallen")
+    @Test("nonisolated(unsafe) traegt einen Grund, und der Bestand darf nur fallen", .needsTheSources)
     func unsafeIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "nonisolated(unsafe)", marker: "unsafe because", stock: Self.unsafeStock)
         #expect(offenders.isEmpty, "nonisolated(unsafe) past the fence: \(offenders)")
@@ -120,7 +120,7 @@ struct ConcurrencyFenceTests {
                 "a comment that names it is no site")
     }
 
-    @Test("Task.sleep-Stellen (Ticks, Warten, Polls) sind inventarisiert und werden nur weniger")
+    @Test("Task.sleep-Stellen (Ticks, Warten, Polls) sind inventarisiert und werden nur weniger", .needsTheSources)
     func sleepSitesOnlyShrink() throws {
         let offenders = try Self.offenders(token: "Task.sleep", marker: nil, stock: Self.sleepStock)
         #expect(offenders.isEmpty, "sleep sites past the inventory: \(offenders)")

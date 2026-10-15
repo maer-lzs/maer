@@ -839,7 +839,7 @@ struct MaerSyncCarrierTests {
     /// Form `if await take…(by: caller) { on…Change?() }` ist genau die, die
     /// den Schrieb verloren hat, und sie faellt hier auf, bevor sie ein
     /// drittes Mal entsteht.
-    @Test("kein Schreibweg macht seinen Rueckweg von einer gemeldeten Fremdaenderung abhaengig")
+    @Test("kein Schreibweg macht seinen Rueckweg von einer gemeldeten Fremdaenderung abhaengig", .needsTheSources)
     func noWritePathHangsItsRetryOnAReportedForeignChange() throws {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -1198,7 +1198,7 @@ struct FeedAuthStartTests {
     /// The second start site: the switch's onChange names this runner
     /// beside the five it starts, so a switch turned on after the start
     /// reaches it.
-    @Test("der Schalter startet den Laeufer neben den fuenf anderen")
+    @Test("der Schalter startet den Laeufer neben den fuenf anderen", .needsTheSources)
     func theSwitchStartsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8)
@@ -1210,7 +1210,7 @@ struct FeedAuthStartTests {
 
     /// The source half: the housekeeping's runner list names this start.
     /// Taking the call out must tear here with the runner's name.
-    @Test("der Haushalt startet den Laeufer neben den sechs anderen")
+    @Test("der Haushalt startet den Laeufer neben den sechs anderen", .needsTheSources)
     func theHousekeepingStartsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/AppHousekeeping.swift"),

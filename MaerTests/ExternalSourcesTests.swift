@@ -34,8 +34,7 @@ struct ExternalSourcesTests {
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
         var hosts: Set<String> = []
-        let walker = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = walker?.nextObject() as? URL {
+        for url in SourceTree.files(under: root) {
             guard url.pathExtension == "swift" else { continue }
             let text = try String(contentsOf: url, encoding: .utf8)
             var rest = Substring(text)
@@ -54,7 +53,7 @@ struct ExternalSourcesTests {
     /// gehoeren der Feed-Artwork-/Inhalts-Seite und sind daran erkennbar,
     /// dass sie in DATEN stehen, nicht in Clients — der Zaun nimmt sie
     /// ueber die bekannte Feed-Host-Liste aus.
-    @Test("kein Client spricht mit einem Host, den keine Quelle nennt")
+    @Test("kein Client spricht mit einem Host, den keine Quelle nennt", .needsTheSources)
     func everyHardwiredHostBelongsToASource() throws {
         let declared = Set(ExternalSources.all.flatMap(\.hosts))
         // Feed- und Sender-Hosts: Inhalt, kein Dienst. Erkannt an den

@@ -299,8 +299,7 @@ struct MaerPlaylistMergeTests {
     func onlyTheRuleComparesRemovalMarks() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var offenders: [String] = []
-        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         for file in files where file.lastPathComponent != "MaerPlaylistMerge.swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             if Self.comparesRemovalMarks(code) { offenders.append(file.lastPathComponent) }

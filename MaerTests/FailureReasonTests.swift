@@ -97,8 +97,7 @@ struct FailureReasonTests {
             "GlobalSearchModel.swift": "Name einer Suchquelle fuer EINE Logzeile, nie ein Satz fuer die Flaeche",
         ]
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
-        let dateien = try #require(FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let dateien = SourceTree.files(under: wurzel)
             .filter { $0.pathExtension == "swift" }
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         let ausdruck = try NSRegularExpression(pattern: Self.blindFallbackShape)

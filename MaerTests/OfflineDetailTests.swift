@@ -36,7 +36,7 @@ struct OfflineDetailTests {
                 "flight mode is not a broken connection")
     }
 
-    @Test("Detailseite: sie liest den Speicher des Downloads, und ein gescheiterter Abgleich nimmt nichts weg")
+    @Test("Detailseite: sie liest den Speicher des Downloads, und ein gescheiterter Abgleich nimmt nichts weg", .needsTheSources)
     func thePageReadsTheStore() throws {
         let page = try Self.source("Sources/Views/Music/MusicAlbumView.swift")
         #expect(page.contains("let stored = albumDownloads.loadCachedDetail(forItemId: item.id)"))
@@ -81,7 +81,7 @@ struct OfflineDetailTests {
                 == .init(anyHere: false, allHere: false), "an empty list plays nothing and is not downloaded")
     }
 
-    @Test("Playlist-Karte: sie traegt die Leiste jeder Kachel, und beide Welten nennen, was geladen sein muss")
+    @Test("Playlist-Karte: sie traegt die Leiste jeder Kachel, und beide Welten nennen, was geladen sein muss", .needsTheSources)
     func theCardWearsTheTileScope() throws {
         let card = try Self.source("Sources/Views/Music/PlaylistCard.swift")
         #expect(card.contains("MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in"))
@@ -99,7 +99,7 @@ struct OfflineDetailTests {
 
     // MARK: - A refresh takes nothing away
 
-    @Test("Abgleich: eine leere Antwort ersetzt kein gespeichertes Detail mit Titeln")
+    @Test("Abgleich: eine leere Antwort ersetzt kein gespeichertes Detail mit Titeln", .needsTheSources)
     func anEmptyRefreshKeepsTheStore() throws {
         #expect(!DetailLoadPlan.adopts(fetchedTrackCount: 0, storedTrackCount: 12),
                 "the downloaded playlist whose server answers empty for a moment")
@@ -129,7 +129,7 @@ struct OfflineDetailTests {
         #expect(FreeCatalog.logReason(FetchHeldBack()) == nil)
     }
 
-    @Test("Log: die zwei Log-Leser fragen den Log-Grund")
+    @Test("Log: die zwei Log-Leser fragen den Log-Grund", .needsTheSources)
     func theLogReadersAskTheLogReason() throws {
         let stock = try Self.source("Sources/ViewModels/CatalogStockService.swift")
         #expect(stock.contains("let technical = FreeCatalog.logReason(error) ?? FailureReason.of(error)"))

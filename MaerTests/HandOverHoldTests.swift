@@ -48,7 +48,7 @@ struct HandOverHoldTests {
 
     /// The logs that follow the account keep their hold in the one type;
     /// no log keeps a hold of its own, whatever it calls it.
-    @Test("kein Protokoll fuehrt eine eigene gehaltene Uebergabe neben HandOverHold")
+    @Test("kein Protokoll fuehrt eine eigene gehaltene Uebergabe neben HandOverHold", .needsTheSources)
     func noLogKeepsAHoldOfItsOwn() {
         var own: [String] = []
         var taking: [String] = []

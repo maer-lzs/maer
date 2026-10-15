@@ -45,7 +45,7 @@ struct MusicProviderForItemTests {
     /// Sechzehn Zeilen taten es, und vier davon banden sie sogar vorher an
     /// ein lokales `music` — die Datei zeigte das Muster selbst und meinte
     /// trotzdem die falsche Quelle.
-    @Test("Die Album-Seite fragt die eingestellte Quelle nicht mehr")
+    @Test("Die Album-Seite fragt die eingestellte Quelle nicht mehr", .needsTheSources)
     func thealbumPageNoLongerAsksTheConfiguredSource() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let code = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),

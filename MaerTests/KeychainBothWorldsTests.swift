@@ -70,7 +70,7 @@ struct KeychainBothWorldsTests {
         #expect(KeychainStore.load(forKey: key) == "local")
     }
 
-    @Test("die Tuer nennt an jeder adressierenden Abfrage die zwei Welten und liest jeden Status")
+    @Test("die Tuer nennt an jeder adressierenden Abfrage die zwei Welten und liest jeden Status", .needsTheSources)
     func everyCallSaysWhichWorldsAndReadsItsStatus() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "KeychainStore.swift" })

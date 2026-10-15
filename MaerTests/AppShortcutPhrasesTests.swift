@@ -34,7 +34,7 @@ struct AppShortcutPhrasesTests {
         phrase.range(of: "\\bapp\\b", options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    @Test("jede Absicht hat eine Phrase, die die App als App nennt")
+    @Test("jede Absicht hat eine Phrase, die die App als App nennt", .needsTheSources)
     func everyIntentHasAPhraseNamingTheApp() throws {
         let source = try String(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.swift"), encoding: .utf8)
         let blocks = Self.phraseBlocks(in: source)
@@ -75,7 +75,7 @@ struct AppShortcutPhrasesTests {
         #expect(!(spoken ?? "").isEmpty, "CFBundleSpokenName fehlt oder ist leer")
     }
 
-    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant")
+    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant", .needsTheSources)
     func everyCatalogEntryEitherIsAKeyOrSaysItIsNotTranslated() throws {
         // `InfoPlist.strings` ersetzt anhand des Info.plist-SCHLUESSELS. Ein
         // Eintrag, dessen Name ein WERT ist, erzeugt eine Zeile, die nichts

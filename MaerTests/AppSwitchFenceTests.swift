@@ -23,14 +23,9 @@ import Foundation
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(at: sources,
-                                                          includingPropertiesForKeys: nil) else {
-            Issue.record("the fence could not walk Sources, so it measured nothing")
-            return
-        }
         var offenders: [String] = []
         var scanned = 0
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             guard url.lastPathComponent != "AppSwitch.swift",
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             scanned += 1

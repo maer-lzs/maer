@@ -58,7 +58,7 @@ struct CatalogStockRunTests {
         #expect(CatalogStockSurfaces.known(inDirectoryNamed: []).isEmpty, "nothing held on this device")
     }
 
-    @Test("Laeufe: der Start faehrt jede Sammlung mit Lauf, die gehaltenen zuerst, jede einmal")
+    @Test("Laeufe: der Start faehrt jede Sammlung mit Lauf, die gehaltenen zuerst, jede einmal", .needsTheSources)
     func theStartRunsEveryCollection() throws {
         let all = CatalogStockSurfaces.all
         #expect(all.count == 4 + ArchiveMusicCatalog.all.count && ArchiveMusicCatalog.all.count == 11,
@@ -75,7 +75,7 @@ struct CatalogStockRunTests {
                 "a source that is off is still not asked")
     }
 
-    @Test("Gutenberg: zwischen zwei vollen Laeufen kein Lauf, Tag 30 voll; ein Archiv fragt taeglich nach Neuem")
+    @Test("Gutenberg: zwischen zwei vollen Laeufen kein Lauf, Tag 30 voll; ein Archiv fragt taeglich nach Neuem", .needsTheSources)
     func gutenbergRunsOnlyWhole() throws {
         let day: TimeInterval = 86_400
         let now = Date(timeIntervalSince1970: 1_756_900_000)
@@ -127,7 +127,7 @@ struct CatalogStockRunTests {
         #expect(!CatalogStockFetch.dumpChangedUpstream(held: 4_194_304, known: nil, stated: 21_200_000))
     }
 
-    @Test("Teilstueck: eine 416 auf ein fortgesetztes Teilstueck heisst geschrumpft, ausser es ist das ganze")
+    @Test("Teilstueck: eine 416 auf ein fortgesetztes Teilstueck heisst geschrumpft, ausser es ist das ganze", .needsTheSources)
     func a416OnAResumedDumpIsAShrunkenFile() throws {
         #expect(CatalogStockFetch.dumpShrankUnderResume(resumed: true, held: 8_388_608, known: 21_223_958),
                 "held the head of a longer file that is now shorter than that head")
@@ -146,7 +146,7 @@ struct CatalogStockRunTests {
 
     // MARK: - Wiring
 
-    @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und sein einziger Weg reicht es")
+    @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und sein einziger Weg reicht es", .needsTheSources)
     func theDumpIsWired() throws {
         let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
         #expect(fetch.contains("var (body, knownTotal) = partial?.load() ?? (Data(), nil)"))
@@ -162,7 +162,7 @@ struct CatalogStockRunTests {
                 "a cancelled run says so in the log")
     }
 
-    @Test("Verdrahtung: die Laeufe starten mit der App, ausser im Test-Wirt")
+    @Test("Verdrahtung: die Laeufe starten mit der App, ausser im Test-Wirt", .needsTheSources)
     @MainActor
     func theRunsStartWithTheApp() throws {
         let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")

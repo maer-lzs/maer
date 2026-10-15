@@ -56,8 +56,7 @@ struct MixedRowGlyphTests {
     static func sources() throws -> [String: String] {
         let root = SourceTree.root.appendingPathComponent("Sources")
         var files: [String: String] = [:]
-        let walker = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = walker?.nextObject() as? URL {
+        for url in SourceTree.files(under: root) {
             guard url.pathExtension == "swift" else { continue }
             // The one way to name a walked file (`SourceTree.relativePath`):
             // the walker hands out /private/tmp where the root says /tmp.

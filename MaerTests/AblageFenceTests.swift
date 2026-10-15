@@ -48,16 +48,14 @@ struct AblageFenceTests {
         "ContinueListeningWidget.swift": (1, "the widget reads the cover bytes the app left in the app group"),
     ]
 
-    @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund")
+    @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund", .needsTheSources)
     func filesOnlyThroughTheSeam() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []
         // The app and the widget target: a widget reads and writes the app
         // group as much as the app does.
         for folder in ["Sources", "LiveActivityWidget"] {
-            let walker = try #require(FileManager.default.enumerator(
-                at: SourceTree.root.appendingPathComponent(folder), includingPropertiesForKeys: nil), "\(folder) is not there")
-            for case let file as URL in walker where file.pathExtension == "swift" && !Self.isAHome(file.path) {
+            for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where file.pathExtension == "swift" && !Self.isAHome(file.path) {
                 seen.insert(file.lastPathComponent)
                 counts[file.lastPathComponent, default: 0] += Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
             }

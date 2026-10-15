@@ -157,7 +157,7 @@ struct MaerSyncAnswerTests {
     /// which is exactly where the 412 lived until this file existed. The
     /// one number the door passes on is the health route's, and it passes
     /// it on as a number, not as a decision.
-    @Test("die Tuer vergleicht keinen Status; die Uebersetzung steht an einer Stelle")
+    @Test("die Tuer vergleicht keinen Status; die Uebersetzung steht an einer Stelle", .needsTheSources)
     func theDoorComparesNoStatus() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let whole = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),

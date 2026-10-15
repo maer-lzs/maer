@@ -94,7 +94,7 @@ struct MaerSyncAddressTravelTests {
                 "der Eintrag bleibt fuer Geraete liegen, die ihn kennen")
     }
 
-    @Test("Die Anmeldung merkt die Adresse, das Feld bietet sie an")
+    @Test("Die Anmeldung merkt die Adresse, das Feld bietet sie an", .needsTheSources)
     func wiring() throws {
         let anmeldung = try sourceText("Sources/Networking/MaerSyncSignIn.swift")
         let store = try #require(anmeldung.range(of: "static func store(_ access: MaerSyncAccess"))

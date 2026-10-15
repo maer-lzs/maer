@@ -51,7 +51,7 @@ struct DebugOnlySeedFenceTests {
         return out
     }
 
-    @Test("die Debug-only-Typen ausserhalb ihrer Datei nur hinter #if DEBUG")
+    @Test("die Debug-only-Typen ausserhalb ihrer Datei nur hinter #if DEBUG", .needsTheSources)
     func seedOnlyBehindDebug() throws {
         var offenders: [String] = []
         var homes = 0

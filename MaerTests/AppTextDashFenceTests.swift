@@ -59,7 +59,7 @@ struct AppTextDashFenceTests {
         return literals.filter { $0.contains(where: { dashes.contains($0) }) }
     }
 
-    @Test("Kein Katalog-Schluessel und kein deutscher Wert traegt einen Gedankenstrich")
+    @Test("Kein Katalog-Schluessel und kein deutscher Wert traegt einen Gedankenstrich", .needsTheSources)
     func catalogCarriesNoDash() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))
@@ -77,7 +77,7 @@ struct AppTextDashFenceTests {
         #expect(offenders.isEmpty, "dashes in the catalog: \(offenders.sorted())")
     }
 
-    @Test("Kein sichtbares Literal in Sources traegt einen Gedankenstrich")
+    @Test("Kein sichtbares Literal in Sources traegt einen Gedankenstrich", .needsTheSources)
     func sourceLiteralsCarryNoDash() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()

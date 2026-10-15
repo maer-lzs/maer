@@ -345,14 +345,13 @@ struct ImageCachePersistentTests {
     @Test("kein Zeuge fegt den geteilten Cache mit vollstaendiger Antwort", .needsTheSources)
     func noWitnessSweepsTheSharedCacheWithACompleteAnswer() throws {
         let tests = SourceTree.root.appendingPathComponent("MaerTests")
-        let walker = try #require(FileManager.default.enumerator(at: tests, includingPropertiesForKeys: nil))
         var sweeps = 0
         var complete: [String] = []
         // Every call, with or without `await`: the sweep returns a task and
         // discards it quietly, so `_ = …` or a bare call sweeps just the same.
         // The name is joined here so this line does not count itself.
         let call = "ImageCache.shared." + "performMaintenance("
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: tests) where url.pathExtension == "swift" {
             let lines = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
                 .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
             for (index, line) in lines.enumerated() {
@@ -765,8 +764,7 @@ struct ImageCachePersistentTests {
     @Test("die Antwort auf aktive Cover entsteht nur im DownloadManager", .needsTheSources)
     func activeCoversAreBuiltInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
         var builders: [String] = []
         var moveNamers: [String] = []

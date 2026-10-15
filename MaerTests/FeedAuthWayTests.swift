@@ -161,7 +161,7 @@ struct FeedAuthWayTests {
     /// The three occasions call the rewrite, named: a fence over the two
     /// files, so a sign-in, a sign-out or a switch that forgets the rewrite
     /// is red here and not only on a device with old twins.
-    @Test("Anmeldung, Abmeldung und der Schalter rufen das Umschreiben, je beim Namen")
+    @Test("Anmeldung, Abmeldung und der Schalter rufen das Umschreiben, je beim Namen", .needsTheSources)
     func allThreeOccasionsCallTheRewrite() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ file: URL) throws -> String {

@@ -56,7 +56,7 @@ struct OnlineValueFenceTests {
                 + "der Stand vom Aufgabenbeginn"),
     ]
 
-    @Test("Die Wache wird in den Ansichten nur noch im Bestand gefragt")
+    @Test("Die Wache wird in den Ansichten nur noch im Bestand gefragt", .needsTheSources)
     func viewsAskTheMonitorOnlyWhereTheStockSaysSo() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -71,7 +71,7 @@ struct OnlineValueFenceTests {
         #expect(Self.reaches(in: "// used to ask NetworkMonitor.shared") == 0)
     }
 
-    @Test("Der Wert wird an genau EINER Stelle gereicht")
+    @Test("Der Wert wird an genau EINER Stelle gereicht", .needsTheSources)
     func exactlyOnePlaceHandsTheValueDown() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -88,7 +88,7 @@ struct OnlineValueFenceTests {
         #expect(setters == ["RootView.swift: 1"], "gesetzt wird an: \(setters)")
     }
 
-    @Test("Die Wache veroeffentlicht GENAU eine Antwort, sonst kostet der Wurzel-Beobachter")
+    @Test("Die Wache veroeffentlicht GENAU eine Antwort, sonst kostet der Wurzel-Beobachter", .needsTheSources)
     func theMonitorPublishesExactlyOneAnswer() throws {
         // Die Bedingung, an der die Ausnahme haengt. `@ObservedObject` haengt
         // am OBJEKT, nicht am Feld: ein zweites `@Published` an dieser Wache

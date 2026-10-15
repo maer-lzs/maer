@@ -193,8 +193,7 @@ struct EpisodeLimitRetiredTests {
         #expect(!UserChoiceCatalog.travelingPrefixes.contains(where: UserChoiceCatalog.isRetired))
         #expect(!PodcastShowPreferences.travellingKeys(showId: "feed:x").contains(where: UserChoiceCatalog.isRetired))
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }
+        let files = SourceTree.files(under: root)
             .filter { $0.pathExtension == "swift" }
         try #require(files.count > 100, "the fence did not read the source tree")
         var found: [String: [String]] = [:]

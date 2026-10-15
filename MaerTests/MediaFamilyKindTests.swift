@@ -31,7 +31,7 @@ struct MediaFamilyKindTests {
         }
     }
 
-    @Test("Familie: jede Art, die ein Anbieter vergibt, steht in der Tabelle")
+    @Test("Familie: jede Art, die ein Anbieter vergibt, steht in der Tabelle", .needsTheSources)
     func everyKindTheProvidersHandOutIsListed() throws {
         for (file, namespace) in [("Sources/Providers/JellyfinProvider.swift", "jf:"),
                                   ("Sources/Providers/SubsonicProvider.swift", "sub:")] {

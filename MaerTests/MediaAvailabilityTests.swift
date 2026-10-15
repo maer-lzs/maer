@@ -45,7 +45,7 @@ struct MediaAvailabilityTests {
     ///
     /// Die drei Eintraege sind KEINE Verstoesse, sondern andere Fragen, und
     /// jeder nennt seine. Wer einen vierten anlegt, muss ihn begruenden.
-    @Test("Niemand verbindet Netz und Download mehr von Hand")
+    @Test("Niemand verbindet Netz und Download mehr von Hand", .needsTheSources)
     func nobodyJoinsTheTwoFactsByHand() throws {
         let expected: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
@@ -57,12 +57,9 @@ struct MediaAvailabilityTests {
         ]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
         var found: Set<String> = []
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let text = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+        for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
+            let text = try String(contentsOf: url, encoding: .utf8)
             // Kommentare weg (eine Erklaerung ist kein Aufruf), dann alle
             // Zwischenraeume zu einem, damit ein mehrzeiliger Ausdruck als
             // EIN Text gelesen wird.
@@ -87,7 +84,7 @@ struct MediaAvailabilityTests {
                 let window = String(flat[from..<to])
                 if ["isConnected", "isOnline", "isOffline", "offline", "online"]
                     .contains(where: { window.contains($0) }) {
-                    found.insert("Sources/" + name)
+                    found.insert(SourceTree.relativePath(of: url))
                 }
             }
         }

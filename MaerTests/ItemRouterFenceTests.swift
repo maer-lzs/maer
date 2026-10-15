@@ -46,7 +46,7 @@ struct ItemRouterFenceTests {
     /// handle of its own is not seen here.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [:]
 
-    @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt")
+    @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt", .needsTheSources)
     func theRouterLeafIsAskedForNotBuilt() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -76,7 +76,7 @@ struct ItemRouterFenceTests {
             }.count
     }
 
-    @Test("Niemand setzt den Router im Programm, sonst kosten alle Leser")
+    @Test("Niemand setzt den Router im Programm, sonst kosten alle Leser", .needsTheSources)
     func nobodyHandsTheRouterDownInTheApp() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

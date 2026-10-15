@@ -23,7 +23,7 @@ struct BookDetailEntryTests {
     /// Der Server-Eintritt verlangt sein LibraryViewModel weiter als
     /// Pflicht: keine Aufrufstelle kann es still fallen lassen. Der
     /// Katalog-Eintritt kommt ohne aus.
-    @Test("beide Tueren stehen, und die Server-Tuer verlangt ihr Modell weiter")
+    @Test("beide Tueren stehen, und die Server-Tuer verlangt ihr Modell weiter", .needsTheSources)
     func bothDoorsStand() throws {
         let text = try seite().split(whereSeparator: \.isWhitespace).joined()
         #expect(text.contains("init(entry:LibraryEntry,coordinator:PlayerCoordinator,libraryViewModel:LibraryViewModel)"),
@@ -35,7 +35,7 @@ struct BookDetailEntryTests {
     /// Was sich unterscheidet, wird JE BILD aus der Kennung aufgeloest,
     /// nie beim Oeffnen gemerkt. Dieselbe Regel, die die Sendungsseite beim
     /// Kaltstart ehrlich gehalten hat.
-    @Test("der Unterschied haengt an der Kennung, je Bild aufgeloest")
+    @Test("der Unterschied haengt an der Kennung, je Bild aufgeloest", .needsTheSources)
     func theDifferenceHangsOnTheId() throws {
         let text = try seite().split(whereSeparator: \.isWhitespace).joined()
         #expect(text.contains("FreeCatalog.isCatalogId(entry.id)"),
@@ -58,7 +58,7 @@ struct BookDetailEntryTests {
     /// with the provider of the TITLE (`detailProvider`), never the running
     /// session's, or a Jellyfin book reports its mark to the library server,
     /// which does not know it.
-    @Test("der Katalog-Zweig des Markierens schreibt lokal, der Server-Zweig bleibt")
+    @Test("der Katalog-Zweig des Markierens schreibt lokal, der Server-Zweig bleibt", .needsTheSources)
     func theCatalogMarkWritesLocally() throws {
         let rumpf = try #require(functionBody(of: "private func toggleFinishedMark() async {",
                                               in: try seite()))
@@ -72,7 +72,7 @@ struct BookDetailEntryTests {
     /// Die Zweitknoepfe folgen den RECHTEN: ein Katalog-Titel bekommt
     /// keinen Download-Knopf, weil jede andere Flaeche diesen Weg
     /// geschlossen haelt. Das Markieren bleibt ihm.
-    @Test("ein Katalog-Titel bekommt keinen Download-Knopf")
+    @Test("ein Katalog-Titel bekommt keinen Download-Knopf", .needsTheSources)
     func aCatalogTitleGetsNoDownloadButton() throws {
         let rumpf = try #require(functionBody(of: "private var downloadSection: some View {",
                                               in: try seite()))

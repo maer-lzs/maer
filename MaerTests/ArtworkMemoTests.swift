@@ -98,7 +98,7 @@ struct ArtworkMemoTests {
         #expect(outcomes["radio:rb:commons"]?.resolvedAt == 1_000)
     }
 
-    @Test("ausserhalb der Tuer nennt niemand das Verzeichnis")
+    @Test("ausserhalb der Tuer nennt niemand das Verzeichnis", .needsTheSources)
     func theDirectoryKeyStaysInTheDoor() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

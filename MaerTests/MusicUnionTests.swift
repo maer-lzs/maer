@@ -412,8 +412,7 @@ struct MusicUnionTests {
     func portraitsAreKeyedByTheCarriedId() throws {
         var calls: [String] = []
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let code = Self.code(try String(contentsOf: url, encoding: .utf8))
             // A CALL has a receiver; the declaration `func portraitURL(` has none.
             for match in code.matches(of: try Regex(#"\.portraitURL\(\s*artistKey:\s*([^,]+),"#)) {
@@ -464,10 +463,9 @@ struct MusicUnionTests {
     @Test("keine Frage mit roher Nummer an die Geraete-Frage, in ganz Sources", .needsTheSources)
     func noRawQuestionToTheDevice() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")
-        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
         var read = 0
         var found: [String] = []
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             read += 1
             let count = Self.rawToDevice(in: try String(contentsOf: url, encoding: .utf8))
             if count > 0 { found.append("\(url.lastPathComponent): \(count)") }

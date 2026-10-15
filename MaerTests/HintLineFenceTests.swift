@@ -40,9 +40,8 @@ import Foundation
         let views = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Views")
-        let walker = try #require(FileManager.default.enumerator(at: views, includingPropertiesForKeys: nil))
         var found: [String: Int] = [:]
-        for case let url as URL in walker where url.pathExtension == "swift" {
+        for url in SourceTree.files(under: views) where url.pathExtension == "swift" {
             let count = Self.orangeSites(in: try String(contentsOf: url, encoding: .utf8))
             if count > 0 { found[url.lastPathComponent, default: 0] += count }
         }

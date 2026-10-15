@@ -308,7 +308,7 @@ import Foundation
     /// asks `mediaTypes`, so this source may never answer with a fixed set
     /// again. Written as a fence because the merge itself needs a live client
     /// and a server, which no unit case has.
-    @Test("die Quelle leitet ihre Typen aus dem Tor ab, nicht aus einer festen Liste")
+    @Test("die Quelle leitet ihre Typen aus dem Tor ab, nicht aus einer festen Liste", .needsTheSources)
     func theSourceDerivesItsTypesFromTheGate() throws {
         let source = try String(contentsOfFile: Self.providerPath, encoding: .utf8)
         #expect(!source.contains("var mediaTypes: Set<MediaType> { [.music] }"),
@@ -321,7 +321,7 @@ import Foundation
 
     /// The shelf's own half of the same seam: the merge that lets a second
     /// source into the audiobook tab asks exactly this question.
-    @Test("das Regal mischt jede Zweitquelle ein, die Hoerbuecher bedient")
+    @Test("das Regal mischt jede Zweitquelle ein, die Hoerbuecher bedient", .needsTheSources)
     func theShelfMergesEverySourceThatServesAudiobooks() throws {
         let source = try String(contentsOfFile: Self.shelfPath, encoding: .utf8)
         #expect(source.contains("provider.mediaTypes.contains(.audiobooks)"),
@@ -333,7 +333,7 @@ import Foundation
     /// and the reason this fence exists: the books library answers a second
     /// after the start, and without this the shelf kept the mix it had made
     /// before that answer, so the book appeared only at the next launch.
-    @Test("das Regal wird geweckt, wenn eine Quelle ihre Typen aendert")
+    @Test("das Regal wird geweckt, wenn eine Quelle ihre Typen aendert", .needsTheSources)
     func theShelfIsWokenWhenASourceChangesWhatItServes() throws {
         let source = try String(contentsOfFile: Self.shelfViewPath, encoding: .utf8)
         #expect(source.contains("onChange(of: session.sourcesVersion)"),
@@ -348,7 +348,7 @@ import Foundation
     /// provider, so it answered for a Jellyfin book with a request to the
     /// library server (measured live at the bench: the book page stayed
     /// without parts, the player without chapters).
-    @Test("Flaechen, die auf einen Titel wirken, holen den Anbieter aus seiner Kennung")
+    @Test("Flaechen, die auf einen Titel wirken, holen den Anbieter aus seiner Kennung", .needsTheSources)
     func aSurfaceActingOnATitleRoutesByItsId() throws {
         for path in [Self.bookPagePath, Self.bookGridPath] {
             let raw = try String(contentsOfFile: path, encoding: .utf8)

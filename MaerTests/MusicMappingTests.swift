@@ -95,7 +95,7 @@ struct MusicPopularityTests {
         #expect(MusicPopularity.bars(playCounts: []) == [])
     }
 
-    @Test("GT-18: die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg")
+    @Test("GT-18: die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg", .needsTheSources)
     func thePageWiresTheBars() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let page = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),
@@ -107,7 +107,7 @@ struct MusicPopularityTests {
         #expect(PopularityBars.label(3) != PopularityBars.label(1), "the level is said in words")
     }
 
-    @Test("GT-18: bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter")
+    @Test("GT-18: bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter", .needsTheSources)
     func theRowGivesTheTitleItsLine() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let row = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/PopularityBars.swift"),

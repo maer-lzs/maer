@@ -79,7 +79,7 @@ struct FetchAnswerTests {
             .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
-    @Test("die Abrufe, die einen Fehler als leere Liste zeigten, fragen ueber FetchAnswer")
+    @Test("die Abrufe, die einen Fehler als leere Liste zeigten, fragen ueber FetchAnswer", .needsTheSources)
     func theSilentFetchesAskThroughTheAnswer() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         var offenders: [String] = []

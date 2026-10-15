@@ -213,7 +213,7 @@ struct JellyfinBookFoldTests {
 
     /// The provider uses the rule, and the mark is no longer set before the
     /// neighbour loop with its failures swallowed.
-    @Test("the provider sets the mark after the neighbours, through the rule")
+    @Test("the provider sets the mark after the neighbours, through the rule", .needsTheSources)
     func theProviderSetsTheMarkAfterTheNeighbours() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "JellyfinProvider.swift" })

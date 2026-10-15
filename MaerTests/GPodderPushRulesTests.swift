@@ -63,7 +63,7 @@ struct GPodderPushRulesTests {
 
     /// A source fence beside the rule: the runner uses the rule, and the
     /// bare `try?` around the real-time upload is gone.
-    @Test("der Laeufer nutzt die Regel, und der Echtzeit-Push verwirft keinen Fehler mehr stumm")
+    @Test("der Laeufer nutzt die Regel, und der Echtzeit-Push verwirft keinen Fehler mehr stumm", .needsTheSources)
     func theRunnerUsesTheRule() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "GPodderSync.swift" })

@@ -77,6 +77,44 @@ nonisolated enum SourceTree {
         }
         return file.dropFirst(root.count).joined(separator: "/")
     }
+
+    /// Every file below `folder`, recursively: the one way a test walks
+    /// the tree. A walk that finds nothing records an issue at the caller,
+    /// so a fence over a missing folder is red, never a pass over nothing;
+    /// only the condition in the case's head (`.needsTheSources` and its
+    /// neighbours) turns that into a skip.
+    static func files(under folder: URL, sourceLocation: SourceLocation = #_sourceLocation) -> [URL] {
+        let found = (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL } ?? [])
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+        if found.isEmpty {
+            Issue.record("no file below \(relativePath(of: folder)): the walk read nothing", sourceLocation: sourceLocation)
+        }
+        return found
+    }
+}
+
+/// The one walk is loud: over nothing it records its issue, over files it
+/// says nothing and returns each. Neither case reads the tree, so neither
+/// carries a condition.
+struct SourceTreeWalkTests {
+    @Test("ein Lauf ueber einen Ordner, den es nicht gibt, meldet ein Issue")
+    func aWalkOverNothingSaysSo() {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("no-tree-\(UUID().uuidString)")
+        withKnownIssue("the walk over a missing folder records its issue") {
+            #expect(SourceTree.files(under: missing).isEmpty)
+        }
+    }
+
+    @Test("ein Lauf ueber Dateien meldet nichts und liefert jede, auch in Unterordnern")
+    func aWalkOverFilesFindsEach() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("tree-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("inner"), withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: folder.appendingPathComponent("a.swift"))
+        try Data("b".utf8).write(to: folder.appendingPathComponent("inner/b.swift"))
+        #expect(SourceTree.files(under: folder).map(\.lastPathComponent).sorted() == ["a.swift", "b.swift"])
+    }
 }
 
 extension Trait where Self == ConditionTrait {

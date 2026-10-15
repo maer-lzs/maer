@@ -45,7 +45,7 @@ struct MaerSyncDoorFenceTests {
             }.count
     }
 
-    @Test("die Pfade des Dienstes entstehen in einer Datei, und nur sie liest das Zeichen")
+    @Test("die Pfade des Dienstes entstehen in einer Datei, und nur sie liest das Zeichen", .needsTheSources)
     func addressesLiveInOneFile() throws {
         var pathFiles: Set<String> = []
         var tokenFiles: Set<String> = []
@@ -64,7 +64,7 @@ struct MaerSyncDoorFenceTests {
         #expect(Self.lines(naming: "v1/doc", in: "// the path is v1/doc\nlet p = \"v1/doc\"") == 1)
     }
 
-    @Test("die Laeufer und die Regeln kennen den Dienst nicht")
+    @Test("die Laeufer und die Regeln kennen den Dienst nicht", .needsTheSources)
     func runnersAndRulesAreBlind() throws {
         var offenders: [String] = []
         var seen = 0
@@ -78,7 +78,7 @@ struct MaerSyncDoorFenceTests {
         #expect(offenders.isEmpty, "these name the service beside the seam: \(offenders)")
     }
 
-    @Test("die Sitzung wird nur von den Traegern und den Fabriken genannt")
+    @Test("die Sitzung wird nur von den Traegern und den Fabriken genannt", .needsTheSources)
     func theSessionIsNamedOnlyBehindTheSeam() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {

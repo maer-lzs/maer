@@ -38,7 +38,7 @@ struct DownloadProviderFenceTests {
     /// Erlaubt ist, was aus dem Titel oder aus der laufenden Sitzung kommt
     /// (`router.provider(id)`, ein hergeleitetes `provider`, der Anbieter des
     /// Koordinators). Verboten ist jeder feste Name.
-    @Test("Kein Download nennt einen Anbieter beim Namen")
+    @Test("Kein Download nennt einen Anbieter beim Namen", .needsTheSources)
     func noDownloadNamesAProvider() throws {
         let named = ["AppSession.shared.rssProvider", "AppSession.shared.absPodcastProvider",
                      "AppSession.shared.subsonicProvider", "AppSession.shared.jellyfinProvider",
@@ -48,11 +48,9 @@ struct DownloadProviderFenceTests {
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let flat = try codeOf("Sources/" + name)
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let path = SourceTree.relativePath(of: url)
+            let flat = try codeOf(path)
             for range in flat.ranges(of: "download(item:") {
                 // Das Argument reicht bis zur schliessenden Klammer des
                 // Aufrufs; ein Fenster genuegt, weil provider: unmittelbar
@@ -63,7 +61,7 @@ struct DownloadProviderFenceTests {
                 let argEnd = window.index(arg.upperBound, offsetBy: 60, limitedBy: window.endIndex) ?? window.endIndex
                 let argument = String(window[arg.upperBound..<argEnd])
                 for needle in named where argument.contains(needle) {
-                    offenders.append("Sources/\(name) → \(needle)")
+                    offenders.append("\(path) → \(needle)")
                 }
             }
         }
@@ -80,7 +78,7 @@ struct DownloadProviderFenceTests {
     ///
     /// Wer den Lader jetzt noch direkt ruft, HAELT das Detail bereits: er
     /// handelt auf eine Entscheidung hin, die schon gefallen ist.
-    @Test("Wer aus einer Kennung laedt, nimmt die eine Handlung")
+    @Test("Wer aus einer Kennung laedt, nimmt die eine Handlung", .needsTheSources)
     func startingFromAnIdUsesTheOneAction() throws {
         let holdsTheDetail: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
@@ -100,14 +98,12 @@ struct DownloadProviderFenceTests {
         var callers: Set<String> = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            let code = try codeOf("Sources/" + name)
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            let path = SourceTree.relativePath(of: url)
+            let code = try codeOf(path)
             // Die Fassung selbst ist kein Rufer.
             let calls = code.replacingOccurrences(of: "func download(item:", with: "func download(DECL:")
-            if calls.contains(".download(item:") { callers.insert("Sources/" + name) }
+            if calls.contains(".download(item:") { callers.insert(path) }
         }
         #expect(callers == Set(holdsTheDetail.keys),
                 "jemand laedt aus einer Kennung, ohne die eine Handlung zu nehmen: \(callers.symmetricDifference(Set(holdsTheDetail.keys)).sorted())")
@@ -118,7 +114,7 @@ struct DownloadProviderFenceTests {
     /// nicht prueft — ich haette den `catch` leeren koennen und alles waere
     /// gruen geblieben, also haette der Zaun genau den Fehler durchgelassen,
     /// gegen den die Handlung gebaut ist.
-    @Test("Die eine Handlung meldet einen fehlgeschlagenen Abruf")
+    @Test("Die eine Handlung meldet einen fehlgeschlagenen Abruf", .needsTheSources)
     func theOneActionReportsAFailedFetch() throws {
         let code = try codeOf("Sources/Networking/DownloadManager.swift")
         guard let action = code.range(of: "func startDownload(itemId: String, kind: DownloadKind) async") else {
@@ -135,16 +131,13 @@ struct DownloadProviderFenceTests {
     /// Gegenprobe, damit der Bestand oben nicht deshalb leer ist, weil es
     /// keine Downloads mehr gibt: es sind weiterhin die dreizehn Aufrufe, und
     /// die Tuer, die den Anbieter aus der Kennung holt, existiert.
-    @Test("Es gibt die Download-Stellen noch, und die Tuer auch")
+    @Test("Es gibt die Download-Stellen noch, und die Tuer auch", .needsTheSources)
     func theCallSitesAndTheDoorStillExist() throws {
         var sites = 0
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
-        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
-            Issue.record("Sources nicht lesbar"); return
-        }
-        for case let name as String in walker where name.hasSuffix(".swift") {
-            sites += try codeOf("Sources/" + name).ranges(of: "download(item:").count
+        for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
+            sites += try codeOf(SourceTree.relativePath(of: url)).ranges(of: "download(item:").count
         }
         // Waren dreizehn, bevor „Detail holen, dann laden" eine Handlung
         // wurde; sechs davon sind in `startDownload` zusammengefallen. Die

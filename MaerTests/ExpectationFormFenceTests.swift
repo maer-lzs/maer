@@ -70,8 +70,7 @@ struct ExpectationFormFenceTests {
         var read = 0
         for folderName in ["MaerTests", "MaerUITests"] {
             let folder = SourceTree.root.appendingPathComponent(folderName)
-            guard let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil) else { continue }
-            for case let url as URL in walker where url.pathExtension == "swift" && url.lastPathComponent != "ExpectationFormFenceTests.swift" {
+            for url in SourceTree.files(under: folder) where url.pathExtension == "swift" && url.lastPathComponent != "ExpectationFormFenceTests.swift" {
                 read += 1
                 let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
                 for condition in Self.conditions(in: text) where Self.isSilent(condition) {

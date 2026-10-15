@@ -183,7 +183,7 @@ struct FeedRefusalTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Die Sendung zeigt den Hinweis, die Kacheln das Zeichen, beide Orte sagen Neuen Link eintragen")
+    @Test("Die Sendung zeigt den Hinweis, die Kacheln das Zeichen, beide Orte sagen Neuen Link eintragen", .needsTheSources)
     func wiring() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(seite.contains("ShowAccessRefusedBanner("))
@@ -235,7 +235,7 @@ struct FeedRefusalTests {
         #expect(PodcastFeedAuth.moment(feedKey: feed, defaults: defaults) == 100_000)
     }
 
-    @Test("Der Bogen der Sendung fragt die Regel, bevor er neu fragt")
+    @Test("Der Bogen der Sendung fragt die Regel, bevor er neu fragt", .needsTheSources)
     func theSheetAsksTheRuleBeforeItAsksTheFeed() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         let sheet = try #require(seite.range(of: ".sheet(item: $signInShow, onDismiss: {"))

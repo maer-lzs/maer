@@ -36,7 +36,7 @@ struct AppHousekeepingFenceTests {
     /// Bestand mit Grund je Name. Alle auf NULL: keiner dieser Dienste hat in
     /// der Ansicht etwas zu suchen, und wer einen zurueckholt, muss diesen
     /// Eintrag anfassen.
-    @Test("Die Tab-Wirtin ruft keinen App-Dienst mehr selbst")
+    @Test("Die Tab-Wirtin ruft keinen App-Dienst mehr selbst", .needsTheSources)
     func theTabHostCallsNoAppServiceItself() throws {
         let forbidden: [String: String] = [
             "SyncQueue": "Fortschritts-Warteschlange, gehoert AppHousekeeping.flushQueues (zwei Rufer)",
@@ -62,7 +62,7 @@ struct AppHousekeepingFenceTests {
     /// geworden, der keine Ansicht ist und UI-Arbeit einplant — genau der
     /// Bestand, den `ScrollCalmFenceTests` als Weg B herunterzaehlt. Dieser
     /// Zaun hat es einen Lauf vor dem Commit gefangen.
-    @Test("Der Cover-Deckel beim Zurueckkommen bleibt am Ruhe-Tor der Ansicht")
+    @Test("Der Cover-Deckel beim Zurueckkommen bleibt am Ruhe-Tor der Ansicht", .needsTheSources)
     func theCalmGatedSweepStaysInTheView() throws {
         let code = try codeOf("Sources/Views/LibraryView.swift")
         #expect(code.contains("Artwork.sweepIfOverCap"),
@@ -85,7 +85,7 @@ struct AppHousekeepingFenceTests {
     /// Die Reihenfolge am Quelltext. Ein Zeuge kann eine `.task` nicht
     /// ausfuehren, also wird die STELLUNG geprueft — das ist genau die
     /// Aussage, die vorher nirgends stand.
-    @Test("Der Haushalt steht hinter Bibliothek und Weiterhoeren")
+    @Test("Der Haushalt steht hinter Bibliothek und Weiterhoeren", .needsTheSources)
     func housekeepingStandsBehindTheContent() throws {
         let code = try codeOf("Sources/Views/LibraryView.swift")
         guard let cachedLibrary = code.range(of: "showCachedLibraryIfAvailable"),
@@ -107,7 +107,7 @@ struct AppHousekeepingFenceTests {
     /// Und die Gegenrichtung, damit der Fall oben nicht gruen ist, weil die
     /// Marken irgendwo stehen: der Haushalt selbst nennt seine Dienste auch
     /// wirklich, sonst bewacht der Bestand oben eine leere Datei.
-    @Test("Der Haushalt nennt die Dienste, die er uebernommen hat")
+    @Test("Der Haushalt nennt die Dienste, die er uebernommen hat", .needsTheSources)
     func housekeepingActuallyHoldsThem() throws {
         let code = try codeOf("Sources/ViewModels/AppHousekeeping.swift")
         for name in ["SyncQueue", "BookmarkQueue", "CloudQuotaWatch", "PodcastCloudSync",

@@ -93,7 +93,7 @@ struct JamendoRowTests {
     /// Nur eine GUTE Antwort wird niedergeschrieben. Der Zaun sitzt am
     /// Quelltext der Schreibstelle: der Speicher-Aufruf steht im
     /// Nicht-leer-Zweig, nach der Leer-Pruefung.
-    @Test("nur eine gute Antwort wird niedergeschrieben")
+    @Test("nur eine gute Antwort wird niedergeschrieben", .needsTheSources)
     func onlyAGoodAnswerIsWrittenDown() throws {
         let text = try String(
             contentsOf: URL(fileURLWithPath: #filePath)

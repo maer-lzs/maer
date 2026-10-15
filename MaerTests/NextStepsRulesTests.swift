@@ -23,7 +23,7 @@ struct NextStepsRulesTests {
     /// host hands out the source page (which carries the form behind its
     /// connect button). Whitespace is pulled together so the call may break
     /// over lines; comment lines do not count.
-    @Test("beide Wirte folgen der Regel: das Blatt ueber sie, die Einstellungen ueber die Quellseite")
+    @Test("beide Wirte folgen der Regel: das Blatt ueber sie, die Einstellungen ueber die Quellseite", .needsTheSources)
     func bothHostsFollowTheRule() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ path: String) throws -> String {
