@@ -508,9 +508,14 @@ final class ListeningStatsStore: ObservableObject {
         carrier.publish(pot, deviceId: SyncHistoryStore.deviceId, by: "stats")
     }
 
+    /// How often the pots were merged, counted for the witness of the
+    /// per-second work.
+    private(set) var merges = 0
+
     private func recompose() {
         let signpost = PerfSignpost.statsMerge()
         defer { signpost.end() }
+        merges += 1
         data = ListeningStatsSync.merged(local: ownerPot,
                                          ownDeviceId: SyncHistoryStore.deviceId,
                                          foreign: foreign)

@@ -194,6 +194,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Whether the session holds a song before this one.
     var hasSongBefore: (() -> Bool)?
     var artworkImage: UIImage?
+    /// How often the lock screen's info was written and how often an artwork
+    /// for it was built, counted for the witnesses of the per-second work.
+    var nowPlayingWrites = 0
+    var artworkBuilds = 0
+    /// What the lock screen got last, for the tick's question whether it is
+    /// due again, and the artwork built for the image it shows.
+    var lastNowPlaying: NowPlayingRefresh.Written?
+    var nowPlayingArtwork: (image: ObjectIdentifier, artwork: MPMediaItemArtwork)?
     /// Teil 2: the station logo (favicon) for live radio. The fallback the ICY
     /// now-playing cover reverts to when a song has no Cover Art Archive match.
     /// Set by `loadArtwork`, read by `refreshICYArtwork` (both in +NowPlaying).
@@ -1347,7 +1355,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // The heartbeat of the claim, decided by its own rule.
                 if self.isPlaying { self.refreshClaim(forced: false) }
                 self.updateCurrentChapter()
-                self.updateNowPlayingInfo()
+                // The system runs the shown time on; the tick writes only a
+                // change or a drift.
+                self.refreshNowPlayingIfDue()
                 // Download-on-play: save a feed-only episode of an ABS show to
                 // the server after ~30 s (no-op if nothing is registered).
                 PodcastServerSave.shared.playbackTick(itemId: self.item?.id, currentTime: self.currentTime)

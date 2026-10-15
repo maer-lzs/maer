@@ -226,14 +226,42 @@ extension PlayerViewModel {
             info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
             info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0
         }
+        // The artwork is built once per image: the info is written again
+        // on every event, the image changes only with the item or a cover.
+        var builtArtwork = false
         if let artworkImage {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
-                boundsSize: artworkImage.size,
-                requestHandler: Self.artworkRequestHandler(for: artworkImage)
-            )
+            let image = ObjectIdentifier(artworkImage)
+            if nowPlayingArtwork?.image != image {
+                artworkBuilds += 1
+                builtArtwork = true
+                nowPlayingArtwork = (image, MPMediaItemArtwork(
+                    boundsSize: artworkImage.size,
+                    requestHandler: Self.artworkRequestHandler(for: artworkImage)
+                ))
+            }
+            info[MPMediaItemPropertyArtwork] = nowPlayingArtwork?.artwork
         }
+        nowPlayingWrites += 1
+        lastNowPlaying = NowPlayingRefresh.Written(fields: nowPlayingFields, elapsed: currentTime,
+                                                   at: Date().timeIntervalSince1970)
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        PerfSignpost.nowPlaying(newArtwork: artworkImage != nil)
+        PerfSignpost.nowPlaying(newArtwork: builtArtwork)
+    }
+
+    /// What the lock screen shows apart from the running time.
+    var nowPlayingFields: NowPlayingRefresh.Fields {
+        NowPlayingRefresh.Fields(title: nowPlayingTitle, subtitle: nowPlayingSubtitle ?? "", duration: duration,
+                                 rate: isPlaying ? Double(isLiveStream ? 1 : playbackRate) : 0,
+                                 isLive: isLiveStream, artwork: artworkImage.map(ObjectIdentifier.init))
+    }
+
+    /// From the tick: the lock screen is written only when something but the
+    /// running time changed, or the time the system runs on drifted from the
+    /// real one (`NowPlayingRefresh`).
+    func refreshNowPlayingIfDue() {
+        guard NowPlayingRefresh.isDue(last: lastNowPlaying, fields: nowPlayingFields, elapsed: currentTime,
+                                      at: Date().timeIntervalSince1970) else { return }
+        updateNowPlayingInfo()
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter
