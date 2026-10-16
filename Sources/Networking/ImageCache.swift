@@ -121,8 +121,8 @@ final class ImageCache {
         // The budget answers memory pressure: the full covers go at once.
         // The cache lives as long as the app, so the observer does too.
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
-                                               object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { ImageCache.shared.releaseFullCovers() }
+                                               object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.releaseFullCovers() }
         }
     }
 
