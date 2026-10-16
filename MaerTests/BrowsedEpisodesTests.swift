@@ -41,6 +41,27 @@ struct BrowsedEpisodesTests {
         #expect(store.listened(guid: guid, defaults: defaults) == nil, "the persisted half is cleared through the normalisation")
     }
 
+    /// Each read decoded the whole kept list before. Now once per stored
+    /// list: reads without a write decode nothing more, a write is seen.
+    @Test("die gemerkte Liste wird einmal je Stand dekodiert, nicht je Lesen; ein Schreiben wird gesehen")
+    func theKeptListDecodesOncePerWrite() {
+        let suite = "browsed-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = BrowsedEpisodes()
+        let first = show(feedURL: "https://a.example/feed"), second = show(feedURL: "https://b.example/feed")
+        store.remember(show: first)
+        store.remember(show: second)
+        store.keepListened(guid: first.episodes[0].guid, defaults: defaults)
+        let before = BrowsedEpisodes.decodeCount(in: defaults)
+        for _ in 0..<5 { #expect(store.listened(guid: first.episodes[0].guid, defaults: defaults) != nil) }
+        #expect(store.allListened(defaults: defaults).count == 1)
+        #expect(BrowsedEpisodes.decodeCount(in: defaults) <= before + 1, "six reads, at most one decode")
+        store.keepListened(guid: second.episodes[0].guid, defaults: defaults)
+        #expect(store.listened(guid: second.episodes[0].guid, defaults: defaults) != nil, "the write is seen")
+        #expect(store.allListened(defaults: defaults).count == 2)
+    }
+
     @Test("ein anderer Feed bleibt unberuehrt")
     func anotherFeedStays() {
         let suite = "browsed-\(UUID().uuidString)"

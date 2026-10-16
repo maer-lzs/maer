@@ -75,6 +75,23 @@ struct ArtworkMemoTests {
         #expect(Artwork.Memo.entries(prefix: "radio|", defaults: defaults).keys.sorted() == ["new"])
     }
 
+    /// An answer that never expires grew the directory without end. Past
+    /// the ceiling the oldest search goes, never the one just written.
+    @Test("ueber dem Deckel geht die aelteste Suche, nie die eben geschriebene")
+    func theOldestGoesPastTheCeiling() {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        for n in 0..<5 {
+            Artwork.Memo.remember("radio|s\(n)", value: "x\(n)", until: nil, now: 100 + Double(n), ceiling: 3, defaults: defaults)
+        }
+        #expect(Artwork.Memo.entries(prefix: "radio|", defaults: defaults).keys.sorted() == ["s2", "s3", "s4"])
+        // A rewrite of an old key makes it the newest, not a victim.
+        Artwork.Memo.remember("radio|s2", value: "again", until: nil, now: 200, ceiling: 3, defaults: defaults)
+        Artwork.Memo.remember("radio|s5", value: "x5", until: nil, now: 201, ceiling: 3, defaults: defaults)
+        #expect(Artwork.Memo.entries(prefix: "radio|", defaults: defaults).keys.sorted() == ["s2", "s4", "s5"])
+        #expect(Artwork.Memo.ceiling == 4_000)
+    }
+
     /// The diagnosis reads what the chain stored with its age and the
     /// address the tile loads today: a Commons file at today's width, a
     /// touch icon at its address, a negative without one.

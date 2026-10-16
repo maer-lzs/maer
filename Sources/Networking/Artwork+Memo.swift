@@ -87,13 +87,26 @@ extension Artwork {
         /// Writes an answer down. `value` nil is "there is none until
         /// `until`"; `until` nil never expires. Expired entries of every
         /// namespace go with the write, so the directory cannot only grow.
+        /// An answer that never expires still goes past `ceiling` entries,
+        /// the oldest search first: a dropped answer only asks once more.
         static func remember(_ key: String, value: String?, until: Double?, under stamp: String? = nil,
                              now: Double = Date().timeIntervalSince1970,
+                             ceiling: Int = ceiling,
                              defaults: UserDefaults = AppStorageKeys.store) {
             var stored = load(defaults: defaults).filter { $0.value.until.map { $0 >= now } ?? true }
             stored[key] = Entry(value: value, resolvedAt: now, until: until, under: stamp)
+            if stored.count > ceiling {
+                for (old, _) in stored.filter({ $0.key != key }).sorted(by: { $0.value.resolvedAt < $1.value.resolvedAt })
+                    .prefix(stored.count - ceiling) {
+                    stored.removeValue(forKey: old)
+                }
+            }
             save(stored, defaults: defaults)
         }
+
+        /// The most answers the directory holds. Every one is a feed or a
+        /// station once looked at; past this many the oldest is asked again.
+        static let ceiling = 4_000
 
         /// Drops an answer so the question is open again. Never books a
         /// negative: clearing re-opens, it does not decide.

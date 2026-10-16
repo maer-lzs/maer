@@ -24,14 +24,17 @@ struct BookCleanupTests {
         for id in [kept, gone] + others {
             ListeningStore.store(id, entry: [120, 1_000, 600], in: defaults)
             defaults.set(Float(1.5), forKey: AppStorageKeys.playbackRate(id))
+            defaults.set([[1.0, 2, 3, 4, 5, 6]], forKey: AppStorageKeys.jumpRing(id))
         }
         AppStorageKeys.cleanupPerBookKeys(validItemIds: [kept], in: defaults)
 
         #expect(ListeningStore.backup(gone, in: defaults) == nil, "a book the library no longer holds goes")
         #expect(defaults.object(forKey: AppStorageKeys.playbackRate(gone)) == nil, "and its speed with it")
+        #expect(defaults.object(forKey: AppStorageKeys.jumpRing(gone)) == nil, "and its jump ring with it")
         for id in [kept] + others {
             #expect(ListeningStore.backup(id, in: defaults) == [120, 1_000, 600], "\(id) keeps its position")
             #expect(defaults.float(forKey: AppStorageKeys.playbackRate(id)) == 1.5, "\(id) keeps its speed")
+            #expect(defaults.object(forKey: AppStorageKeys.jumpRing(id)) != nil, "\(id) keeps its jump ring")
         }
     }
 
