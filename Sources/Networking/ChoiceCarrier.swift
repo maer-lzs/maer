@@ -76,8 +76,18 @@ final class KeyValueChoiceCarrier: ChoiceCarrier {
     /// Must never exceed 1. A second observer would double every reconcile.
     private(set) var observerRegistrations = 0
 
-    init(store: any UserChoiceCloudStore = CloudKeyValue.store) {
+    private let roomLimitBytes: Int
+    private let onRefusal: @MainActor (RoomLimit.Reckoning) -> Void
+
+    /// `roomLimitBytes` is the ceiling the blob must fit under, and
+    /// `onRefusal` is where a blob that does not fit is said out loud; a
+    /// witness passes a small ceiling and a recorder.
+    init(store: any UserChoiceCloudStore = CloudKeyValue.store,
+         roomLimitBytes: Int = RoomLimit.potLimitBytes,
+         onRefusal: @escaping @MainActor (RoomLimit.Reckoning) -> Void = { CloudQuotaWatch.refuse(pot: blobKey, $0) }) {
         self.store = store
+        self.roomLimitBytes = roomLimitBytes
+        self.onRefusal = onRefusal
     }
 
     func loadBlob() -> [String: Any] {
@@ -86,6 +96,14 @@ final class KeyValueChoiceCarrier: ChoiceCarrier {
 
     func storeBlob(_ blob: [String: Any]) {
         guard !stopped else { return }
+        // The ceiling is reckoned BEFORE the write: the store refuses a
+        // blob that does not fit without a word.
+        if let refused = RoomLimit.refusal(writing: [Self.blobKey: blob], beside: store.dictionaryRepresentation,
+                                           limit: roomLimitBytes) {
+            Logger.library.error("KVS write REFUSED key=\(Self.blobKey, privacy: .public) bytes=\(refused.bytes) others=\(refused.otherBytes) limit=\(refused.limit)")
+            onRefusal(refused)
+            return
+        }
         store.set(blob, forKey: Self.blobKey)
         // No per-write synchronize: the store coalesces on its own; the
         // explicit flush runs at start and reconcile, where it pays.

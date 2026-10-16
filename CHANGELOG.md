@@ -40,6 +40,13 @@ Without a connection the stored file stays and playback stops at that
 track with the note that the download is unreadable and plays from the
 server once you are online.
 
+**A full iCloud space is named for playlists and choices too.** When your
+playlists or your choices such as sort orders no longer fit into the
+shared iCloud space, the sync history says so with the numbers and the
+iCloud switch shows the orange line, as it already did for listening
+progress and statistics. Before, iCloud refused these writes without a
+word.
+
 **TestFlight: the Measurements page shows more.** Each day also names the
 time spent playing in the background, the data sent and received over
 Wi-Fi and cellular, what was written to disk, the time the app hung and

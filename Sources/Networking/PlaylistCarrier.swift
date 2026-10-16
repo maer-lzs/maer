@@ -71,14 +71,25 @@ enum PlaylistCarriers {
 final class KeyValuePlaylistCarrier: PlaylistCarrier {
     let name = "kvs"
     private let store: any UserChoiceCloudStore
-    private let blobKey = "maerPlaylists"
+    nonisolated static let listsKey = "maerPlaylists"
+    private let blobKey = listsKey
     private let tombKey = "maerPlaylistTombstones"
     private var onChange: (@MainActor () -> Void)?
     /// Must never exceed 1. A second observer would double every reconcile.
     private(set) var observerRegistrations = 0
 
-    init(store: any UserChoiceCloudStore = CloudKeyValue.store) {
+    private let roomLimitBytes: Int
+    private let onRefusal: @MainActor (RoomLimit.Reckoning) -> Void
+
+    /// `roomLimitBytes` is the ceiling the lists and their tombstones must
+    /// fit under together, and `onRefusal` is where they are said out loud
+    /// when they do not; a witness passes a small ceiling and a recorder.
+    init(store: any UserChoiceCloudStore = CloudKeyValue.store,
+         roomLimitBytes: Int = RoomLimit.potLimitBytes,
+         onRefusal: @escaping @MainActor (RoomLimit.Reckoning) -> Void = { CloudQuotaWatch.refuse(pot: listsKey, $0) }) {
         self.store = store
+        self.roomLimitBytes = roomLimitBytes
+        self.onRefusal = onRefusal
     }
 
     /// This device, by the name the system hands out, as the fallback for a
@@ -142,6 +153,15 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
         for (id, entry) in snapshot.lists {
             // The blob names this device for a list that carries no device.
             blob[id] = Self.payload(of: entry, device: entry.device ?? Self.deviceName)
+        }
+        // The ceiling is reckoned BEFORE the write, both keys together: the
+        // store refuses what does not fit without a word, and half a write
+        // (lists without their tombstones) would bring a deleted list back.
+        if let refused = RoomLimit.refusal(writing: [blobKey: blob, tombKey: snapshot.tombstones],
+                                           beside: store.dictionaryRepresentation, limit: roomLimitBytes) {
+            Logger.library.error("KVS write REFUSED key=\(self.blobKey, privacy: .public) lists=\(blob.count) bytes=\(refused.bytes) others=\(refused.otherBytes) limit=\(refused.limit)")
+            onRefusal(refused)
+            return
         }
         store.set(blob, forKey: blobKey)
         store.set(snapshot.tombstones, forKey: tombKey)

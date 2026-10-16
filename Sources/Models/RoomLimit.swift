@@ -43,4 +43,16 @@ nonisolated enum RoomLimit {
     static func otherBytes(in store: [String: Any], besides key: String) -> Int {
         bytes(ofPropertyList: store.filter { $0.key != key }) ?? 0
     }
+
+    /// The reckoning for writing `values` under their keys, beside what
+    /// `store` holds under every other key; nil when it fits or when the
+    /// size is not to be had (the store's refusal is then the second watch).
+    static func refusal(writing values: [String: Any], beside store: [String: Any],
+                        limit: Int = potLimitBytes) -> Reckoning? {
+        guard let written = bytes(ofPropertyList: values) else { return nil }
+        let reckoning = reckon(bytes: written,
+                               otherBytes: bytes(ofPropertyList: store.filter { values[$0.key] == nil }) ?? 0,
+                               limit: limit)
+        return reckoning.fits ? nil : reckoning
+    }
 }
