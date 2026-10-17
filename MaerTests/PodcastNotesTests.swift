@@ -104,6 +104,35 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e1") == "neuer", "a payload's notes stood over the newer note")
     }
 
+    @Test("eine Nutzlast, die kein JSON ist, traegt keine Shownotes: Heben, Ueberschreiben und Entfernen gehen durch, auch ueber Ausloesern in aelterer Form")
+    func aPayloadThatIsNoJSONCarriesNoNotes() async throws {
+        let db = try SQLiteConnection(path: ":memory:")
+        for statement in Self.versionOneOpen { try await db.execute(statement) }
+        try await db.setSchemaVersion(1, of: PodcastRowStore.family)
+        // A rescue in the form that read every payload as JSON.
+        try await db.execute("CREATE TABLE episode_note (guid TEXT PRIMARY KEY, notes TEXT NOT NULL)")
+        try await db.execute("""
+            CREATE TRIGGER episode_note_rescue_delete BEFORE DELETE ON episode
+            WHEN json_extract(CAST(OLD.payload AS TEXT), '$.description') IS NOT NULL
+            BEGIN SELECT 1; END
+            """)
+        _ = try await db.run("INSERT INTO show (id, position, payload) VALUES ('a', 0, ?)",
+                             [.blob(try JSONEncoder().encode(show("a", [])))])
+        // A row in the form of a later build.
+        let later = Data("an episode in a form of a later build".utf8)
+        for guid in ["e1", "e2"] {
+            _ = try await db.run("INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, 'a', 0, 0, ?)",
+                                 [.text(guid), .blob(later)])
+        }
+
+        let store = try await PodcastRowStore(connection: db)
+        #expect(try await db.schemaVersion(of: PodcastRowStore.family) == 2)
+        #expect(try await store.notes(guid: "e1") == nil)
+        _ = try await db.run("UPDATE episode SET payload = ? WHERE guid = 'e1'", [.blob(later)])
+        _ = try await db.run("DELETE FROM episode WHERE guid = 'e2'")
+        #expect(try await store.counts() == PodcastRowStore.Counts(shows: 1, episodes: 1))
+    }
+
     @Test("eine entfernte Sendung nimmt ihre Folgen mit, ihre Shownotes bleiben")
     func theNotesStayWhenTheRowsGo() async throws {
         let (store, _) = try await memoryStore()

@@ -70,23 +70,30 @@ actor PodcastRowStore {
 
     /// The shownotes inside a payload, NULL when it carries none. The
     /// payload is a blob of JSON text; the cast keeps the JSON functions
-    /// from reading it as their binary form.
+    /// from reading it as their binary form. A payload that is no JSON (a
+    /// later build's form, a broken row) carries no notes: the JSON
+    /// functions raise on it, and a raise inside a trigger fails the write
+    /// that removes or replaces the row.
     private static func notesIn(_ payload: String) -> String {
-        "json_extract(CAST(\(payload) AS TEXT), '$.description')"
+        "CASE WHEN json_valid(CAST(\(payload) AS TEXT)) THEN json_extract(CAST(\(payload) AS TEXT), '$.description') END"
     }
 
     /// A payload that still carries notes gives them to the table before it
-    /// is overwritten or removed, and never over a note that stands.
+    /// is overwritten or removed, and never over a note that stands. The
+    /// triggers are made anew at every open, so a database keeps no older
+    /// form of them.
     static let noteRescue: [String] = [
+        "DROP TRIGGER IF EXISTS episode_note_rescue_update",
+        "DROP TRIGGER IF EXISTS episode_note_rescue_delete",
         """
-        CREATE TRIGGER IF NOT EXISTS episode_note_rescue_update BEFORE UPDATE OF payload ON episode
+        CREATE TRIGGER episode_note_rescue_update BEFORE UPDATE OF payload ON episode
         WHEN \(notesIn("OLD.payload")) IS NOT NULL AND \(notesIn("OLD.payload")) != ''
         BEGIN
             INSERT OR IGNORE INTO episode_note (guid, notes) VALUES (OLD.guid, \(notesIn("OLD.payload")));
         END
         """,
         """
-        CREATE TRIGGER IF NOT EXISTS episode_note_rescue_delete BEFORE DELETE ON episode
+        CREATE TRIGGER episode_note_rescue_delete BEFORE DELETE ON episode
         WHEN \(notesIn("OLD.payload")) IS NOT NULL AND \(notesIn("OLD.payload")) != ''
         BEGIN
             INSERT OR IGNORE INTO episode_note (guid, notes) VALUES (OLD.guid, \(notesIn("OLD.payload")));
@@ -104,7 +111,8 @@ actor PodcastRowStore {
             """),
         .init("""
             UPDATE episode SET payload = CAST(json_remove(CAST(payload AS TEXT), '$.description') AS BLOB)
-            WHERE json_type(CAST(payload AS TEXT), '$.description') IS NOT NULL
+            WHERE CASE WHEN json_valid(CAST(payload AS TEXT))
+                       THEN json_type(CAST(payload AS TEXT), '$.description') IS NOT NULL ELSE 0 END
             """),
         .init("INSERT INTO schema (family, version) VALUES (?, 2) ON CONFLICT(family) DO UPDATE SET version = excluded.version",
               [.text(family)]),
