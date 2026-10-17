@@ -73,6 +73,38 @@ struct CadenceTests {
                 "paused, the saved values")
     }
 
+    /// An hour and a half of playback without a change of state: the tick
+    /// asks the rule each second, renews the snapshot before its steps run
+    /// out, and the widget shows the true position at every minute. Without
+    /// the renewal it stood on the last step after the hour.
+    @Test("anderthalb Stunden ohne Zustandswechsel: der Tick erneuert den Schnappschuss, das Widget zeigt jede Minute die wahre Stelle")
+    func aLongPlaybackKeepsTheWidgetRunning() {
+        let duration = 3.0 * 3600, start = 1_000_000.0
+        func snapshot(at second: Double) -> WidgetSnapshot {
+            let steps = WidgetSnapshot.steps(position: second, duration: duration, rate: 1,
+                                             minutes: PlayerViewModel.widgetMinutesAhead) { _ in nil }
+            return WidgetSnapshot(itemId: "x", title: "t", author: nil, fraction: second / duration, remainingText: nil,
+                                  isPlaying: true, steps: steps, savedAt: start + second)
+        }
+        var current = snapshot(at: 0)
+        var renewals = 0
+        for second in stride(from: 0.0, through: 90 * 60, by: 1) {
+            if WidgetSnapshot.needsRenewal(savedAt: current.savedAt, now: start + second,
+                                           minutesAhead: PlayerViewModel.widgetMinutesAhead) {
+                current = snapshot(at: second)
+                renewals += 1
+            }
+            if second.truncatingRemainder(dividingBy: 60) == 0 {
+                let shown = current.shown(at: Date(timeIntervalSince1970: start + second)).fraction
+                #expect(abs(shown - second / duration) < 0.0001, "minute \(Int(second / 60)): shown \(shown)")
+            }
+        }
+        #expect(renewals == 1, "an hour and a half needs one renewal, not one a minute: \(renewals)")
+        #expect(!WidgetSnapshot.needsRenewal(savedAt: nil, now: start, minutesAhead: 60), "a paused snapshot is renewed")
+        #expect(!WidgetSnapshot.needsRenewal(savedAt: start, now: start + 54 * 60, minutesAhead: 60))
+        #expect(WidgetSnapshot.needsRenewal(savedAt: start, now: start + 55 * 60, minutesAhead: 60))
+    }
+
     /// A snapshot written before the steps existed still reads and shows
     /// its saved values.
     @Test("ein Schnappschuss von vorher bleibt lesbar und zeigt seine Werte")

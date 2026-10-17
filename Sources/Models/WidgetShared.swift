@@ -63,6 +63,15 @@ nonisolated struct WidgetSnapshot: Codable {
         return steps[min(minute, steps.count - 1)]
     }
 
+    /// Whether a snapshot written while playing at `savedAt` must be written
+    /// anew at `now`: `margin` minutes before its `minutesAhead` steps run
+    /// out, so the widget never stands on the last one. Nil (not written
+    /// while playing) never.
+    static func needsRenewal(savedAt: Double?, now: Double, minutesAhead: Int, margin: Int = 5) -> Bool {
+        guard let savedAt else { return false }
+        return now - savedAt >= Double(max(minutesAhead - margin, 1)) * 60
+    }
+
     static var snapshotURL: URL? {
         AppGroup.containerURL?.appendingPathComponent("widget-snapshot.json")
     }

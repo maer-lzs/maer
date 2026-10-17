@@ -18,14 +18,16 @@ extension PlayerViewModel {
     /// How far ahead the widget runs on by itself while playing.
     static let widgetMinutesAhead = 60
 
-    /// Written on state changes only (load, play, pause, jump, rate, end):
-    /// while playing, the snapshot carries a step per minute for the next
-    /// hour, and the widget shows them by itself (`WidgetSnapshot.steps`).
-    /// Before, the tick reloaded the widget once a minute.
+    /// Written on state changes (load, play, pause, jump, rate, end) and,
+    /// while playing, once before the steps run out: the snapshot carries a
+    /// step per minute for the next hour, and the widget shows them by
+    /// itself (`WidgetSnapshot.steps`); the tick renews them after
+    /// `widgetMinutesAhead` less the margin of `needsRenewal`.
     func updateWidgetSnapshot() {
         guard let item, duration > 0 else { return }
         let now = Date().timeIntervalSince1970
         widgetWrites += 1
+        widgetPlayingSavedAt = isPlaying ? now : nil
 
         let remaining = max(duration - currentTime, 0)
         WidgetSnapshot(

@@ -207,6 +207,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     var artworkBuilds = 0
     /// How often the widget's snapshot was written (and the widget reloaded).
     var widgetWrites = 0
+    /// When the snapshot was last written while playing; the tick renews it
+    /// before its steps run out (`WidgetSnapshot.needsRenewal`).
+    var widgetPlayingSavedAt: Double?
     /// What the lock screen got last, for the tick's question whether it is
     /// due again, and the artwork built for the image it shows.
     var lastNowPlaying: NowPlayingRefresh.Written?
@@ -1329,6 +1332,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // 5s (UserDefaults writes aren't free). The loss window on crash
                 // is thus at most ~5s instead of 30s.
                 let now = Date().timeIntervalSince1970
+                // The widget runs on from the snapshot's steps for an hour;
+                // a playback that long without a change of state renews them.
+                if self.isPlaying, WidgetSnapshot.needsRenewal(savedAt: self.widgetPlayingSavedAt, now: now,
+                                                                minutesAhead: Self.widgetMinutesAhead) {
+                    self.updateWidgetSnapshot()
+                }
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let id = self.item?.id {
                     self.lastLocalSaveAt = now
                     // The stock decides what a local state IS for this class:
