@@ -33,13 +33,6 @@ nonisolated enum SourceMapArea: String, CaseIterable, Identifiable, Sendable {
         case .freeCatalogs: return "building.columns"
         }
     }
-
-    /// True only where the area is empty without a server of the user's own.
-    /// Podcasts, radio and the free catalogs are NOT in here. That is the
-    /// whole point of the map.
-    var requiresServer: Bool {
-        self == .audiobooks || self == .music
-    }
 }
 
 /// What the map knows about the user's servers. Hosts only. A display line

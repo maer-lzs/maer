@@ -290,10 +290,7 @@ nonisolated enum AppStorageKeys {
         get { UserDefaults.standard.string(forKey: maerSyncOwner) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: maerSyncOwner) }
     }
-    static var maerSyncTokenValue: String {
-        KeychainStore.load(forKey: KeychainKey.maerSyncToken) ?? ""
-    }
-    /// The same token, saying whether it is missing or could not be read.
+    /// The service token, saying whether it is missing or could not be read.
     static var maerSyncTokenRead: KeychainRead {
         KeychainStore.read(forKey: KeychainKey.maerSyncToken)
     }

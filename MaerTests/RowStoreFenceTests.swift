@@ -44,7 +44,8 @@ struct RowStoreFenceTests {
         "SyncHistoryStore.swift": 1, "LocalLibrary.swift": 1, "DownloadManager.swift": 1
     ]
     /// `replaceAll(` outside Storage: empty, measured; the migrations that
-    /// poured a document into the rows by hand are done.
+    /// poured a document into the rows by hand are done, and no store has a
+    /// whole-stock replacement any more (`noStoreReplacesItsStock`).
     nonisolated static let replaceAllStock: [String: Int] = [:]
     /// `KeyedRowStore<` outside Storage: the stores that came before the
     /// keeper and still read and write their rows by hand. A store that
@@ -99,6 +100,20 @@ struct RowStoreFenceTests {
         // Calibration: an alias counts as the store.
         let aliased = "typealias T = KeyedRowStore<Int>\nlet a: T.Load\nlet b = KeyedRowStore<Int>.self"
         #expect(Self.sites(of: Self.keyedTokens(in: aliased), in: aliased) == 3)
+    }
+
+    /// Every write of a row store is a diff against the rows that stand; no
+    /// store replaces its whole stock, Storage included. Tests fill rows
+    /// through the same diff (`RowStoreSeed.swift`).
+    @Test("kein Zeilen-Speicher ersetzt seinen ganzen Bestand", .needsTheSources)
+    func noStoreReplacesItsStock() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles()
+        #expect(files.contains { Self.isStorage($0.path) }, "the fence read no file in Storage, so it measures nothing")
+        var replacers: [String] = []
+        for file in files where Self.sites(of: ["func replaceAll("], in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            replacers.append(file.lastPathComponent)
+        }
+        #expect(replacers.isEmpty, "a store replaces its whole stock: \(replacers)")
     }
 }
 #endif

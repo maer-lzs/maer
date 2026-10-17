@@ -298,17 +298,6 @@ nonisolated enum CatalogGenreAxis {
         term.lowercased().filter { $0.isLetter || $0.isNumber }
     }
 
-    private static let musicAxisNormalized: [String: String] = {
-        var out: [String: String] = [:]
-        for (term, shelf) in musicAxis { out[normalizedMusicTerm(term)] = shelf }
-        return out
-    }()
-
-    /// Which shelf does this tag/subject fall on? nil = unknown, never guessed.
-    static func musicShelf(forTag tag: String) -> String? {
-        musicAxisNormalized[normalizedMusicTerm(tag)]
-    }
-
     /// All tags that fold onto one shelf. The server-side shelf query.
     /// Jamendo's `fuzzytags` speak WITHOUT separators. The hyphenated and
     /// spaced spellings in the table belong to archive.org and would only

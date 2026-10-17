@@ -47,11 +47,6 @@ nonisolated struct PodcastRowDiff: Equatable, Sendable {
         return head
     }
 
-    /// Every row of `current`, as if nothing were stored yet.
-    static func all(_ current: [PodcastShow]) -> PodcastRowDiff {
-        compute(previous: [], current: current)
-    }
-
     static func compute(previous: [PodcastShow], current: [PodcastShow]) -> PodcastRowDiff {
         var diff = PodcastRowDiff()
         var previousShows: [String: (position: Int, show: PodcastShow)] = [:]

@@ -26,13 +26,6 @@ enum SubscribeTap: Equatable {
     /// Nothing subscribed: the server refused or the feed did not load.
     case failed(sentence: String)
 
-    var takesShowOver: Bool {
-        switch self {
-        case .subscribed, .heldOnServer: true
-        case .setOut, .failed: false
-        }
-    }
-
     /// The answer of the local branch.
     static func local(_ answer: PodcastSubscriptions.LocalSubscription) -> SubscribeTap {
         switch answer {

@@ -27,7 +27,7 @@ struct PodcastRowDiffTests {
     func unchangedIsEmptyAndFreshIsEverything() {
         let stock = [show("a", episodes: 3), show("b", episodes: 2)]
         #expect(PodcastRowDiff.compute(previous: stock, current: stock).isEmpty)
-        let all = PodcastRowDiff.all(stock)
+        let all = PodcastRowDiff.compute(previous: [], current: stock)
         #expect(all.showsUpserted.map(\.position) == [0, 1])
         #expect(all.showsUpserted.allSatisfy { $0.show.episodes.isEmpty }, "the head carries no episodes")
         #expect(all.episodesUpserted.count == 5)

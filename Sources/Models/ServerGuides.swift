@@ -60,12 +60,6 @@ nonisolated struct ServerGuide: Equatable, Sendable, Identifiable {
 }
 
 nonisolated enum ServerGuides {
-    /// Every host an address may point to. A positive list.
-    static let projectHosts: Set<String> = [
-        "audiobookshelf.org", "www.audiobookshelf.org", "booksonic.org", "www.navidrome.org", "jellyfin.org",
-        "github.com", "docs.funkwhale.audio", "dev.funkwhale.audio", "codeberg.org"
-    ]
-
     /// What every server needs, one sentence for all: the projects' own
     /// guides name the rest, and a sentence per server here would age with
     /// each of their releases.

@@ -126,15 +126,6 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         return Load(rows: out, skipped: skipped)
     }
 
-    /// Replaces the table with the dictionary, in one transaction.
-    @discardableResult
-    func replaceAll(_ values: [String: Value]) async throws -> Int {
-        let statements = [SQLiteConnection.Statement("DELETE FROM \(table.rawValue)")]
-            + (try Self.statements(table: table, upserted: values, removed: []))
-        try await connection.transaction(statements)
-        return values.count
-    }
-
     /// Writes what changed from `previous` to `current`, in one
     /// transaction, with `also` in the same transaction (a mark that must
     /// land with these rows, `OwnerMark`); `also` alone is written too.

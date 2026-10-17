@@ -19,13 +19,8 @@ struct SourceMapTests {
         #expect(facts.state(of: .podcasts) == .ready)
         #expect(facts.state(of: .radio) == .ready)
         #expect(facts.state(of: .freeCatalogs) == .ready)
-        let serverless = SourceMapArea.allCases.filter { !$0.requiresServer }
+        let serverless = SourceMapArea.allCases.filter { facts.state(of: $0) != .needsServer }
         #expect(serverless.count == 3, "the serverless text names three areas — it must stay true")
-        // The flag the guides and the serverless text read is the state's
-        // own answer, area by area, so the two cannot drift apart.
-        for area in SourceMapArea.allCases {
-            #expect((facts.state(of: area) == .needsServer) == area.requiresServer, "\(area)")
-        }
     }
 
     @Test("a typed address alone is not a connection")

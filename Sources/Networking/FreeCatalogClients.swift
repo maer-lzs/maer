@@ -199,18 +199,6 @@ nonisolated enum CatalogShelfSource {
         "\(surface)|\(shelf)"
     }
 
-    /// What ONE shelf query costs COLD, measured at the endpoint: archive.org
-    /// answers a single shelf in 0,99-1,49 s (median 1,13 s with the cap in
-    /// place); gutendex computes a cold topic in 30-41 s and answers the warm
-    /// one in 30-70 ms.
-    static func coldShelfSeconds(_ source: CatalogSource) -> Double {
-        switch source {
-        case .gutenberg: 35
-        case .librivox, .archiveBooks, .oldTimeRadio: 1.2
-        default: 0
-        }
-    }
-
     /// What the whole cold PASS costs: every shelf of the surface, with the
     /// cap that ships. Measured through the app's own client, eighteen
     /// shelves each:

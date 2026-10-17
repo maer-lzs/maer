@@ -50,7 +50,7 @@ struct LibraryRowStoreTests {
         let before = LibraryDiskCache(items: [item("a"), item("b")],
                                       progress: ["a": BookProgress(fraction: 0.2, isFinished: false, lastUpdate: 1)])
         #expect(LibraryRowDiff.compute(previous: before, current: before).isEmpty)
-        let all = LibraryRowDiff.all(before)
+        let all = LibraryRowDiff.compute(previous: nil, current: before)
         #expect(all.itemsUpserted.map(\.position) == [0, 1] && all.progressUpserted.count == 1)
 
         var progress = before.progress

@@ -83,16 +83,6 @@ actor LibraryRowStore {
         return (LibraryDiskCache(items: items, progress: progress), skipped)
     }
 
-    /// Replaces the rows with the cache: the import from the document, and
-    /// the first write of a session that has no diff base. One transaction.
-    @discardableResult
-    func replaceAll(_ cache: LibraryDiskCache) async throws -> Counts {
-        let diff = LibraryRowDiff.all(cache)
-        let statements = [SQLiteConnection.Statement("DELETE FROM book_progress"), SQLiteConnection.Statement("DELETE FROM library_item")]
-            + (try Self.statements(diff))
-        try await connection.transaction(statements)
-        return Counts(items: diff.itemsUpserted.count, progress: diff.progressUpserted.count)
-    }
 
     /// Applies a diff in one transaction.
     @discardableResult

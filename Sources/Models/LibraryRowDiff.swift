@@ -29,11 +29,6 @@ nonisolated struct LibraryRowDiff: Equatable, Sendable {
         itemsUpserted.isEmpty && itemsRemoved.isEmpty && progressUpserted.isEmpty && progressRemoved.isEmpty
     }
 
-    /// Every row of `current`, as if nothing were stored yet.
-    static func all(_ current: LibraryDiskCache) -> LibraryRowDiff {
-        compute(previous: nil, current: current)
-    }
-
     static func compute(previous: LibraryDiskCache?, current: LibraryDiskCache) -> LibraryRowDiff {
         var diff = LibraryRowDiff()
         var before: [String: (position: Int, item: LibraryItem)] = [:]

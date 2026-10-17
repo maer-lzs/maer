@@ -105,7 +105,7 @@ struct FeedAuthWayTests {
         #expect(AppStorageKeys.syncAcrossDevicesEnabled, "ohne den Schalter misst der Fall nichts")
         // The host's own service access, if any, is put back afterwards.
         let heldURL = AppStorageKeys.maerSyncURLValue, heldOwner = AppStorageKeys.maerSyncOwnerValue
-        let heldToken = AppStorageKeys.maerSyncTokenValue
+        let heldToken = AppStorageKeys.maerSyncTokenRead.value ?? ""
         try #require(MaerSyncAccess.stored() == nil, "der Test-Wirt traegt einen Dienst-Zugang; der Fall braucht keinen als Ausgang")
         let suiteName = "feed-auth-way-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

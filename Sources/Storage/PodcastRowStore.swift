@@ -325,16 +325,6 @@ actor PodcastRowStore {
         return out
     }
 
-    /// Replaces the stock: the import from the document, in one transaction.
-    @discardableResult
-    func replaceAll(_ shows: [PodcastShow]) async throws -> Counts {
-        let diff = PodcastRowDiff.all(shows)
-        let statements = [SQLiteConnection.Statement("DELETE FROM episode"), SQLiteConnection.Statement("DELETE FROM show")]
-            + (try Self.statements(diff))
-        try await connection.transaction(statements)
-        return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
-    }
-
     /// Applies a diff in one transaction. Removed shows take their episodes
     /// with them (cascade). `also` lands in the same transaction (a mark
     /// that must land with these rows, `OwnerMark`); `also` alone is

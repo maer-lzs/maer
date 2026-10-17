@@ -12,13 +12,19 @@ import Foundation
 /// a project host, no guide twice, and every area that needs a server has
 /// somewhere to send the person.
 struct ServerGuidesTests {
+    /// Every host a guide's address may point to. A positive list.
+    nonisolated static let projectHosts: Set<String> = [
+        "audiobookshelf.org", "www.audiobookshelf.org", "booksonic.org", "www.navidrome.org", "jellyfin.org",
+        "github.com", "docs.funkwhale.audio", "dev.funkwhale.audio", "codeberg.org"
+    ]
+
     @Test("Jeder Server hat Doku und Quellcode, beide https auf einem Projekt-Host")
     func everyAddressIsHTTPSOnAProjectHost() throws {
         for guide in ServerGuides.all {
             for url in [try #require(guide.docsURL, "\(guide.name) has no documentation"),
                         try #require(guide.repoURL, "\(guide.name) has no source code")] {
                 #expect(url.scheme == "https", "\(guide.name): \(url)")
-                #expect(ServerGuides.projectHosts.contains(url.host ?? ""), "\(guide.name) points off the project hosts: \(url.host ?? "-")")
+                #expect(Self.projectHosts.contains(url.host ?? ""), "\(guide.name) points off the project hosts: \(url.host ?? "-")")
             }
             // Compared without the fragment: `repo#readme` is the repo page.
             // Where the README is the whole documentation, that is said by name.
@@ -46,7 +52,10 @@ struct ServerGuidesTests {
     func noDoublesAndEveryServerAreaIsCovered() {
         let ids = ServerGuides.all.map(\.id)
         #expect(Set(ids).count == ids.count)
-        for area in SourceMapArea.allCases where area.requiresServer {
+        // An area that is empty without a server of one's own, as the map
+        // answers it for a device with nothing connected.
+        let facts = SourceMapFacts()
+        for area in SourceMapArea.allCases where facts.state(of: area) == .needsServer {
             #expect(!ServerGuides.guides(for: area).isEmpty, "\(area) has no guide")
         }
         #expect(!ServerGuides.guides(for: .podcasts).isEmpty)
@@ -94,7 +103,7 @@ struct ServerGuidesTests {
             let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             guard Self.isClient(path: file.path, text: text) else { continue }
             clients.insert(file.lastPathComponent)
-            for host in ServerGuides.projectHosts where text.contains("https://" + host) {
+            for host in Self.projectHosts where text.contains("https://" + host) {
                 offenders.append("\(file.lastPathComponent): \(host)")
             }
         }

@@ -22,17 +22,19 @@ struct SubscribeTapTests {
                                               duration: 1800, description: nil, imageURL: nil, chaptersURL: nil)])
     }
 
+    /// A subscription stands and takes the show over; a tap that was set out
+    /// or failed subscribed nothing.
+    private func standing(_ tap: SubscribeTap) -> Bool { tap == .subscribed || tap == .heldOnServer }
+
     @Test("jede Antwort der zwei Zweige: nur ein stehendes Abo uebernimmt die Sendung")
     func onlyAStandingSubscriptionTakesTheShowOver() {
         #expect(SubscribeTap.local(.subscribed) == .subscribed)
         #expect(SubscribeTap.local(.subscribedUnchecked) == .subscribed)
         #expect(SubscribeTap.local(.onServer(title: "T")) == .heldOnServer)
         #expect(SubscribeTap.local(.setOut) == .setOut)
-        #expect(!SubscribeTap.local(.notSubscribed).takesShowOver, "a failed local subscribe takes the show over")
+        #expect(!standing(SubscribeTap.local(.notSubscribed)), "a failed local subscribe takes the show over")
         #expect(SubscribeTap.server(failure: nil) == .subscribed)
         #expect(SubscribeTap.server(failure: "Feed: timeout") == .failed(sentence: "Feed: timeout"))
-        #expect([SubscribeTap.subscribed, .heldOnServer].map(\.takesShowOver) == [true, true])
-        #expect([SubscribeTap.setOut, .failed(sentence: "x")].map(\.takesShowOver) == [false, false])
     }
 
     /// The tap's end on the remembered episodes, per answer: the browsed
@@ -61,7 +63,7 @@ struct SubscribeTapTests {
 
             let kept = store.listened(guid: guid, defaults: defaults) != nil
             let browsed = store.episode(guid: guid) != nil
-            if tap.takesShowOver {
+            if standing(tap) {
                 #expect(!kept && !browsed, "a standing subscription leaves the browsed halves: \(tap)")
             } else {
                 #expect(kept, "a tap that subscribed nothing forgot the kept row: \(tap)")

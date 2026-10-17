@@ -184,12 +184,6 @@ nonisolated final class StandMirror: Sendable {
         await pending?.value
     }
 
-    /// The table, for a carrier that reads rows. Nil when opening failed
-    /// (logged per attempt).
-    func standStore() async -> StandStore? {
-        await openIfNeeded()
-    }
-
     /// One write in the chain. While a replacement is open its whole write
     /// goes first; the write itself then runs, unless it is of a travelling
     /// id (`itemId`) the whole write just carried as it stands now.
