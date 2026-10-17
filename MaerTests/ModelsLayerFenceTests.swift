@@ -57,7 +57,7 @@ struct ModelsLayerFenceTests {
     /// the count of grips that stood on the day of measuring, kept as it is
     /// by decision, none chosen on its own.
     nonisolated static let upwardStock: [String: Int] = [
-        "Sources/Models/AppStorageKeys.swift": 23,
+        "Sources/Models/AppStorageKeys.swift": 22,
         "Sources/Models/BrowsedEpisodes.swift": 4,
         "Sources/Models/CatalogStockSurfaces.swift": 3,
         "Sources/Models/ContinueHidden.swift": 2,
@@ -65,7 +65,7 @@ struct ModelsLayerFenceTests {
         "Sources/Models/DerivedStores.swift": 4,
         "Sources/Models/FreeCatalog.swift": 1,
         "Sources/Models/FreeTwin.swift": 1,
-        "Sources/Models/LibraryRowDiff.swift": 2,
+        "Sources/Models/LibraryRowDiff.swift": 1,
         "Sources/Models/ListeningStats.swift": 32,
         "Sources/Models/ListeningStatsSync.swift": 2,
         "Sources/Models/MediaDownloadOffer.swift": 1,
