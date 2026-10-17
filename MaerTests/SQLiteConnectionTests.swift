@@ -110,8 +110,11 @@ struct SQLiteConnectionTests {
     }
 
     /// For the question of a VACUUM: what the move of the shownotes leaves
-    /// in the file, at 1,000 episodes with about 3 KB of notes each. Printed
-    /// as `NOTESMOVE`; the case holds only that the move ran.
+    /// in the file, at 1,000 episodes with about 3 KB of notes each, each
+    /// count after `wal_checkpoint(TRUNCATE)`: before, after the move with
+    /// the pages per table where SQLite can count them (`dbstat`), and after
+    /// one VACUUM. Printed as `NOTESMOVE`; the case holds only that the
+    /// move ran.
     @Test("Messung: Seiten und freie Seiten vor und nach dem Umzug der Shownotes bei 1.000 Folgen")
     func whatTheNotesMoveLeaves() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("notesmove-\(UUID().uuidString).sqlite").path
@@ -133,14 +136,25 @@ struct SQLiteConnectionTests {
                               [.text(episode.guid), .integer(Int64(n)), .real(Double(n)), .blob(try encoder.encode(episode))]))
         }
         _ = try await db.transaction(rows)
+        func tablePages() async -> String {
+            (try? await db.query("SELECT name, COUNT(*) AS pages FROM dbstat GROUP BY name ORDER BY name"))?
+                .map { "\($0["name"]?.string ?? "?"):\($0["pages"]?.int64 ?? 0)" }.joined(separator: ",") ?? "unread"
+        }
         _ = try await db.checkpoint()
         let before = try await db.pages()
+        let tablesBefore = await tablePages()
         let started = Date()
         let store = try await PodcastRowStore(connection: db)
         let ms = Int(Date().timeIntervalSince(started) * 1000)
         _ = try await db.checkpoint()
         let after = try await db.pages()
-        print("NOTESMOVE episodes=1000 pages_before=\(before.total) free_before=\(before.free) pages_after=\(after.total) free_after=\(after.free) move_ms=\(ms)")
+        let tables = await tablePages()
+        let vacuumStarted = Date()
+        try await db.execute("VACUUM")
+        let vacuumMs = Int(Date().timeIntervalSince(vacuumStarted) * 1000)
+        _ = try await db.checkpoint()
+        let vacuumed = try await db.pages()
+        print("NOTESMOVE episodes=1000 pages_before=\(before.total) free_before=\(before.free) tables_before=\(tablesBefore) pages_after=\(after.total) free_after=\(after.free) move_ms=\(ms) tables_after=\(tables) pages_vacuum=\(vacuumed.total) free_vacuum=\(vacuumed.free) vacuum_ms=\(vacuumMs)")
         #expect(try await store.notes(guid: "rss:m:7") == notes + "7", "the precondition: the move ran")
     }
 
