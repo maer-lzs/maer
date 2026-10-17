@@ -14,7 +14,11 @@ import Foundation
 actor SizingGate {
     private let width: Int
     private var running = 0
-    private var waiting: [(id: UUID, turn: CheckedContinuation<Void, Error>)] = []
+    private struct Waiter {
+        let id: UUID
+        let turn: CheckedContinuation<Void, Error>
+    }
+    private var waiting: [Waiter] = []
     /// The most that ran at once since the start, for the witness.
     private(set) var mostAtOnce = 0
 
@@ -32,12 +36,12 @@ actor SizingGate {
         }
         let id = UUID()
         try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { turn in
+            try await withCheckedThrowingContinuation { (turn: CheckedContinuation<Void, Error>) in
                 if Task.isCancelled {
                     turn.resume(throwing: CancellationError())
                     return
                 }
-                waiting.append((id, turn))
+                waiting.append(Waiter(id: id, turn: turn))
             }
         } onCancel: {
             Task { await self.giveUp(id) }
