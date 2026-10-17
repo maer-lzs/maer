@@ -20,6 +20,9 @@ struct PodcastEpisodeDetailView: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
+    /// The shownotes from the detail: a subscribed episode carries none in
+    /// memory, they are read when the episode opens.
+    @State private var notes: String?
     @State private var showSettings = false
     /// Timestamp column ("1:23:45") scales with Dynamic Type.
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
@@ -150,7 +153,7 @@ struct PodcastEpisodeDetailView: View {
                     metadataSection
                     chaptersSection
 
-                    if let description = item.media?.metadata?.description, !description.isEmpty {
+                    if let description = notes ?? item.media?.metadata?.description, !description.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description").font(.headline).foregroundStyle(.white)
                             Text(podcastPlainText(description))
@@ -187,8 +190,9 @@ struct PodcastEpisodeDetailView: View {
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         // Load chapters lazily (RSS: JSON file, ABS: from the episode object).
         .task(id: item.id) {
-            chapters = (try? await router.provider(item.id)
-                .fetchItemDetail(itemId: item.id))?.media.chapters ?? []
+            let detail = try? await router.provider(item.id).fetchItemDetail(itemId: item.id)
+            chapters = detail?.media.chapters ?? []
+            notes = detail?.media.metadata?.description
         }
     }
 

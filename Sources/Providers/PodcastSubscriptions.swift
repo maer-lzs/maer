@@ -31,6 +31,16 @@ final class PodcastSubscriptions: ObservableObject {
 
     @Published private(set) var shows: [PodcastShow] = [] {
         didSet {
+            // Every way into the stock passes here: the shownotes leave it
+            // for the database (`PodcastNotes`). The index still answers for
+            // the stock before, so an unchanged text is not written again.
+            if let split = PodcastNotes.split(shows, stampBefore: { guid in
+                episodeIndex[guid].flatMap { oldValue.indices.contains($0.show) && oldValue[$0.show].episodes.indices.contains($0.episode)
+                    ? oldValue[$0.show].episodes[$0.episode].notesStamp : nil }
+            }) {
+                pendingNotes.merge(split.notes) { _, fresh in fresh }
+                shows = split.shows
+            }
             rebuildCaches()
             // A subscription that arrives (import, account adoption, the
             // person's own subscribe) changes what the episode rows show.
@@ -202,6 +212,23 @@ final class PodcastSubscriptions: ObservableObject {
     private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
     /// Cached, sorted full list (invalidated on a `shows` change).
     private var cachedAllEpisodes: [(show: PodcastShow, episode: PodcastEpisode)]?
+    /// Shownotes taken from the stock and not yet in the database, keyed by
+    /// guid. The next write carries them and lets go of what landed; a
+    /// write that fails or is refused keeps them for the one after.
+    private var pendingNotes: [String: String] = [:]
+
+    /// The shownotes of a subscribed episode, read when it is opened: still
+    /// waiting for their write, else from the rows. nil when there are none.
+    func notes(guid: String) async -> String? {
+        if let waiting = pendingNotes[guid] { return waiting }
+        guard let rows = await openRows() else { return nil }
+        do {
+            return try await rows.notes(guid: guid)
+        } catch {
+            Logger.rss.error("SUBROWS notes read failed reason=\(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
 
     private func rebuildCaches() {
         cachedAllEpisodes = nil
@@ -489,15 +516,21 @@ final class PodcastSubscriptions: ObservableObject {
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             // While a replacement is open, every write carries its mark.
             let mark = self.follower?.mark()
-            guard !diff.isEmpty || mark != nil || !also.isEmpty else { return .unchanged }
+            // The shownotes waiting now go with this write, also when the
+            // rows are unchanged; what landed is let go, a newer text taken
+            // meanwhile stays.
+            let notes = self.pendingNotes
+            guard !diff.isEmpty || !notes.isEmpty || mark != nil || !also.isEmpty else { return .unchanged }
             let started = Date()
             // `also`: rows carried as they are at a hand-over, in the same
             // transaction as the diff and the mark.
-            let counts = try await rows.apply(diff, also: also + (mark?.statements ?? []))
+            let counts = try await rows.apply(diff, notes: notes, also: also + (mark?.statements ?? []))
+            for (guid, text) in notes where self.pendingNotes[guid] == text { self.pendingNotes[guid] = nil }
             mark?.landed()
             let ms = Int(Date().timeIntervalSince(started) * 1000)
             Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms) plan=\(String(describing: base.plan), privacy: .public)")
-            return .landed
+            // Only shownotes written: the rows themselves are unchanged.
+            return diff.isEmpty && mark == nil && also.isEmpty ? .unchanged : .landed
         })
     }
 

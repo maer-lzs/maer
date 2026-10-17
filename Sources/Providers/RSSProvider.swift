@@ -76,6 +76,10 @@ final class RSSProvider: AudioProvider {
     }
 
     private func detail(show: PodcastShow, episode: PodcastEpisode) async -> LibraryItemDetail {
+        // A subscribed episode carries no shownotes in memory; they are
+        // read here, when the episode is opened. A browsed one carries its own.
+        var episode = episode
+        if episode.description == nil { episode.description = await subs.notes(guid: episode.guid) }
         let found = (show: show, episode: episode)
         let item = podcastLibraryItem(show: found.show, episode: found.episode)
         var media = item.media ?? emptyMedia

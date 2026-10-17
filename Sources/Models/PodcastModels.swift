@@ -53,7 +53,14 @@ nonisolated struct PodcastEpisode: Codable, Identifiable, Equatable {
     /// indistinguishable from the feed's claim and died on every refresh.
     /// `duration` still mirrors it so every reader sees the best known length.
     var measuredDuration: Double? = nil
+    /// The shownotes as the feed carries them. In the subscribed stock
+    /// always nil: the notes live in the database and are read when the
+    /// episode is opened (`PodcastNotes`); a parse and a browsed show
+    /// carry them.
     var description: String?
+    /// A stamp of the shownotes this episode's notes were written with
+    /// (`PodcastNotes.stamp`), so an unchanged text is not written again.
+    var notesStamp: Int? = nil
     var imageURL: String?
     /// Podcasting 2.0 chapters (`<podcast:chapters url=… type=json+chapters>`).
     /// Loaded only when opening the episode (RSSProvider.fetchItemDetail).

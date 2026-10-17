@@ -15,9 +15,18 @@ import OSLog
 /// `PodcastEpisode` stays the one the app speaks, and a field added to the
 /// record needs no column. The columns beside it are the facts a query
 /// needs without decoding: ids, position, publication.
+///
+/// The shownotes are the exception: they stand in `episode_note`, one row
+/// per guid, and are read when an episode is opened (`notes(guid:)`), so
+/// the start reads and holds no notes. The table has no foreign key: a
+/// hand-over removes the episode rows of the account that leaves, and its
+/// notes stay for its return. A payload that still carries notes (a row
+/// written by an older build, a raw row carried back) gives them to the
+/// table before it is overwritten or removed, never over a newer note.
 actor PodcastRowStore {
     static let family = "podcast"
-    static let schemaVersion = 1
+    /// 2: the shownotes moved from the episode payload to `episode_note`.
+    static let schemaVersion = 2
 
     private let connection: SQLiteConnection
 
@@ -41,8 +50,86 @@ actor PodcastRowStore {
             """)
         try await connection.execute("CREATE INDEX IF NOT EXISTS episode_show ON episode(show_id, position)")
         try await connection.execute("CREATE INDEX IF NOT EXISTS episode_published ON episode(pub_date)")
-        if try await connection.schemaVersion(of: Self.family) < Self.schemaVersion {
+        try await connection.execute("""
+            CREATE TABLE IF NOT EXISTS episode_note (
+                guid TEXT PRIMARY KEY,
+                notes TEXT NOT NULL
+            )
+            """)
+        for statement in Self.noteRescue { try await connection.execute(statement) }
+        let version = try await connection.schemaVersion(of: Self.family)
+        if version < 2 {
+            // One transaction: the notes leave the payloads, and the version
+            // says so, or neither happens.
+            try await connection.transaction(Self.notesMove)
+        }
+        if version < Self.schemaVersion {
             try await connection.setSchemaVersion(Self.schemaVersion, of: Self.family)
+        }
+    }
+
+    /// The shownotes inside a payload, NULL when it carries none. The
+    /// payload is a blob of JSON text; the cast keeps the JSON functions
+    /// from reading it as their binary form.
+    private static func notesIn(_ payload: String) -> String {
+        "json_extract(CAST(\(payload) AS TEXT), '$.description')"
+    }
+
+    /// A payload that still carries notes gives them to the table before it
+    /// is overwritten or removed, and never over a note that stands.
+    static let noteRescue: [String] = [
+        """
+        CREATE TRIGGER IF NOT EXISTS episode_note_rescue_update BEFORE UPDATE OF payload ON episode
+        WHEN \(notesIn("OLD.payload")) IS NOT NULL AND \(notesIn("OLD.payload")) != ''
+        BEGIN
+            INSERT OR IGNORE INTO episode_note (guid, notes) VALUES (OLD.guid, \(notesIn("OLD.payload")));
+        END
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS episode_note_rescue_delete BEFORE DELETE ON episode
+        WHEN \(notesIn("OLD.payload")) IS NOT NULL AND \(notesIn("OLD.payload")) != ''
+        BEGIN
+            INSERT OR IGNORE INTO episode_note (guid, notes) VALUES (OLD.guid, \(notesIn("OLD.payload")));
+        END
+        """,
+    ]
+
+    /// Version 1 to 2: every payload's notes into the table, then out of
+    /// the payload, then the version.
+    static let notesMove: [SQLiteConnection.Statement] = [
+        .init("""
+            INSERT OR IGNORE INTO episode_note (guid, notes)
+            SELECT guid, \(notesIn("payload")) FROM episode
+            WHERE \(notesIn("payload")) IS NOT NULL AND \(notesIn("payload")) != ''
+            """),
+        .init("""
+            UPDATE episode SET payload = CAST(json_remove(CAST(payload AS TEXT), '$.description') AS BLOB)
+            WHERE json_type(CAST(payload AS TEXT), '$.description') IS NOT NULL
+            """),
+        .init("INSERT INTO schema (family, version) VALUES (?, 2) ON CONFLICT(family) DO UPDATE SET version = excluded.version",
+              [.text(family)]),
+    ]
+
+    /// The shownotes of one episode: the table's, else what an older
+    /// payload still carries; nil when there are none.
+    func notes(guid: String) async throws -> String? {
+        if let notes = try await connection.query("SELECT notes FROM episode_note WHERE guid = ?", [.text(guid)])
+            .first?["notes"]?.string {
+            return notes
+        }
+        guard let data = try await connection.query("SELECT payload FROM episode WHERE guid = ?", [.text(guid)])
+            .first?["payload"]?.data else { return nil }
+        return (try? JSONDecoder().decode(PodcastEpisode.self, from: data))?.description
+    }
+
+    /// The statements that write shownotes: a fresh text replaces the one
+    /// that stands.
+    nonisolated static func noteStatements(_ notes: [String: String]) -> [SQLiteConnection.Statement] {
+        notes.sorted { $0.key < $1.key }.map { guid, text in
+            .init("""
+                INSERT INTO episode_note (guid, notes) VALUES (?, ?)
+                ON CONFLICT(guid) DO UPDATE SET notes = excluded.notes WHERE notes IS NOT excluded.notes
+                """, [.text(guid), .text(text)])
         }
     }
 
@@ -210,11 +297,13 @@ actor PodcastRowStore {
     /// Applies a diff in one transaction. Removed shows take their episodes
     /// with them (cascade). `also` lands in the same transaction (a mark
     /// that must land with these rows, `OwnerMark`); `also` alone is
-    /// written too.
+    /// written too. `notes` are the shownotes taken from the stock
+    /// (`PodcastNotes.split`), written with the rows that carry their stamps.
     @discardableResult
-    func apply(_ diff: PodcastRowDiff, also: [SQLiteConnection.Statement] = []) async throws -> Counts {
-        guard !diff.isEmpty || !also.isEmpty else { return Counts(shows: 0, episodes: 0) }
-        try await connection.transaction(try Self.statements(diff) + also)
+    func apply(_ diff: PodcastRowDiff, notes: [String: String] = [:],
+               also: [SQLiteConnection.Statement] = []) async throws -> Counts {
+        guard !diff.isEmpty || !notes.isEmpty || !also.isEmpty else { return Counts(shows: 0, episodes: 0) }
+        try await connection.transaction(try Self.statements(diff) + Self.noteStatements(notes) + also)
         return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
     }
 
