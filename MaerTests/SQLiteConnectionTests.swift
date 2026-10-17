@@ -144,7 +144,8 @@ struct SQLiteConnectionTests {
         let before = try await db.pages()
         let tablesBefore = await tablePages()
         let started = Date()
-        let store = try await PodcastRowStore(connection: db)
+        // The move without its own VACUUM: the pages it leaves, then one VACUUM below.
+        let store = try await PodcastRowStore(connection: db, vacuum: "SELECT 1")
         let ms = Int(Date().timeIntervalSince(started) * 1000)
         _ = try await db.checkpoint()
         let after = try await db.pages()

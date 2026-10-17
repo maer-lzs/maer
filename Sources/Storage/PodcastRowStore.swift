@@ -30,7 +30,9 @@ actor PodcastRowStore {
 
     private let connection: SQLiteConnection
 
-    init(connection: SQLiteConnection) async throws {
+    /// `vacuum` packs the file once after the move to version 2; a witness
+    /// hands one that fails.
+    init(connection: SQLiteConnection, vacuum: String = "VACUUM") async throws {
         self.connection = connection
         try await connection.execute("""
             CREATE TABLE IF NOT EXISTS show (
@@ -65,6 +67,26 @@ actor PodcastRowStore {
         }
         if version < Self.schemaVersion {
             try await connection.setSchemaVersion(Self.schemaVersion, of: Self.family)
+        }
+        // Only after a move from version 1: a fresh database has nothing to pack.
+        if version == 1 { await Self.pack(connection, with: vacuum) }
+    }
+
+    /// After the move the slim payloads stay spread over their old pages
+    /// until a VACUUM packs them (measured at 1,000 episodes: 2,031 pages
+    /// to 1,065, under 30 ms). Once, outside any transaction, after the
+    /// version is set. A VACUUM needs as much free room as the file takes;
+    /// when it fails, the database stays open as it is.
+    private static func pack(_ connection: SQLiteConnection, with vacuum: String) async {
+        let started = Date()
+        do {
+            let before = try await connection.pages()
+            try await connection.execute(vacuum)
+            let after = try await connection.pages()
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.rss.notice("SUBROWS vacuum after the notes move: pages=\(before.total) to \(after.total) free=\(before.free) to \(after.free) ms=\(ms)")
+        } catch {
+            Logger.rss.error("SUBROWS vacuum after the notes move failed, the database stays as it is: \(String(describing: error), privacy: .public)")
         }
     }
 

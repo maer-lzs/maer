@@ -104,6 +104,44 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e1") == "neuer", "a payload's notes stood over the newer note")
     }
 
+    /// A database as a build of version 1 left it: 300 episodes, each with
+    /// about 3 KB of notes in its payload.
+    private func versionOneWithNotes() async throws -> SQLiteConnection {
+        let db = try SQLiteConnection(path: ":memory:")
+        for statement in Self.versionOneOpen { try await db.execute(statement) }
+        try await db.setSchemaVersion(1, of: PodcastRowStore.family)
+        let notes = String(repeating: "Shownotes mit Links und Kapiteln. ", count: 90)
+        var rows = [SQLiteConnection.Statement("INSERT INTO show (id, position, payload) VALUES ('a', 0, ?)",
+                                               [.blob(try JSONEncoder().encode(show("a", [])))])]
+        for n in 0..<300 {
+            rows.append(.init("INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, 'a', ?, ?, ?)",
+                              [.text("e\(n)"), .integer(Int64(n)), .real(Double(n)),
+                               .blob(try JSONEncoder().encode(episode("e\(n)", notes: notes + "\(n)")))]))
+        }
+        _ = try await db.transaction(rows)
+        return db
+    }
+
+    @Test("nach dem Umzug auf Version 2 packt ein VACUUM die Datei einmal")
+    func theMovePacksTheFileOnce() async throws {
+        let unpacked = try await versionOneWithNotes()
+        _ = try await PodcastRowStore(connection: unpacked, vacuum: "SELECT 1")
+        let packed = try await versionOneWithNotes()
+        let store = try await PodcastRowStore(connection: packed)
+        let loose = try await unpacked.pages().total, tight = try await packed.pages().total
+        #expect(tight * 10 < loose * 7, "the move left the slim payloads spread: \(tight) pages packed, \(loose) without")
+        #expect(try await store.notes(guid: "e7")?.hasSuffix("7") == true, "the precondition: the move ran")
+    }
+
+    @Test("ein gescheitertes VACUUM nach dem Umzug laesst die Datenbank offen und die Version 2 stehen")
+    func aFailedVacuumLeavesTheDatabaseOpen() async throws {
+        let db = try await versionOneWithNotes()
+        let store = try await PodcastRowStore(connection: db, vacuum: "NOT A VACUUM")
+        #expect(try await db.schemaVersion(of: PodcastRowStore.family) == 2)
+        #expect(try await store.notes(guid: "e7")?.hasSuffix("7") == true, "the notes are not readable after the failed VACUUM")
+        #expect(try await store.counts() == PodcastRowStore.Counts(shows: 1, episodes: 300))
+    }
+
     @Test("eine Nutzlast, die kein JSON ist, traegt keine Shownotes: Heben, Ueberschreiben und Entfernen gehen durch, auch ueber Ausloesern in aelterer Form")
     func aPayloadThatIsNoJSONCarriesNoNotes() async throws {
         let db = try SQLiteConnection(path: ":memory:")
