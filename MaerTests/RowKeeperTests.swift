@@ -213,6 +213,23 @@ struct RowKeeperTests {
         }
     }
 
+    /// A chain's label is the name its lines carry (`save failed`, `wipe
+    /// REFUSED`, `start: skipped=`); two stores under one name could not be
+    /// told apart in a log.
+    @Test("jede Schreibkette traegt ihren eigenen Namen in den Logzeilen", .needsTheSources)
+    func everyChainHasItsOwnLabel() throws {
+        var labels: [String: [String]] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            for match in code.matches(of: #/(?:RowKeeper\(|RowChain<[^>\n]*>\()[^\n]*?label: "([^"]+)"/#) {
+                labels[String(match.output.1), default: []].append(file.lastPathComponent)
+            }
+        }
+        #expect(labels.values.reduce(0) { $0 + $1.count } >= 12, "the precondition: the fence read the chains: \(labels)")
+        let shared = labels.filter { $0.value.count > 1 }
+        #expect(shared.isEmpty, "two chains log under one name: \(shared)")
+    }
+
     /// Whether a write landed before a read looked, held by reference.
     private final class Landed { var yet = false }
 

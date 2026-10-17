@@ -55,8 +55,9 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     private let checkedKeeper: RowKeeper<Date>
 
     init(database: MaerDatabase) {
-        self.entriesKeeper = RowKeeper(database: database, table: .syncHistory, label: "HISTORY")
-        self.checkedKeeper = RowKeeper(database: database, table: .syncLastChecked, label: "HISTORY checked")
+        // Its own name: the listening history logs as HISTORY.
+        self.entriesKeeper = RowKeeper(database: database, table: .syncHistory, label: "SYNCHISTORY")
+        self.checkedKeeper = RowKeeper(database: database, table: .syncLastChecked, label: "SYNCHISTORY checked")
         entries = SyncHistory.trimmed(Array((entriesKeeper.startNow() ?? [:]).values))
         lastChecked = checkedKeeper.startNow() ?? [:]
         // Rows read after a failed start join the ring (trimmed again) and
