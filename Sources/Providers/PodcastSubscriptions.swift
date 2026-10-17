@@ -514,8 +514,16 @@ final class PodcastSubscriptions: ObservableObject {
                 return .refused(refusal)
             }
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
+            // Shownotes go with the last row that names them, unless a
+            // resting stock expects them back. Read before the mark: the
+            // read suspends, the mark is taken right before the write.
+            let resting = also.isEmpty && (!diff.showsRemoved.isEmpty || !diff.episodesRemoved.isEmpty)
+                ? await self.restingGuids() : nil
             // While a replacement is open, every write carries its mark.
             let mark = self.follower?.mark()
+            // Never at a hand-over: the leaving account's notes stay for its return.
+            var sweep: [SQLiteConnection.Statement] = []
+            if mark == nil, let resting { sweep = [try PodcastRowStore.noteSweep(keeping: resting)] }
             // The shownotes waiting now go with this write, also when the
             // rows are unchanged; what landed is let go, a newer text taken
             // meanwhile stays.
@@ -524,7 +532,7 @@ final class PodcastSubscriptions: ObservableObject {
             let started = Date()
             // `also`: rows carried as they are at a hand-over, in the same
             // transaction as the diff and the mark.
-            let counts = try await rows.apply(diff, notes: notes, also: also + (mark?.statements ?? []))
+            let counts = try await rows.apply(diff, notes: notes, also: also + sweep + (mark?.statements ?? []))
             for (guid, text) in notes where self.pendingNotes[guid] == text { self.pendingNotes[guid] = nil }
             mark?.landed()
             let ms = Int(Date().timeIntervalSince(started) * 1000)
@@ -1561,6 +1569,32 @@ final class PodcastSubscriptions: ObservableObject {
         /// Rows of the account this build could not decode, as stored. They
         /// rest with the account and come back to its rows unread.
         var unread: PodcastRowStore.RawRows? = nil
+    }
+
+    /// The guids a resting stock of this family expects back; empty without
+    /// a shelf, nil when a rest cannot be read (then no shownotes go).
+    private func restingGuids() async -> Set<String>? {
+        guard let shelf = database.restingShelf else { return [] }
+        let found = await Self.restingGuids(on: shelf, family: Self.shelfFamily)
+        if found == nil { Logger.rss.error("SUBROWS notes kept: a resting stock could not be read") }
+        return found
+    }
+
+    /// Reads every rest of `family` off the main actor: a rest holds whole
+    /// shows with their episodes.
+    @concurrent
+    private nonisolated static func restingGuids(on shelf: RestingShelf, family: String) async -> Set<String>? {
+        do {
+            var guids: Set<String> = []
+            for owner in try shelf.owners(of: family) {
+                guard let rest = try shelf.rest(Resting.self, of: family, owner: owner) else { continue }
+                for show in rest.shows { guids.formUnion(show.episodes.map(\.guid)) }
+                guids.formUnion(rest.unread?.episodes.map(\.guid) ?? [])
+            }
+            return guids
+        } catch {
+            return nil
+        }
     }
 
     /// The rows this build cannot decode, as stored; nil when there are

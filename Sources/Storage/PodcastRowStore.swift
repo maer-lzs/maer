@@ -141,6 +141,17 @@ actor PodcastRowStore {
         }
     }
 
+    /// The statement that lets shownotes go that no account leads and no
+    /// hand-over expects back: no episode row names their guid, and no
+    /// resting stock does (`resting`).
+    nonisolated static func noteSweep(keeping resting: Set<String>) throws -> SQLiteConnection.Statement {
+        let list = String(decoding: try JSONEncoder().encode(resting.sorted()), as: UTF8.self)
+        return .init("""
+            DELETE FROM episode_note WHERE guid NOT IN (SELECT guid FROM episode)
+                AND guid NOT IN (SELECT value FROM json_each(?))
+            """, [.text(list)])
+    }
+
     struct Counts: Equatable, Sendable {
         var shows: Int
         var episodes: Int

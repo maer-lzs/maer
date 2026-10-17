@@ -143,6 +143,18 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e1") == "bleibt", "the notes left with their episode row")
     }
 
+    @Test("das Raeumen laesst Shownotes gehen, die keine Zeile und kein ruhender Bestand nennt")
+    func theSweepKeepsWhatARowOrARestNames() async throws {
+        let (store, db) = try await memoryStore()
+        let stock = [show("a", [episode("e1", notes: nil)])]
+        try await store.apply(PodcastRowDiff.compute(previous: [], current: stock),
+                              notes: ["e1": "steht", "e2": "ruht", "e3": "niemand"])
+        try await db.transaction([try PodcastRowStore.noteSweep(keeping: ["e2"])])
+        #expect(try await store.notes(guid: "e1") == "steht", "the sweep took the notes of a row that stands")
+        #expect(try await store.notes(guid: "e2") == "ruht", "the sweep took the notes a rest expects back")
+        #expect(try await store.notes(guid: "e3") == nil, "notes nobody names stayed")
+    }
+
     /// What a build of version 1 runs when it opens the rows: these three
     /// tables and their indexes, and the version only lifted, never lowered.
     nonisolated static let versionOneOpen = [
@@ -235,6 +247,66 @@ struct PodcastNotesTests {
         #expect(try storedNotes(folder, guid: "rss:n:1") == "Eins, berichtigt", "the changed text did not land")
         #expect(try storedNotes(folder, guid: "rss:n:2") == "Zwei")
         #expect(subs.shows.first?.episodes.count == 2, "an episode the feed no longer carries left the show")
+    }
+
+    /// The account that leaves at a hand-over keeps its shownotes for its
+    /// return; an unsubscribe lets the show's shownotes go.
+    @Test("Shownotes bleiben ueber eine Uebergabe und den Rueckweg, ein Abbestellen laesst sie gehen")
+    func theNotesRestWithTheAccountAndGoWithTheShow() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = "notes-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let closeTheGate = PodcastPublishCountTests.openTheRSSGate()
+        defer {
+            closeTheGate()
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        try #require(AppStorageKeys.rssActive, "das RSS-Tor ist trotz Setzen zu, der Fall misst nichts")
+        let feed = try #require(URL(string: "https://notes.example/\(UUID().uuidString.prefix(8))/feed.xml"))
+        let shown = PodcastShow(id: PodcastSubscriptions.feedKey(feed.absoluteString), title: "Notizen", author: nil,
+                                artworkURL: nil, description: nil, feedURL: feed.absoluteString,
+                                episodes: [episode("rss:r:1", notes: "Eins")])
+        let subs = subscriptions(in: folder, defaults: defaults)
+        await subs.ensureLoaded()
+        #expect(subs.follow(owner: "account-a"))
+        subs._testFeedFetcher = { _ in .show(shown) }
+        try #require(await subs.subscribe(urlString: feed.absoluteString, notesCloud: false))
+        await subs.awaitPendingWrites()
+        try #require(try storedNotes(folder, guid: "rss:r:1") == "Eins", "the precondition: the notes stand")
+
+        func handOver(to owner: String) async throws -> Bool {
+            var handed = subs.follow(owner: owner)
+            for _ in 0..<100 where !handed {
+                try await Task.sleep(for: .milliseconds(20))
+                handed = subs.follow(owner: owner)
+            }
+            await subs.awaitPendingWrites()
+            return handed
+        }
+        #expect(try await handOver(to: "account-b"))
+        #expect(subs.shows.isEmpty, "the precondition: B holds no show")
+        #expect(try storedNotes(folder, guid: "rss:r:1") == "Eins", "the hand-over took A's notes")
+        // A write under B that removes rows: A's rest still names its episode.
+        let otherFeed = try #require(URL(string: "https://notes.example/\(UUID().uuidString.prefix(8))/other.xml"))
+        let other = PodcastShow(id: PodcastSubscriptions.feedKey(otherFeed.absoluteString), title: "Andere", author: nil,
+                                artworkURL: nil, description: nil, feedURL: otherFeed.absoluteString,
+                                episodes: [episode("rss:r:2", notes: "Zwei")])
+        subs._testFeedFetcher = { _ in .show(other) }
+        try #require(await subs.subscribe(urlString: otherFeed.absoluteString, notesCloud: false))
+        await subs.awaitPendingWrites()
+        subs.unsubscribe(id: other.id, notesCloud: false)
+        await subs.awaitPendingWrites()
+        #expect(try storedNotes(folder, guid: "rss:r:2") == nil, "B's unsubscribed show's notes stayed")
+        #expect(try storedNotes(folder, guid: "rss:r:1") == "Eins", "a write under B took the notes A's rest expects back")
+        #expect(try await handOver(to: "account-a"))
+        #expect(subs.shows.map(\.id) == [shown.id], "the way back lost A's show")
+        #expect(try storedNotes(folder, guid: "rss:r:1") == "Eins", "the way back lost the notes")
+
+        subs.unsubscribe(id: shown.id, notesCloud: false)
+        await subs.awaitPendingWrites()
+        #expect(try storedNotes(folder, guid: "rss:r:1") == nil, "the unsubscribed show's notes stayed")
     }
 
     /// The number the order names: the text of 1,000 episodes held in
