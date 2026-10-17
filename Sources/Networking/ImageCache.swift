@@ -720,10 +720,13 @@ final class ImageCache {
             // A failed load still shows a kept picture of an invalidated address.
             return await storedImage(for: url, maxPixelSize: target, allowKept: true)
         }
-        set(full, data: data, for: url, startedAt: startedAt)
-        let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? full
-        return (display, CGSize(width: full.size.width * full.scale,
-                                height: full.size.height * full.scale))
+        // Held and stored at display size like every fetched cover; the
+        // quality gate still judges the size that arrived.
+        let source = CGSize(width: full.size.width * full.scale, height: full.size.height * full.scale)
+        let (shown, kept) = await Self.displaySized(data, maxPixelSize: displayPixelSize) ?? (full, data)
+        set(shown, data: kept, for: url, startedAt: startedAt)
+        let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? shown
+        return (display, source)
     }
 
     /// The display image and the source size from disk, nil when either is

@@ -9,9 +9,9 @@ import Foundation
 import UIKit
 @testable import Maer
 
-/// A fetched cover is held at display size, never as its original (Platz 5).
-/// Before, a fresh cover went into memory in full: a 3000 px cover is 36 MB
-/// decoded, and a cell that fetched it was handed that bitmap.
+/// A fetched cover is held and stored at display size, never as its
+/// original: a 3000 px cover is 36 MB decoded. A cell gets a picture at the
+/// size it asked for, and memory pressure releases the full covers.
 @MainActor
 @Suite(.serialized)
 struct CoverMemoryTests {
@@ -62,33 +62,47 @@ struct CoverMemoryTests {
         #expect(!code.contains("Answer(image: image, pot: \"net"), "a network answer goes to the cell unsized")
     }
 
-    /// Memory pressure releases the full covers (the thumbnails are not
-    /// touched by the release). The system's own notification, as the
-    /// device sends it.
-    @Test("Speicherdruck gibt die grossen Cover frei")
+    /// Memory pressure releases the full covers and leaves the thumbnails,
+    /// so the cells on screen stay warm. The system's own notification, as
+    /// the device sends it.
+    @Test("Speicherdruck gibt die grossen Cover frei, die Vorschauen bleiben warm")
     func memoryPressureReleasesTheFullCovers() async throws {
         let cache = ImageCache.shared
         let url = URL(string: "https://covers.example.invalid/pressure-\(UUID().uuidString).png")!
         let (shown, kept) = try #require(await ImageCache.displaySized(png(600), maxPixelSize: cache.displayPixelSize))
         cache.set(shown, data: kept, for: url, startedAt: cache.invalidationCount(for: url))
+        _ = await cache.thumbnail(for: url)
         #expect(cache.holdsFullCover(for: url), "the precondition: the cover stands in memory")
+        #expect(cache.cachedThumbnail(for: url) != nil, "the precondition: the thumbnail is warm")
         let releases = cache.fullCoverReleases
         NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
         #expect(cache.fullCoverReleases == releases + 1, "the pressure reached the cache")
         #expect(!cache.holdsFullCover(for: url), "the full cover is released")
+        #expect(cache.cachedThumbnail(for: url) != nil, "the pressure took the thumbnail too")
     }
 
-    /// No path in the network layer stores a fetched cover as it came.
+    /// No path in the network layer stores a fetched cover as it came: every
+    /// caller of `set` hands it the picture and the bytes `displaySized`
+    /// gave, whatever their names.
     @Test("kein Weg im Netz-Ordner legt ein frisch geladenes Cover unverkleinert ab", .needsTheSources)
-    func noPathStoresTheOriginal() {
+    func noPathStoresTheOriginal() throws {
+        let call = try Regex(#"\bset\((\w+), data: (\w+), for:"#)
+        var calls = 0
         var offenders: [String] = []
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Networking")) where url.pathExtension == "swift" {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else {
                 Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
                 continue
             }
-            if SyncContractFenceTests.stripped(text).contains("set(image, data: data") { offenders.append(url.lastPathComponent) }
+            let code = SyncContractFenceTests.stripped(text)
+            for match in code.matches(of: call) {
+                calls += 1
+                let image = match.output[1].substring ?? "", data = match.output[2].substring ?? ""
+                let reduced = try Regex(#"let \(\#(image), \#(data)\) = await (Self|ImageCache)\.displaySized\("#)
+                if !code.contains(reduced) { offenders.append("\(url.lastPathComponent): set(\(image), data: \(data)") }
+            }
         }
+        #expect(calls >= 3, "the fence found no caller of set, so it measures nothing: \(calls)")
         #expect(offenders == [], "stores the original: \(offenders)")
     }
 
