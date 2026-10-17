@@ -165,7 +165,10 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Ada Author"].firstMatch.waitForExistence(timeout: 10),
                       "the authors page must draw its list, never a white page")
         snap(app, "global-search-authors")
-        let back = app.buttons["BackButton"].firstMatch
+        // The leading button of the topmost bar: on iOS 26 and later the
+        // system names it `BackButton`, on iOS 18 it carries no name.
+        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
+        let back = bar.buttons.element(boundBy: 0)
         XCTAssertTrue(back.waitForExistence(timeout: 5), "the authors page must offer the way back")
         back.tap()
         XCTAssertTrue(search.waitForExistence(timeout: 5), "the way back must lead to the page with the search")
