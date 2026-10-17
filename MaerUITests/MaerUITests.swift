@@ -161,21 +161,27 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(recentChip.waitForExistence(timeout: 5),
                       "the deck must offer the recent search")
         snap(app, "global-search-deck")
-        // A drill swaps the same stack as the catalog does, and on iOS 27
-        // that swap once left a white page. The seeded library's author
-        // drill must draw its list, and the back chip must bring the deck
-        // back. (The music deck's artists come from a server the harness
-        // does not have, so that drill would be empty by its data.)
+        // The library's authors are the page of the books tab
+        // (`BookGroupsScreen`), pushed on the stack the search was opened
+        // from; the search closes with the push, and on iOS 27 a push once
+        // left a white page. It must draw its list; the system back leads to
+        // that stack's page, and the search opens again with its recents.
+        // (The music deck's artists come from a server the harness does not
+        // have; that drill below says so in a sentence.)
         app.buttons["scope-library"].firstMatch.tap()
         let authorsTile = app.buttons["deck-tier-authors"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: authorsTile, hittable: true),
                       "the library deck must offer its authors")
         authorsTile.tap()
         XCTAssertTrue(app.staticTexts["Ada Author"].firstMatch.waitForExistence(timeout: 10),
-                      "the author drill must draw its list, never a white page")
-        snap(app, "global-search-drill")
-        app.buttons["search-drill-back"].firstMatch.tap()
-        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the back chip must bring the deck back")
+                      "the authors page must draw its list, never a white page")
+        snap(app, "global-search-authors")
+        let back = app.buttons["BackButton"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "the authors page must offer the way back")
+        back.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the way back must lead to the page with the search")
+        search.tap()
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the search opened again must offer the recent search")
         // Back to the music scope, where the steps below expect the page.
         app.buttons["scope-music"].firstMatch.tap()
         // The artist drill asks a music server the harness does not have.
