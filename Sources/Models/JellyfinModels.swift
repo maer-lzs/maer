@@ -26,10 +26,8 @@ nonisolated struct JFUser: Decodable {
 
 nonisolated struct JFItemsResult: Decodable {
     let items: [JFItem]?
-    let totalRecordCount: Int?
     enum CodingKeys: String, CodingKey {
         case items = "Items"
-        case totalRecordCount = "TotalRecordCount"
     }
 }
 
