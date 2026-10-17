@@ -1581,12 +1581,14 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Reads every rest of `family` off the main actor: a rest holds whole
-    /// shows with their episodes.
+    /// shows with their episodes. The holder's own rest is skipped: it stays
+    /// on the shelf after a way back, and its stock is the one in the rows.
     @concurrent
     private nonisolated static func restingGuids(on shelf: RestingShelf, family: String) async -> Set<String>? {
         do {
             var guids: Set<String> = []
-            for owner in try shelf.owners(of: family) {
+            let holder = try shelf.holding(of: family)?.owner
+            for owner in try shelf.owners(of: family) where owner != holder {
                 guard let rest = try shelf.rest(Resting.self, of: family, owner: owner) else { continue }
                 for show in rest.shows { guids.formUnion(show.episodes.map(\.guid)) }
                 guids.formUnion(rest.unread?.episodes.map(\.guid) ?? [])
