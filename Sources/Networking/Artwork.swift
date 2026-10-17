@@ -93,6 +93,8 @@ enum Artwork {
         // An automatic second attempt after a short pause covers most brief
         // network dropouts without the person doing anything. Not after an
         // absence: the address names nothing, asking twice changes nothing.
+        // Nor for a tile that left: its first answer was the cancellation.
+        if Task.isCancelled { return .unanswered }
         switch await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: 800_000_000, attempt: attempt)
         }) {
@@ -290,7 +292,8 @@ enum Artwork {
         // Held and handed on at display size only, reduced off the main
         // actor: the original of a large cover is never decoded in full.
         // Bytes ImageIO cannot reduce (a station's `.ico`) stay as they came;
-        // a tile that left before its turn learns nothing and stores nothing.
+        // a fetch that every waiting tile left (`CoverFetchCoalescer`) learns
+        // nothing and stores nothing.
         let reduced: (UIImage, Data)?
         do { reduced = try await ImageCache.displaySized(data, maxPixelSize: tiers.displayPixelSize) } catch { return .unanswered }
         let (shown, kept) = reduced ?? (image, data)
@@ -412,17 +415,50 @@ enum ServicePlaceholderCovers {
 /// same show raced each other to the first cache write and BOTH paid the
 /// download (measured: 8 of 56 fetches in a cold scroll pass were such
 /// twins). The second caller now awaits the first one's task instead.
+///
+/// The shared task is no child of any tile, so it inherits no tile's
+/// cancellation. Every tile that waits on it is counted; a tile whose task
+/// is cancelled (it left the screen) leaves the count, and the shared task
+/// is cancelled only when no tile waits any more. A visible tile thus never
+/// gets the answer of one that left, and a fetch nobody waits for gives its
+/// place at the sizing gate up.
 @MainActor
 enum CoverFetchCoalescer {
-    static var inFlight: [URL: Task<Artwork.Fetched, Never>] = [:]
+    private struct Flight {
+        let task: Task<Artwork.Fetched, Never>
+        var waiting: Int
+    }
+    private static var inFlight: [URL: Flight] = [:]
 
     static func fetch(_ url: URL, work: @escaping () async -> Artwork.Fetched) async -> Artwork.Fetched {
-        if let running = inFlight[url] { return await running.value }
-        let task = Task { await work() }
-        inFlight[url] = task
-        let fetched = await task.value
-        inFlight[url] = nil
+        let task: Task<Artwork.Fetched, Never>
+        if var flight = inFlight[url] {
+            flight.waiting += 1
+            inFlight[url] = flight
+            task = flight.task
+        } else {
+            task = Task { await work() }
+            inFlight[url] = Flight(task: task, waiting: 1)
+        }
+        let fetched = await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            Task { @MainActor in leave(url, task) }
+        }
+        if inFlight[url]?.task == task { inFlight[url] = nil }
         return fetched
+    }
+
+    /// A tile left: one fewer waits; with none left, the fetch is cancelled.
+    private static func leave(_ url: URL, _ task: Task<Artwork.Fetched, Never>) {
+        guard var flight = inFlight[url], flight.task == task else { return }
+        flight.waiting -= 1
+        if flight.waiting > 0 {
+            inFlight[url] = flight
+        } else {
+            inFlight[url] = nil
+            task.cancel()
+        }
     }
 }
 
