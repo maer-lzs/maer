@@ -107,8 +107,23 @@ struct TickWorkTests {
     static let directTimeReads: [String: (count: Int, reason: String)] = [
         "BookmarksSheet.swift": (1, "an action: the position at the tap, never drawn"),
         "PlayerView.swift": (1, "an action: where a drag of the slider begins"),
-        "DriveModeView.swift": (3, "observes the coordinator, not the model; draws the time of its last change, as before"),
     ]
+
+    /// The drive page observes the coordinator, which does not move with the
+    /// running time: its progress, its remaining time and the live time stood
+    /// at the last change of the coordinator. Now each is a leaf of the clock.
+    @Test("die Fahrseite zeichnet Fortschritt, Restzeit und Live-Zeit aus der Uhr, jede Sekunde", .needsTheSources)
+    func theDrivePageDrawsTheTimeFromTheClock() throws {
+        let url = SourceTree.root.appendingPathComponent("Sources/Views/DriveModeView.swift")
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+        #expect(code.components(separatedBy: "PlaybackTimeReader(clock: vm.clock)").count - 1 == 2,
+                "the progress or the live time is no longer a leaf of the clock")
+        #expect(!code.contains(".currentTime"), "the drive page reads the model's time past the clock")
+        #expect(DriveModeView.remainingText(time: 600, duration: 4200) == "-1:00 h")
+        #expect(DriveModeView.remainingText(time: 3000, duration: 3600) == "-10 min")
+        #expect(DriveModeView.elapsedText(3900) == "1:05 h")
+        #expect(DriveModeView.elapsedText(-5) == "0 min")
+    }
 
     @Test("die Ansichten lesen die Zeit des Modells nur ueber die Uhr; jede andere Stelle ist je Datei gezaehlt, mit Grund", .needsTheSources)
     func viewsReadTheTimeThroughTheClock() {

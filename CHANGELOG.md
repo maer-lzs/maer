@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Drive mode keeps time.** In drive mode the progress bar and the
+remaining time move while a book or episode plays, and a station shows
+its running time; before, they stood still until something else changed
+on the page.
+
 **Retry looks the same.** The places that ask again after something
 could not load now show the same Retry pill: the catalog and archive
 pages, the shelves of the music library, the line that says the genres

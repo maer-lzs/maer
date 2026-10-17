@@ -279,6 +279,8 @@ struct DriveModeView: View {
     }
 
     /// Thin, NOT scrubbable. Aiming at a bar while driving is an illusion.
+    /// The page observes the coordinator, which does not move with the
+    /// running time: the clock's leaf draws it anew every second.
     @ViewBuilder
     private func progressBar(_ vm: PlayerViewModel) -> some View {
         if liveItemId != nil {
@@ -286,31 +288,35 @@ struct DriveModeView: View {
             // LIVE marker plus the elapsed time (the only honest number).
             HStack(spacing: 12) {
                 LiveBadge()
-                Text(elapsedText(vm))
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.7))
+                PlaybackTimeReader(clock: vm.clock) { time in
+                    Text(Self.elapsedText(time))
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
+                }
             }
             .accessibilityIdentifier("drive-live-row")
         } else {
-            VStack(spacing: 6) {
-                ProgressView(value: vm.duration > 0 ? min(max(vm.currentTime / vm.duration, 0), 1) : 0)
-                    .tint(.white)
-                Text(remainingText(vm))
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.7))
+            PlaybackTimeReader(clock: vm.clock) { time in
+                VStack(spacing: 6) {
+                    ProgressView(value: vm.duration > 0 ? min(max(time / vm.duration, 0), 1) : 0)
+                        .tint(.white)
+                    Text(Self.remainingText(time: time, duration: vm.duration))
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
+                }
             }
             .padding(.horizontal, 12)
         }
     }
 
-    private func elapsedText(_ vm: PlayerViewModel) -> String {
-        let seconds = Int(max(vm.currentTime, 0))
+    nonisolated static func elapsedText(_ time: Double) -> String {
+        let seconds = Int(max(time, 0))
         let h = seconds / 3600, m = (seconds % 3600) / 60
         return h > 0 ? String(format: "%d:%02d h", h, m) : "\(m) min"
     }
 
-    private func remainingText(_ vm: PlayerViewModel) -> String {
-        let remaining = max(vm.duration - vm.currentTime, 0)
+    nonisolated static func remainingText(time: Double, duration: Double) -> String {
+        let remaining = max(duration - time, 0)
         let h = Int(remaining) / 3600, m = (Int(remaining) % 3600) / 60
         return h > 0 ? "-\(h):\(String(format: "%02d", m)) h" : "-\(m) min"
     }
