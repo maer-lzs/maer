@@ -585,7 +585,7 @@ final class ImageCache {
         guard max(width, height) > maxPixelSize else { return image }
         let factor = maxPixelSize / max(width, height)
         let size = CGSize(width: (width * factor).rounded(), height: (height * factor).rounded())
-        guard (try? await sizing.enter()) != nil else { return image }
+        do { try await sizing.enter() } catch { return image }
         let thumb = image.preparingThumbnail(of: size) ?? image
         await sizing.leave()
         return thumb

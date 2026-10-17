@@ -222,6 +222,9 @@ struct LocalSubscribeDoorTests {
                 "the person's tap was refused while the server is unread")
         let key = PodcastSubscriptions.feedKey(rig.feed)
         #expect(subs.uncheckedFeedKeys() == [key], "the subscription is not noted")
+        // The subscription stands in the rows before the server is read.
+        await subs.awaitPendingWrites()
+        #expect(await subs._testRowCounts()?.shows == 1, "the precondition: the subscription stands in the rows")
         let local = try #require(subs.shows.first { $0.feedURL == rig.feed })
         let heard = try #require(local.episodes.first)
         ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
