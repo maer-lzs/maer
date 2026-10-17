@@ -71,7 +71,12 @@ struct CoverMemoryTests {
         let url = URL(string: "https://covers.example.invalid/pressure-\(UUID().uuidString).png")!
         let (shown, kept) = try #require(await ImageCache.displaySized(png(600), maxPixelSize: cache.displayPixelSize))
         cache.set(shown, data: kept, for: url, startedAt: cache.invalidationCount(for: url))
-        _ = await cache.thumbnail(for: url)
+        // A thumbnail is read from disk, where the write of `set` lands a
+        // moment later.
+        for _ in 0..<40 where cache.cachedThumbnail(for: url) == nil {
+            _ = await cache.thumbnail(for: url)
+            if cache.cachedThumbnail(for: url) == nil { try await Task.sleep(for: .milliseconds(50)) }
+        }
         #expect(cache.holdsFullCover(for: url), "the precondition: the cover stands in memory")
         #expect(cache.cachedThumbnail(for: url) != nil, "the precondition: the thumbnail is warm")
         let releases = cache.fullCoverReleases
@@ -86,7 +91,8 @@ struct CoverMemoryTests {
     /// gave, whatever their names.
     @Test("kein Weg im Netz-Ordner legt ein frisch geladenes Cover unverkleinert ab", .needsTheSources)
     func noPathStoresTheOriginal() throws {
-        let call = try Regex(#"\bset\((\w+), data: (\w+), for:"#)
+        // Not `\b`: by Unicode's word rules `tiers.set` is one word.
+        let call = try Regex(#"(?:^|\W)set\((\w+), data: (\w+), for:"#)
         var calls = 0
         var offenders: [String] = []
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Networking")) where url.pathExtension == "swift" {
