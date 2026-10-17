@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// A measurement for the open question E4 (moving the mirrors out of the
-/// defaults into the database), not a change: the size of one mirror blob
+/// A measurement for the open question whether the mirrors move out of the
+/// defaults into the database, not a change: the size of one mirror blob
 /// at 22,000 stands, and how long one write of it into a defaults domain
 /// takes. Every write of a mirror writes the whole blob. The numbers stand
 /// in the test log (`STANDBLOB`); the case holds only that the measure ran.
 @Suite(.serialized)
 struct StandBlobMeasureTests {
-    @Test("Messung E4: ein Spiegel mit 22.000 Staenden, Groesse und Schreibdauer in den Voreinstellungen")
+    @Test("Messung: ein Spiegel mit 22.000 Staenden, Groesse und Schreibdauer in den Voreinstellungen")
     func theMirrorBlobAt22000Stands() {
         let suite = "standblob-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

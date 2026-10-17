@@ -926,9 +926,8 @@ nonisolated enum AppStorageKeys {
     static func flushedPosition(_ itemId: String) -> String { "flushedPosition.\(itemId)" }
     /// The last few backward jumps of this book. The diagnosis
     /// is the only window the person has, system logs are not practical.
-    static func jumpRing(_ itemId: String) -> String { jumpRingPrefix + itemId }
     /// The ring's keys go with their book (`cleanupPerBookKeys`).
-    static let jumpRingPrefix = "jumpRing."
+    static func jumpRing(_ itemId: String) -> String { "jumpRing.\(itemId)" }
 
     /// Per-show playback speed (start rate for this show's episodes until an
     /// episode has its own saved rate).
@@ -1039,8 +1038,8 @@ nonisolated enum AppStorageKeys {
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
         let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
-        // The jump ring too: before, it outlived its book for good.
-        for prefix in ["playbackRate.", PlayedTail.prefix, jumpRingPrefix] {
+        // The jump ring goes with its book too.
+        for prefix in ["playbackRate.", PlayedTail.prefix, "jumpRing."] {
             for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
                 if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }
             }
