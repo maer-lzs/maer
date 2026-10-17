@@ -2189,7 +2189,9 @@ final class PodcastSubscriptions: ObservableObject {
                 }
             case .handOver:
                 shows.removeAll { Self.feedKey($0.feedURL) == key }
-                save()
+                // Handed over means gone here, also when it was the only one:
+                // the removal is the action of this write.
+                save(emptying: .allowed)
                 noteUnchecked(key, false)
                 Logger.rss.notice("SETTLE held on Audiobookshelf, states handed over, local removed: \(key, privacy: .private(mask: .hash))")
             case .keepsLocal:
@@ -2804,7 +2806,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// old implementation encoded and wrote the whole JSON synchronously on the
     /// main actor: a visible hitch on subscribe/refresh/import.
     /// `emptying` is `.refused` for every path but the person's own
-    /// unsubscribe.
+    /// unsubscribe and a show handed over to Audiobookshelf.
     private func save(emptying: RowEmptying = .refused, also: [SQLiteConnection.Statement] = []) {
         // The central funnel. Persisting before the bootstrap
         // finished would write the still-empty RAM state over the good file

@@ -231,6 +231,12 @@ struct LocalSubscribeDoorTests {
         await subs.settleUnchecked()
         #expect(rig.server.progress[episode]?.currentTime == 600, "the heard state did not reach the server's episode")
         #expect(!subs.shows.contains { $0.feedURL == rig.feed }, "the local subscription stays beside the server's")
+        // The only subscription here: the hand-over empties the rows on
+        // purpose, so a restart does not bring it back beside the server's.
+        await subs.awaitPendingWrites()
+        #expect(subs.lastWipeRefusal == nil, "the hand-over of the only subscription was refused as a wipe")
+        #expect(await subs._testRowCounts() == PodcastRowStore.Counts(shows: 0, episodes: 0),
+                "the handed-over subscription stays in the rows and comes back at the next start")
         #expect(subs.uncheckedFeedKeys().isEmpty, "the note stays")
         #expect(ListeningStore.backup(heard.guid, in: rig.defaults)?.first == 600, "the local state was dropped")
     }
