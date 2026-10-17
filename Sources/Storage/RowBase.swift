@@ -6,8 +6,8 @@
 import Foundation
 
 /// What a store knows about its rows before a write, and the one rule that
-/// follows from it. The base advances ONLY after a write landed: a failed
-/// write leaves it where it was, so the next write diffs against the last
+/// follows from it. The base advances ONLY after a write landed, or found
+/// known rows already holding the snapshot: a failed write leaves it where it was, so the next write diffs against the last
 /// state that really is in the rows. A start that could not read every row
 /// leaves the rows unknown and keeps what it did read: a write then removes
 /// a row it read and that is gone from the stock, and never removes a row

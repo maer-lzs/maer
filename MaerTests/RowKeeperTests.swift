@@ -168,6 +168,51 @@ struct RowKeeperTests {
         #expect(chain.lastRefusal == .suspected)
     }
 
+    /// A stock held by reference, so the witness sees WHICH value the base holds.
+    private final class Stock { let rows: [String]; init(_ rows: [String]) { self.rows = rows } }
+
+    /// An empty diff over known rows says the rows hold the snapshot: the
+    /// base becomes it, and the stock before is let go. Left on the older
+    /// value, a refresh that changed nothing kept a second whole stock
+    /// alive beside the memory. Under an unknown base nothing moves.
+    @Test("ein leerer Diff ueber bekannten Zeilen schiebt die Grundlage auf den Schnappschuss, ueber unbekannten nicht; uebersprungen schiebt nichts")
+    func anUnchangedWriteLetsTheStockBeforeGo() async {
+        let chain = RowChain<Stock>(label: "PROBE")
+        let before = Stock(["a"]), same = Stock(["a"])
+        chain.started(rows: before, skipped: 0)
+        chain.write(read: { (nil, 0) }, take: { same }, apply: { _, _, _ in .unchanged })
+        await chain.awaitPendingWrites()
+        #expect(chain.base.knownValue === same, "the base still holds the stock before the write")
+
+        let later = Stock(["a"])
+        chain.write(read: { (nil, 0) }, take: { later }, apply: { _, _, _ in .skipped })
+        await chain.awaitPendingWrites()
+        #expect(chain.base.knownValue === same, "a skipped write moved the base")
+
+        let unread = RowChain<Stock>(label: "PROBE")
+        unread.started(rows: before, skipped: 1)
+        unread.write(read: { (nil, 0) }, take: { same }, apply: { _, _, _ in .unchanged })
+        await unread.awaitPendingWrites()
+        #expect(unread.base.knownValue == nil, "an empty diff made rows nobody read known")
+        #expect(unread.base.removable === before, "the rows read at the start are no longer the ones to remove")
+    }
+
+    /// The two stores that diff a whole stock answer an empty diff with
+    /// `.unchanged`; `.skipped` stays for rows that could not be opened.
+    @Test("die Bibliothek und die Abos melden einen leeren Diff als unveraendert, nicht als uebersprungen", .needsTheSources)
+    func theStoresSayUnchangedForAnEmptyDiff() throws {
+        var codeOf: [String: String] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles()
+        where ["PodcastSubscriptions.swift", "LibraryViewModel.swift"].contains(file.lastPathComponent) {
+            codeOf[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        }
+        #expect(codeOf.count == 2, "the precondition: the fence read both stores")
+        for (name, code) in codeOf {
+            #expect(code.components(separatedBy: "return .unchanged").count - 1 == 1, "\(name): the empty diff no longer says unchanged")
+            #expect(code.components(separatedBy: "return .skipped").count - 1 == 1, "\(name): a skip beside the one for unopened rows")
+        }
+    }
+
     /// Whether a write landed before a read looked, held by reference.
     private final class Landed { var yet = false }
 

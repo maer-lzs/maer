@@ -1488,7 +1488,7 @@ final class LibraryViewModel: ObservableObject {
             // are an image of the servers, a row that stays is replaced or
             // dropped by the next fetch, never a loss.
             let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
-            guard !diff.isEmpty else { return .skipped }
+            guard !diff.isEmpty else { return .unchanged }
             let removed = diff.itemsRemoved.count + diff.progressRemoved.count
             let counts = try await rows.apply(diff)
             let ms = Int(Date().timeIntervalSince(started) * 1000)

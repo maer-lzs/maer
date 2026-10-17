@@ -489,7 +489,7 @@ final class PodcastSubscriptions: ObservableObject {
             let diff = PodcastRowDiff.compute(previous: base.previous(for: snapshot), current: snapshot)
             // While a replacement is open, every write carries its mark.
             let mark = self.follower?.mark()
-            guard !diff.isEmpty || mark != nil || !also.isEmpty else { return .skipped }
+            guard !diff.isEmpty || mark != nil || !also.isEmpty else { return .unchanged }
             let started = Date()
             // `also`: rows carried as they are at a hand-over, in the same
             // transaction as the diff and the mark.

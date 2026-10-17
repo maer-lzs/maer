@@ -28,6 +28,12 @@ final class RowChain<Snapshot> {
         case landed
         /// Nothing was written on purpose (no change).
         case skipped
+        /// Nothing was written because the diff against the base was
+        /// empty: over known rows they hold the snapshot already, so the
+        /// base becomes it. A base left on the older value would keep a
+        /// whole second stock alive beside the memory: a refresh that
+        /// changed nothing still builds every value anew.
+        case unchanged
         /// An empty snapshot over rows was refused, and how it spoke.
         case refused(WipeRefusal)
     }
@@ -198,6 +204,10 @@ final class RowChain<Snapshot> {
                 case .landed: self.base = .known(snapshot)
                 case .refused(let spoke): self.lastRefusal = spoke
                 case .skipped: break
+                case .unchanged:
+                    // Only over known rows: under an unknown base an empty
+                    // diff says nothing about the rows nobody read.
+                    if case .known = self.base { self.base = .known(snapshot) }
                 }
             } catch {
                 Logger.library.error("\(self.label, privacy: .public) save failed reason=\(String(describing: error), privacy: .public) base kept")
