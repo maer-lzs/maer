@@ -22,6 +22,12 @@ it came back here after the next start, next to the one on the server.
 series page is the day it aired everywhere; west of UTC it showed the day
 before.
 
+**Back from an author leads into the search.** An author, a series or the
+authors, series or genres of your library opened from the search open
+their page as before; going back now returns to the search with your
+query and its results, also after opening a book from that page. Before,
+back led to the start page and the search was gone.
+
 **Covers use less memory.** Large covers are brought to their display size
 before the app holds them, two at a time; while scrolling through covers
 nobody has loaded before, the last ones may appear a moment later than
