@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import OSLog
 
 /// Episode page: episode cover + title, linked show, play/resume, download,
 /// played toggle and description. Background in the cover gradient like the
@@ -190,9 +191,18 @@ struct PodcastEpisodeDetailView: View {
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         // Load chapters lazily (RSS: JSON file, ABS: from the episode object).
         .task(id: item.id) {
-            let detail = try? await router.provider(item.id).fetchItemDetail(itemId: item.id)
-            chapters = detail?.media.chapters ?? []
-            notes = detail?.media.metadata?.description
+            do {
+                let detail = try await router.provider(item.id).fetchItemDetail(itemId: item.id)
+                chapters = detail.media.chapters ?? []
+                notes = detail.media.metadata?.description
+            } catch {
+                // The page stands without chapters and with the notes the
+                // entry carries; the line says why. A page left is no failure.
+                if Task.isCancelled { return }
+                chapters = []
+                notes = nil
+                Logger.rss.notice("EPISODE detail failed reason=\(String(describing: error), privacy: .public)")
+            }
         }
     }
 
