@@ -125,6 +125,16 @@ struct TickWorkTests {
         #expect(DriveModeView.elapsedText(-5) == "0 min")
     }
 
+    /// Every read of a `.currentTime` property in a view, whatever the model
+    /// is called; a stored progress (`progress?.currentTime`) is a saved
+    /// position, not the running time, and a call `currentTime()` is the
+    /// player's.
+    nonisolated static func modelTimeReads(in code: String) -> Int {
+        code.matches(of: #/(\w+)\??\.currentTime\b(?!\()/#)
+            .filter { !$0.output.1.lowercased().hasSuffix("progress") }
+            .count
+    }
+
     @Test("die Ansichten lesen die Zeit des Modells nur ueber die Uhr; jede andere Stelle ist je Datei gezaehlt, mit Grund", .needsTheSources)
     func viewsReadTheTimeThroughTheClock() {
         var counts: [String: Int] = [:]
@@ -133,10 +143,14 @@ struct TickWorkTests {
                 Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
                 continue
             }
-            let code = SyncContractFenceTests.stripped(text)
-            let hits = ["viewModel.currentTime", "vm.currentTime"].map { code.components(separatedBy: $0).count - 1 }.reduce(0, +)
+            let hits = Self.modelTimeReads(in: SyncContractFenceTests.stripped(text))
             if hits > 0 { counts[url.lastPathComponent] = hits }
         }
+        #expect(Self.modelTimeReads(in: "let t = player.currentTime") == 1, "a model under another name slips through")
+        #expect(Self.modelTimeReads(in: "let t = model?.currentTime ?? 0") == 1)
+        #expect(Self.modelTimeReads(in: "x(entry.progress?.currentTime, cached?.userMediaProgress?.currentTime)") == 0,
+                "a stored progress is not the running time")
+        #expect(Self.modelTimeReads(in: "let t = avPlayer.currentTime()") == 0, "the player's call is not the model's time")
         #expect(StockDrift.findings(counts: counts, stock: Self.directTimeReads.mapValues(\.count)) == [],
                 "a view reads the model's time past the clock, or a stock above the count")
         #expect(Self.directTimeReads.values.allSatisfy { !$0.reason.isEmpty })
