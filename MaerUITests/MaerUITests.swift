@@ -16,17 +16,6 @@ import XCTest
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    /// Leave the current detail page by its OWN back button. Using
-    /// `app.navigationBars.buttons` by index reaches across every bar in the
-    /// hierarchy — including the library's, whose leading button is present
-    /// only on tabs that have something to sort.
-    private func backOut(_ app: XCUIApplication) {
-        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
-        let back = bar.buttons.element(boundBy: 0)
-        XCTAssertTrue(back.waitForExistence(timeout: 5), "the detail page must offer a way back")
-        back.tap()
-    }
-
     /// THE launch. Every journey comes up through here, so "the process really
     /// reached the foreground" is asserted once instead of being forgotten:
     /// two radio journeys tapped their tab straight after `launch()` and paid
@@ -251,78 +240,6 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["tab-audiobooks"].firstMatch.waitForExistence(timeout: 10),
                       "serverless, the audiobooks tab must exist and carry the free area")
         app.terminate()
-    }
-
-    /// FLIPPED assurance: the SOURCE toggle no longer touches the
-    /// tab bar — a tab is the user's master decision, a source only fills or
-    /// empties its section. The MASTER toggle (settings → Libraries) is what
-    /// removes and restores the tab, live.
-    func testMusicSourceToggleUpdatesTabs() {
-        let app = launchSeeded()
-        let music = app.buttons["tab-music"].firstMatch
-        XCTAssertTrue(music.waitForExistence(timeout: 15), "seeded music source must surface the tab")
-
-        func setMusicToggle() {
-            let gear = app.buttons["open-settings"].firstMatch
-            XCTAssertTrue(gear.waitForExistence(timeout: 10))
-            gear.tap()
-            // The source row lives behind its area on the map (General pill,
-            // the settings' landing tab).
-            let area = app.buttons["source-map-music"].firstMatch
-            XCTAssertTrue(area.waitForExistence(timeout: 10))
-            area.tap()
-            let row = app.buttons["settings-music-source"].firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 10))
-            row.tap()
-            let toggle = app.switches["music-tab-toggle"].firstMatch
-            XCTAssertTrue(toggle.waitForExistence(timeout: 10))
-            // The identifier sits on the row-wide element — a center tap hits
-            // the label, which does NOT flip a Form toggle. Tap the trailing
-            // knob and verify the value actually changed.
-            let before = toggle.value as? String
-            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-            let flipped = NSPredicate(format: "value != %@", before ?? "")
-            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
-                                          timeout: 5), .completed, "the toggle must flip")
-            // Back to the settings root (Done lives on ITS toolbar), then out.
-            // Anchor on the CURRENT navigation bar, not on index 0 of
-            // ALL bars — `app.navigationBars` also sees the library bar behind
-            // the sheet, whose button count varies per tab (the sort button
-            // only exists where there is something to sort). The index was
-            // always fragile; it merely happened to fit.
-            backOut(app)   // source page → area page
-            backOut(app)   // area page → the map
-            let done = app.buttons["settings-done"].firstMatch
-            XCTAssertTrue(done.waitForExistence(timeout: 5))
-            done.tap()
-        }
-
-        func setMasterToggle() {
-            let gear = app.buttons["open-settings"].firstMatch
-            XCTAssertTrue(gear.waitForExistence(timeout: 10))
-            gear.tap()
-            let toggle = app.switches["tab-master-music"].firstMatch
-            XCTAssertTrue(waitScrollingTo(app, element: toggle, hittable: true))
-            let before = toggle.value as? String
-            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-            let flipped = NSPredicate(format: "value != %@", before ?? "")
-            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
-                                          timeout: 5), .completed, "the master toggle must flip")
-            let done = app.buttons["settings-done"].firstMatch
-            XCTAssertTrue(done.waitForExistence(timeout: 5))
-            done.tap()
-        }
-
-        setMusicToggle()   // SOURCE off
-        XCTAssertTrue(music.waitForExistence(timeout: 10),
-                      "the source toggle must NOT remove the tab — sections empty, tabs stay")
-        setMusicToggle()   // source on again
-        setMasterToggle()  // MASTER off
-        XCTAssertTrue(music.waitForNonExistence(timeout: 10),
-                      "the master toggle removes the tab live")
-        setMasterToggle()  // master on again
-        XCTAssertTrue(music.waitForExistence(timeout: 10),
-                      "the master toggle restores the tab live")
     }
 
     /// The presentation host. A sheet cannot be presented from the root while

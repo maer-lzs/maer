@@ -38,11 +38,10 @@ nonisolated final class RowLabelAccessibilityJourney: XCTestCase {
         app.terminate()
     }
 
-    func testTheStorageRowsReadTheirTitleAtAX3() throws {
-        try readStorageRows(sizeCategory: "UICTContentSizeCategoryAccessibilityXL")
-    }
-
-    func testTheStorageRowsReadTheirTitleAtTheStandardSize() throws {
+    /// One way, both sizes: the standard size first, then the
+    /// accessibility size, each in its own launch.
+    func testTheStorageRowsReadTheirTitleAtTheStandardSizeAndAtAX3() throws {
         try readStorageRows(sizeCategory: nil)
+        try readStorageRows(sizeCategory: "UICTContentSizeCategoryAccessibilityXL")
     }
 }

@@ -17,6 +17,11 @@ import XCTest
 /// Therefore this journey never navigates away in between. A fresh page would
 /// read the keys again and look right even with the crutch gone, which is
 /// exactly the failure it is here to catch.
+///
+/// The same way first walks the music source's own switches: the SOURCE
+/// switch no longer touches the tab bar (a tab is the person's master
+/// decision, a source only fills or empties its section), the MASTER switch
+/// (settings, Libraries) removes and restores the tab, live.
 nonisolated final class SourcesAllOffJourney: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
@@ -24,11 +29,22 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
     /// reads the page and not a single row's luck.
     private let watched = ["source-toggle-lrclib", "source-toggle-appleCatalog"]
 
-    func testTurningEverySourceOffShowsOnTheSamePage() throws {
+    func testTheSourceSwitchesActOnTheTabsAndOnTheSamePage() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-uitest-harness", "-uitest", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
+
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15), "seeded music source must surface the tab")
+        setMusicSource(app)   // SOURCE off
+        XCTAssertTrue(music.waitForExistence(timeout: 10),
+                      "the source toggle must NOT remove the tab; sections empty, tabs stay")
+        setMusicSource(app)   // source on again
+        setMusicMaster(app)   // MASTER off
+        XCTAssertTrue(music.waitForNonExistence(timeout: 10), "the master toggle removes the tab live")
+        setMusicMaster(app)   // master on again
+        XCTAssertTrue(music.waitForExistence(timeout: 10), "the master toggle restores the tab live")
 
         try openSourcesPage(app)
 
@@ -86,6 +102,67 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
             XCTAssertEqual(element.value as? String, "1", "\(id) must be back ON for the cases after this one")
         }
         app.terminate()
+    }
+
+    // MARK: - The music source's switches
+
+    /// Flips the music source's switch on its page behind the map's music
+    /// area and comes back out to the start page.
+    private func setMusicSource(_ app: XCUIApplication) {
+        let gear = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(gear.waitForExistence(timeout: 10))
+        gear.tap()
+        // The source row lives behind its area on the map (General pill,
+        // the settings' landing tab).
+        let area = app.buttons["source-map-music"].firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 10))
+        area.tap()
+        let row = app.buttons["settings-music-source"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        flipAndWait(app.switches["music-tab-toggle"].firstMatch, "the toggle must flip")
+        // Back to the settings root (Done lives on ITS toolbar), then out.
+        backOut(app)   // source page to area page
+        backOut(app)   // area page to the map
+        let done = app.buttons["settings-done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+    }
+
+    /// Flips the music tab's master switch in the settings.
+    private func setMusicMaster(_ app: XCUIApplication) {
+        let gear = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(gear.waitForExistence(timeout: 10))
+        gear.tap()
+        let toggle = app.switches["tab-master-music"].firstMatch
+        XCTAssertTrue(scrollTo(app, toggle, hittable: true))
+        flipAndWait(toggle, "the master toggle must flip")
+        let done = app.buttons["settings-done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+    }
+
+    /// The identifier sits on the row-wide element: a center tap hits the
+    /// label, which does NOT flip a Form toggle. The trailing knob does, and
+    /// the value is waited for.
+    private func flipAndWait(_ toggle: XCUIElement, _ message: String) {
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        let before = toggle.value as? String
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        let flipped = NSPredicate(format: "value != %@", before ?? "")
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
+                                      timeout: 5), .completed, message)
+    }
+
+    /// Leave the current detail page by its OWN back button. Using
+    /// `app.navigationBars.buttons` by index reaches across every bar in the
+    /// hierarchy, including the library's, whose leading button is present
+    /// only on tabs that have something to sort.
+    private func backOut(_ app: XCUIApplication) {
+        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
+        let back = bar.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "the detail page must offer a way back")
+        back.tap()
     }
 
     // MARK: - Getting there
