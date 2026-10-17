@@ -96,6 +96,17 @@ enum UITestSeed {
         AppSession.shared.authViewModel.isLoggedIn = false
     }
 
+    /// Every switchable source on, written to the defaults
+    /// (`-uitest-sources-on`). The journey that turns them all off puts the
+    /// bench back with one start; the page is what it measures, its cleanup
+    /// is not. The same list the collective switch-off writes.
+    static func applySourcesOnIfRequested() {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest-sources-on") else { return }
+        for source in ExternalSources.switchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured) {
+            AppStorageKeys.set(true, for: source.storageKey)
+        }
+    }
+
     /// Seeded "New Shows" catalog for the search journey. Real directory
     /// requests would leave the harness. Active only in seed mode.
     static var catalogSearchOverride: (@MainActor (String) -> [SearchResult])? {

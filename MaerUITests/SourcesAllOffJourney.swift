@@ -29,11 +29,25 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
     /// reads the page and not a single row's luck.
     private let watched = ["source-toggle-lrclib", "source-toggle-appleCatalog"]
 
+    /// When the way started and its last mark, for the seconds each part
+    /// takes (`JOURNEYTIME` in the log).
+    private var started = Date()
+    private var lastMark = Date()
+
+    private func phase(_ name: String) {
+        let now = Date()
+        print("JOURNEYTIME part=\(name) s=\(Int(now.timeIntervalSince(lastMark))) total=\(Int(now.timeIntervalSince(started)))")
+        lastMark = now
+    }
+
     func testTheSourceSwitchesActOnTheTabsAndOnTheSamePage() throws {
+        started = Date()
+        lastMark = started
         let app = XCUIApplication()
         app.launchArguments += ["-uitest-harness", "-uitest", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
+        phase("start")
 
         let music = app.buttons["tab-music"].firstMatch
         XCTAssertTrue(music.waitForExistence(timeout: 15), "seeded music source must surface the tab")
@@ -45,8 +59,10 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         XCTAssertTrue(music.waitForNonExistence(timeout: 10), "the master toggle removes the tab live")
         setMusicMaster(app)   // master on again
         XCTAssertTrue(music.waitForExistence(timeout: 10), "the master toggle restores the tab live")
+        phase("music")
 
         try openSourcesPage(app)
+        phase("page")
 
         // The precondition, assured instead of assumed: a case that starts
         // with everything already off would measure nothing at all.
@@ -64,6 +80,7 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
                 XCTAssertEqual(element.value as? String, "1", "\(id) must start ON for this measurement")
             }
         }
+        phase("precondition")
 
         // The action, with its second step.
         let allOff = app.buttons["sources-all-off"].firstMatch
@@ -85,22 +102,25 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
                            "\(id) still shows ON after the collective switch-off: the page did not re-read its keys")
         }
 
+        phase("switch-off")
+
         // Put the bench back: EVERY source, not just the two this case
         // watches. The switches live in the simulator's real defaults, so a
         // half-healed page leaves the unit suite running against dead
         // sources afterwards (measured: two catalog fences fell over it).
-        // Through a restart, because after the alert the rows sit elsewhere
-        // and the cleanup is not what this case measures.
+        // Through a start that writes every source on, because the cleanup
+        // is not what this case measures; the page then shows it.
         app.terminate()
+        app.launchArguments += ["-uitest-sources-on"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come back up")
         try openSourcesPage(app)
-        turnEverySourceBackOn(app)
         for id in watched {
             let element = app.switches[id].firstMatch
             XCTAssertTrue(reveal(app, element), "\(id) must be reachable again")
             XCTAssertEqual(element.value as? String, "1", "\(id) must be back ON for the cases after this one")
         }
+        phase("cleanup")
         app.terminate()
     }
 
@@ -188,31 +208,6 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
             sources.tap()
             XCTAssertTrue(firstSwitch.waitForExistence(timeout: 10), "the sources page did not open on the second tap either")
         }
-    }
-
-    /// Walks the page from its top and flips every switch that stands OFF.
-    /// There is no collective way back by design, so the cleanup does what a
-    /// person would do: one after the other, scrolling down as it goes, until
-    /// the collective action at the page's end is in view.
-    ///
-    /// Only a row that lies wholly on screen is flipped: the tap lands at the
-    /// row's vertical middle, and a tall row cut off at the bottom has its
-    /// middle below the screen, where a tap moves nothing. And the page is
-    /// never swiped DOWN here: it opens at its top, and a swipe down at the
-    /// top of a sheet closes the sheet.
-    private func turnEverySourceBackOn(_ app: XCUIApplication) {
-        for _ in 0..<30 {
-            let screen = app.frame
-            let off = app.switches.allElementsBoundByIndex
-                .filter { $0.exists && $0.value as? String == "0" && screen.contains($0.frame) }
-            if let first = off.first {
-                flip(first)
-                continue
-            }
-            if app.buttons["sources-all-off"].firstMatch.isHittable { return }
-            app.swipeUp()
-        }
-        XCTFail("the cleanup did not reach the end of the page")
     }
 
     /// Brings an element of this page into view, below or above. A row the

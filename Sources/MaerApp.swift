@@ -165,6 +165,7 @@ struct MaerApp: App {
         // bypass login + seed deterministic content BEFORE the first render.
         UITestSeed.applyIfRequested()
         UITestSeed.applySetupProbeIfRequested()
+        UITestSeed.applySourcesOnIfRequested()
         FrameProbe.shared.startIfRequested()
         #endif
         // Clear orphaned import temp (partial downloads/upload
