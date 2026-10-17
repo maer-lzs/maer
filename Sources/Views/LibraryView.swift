@@ -25,6 +25,9 @@ struct LibraryView: View {
     /// (Subsonic reloadConfig, ABS-podcast probe) in BOTH directions.
     @ObservedObject private var session = AppSession.shared
     @State private var isShowingSearch = false
+    /// Whether the search stepped aside for a page of the books tab and
+    /// comes back when the stack returns to its depth.
+    @State private var searchReturn = SearchReturn()
     /// The search field lives in the BOTTOM bar; bar and search page
     /// share this model (the page renders, the bar types).
     @StateObject private var searchModel = GlobalSearchModel.production()
@@ -191,10 +194,21 @@ struct LibraryView: View {
         .environment(\.pushLibraryListRoute) { push($0, to: type) }
         .environment(\.pushMusicRoute) { push($0, to: type) }
         .environment(\.pushRadioRoute) { push($0, to: type) }
-        // A push from the search deck leaves the search: the pushed page
-        // gets the normal bottom bar, not the search field.
+        // A push from the search leaves the search: the pushed page gets the
+        // normal bottom bar, not the search field. A page of the books tab
+        // opened from it only sets it aside, and back at that depth the
+        // search stands again with its query and results.
         .onChange(of: (navigationPaths[type] ?? NavigationPath()).count) { old, new in
-            if isShowingSearch, selectedMediaType == type, new > old { closeSearch() }
+            guard selectedMediaType == type else { return }
+            switch searchReturn.pathChanged(from: old, to: new, showing: isShowingSearch) {
+            case .close: closeSearch()
+            case .stepAside:
+                searchFieldFocused = false
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
+            case .comeBack:
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
+            case .none: break
+            }
         }
         .tabVisibility(selectedMediaType == type)
     }
@@ -217,6 +231,10 @@ struct LibraryView: View {
                 selectedMediaType = .music
                 // Into the path of the NEW tab, never the old one.
                 push(route, to: .music)
+            },
+            onOpenLibraryPage: { route in
+                searchReturn.opensPage()
+                push(route, to: selectedMediaType)
             }
         )
         .background(Color(.systemBackground).ignoresSafeArea())
@@ -447,6 +465,8 @@ struct LibraryView: View {
             }
         }
         .onChange(of: selectedMediaType) { _, newValue in
+                    // A search set aside on another tab does not come back here.
+                    searchReturn.forget()
                     mountedTabs.insert(newValue)
                     // Letzter-Tab: remember the choice across launches.
                     AppStorageKeys.lastSelectedTabValue = newValue.rawValue
@@ -1032,6 +1052,7 @@ struct LibraryView: View {
     }
 
     private func closeSearch() {
+        searchReturn.forget()
         searchFieldFocused = false
         searchModel.query = ""
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
@@ -1040,6 +1061,7 @@ struct LibraryView: View {
     private var searchButton: some View {
         FloatingSearchButton(
             action: {
+                searchReturn.forget()
                 searchModel.query = ""
                 // The scope starts where the user is (Home → Library).
                 searchScope = SearchScope.initial(for: selectedMediaType)

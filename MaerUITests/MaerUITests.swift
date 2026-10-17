@@ -16,6 +16,16 @@ import XCTest
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
+    /// Back from a pushed page by the leading button of the topmost bar: on
+    /// iOS 26 and later the system names it `BackButton`, on iOS 18 it
+    /// carries no name.
+    private func backFromPage(_ app: XCUIApplication) {
+        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
+        let back = bar.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "the page must offer the way back")
+        back.tap()
+    }
+
     /// THE launch. Every journey comes up through here, so "the process really
     /// reached the foreground" is asserted once instead of being forgotten:
     /// two radio journeys tapped their tab straight after `launch()` and paid
@@ -151,12 +161,11 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the deck must offer the recent search")
         snap(app, "global-search-deck")
         // The library's authors are the page of the books tab
-        // (`BookGroupsScreen`), pushed on the stack the search was opened
-        // from; the search closes with the push, and on iOS 27 a push once
-        // left a white page. It must draw its list; the system back leads to
-        // that stack's page, and the search opens again with its recents.
-        // (The music deck's artists come from a server the harness does not
-        // have; that drill below says so in a sentence.)
+        // (`BookGroupsScreen`), pushed on the stack the search stands on; the
+        // search steps aside for it, and on iOS 27 a push once left a white
+        // page. It must draw its list, and back leads into the search as it
+        // was. (The music deck's artists come from a server the harness does
+        // not have; that drill below says so in a sentence.)
         app.buttons["scope-library"].firstMatch.tap()
         let authorsTile = app.buttons["deck-tier-authors"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: authorsTile, hittable: true),
@@ -165,15 +174,24 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Ada Author"].firstMatch.waitForExistence(timeout: 10),
                       "the authors page must draw its list, never a white page")
         snap(app, "global-search-authors")
-        // The leading button of the topmost bar: on iOS 26 and later the
-        // system names it `BackButton`, on iOS 18 it carries no name.
-        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
-        let back = bar.buttons.element(boundBy: 0)
-        XCTAssertTrue(back.waitForExistence(timeout: 5), "the authors page must offer the way back")
-        back.tap()
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "the way back must lead to the page with the search")
-        search.tap()
-        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the search opened again must offer the recent search")
+        backFromPage(app)
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "back from the authors must lead into the search")
+        snap(app, "global-search-back-from-authors")
+        // A typed hit of an author: back leads into the search with its
+        // query and its results.
+        field.tap()
+        field.typeText("Ada")
+        let authorHit = app.staticTexts["Ada Author"].firstMatch
+        XCTAssertTrue(authorHit.waitForExistence(timeout: 10), "the search must find the seeded author")
+        authorHit.tap()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].firstMatch.waitForExistence(timeout: 10),
+                      "the author's page must show the author's book")
+        backFromPage(app)
+        XCTAssertTrue(authorHit.waitForExistence(timeout: 5), "back from the author must show the results again")
+        XCTAssertEqual(field.value as? String, "Ada", "back from the author must keep the query")
+        snap(app, "global-search-back-from-author-hit")
+        close.tap()
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the deck must come back after the query is cleared")
         // Back to the music scope, where the steps below expect the page.
         app.buttons["scope-music"].firstMatch.tap()
         // The artist drill asks a music server the harness does not have.

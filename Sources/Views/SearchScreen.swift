@@ -29,10 +29,13 @@ struct SearchScreen: View {
     /// (albums/songs/playlists/genres). The caller closes the search and
     /// pushes the route on the music tab.
     var onOpenMusicRoute: (MusicRoute) -> Void = { _ in }
+    /// A page of the books tab (an author, a series, the groups): the
+    /// caller pushes it, and the search comes back when the person returns
+    /// (`SearchReturn`).
+    var onOpenLibraryPage: (LibraryListRoute) -> Void = { _ in }
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    @Environment(\.pushLibraryListRoute) private var pushLibraryListRoute
     @State private var drill: [SearchDeckDrill] = []
     /// Explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
@@ -422,9 +425,9 @@ struct SearchScreen: View {
             // the drill was only rendered without a query, so a tap on a
             // hit did nothing visible.
             case .author:
-                pushLibraryListRoute(.author(result.title))
+                onOpenLibraryPage(.author(result.title))
             case .series:
-                pushLibraryListRoute(.series(result.title))
+                onOpenLibraryPage(.series(result.title))
             default:
                 onOpen(result)
             }
@@ -631,8 +634,9 @@ struct SearchScreen: View {
     private func go(to destination: SearchDeckDestination) {
         switch destination {
         case .group(let kind):
-            // The page of the books tab, not a drill level of the search.
-            pushLibraryListRoute(.groups(kind))
+            // The page of the books tab, not a drill level of the search;
+            // the search comes back when the person returns.
+            onOpenLibraryPage(.groups(kind))
         case .artists:
             Task {
                 let artists = await SearchDoor.artists()
