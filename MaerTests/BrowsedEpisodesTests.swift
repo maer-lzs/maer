@@ -41,8 +41,8 @@ struct BrowsedEpisodesTests {
         #expect(store.listened(guid: guid, defaults: defaults) == nil, "the persisted half is cleared through the normalisation")
     }
 
-    /// Each read decoded the whole kept list before. Now once per stored
-    /// list: reads without a write decode nothing more, a write is seen.
+    /// The kept list decodes once per stored list: reads without a write
+    /// decode nothing more, a write is seen.
     @Test("die gemerkte Liste wird einmal je Stand dekodiert, nicht je Lesen; ein Schreiben wird gesehen")
     func theKeptListDecodesOncePerWrite() {
         let suite = "browsed-\(UUID().uuidString)"

@@ -110,8 +110,8 @@ struct TickWorkTests {
     ]
 
     /// The drive page observes the coordinator, which does not move with the
-    /// running time: its progress, its remaining time and the live time stood
-    /// at the last change of the coordinator. Now each is a leaf of the clock.
+    /// running time: its progress, its remaining time and its live time are
+    /// each a leaf of the clock, so they move every second.
     @Test("die Fahrseite zeichnet Fortschritt, Restzeit und Live-Zeit aus der Uhr, jede Sekunde", .needsTheSources)
     func theDrivePageDrawsTheTimeFromTheClock() throws {
         let url = SourceTree.root.appendingPathComponent("Sources/Views/DriveModeView.swift")

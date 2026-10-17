@@ -140,7 +140,8 @@ nonisolated final class BrowsedEpisodes: Sendable {
 
     /// The decoded list, empty when none stands, nil when one stands and
     /// does not decode. Decoded once per stored list: the readers ask for
-    /// one guid at a time, and each read decoded the whole list before.
+    /// one guid at a time, and a decode per read would decode the whole
+    /// list each time.
     /// The bytes decide whether the kept answer still holds, so a write
     /// from anywhere is seen.
     private static func records(_ defaults: UserDefaults) -> [String: Kept]? {

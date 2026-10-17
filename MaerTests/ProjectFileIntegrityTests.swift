@@ -1720,9 +1720,12 @@ extension ProjectFileIntegrityTests {
     ]
 
     /// A slash in front does not hide one: `#51/W1` and `Teil 3/Y4a` stood
-    /// in comments while the slash was on the list.
+    /// in comments while the slash was on the list. A decision's number in
+    /// parentheses (`(46-1)`) is one too; a range or a catalog code with
+    /// three digits in front (`(128-44)`) is not.
     static func letterShorthands(in comment: String) -> [String] {
-        matches(of: #"(?<![A-Za-z0-9_.-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
+        (matches(of: #"(?<![A-Za-z0-9_.-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
+            + matches(of: #"(?<=\()[0-9]{1,2}-[0-9]{1,2}(?=\))"#, in: comment))
             .filter { !outsideVocabulary.contains($0) }
     }
 
@@ -2029,6 +2032,8 @@ extension ProjectFileIntegrityTests {
                 "a code span is exempt, the prose beside it is not")
         #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// a lone ` T46 is prose")) == ["T46"])
         #expect(Self.letterShorthands(in: "/// #51/W1 and Teil 3/Y4a") == ["W1", "Y4a"], "a slash hides nothing")
+        #expect(Self.letterShorthands(in: "/// it stays (46-1), (128-44) is a catalog code, 30-41 s a range") == ["46-1"],
+                "a decision's number in parentheses counts, a catalog code and a range do not")
         #expect(Self.germanWords(in: "// bearable, because a missing file is no error").isEmpty)
         #expect(Self.germanWords(in: "// tragbar, weil eine fehlende Datei kein Fehler ist") == ["weil", "eine", "kein", "ist"])
         #expect(Self.germanWords(in: "// the row („Krieg und Frieden\") and \"Wir sind der Westen\"").isEmpty,

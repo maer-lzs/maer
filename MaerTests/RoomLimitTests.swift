@@ -72,8 +72,8 @@ struct RoomLimitTests {
         #expect(refusals.count == 1)
     }
 
-    /// The choices blob wrote without a reckoning before; the store
-    /// refused it without a word once the pot was full.
+    /// The choices blob is reckoned before its write: a blob that does not
+    /// fit is refused with a word, never dropped by the store in silence.
     @Test("the choices blob is refused BEFORE the write when it does not fit, and lands when it does") @MainActor
     func theChoicesBlobIsReckonedBeforeTheWrite() {
         let store = InMemoryCloudStore()

@@ -207,7 +207,8 @@ struct PodcastNotesTests {
     /// Through the store: after a subscribe and after a refresh no episode
     /// in the stock carries notes, the database holds the fresh text, and a
     /// refresh that changes only one episode's text writes it without a
-    /// further write. An episode the feed no longer carries stays (46-1).
+    /// further write. An episode the feed no longer carries stays: no
+    /// episode is ever taken from a show.
     @Test("Abo und Abgleich: keine Shownotes im Bestand, in der Datenbank der frische Text, auch wenn sich nur der Text aendert")
     func theStockCarriesNoNotesAndAChangedTextLands() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
