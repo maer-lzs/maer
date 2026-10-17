@@ -7,6 +7,26 @@ remaining time move while a book or episode plays, and a station shows
 its running time; before, they stood still until something else changed
 on the page.
 
+**The widget keeps running past an hour.** While a book or episode plays,
+the Continue Listening widget shows the right place minute by minute also
+after the first hour; before, it stood at the place it had reached after
+sixty minutes until the playback changed.
+
+**A handed over podcast stays handed over.** When a podcast you
+subscribed to on this device while Audiobookshelf could not be read turns
+out to be on your Audiobookshelf server, its listening states go there and
+the subscription here goes, now also when it was your only one; before,
+it came back here after the next start, next to the one on the server.
+
+**Air dates show their own day.** The date of an episode on an archive
+series page is the day it aired everywhere; west of UTC it showed the day
+before.
+
+**Covers use less memory.** Large covers are brought to their display size
+before the app holds them, two at a time; while scrolling through covers
+nobody has loaded before, the last ones may appear a moment later than
+before. A cover whose tile has left the screen is no longer loaded for it.
+
 **Retry looks the same.** The places that ask again after something
 could not load now show the same Retry pill: the catalog and archive
 pages, the shelves of the music library, the line that says the genres
