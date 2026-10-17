@@ -50,8 +50,9 @@ struct AuthorMatchTests {
         let code = text.split(separator: "\n")
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             .joined(separator: "\n")
-        #expect(code.contains("pushLibraryListRoute(.author("))
-        #expect(code.contains("pushLibraryListRoute(.series("))
+        // The library's route, opened so the search comes back (`SearchReturn`).
+        #expect(code.contains("onOpenLibraryPage(.author("))
+        #expect(code.contains("onOpenLibraryPage(.series("))
         #expect(!code.contains("pushEntries("), "the search's own drill for a hit is gone")
     }
 }

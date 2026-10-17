@@ -101,10 +101,12 @@ struct BookGroupsTests {
         #expect(!deck.contains("case groups(") && !deck.contains("case entries("), "the search keeps a drill level of book groups")
         #expect(!deck.contains("baseSeriesName("), "the deck groups the series by itself again")
         let screen = try code("Sources/Views/SearchScreen.swift")
-        #expect(screen.contains("case .group(let kind):") && screen.contains("pushLibraryListRoute(.groups(kind))"),
+        #expect(screen.contains("case .group(let kind):") && screen.contains("onOpenLibraryPage(.groups(kind))"),
                 "a group tile of the search opens no page")
         let library = try code("Sources/Views/LibraryView.swift")
         #expect(library.contains("BookGroupsScreen(kind: kind, entries: viewModel.entries)"), "the groups route has no page")
+        #expect(library.contains("searchReturn.opensPage()\n                push(route, to: selectedMediaType)"),
+                "the page opened from the search does not say so before its push, so back does not lead into the search")
         #expect(library.contains("LibraryListRoute.bookTabEntries.map"), "the books tab shows no tile deck")
         #expect(library.contains("NavigationLink(value: LibraryListRoute.localFiles)"),
                 "the serverless row reaches local files by another way than the tile")
