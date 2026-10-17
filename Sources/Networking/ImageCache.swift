@@ -556,25 +556,39 @@ final class ImageCache {
     /// off the caller's executor before anything holds it: the original of a
     /// large cover is never decoded in full (a 3000 px cover is 36 MB
     /// decoded). `@concurrent`: a plain nonisolated async function would run
-    /// on the caller's actor under the project's default.
+    /// on the caller's actor under the project's default. Through `sizing`:
+    /// throws `CancellationError` when the caller left before its turn, and
+    /// then decodes nothing; nil when ImageIO can not reduce the bytes.
     @concurrent
-    nonisolated static func displaySized(_ data: Data, maxPixelSize: CGFloat) async -> (UIImage, Data)? {
-        downsampled(data, maxPixelSize: maxPixelSize)
+    nonisolated static func displaySized(_ data: Data, maxPixelSize: CGFloat) async throws -> (UIImage, Data)? {
+        try await sizing.enter()
+        let sized = downsampled(data, maxPixelSize: maxPixelSize)
+        await sizing.leave()
+        return sized
     }
+
+    /// At most two covers are brought to size at once (`displaySized`,
+    /// `reduced`).
+    nonisolated static let sizing = SizingGate(width: 2)
 
     /// The size a full cover is held at (`displaySized`).
     var displayPixelSize: CGFloat { maxPixelSize }
 
     /// A cover reduced to `maxPixelSize` on its longer side, off the
     /// caller's executor; one already as small stays. For a cell that asked
-    /// for a thumbnail and got a cover fresh from the network.
+    /// for a thumbnail and got a cover fresh from the network. Through
+    /// `sizing`; a cell that left before its turn gets the picture as it
+    /// came, reduced nowhere, and shows nothing of it.
     @concurrent
     nonisolated static func reduced(_ image: UIImage, maxPixelSize: CGFloat) async -> UIImage {
         let width = image.size.width * image.scale, height = image.size.height * image.scale
         guard max(width, height) > maxPixelSize else { return image }
         let factor = maxPixelSize / max(width, height)
         let size = CGSize(width: (width * factor).rounded(), height: (height * factor).rounded())
-        return image.preparingThumbnail(of: size) ?? image
+        guard (try? await sizing.enter()) != nil else { return image }
+        let thumb = image.preparingThumbnail(of: size) ?? image
+        await sizing.leave()
+        return thumb
     }
 
     /// Downsample images > maxPixelSize at high quality (ImageIO); leave smaller
@@ -723,7 +737,10 @@ final class ImageCache {
         // Held and stored at display size like every fetched cover; the
         // quality gate still judges the size that arrived.
         let source = CGSize(width: full.size.width * full.scale, height: full.size.height * full.scale)
-        let (shown, kept) = await Self.displaySized(data, maxPixelSize: displayPixelSize) ?? (full, data)
+        // A tile that left before its turn stores nothing.
+        let reduced: (UIImage, Data)?
+        do { reduced = try await Self.displaySized(data, maxPixelSize: displayPixelSize) } catch { return nil }
+        let (shown, kept) = reduced ?? (full, data)
         set(shown, data: kept, for: url, startedAt: startedAt)
         let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? shown
         return (display, source)
@@ -1416,7 +1433,9 @@ final class ImageCache {
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return }
         // Held at display size like every fetched cover, never the original.
-        let (shown, kept) = await Self.displaySized(data, maxPixelSize: maxPixelSize) ?? (image, data)
+        let reduced: (UIImage, Data)?
+        do { reduced = try await Self.displaySized(data, maxPixelSize: maxPixelSize) } catch { return }
+        let (shown, kept) = reduced ?? (image, data)
         set(shown, data: kept, for: url, startedAt: startedAt)
     }
 

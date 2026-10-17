@@ -33,12 +33,12 @@ struct CoverMemoryTests {
     @Test("ein grosses Cover wird vor dem Halten auf Anzeigegroesse gebracht, ein kleines bleibt")
     func aLargeCoverIsReducedBeforeItIsHeld() async throws {
         let limit = ImageCache.shared.displayPixelSize
-        let (large, largeBytes) = try #require(await ImageCache.displaySized(png(3000), maxPixelSize: limit))
+        let (large, largeBytes) = try #require(try await ImageCache.displaySized(png(3000), maxPixelSize: limit))
         #expect(CGFloat(pixels(large)) <= limit, "held at display size: \(pixels(large)) for \(limit)")
         let stored = try #require(UIImage(data: largeBytes))
         #expect(CGFloat(pixels(stored)) <= limit, "the bytes kept are the reduced cover")
         let small = png(300)
-        let (kept, keptBytes) = try #require(await ImageCache.displaySized(small, maxPixelSize: limit))
+        let (kept, keptBytes) = try #require(try await ImageCache.displaySized(small, maxPixelSize: limit))
         #expect(pixels(kept) == 300 && keptBytes == small, "a cover under the size stays as it came")
     }
 
@@ -46,7 +46,7 @@ struct CoverMemoryTests {
     /// the cover at display size.
     @Test("ein frisch geladenes Cover kommt in eine Zelle in der Groesse, die sie anfragt")
     func aFreshCoverReachesACellAtItsSize() async throws {
-        let (display, _) = try #require(await ImageCache.displaySized(png(3000), maxPixelSize: 2000))
+        let (display, _) = try #require(try await ImageCache.displaySized(png(3000), maxPixelSize: 2000))
         let thumb = await ImageCache.reduced(display, maxPixelSize: 400)
         #expect(pixels(thumb) == 400, "the cell's size: \(pixels(thumb))")
         let small = try #require(UIImage(data: png(300)))
@@ -69,7 +69,7 @@ struct CoverMemoryTests {
     func memoryPressureReleasesTheFullCovers() async throws {
         let cache = ImageCache.shared
         let url = URL(string: "https://covers.example.invalid/pressure-\(UUID().uuidString).png")!
-        let (shown, kept) = try #require(await ImageCache.displaySized(png(600), maxPixelSize: cache.displayPixelSize))
+        let (shown, kept) = try #require(try await ImageCache.displaySized(png(600), maxPixelSize: cache.displayPixelSize))
         cache.set(shown, data: kept, for: url, startedAt: cache.invalidationCount(for: url))
         // A thumbnail is read from disk, where the write of `set` lands a
         // moment later.
@@ -88,7 +88,8 @@ struct CoverMemoryTests {
 
     /// No path in the network layer stores a fetched cover as it came: every
     /// caller of `set` hands it the picture and the bytes `displaySized`
-    /// gave, whatever their names.
+    /// gave, whatever their names: `let (image, data) = reduced ?? (…)`,
+    /// where `reduced` is what `displaySized` returned.
     @Test("kein Weg im Netz-Ordner legt ein frisch geladenes Cover unverkleinert ab", .needsTheSources)
     func noPathStoresTheOriginal() throws {
         // Not `\b`: by Unicode's word rules `tiers.set` is one word.
@@ -104,8 +105,12 @@ struct CoverMemoryTests {
             for match in code.matches(of: call) {
                 calls += 1
                 let image = match.output[1].substring ?? "", data = match.output[2].substring ?? ""
-                let reduced = try Regex(#"let \(\#(image), \#(data)\) = await (Self|ImageCache)\.displaySized\("#)
-                if !code.contains(reduced) { offenders.append("\(url.lastPathComponent): set(\(image), data: \(data)") }
+                let pair = try Regex(#"let \(\#(image), \#(data)\) = (\w+) \?\? \("#)
+                let sizedFrom = code.firstMatch(of: pair).flatMap { $0.output[1].substring }.map(String.init) ?? ""
+                let sized = try Regex(#"\b\#(sizedFrom.isEmpty ? "-" : sizedFrom) = try await (Self|ImageCache)\.displaySized\("#)
+                if sizedFrom.isEmpty || !code.contains(sized) {
+                    offenders.append("\(url.lastPathComponent): set(\(image), data: \(data)")
+                }
             }
         }
         #expect(calls >= 3, "the fence found no caller of set, so it measures nothing: \(calls)")
