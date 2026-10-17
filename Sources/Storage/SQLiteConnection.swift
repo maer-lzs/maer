@@ -58,7 +58,14 @@ actor SQLiteConnection {
         db = opened
         try SQLiteStatements.exec(opened, "PRAGMA journal_mode=WAL")
         try SQLiteStatements.exec(opened, "PRAGMA foreign_keys=ON")
+        try SQLiteStatements.exec(opened, "PRAGMA journal_size_limit=\(Self.journalSizeLimit)")
     }
+
+    /// The most bytes the journal keeps on disk after it was written back.
+    /// Without a limit the file stays as large as its largest burst (a
+    /// first start pours every row in) until the checkpoint on the way to
+    /// the background truncates it.
+    static let journalSizeLimit = 4 * 1024 * 1024
 
     deinit {
         if let db { sqlite3_close(db) }

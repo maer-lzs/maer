@@ -116,7 +116,7 @@ struct PodcastNotesTests {
 
     /// What a build of version 1 runs when it opens the rows: these three
     /// tables and their indexes, and the version only lifted, never lowered.
-    static let versionOneOpen = [
+    nonisolated static let versionOneOpen = [
         "CREATE TABLE IF NOT EXISTS show (id TEXT PRIMARY KEY, position INTEGER NOT NULL, payload BLOB NOT NULL)",
         """
         CREATE TABLE IF NOT EXISTS episode (guid TEXT PRIMARY KEY, show_id TEXT NOT NULL REFERENCES show(id) ON DELETE CASCADE,

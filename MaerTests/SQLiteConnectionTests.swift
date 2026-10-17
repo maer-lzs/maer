@@ -99,6 +99,51 @@ struct SQLiteConnectionTests {
         #expect(after.free >= 90, "the deleted rows' pages are free pages: \(after)")
     }
 
+    @Test("jede Verbindung begrenzt das Journal, das nach dem Zurueckschreiben auf der Platte bleibt")
+    func theJournalIsLimited() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("journal-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let db = try SQLiteConnection(path: path)
+        let limit = try await db.query("PRAGMA journal_size_limit").first?["journal_size_limit"]?.int64
+        #expect(limit == Int64(SQLiteConnection.journalSizeLimit), "the journal keeps any size: \(String(describing: limit))")
+        #expect(SQLiteConnection.journalSizeLimit == 4 * 1024 * 1024)
+    }
+
+    /// For the question of a VACUUM: what the move of the shownotes leaves
+    /// in the file, at 1,000 episodes with about 3 KB of notes each. Printed
+    /// as `NOTESMOVE`; the case holds only that the move ran.
+    @Test("Messung: Seiten und freie Seiten vor und nach dem Umzug der Shownotes bei 1.000 Folgen")
+    func whatTheNotesMoveLeaves() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("notesmove-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let db = try MaerDatabase(path: path).connection()
+        for statement in PodcastNotesTests.versionOneOpen { try await db.execute(statement) }
+        try await db.setSchemaVersion(1, of: PodcastRowStore.family)
+        let encoder = JSONEncoder()
+        let show = PodcastShow(id: "m", title: "m", author: nil, artworkURL: nil, description: nil,
+                               feedURL: "https://notes.example/m.xml", episodes: [])
+        let notes = String(repeating: "Shownotes mit Links und Kapiteln. ", count: 90)
+        var rows = [SQLiteConnection.Statement("INSERT INTO show (id, position, payload) VALUES ('m', 0, ?)",
+                                               [.blob(try encoder.encode(show))])]
+        for n in 0..<1_000 {
+            var episode = PodcastEpisode(guid: "rss:m:\(n)", title: "Folge \(n)", audioURL: "https://notes.example/\(n).mp3",
+                                         pubDate: Double(n), duration: 600)
+            episode.description = notes + "\(n)"
+            rows.append(.init("INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, 'm', ?, ?, ?)",
+                              [.text(episode.guid), .integer(Int64(n)), .real(Double(n)), .blob(try encoder.encode(episode))]))
+        }
+        _ = try await db.transaction(rows)
+        _ = try await db.checkpoint()
+        let before = try await db.pages()
+        let started = Date()
+        let store = try await PodcastRowStore(connection: db)
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        _ = try await db.checkpoint()
+        let after = try await db.pages()
+        print("NOTESMOVE episodes=1000 pages_before=\(before.total) free_before=\(before.free) pages_after=\(after.total) free_after=\(after.free) move_ms=\(ms)")
+        #expect(try await store.notes(guid: "rss:m:7") == notes + "7", "the precondition: the move ran")
+    }
+
     /// The page count is its own measurement: when it cannot be read, the
     /// checkpoint line says that, never "checkpoint failed".
     @Test("Eine Seitenzahl, die nicht gelesen wird, sagt das selbst und nicht der Checkpoint")
