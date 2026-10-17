@@ -1118,18 +1118,7 @@ struct ArchiveSeriesPage: View {
     /// no line at all (never an empty separator).
     private func episodeMetaLine(airDate: String?, duration: Double?) -> String? {
         var parts: [String] = []
-        if let airDate {
-            let iso = DateFormatter()
-            // Fixed locale: a fixed format is only fixed with one. Under a
-            // non-Gregorian calendar the parse fails and the date silently
-            // leaves the line.
-            iso.locale = Locale(identifier: "en_US_POSIX")
-            iso.dateFormat = "yyyy-MM-dd"
-            iso.timeZone = TimeZone(identifier: "UTC")
-            if let date = iso.date(from: airDate) {
-                parts.append(date.formatted(date: .numeric, time: .omitted))
-            }
-        }
+        if let airDate, let day = EpisodeDateLine.airDay(airDate) { parts.append(day) }
         if let duration, duration > 0 { parts.append(episodeDurationText(duration)) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

@@ -14,8 +14,9 @@ import os
 /// a large library, as the cells ask for it. Forty covers of 3000 px that
 /// no cache knows come from a loopback server, eight at a time or one after
 /// the other, as JPEG (most covers) or PNG, each asked at the size of a
-/// grid cell; the process footprint is sampled every two milliseconds. The numbers stand in the test log (`COVERPEAK`); the case
-/// holds only that the measure ran.
+/// grid cell; the process footprint is sampled every two milliseconds.
+/// The numbers stand in the test log (`COVERPEAK`); the case holds only
+/// that the measure ran.
 @MainActor
 @Suite(.serialized)
 struct CoverPeakMeasureTests {

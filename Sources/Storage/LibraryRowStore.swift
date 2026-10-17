@@ -83,7 +83,6 @@ actor LibraryRowStore {
         return (LibraryDiskCache(items: items, progress: progress), skipped)
     }
 
-
     /// Applies a diff in one transaction.
     @discardableResult
     func apply(_ diff: LibraryRowDiff) async throws -> Counts {

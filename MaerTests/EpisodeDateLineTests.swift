@@ -12,6 +12,21 @@ import Foundation
 /// zeigt den Termin, „heute 09:05“ oder „morgen 09:05“, statt „in 8 Stunden“;
 /// Vergangenes bleibt relativ. Eine Regel fuer jede Flaeche mit Folgendatum.
 struct EpisodeDateLineTests {
+    /// Ein Sendedatum ist ein Tag, kein Zeitpunkt: in Los Angeles, Zuerich
+    /// und Tokio derselbe Tag; was kein Tag ist, ergibt keine Zeile.
+    @Test("ein Sendedatum zeigt in jeder Zeitzone denselben Tag")
+    func anAirDateIsTheSameDayInEveryZone() {
+        let german = Locale(identifier: "de_DE")
+        for zone in ["America/Los_Angeles", "Europe/Zurich", "Asia/Tokyo", "Pacific/Honolulu"] {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: zone)!
+            #expect(EpisodeDateLine.airDay("1948-12-07", calendar: calendar, locale: german) == "7.12.1948", "\(zone)")
+        }
+        for broken in ["1948-02-31", "1948-12", "07.12.1948", "", "1948-1-7"] {
+            #expect(EpisodeDateLine.airDay(broken, calendar: zurich, locale: german) == nil, "\(broken)")
+        }
+    }
+
     private var zurich: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Zurich")!

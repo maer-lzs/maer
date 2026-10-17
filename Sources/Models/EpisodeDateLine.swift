@@ -41,6 +41,22 @@ nonisolated enum EpisodeDateLine {
         }
     }
 
+    /// A catalog's air date names a day, not an instant (`1948-12-07`). It
+    /// is read as that day in the calendar's zone and shown in the user's
+    /// numeric format; read as midnight UTC, a zone west of UTC showed the
+    /// day before. Nil for anything that is no such day.
+    static func airDay(_ airDate: String, calendar: Calendar = .current, locale: Locale = .current) -> String? {
+        let parts = airDate.split(separator: "-", omittingEmptySubsequences: false).compactMap { Int($0) }
+        guard airDate.count == 10, parts.count == 3 else { return nil }
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        guard let date = gregorian.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)),
+              gregorian.dateComponents([.year, .month, .day], from: date) == DateComponents(year: parts[0], month: parts[1], day: parts[2])
+        else { return nil }
+        return date.formatted(Date.FormatStyle(date: .numeric, time: .omitted, locale: locale,
+                                               calendar: calendar, timeZone: calendar.timeZone))
+    }
+
     /// The episode's date from its epoch milliseconds, or nothing without one.
     static func text(ms: Double?) -> String {
         guard let ms, ms > 0 else { return "" }
