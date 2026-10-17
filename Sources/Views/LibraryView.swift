@@ -503,7 +503,7 @@ struct LibraryView: View {
                         // root here, not the one of the tab being left: we
                         // are going to Home, and what the old tab held is
                         // its own business now.
-                        navigationPaths[.home] = NavigationPath()
+                        returnToRoot(.home)
                         selectedMediaType = .home
                     }
                 }
@@ -909,7 +909,7 @@ struct LibraryView: View {
                     // A tab tap leads back to the root of THIS tab, just as
                     // a tap used to leave the pushed page. What the other
                     // tabs hold stays theirs.
-                    navigationPaths[newValue] = NavigationPath()
+                    returnToRoot(newValue)
                     BottomBarState.shared.reset()   // switching tabs expands the bar
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
                 },
@@ -928,9 +928,9 @@ struct LibraryView: View {
             if isShowingSearch {
                 closeSearch()
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = .home }
-                navigationPaths[.home] = NavigationPath()
+                returnToRoot(.home)
             }
-            navigationPaths[selectedMediaType] = NavigationPath()
+            returnToRoot(selectedMediaType)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
                 BottomBarState.shared.expand()
             }
@@ -1051,6 +1051,14 @@ struct LibraryView: View {
         .accessibilityIdentifier("search-close")
     }
 
+    /// A tab's stack back at its root: Home, a tap on a tab, a new search.
+    /// That is no way back from a page, so a search set aside does not come
+    /// back with it; only the system's back to its depth brings it.
+    private func returnToRoot(_ type: MediaType) {
+        searchReturn.forget()
+        navigationPaths[type] = NavigationPath()
+    }
+
     private func closeSearch() {
         searchReturn.forget()
         searchFieldFocused = false
@@ -1061,7 +1069,6 @@ struct LibraryView: View {
     private var searchButton: some View {
         FloatingSearchButton(
             action: {
-                searchReturn.forget()
                 searchModel.query = ""
                 // The scope starts where the user is (Home → Library).
                 searchScope = SearchScope.initial(for: selectedMediaType)
@@ -1070,7 +1077,7 @@ struct LibraryView: View {
                 // the bottom bar worked, results never showed). Pop to root
                 // first; any push already closes the search, so root-only is the
                 // consistent home of the search.
-                navigationPaths[selectedMediaType] = NavigationPath()
+                returnToRoot(selectedMediaType)
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
             },
             glassMorphID: "search", glassMorphNamespace: bottomGlassNS)

@@ -40,6 +40,25 @@ struct SearchReturnTests {
         #expect(search.pathChanged(from: 1, to: 0, showing: false) == .none)
     }
 
+    /// Home, a tap on a tab and a new search set the stack to its root too,
+    /// and the depth falls as on the way back. They are no way back: every
+    /// root of the library's stacks is set in one place, which forgets the
+    /// search set aside first.
+    @Test("Home und der Tipp auf einen Reiter holen eine beiseite getretene Suche nicht zurueck", .needsTheSources)
+    func aJumpToTheRootForgetsTheSearch() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "= NavigationPath()").count - 1 == 1,
+                "a stack is set to its root past returnToRoot, and a search set aside comes back with it")
+        let root = try #require(code.range(of: "private func returnToRoot(_ type: MediaType) {"), "the one place of the root")
+        let body = code[root.upperBound...].prefix(200)
+        #expect(body.contains("searchReturn.forget()\n        navigationPaths[type] = NavigationPath()"),
+                "the root is set before the search set aside is forgotten")
+        // Five calls and the declaration.
+        #expect(code.components(separatedBy: "returnToRoot(").count - 1 >= 6,
+                "Home, the tab tap, the fallback to Home and the new search no longer go through the one place")
+    }
+
     @Test("die Seite oeffnet von dem Stand, auf dem die Suche stand, und kommt dorthin zurueck")
     func comesBackAtItsOwnDepth() {
         var search = SearchReturn()
