@@ -178,5 +178,43 @@ struct DefaultsBlockMeasureTests {
                      stands.count, main[2], main[4], landed[2], landed[4]))
         #expect(rows.rows(CloudKitStandCarrier.mirrorKey).count == Self.titles + 1, "the precondition: the rows hold the whole mirror")
     }
+
+    /// The two documents of the Mär sync service as the session keeps them
+    /// per identity: the choices of 22,000 titles and 500 shows, and 200
+    /// playlists of 50 titles. Every `persist()` of the session sets both
+    /// bodies again, also when only a stand changed.
+    @Test("Messung: die Dokumente der Wahlen und Playlisten des Mär-Sync, Groesse und das Setzen bei jedem persist")
+    func theServiceDocuments() throws {
+        let suite = "e4mess-docs-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var blob: [String: Any] = [:]
+        for index in 0..<Self.titles {
+            let id = Self.titleId(index)
+            blob[AppStorageKeys.playbackRate(id)] = UserChoiceEntry(value: .double(1.25), t: 1_760_000_000_000).plist
+            blob[PlayedTail.key(id)] = UserChoiceEntry(value: .double(30), t: 1_760_000_000_000).plist
+        }
+        for _ in 0..<Self.shows {
+            for key in PodcastShowPreferences.travellingKeys(showId: "rss:\(UUID().uuidString)") {
+                blob[key] = UserChoiceEntry(value: .string("newestFirst"), t: 1_760_000_000_000).plist
+            }
+        }
+        let choices = try MaerSyncChoiceWire.encode(blob)
+        var lists: [String: MaerPlaylistMerge.Entry] = [:]
+        for list in 0..<200 {
+            let ids = (0..<50).map { _ in Self.titleId(list) }
+            lists["list-\(UUID().uuidString)"] = MaerPlaylistMerge.Entry(
+                name: "Liste \(list)", updatedAt: 1_760_000_000_000, itemIds: ids,
+                titles: Dictionary(uniqueKeysWithValues: ids.map { ($0, "Titel \($0.suffix(8))") }),
+                added: Dictionary(uniqueKeysWithValues: ids.map { ($0, 1_760_000_000_000) }), device: "iPhone")
+        }
+        let playlists = try MaerSyncPlaylistWire.encode(MaerPlaylistMerge.Snapshot(lists: lists))
+        for (family, body) in [("maerSyncChoices", choices), ("maerSyncPlaylists", playlists)] {
+            // The body is set again unchanged, as `persist()` does for a stand.
+            let again = Self.timed { _ in defaults.set(body, forKey: family) }
+            Self.line(family, keys: 1, bytes: body.count, write: again)
+        }
+        #expect(choices.count > 0 && playlists.count > 0)
+    }
 }
 #endif
