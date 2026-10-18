@@ -1044,16 +1044,6 @@ nonisolated enum AppStorageKeys {
         ListeningStore.forgetBackups(where: gone, in: defaults)
     }
 
-    /// The same for the entries of a book in rows: its jump ring and the
-    /// offline copy of its bookmarks go with it (the copy was never cleaned
-    /// up before). On the main actor, where the rows live.
-    @MainActor
-    static func cleanupPerBookRows(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
-        let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
-        JumpRingRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
-        BookmarkCacheRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
-    }
-
     /// Whether the audiobook cleanup may remove a title's keys: only a raw
     /// library id, one WITHOUT a namespace, that the fully loaded library no
     /// longer holds. `validItemIds` names audiobooks only, so an id of any

@@ -79,7 +79,7 @@ struct UserChoiceOwnerTests {
         sync.noteKnownServers()
         sync.reconcile()
         let ofA = try sync.restingChoices()
-        let stampsOfA = sync.localStamps()
+        let stampsOfA = try #require(sync.localStamps(), "the precondition: the stamps are read")
         #expect(!stampsOfA.isEmpty, "the precondition: A's choices carry stamps")
         #expect(text(carrier.pots["account-a"]).contains("geheimsache"), "A's document lacks A's removal")
 
@@ -93,7 +93,7 @@ struct UserChoiceOwnerTests {
         #expect(RecentSearches.list(defaults: defaults).isEmpty, "B sees A's searches")
         #expect(KnownServers.all(defaults: defaults).map(\.url) == ["https://sync-b.example"],
                 "B's register holds more than the service signed in")
-        #expect(sync.localStamps()["librarySortOption"] == nil, "B dates its choices with A's stamps")
+        #expect(sync.localStamps()?["librarySortOption"] == nil, "B dates its choices with A's stamps")
         let ofB = text(carrier.pots["account-b"])
         for name in ["librarySortOption", "krimi-buch", "moorleiche", "geheimsache", "music-a", "sync-a"] {
             #expect(!ofB.contains(name), "\(name) of A went to B")
@@ -113,7 +113,7 @@ struct UserChoiceOwnerTests {
         }
         #expect(Set(back.values.keys) == Set(ofA.values.keys))
         #expect(ofA.values[UserChoiceCloudSync.stampsKey] == nil, "the stamps rest in their rows, not in the rest")
-        let stampsBack = sync.localStamps()
+        let stampsBack = try #require(sync.localStamps(), "the stamps are read")
         // The address signed in is remembered afresh; every other stamp is
         // the one A had.
         for (key, t) in stampsOfA where !key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {

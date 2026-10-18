@@ -924,11 +924,16 @@ final class PlayerCoordinator: ObservableObject {
     func refreshStandbyFromTruth() async {
         let stored = AppStorageKeys.lastPlayedItemIdValue
         let held = activeItem?.id
+        // Unknown stamps are not a missing stamp: the standby stays as it is.
+        guard let stamps = UserChoiceCloudSync.shared.localStamps() else {
+            Logger.player.notice("STANDBY kept: the stamps of the choices are not read")
+            return
+        }
         let verdict = Self.standbyVerdict(
             stored: stored, held: held,
             isPlaying: viewModel?.isPlaying == true,
             ownOpenedAtMs: ownOpenedAtMs,
-            foreignStampMs: UserChoiceCloudSync.shared.localStamps()[lastItemKey],
+            foreignStampMs: stamps[lastItemKey],
             heldFinished: held.map { Self.standbyCountsAsFinished(ListeningStore.mark($0)) } ?? false,
             storedFinished: stored.map { Self.standbyCountsAsFinished(ListeningStore.mark($0)) } ?? false)
         switch verdict {

@@ -158,7 +158,8 @@ struct EpisodeLimitRetiredTests {
             #expect(blob(cloud)[key] == nil, "\(key) left the document, no tombstone stays behind")
             #expect(a.defaults.object(forKey: key) == nil, "A forgot \(key)")
             #expect(b.defaults.object(forKey: key) == nil, "B did not adopt \(key)")
-            #expect(a.sync.localStamps()[key] == nil && b.sync.localStamps()[key] == nil, "no stamp for \(key)")
+            #expect(a.sync.localStamps() != nil && b.sync.localStamps() != nil, "the precondition: the stamps are read")
+            #expect(a.sync.localStamps()?[key] == nil && b.sync.localStamps()?[key] == nil, "no stamp for \(key)")
         }
 
         cloud.writes = 0

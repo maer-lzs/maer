@@ -32,7 +32,7 @@ struct BookCleanupTests {
             bookmarks.setEntry(owner, id, [ABSBookmark(libraryItemId: id, title: "Mark", time: 60, createdAt: 1)])
         }
         AppStorageKeys.cleanupPerBookKeys(validItemIds: [kept], in: defaults)
-        AppStorageKeys.cleanupPerBookRows(validItemIds: [kept], in: defaults)
+        CarrierRowStores.cleanupPerBookRows(validItemIds: [kept], in: defaults)
 
         #expect(ListeningStore.backup(gone, in: defaults) == nil, "a book the library no longer holds goes")
         #expect(defaults.object(forKey: AppStorageKeys.playbackRate(gone)) == nil, "and its speed with it")

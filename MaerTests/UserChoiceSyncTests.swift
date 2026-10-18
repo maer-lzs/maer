@@ -476,7 +476,8 @@ struct UserChoiceCloudSyncTests {
         }
         // (b) The two open ones are offered again, and carry no stamp on B.
         #expect(Set(offeredOnB) == Set(feeds.suffix(2)), "open statements are re-offered")
-        #expect(b.sync.localStamps()[cloudKey(3)] == nil && b.sync.localStamps()[cloudKey(4)] == nil,
+        #expect(b.sync.localStamps() != nil, "the precondition: the stamps are read")
+        #expect(b.sync.localStamps()?[cloudKey(3)] == nil && b.sync.localStamps()?[cloudKey(4)] == nil,
                 "no stamp before the feed is held")
         // Once held, nothing is offered any more.
         b.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys, feeds)) }

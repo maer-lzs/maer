@@ -92,19 +92,19 @@ struct ChoiceStampRowsTests {
         sync.reconcile()
         place.defaults.set("title", forKey: "librarySortOption")
         sync.noteScalar(key: "librarySortOption", value: "title")
-        let stampOfA = try #require(sync.localStamps()["librarySortOption"], "the precondition: A's choice has a stamp")
+        let stampOfA = try #require(sync.localStamps()?["librarySortOption"], "the precondition: A's choice has a stamp")
 
         scope = "account-b"
         sync.reconcile()
-        #expect(sync.localStamps()["librarySortOption"] == nil, "B reads A's stamp")
+        #expect(sync.localStamps()?["librarySortOption"] == nil, "B reads A's stamp")
         await rows.awaitPendingWrites()
         #expect(try storedRows(place.path)[ChoiceStampRows.key("account-a", "librarySortOption")] == stampOfA,
                 "A's stamp left the rows instead of resting under A")
-        #expect(session().localStamps()["librarySortOption"] == nil, "a session built anew reads A's stamp for B")
+        #expect(session().localStamps()?["librarySortOption"] == nil, "a session built anew reads A's stamp for B")
 
         scope = "account-a"
         sync.reconcile()
-        #expect(sync.localStamps()["librarySortOption"] == stampOfA, "A's stamp did not come back")
+        #expect(sync.localStamps()?["librarySortOption"] == stampOfA, "A's stamp did not come back")
     }
 
     @Test("eine Ruhe eines frueheren Baus traegt die Stempel als Schluessel: sie gehen in die Zeilen des Kontos, das zurueckkommt")
@@ -122,7 +122,7 @@ struct ChoiceStampRowsTests {
         sync.sourcesAdopted = {}
         sync.reconcile()
         #expect(place.defaults.string(forKey: "librarySortOption") == "author", "the precondition: A's rest came back")
-        #expect(sync.localStamps()["librarySortOption"] == 7_000.0, "the stamps of the rest did not reach the rows")
+        #expect(sync.localStamps()?["librarySortOption"] == 7_000.0, "the stamps of the rest did not reach the rows")
         #expect(place.defaults.object(forKey: UserChoiceCloudSync.stampsKey) == nil, "the stamps went back into the defaults")
     }
 
@@ -153,9 +153,76 @@ struct ChoiceStampRowsTests {
         sync._seedStampsForWitness(["other": 1.0])
         await rows.awaitPendingWrites()
         #expect(!rows.unread)
-        #expect(sync.localStamps()["librarySortOption"] == 5_000.0, "the read stamp did not join")
+        #expect(sync.localStamps()?["librarySortOption"] == 5_000.0, "the read stamp did not join")
         let sent = UserChoiceEntry.from(plist: carrier.pots["-"]?["librarySortOption"])
         #expect(sent?.t == 5_000.0, "the round did not run with the read stamp")
+    }
+
+    /// A sync over a stamp table its start cannot read.
+    private func unreadSync(_ place: Place) async throws -> (UserChoiceCloudSync, ChoiceStampRows, SQLiteConnection) {
+        place.defaults.set(true, forKey: ChoiceStampRows.movedKey)
+        let database = MaerDatabase(path: place.path)
+        let connection = try database.connection()
+        try await connection.execute("CREATE TABLE choice_stamp (other TEXT)")
+        try await connection.execute("INSERT INTO choice_stamp (other) VALUES ('x')")
+        _ = try await connection.checkpoint()
+        let rows = ChoiceStampRows(database: database, defaults: place.defaults)
+        let sync = UserChoiceCloudSync(defaults: place.defaults, carrier: AccountCarrier(scope: { nil }), syncEnabled: { true },
+                                       stamps: rows, idFormSettled: { true })
+        sync.sourcesAdopted = {}
+        return (sync, rows, connection)
+    }
+
+    /// Every caller of the stamps says what it does while they are unknown:
+    /// the source answers nil, not an empty set.
+    @Test("ungelesen antwortet die Quelle nil; das Umschluesseln bewegt nichts, die Frage nach Musik-Kennungen antwortet nicht")
+    func everyCallerWaitsForUnreadStamps() async throws {
+        let place = try place()
+        defer { place.cleanup() }
+        let (sync, rows, _) = try await unreadSync(place)
+        let old = "playbackRate.sub:song:alt-1"
+        place.defaults.set(1.5, forKey: old)
+        #expect(rows.unread, "the precondition: the start read failed")
+        #expect(sync.localStamps() == nil, "unknown stamps answered as no stamps")
+        #expect(sync.holdsServerMusicIds() == nil, "the question about music ids answered over unknown stamps")
+        #expect(sync.rekeyLocalChoices { $0.replacingOccurrences(of: "alt-1", with: "neu-1") } == nil,
+                "the rekey ran over unknown stamps")
+        #expect(place.defaults.double(forKey: old) == 1.5, "the rekey moved a choice without its stamp")
+        #expect(place.defaults.object(forKey: "playbackRate.sub:song:neu-1") == nil)
+    }
+
+    @Test("Wahlen ueber ungelesenen Stempeln stempeln sich selbst und behalten einander, die gelesenen kommen dazu")
+    func aNoteOverUnreadStampsKeepsTheRead() async throws {
+        let place = try place()
+        defer { place.cleanup() }
+        let (sync, rows, connection) = try await unreadSync(place)
+        place.defaults.set("title", forKey: "librarySortOption")
+        sync.noteScalar(key: "librarySortOption", value: "title")
+        place.defaults.set("author", forKey: "podcastSortOption")
+        sync.noteScalar(key: "podcastSortOption", value: "author")
+        #expect(rows.unread, "the precondition: the notes ran over unread rows")
+        try await connection.execute("DROP TABLE choice_stamp")
+        let store = try await KeyedRowStore<Double>(connection: connection, table: .choiceStamp)
+        _ = try await store.apply(previous: [:], current: [ChoiceStampRows.key("", "playbackRate.buch"): 4_000.0])
+        place.defaults.set("title", forKey: "musicSortOption")
+        sync.noteScalar(key: "musicSortOption", value: "title")
+        await rows.awaitPendingWrites()
+        let stamps = try #require(sync.localStamps(), "the stamps are read")
+        #expect(stamps["playbackRate.buch"] == 4_000.0, "a read stamp was lost over the notes")
+        #expect(stamps["librarySortOption"] != nil, "the first note lost its stamp to the second")
+        #expect(stamps["podcastSortOption"] != nil, "the second note did not stamp its own choice")
+    }
+
+    /// The standby asks the stamps through the shared sync, which a witness
+    /// cannot start unread; held at the form: unknown stamps keep it.
+    @Test("der Bereitschaftsplayer bleibt stehen, solange die Stempel nicht gelesen sind", .needsTheSources)
+    func theStandbyKeepsOverUnreadStamps() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift"), encoding: .utf8))
+        let open = try #require(code.range(of: "func refreshStandbyFromTruth() async {"))
+        let body = code[open.upperBound...].prefix(600)
+        #expect(body.contains("guard let stamps = UserChoiceCloudSync.shared.localStamps() else {"), "the standby reads the stamps without asking whether they are known")
+        #expect(body.contains("STANDBY kept: the stamps of the choices are not read"))
     }
 
     @Test("keine Quelle liest oder schreibt die Stempel in den Voreinstellungen", .needsTheSources)

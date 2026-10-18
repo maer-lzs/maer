@@ -77,13 +77,13 @@ struct IdFormHoldTests {
         sync.sourcesAdopted = {}
         defaults.set("title", forKey: "librarySortOption")
         sync.noteScalar(key: "librarySortOption", value: "title")
-        #expect(!sync.holdsServerMusicIds())
+        #expect(sync.holdsServerMusicIds() == false)
         sync.reconcile()
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
         #expect(blob["librarySortOption"] != nil, "choices without the server's ids waited")
 
         defaults.set(1.5, forKey: "playbackRate.sub:song:alt-1")
-        #expect(sync.holdsServerMusicIds())
+        #expect(sync.holdsServerMusicIds() == true)
         cloud.storage[UserChoiceCloudSync.blobKey] = [:]
         sync.reconcile()
         #expect((cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]).isEmpty,
@@ -216,7 +216,8 @@ struct IdFormHoldTests {
         cloud.storage[UserChoiceCloudSync.blobKey] = ["librarySortOption": UserChoiceEntry(value: .string("author"), t: 9e12).plist]
         sync.reconcile()
         #expect(defaults.object(forKey: rate) != nil, "the precondition: the note ran during the adoption")
-        #expect(sync.localStamps()[rate] == nil, "a note during an adoption was stamped as this device's word")
+        #expect(sync.localStamps() != nil, "the precondition: the stamps are read")
+        #expect(sync.localStamps()?[rate] == nil, "a note during an adoption was stamped as this device's word")
     }
 
     @Test("die Form steht fest ohne Server, mit Typ und Fassung, nach einem Versuch, der nichts lehrte, oder nach der Frist; die Runden laufen dann wieder")

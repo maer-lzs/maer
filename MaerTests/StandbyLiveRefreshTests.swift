@@ -119,7 +119,7 @@ struct StandbyLiveRefreshTests {
         let foreign = "lv:standby-foreign-\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         let choices = UserChoiceCloudSync.shared
-        let stampsBefore = choices.localStamps()
+        let stampsBefore = choices.localStamps() ?? [:]
         defer {
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
             choices._seedStampsForWitness(stampsBefore)
@@ -130,7 +130,7 @@ struct StandbyLiveRefreshTests {
         coord.beginOwnSession(item(own), origin: .gesture)
         // The adoption lands after the own open, with the iPad's older event time.
         defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
-        var stamps = choices.localStamps()
+        var stamps = choices.localStamps() ?? [:]
         stamps[AppStorageKeys.lastPlayedItemId] = (coord.ownOpenedAtMs ?? 0) - 5_000
         choices._seedStampsForWitness(stamps)
 
@@ -147,7 +147,7 @@ struct StandbyLiveRefreshTests {
         let foreign = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         let choices = UserChoiceCloudSync.shared
-        let stampsBefore = choices.localStamps()
+        let stampsBefore = choices.localStamps() ?? [:]
         defer {
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
             choices._seedStampsForWitness(stampsBefore)

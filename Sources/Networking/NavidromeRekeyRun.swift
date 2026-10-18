@@ -97,7 +97,15 @@ enum NavidromeRekeyRun {
             },
             // These two also run in every reconcile of their carrier; here
             // for a device whose sync is off.
-            Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
+            Step(name: "choices") { map in
+                let choices = UserChoiceCloudSync.shared
+                guard let result = choices.rekeyLocalChoices(map) else {
+                    // The stamps are not read: the pass runs again once they are.
+                    choices.whenStampsRead { Task { await NavidromeRekeyRun.runIfDue(by: "stamps read") } }
+                    return nil
+                }
+                return result
+            },
             Step(name: "playlists", missedRows: { MaerPlaylists.shared.startIncomplete }) { MaerPlaylists.shared.rekey($0) },
             downloadsStep(),
         ]

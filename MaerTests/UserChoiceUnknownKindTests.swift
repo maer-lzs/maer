@@ -143,7 +143,7 @@ struct UserChoiceUnknownKindTests {
         // nil with its stamp it would go out as a tombstone.
         a.defaults.set(false, forKey: key)
         a.sync.noteScalar(key: key, value: false)
-        #expect(a.sync.localStamps()[key] != nil, "the precondition: the key has a stamp")
+        #expect(a.sync.localStamps()?[key] != nil, "the precondition: the key has a stamp")
         cloud.storage[UserChoiceCloudSync.blobKey] = [:]
         a.defaults.set(Date(), forKey: key)
         a.sync.reconcile()

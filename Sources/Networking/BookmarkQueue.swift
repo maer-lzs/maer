@@ -30,7 +30,7 @@ final class BookmarkQueue {
 
     private let opsKey = AppStorageKeys.pendingBookmarkOps
     /// The offline copy of the server's list, one entry per title in rows;
-    /// it leaves with its book (`AppStorageKeys.cleanupPerBookRows`).
+    /// it leaves with its book (`CarrierRowStores.cleanupPerBookRows`).
     private var cacheRows: BookmarkCacheRows { BookmarkCacheRows.matching(AppStorageKeys.store) }
 
     private init() {}

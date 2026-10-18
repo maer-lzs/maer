@@ -327,7 +327,11 @@ final class UserChoiceCloudSync {
         // A note right after a switch (the known servers of the sign-in)
         // hands the choices over first, or it would stamp the holder's.
         guard followsTheAccount() else { return }
-        var stamps = localStamps()
+        // Over stamps not read yet a note still stamps its own choice, on top
+        // of what this run stamped before: its moment is the newest, and the
+        // rows read later join without losing one (the run wins only where
+        // it wrote).
+        var stamps = localStamps() ?? stampsOfThisRun()
         let now = now()
         /// The statement kept for a later round: its event time survives,
         /// and a subscription removal is recorded.
@@ -507,15 +511,8 @@ final class UserChoiceCloudSync {
         guard syncEnabled() else { return }
         // Stamps nobody could read are unknown, not empty: the round waits
         // for them and runs once they are read.
-        guard !stampRows.unread else {
-            if !roundWaitsForStamps {
-                roundWaitsForStamps = true
-                stampRows.whenRead { [weak self] in
-                    self?.roundWaitsForStamps = false
-                    self?.reconcile()
-                }
-            }
-            Logger.library.notice("CHOICE round held: the stamps are not read")
+        guard localStamps() != nil else {
+            waitForStamps(then: { $0.reconcile() }, line: "CHOICE round held: the stamps are not read")
             return
         }
         // Another account than the choices' owner: its choices replace the
@@ -534,14 +531,16 @@ final class UserChoiceCloudSync {
         // or the old and the new form of one item would stand side by side.
         // The wait ends (`idFormSettled`); it is asked only when such ids
         // are here, so a round without them starts no clock.
-        if holdsServerMusicIds(), !idFormSettled() {
+        guard let holdsServerIds = holdsServerMusicIds() else { return }
+        if holdsServerIds, !idFormSettled() {
             Logger.library.notice("CHOICE round held: the music server's id form is not settled yet")
             return
         }
         let map = itemIdMap
         rekeyLocalChoices(map)
         var blob = cloudBlob()
-        var stamps = localStamps()
+        // Read above; a round never runs over stamps nobody read.
+        guard var stamps = localStamps() else { return }
         let localEntries = collectLocalEntries(stamps: stamps)
         // Counted as found, before the merge: whether a subscription is in
         // the document at all, whether this device follows it, and what the
@@ -1033,9 +1032,15 @@ final class UserChoiceCloudSync {
     /// Whether a choice here names an item of the music server, in the set
     /// `rekeyLocalChoices` moves: the pointer to the last item, and the
     /// item-keyed choices with their stamps and hidden markers.
-    func holdsServerMusicIds() -> Bool {
+    /// Nil while the stamps are not read: a removed choice lives only as a
+    /// stamp, so without them the answer would be a guess.
+    func holdsServerMusicIds() -> Bool? {
         if let last = defaults.string(forKey: AppStorageKeys.lastPlayedItemId), SubsonicProvider.owns(itemId: last) { return true }
-        let held = heldItemChoices(stamps: localStamps(), markers: ContinueHiddenStore.markers(defaults: defaults))
+        guard let stamps = localStamps() else {
+            Logger.library.notice("CHOICE music ids not asked: the stamps are not read")
+            return nil
+        }
+        let held = heldItemChoices(stamps: stamps, markers: ContinueHiddenStore.markers(defaults: defaults))
         return held.keys.contains { NavidromeRekey.choiceItemId($0).map(SubsonicProvider.owns(itemId:)) == true }
     }
 
@@ -1081,16 +1086,22 @@ final class UserChoiceCloudSync {
     /// the item-keyed families move with their stamps, the pointer to the
     /// last item takes the new id. Mechanics, so nothing is noted and no
     /// stamp is new; where an old and a new key meet, the later statement
-    /// stays. Returns how many choices changed and how many it looked at.
+    /// stays. Returns how many choices changed and how many it looked at;
+    /// nil while the stamps are not read, before anything moved: a choice
+    /// moved without its stamp would lose to the cloud, and the old one
+    /// would come back with the rows. The pass asks again (`notNow`).
     @discardableResult
-    func rekeyLocalChoices(_ map: (String) -> String) -> (changed: Int, total: Int) {
+    func rekeyLocalChoices(_ map: (String) -> String) -> (changed: Int, total: Int)? {
+        guard var stamps = localStamps() else {
+            Logger.library.notice("CHOICE rekey held: the stamps are not read")
+            return nil
+        }
         var changed = 0
         let last = defaults.string(forKey: AppStorageKeys.lastPlayedItemId)
         if let last, map(last) != last {
             defaults.set(map(last), forKey: AppStorageKeys.lastPlayedItemId)
             changed += 1
         }
-        var stamps = localStamps()
         var markers = ContinueHiddenStore.markers(defaults: defaults)
         let held = heldItemChoices(stamps: stamps, markers: markers)
         let moved = held.keys.filter { NavidromeRekey.choiceKey($0, map) != $0 }
@@ -1144,10 +1155,36 @@ final class UserChoiceCloudSync {
     }
 
     /// The stamps of the choices that lie here, from the rows of their
-    /// owner. The rows write only the stamps that changed; before, every
-    /// note wrote the whole dictionary into the defaults.
-    func localStamps() -> [String: Double] {
+    /// owner; nil while the rows could not be read, because unknown stamps
+    /// are not no stamps. Every caller says what it does then. The rows
+    /// write only the stamps that changed; before, every note wrote the
+    /// whole dictionary into the defaults.
+    func localStamps() -> [String: Double]? {
+        stampRows.unread ? nil : stampRows.rows(stampOwner)
+    }
+
+    /// What this run stamped, read or not: over unread rows only its own
+    /// notes, which a note adds to (never the answer to "what is stamped").
+    private func stampsOfThisRun() -> [String: Double] {
         stampRows.rows(stampOwner)
+    }
+
+    /// Runs once the stamps that could not be read at the start are read
+    /// (the rekey pass asks again then).
+    func whenStampsRead(_ body: @escaping @MainActor () -> Void) {
+        stampRows.whenRead(body)
+    }
+
+    /// A round waits while the stamps are not read and runs once they are.
+    private func waitForStamps(then retry: @escaping @MainActor (UserChoiceCloudSync) -> Void, line: StaticString) {
+        Logger.library.notice("\(String(describing: line), privacy: .public)")
+        guard !roundWaitsForStamps else { return }
+        roundWaitsForStamps = true
+        stampRows.whenRead { [weak self] in
+            guard let self else { return }
+            self.roundWaitsForStamps = false
+            retry(self)
+        }
     }
 
     /// Test seam: the stamps of the choices that lie here, as a witness

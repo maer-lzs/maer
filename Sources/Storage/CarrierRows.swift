@@ -191,12 +191,12 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
         move()
     }
 
-    /// The blobs into the rows, once. The mark goes first; the blobs, the
-    /// tokens and the versions go only after the rows landed. A move broken
-    /// off finds the blobs again and merges, the rows winning: they are the
-    /// newer word.
+    /// The blobs into the rows, once. The blobs, the tokens and the versions
+    /// go, and the mark `movedKey` is set, only after the rows landed. A
+    /// move broken off before that finds the blobs again and merges, the
+    /// rows winning: they are the newer word. No mark of a begun move is
+    /// needed for that, the missing `movedKey` says it.
     private func move() {
-        defaults.set(true, forKey: spec.moveStartedKey)
         let legacy = Self.legacyBlobs(in: defaults, spec: spec)
         let found = legacy.owners
         guard !found.isEmpty else {
@@ -299,7 +299,6 @@ nonisolated struct CarrierRowsSpec: Sendable {
     let legacyTokens: [String]
     /// Versions kept per identity as `<version>.<scope>`, or plain.
     let legacyScopedVersions: [String]
-    let moveStartedKey: String
     let movedKey: String
     /// Whether a blob before the rows was one whole document (the bodies of
     /// the Mär sync service), not a dictionary of entries.
@@ -326,7 +325,7 @@ nonisolated struct CarrierRowsSpec: Sendable {
         legacyOwners: ["cloudStandMirror", "cloudStandQueue"],
         legacyScopedOwners: ["maerSyncStands", "maerSyncStandsQueue"],
         legacyTokens: ["cloudStandToken"], legacyScopedVersions: ["maerSyncStandsVersion"],
-        moveStartedKey: "carrierStandsMoveStarted", movedKey: "carrierStandsMoved")
+        movedKey: "carrierStandsMoved")
 
     static let records = CarrierRowsSpec(
         table: "carrier_record", label: "CARRIERRECORD",
@@ -334,7 +333,7 @@ nonisolated struct CarrierRowsSpec: Sendable {
                        "cloudStatsMirror", "cloudStatsQueue"],
         legacyScopedOwners: [],
         legacyTokens: ["cloudChoiceToken", "cloudPlaylistToken", "cloudStatsToken"], legacyScopedVersions: [],
-        moveStartedKey: "carrierRecordsMoveStarted", movedKey: "carrierRecordsMoved")
+        movedKey: "carrierRecordsMoved")
 
     /// The stamps of the choices (`UserChoiceCloudSync`): not a carrier's
     /// mirror but the family's bookkeeping, one moment per travelling
@@ -345,7 +344,7 @@ nonisolated struct CarrierRowsSpec: Sendable {
         table: "choice_stamp", label: "CHOICESTAMP",
         legacyOwners: ["userChoiceStamps"], legacyScopedOwners: [],
         legacyTokens: [], legacyScopedVersions: [],
-        moveStartedKey: "choiceStampsMoveStarted", movedKey: "choiceStampsMoved")
+        movedKey: "choiceStampsMoved")
 
     /// The playlists and choices documents of the Mär sync service and the
     /// bodies written but not yet taken, per identity: one owner per old
@@ -356,21 +355,21 @@ nonisolated struct CarrierRowsSpec: Sendable {
         legacyOwners: [],
         legacyScopedOwners: ["maerSyncPlaylists", "maerSyncPlaylistsPending", "maerSyncChoices", "maerSyncChoicesPending"],
         legacyTokens: [], legacyScopedVersions: ["maerSyncPlaylistsVersion", "maerSyncChoicesVersion"],
-        moveStartedKey: "carrierDocumentsMoveStarted", movedKey: "carrierDocumentsMoved", wholeDocuments: true)
+        movedKey: "carrierDocumentsMoved", wholeDocuments: true)
 
     /// The last backward jumps of each book, kept for the diagnosis on its
     /// page: one entry per title. Not a carrier's, it stays on the device.
     static let jumpRings = CarrierRowsSpec(
         table: "item_jump_ring", label: "JUMPRING",
         legacyOwners: [], legacyScopedOwners: [], legacyTokens: [], legacyScopedVersions: [],
-        moveStartedKey: "jumpRingsMoveStarted", movedKey: "jumpRingsMoved", legacyPrefixes: ["jumpRing."])
+        movedKey: "jumpRingsMoved", legacyPrefixes: ["jumpRing."])
 
     /// The offline copy of the server's bookmarks of each book: one entry
     /// per title. Not a carrier's, it stays on the device.
     static let bookmarks = CarrierRowsSpec(
         table: "item_bookmark", label: "BOOKMARKCACHE",
         legacyOwners: [], legacyScopedOwners: [], legacyTokens: [], legacyScopedVersions: [],
-        moveStartedKey: "bookmarkCacheMoveStarted", movedKey: "bookmarkCacheMoved", legacyPrefixes: ["bookmarkCache."])
+        movedKey: "bookmarkCacheMoved", legacyPrefixes: ["bookmarkCache."])
 }
 
 /// The stands, `[position, moment, duration?, form?]` per title.
@@ -387,7 +386,6 @@ extension CarrierRows where Value == [Double] {
     }
     nonisolated static var legacyToken: String { "cloudStandToken" }
     nonisolated static var legacyScopedVersion: String { "maerSyncStandsVersion" }
-    nonisolated static var moveStartedKey: String { CarrierRowsSpec.stands.moveStartedKey }
     nonisolated static var movedKey: String { CarrierRowsSpec.stands.movedKey }
     nonisolated static func isLegacyOwner(_ key: String) -> Bool { CarrierRowsSpec.stands.isLegacyOwner(key) }
 }
@@ -470,12 +468,24 @@ extension CarrierRows where Value == [ABSBookmark] {
 /// domain finds the rows the first one wrote.
 @MainActor
 enum CarrierRowStores {
-    static let stands = CarrierStandRows(spec: .stands, database: .shared, defaults: AppStorageKeys.store)
-    static let records = CarrierRecordRows(spec: .records, database: .shared, defaults: AppStorageKeys.store)
-    static let stamps = ChoiceStampRows(spec: .stamps, database: .shared, defaults: AppStorageKeys.store)
-    static let documents = CarrierDocumentRows(spec: .documents, database: .shared, defaults: AppStorageKeys.store)
-    static let jumpRings = JumpRingRows(spec: .jumpRings, database: .shared, defaults: AppStorageKeys.store)
-    static let bookmarks = BookmarkCacheRows(spec: .bookmarks, database: .shared, defaults: AppStorageKeys.store)
+    /// The one database of the app, named once for every store below.
+    private static let database = MaerDatabase.shared
+    static let stands = CarrierStandRows(spec: .stands, database: database, defaults: AppStorageKeys.store)
+    static let records = CarrierRecordRows(spec: .records, database: database, defaults: AppStorageKeys.store)
+    static let stamps = ChoiceStampRows(spec: .stamps, database: database, defaults: AppStorageKeys.store)
+    static let documents = CarrierDocumentRows(spec: .documents, database: database, defaults: AppStorageKeys.store)
+    static let jumpRings = JumpRingRows(spec: .jumpRings, database: database, defaults: AppStorageKeys.store)
+    static let bookmarks = BookmarkCacheRows(spec: .bookmarks, database: database, defaults: AppStorageKeys.store)
+
+    /// The entries of a book that left the library go with it: its jump
+    /// ring and the offline copy of its bookmarks (the copy was never
+    /// cleaned up before). Only with a FULL library list, by the rule of
+    /// `AppStorageKeys.cleanupPerBookKeys`.
+    static func cleanupPerBookRows(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
+        let gone: (String) -> Bool = { AppStorageKeys.prunedByBookCleanup($0, validItemIds: validItemIds) }
+        JumpRingRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
+        BookmarkCacheRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
+    }
 
     static func matching<Value>(_ defaults: UserDefaults, spec: CarrierRowsSpec) -> CarrierRows<Value> {
         if defaults === AppStorageKeys.store {

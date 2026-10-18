@@ -292,7 +292,7 @@ struct NavidromeRekeyTests {
     }
 
     @Test("die eigenen Wahlen ziehen als Mechanik um: mit ihren Stempeln, ohne Notiz, alt und neu einmal, ein zweiter Lauf null")
-    func theOwnChoicesMove() {
+    func theOwnChoicesMove() throws {
         let cloud = CountingCloud()
         let here = device(cloud, now: 1000, map: Self.map)
         defer { UserDefaults().removePersistentDomain(forName: here.suite) }
@@ -309,20 +309,20 @@ struct NavidromeRekeyTests {
         here.sync._seedStampsForWitness([oldRate: 5.0, newRate: 9.0, oldTail: 4.0, clearedOld: 8.0,
                                          UserChoiceCatalog.hiddenPrefix + oldHidden: 6.0])
 
-        let first = here.sync.rekeyLocalChoices(Self.map)
+        let first = try #require(here.sync.rekeyLocalChoices(Self.map), "the precondition: the stamps are read")
         #expect(first.changed == 5)
         #expect(d.object(forKey: oldRate) == nil && d.double(forKey: newRate) == 1.2, "the later statement stays")
         #expect(d.object(forKey: oldTail) == nil
                 && d.double(forKey: PlayedTail.key(Self.map("sub:album:\(Self.hexAlbum)"))) == 30)
         #expect(ContinueHiddenStore.markers(defaults: d) == [Self.map(oldHidden): 42])
         #expect(d.string(forKey: AppStorageKeys.lastPlayedItemId) == "sub:song:\(Self.new)")
-        let stamps = here.sync.localStamps()
+        let stamps = try #require(here.sync.localStamps())
         #expect(stamps[newRate] == 9 && stamps[oldRate] == nil)
         #expect(stamps[PlayedTail.key(Self.map("sub:album:\(Self.hexAlbum)"))] == 4)
         #expect(stamps["playbackRate.sub:playlist:\(Self.new)"] == 8 && stamps[clearedOld] == nil,
                 "a clearing moves as a clearing, the old key leaves no tombstone of its own")
         #expect(cloud.writes == 0, "mechanics note nothing")
-        #expect(here.sync.rekeyLocalChoices(Self.map).changed == 0, "a second pass changes nothing")
+        #expect(here.sync.rekeyLocalChoices(Self.map)?.changed == 0, "a second pass changes nothing")
     }
 
     @Test("Ruhe mit einem alten Geraet: es schreibt den alten Schluessel weiter, das umgezogene uebernimmt einmal und schreibt dann nichts")
