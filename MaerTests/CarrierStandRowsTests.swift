@@ -186,14 +186,19 @@ struct CarrierStandRowsTests {
         let legacy = CarrierRowsSpec.stands.legacyTokens + CarrierRowsSpec.records.legacyTokens
         #expect(Set(tokens).isDisjoint(with: legacy), "a token of this build carries an old name")
         #expect(legacy.count == 4, "the fence knows four old tokens")
-        #expect(MaerSyncSession.versionKey != CarrierStandRows.legacyScopedVersion)
-        #expect(!MaerSyncSession.identityKeys.contains { CarrierStandRows.isLegacyOwner($0) || $0 == CarrierStandRows.legacyScopedVersion })
+        let versions = CarrierRowsSpec.stands.legacyScopedVersions + CarrierRowsSpec.documents.legacyScopedVersions
+        #expect(versions.count == 3, "the fence knows three old versions")
+        #expect(Set([MaerSyncSession.versionKey, MaerSyncSession.playlistsVersionKey, MaerSyncSession.choicesVersionKey])
+            .isDisjoint(with: versions), "a version of this build carries an old name")
+        #expect(!MaerSyncSession.identityKeys.contains { key in
+            CarrierStandRows.isLegacyOwner(key) || CarrierDocumentRows.isLegacyOwner(key) || versions.contains(key)
+        }, "an old name is kept per identity in the defaults")
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var named: [String] = []
         var blobReaders: [String] = []
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            if (legacy + [CarrierStandRows.legacyScopedVersion]).contains(where: { code.contains("\"\($0)\"") }) {
+            if (legacy + versions).contains(where: { code.contains("\"\($0)\"") }) {
                 named.append(file.lastPathComponent)
             }
             if code.contains("[String: [Double]].self") || code.contains("[String: [String]].self") || code.contains("[String: Value].self") {

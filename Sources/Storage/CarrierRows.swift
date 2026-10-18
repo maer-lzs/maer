@@ -189,7 +189,12 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
     nonisolated static func legacyBlobs(in defaults: UserDefaults, spec: CarrierRowsSpec) -> [String: [String: Value]] {
         var out: [String: [String: Value]] = [:]
         for key in defaults.dictionaryRepresentation().keys where spec.isLegacyOwner(key) {
-            if let data = defaults.data(forKey: key) {
+            if spec.wholeDocuments, let data = defaults.data(forKey: key),
+               let text = String(data: data, encoding: .utf8), let body = text as? Value {
+                // A document of the service was one body: it moves as the
+                // owner's one entry.
+                out[key] = [CarrierRowsSpec.bodyEntry: body]
+            } else if let data = defaults.data(forKey: key) {
                 // bearable, because an unreadable blob only costs a full pull; the truth lies on the other side and on the device
                 out[key] = (try? JSONDecoder().decode([String: Value].self, from: data)) ?? [:]
             } else if let dictionary = defaults.dictionary(forKey: key) as? [String: Value] {
@@ -229,6 +234,12 @@ nonisolated struct CarrierRowsSpec: Sendable {
     let legacyScopedVersions: [String]
     let moveStartedKey: String
     let movedKey: String
+    /// Whether a blob before the rows was one whole document (the bodies of
+    /// the Mär sync service), not a dictionary of entries.
+    var wholeDocuments = false
+
+    /// The one entry of an owner that holds a whole document.
+    static let bodyEntry = "body"
 
     func isLegacyOwner(_ key: String) -> Bool {
         legacyOwners.contains(key) || legacyScopedOwners.contains { key == $0 || key.hasPrefix($0 + ".") }
@@ -263,6 +274,17 @@ nonisolated struct CarrierRowsSpec: Sendable {
         legacyOwners: ["userChoiceStamps"], legacyScopedOwners: [],
         legacyTokens: [], legacyScopedVersions: [],
         moveStartedKey: "choiceStampsMoveStarted", movedKey: "choiceStampsMoved")
+
+    /// The playlists and choices documents of the Mär sync service and the
+    /// bodies written but not yet taken, per identity: one owner per old
+    /// key, its one entry the body (`bodyEntry`). The versions beside them
+    /// go with the move.
+    static let documents = CarrierRowsSpec(
+        table: "carrier_document", label: "CARRIERDOCUMENT",
+        legacyOwners: [],
+        legacyScopedOwners: ["maerSyncPlaylists", "maerSyncPlaylistsPending", "maerSyncChoices", "maerSyncChoicesPending"],
+        legacyTokens: [], legacyScopedVersions: ["maerSyncPlaylistsVersion", "maerSyncChoicesVersion"],
+        moveStartedKey: "carrierDocumentsMoveStarted", movedKey: "carrierDocumentsMoved", wholeDocuments: true)
 }
 
 /// The stands, `[position, moment, duration?, form?]` per title.
@@ -309,7 +331,31 @@ extension CarrierRows where Value == Double {
     nonisolated static var movedKey: String { CarrierRowsSpec.stamps.movedKey }
 }
 
-/// The app's three stores, and for a witness's own defaults a database file
+/// The documents of the Mär sync service, one body per owner.
+typealias CarrierDocumentRows = CarrierRows<String>
+
+extension CarrierRows where Value == String {
+    static var shared: CarrierDocumentRows { CarrierRowStores.documents }
+    static func matching(_ defaults: UserDefaults) -> CarrierDocumentRows { CarrierRowStores.matching(defaults, spec: .documents) }
+    convenience init(database: MaerDatabase, defaults: UserDefaults) {
+        self.init(spec: .documents, database: database, defaults: defaults)
+    }
+    nonisolated static var movedKey: String { CarrierRowsSpec.documents.movedKey }
+    nonisolated static func isLegacyOwner(_ key: String) -> Bool { CarrierRowsSpec.documents.isLegacyOwner(key) }
+
+    /// An owner's document, nil when it holds none.
+    func body(_ owner: String) -> Data? {
+        rows(owner)[CarrierRowsSpec.bodyEntry].map { Data($0.utf8) }
+    }
+
+    /// An owner's document as it is now; nil removes it. A body that is no
+    /// text (the service writes JSON) is not kept.
+    func setBody(_ owner: String, _ body: Data?) {
+        set(owner, body.flatMap { String(data: $0, encoding: .utf8) }.map { [CarrierRowsSpec.bodyEntry: $0] } ?? [:])
+    }
+}
+
+/// The app's four stores, and for a witness's own defaults a database file
 /// of their own, named in that domain, so a second session on the same
 /// domain finds the rows the first one wrote.
 @MainActor
@@ -317,13 +363,15 @@ enum CarrierRowStores {
     static let stands = CarrierStandRows(spec: .stands, database: .shared, defaults: AppStorageKeys.store)
     static let records = CarrierRecordRows(spec: .records, database: .shared, defaults: AppStorageKeys.store)
     static let stamps = ChoiceStampRows(spec: .stamps, database: .shared, defaults: AppStorageKeys.store)
+    static let documents = CarrierDocumentRows(spec: .documents, database: .shared, defaults: AppStorageKeys.store)
 
     static func matching<Value>(_ defaults: UserDefaults, spec: CarrierRowsSpec) -> CarrierRows<Value> {
         if defaults === AppStorageKeys.store {
-            // Only the three app stores exist for the app's own defaults.
+            // Only the four app stores exist for the app's own defaults.
             let app: AnyObject = switch spec.table {
             case CarrierRowsSpec.stands.table: stands
             case CarrierRowsSpec.stamps.table: stamps
+            case CarrierRowsSpec.documents.table: documents
             default: records
             }
             guard let rows = app as? CarrierRows<Value> else {

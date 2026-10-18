@@ -51,6 +51,7 @@ final class MaerSyncSession {
     private let deviceId: () -> String
     private let defaults: UserDefaults
     private let rows: CarrierStandRows
+    private let documentRows: CarrierDocumentRows
 
     /// Whose state this session holds. Mirror, version, queue, removals and
     /// pending writes of every family belong to the identity (account plus
@@ -68,11 +69,12 @@ final class MaerSyncSession {
     /// versions nor what is still unread, and its failure stops nothing.
     private(set) var identityGeneration = 0
     /// Every key of the session in the defaults, kept per identity.
-    nonisolated static let identityKeys = [versionKey, removalsKey,
-                                           playlistsMirrorKey, playlistsVersionKey, playlistsPendingKey,
-                                           choicesMirrorKey, choicesVersionKey, choicesPendingKey]
-    /// Every owner of the session in the rows, kept per identity.
+    nonisolated static let identityKeys = [versionKey, removalsKey, playlistsVersionKey, choicesVersionKey]
+    /// Every owner of the session in the rows of the stands, kept per identity.
     nonisolated static let identityOwners = [mirrorKey, queueKey]
+    /// Every owner of the session in the rows of the documents, kept per
+    /// identity: the bodies and the bodies not yet taken.
+    nonisolated static let identityDocuments = [playlistsMirrorKey, playlistsPendingKey, choicesMirrorKey, choicesPendingKey]
 
     /// Read once and on `reloadAccess()`: the token lives in the keychain,
     /// and a round trip there per refresh is measurable load.
@@ -98,7 +100,9 @@ final class MaerSyncSession {
     /// restart or a round under another account and back left the runner
     /// seeing no difference and the body never went out.
     nonisolated static let playlistsPendingKey = "maerSyncPlaylistsPending"
-    nonisolated static let playlistsVersionKey = "maerSyncPlaylistsVersion"
+    /// Under its own name since the documents moved into rows: an older
+    /// build reads `maerSyncPlaylistsVersion` beside a body it no longer finds.
+    nonisolated static let playlistsVersionKey = "maerSyncPlaylistsVersionRows"
     private(set) var playlistsBody: Data?
     private var playlistsVersion: String?
     private var playlistsPending: Data?
@@ -113,7 +117,9 @@ final class MaerSyncSession {
     nonisolated static let choicesMirrorKey = "maerSyncChoices"
     /// The choices body not yet taken, kept per identity (see the playlists).
     nonisolated static let choicesPendingKey = "maerSyncChoicesPending"
-    nonisolated static let choicesVersionKey = "maerSyncChoicesVersion"
+    /// Under its own name since the documents moved into rows (see the
+    /// playlists).
+    nonisolated static let choicesVersionKey = "maerSyncChoicesVersionRows"
     private(set) var choicesBody: Data?
     private var choicesVersion: String?
     private var choicesPending: Data?
@@ -272,6 +278,7 @@ final class MaerSyncSession {
          deviceId: @escaping () -> String,
          defaults: UserDefaults = AppStorageKeys.store,
          rows: CarrierStandRows? = nil,
+         documents: CarrierDocumentRows? = nil,
          path: (any MaerSyncPathSource)? = nil,
          announcedKinds: Set<String>? = nil,
          clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) {
@@ -288,23 +295,26 @@ final class MaerSyncSession {
         self.defaults = defaults
         let rows = rows ?? CarrierStandRows.matching(defaults)
         self.rows = rows
+        let documentRows = documents ?? CarrierDocumentRows.matching(defaults)
+        self.documentRows = documentRows
         self.access = access()
         self.accessUnknown = self.access == nil && accessUnknown()
         let current = identity()
         self.identity = current
-        if let current { Self.adoptPlainKeys(into: current, defaults: defaults, rows: rows) }
+        if let current { Self.adoptPlainKeys(into: current, defaults: defaults, rows: rows, documents: documentRows) }
         let key: (String) -> String = { base in current?.keyed(base) ?? base }
         stands = rows.rows(key(Self.mirrorKey))
         queue = rows.rows(key(Self.queueKey))
         queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
         standsVersion = defaults.string(forKey: key(Self.versionKey))
-        playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
+        playlistsBody = documentRows.body(key(Self.playlistsMirrorKey))
         playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
-        playlistsPending = defaults.data(forKey: key(Self.playlistsPendingKey))
-        choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
+        playlistsPending = documentRows.body(key(Self.playlistsPendingKey))
+        choicesBody = documentRows.body(key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
-        choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
+        choicesPending = documentRows.body(key(Self.choicesPendingKey))
         forgetStandsIfUnread()
+        forgetDocumentsIfUnread()
     }
 
     /// The key a persisted value of the current identity lives under.
@@ -327,36 +337,60 @@ final class MaerSyncSession {
         queue = rows.rows(key(Self.queueKey)).merging(queue) { _, run in run }
     }
 
+    /// The same for the documents: their versions go, and the bodies read
+    /// later stand where this run holds none.
+    private func forgetDocumentsIfUnread() {
+        guard documentRows.unread else { return }
+        playlistsVersion = nil
+        choicesVersion = nil
+        defaults.removeObject(forKey: key(Self.playlistsVersionKey))
+        defaults.removeObject(forKey: key(Self.choicesVersionKey))
+        documentRows.whenRead { [weak self] in self?.takeTheReadDocuments() }
+    }
+
+    private func takeTheReadDocuments() {
+        playlistsBody = playlistsBody ?? documentRows.body(key(Self.playlistsMirrorKey))
+        playlistsPending = playlistsPending ?? documentRows.body(key(Self.playlistsPendingKey))
+        choicesBody = choicesBody ?? documentRows.body(key(Self.choicesMirrorKey))
+        choicesPending = choicesPending ?? documentRows.body(key(Self.choicesPendingKey))
+    }
+
     /// The state written before identities existed belongs to the access of
     /// that moment: the first identity that finds it takes it over, once,
     /// and the plain keys are cleared so no later account inherits them.
-    static func adoptPlainKeys(into identity: MaerSyncIdentity, defaults: UserDefaults, rows: CarrierStandRows) {
+    static func adoptPlainKeys(into identity: MaerSyncIdentity, defaults: UserDefaults, rows: CarrierStandRows,
+                               documents: CarrierDocumentRows? = nil) {
+        let documents = documents ?? CarrierDocumentRows.matching(defaults)
         guard identityKeys.contains(where: { defaults.object(forKey: $0) != nil })
-                || identityOwners.contains(where: { rows.holds($0) }),
+                || identityOwners.contains(where: { rows.holds($0) })
+                || identityDocuments.contains(where: { documents.holds($0) }),
               !identityKeys.contains(where: { defaults.object(forKey: identity.keyed($0)) != nil }),
-              !identityOwners.contains(where: { rows.holds(identity.keyed($0)) }) else { return }
+              !identityOwners.contains(where: { rows.holds(identity.keyed($0)) }),
+              !identityDocuments.contains(where: { documents.holds(identity.keyed($0)) }) else { return }
         for base in identityKeys {
             if let value = defaults.object(forKey: base) { defaults.set(value, forKey: identity.keyed(base)) }
             defaults.removeObject(forKey: base)
         }
         for owner in identityOwners { rows.rename(owner: owner, to: identity.keyed(owner)) }
+        for owner in identityDocuments { documents.rename(owner: owner, to: identity.keyed(owner)) }
     }
 
     /// Loads the persisted state of the current identity (empty the first
     /// time) and drops what the previous one held in memory only.
     private func loadIdentityState() {
-        if let identity { Self.adoptPlainKeys(into: identity, defaults: defaults, rows: rows) }
+        if let identity { Self.adoptPlainKeys(into: identity, defaults: defaults, rows: rows, documents: documentRows) }
         stands = rows.rows(key(Self.mirrorKey))
         queue = rows.rows(key(Self.queueKey))
         queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
         standsVersion = defaults.string(forKey: key(Self.versionKey))
-        playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
+        playlistsBody = documentRows.body(key(Self.playlistsMirrorKey))
         playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
-        playlistsPending = defaults.data(forKey: key(Self.playlistsPendingKey))
-        choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
+        playlistsPending = documentRows.body(key(Self.playlistsPendingKey))
+        choicesBody = documentRows.body(key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
-        choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
+        choicesPending = documentRows.body(key(Self.choicesPendingKey))
         forgetStandsIfUnread()
+        forgetDocumentsIfUnread()
         for family in families {
             family.bodies = [:]
             family.versions = [:]
@@ -395,6 +429,7 @@ final class MaerSyncSession {
             defaults.removeObject(forKey: current.keyed(base))
         }
         for owner in Self.identityOwners { rows.rename(owner: current.keyed(owner), to: next.keyed(owner)) }
+        for owner in Self.identityDocuments { documentRows.rename(owner: current.keyed(owner), to: next.keyed(owner)) }
         identity = next
     }
 
@@ -1274,30 +1309,15 @@ final class MaerSyncSession {
         } else {
             defaults.removeObject(forKey: key(Self.versionKey))
         }
-        if let playlistsBody {
-            defaults.set(playlistsBody, forKey: key(Self.playlistsMirrorKey))
-        } else {
-            defaults.removeObject(forKey: key(Self.playlistsMirrorKey))
-        }
+        // The documents in their rows: an unchanged body writes nothing.
+        documentRows.setBody(key(Self.playlistsMirrorKey), playlistsBody)
+        documentRows.setBody(key(Self.playlistsPendingKey), playlistsPending)
+        documentRows.setBody(key(Self.choicesMirrorKey), choicesBody)
+        documentRows.setBody(key(Self.choicesPendingKey), choicesPending)
         if let playlistsVersion {
             defaults.set(playlistsVersion, forKey: key(Self.playlistsVersionKey))
         } else {
             defaults.removeObject(forKey: key(Self.playlistsVersionKey))
-        }
-        if let choicesBody {
-            defaults.set(choicesBody, forKey: key(Self.choicesMirrorKey))
-        } else {
-            defaults.removeObject(forKey: key(Self.choicesMirrorKey))
-        }
-        if let playlistsPending {
-            defaults.set(playlistsPending, forKey: key(Self.playlistsPendingKey))
-        } else {
-            defaults.removeObject(forKey: key(Self.playlistsPendingKey))
-        }
-        if let choicesPending {
-            defaults.set(choicesPending, forKey: key(Self.choicesPendingKey))
-        } else {
-            defaults.removeObject(forKey: key(Self.choicesPendingKey))
         }
         if let choicesVersion {
             defaults.set(choicesVersion, forKey: key(Self.choicesVersionKey))

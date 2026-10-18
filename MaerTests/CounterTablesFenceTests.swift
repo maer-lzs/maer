@@ -33,6 +33,7 @@ struct CounterTablesFenceTests {
         "carrier_stand": (.wholeValue, "one stand per owner and title, as the carrier holds it"),
         "carrier_record": (.wholeValue, "one record row per owner and key, as the carrier holds it"),
         "choice_stamp": (.wholeValue, "one moment per owner and travelling choice"),
+        "carrier_document": (.wholeValue, "one body per owner, the document as the service holds it"),
     ]
 
     @Test("jede Tabelle ist eingeordnet, keine Einordnung ohne Tabelle")

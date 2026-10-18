@@ -8,11 +8,11 @@ in its database, one row per title, instead of one large block in the
 settings. While a book or episode plays, each save writes only what
 changed; with 22,000 titles a save takes about a quarter of the time on
 the main thread it took before. Your choices, Mär playlists and listening
-statistics travelling through iCloud are kept the same way, and changing
-a choice writes only the moment of that choice instead of the moments of
-all of them. After the update the app fetches the listening positions
-once from the start, and with iCloud also the choices, playlists and
-statistics.
+statistics travelling through iCloud are kept the same way, with a Mär
+sync service the choices and playlists too, and changing a choice writes
+only the moment of that choice instead of the moments of all of them.
+After the update the app fetches the listening positions, choices and
+playlists once from the start, and with iCloud also the statistics.
 
 ## v3.4 (Build 54)
 
