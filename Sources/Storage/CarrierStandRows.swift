@@ -54,8 +54,28 @@ final class CarrierStandRows {
             guard let self else { return }
             self.flat = RowKeeper.union(read: read, run: self.flat)
             self.held = Self.owners(of: self.flat)
+            let waiting = self.onRead
+            self.onRead = []
+            for body in waiting { body() }
         }
     }
+
+    /// Whether the rows could not be read at the start and are not read
+    /// yet: an owner's stands are then unknown, not empty. A carrier drops
+    /// its token or version, so its next round fetches from the start, and
+    /// takes the rows into its memory once they are read (`whenRead`);
+    /// otherwise its next write would give every read row as removed.
+    var unread: Bool {
+        startIfNeeded()
+        return keeper.startReadFailed
+    }
+
+    /// Runs once the rows that could not be read at the start are read.
+    func whenRead(_ body: @escaping @MainActor () -> Void) {
+        guard unread else { return }
+        onRead.append(body)
+    }
+    private var onRead: [@MainActor () -> Void] = []
 
     /// The rows of the app's defaults, or for a witness's own defaults a
     /// database file of their own, named in that domain, so a second
@@ -147,7 +167,9 @@ final class CarrierStandRows {
         guard held == nil else { return }
         flat = keeper.startNow() ?? [:]
         held = Self.owners(of: flat)
-        guard !defaults.bool(forKey: Self.movedKey) else { return }
+        // Over rows nobody read, the blobs would win the merge: the move
+        // waits for a start that reads.
+        guard !defaults.bool(forKey: Self.movedKey), !keeper.startReadFailed else { return }
         move()
     }
 

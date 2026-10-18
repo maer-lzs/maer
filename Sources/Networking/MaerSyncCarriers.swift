@@ -304,10 +304,28 @@ final class MaerSyncSession {
         choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
         choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
+        forgetStandsIfUnread()
     }
 
     /// The key a persisted value of the current identity lives under.
     private func key(_ base: String) -> String { identity?.keyed(base) ?? base }
+
+    /// Over rows the start could not read the stands are unknown, not
+    /// empty: the version goes, so the next fetch reads the whole document,
+    /// and the rows join the stands once they are read.
+    private func forgetStandsIfUnread() {
+        guard rows.unread else { return }
+        standsVersion = nil
+        defaults.removeObject(forKey: key(Self.versionKey))
+        rows.whenRead { [weak self] in self?.takeTheReadStands() }
+    }
+
+    /// The rows read after a start that could not read them, under what
+    /// this run learned since: this run wins per item.
+    private func takeTheReadStands() {
+        stands = rows.rows(key(Self.mirrorKey)).merging(stands) { _, run in run }
+        queue = rows.rows(key(Self.queueKey)).merging(queue) { _, run in run }
+    }
 
     /// The state written before identities existed belongs to the access of
     /// that moment: the first identity that finds it takes it over, once,
@@ -338,6 +356,7 @@ final class MaerSyncSession {
         choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
         choicesPending = defaults.data(forKey: key(Self.choicesPendingKey))
+        forgetStandsIfUnread()
         for family in families {
             family.bodies = [:]
             family.versions = [:]

@@ -289,6 +289,22 @@ struct PodcastNotesTests {
         #expect(subs.shows.first?.episodes.count == 2, "an episode the feed no longer carries left the show")
     }
 
+    /// The published stock is a second door beside the setter of `shows`:
+    /// a write to it past the setter keeps the shownotes in memory. Only
+    /// the setter writes it, at its two assignments, in both directions.
+    @Test("der veroeffentlichte Bestand wird nur im Setter von shows geschrieben, an zwei Stellen", .needsTheSources)
+    func onlyTheSetterWritesTheStock() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
+        let writes = #/(?m)^\s*(?:self\.)?stock\s*(?:=[^=]|\+=|\.(?:append|remove|insert|merge))/#
+        let open = try #require(code.range(of: "private(set) var shows: [PodcastShow] {"), "the setter of shows")
+        let close = try #require(code.range(of: "@Published private var stock", range: open.upperBound..<code.endIndex))
+        #expect(code[open.upperBound..<close.lowerBound].matches(of: writes).count == 2, "the setter's two assignments")
+        #expect(code.matches(of: writes).count == 2, "the stock is written past the setter of shows")
+        #expect("        stock = x\n        self.stock.append(y)\n        log(\"stock=\\(n)\")\n        if stock == z {}".matches(of: writes).count == 2,
+                "the reader of the writes")
+    }
+
     /// The shownotes leave a stock before it is assigned: a change that
     /// brings notes publishes once, as one without them does, so the caches
     /// are rebuilt and the rows bumped once per change, not twice.

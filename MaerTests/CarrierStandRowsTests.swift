@@ -94,6 +94,77 @@ struct CarrierStandRowsTests {
         #expect(stored == ["maerSyncStands.c\u{1F}rss:2": [2, 2]], "\(stored)")
     }
 
+    /// A table whose columns are not `key` and `payload`: the start read
+    /// fails as a whole, and the file is no fresh install.
+    private func unreadable(_ path: String) async throws -> MaerDatabase {
+        let database = MaerDatabase(path: path)
+        let connection = try database.connection()
+        try await connection.execute("CREATE TABLE carrier_stand (other TEXT)")
+        try await connection.execute("INSERT INTO carrier_stand (other) VALUES ('x')")
+        _ = try await connection.checkpoint()
+        return database
+    }
+
+    /// The table readable again, with the given rows.
+    private func healed(_ database: MaerDatabase, rows: [String: [Double]]) async throws {
+        let connection = try database.connection()
+        try await connection.execute("DROP TABLE carrier_stand")
+        let store = try await KeyedRowStore<[Double]>(connection: connection, table: .carrierStand)
+        _ = try await store.apply(previous: [:], current: rows)
+    }
+
+    /// The invariant of the move: rows the start could not read are an
+    /// unknown mirror, not an empty one. The token goes, so the next round
+    /// fetches from the start, and once the rows are read they join the
+    /// mirror instead of leaving with the next write.
+    @Test("kann der Start die Zeilen nicht lesen, faellt das Token des CloudKit-Traegers, und gelesen geht keine Zeile verloren")
+    func anUnreadStartDropsTheTokenAndLosesNoRow() async throws {
+        let (defaults, suite, path) = try place()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: CarrierStandRows.movedKey)
+        defaults.set(Data("7".utf8), forKey: CloudKitStandCarrier.tokenKey)
+        let database = try await unreadable(path)
+        let rows = CarrierStandRows(database: database, defaults: defaults)
+        let carrier = CloudKitStandCarrier(database: CloudKitStandCarrierTests.FakeDatabase(),
+                                           fallback: KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0),
+                                           defaults: defaults, rows: rows)
+        #expect(rows.unread, "the precondition: the start read failed")
+        #expect(defaults.data(forKey: CloudKitStandCarrier.tokenKey) == nil, "the token stayed over an unknown mirror")
+
+        try await healed(database, rows: [CarrierStandRows.key(CloudKitStandCarrier.mirrorKey, "rss:old"): [1, 100]])
+        carrier.write(upserts: ["rss:new": [2, 200]], removing: [], by: "play")
+        await rows.awaitPendingWrites()
+        #expect(!rows.unread)
+        #expect(carrier.stands()["rss:old"] == [1, 100], "the read row did not join the mirror")
+        let stored = try storedRows(path)
+        #expect(stored[CarrierStandRows.key(CloudKitStandCarrier.mirrorKey, "rss:old")] == [1, 100], "a read row left with the write")
+        #expect(stored[CarrierStandRows.key(CloudKitStandCarrier.mirrorKey, "rss:new")] == [2, 200])
+        carrier.stop()
+    }
+
+    @Test("kann der Start die Zeilen nicht lesen, faellt die Version des Mär-Sync, und gelesen geht keine Zeile verloren")
+    func anUnreadStartDropsTheVersionAndLosesNoRow() async throws {
+        let (defaults, suite, path) = try place()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let identity = MaerSyncIdentityTests.identityA
+        defaults.set(true, forKey: CarrierStandRows.movedKey)
+        defaults.set("v7", forKey: identity.keyed(MaerSyncSession.versionKey))
+        let database = try await unreadable(path)
+        let rows = CarrierStandRows(database: database, defaults: defaults)
+        let session = MaerSyncSession(transport: MaerSyncCarrierTests.FakeTransport(), announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { MaerSyncIdentityTests.accessA }, identity: { identity },
+                                      deviceId: { "dev-a" }, defaults: defaults, rows: rows)
+        #expect(rows.unread, "the precondition: the start read failed")
+        #expect(defaults.string(forKey: identity.keyed(MaerSyncSession.versionKey)) == nil, "the version stayed over unknown stands")
+
+        let owner = identity.keyed(MaerSyncSession.mirrorKey)
+        try await healed(database, rows: [CarrierStandRows.key(owner, "rss:old"): [1, 100]])
+        session.enqueue(upserts: ["rss:new": [2, 200]], removing: [], by: "witness")
+        await rows.awaitPendingWrites()
+        #expect(session.stands["rss:old"] == [1, 100], "the read row did not join the stands")
+        #expect(try storedRows(path)[CarrierStandRows.key(owner, "rss:old")] == [1, 100], "a read row left with the write")
+    }
+
     @Test("nur die Bloecke der Staende gelten als alter Besitzer, nicht die Nachbarschluessel")
     func theLegacyOwnersAreTheBlobs() {
         for key in ["cloudStandMirror", "cloudStandQueue", "maerSyncStands", "maerSyncStands.x/y", "maerSyncStandsQueue", "maerSyncStandsQueue.x"] {

@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Less work while you listen.** With iCloud or a Mär sync service, what
+the app knows of the listening positions on your other devices now lives
+in its database, one row per title, instead of one large block in the
+settings. While a book or episode plays, each save writes only what
+changed; with 22,000 titles a save takes about a quarter of the time on
+the main thread it took before. After the update the app fetches the
+positions from iCloud or your sync service once from the start.
+
 ## v3.4 (Build 54)
 
 **Drive mode keeps time.** In drive mode the progress bar and the
