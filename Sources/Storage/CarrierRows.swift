@@ -86,9 +86,47 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
     func set(_ owner: String, _ rows: [String: Value]) {
         startIfNeeded()
         guard place(owner, rows) else { return }
-        if rows.isEmpty {
+        commit(emptied: rows.isEmpty)
+    }
+
+    /// One entry of an owner; nil when it holds none.
+    func entry(_ owner: String, _ entry: String) -> Value? {
+        startIfNeeded()
+        return held?[owner]?[entry]
+    }
+
+    /// One entry of an owner as it is now, nil removes it; the other entries
+    /// stay as they are, and nothing else is compared.
+    func setEntry(_ owner: String, _ entry: String, _ value: Value?) {
+        startIfNeeded()
+        var rows = held?.removeValue(forKey: owner) ?? [:]
+        let changed = rows[entry] != value
+        rows[entry] = value
+        held?[owner] = rows.isEmpty ? nil : rows
+        guard changed else { return }
+        flat[Self.key(owner, entry)] = value
+        commit(emptied: rows.isEmpty)
+    }
+
+    /// The entries of an owner that `gone` names leave; the rest stay.
+    func removeEntries(_ owner: String, where gone: (String) -> Bool) {
+        startIfNeeded()
+        var rows = held?.removeValue(forKey: owner) ?? [:]
+        let leaving = rows.keys.filter(gone)
+        for entry in leaving {
+            rows[entry] = nil
+            flat[Self.key(owner, entry)] = nil
+        }
+        held?[owner] = rows.isEmpty ? nil : rows
+        guard !leaving.isEmpty else { return }
+        commit(emptied: rows.isEmpty)
+    }
+
+    private func commit(emptied: Bool) {
+        if emptied {
             // Emptying is the action: the owner's last entry went (the
-            // queue was sent, the other side holds nothing).
+            // queue was sent, the other side holds nothing, the last title
+            // with an entry left the library).
             keeper.write(emptying: .allowed, snapshot)
         } else {
             write()
@@ -159,50 +197,79 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
     /// newer word.
     private func move() {
         defaults.set(true, forKey: spec.moveStartedKey)
-        let found = Self.legacyBlobs(in: defaults, spec: spec)
+        let legacy = Self.legacyBlobs(in: defaults, spec: spec)
+        let found = legacy.owners
         guard !found.isEmpty else {
-            finishMove(owners: [])
+            finishMove(keys: legacy.keys)
             return
         }
         for (owner, entries) in found {
             _ = place(owner, entries.merging(held?[owner] ?? [:]) { _, rows in rows })
         }
         keeper.mark = { [weak self] in
-            (statements: [], landed: { self?.finishMove(owners: Array(found.keys)) })
+            (statements: [], landed: { self?.finishMove(keys: legacy.keys) })
         }
         write()
         Logger.library.notice("\(self.spec.label, privacy: .public) move owners=\(found.count) entries=\(found.values.map(\.count).reduce(0, +))")
     }
 
-    private func finishMove(owners: [String]) {
+    private func finishMove(keys: [String]) {
         keeper.mark = nil
-        for owner in owners { defaults.removeObject(forKey: owner) }
+        for key in keys { defaults.removeObject(forKey: key) }
         for token in spec.legacyTokens { defaults.removeObject(forKey: token) }
         for key in defaults.dictionaryRepresentation().keys where spec.isLegacyVersion(key) {
             defaults.removeObject(forKey: key)
         }
         defaults.set(true, forKey: spec.movedKey)
-        Logger.library.notice("\(self.spec.label, privacy: .public) moved owners=\(owners.count); the blobs, the tokens and the versions are gone")
+        Logger.library.notice("\(self.spec.label, privacy: .public) moved keys=\(keys.count); the blobs, the tokens and the versions are gone")
     }
 
-    /// Every blob of the spec's owners in the defaults, by its key.
-    nonisolated static func legacyBlobs(in defaults: UserDefaults, spec: CarrierRowsSpec) -> [String: [String: Value]] {
-        var out: [String: [String: Value]] = [:]
-        for key in defaults.dictionaryRepresentation().keys where spec.isLegacyOwner(key) {
-            if spec.wholeDocuments, let data = defaults.data(forKey: key),
-               let text = String(data: data, encoding: .utf8), let body = text as? Value {
+    /// What a move found in the defaults: the entries by owner, and the keys
+    /// they came from, which go once the rows landed.
+    struct Legacy {
+        var owners: [String: [String: Value]] = [:]
+        var keys: [String] = []
+    }
+
+    /// Every blob of the spec's owners in the defaults, by its key, and the
+    /// keys one per entry (`legacyPrefixes`) under the one owner of entries.
+    /// A key that does not read stays in the defaults with a line.
+    nonisolated static func legacyBlobs(in defaults: UserDefaults, spec: CarrierRowsSpec) -> Legacy {
+        var found = Legacy()
+        for key in defaults.dictionaryRepresentation().keys {
+            if let prefix = spec.legacyPrefixes.first(where: { key.hasPrefix($0) }) {
+                let entry = String(key.dropFirst(prefix.count))
+                if let value = defaults.object(forKey: key) as? Value {
+                    found.owners[CarrierRowsSpec.entryOwner, default: [:]][entry] = value
+                } else if let data = defaults.data(forKey: key), let value = try? JSONDecoder().decode(Value.self, from: data) {
+                    found.owners[CarrierRowsSpec.entryOwner, default: [:]][entry] = value
+                } else {
+                    Logger.library.error("\(spec.label, privacy: .public) move kept an unreadable key prefix=\(prefix, privacy: .public)")
+                    continue
+                }
+                found.keys.append(key)
+                continue
+            }
+            guard spec.isLegacyOwner(key) else { continue }
+            if spec.wholeDocuments {
                 // A document of the service was one body: it moves as the
-                // owner's one entry.
-                out[key] = [CarrierRowsSpec.bodyEntry: body]
+                // owner's one entry. One that is no text stays where it is.
+                guard let data = defaults.data(forKey: key), let text = String(data: data, encoding: .utf8),
+                      let body = text as? Value else {
+                    Logger.library.error("\(spec.label, privacy: .public) move kept a body that is no text owner=\(key, privacy: .public) bytes=\(defaults.data(forKey: key)?.count ?? 0)")
+                    continue
+                }
+                found.owners[key] = [CarrierRowsSpec.bodyEntry: body]
             } else if let data = defaults.data(forKey: key) {
                 // bearable, because an unreadable blob only costs a full pull; the truth lies on the other side and on the device
-                out[key] = (try? JSONDecoder().decode([String: Value].self, from: data)) ?? [:]
+                found.owners[key] = (try? JSONDecoder().decode([String: Value].self, from: data)) ?? [:]
             } else if let dictionary = defaults.dictionary(forKey: key) as? [String: Value] {
                 // The stamps of the choices were a property-list dictionary.
-                out[key] = dictionary
+                found.owners[key] = dictionary
             }
+            found.keys.append(key)
         }
-        return out
+        return found
     }
 
     // MARK: - Rows (pure)
@@ -237,9 +304,14 @@ nonisolated struct CarrierRowsSpec: Sendable {
     /// Whether a blob before the rows was one whole document (the bodies of
     /// the Mär sync service), not a dictionary of entries.
     var wholeDocuments = false
+    /// Keys one per entry before the rows (`jumpRing.<title>`): each moves
+    /// as an entry of the one owner `entryOwner`, its title after the prefix.
+    var legacyPrefixes: [String] = []
 
     /// The one entry of an owner that holds a whole document.
     static let bodyEntry = "body"
+    /// The one owner of a kind whose entries are titles.
+    static let entryOwner = ""
 
     func isLegacyOwner(_ key: String) -> Bool {
         legacyOwners.contains(key) || legacyScopedOwners.contains { key == $0 || key.hasPrefix($0 + ".") }
@@ -285,6 +357,20 @@ nonisolated struct CarrierRowsSpec: Sendable {
         legacyScopedOwners: ["maerSyncPlaylists", "maerSyncPlaylistsPending", "maerSyncChoices", "maerSyncChoicesPending"],
         legacyTokens: [], legacyScopedVersions: ["maerSyncPlaylistsVersion", "maerSyncChoicesVersion"],
         moveStartedKey: "carrierDocumentsMoveStarted", movedKey: "carrierDocumentsMoved", wholeDocuments: true)
+
+    /// The last backward jumps of each book, kept for the diagnosis on its
+    /// page: one entry per title. Not a carrier's, it stays on the device.
+    static let jumpRings = CarrierRowsSpec(
+        table: "item_jump_ring", label: "JUMPRING",
+        legacyOwners: [], legacyScopedOwners: [], legacyTokens: [], legacyScopedVersions: [],
+        moveStartedKey: "jumpRingsMoveStarted", movedKey: "jumpRingsMoved", legacyPrefixes: ["jumpRing."])
+
+    /// The offline copy of the server's bookmarks of each book: one entry
+    /// per title. Not a carrier's, it stays on the device.
+    static let bookmarks = CarrierRowsSpec(
+        table: "item_bookmark", label: "BOOKMARKCACHE",
+        legacyOwners: [], legacyScopedOwners: [], legacyTokens: [], legacyScopedVersions: [],
+        moveStartedKey: "bookmarkCacheMoveStarted", movedKey: "bookmarkCacheMoved", legacyPrefixes: ["bookmarkCache."])
 }
 
 /// The stands, `[position, moment, duration?, form?]` per title.
@@ -349,13 +435,37 @@ extension CarrierRows where Value == String {
     }
 
     /// An owner's document as it is now; nil removes it. A body that is no
-    /// text (the service writes JSON) is not kept.
+    /// text (the service writes JSON) is not written: the row before stays,
+    /// and a line says so, so a body never leaves without a word.
     func setBody(_ owner: String, _ body: Data?) {
-        set(owner, body.flatMap { String(data: $0, encoding: .utf8) }.map { [CarrierRowsSpec.bodyEntry: $0] } ?? [:])
+        guard let body else {
+            set(owner, [:])
+            return
+        }
+        guard let text = String(data: body, encoding: .utf8) else {
+            Logger.library.error("\(self.spec.label, privacy: .public) body is no text, the row before stays owner=\(owner, privacy: .public) bytes=\(body.count)")
+            return
+        }
+        set(owner, [CarrierRowsSpec.bodyEntry: text])
     }
 }
 
-/// The app's four stores, and for a witness's own defaults a database file
+/// The last backward jumps of each book, one entry per title.
+typealias JumpRingRows = CarrierRows<[[Double]]>
+/// The offline copy of each book's bookmarks, one entry per title.
+typealias BookmarkCacheRows = CarrierRows<[ABSBookmark]>
+
+extension CarrierRows where Value == [[Double]] {
+    static func matching(_ defaults: UserDefaults) -> JumpRingRows { CarrierRowStores.matching(defaults, spec: .jumpRings) }
+    nonisolated static var movedKey: String { CarrierRowsSpec.jumpRings.movedKey }
+}
+
+extension CarrierRows where Value == [ABSBookmark] {
+    static func matching(_ defaults: UserDefaults) -> BookmarkCacheRows { CarrierRowStores.matching(defaults, spec: .bookmarks) }
+    nonisolated static var movedKey: String { CarrierRowsSpec.bookmarks.movedKey }
+}
+
+/// The app's six stores, and for a witness's own defaults a database file
 /// of their own, named in that domain, so a second session on the same
 /// domain finds the rows the first one wrote.
 @MainActor
@@ -364,14 +474,18 @@ enum CarrierRowStores {
     static let records = CarrierRecordRows(spec: .records, database: .shared, defaults: AppStorageKeys.store)
     static let stamps = ChoiceStampRows(spec: .stamps, database: .shared, defaults: AppStorageKeys.store)
     static let documents = CarrierDocumentRows(spec: .documents, database: .shared, defaults: AppStorageKeys.store)
+    static let jumpRings = JumpRingRows(spec: .jumpRings, database: .shared, defaults: AppStorageKeys.store)
+    static let bookmarks = BookmarkCacheRows(spec: .bookmarks, database: .shared, defaults: AppStorageKeys.store)
 
     static func matching<Value>(_ defaults: UserDefaults, spec: CarrierRowsSpec) -> CarrierRows<Value> {
         if defaults === AppStorageKeys.store {
-            // Only the four app stores exist for the app's own defaults.
+            // Only the six app stores exist for the app's own defaults.
             let app: AnyObject = switch spec.table {
             case CarrierRowsSpec.stands.table: stands
             case CarrierRowsSpec.stamps.table: stamps
             case CarrierRowsSpec.documents.table: documents
+            case CarrierRowsSpec.jumpRings.table: jumpRings
+            case CarrierRowsSpec.bookmarks.table: bookmarks
             default: records
             }
             guard let rows = app as? CarrierRows<Value> else {

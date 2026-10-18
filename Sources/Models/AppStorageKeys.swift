@@ -1035,14 +1035,23 @@ nonisolated enum AppStorageKeys {
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
         let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
-        // The jump ring goes with its book too.
-        for prefix in ["playbackRate.", PlayedTail.prefix, "jumpRing."] {
+        for prefix in ["playbackRate.", PlayedTail.prefix] {
             for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
                 if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }
             }
         }
         // Positions through their store, so its stock and the row copy follow.
         ListeningStore.forgetBackups(where: gone, in: defaults)
+    }
+
+    /// The same for the entries of a book in rows: its jump ring and the
+    /// offline copy of its bookmarks go with it (the copy was never cleaned
+    /// up before). On the main actor, where the rows live.
+    @MainActor
+    static func cleanupPerBookRows(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
+        let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
+        JumpRingRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
+        BookmarkCacheRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
     }
 
     /// Whether the audiobook cleanup may remove a title's keys: only a raw

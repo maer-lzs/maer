@@ -564,10 +564,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // The log line alone is out of reach. System logs
             // are not practical to hand over. The diagnosis is the only
             // window, so the last five jumps live in a ring beside it.
-            var ring = (AppStorageKeys.array(AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
+            let rings = JumpRingRows.matching(AppStorageKeys.store)
+            var ring = rings.entry(CarrierRowsSpec.entryOwner, item.id) ?? []
             ring.append([Date().timeIntervalSince1970 * 1000, startTime,
                          serverProgress, serverUpdateMs, saved[0], saved[1]])
-            AppStorageKeys.set(Array(ring.suffix(5)), for: AppStorageKeys.jumpRing(item.id))
+            rings.setEntry(CarrierRowsSpec.entryOwner, item.id, Array(ring.suffix(5)))
         }
         // Explicit replay: ignore any saved/server position and begin at 0.
         if restart {

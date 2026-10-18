@@ -434,7 +434,7 @@ struct BookDetailScreen: View {
             flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
             serverIsFinished: entry.progress?.isFinished,
             progressFraction: entry.progress?.fraction,
-            jumpRing: AppStorageKeys.array(AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
+            jumpRing: JumpRingRows.matching(AppStorageKeys.store).entry(CarrierRowsSpec.entryOwner, entry.id) ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: downloadManager.isDownloaded(itemId: entry.id),
             // There is no separate progress QUEUE (positions push directly);

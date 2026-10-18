@@ -929,6 +929,8 @@ final class LibraryViewModel: ObservableObject {
         if accumulated.count >= total {
             saveLibraryDiskCache(items: accumulated, progress: progress)
             let validIds = Set(accumulated.map(\.id))
+            // The rows live on the main actor; their entries leave here.
+            AppStorageKeys.cleanupPerBookRows(validItemIds: validIds)
             // detached because a store sweep after the load must not die with the load's task; off the MainActor
             Task.detached(priority: .utility) {
                 AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)

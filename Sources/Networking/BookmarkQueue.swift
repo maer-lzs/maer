@@ -29,7 +29,9 @@ final class BookmarkQueue {
     }
 
     private let opsKey = AppStorageKeys.pendingBookmarkOps
-    private let cachePrefix = "bookmarkCache."
+    /// The offline copy of the server's list, one entry per title in rows;
+    /// it leaves with its book (`AppStorageKeys.cleanupPerBookRows`).
+    private var cacheRows: BookmarkCacheRows { BookmarkCacheRows.matching(AppStorageKeys.store) }
 
     private init() {}
 
@@ -129,13 +131,11 @@ final class BookmarkQueue {
     // MARK: - Offline cache of the server list
 
     func cache(_ bookmarks: [ABSBookmark], forItemId itemId: String) {
-        AppStorageKeys.set(try? JSONEncoder().encode(bookmarks), for: cachePrefix + itemId)
+        cacheRows.setEntry(CarrierRowsSpec.entryOwner, itemId, bookmarks)
     }
 
     func cachedBookmarks(forItemId itemId: String) -> [ABSBookmark] {
-        guard let data = AppStorageKeys.data(cachePrefix + itemId),
-              let bookmarks = try? JSONDecoder().decode([ABSBookmark].self, from: data) else { return [] }
-        return bookmarks
+        cacheRows.entry(CarrierRowsSpec.entryOwner, itemId) ?? []
     }
 
     /// Cache + pending ops combined: what the user should see offline as the

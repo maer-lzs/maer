@@ -13,10 +13,14 @@ import Foundation
 @Suite(.serialized)
 struct BookCleanupTests {
     @Test("TF-12: die Aufraeumung entfernt nur rohe Hoerbuch-Kennungen, Position und Geschwindigkeit gleich")
+    @MainActor
     func onlyRawBookIdsGo() {
         let name = "book-cleanup-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
         defer { defaults.removePersistentDomain(forName: name) }
+        let rings = JumpRingRows.matching(defaults)
+        let bookmarks = BookmarkCacheRows.matching(defaults)
+        let owner = CarrierRowsSpec.entryOwner
         // One title per source, and a namespace that does not exist yet.
         let kept = "li_book_kept", gone = "li_book_gone"
         let others = ["rss:feed:ep", "abspod:ep", "local:file", "sub:song", "jf:song",
@@ -24,17 +28,21 @@ struct BookCleanupTests {
         for id in [kept, gone] + others {
             ListeningStore.store(id, entry: [120, 1_000, 600], in: defaults)
             defaults.set(Float(1.5), forKey: AppStorageKeys.playbackRate(id))
-            defaults.set([[1.0, 2, 3, 4, 5, 6]], forKey: AppStorageKeys.jumpRing(id))
+            rings.setEntry(owner, id, [[1.0, 2, 3, 4, 5, 6]])
+            bookmarks.setEntry(owner, id, [ABSBookmark(libraryItemId: id, title: "Mark", time: 60, createdAt: 1)])
         }
         AppStorageKeys.cleanupPerBookKeys(validItemIds: [kept], in: defaults)
+        AppStorageKeys.cleanupPerBookRows(validItemIds: [kept], in: defaults)
 
         #expect(ListeningStore.backup(gone, in: defaults) == nil, "a book the library no longer holds goes")
         #expect(defaults.object(forKey: AppStorageKeys.playbackRate(gone)) == nil, "and its speed with it")
-        #expect(defaults.object(forKey: AppStorageKeys.jumpRing(gone)) == nil, "and its jump ring with it")
+        #expect(rings.entry(owner, gone) == nil, "and its jump ring with it")
+        #expect(bookmarks.entry(owner, gone) == nil, "and the offline copy of its bookmarks with it")
         for id in [kept] + others {
             #expect(ListeningStore.backup(id, in: defaults) == [120, 1_000, 600], "\(id) keeps its position")
             #expect(defaults.float(forKey: AppStorageKeys.playbackRate(id)) == 1.5, "\(id) keeps its speed")
-            #expect(defaults.object(forKey: AppStorageKeys.jumpRing(id)) != nil, "\(id) keeps its jump ring")
+            #expect(rings.entry(owner, id) != nil, "\(id) keeps its jump ring")
+            #expect(bookmarks.entry(owner, id) != nil, "\(id) keeps its bookmarks")
         }
     }
 

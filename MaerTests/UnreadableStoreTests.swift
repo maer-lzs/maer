@@ -134,9 +134,6 @@ struct UnreadableStoreTests {
     /// stands for a reason:
     /// * `Artwork+Memo.swift`, `ResolutionCacheStore.swift` (2): caches,
     ///   rebuilt from the network.
-    /// * `BookmarkQueue.swift`: the offline copy of the server's bookmarks,
-    ///   replaced whole by the next answer (the queue itself reads through
-    ///   `CorruptStore.load`).
     /// * `StandCarrier.swift` (1, `StandMirrorStore`: the list of removals)
     ///   and `CarrierRows.swift` (1, the blobs of the mirrors, read once at
     ///   the move): mirrors of the other side, an unreadable one costs a
@@ -145,7 +142,6 @@ struct UnreadableStoreTests {
     ///   nothing back.
     static let decodeToEmptyStock = [
         "Artwork+Memo.swift": 1,
-        "BookmarkQueue.swift": 1,
         "CarrierRows.swift": 1,
         "KnownServers.swift": 1,
         "PodcastTranscript.swift": 1,
