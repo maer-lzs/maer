@@ -31,8 +31,12 @@ final class MaerSyncSession {
     nonisolated static let claimKind = "claim"
     nonisolated static let statsKind = "stats"
     nonisolated static let feedAuthKind = "feedauth"
+    /// The owners of the stands and their queue in `CarrierStandRows`,
+    /// per identity like the keys below.
     nonisolated static let mirrorKey = "maerSyncStands"
-    nonisolated static let versionKey = "maerSyncStandsVersion"
+    /// Under its own name since the stands moved into rows: an older build
+    /// reads `maerSyncStandsVersion` beside a blob it no longer finds.
+    nonisolated static let versionKey = "maerSyncStandsVersionRows"
     nonisolated static let queueKey = "maerSyncStandsQueue"
     nonisolated static let removalsKey = "maerSyncStandsQueueRemovals"
     /// How often one round repeats a write against a version that moved
@@ -46,6 +50,7 @@ final class MaerSyncSession {
     private let loadIdentity: () -> MaerSyncIdentity?
     private let deviceId: () -> String
     private let defaults: UserDefaults
+    private let rows: CarrierStandRows
 
     /// Whose state this session holds. Mirror, version, queue, removals and
     /// pending writes of every family belong to the identity (account plus
@@ -62,10 +67,12 @@ final class MaerSyncSession {
     /// account: its answer changes nothing, neither the mirror nor the
     /// versions nor what is still unread, and its failure stops nothing.
     private(set) var identityGeneration = 0
-    /// Every persisted key of the session, kept per identity.
-    nonisolated static let identityKeys = [mirrorKey, versionKey, queueKey, removalsKey,
+    /// Every key of the session in the defaults, kept per identity.
+    nonisolated static let identityKeys = [versionKey, removalsKey,
                                            playlistsMirrorKey, playlistsVersionKey, playlistsPendingKey,
                                            choicesMirrorKey, choicesVersionKey, choicesPendingKey]
+    /// Every owner of the session in the rows, kept per identity.
+    nonisolated static let identityOwners = [mirrorKey, queueKey]
 
     /// Read once and on `reloadAccess()`: the token lives in the keychain,
     /// and a round trip there per refresh is measurable load.
@@ -264,6 +271,7 @@ final class MaerSyncSession {
          accessUnknown: @escaping () -> Bool = { false },
          deviceId: @escaping () -> String,
          defaults: UserDefaults = AppStorageKeys.store,
+         rows: CarrierStandRows? = nil,
          path: (any MaerSyncPathSource)? = nil,
          announcedKinds: Set<String>? = nil,
          clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) {
@@ -278,14 +286,16 @@ final class MaerSyncSession {
         self.loadUnknown = accessUnknown
         self.deviceId = deviceId
         self.defaults = defaults
+        let rows = rows ?? CarrierStandRows.matching(defaults)
+        self.rows = rows
         self.access = access()
         self.accessUnknown = self.access == nil && accessUnknown()
         let current = identity()
         self.identity = current
-        if let current { Self.adoptPlainKeys(into: current, defaults: defaults) }
+        if let current { Self.adoptPlainKeys(into: current, defaults: defaults, rows: rows) }
         let key: (String) -> String = { base in current?.keyed(base) ?? base }
-        stands = StandMirrorStore.load(key(Self.mirrorKey), defaults: defaults)
-        queue = StandMirrorStore.load(key(Self.queueKey), defaults: defaults)
+        stands = rows.rows(key(Self.mirrorKey))
+        queue = rows.rows(key(Self.queueKey))
         queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
         standsVersion = defaults.string(forKey: key(Self.versionKey))
         playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
@@ -302,21 +312,24 @@ final class MaerSyncSession {
     /// The state written before identities existed belongs to the access of
     /// that moment: the first identity that finds it takes it over, once,
     /// and the plain keys are cleared so no later account inherits them.
-    nonisolated static func adoptPlainKeys(into identity: MaerSyncIdentity, defaults: UserDefaults) {
-        guard identityKeys.contains(where: { defaults.object(forKey: $0) != nil }),
-              !identityKeys.contains(where: { defaults.object(forKey: identity.keyed($0)) != nil }) else { return }
+    static func adoptPlainKeys(into identity: MaerSyncIdentity, defaults: UserDefaults, rows: CarrierStandRows) {
+        guard identityKeys.contains(where: { defaults.object(forKey: $0) != nil })
+                || identityOwners.contains(where: { rows.holds($0) }),
+              !identityKeys.contains(where: { defaults.object(forKey: identity.keyed($0)) != nil }),
+              !identityOwners.contains(where: { rows.holds(identity.keyed($0)) }) else { return }
         for base in identityKeys {
             if let value = defaults.object(forKey: base) { defaults.set(value, forKey: identity.keyed(base)) }
             defaults.removeObject(forKey: base)
         }
+        for owner in identityOwners { rows.rename(owner: owner, to: identity.keyed(owner)) }
     }
 
     /// Loads the persisted state of the current identity (empty the first
     /// time) and drops what the previous one held in memory only.
     private func loadIdentityState() {
-        if let identity { Self.adoptPlainKeys(into: identity, defaults: defaults) }
-        stands = StandMirrorStore.load(key(Self.mirrorKey), defaults: defaults)
-        queue = StandMirrorStore.load(key(Self.queueKey), defaults: defaults)
+        if let identity { Self.adoptPlainKeys(into: identity, defaults: defaults, rows: rows) }
+        stands = rows.rows(key(Self.mirrorKey))
+        queue = rows.rows(key(Self.queueKey))
         queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
         standsVersion = defaults.string(forKey: key(Self.versionKey))
         playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
@@ -362,6 +375,7 @@ final class MaerSyncSession {
             if let value = defaults.object(forKey: current.keyed(base)) { defaults.set(value, forKey: next.keyed(base)) }
             defaults.removeObject(forKey: current.keyed(base))
         }
+        for owner in Self.identityOwners { rows.rename(owner: current.keyed(owner), to: next.keyed(owner)) }
         identity = next
     }
 
@@ -1233,8 +1247,8 @@ final class MaerSyncSession {
     private func persist() {
         // While the access is unknown no identity names the state.
         guard !accessUnknown else { return }
-        StandMirrorStore.save(stands, key: key(Self.mirrorKey), defaults: defaults)
-        StandMirrorStore.save(queue, key: key(Self.queueKey), defaults: defaults)
+        rows.set(key(Self.mirrorKey), stands)
+        rows.set(key(Self.queueKey), queue)
         StandMirrorStore.saveList(Array(queuedRemovals), key: key(Self.removalsKey), defaults: defaults)
         if let standsVersion {
             defaults.set(standsVersion, forKey: key(Self.versionKey))

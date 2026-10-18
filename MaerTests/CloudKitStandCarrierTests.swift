@@ -147,6 +147,27 @@ struct CloudKitStandCarrierTests {
         #expect(carrier.stands()["rss:c"] == [5, 2_000])
     }
 
+    /// The way back: an older build reads the token and the blobs under
+    /// their old names. After a round of this build neither stands there,
+    /// so an older build fetches from the start; the migration mark stands.
+    @Test("nach einem Durchgang stehen Token und Abbild nicht unter den alten Namen, die Marke der Einfaltung steht")
+    func theOldNamesStayEmpty() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (carrier, _) = carrier(database: db, defaults: defaults)
+        carrier.write(upserts: ["rss:a": [5, 1_000]], removing: [], by: "play")
+        carrier.start {}
+        await carrier.refresh(by: "witness")
+        await CarrierStandRows.matching(defaults).awaitPendingWrites()
+        #expect(defaults.data(forKey: CloudKitStandCarrier.tokenKey) != nil, "the precondition: the round kept a token")
+        #expect(defaults.bool(forKey: CloudKitStandCarrier.migratedKey))
+        let old = defaults.dictionaryRepresentation().keys.filter { CarrierStandRows.isLegacyOwner($0) || $0 == CarrierStandRows.legacyToken }
+        #expect(old.isEmpty, "an older build finds \(old.sorted())")
+        #expect(CarrierStandRows.matching(defaults).rows(CloudKitStandCarrier.mirrorKey)["rss:a"] == [5, 1_000])
+        carrier.stop()
+    }
+
     @Test("eine fremde Aenderung kommt ueber das Token und weckt den Laeufer; ohne Aenderung kein Ereignis")
     func foreignChangeArrivesByToken() async {
         let (defaults, name) = suite()

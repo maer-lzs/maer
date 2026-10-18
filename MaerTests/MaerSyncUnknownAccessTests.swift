@@ -60,14 +60,15 @@ struct MaerSyncUnknownAccessTests {
         let suite = "maer-unknown-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        StandMirrorStore.save(["rss:a:1": [1, 1_000]], key: Self.identityA.keyed(MaerSyncSession.mirrorKey), defaults: defaults)
+        let rows = CarrierStandRows.matching(defaults)
+        rows.set(Self.identityA.keyed(MaerSyncSession.mirrorKey), ["rss:a:1": [1, 1_000]])
         let transport = FakeTransport()
         let box = Box()
         let session = session(box, defaults: defaults, transport: transport)
         #expect(session.accessUnknown && session.access == nil && session.identity == nil)
 
         session.enqueue(upserts: ["rss:u:1": [5, 5_000]], removing: [], by: "witness")
-        #expect(defaults.object(forKey: MaerSyncSession.queueKey) == nil, "the unknown window wrote under keys without an identity")
+        #expect(!rows.holds(MaerSyncSession.queueKey), "the unknown window wrote under keys without an identity")
         #expect(transport.documents.isEmpty, "a round ran without an access")
         #expect(!session.rereadIfUnknown(), "still locked: nothing changes")
 
@@ -78,10 +79,16 @@ struct MaerSyncUnknownAccessTests {
         #expect(!session.accessUnknown && session.identity == Self.identityA && session.access == Self.accessA)
         #expect(session.stands["rss:a:1"] == [1, 1_000], "A's own state was not loaded")
         session.enqueue(upserts: ["rss:a:2": [2, 2_000]], removing: [], by: "witness")
-        let queued = StandMirrorStore.load(Self.identityA.keyed(MaerSyncSession.queueKey), defaults: defaults)
+        let queued = rows.rows(Self.identityA.keyed(MaerSyncSession.queueKey))
         #expect(queued["rss:a:2"] != nil, "the precondition: A's queue is written again")
         #expect(queued["rss:u:1"] == nil, "a write of the unknown window landed under A without being read first")
-        #expect(defaults.object(forKey: MaerSyncSession.queueKey) == nil)
+        #expect(!rows.holds(MaerSyncSession.queueKey))
+        // The way back: neither the stands nor their version stand under the
+        // names an older build reads.
+        let old = defaults.dictionaryRepresentation().keys.filter {
+            CarrierStandRows.isLegacyOwner($0) || $0.hasPrefix(CarrierStandRows.legacyScopedVersion + ".")
+        }
+        #expect(old.isEmpty, "an older build finds \(old.sorted())")
     }
 
     @Test("unbekannt, dann fehlend: der heutige Weg ohne Dienst")
@@ -102,7 +109,7 @@ struct MaerSyncUnknownAccessTests {
         #expect(runner.told.map(\.signedIn) == [false])
         #expect(runner.changedCarrier, "a runner kept the service without an access")
         session.enqueue(upserts: ["rss:u:2": [6, 6_000]], removing: [], by: "witness")
-        #expect(StandMirrorStore.load(MaerSyncSession.queueKey, defaults: defaults)["rss:u:1"] == nil,
+        #expect(CarrierStandRows.matching(defaults).rows(MaerSyncSession.queueKey)["rss:u:1"] == nil,
                 "the unknown window's write was kept under keys without an identity")
     }
 

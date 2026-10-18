@@ -44,6 +44,15 @@ struct DefaultsBlockMeasureTests {
         return (sorted[sorted.count / 2], sorted.last ?? 0)
     }
 
+    static func timedThrowing(_ body: (Int) throws -> Void) throws -> (median: Double, max: Double) {
+        var failure: Error?
+        let result = timed { round in
+            do { try body(round) } catch { failure = error }
+        }
+        if let failure { throw failure }
+        return result
+    }
+
     static func line(_ family: String, keys: Int, bytes: Int, write: (median: Double, max: Double)? = nil) {
         var text = "E4MESS family=\(family) keys=\(keys) bytes=\(bytes)"
         if let write { text += String(format: " write_ms_median=%.1f write_ms_max=%.1f", write.median, write.max) }
@@ -58,12 +67,13 @@ struct DefaultsBlockMeasureTests {
         let ids = (0..<Self.titles).map(Self.titleId)
         let showIds = (0..<Self.shows).map { _ in "rss:\(UUID().uuidString)" }
 
-        // The mirrors of the carriers, written whole on every persist.
+        // The mirrors of the carriers, written whole on every persist, in
+        // the form the stands had before they moved into rows.
         var stands: [String: [Double]] = [:]
         for (index, id) in ids.enumerated() { stands[id] = [Double(index % 3600), 1_760_000_000_000 + Double(index), 3600] }
-        let standWrite = Self.timed { round in
+        let standWrite = try Self.timedThrowing { round in
             stands["rss:feed-0:round"] = [Double(round), 1_760_000_000_000, 3600]
-            StandMirrorStore.save(stands, key: CloudKitStandCarrier.mirrorKey, defaults: defaults)
+            defaults.set(try JSONEncoder().encode(stands), forKey: CloudKitStandCarrier.mirrorKey)
         }
         Self.line("standMirror", keys: 1, bytes: defaults.data(forKey: CloudKitStandCarrier.mirrorKey)?.count ?? 0, write: standWrite)
 
@@ -139,6 +149,34 @@ struct DefaultsBlockMeasureTests {
 
         #expect(domain.count > 3 * Self.titles, "the precondition: the measure wrote the per-title keys into the domain")
         #expect(walk == Self.titles)
+    }
+
+    /// The same mirror in rows: what one changed stand costs on the main
+    /// thread, and until its row landed.
+    @Test("Messung: ein Abbild mit 22.000 Staenden in Zeilen, ein geaenderter Stand auf dem Hauptthread und bis er liegt")
+    func theMirrorInRowsAt22000Stands() async throws {
+        let suite = "e4mess-rows-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        var stands: [String: [Double]] = [:]
+        for index in 0..<Self.titles { stands[Self.titleId(index)] = [Double(index % 3600), 1_760_000_000_000 + Double(index), 3600] }
+        rows.set(CloudKitStandCarrier.mirrorKey, stands)
+        await rows.awaitPendingWrites()
+        var main: [Double] = [], landed: [Double] = []
+        for round in 0..<5 {
+            stands["rss:feed-0:round"] = [Double(round), 1_760_000_000_000, 3600]
+            let started = Date()
+            rows.set(CloudKitStandCarrier.mirrorKey, stands)
+            main.append(Date().timeIntervalSince(started) * 1000)
+            await rows.awaitPendingWrites()
+            landed.append(Date().timeIntervalSince(started) * 1000)
+        }
+        main.sort()
+        landed.sort()
+        print(String(format: "E4MESS family=standRows keys=%d main_ms_median=%.1f main_ms_max=%.1f landed_ms_median=%.1f landed_ms_max=%.1f",
+                     stands.count, main[2], main[4], landed[2], landed[4]))
+        #expect(rows.rows(CloudKitStandCarrier.mirrorKey).count == Self.titles + 1, "the precondition: the rows hold the whole mirror")
     }
 }
 #endif

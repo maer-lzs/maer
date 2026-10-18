@@ -269,12 +269,16 @@ struct MaerSyncIdentityTests {
         let suite = "maer-identity-plain-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
         defaults.set("7", forKey: MaerSyncSession.versionKey)
-        MaerSyncSession.adoptPlainKeys(into: Self.identityA, defaults: defaults)
+        rows.set(MaerSyncSession.mirrorKey, ["rss:p:1": [1, 1_000]])
+        MaerSyncSession.adoptPlainKeys(into: Self.identityA, defaults: defaults, rows: rows)
         #expect(defaults.string(forKey: Self.identityA.keyed(MaerSyncSession.versionKey)) == "7")
         #expect(defaults.object(forKey: MaerSyncSession.versionKey) == nil, "no later account inherits it")
+        #expect(rows.rows(Self.identityA.keyed(MaerSyncSession.mirrorKey)) == ["rss:p:1": [1, 1_000]], "the stands stayed plain")
+        #expect(!rows.holds(MaerSyncSession.mirrorKey), "no later account inherits the stands")
         defaults.set("9", forKey: MaerSyncSession.versionKey)
-        MaerSyncSession.adoptPlainKeys(into: Self.identityA, defaults: defaults)
+        MaerSyncSession.adoptPlainKeys(into: Self.identityA, defaults: defaults, rows: rows)
         #expect(defaults.string(forKey: Self.identityA.keyed(MaerSyncSession.versionKey)) == "7", "once")
     }
 

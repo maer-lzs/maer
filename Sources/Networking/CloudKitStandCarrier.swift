@@ -19,7 +19,11 @@ import OSLog
 /// stays synchronous and untouched.
 @MainActor
 final class CloudKitStandCarrier: StandCarrier {
-    nonisolated static let tokenKey = "cloudStandToken"
+    /// Under its own name since the stands moved into rows: an older build
+    /// reads `cloudStandToken` beside a blob it no longer finds
+    /// (`CarrierStandRows`).
+    nonisolated static let tokenKey = "cloudStandTokenRows"
+    /// The owners of the mirror and the queue in `CarrierStandRows`.
     nonisolated static let mirrorKey = "cloudStandMirror"
     nonisolated static let queueKey = "cloudStandQueue"
     nonisolated static let queueRemovalsKey = "cloudStandQueueRemovals"
@@ -29,6 +33,7 @@ final class CloudKitStandCarrier: StandCarrier {
     private let database: any CloudStandDatabase
     private let fallback: KeyValueStandCarrier
     private let defaults: UserDefaults
+    private let rows: CarrierStandRows
     private var onChange: (@MainActor () -> Void)?
 
     /// What the cloud holds as far as this device knows, by item id.
@@ -48,12 +53,14 @@ final class CloudKitStandCarrier: StandCarrier {
     private var subscribed: Bool
 
     init(database: any CloudStandDatabase, fallback: KeyValueStandCarrier,
-         defaults: UserDefaults = AppStorageKeys.store) {
+         defaults: UserDefaults = AppStorageKeys.store, rows: CarrierStandRows? = nil) {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = StandMirrorStore.load(Self.mirrorKey, defaults: defaults)
-        queue = StandMirrorStore.load(Self.queueKey, defaults: defaults)
+        let rows = rows ?? CarrierStandRows.matching(defaults)
+        self.rows = rows
+        mirror = rows.rows(Self.mirrorKey)
+        queue = rows.rows(Self.queueKey)
         queuedRemovals = Set(StandMirrorStore.loadList(Self.queueRemovalsKey, defaults: defaults))
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
@@ -293,8 +300,8 @@ final class CloudKitStandCarrier: StandCarrier {
     // MARK: - The door
 
     private func persist() {
-        StandMirrorStore.save(mirror, key: Self.mirrorKey, defaults: defaults)
-        StandMirrorStore.save(queue, key: Self.queueKey, defaults: defaults)
+        rows.set(Self.mirrorKey, mirror)
+        rows.set(Self.queueKey, queue)
         StandMirrorStore.saveList(Array(queuedRemovals), key: Self.queueRemovalsKey, defaults: defaults)
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
