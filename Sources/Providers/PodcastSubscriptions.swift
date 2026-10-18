@@ -29,18 +29,30 @@ final class PodcastSubscriptions: ObservableObject {
             .appendingPathComponent("podcast_subscriptions.json"),
         database: .shared, defaults: .standard, isTheApp: true)
 
-    @Published private(set) var shows: [PodcastShow] = [] {
-        didSet {
-            // Every way into the stock passes here: the shownotes leave it
-            // for the database (`PodcastNotes`). The index still answers for
-            // the stock before, so an unchanged text is not written again.
-            if let split = PodcastNotes.split(shows, stampBefore: { guid in
-                episodeIndex[guid].flatMap { oldValue.indices.contains($0.show) && oldValue[$0.show].episodes.indices.contains($0.episode)
-                    ? oldValue[$0.show].episodes[$0.episode].notesStamp : nil }
-            }) {
-                pendingNotes.merge(split.notes) { _, fresh in fresh }
-                shows = split.shows
+    /// Every way into the stock passes here: the shownotes leave it for the
+    /// database (`PodcastNotes`) before the one assignment, so a change
+    /// publishes once, rebuilds the caches once and bumps once. The index
+    /// still answers for the stock before, so an unchanged text is not
+    /// written again.
+    private(set) var shows: [PodcastShow] {
+        get { stock }
+        set {
+            let before = stock
+            guard let split = PodcastNotes.split(newValue, stampBefore: { guid in
+                episodeIndex[guid].flatMap { before.indices.contains($0.show) && before[$0.show].episodes.indices.contains($0.episode)
+                    ? before[$0.show].episodes[$0.episode].notesStamp : nil }
+            }) else {
+                stock = newValue
+                return
             }
+            pendingNotes.merge(split.notes) { _, fresh in fresh }
+            stock = split.shows
+        }
+    }
+
+    /// Written only by the setter of `shows`.
+    @Published private var stock: [PodcastShow] = [] {
+        didSet {
             rebuildCaches()
             // A subscription that arrives (import, account adoption, the
             // person's own subscribe) changes what the episode rows show.

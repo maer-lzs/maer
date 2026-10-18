@@ -93,9 +93,10 @@ actor PodcastRowStore {
     /// The shownotes inside a payload, NULL when it carries none. The
     /// payload is a blob of JSON text; the cast keeps the JSON functions
     /// from reading it as their binary form. A payload that is no JSON (a
-    /// later build's form, a broken row) carries no notes: the JSON
-    /// functions raise on it, and a raise inside a trigger fails the write
-    /// that removes or replaces the row.
+    /// later build's form, a broken row) carries no notes: `json_valid`
+    /// answers false and the extract is never reached. Read on its own, the
+    /// extract would raise on such a payload, and a raise inside a trigger
+    /// would fail the write that removes or replaces the row.
     private static func notesIn(_ payload: String) -> String {
         "CASE WHEN json_valid(CAST(\(payload) AS TEXT)) THEN json_extract(CAST(\(payload) AS TEXT), '$.description') END"
     }

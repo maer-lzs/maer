@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// The shownotes of the subscribed episodes live in `episode_note`, not in
@@ -286,6 +287,36 @@ struct PodcastNotesTests {
         #expect(try storedNotes(folder, guid: "rss:n:1") == "Eins, berichtigt", "the changed text did not land")
         #expect(try storedNotes(folder, guid: "rss:n:2") == "Zwei")
         #expect(subs.shows.first?.episodes.count == 2, "an episode the feed no longer carries left the show")
+    }
+
+    /// The shownotes leave a stock before it is assigned: a change that
+    /// brings notes publishes once, as one without them does, so the caches
+    /// are rebuilt and the rows bumped once per change, not twice.
+    @Test("ein Bestand mit Shownotes wird einmal gesetzt: ein Stoss je Wechsel, mit und ohne Shownotes")
+    func aStockWithNotesIsSetOnce() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = "notes-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let subs = subscriptions(in: folder, defaults: defaults)
+        await subs.ensureLoaded()
+        var publications = 0
+        let watch = subs.objectWillChange.sink { _ in publications += 1 }
+        defer { watch.cancel() }
+
+        subs._seedForUITest([show("stoss", [episode("rss:s:1", notes: "Eins"), episode("rss:s:2", notes: nil)])])
+        #expect(publications == 1, "a stock with notes was set \(publications) times")
+        #expect(subs.shows.flatMap(\.episodes).allSatisfy { $0.description == nil }, "the stock holds notes")
+        #expect(await subs.notes(guid: "rss:s:1") == "Eins", "the notes did not leave for the database")
+
+        publications = 0
+        subs._seedForUITest([show("stoss", [episode("rss:s:1", notes: nil)])])
+        #expect(publications == 1, "a stock without notes was set \(publications) times")
+        await subs.awaitPendingWrites()
     }
 
     /// The account that leaves at a hand-over keeps its shownotes for its
