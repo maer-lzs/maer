@@ -67,7 +67,7 @@ fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 xcrun simctl erase "$udid"
 # Sound and microphone of the template on a silent device, so a run does not
-# break the Mac's sound: a running simulator disturbs coreaudiod (18.10.2026).
+# break the Mac's sound: a running simulator disturbs coreaudiod.
 # The erase removes the choice, so it is written after every erase, before
 # the boot. MAER_JOURNEY_AUDIO_UID names another device; without BlackHole
 # installed and without the variable the template keeps the Mac's devices.
@@ -114,9 +114,9 @@ built=(-project Maer.xcodeproj -scheme Maer -derivedDataPath "$DD")
 if [[ -n "${MAER_JOURNEY_TARGET:-}" ]]; then
     built=(-xctestrun "$(ls "$DD"/Build/Products/Maer_*.xctestrun | head -1)")
 fi
-# No simulator diagnostics after the run: without the option xcodebuild
-# collected them after the last journey and ran into its 600 s limit
-# (measured 18.10.2026 on iOS 27: closing line 15:24:31, end 15:34:35).
+# No simulator diagnostics after the run: the option ends the run seconds
+# after the closing line; without it xcodebuild collects them after the last
+# journey for up to 600 s.
 xcodebuild test-without-building "${built[@]}" \
     -destination "platform=iOS Simulator,id=$udid" \
     "${parallel[@]}" -collect-test-diagnostics never \
