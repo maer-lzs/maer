@@ -146,7 +146,7 @@ struct EpisodeLimitRetiredTests {
         oldBuildWrites(cloud, showKey: showKey, t: 5_000)
         // A held the limit already, with its stamp, as before the update.
         a.defaults.set(5, forKey: showKey)
-        a.defaults.set([showKey: 5_000.0], forKey: UserChoiceCloudSync.stampsKey)
+        a.sync._seedStampsForWitness([showKey: 5_000.0])
         try #require(blob(cloud)[showKey] != nil, "the document carries the limit, else the case measures nothing")
 
         for side in [a, b] {

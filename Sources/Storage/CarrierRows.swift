@@ -189,9 +189,13 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
     nonisolated static func legacyBlobs(in defaults: UserDefaults, spec: CarrierRowsSpec) -> [String: [String: Value]] {
         var out: [String: [String: Value]] = [:]
         for key in defaults.dictionaryRepresentation().keys where spec.isLegacyOwner(key) {
-            guard let data = defaults.data(forKey: key) else { continue }
-            // bearable, because an unreadable blob only costs a full pull; the truth lies on the other side and on the device
-            out[key] = (try? JSONDecoder().decode([String: Value].self, from: data)) ?? [:]
+            if let data = defaults.data(forKey: key) {
+                // bearable, because an unreadable blob only costs a full pull; the truth lies on the other side and on the device
+                out[key] = (try? JSONDecoder().decode([String: Value].self, from: data)) ?? [:]
+            } else if let dictionary = defaults.dictionary(forKey: key) as? [String: Value] {
+                // The stamps of the choices were a property-list dictionary.
+                out[key] = dictionary
+            }
         }
         return out
     }
@@ -248,6 +252,17 @@ nonisolated struct CarrierRowsSpec: Sendable {
         legacyScopedOwners: [],
         legacyTokens: ["cloudChoiceToken", "cloudPlaylistToken", "cloudStatsToken"], legacyScopedVersions: [],
         moveStartedKey: "carrierRecordsMoveStarted", movedKey: "carrierRecordsMoved")
+
+    /// The stamps of the choices (`UserChoiceCloudSync`): not a carrier's
+    /// mirror but the family's bookkeeping, one moment per travelling
+    /// choice. An owner here is the account whose choices the stamps date
+    /// (`""` before any); the blob moves under its own name, and the family
+    /// hands it to the holder of the choices.
+    static let stamps = CarrierRowsSpec(
+        table: "choice_stamp", label: "CHOICESTAMP",
+        legacyOwners: ["userChoiceStamps"], legacyScopedOwners: [],
+        legacyTokens: [], legacyScopedVersions: [],
+        moveStartedKey: "choiceStampsMoveStarted", movedKey: "choiceStampsMoved")
 }
 
 /// The stands, `[position, moment, duration?, form?]` per title.
@@ -279,18 +294,38 @@ extension CarrierRows where Value == [String] {
     nonisolated static func isLegacyOwner(_ key: String) -> Bool { CarrierRowsSpec.records.isLegacyOwner(key) }
 }
 
-/// The app's two stores, and for a witness's own defaults a database file
+/// The stamps of the choices, one moment per owner and travelling choice.
+typealias ChoiceStampRows = CarrierRows<Double>
+
+extension CarrierRows where Value == Double {
+    static var shared: ChoiceStampRows { CarrierRowStores.stamps }
+    static func matching(_ defaults: UserDefaults) -> ChoiceStampRows { CarrierRowStores.matching(defaults, spec: .stamps) }
+    convenience init(database: MaerDatabase, defaults: UserDefaults) {
+        self.init(spec: .stamps, database: database, defaults: defaults)
+    }
+    /// The owner the blob of the stamps moved under, until the family hands
+    /// it to the holder of the choices.
+    nonisolated static var legacyOwner: String { "userChoiceStamps" }
+    nonisolated static var movedKey: String { CarrierRowsSpec.stamps.movedKey }
+}
+
+/// The app's three stores, and for a witness's own defaults a database file
 /// of their own, named in that domain, so a second session on the same
 /// domain finds the rows the first one wrote.
 @MainActor
 enum CarrierRowStores {
     static let stands = CarrierStandRows(spec: .stands, database: .shared, defaults: AppStorageKeys.store)
     static let records = CarrierRecordRows(spec: .records, database: .shared, defaults: AppStorageKeys.store)
+    static let stamps = ChoiceStampRows(spec: .stamps, database: .shared, defaults: AppStorageKeys.store)
 
     static func matching<Value>(_ defaults: UserDefaults, spec: CarrierRowsSpec) -> CarrierRows<Value> {
         if defaults === AppStorageKeys.store {
-            // Only the two app stores exist for the app's own defaults.
-            let app: AnyObject = spec.table == CarrierRowsSpec.stands.table ? stands : records
+            // Only the three app stores exist for the app's own defaults.
+            let app: AnyObject = switch spec.table {
+            case CarrierRowsSpec.stands.table: stands
+            case CarrierRowsSpec.stamps.table: stamps
+            default: records
+            }
             guard let rows = app as? CarrierRows<Value> else {
                 preconditionFailure("no app store of \(spec.table) for this value")
             }

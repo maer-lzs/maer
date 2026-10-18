@@ -306,8 +306,8 @@ struct NavidromeRekeyTests {
         d.set([oldHidden: 42.0], forKey: AppStorageKeys.continueHiddenMarkers)
         d.set("sub:song:\(Self.old)", forKey: AppStorageKeys.lastPlayedItemId)
         let clearedOld = "playbackRate.sub:playlist:\(Self.old)"
-        d.set([oldRate: 5.0, newRate: 9.0, oldTail: 4.0, clearedOld: 8.0,
-               UserChoiceCatalog.hiddenPrefix + oldHidden: 6.0], forKey: UserChoiceCloudSync.stampsKey)
+        here.sync._seedStampsForWitness([oldRate: 5.0, newRate: 9.0, oldTail: 4.0, clearedOld: 8.0,
+                                         UserChoiceCatalog.hiddenPrefix + oldHidden: 6.0])
 
         let first = here.sync.rekeyLocalChoices(Self.map)
         #expect(first.changed == 5)

@@ -32,6 +32,7 @@ struct CounterTablesFenceTests {
         "listen_history": (.wholeValue, "one entry per book or song, merged before the write"),
         "carrier_stand": (.wholeValue, "one stand per owner and title, as the carrier holds it"),
         "carrier_record": (.wholeValue, "one record row per owner and key, as the carrier holds it"),
+        "choice_stamp": (.wholeValue, "one moment per owner and travelling choice"),
     ]
 
     @Test("jede Tabelle ist eingeordnet, keine Einordnung ohne Tabelle")

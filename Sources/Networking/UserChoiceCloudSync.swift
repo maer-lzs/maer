@@ -73,6 +73,16 @@ final class UserChoiceCloudSync {
     /// The family's way through the shelf (`ShelfFollower`); nil without a
     /// shelf, which is the case of every witness that does not hand one in.
     private let follower: ShelfFollower?
+    /// The stamps, in rows with their owner in the key: the account whose
+    /// choices lie on the device (`""` before any). Another account's stamps
+    /// stay under its own name in the rows and are never read for these
+    /// choices, so no account dates its choices with another's moments, not
+    /// even after a run that died in the middle of a hand-over.
+    private let stampRows: ChoiceStampRows
+    private var stampOwner: String
+    /// A round waits while the stamps could not be read: without them every
+    /// choice here would date from nothing and the cloud would win over it.
+    private var roundWaitsForStamps = false
     /// Whether statements that carry the music server's ids may travel
     /// (`SubsonicProvider.idFormSettled`).
     private let idFormSettled: () -> Bool
@@ -108,12 +118,25 @@ final class UserChoiceCloudSync {
          identity: @escaping () -> String? = { nil },
          serviceAddress: @escaping () -> String? = { nil },
          shelf: RestingShelf? = nil,
+         stamps: ChoiceStampRows? = nil,
          idFormSettled: @escaping () -> Bool = { SubsonicProvider.idFormSettled() }) {
         self.defaults = defaults
         self.itemIdMap = itemIdMap
         self.identity = identity
         self.serviceAddress = serviceAddress
         self.follower = shelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "CHOICE") }
+        let stampRows = stamps ?? ChoiceStampRows.matching(defaults)
+        self.stampRows = stampRows
+        // bearable, because an unreadable holding names no owner yet; the hand-over reads it again and holds the round while it cannot
+        let holder = (try? shelf?.holding(of: Self.shelfFamily))??.owner ?? ""
+        self.stampOwner = holder
+        // The blob of the stamps moved under its own name; it dates the
+        // choices that lie here, so it goes to their holder.
+        if stampRows.holds(ChoiceStampRows.legacyOwner) {
+            let moved = stampRows.rows(ChoiceStampRows.legacyOwner)
+            stampRows.set(holder, moved.merging(stampRows.rows(holder)) { _, rows in rows })
+            stampRows.set(ChoiceStampRows.legacyOwner, [:])
+        }
         self.idFormSettled = idFormSettled
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
@@ -370,10 +393,12 @@ final class UserChoiceCloudSync {
     private static let shelfFamily = "choices"
 
     /// What rests for an account: the stored value of every key the family
-    /// keeps (`restingKeys`) as property-list data, the bookkeeping of
-    /// stamps and recorded removals included. Without the stamps the next
-    /// round would derive the holder's keys as removals into the new
-    /// account's document.
+    /// keeps (`restingKeys`) as property-list data, the recorded removals
+    /// included. The stamps rest in their rows under the account's name
+    /// (`stampRows`); a rest laid by an earlier build still carries them as
+    /// a key, and they go to the rows when it comes back. Without the stamps
+    /// the next round would derive the holder's keys as removals into the
+    /// new account's document.
     nonisolated struct Resting: Codable, Equatable {
         var values: [String: Data]
     }
@@ -386,7 +411,7 @@ final class UserChoiceCloudSync {
                       RadioStore.recentTimesKey, RadioStore.variantSelectionKey, RecentSearches.storageKey,
                       AppStorageKeys.continueHiddenMarkers, AppStorageKeys.premiumMarkedFeeds,
                       AppStorageKeys.blockedFeedKeys, KnownServers.storeKey,
-                      Self.stampsKey, Self.removalRecordKey]
+                      Self.removalRecordKey]
         let families = defaults.dictionaryRepresentation().keys.filter { key in
             UserChoiceCatalog.travelingPrefixes.contains { key.hasPrefix($0) }
         }
@@ -420,7 +445,20 @@ final class UserChoiceCloudSync {
         guard let step = follower.follow(
             to: scope, previous: previous, unread: false, landing: .now,
             current: { try restingChoices() },
-            replace: { rest, _, _ in try replaceChoices(with: rest) }) else { return false }
+            replace: { rest, owner, _ in
+                // The stamps of the owner coming in are its own rows; set
+                // before the choices land, so an echo of the adoption aligns
+                // against them.
+                stampOwner = owner
+                try replaceChoices(with: rest)
+            }) else { return false }
+        if step == .first, stampOwner != scope {
+            // The first account takes the stock that is here, its stamps too.
+            let here = stampRows.rows(stampOwner)
+            stampRows.set(scope, here.merging(stampRows.rows(scope)) { _, own in own })
+            stampRows.set(stampOwner, [:])
+        }
+        if step != .unread { stampOwner = scope }
         if step != .kept {
             Logger.library.notice("CHOICE owner \(String(describing: step), privacy: .public) keys=\(self.restingKeys().count)")
         }
@@ -435,7 +473,15 @@ final class UserChoiceCloudSync {
         let service = serviceAddress()
         var restored: [(String, Any)] = []
         for (key, data) in incoming?.values ?? [:] {
-            restored.append((key, try PropertyListSerialization.propertyList(from: data, format: nil)))
+            let raw = try PropertyListSerialization.propertyList(from: data, format: nil)
+            if key == Self.stampsKey {
+                // A rest an earlier build laid: its stamps go to the rows of
+                // the owner coming in, under any its rows already hold.
+                let laid = raw as? [String: Double] ?? [:]
+                stampRows.set(stampOwner, laid.merging(stampRows.rows(stampOwner)) { _, own in own })
+                continue
+            }
+            restored.append((key, raw))
         }
         // Every key that leaves is a change too: the announcement names the
         // keys before and after, or a surface of a key that left keeps it.
@@ -459,6 +505,19 @@ final class UserChoiceCloudSync {
     func reconcile() {
         if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
+        // Stamps nobody could read are unknown, not empty: the round waits
+        // for them and runs once they are read.
+        guard !stampRows.unread else {
+            if !roundWaitsForStamps {
+                roundWaitsForStamps = true
+                stampRows.whenRead { [weak self] in
+                    self?.roundWaitsForStamps = false
+                    self?.reconcile()
+                }
+            }
+            Logger.library.notice("CHOICE round held: the stamps are not read")
+            return
+        }
         // Another account than the choices' owner: its choices replace the
         // owner's first, or the round would carry them to it.
         guard followsTheAccount() else {
@@ -1084,12 +1143,21 @@ final class UserChoiceCloudSync {
         // flush runs at start/reconcile, where it pays for itself.
     }
 
+    /// The stamps of the choices that lie here, from the rows of their
+    /// owner. The rows write only the stamps that changed; before, every
+    /// note wrote the whole dictionary into the defaults.
     func localStamps() -> [String: Double] {
-        defaults.dictionary(forKey: Self.stampsKey) as? [String: Double] ?? [:]
+        stampRows.rows(stampOwner)
+    }
+
+    /// Test seam: the stamps of the choices that lie here, as a witness
+    /// hands them in.
+    func _seedStampsForWitness(_ stamps: [String: Double]) {
+        saveStamps(stamps)
     }
 
     private func saveStamps(_ stamps: [String: Double]) {
-        defaults.set(stamps, forKey: Self.stampsKey)
+        stampRows.set(stampOwner, stamps)
     }
 
     private func removalRecords() -> [String: Double] {

@@ -118,11 +118,11 @@ struct StandbyLiveRefreshTests {
         let own = "rss:standby-test:\(UUID().uuidString)"
         let foreign = "lv:standby-foreign-\(UUID().uuidString)"
         let defaults = UserDefaults.standard
-        let stampsBefore = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey)
+        let choices = UserChoiceCloudSync.shared
+        let stampsBefore = choices.localStamps()
         defer {
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
-            if let stampsBefore { defaults.set(stampsBefore, forKey: UserChoiceCloudSync.stampsKey) }
-            else { defaults.removeObject(forKey: UserChoiceCloudSync.stampsKey) }
+            choices._seedStampsForWitness(stampsBefore)
         }
         let coord = PlayerCoordinator(provider: MockProvider())
         coord._seedActivePlayerForUITest(item: item(own), detail: detail(own),
@@ -130,9 +130,9 @@ struct StandbyLiveRefreshTests {
         coord.beginOwnSession(item(own), origin: .gesture)
         // The adoption lands after the own open, with the iPad's older event time.
         defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
-        var stamps = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]
+        var stamps = choices.localStamps()
         stamps[AppStorageKeys.lastPlayedItemId] = (coord.ownOpenedAtMs ?? 0) - 5_000
-        defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
+        choices._seedStampsForWitness(stamps)
 
         await coord.refreshStandbyFromTruth()
 
@@ -146,20 +146,20 @@ struct StandbyLiveRefreshTests {
     func onlyAGestureNotes() {
         let foreign = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
-        let stampsBefore = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey)
+        let choices = UserChoiceCloudSync.shared
+        let stampsBefore = choices.localStamps()
         defer {
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
-            if let stampsBefore { defaults.set(stampsBefore, forKey: UserChoiceCloudSync.stampsKey) }
-            else { defaults.removeObject(forKey: UserChoiceCloudSync.stampsKey) }
+            choices._seedStampsForWitness(stampsBefore)
         }
         defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
-        let stampsSeen = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]
+        let stampsSeen = choices.localStamps()
         let coord = PlayerCoordinator(provider: MockProvider())
         for origin in [PlayerCoordinator.OpenOrigin.mirror, .restore] {
             coord.beginOwnSession(item("rss:standby-test:own-\(UUID().uuidString)"), origin: origin)
             #expect(coord.ownOpenedAtMs == nil, "\(origin) must not stamp an own open")
             #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == foreign, "\(origin) must leave the pointer")
-            #expect((defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]) == stampsSeen)
+            #expect(choices.localStamps() == stampsSeen)
         }
         let own = item("rss:standby-test:gesture-\(UUID().uuidString)")
         coord.beginOwnSession(own, origin: .gesture)

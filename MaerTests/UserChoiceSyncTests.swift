@@ -518,7 +518,7 @@ struct UserChoiceCloudSyncTests {
         let feed = "https://example.org/frozen.xml"
         let key = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey(feed)
         cloud.storage[UserChoiceCloudSync.blobKey] = [key: UserChoiceEntry(value: nil, t: 5000).plist]
-        a.defaults.set([key: 5000.0], forKey: UserChoiceCloudSync.stampsKey)
+        a.sync._seedStampsForWitness([key: 5000.0])
         a.sync.localSubscriptions = { [PodcastSubscriptions.feedKey(feed): feed] }
         a.sync.reconcile()
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
@@ -869,7 +869,7 @@ struct UserChoiceCloudSyncTests {
             a.defaults.set(1.5, forKey: AppStorageKeys.playbackRate("item-\(i)"))
             stamps[AppStorageKeys.playbackRate("item-\(i)")] = 5000 + Double(i)
         }
-        a.defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
+        a.sync._seedStampsForWitness(stamps)
         a.sync.reconcile()
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
         let rates = blob.keys.filter { $0.hasPrefix("playbackRate.") }
@@ -890,7 +890,7 @@ struct UserChoiceCloudSyncTests {
             // be the NEWEST entry, or the cap would evict it instead.
             stamps[AppStorageKeys.playbackRate("item-\(i)")] = 100 + Double(i)
         }
-        a.defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
+        a.sync._seedStampsForWitness(stamps)
         a.sync.reconcile()   // blob at the cap
         // The 501st rate arrives as a plain user NOTE (foregrounded device,
         // no reconcile). The oldest must fall, the newest must land.
