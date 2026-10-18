@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.4 (Build 54)
+
 **Drive mode keeps time.** In drive mode the progress bar and the
 remaining time move while a book or episode plays, and a station shows
 its running time; before, they stood still until something else changed
