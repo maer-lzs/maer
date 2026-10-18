@@ -66,6 +66,23 @@ if [[ -z "$udid" ]]; then
 fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 xcrun simctl erase "$udid"
+# Sound and microphone of the template on a silent device, so a run does not
+# break the Mac's sound: a running simulator disturbs coreaudiod (18.10.2026).
+# The erase removes the choice, so it is written after every erase, before
+# the boot. MAER_JOURNEY_AUDIO_UID names another device; without BlackHole
+# installed and without the variable the template keeps the Mac's devices.
+audio_uid=${MAER_JOURNEY_AUDIO_UID:-}
+[[ -z "$audio_uid" && -d /Library/Audio/Plug-Ins/HAL/BlackHole2ch.driver ]] && audio_uid=BlackHole2ch_UID
+if [[ -n "$audio_uid" ]]; then
+    audio_dir="$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/var/run"
+    audio_plist="$audio_dir/com.apple.coresimulator.audio.plist"
+    mkdir -p "$audio_dir" && { [[ -f "$audio_plist" ]] || plutil -create xml1 "$audio_plist"; } \
+        && plutil -replace sim_output_device_uid -string "$audio_uid" "$audio_plist" \
+        && plutil -replace sim_input_device_uid -string "$audio_uid" "$audio_plist" \
+        && plutil -replace useHostDefaultOutputDevice -bool NO "$audio_plist" \
+        && plutil -replace useHostDefaultInputDevice -bool NO "$audio_plist" \
+        || { echo "audio device of the template not set" >&2; exit 2; }
+fi
 
 # 3. Build once, then run. A lower target applies to this build only; the
 # project keeps its own.
