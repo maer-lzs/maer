@@ -21,7 +21,7 @@ struct RowEmptyingFenceTests {
         "PodcastSubscriptions.swift": (4, "the person's own unsubscribe, the last one too, here or as a tombstone from another device; a show handed over to Audiobookshelf leaves here, the only one too; another account owns the device and the shows before rest on the shelf, read back"),
         "PodcastListenLog.swift": (1, "another account owns the device and the entries before rest on the shelf, read back"),
         "ListenHistory.swift": (1, "another account owns the device and the entries before rest on the shelf, read back"),
-        "CarrierStandRows.swift": (1, "a carrier's last stand went: the queue was sent, the other side holds nothing"),
+        "CarrierRows.swift": (1, "a carrier's last entry of an owner went: the queue was sent, the other side holds nothing"),
     ]
 
     /// The writes in `code` that may empty, as written.

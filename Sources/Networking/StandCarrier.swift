@@ -90,9 +90,8 @@ enum StandCarriers {
     }
 }
 
-/// What a carrier keeps in the key door beside its stands, which live in
-/// rows (`CarrierStandRows`): the list of removals not yet accepted, and
-/// the record rows of the carriers whose mirrors have not moved yet.
+/// What a carrier keeps in the key door beside its mirror and queue, which
+/// live in rows (`CarrierRows`): the list of removals not yet accepted.
 nonisolated enum StandMirrorStore {
     static func loadList(_ key: String, defaults: UserDefaults) -> [String] {
         guard let data = defaults.data(forKey: key) else { return [] }
@@ -102,19 +101,6 @@ nonisolated enum StandMirrorStore {
 
     static func saveList(_ value: [String], key: String, defaults: UserDefaults) {
         // bearable, because a list of text always encodes
-        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
-    }
-
-    /// The record rows of the choice, playlist and stats carriers (each
-    /// record as a row of text, per key), in the same key door.
-    static func loadRows(_ key: String, defaults: UserDefaults) -> [String: [String]] {
-        guard let data = defaults.data(forKey: key) else { return [:] }
-        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
-        return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
-    }
-
-    static func saveRows(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // bearable, because a dictionary of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

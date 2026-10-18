@@ -137,9 +137,8 @@ struct UnreadableStoreTests {
     /// * `BookmarkQueue.swift`: the offline copy of the server's bookmarks,
     ///   replaced whole by the next answer (the queue itself reads through
     ///   `CorruptStore.load`).
-    /// * `StandCarrier.swift` (2, `StandMirrorStore`: the list of removals
-    ///   and the record rows of the carriers not moved yet) and
-    ///   `CarrierStandRows.swift` (1, the blobs of the stands, read once at
+    /// * `StandCarrier.swift` (1, `StandMirrorStore`: the list of removals)
+    ///   and `CarrierRows.swift` (1, the blobs of the mirrors, read once at
     ///   the move): mirrors of the other side, an unreadable one costs a
     ///   full pull.
     /// * `PodcastTranscript.swift`: parses a downloaded document, writes
@@ -147,12 +146,12 @@ struct UnreadableStoreTests {
     static let decodeToEmptyStock = [
         "Artwork+Memo.swift": 1,
         "BookmarkQueue.swift": 1,
-        "CarrierStandRows.swift": 1,
+        "CarrierRows.swift": 1,
         "KnownServers.swift": 1,
         "PodcastTranscript.swift": 1,
         "RadioModels.swift": 2,
         "ResolutionCacheStore.swift": 2,
-        "StandCarrier.swift": 2,
+        "StandCarrier.swift": 1,
     ]
 
     /// The stores above that hold what a person made; their writes ask.

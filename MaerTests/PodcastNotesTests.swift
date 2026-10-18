@@ -296,13 +296,19 @@ struct PodcastNotesTests {
     func onlyTheSetterWritesTheStock() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
-        let writes = #/(?m)^\s*(?:self\.)?stock\s*(?:=[^=]|\+=|\.(?:append|remove|insert|merge))/#
+        // Anywhere in a line, not only at its start; an interpolated log
+        // field (`stock=\(…)`) and a comparison are no writes.
+        let writes = #/(?:^|[^\w."])(?:self\.)?stock(?:\[[^\]\n]*\](?:\.\w+)*)?\s*(?:=(?![=\\])|\+=|\.(?:append|remove|insert|merge)\b)/#
         let open = try #require(code.range(of: "private(set) var shows: [PodcastShow] {"), "the setter of shows")
         let close = try #require(code.range(of: "@Published private var stock", range: open.upperBound..<code.endIndex))
         #expect(code[open.upperBound..<close.lowerBound].matches(of: writes).count == 2, "the setter's two assignments")
         #expect(code.matches(of: writes).count == 2, "the stock is written past the setter of shows")
         #expect("        stock = x\n        self.stock.append(y)\n        log(\"stock=\\(n)\")\n        if stock == z {}".matches(of: writes).count == 2,
                 "the reader of the writes")
+        #expect("        stock[i] = x\n        stock[i].episodes = y\n        self.stock[0].origin = o\n        if stock[i] == z {}".matches(of: writes).count == 3,
+                "a write through a subscript")
+        #expect("        if !stock.isEmpty { stock[0].origin = o }\n        let stock: Read = r\n        guard stock == .whole".matches(of: writes).count == 1,
+                "a write inside a line")
     }
 
     /// The shownotes leave a stock before it is assigned: a change that

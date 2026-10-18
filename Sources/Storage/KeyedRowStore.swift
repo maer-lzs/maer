@@ -33,6 +33,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case downloadMeta = "download_meta"
         case listenHistory = "listen_history"
         case carrierStand = "carrier_stand"
+        case carrierRecord = "carrier_record"
     }
 
     private let connection: SQLiteConnection

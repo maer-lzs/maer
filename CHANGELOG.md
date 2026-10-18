@@ -7,8 +7,10 @@ the app knows of the listening positions on your other devices now lives
 in its database, one row per title, instead of one large block in the
 settings. While a book or episode plays, each save writes only what
 changed; with 22,000 titles a save takes about a quarter of the time on
-the main thread it took before. After the update the app fetches the
-positions from iCloud or your sync service once from the start.
+the main thread it took before. Your choices, Mär playlists and listening
+statistics travelling through iCloud are kept the same way. After the
+update the app fetches them from iCloud or your sync service once from
+the start.
 
 ## v3.4 (Build 54)
 

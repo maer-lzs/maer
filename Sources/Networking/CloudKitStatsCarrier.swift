@@ -56,7 +56,11 @@ typealias CKStatsDatabase = CKZoneDatabase<CloudStatsCodec>
 /// synchronous rule stays untouched.
 @MainActor
 final class CloudKitStatsCarrier: StatsCarrier {
-    nonisolated static let tokenKey = "cloudStatsToken"
+    /// Under its own name since the records moved into rows: an older build
+    /// reads `cloudStatsToken` beside a blob it no longer finds
+    /// (`CarrierRows`).
+    nonisolated static let tokenKey = "cloudStatsTokenRows"
+    /// The owners of the mirror and the queue in `CarrierRecordRows`.
     nonisolated static let mirrorKey = "cloudStatsMirror"
     nonisolated static let queueKey = "cloudStatsQueue"
     nonisolated static let migratedKey = "cloudStatsMigrated"
@@ -65,6 +69,7 @@ final class CloudKitStatsCarrier: StatsCarrier {
     private let database: any CloudStatsDatabase
     private let fallback: KeyValueStatsCarrier
     private let defaults: UserDefaults
+    private let carrierRows: CarrierRecordRows
     private var onChange: (@MainActor () -> Void)?
 
     /// What the cloud holds as far as this device knows, by device.
@@ -82,15 +87,31 @@ final class CloudKitStatsCarrier: StatsCarrier {
     private var subscribed: Bool
 
     init(database: any CloudStatsDatabase, fallback: KeyValueStatsCarrier,
-         defaults: UserDefaults = AppStorageKeys.store) {
+         defaults: UserDefaults = AppStorageKeys.store, rows: CarrierRecordRows? = nil) {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = Self.loadMirror(defaults: defaults)
-        queued = Self.loadQueued(defaults: defaults)
+        let rows = rows ?? CarrierRecordRows.matching(defaults)
+        carrierRows = rows
+        mirror = Self.records(of: rows.rows(Self.mirrorKey))
+        queued = Self.records(of: rows.rows(Self.queueKey)).values.first
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
+        if rows.unread {
+            // The mirror is unknown, not empty: the next round fetches from
+            // the start, and the rows join the mirror once they are read.
+            token = nil
+            defaults.removeObject(forKey: Self.tokenKey)
+            rows.whenRead { [weak self] in self?.takeTheReadRows() }
+        }
+    }
+
+    /// The rows read after a start that could not read them, under what
+    /// this run learned since: this run wins per device.
+    private func takeTheReadRows() {
+        mirror = Self.records(of: carrierRows.rows(Self.mirrorKey)).merging(mirror) { _, run in run }
+        queued = queued ?? Self.records(of: carrierRows.rows(Self.queueKey)).values.first
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
@@ -275,13 +296,13 @@ final class CloudKitStatsCarrier: StatsCarrier {
 
     // MARK: - The door
 
-    /// The mirror and the queue in the key door as `device → [moment,
-    /// payload as base64]`: two strings per device, no stored type of
-    /// their own, so a field added later is not a silent migration of a
-    /// document that only a mirror ever held.
+    /// The mirror and the queue in the rows as `device → [moment, payload
+    /// as base64]`: two strings per device, no stored type of their own, so
+    /// a field added later is not a silent migration of a document that
+    /// only a mirror ever held.
     private func persist() {
-        StandMirrorStore.saveRows(Self.rows(of: Array(mirror.values)), key: Self.mirrorKey, defaults: defaults)
-        StandMirrorStore.saveRows(Self.rows(of: queued.map { [$0] } ?? []), key: Self.queueKey, defaults: defaults)
+        carrierRows.set(Self.mirrorKey, Self.rows(of: Array(mirror.values)))
+        carrierRows.set(Self.queueKey, Self.rows(of: queued.map { [$0] } ?? []))
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
 
@@ -297,14 +318,6 @@ final class CloudKitStatsCarrier: StatsCarrier {
             out[deviceId] = CloudStatsRecord(deviceId: deviceId, payload: payload, t: t)
         }
         return out
-    }
-
-    nonisolated private static func loadMirror(defaults: UserDefaults) -> [String: CloudStatsRecord] {
-        records(of: StandMirrorStore.loadRows(Self.mirrorKey, defaults: defaults))
-    }
-
-    nonisolated private static func loadQueued(defaults: UserDefaults) -> CloudStatsRecord? {
-        records(of: StandMirrorStore.loadRows(Self.queueKey, defaults: defaults)).values.first
     }
 }
 

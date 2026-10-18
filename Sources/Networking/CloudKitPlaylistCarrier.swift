@@ -84,7 +84,11 @@ nonisolated enum MaerPlaylistEntryWire {
 /// carrier only mirrors, encodes and queues.
 @MainActor
 final class CloudKitPlaylistCarrier: PlaylistCarrier {
-    nonisolated static let tokenKey = "cloudPlaylistToken"
+    /// Under its own name since the records moved into rows: an older build
+    /// reads `cloudPlaylistToken` beside a blob it no longer finds
+    /// (`CarrierRows`).
+    nonisolated static let tokenKey = "cloudPlaylistTokenRows"
+    /// The owners of the mirror and the queue in `CarrierRecordRows`.
     nonisolated static let mirrorKey = "cloudPlaylistMirror"
     nonisolated static let queueKey = "cloudPlaylistQueue"
     nonisolated static let migratedKey = "cloudPlaylistMigrated"
@@ -93,6 +97,7 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     private let database: any CloudPlaylistDatabase
     private let fallback: KeyValuePlaylistCarrier
     private let defaults: UserDefaults
+    private let carrierRows: CarrierRecordRows
     private var onChange: (@MainActor () -> Void)?
 
     /// What the cloud holds as far as this device knows, by list id (a
@@ -108,15 +113,31 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     private var subscribed: Bool
 
     init(database: any CloudPlaylistDatabase, fallback: KeyValuePlaylistCarrier,
-         defaults: UserDefaults = AppStorageKeys.store) {
+         defaults: UserDefaults = AppStorageKeys.store, rows: CarrierRecordRows? = nil) {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = Self.records(of: StandMirrorStore.loadRows(Self.mirrorKey, defaults: defaults))
-        queue = Self.records(of: StandMirrorStore.loadRows(Self.queueKey, defaults: defaults))
+        let rows = rows ?? CarrierRecordRows.matching(defaults)
+        carrierRows = rows
+        mirror = Self.records(of: rows.rows(Self.mirrorKey))
+        queue = Self.records(of: rows.rows(Self.queueKey))
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
+        if rows.unread {
+            // The mirror is unknown, not empty: the next round fetches from
+            // the start, and the rows join the mirror once they are read.
+            token = nil
+            defaults.removeObject(forKey: Self.tokenKey)
+            rows.whenRead { [weak self] in self?.takeTheReadRows() }
+        }
+    }
+
+    /// The rows read after a start that could not read them, under what
+    /// this run learned since: this run wins per list.
+    private func takeTheReadRows() {
+        mirror = Self.records(of: carrierRows.rows(Self.mirrorKey)).merging(mirror) { _, run in run }
+        queue = Self.records(of: carrierRows.rows(Self.queueKey)).merging(queue) { _, run in run }
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
@@ -360,13 +381,13 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
 
     // MARK: - The door
 
-    /// The mirror and the queue in the key door as `list id → [t,
+    /// The mirror and the queue in the rows as `list id → [t,
     /// tombstone, payload as base64]`: three strings per record, no stored
     /// type of their own, so a field added to a list later is not a silent
     /// migration of a document only a mirror ever held.
     private func persist() {
-        StandMirrorStore.saveRows(Self.rows(of: mirror), key: Self.mirrorKey, defaults: defaults)
-        StandMirrorStore.saveRows(Self.rows(of: queue), key: Self.queueKey, defaults: defaults)
+        carrierRows.set(Self.mirrorKey, Self.rows(of: mirror))
+        carrierRows.set(Self.queueKey, Self.rows(of: queue))
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
 

@@ -88,7 +88,11 @@ nonisolated enum CloudChoicePayload {
 /// runner dropped leaves the cloud too, or the mirror would bring it back.
 @MainActor
 final class CloudKitChoiceCarrier: ChoiceCarrier {
-    nonisolated static let tokenKey = "cloudChoiceToken"
+    /// Under its own name since the records moved into rows: an older build
+    /// reads `cloudChoiceToken` beside a blob it no longer finds
+    /// (`CarrierRows`).
+    nonisolated static let tokenKey = "cloudChoiceTokenRows"
+    /// The owners of the mirror and the queue in `CarrierRecordRows`.
     nonisolated static let mirrorKey = "cloudChoiceMirror"
     nonisolated static let queueKey = "cloudChoiceQueue"
     nonisolated static let removalsKey = "cloudChoiceRemovals"
@@ -99,6 +103,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     private let database: any CloudChoiceDatabase
     private let fallback: KeyValueChoiceCarrier
     private let defaults: UserDefaults
+    private let carrierRows: CarrierRecordRows
     private var onChange: (@MainActor () -> Void)?
 
     /// What the cloud holds as far as this device knows, by cloud key.
@@ -124,17 +129,33 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     private var subscribed: Bool
 
     init(database: any CloudChoiceDatabase, fallback: KeyValueChoiceCarrier,
-         defaults: UserDefaults = AppStorageKeys.store) {
+         defaults: UserDefaults = AppStorageKeys.store, rows: CarrierRecordRows? = nil) {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = Self.records(of: StandMirrorStore.loadRows(Self.mirrorKey, defaults: defaults))
-        queue = Self.records(of: StandMirrorStore.loadRows(Self.queueKey, defaults: defaults))
+        let rows = rows ?? CarrierRecordRows.matching(defaults)
+        carrierRows = rows
+        mirror = Self.records(of: rows.rows(Self.mirrorKey))
+        queue = Self.records(of: rows.rows(Self.queueKey))
         removals = Set(defaults.stringArray(forKey: Self.removalsKey) ?? [])
         folded = (defaults.dictionary(forKey: Self.foldedKey) as? [String: Double]) ?? [:]
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
+        if rows.unread {
+            // The mirror is unknown, not empty: the next round fetches from
+            // the start, and the rows join the mirror once they are read.
+            token = nil
+            defaults.removeObject(forKey: Self.tokenKey)
+            rows.whenRead { [weak self] in self?.takeTheReadRows() }
+        }
+    }
+
+    /// The rows read after a start that could not read them, under what
+    /// this run learned since: this run wins per key.
+    private func takeTheReadRows() {
+        mirror = Self.records(of: carrierRows.rows(Self.mirrorKey)).merging(mirror) { _, run in run }
+        queue = Self.records(of: carrierRows.rows(Self.queueKey)).merging(queue) { _, run in run }
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
@@ -461,13 +482,13 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
 
     // MARK: - The door
 
-    /// The mirror and the queue in the key door as `key → [t, tombstone,
+    /// The mirror and the queue in the rows as `key → [t, tombstone,
     /// payload as base64]`: three strings per record, no stored type of
     /// their own, so a field added later is not a silent migration of a
     /// document only a mirror ever held.
     private func persist() {
-        StandMirrorStore.saveRows(Self.rows(of: mirror), key: Self.mirrorKey, defaults: defaults)
-        StandMirrorStore.saveRows(Self.rows(of: queue), key: Self.queueKey, defaults: defaults)
+        carrierRows.set(Self.mirrorKey, Self.rows(of: mirror))
+        carrierRows.set(Self.queueKey, Self.rows(of: queue))
         defaults.set(Array(removals).sorted(), forKey: Self.removalsKey)
         defaults.set(folded, forKey: Self.foldedKey)
         if let token { defaults.set(token, forKey: Self.tokenKey) }

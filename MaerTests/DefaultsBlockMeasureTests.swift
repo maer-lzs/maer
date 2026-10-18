@@ -90,9 +90,9 @@ struct DefaultsBlockMeasureTests {
         for (key, value) in choices {
             records[key] = CloudChoiceRecord(key: key, payload: CloudChoicePayload.encode(value), t: 1_760_000_000_000, tombstone: false)
         }
-        let choiceWrite = Self.timed { round in
+        let choiceWrite = try Self.timedThrowing { round in
             records["round"] = CloudChoiceRecord(key: "round", payload: CloudChoicePayload.encode(.int(round)), t: 1, tombstone: false)
-            StandMirrorStore.saveRows(CloudKitChoiceCarrier.rows(of: records), key: CloudKitChoiceCarrier.mirrorKey, defaults: defaults)
+            defaults.set(try JSONEncoder().encode(CloudKitChoiceCarrier.rows(of: records)), forKey: CloudKitChoiceCarrier.mirrorKey)
         }
         Self.line("choiceMirror", keys: 1, bytes: Self.bytes([CloudKitChoiceCarrier.mirrorKey: defaults.object(forKey: CloudKitChoiceCarrier.mirrorKey) ?? Data()]), write: choiceWrite)
 

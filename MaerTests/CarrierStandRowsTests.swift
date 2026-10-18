@@ -177,11 +177,15 @@ struct CarrierStandRowsTests {
     }
 
     /// The way back holds only while no build writes the old names again:
-    /// the token and the version of this build have names of their own,
-    /// and no source writes a blob of stands into the defaults.
+    /// the tokens and the version of this build have names of their own,
+    /// and no source writes a blob of a mirror into the defaults.
     @Test("kein Bau schreibt die alten Namen wieder: Token und Version heissen neu, kein Ganzschrieb eines Abbilds in die Voreinstellungen", .needsTheSources)
     func theOldNamesAreNeverWrittenAgain() throws {
-        #expect(CloudKitStandCarrier.tokenKey != CarrierStandRows.legacyToken)
+        let tokens = [CloudKitStandCarrier.tokenKey, CloudKitChoiceCarrier.tokenKey, CloudKitPlaylistCarrier.tokenKey,
+                      CloudKitStatsCarrier.tokenKey]
+        let legacy = CarrierRowsSpec.stands.legacyTokens + CarrierRowsSpec.records.legacyTokens
+        #expect(Set(tokens).isDisjoint(with: legacy), "a token of this build carries an old name")
+        #expect(legacy.count == 4, "the fence knows four old tokens")
         #expect(MaerSyncSession.versionKey != CarrierStandRows.legacyScopedVersion)
         #expect(!MaerSyncSession.identityKeys.contains { CarrierStandRows.isLegacyOwner($0) || $0 == CarrierStandRows.legacyScopedVersion })
         let sources = SourceTree.root.appendingPathComponent("Sources")
@@ -189,14 +193,18 @@ struct CarrierStandRowsTests {
         var blobReaders: [String] = []
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            if code.contains("\"cloudStandToken\"") || code.contains("\"maerSyncStandsVersion\"") { named.append(file.lastPathComponent) }
-            if code.contains("[String: [Double]].self") { blobReaders.append(file.lastPathComponent) }
+            if (legacy + [CarrierStandRows.legacyScopedVersion]).contains(where: { code.contains("\"\($0)\"") }) {
+                named.append(file.lastPathComponent)
+            }
+            if code.contains("[String: [Double]].self") || code.contains("[String: [String]].self") || code.contains("[String: Value].self") {
+                blobReaders.append(file.lastPathComponent)
+            }
             if file.lastPathComponent == "StandCarrier.swift" {
-                #expect(!code.contains("func save(_ value: [String: [Double]]"), "the stand blob writer came back")
+                #expect(!code.contains("func save(_ value:") && !code.contains("func saveRows("), "a mirror blob writer came back")
             }
         }
-        #expect(named == ["CarrierStandRows.swift"], "the old names stand outside the move: \(named.sorted())")
-        #expect(blobReaders == ["CarrierStandRows.swift"], "a stand blob is read outside the move: \(blobReaders.sorted())")
+        #expect(named == ["CarrierRows.swift"], "the old names stand outside the move: \(named.sorted())")
+        #expect(blobReaders == ["CarrierRows.swift"], "a mirror blob is read outside the move: \(blobReaders.sorted())")
     }
 }
 #endif
