@@ -58,6 +58,7 @@ witness() {
 run_case() { # $1 = Testname
   xcodebuild test-without-building -project "$REPO/Maer.xcodeproj" -scheme Maer \
     -destination "id=$D" -derivedDataPath "$DD" -parallel-testing-enabled NO \
+    -collect-test-diagnostics never \
     -only-testing:"MaerUITests/NullStartMeasurement/$1" > "$W/$1-${MODUS:-A}.log" 2>&1
   echo $?
 }

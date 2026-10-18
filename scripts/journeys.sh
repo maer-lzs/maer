@@ -97,9 +97,12 @@ built=(-project Maer.xcodeproj -scheme Maer -derivedDataPath "$DD")
 if [[ -n "${MAER_JOURNEY_TARGET:-}" ]]; then
     built=(-xctestrun "$(ls "$DD"/Build/Products/Maer_*.xctestrun | head -1)")
 fi
+# No simulator diagnostics after the run: without the option xcodebuild
+# collected them after the last journey and ran into its 600 s limit
+# (measured 18.10.2026 on iOS 27: closing line 15:24:31, end 15:34:35).
 xcodebuild test-without-building "${built[@]}" \
     -destination "platform=iOS Simulator,id=$udid" \
-    "${parallel[@]}" \
+    "${parallel[@]}" -collect-test-diagnostics never \
     -resultBundlePath "$RESULT" "${only[@]}" > "$LOG" 2>&1
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
 # the script right here and no summary was ever written.
