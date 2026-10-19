@@ -80,17 +80,16 @@ struct DurationTextTests {
     }
 
     /// The code side: only the rule writes an hour or minute unit. The
-    /// drive mode keeps its clock-like "1:05 h" for the large display, a
-    /// separate question in the report; the logo report's age line is
-    /// German diagnosis text and an age, not a duration.
-    @Test("nur die Regel schreibt eine Dauer; die zwei benannten Ausnahmen mit Grund", .needsTheSources)
+    /// drive mode's clock form ("1:05 h") is a format, not an interpolation
+    /// with a unit, and its minutes go through the rule; the logo report's
+    /// age line is German diagnosis text and an age, not a duration.
+    @Test("nur die Regel schreibt eine Dauer; die benannte Ausnahme mit Grund", .needsTheSources)
     func onlyTheRuleWritesADuration() throws {
         #expect(Self.handWritten(in: #"return "\(m) min""#) == 1, "the finder sees a minute form")
         #expect(Self.handWritten(in: #"String(localized: "\(total / 60) h \(total % 60) min")"#) == 2)
         #expect(Self.handWritten(in: #"Text("\(left) in chapter · ends \(time)")"#) == 0)
         let allowed: [String: (count: Int, reason: String)] = [
             "DurationText.swift": (8, "the rule itself"),
-            "DriveModeView.swift": (2, "the drive mode's large clock-like display, a separate question"),
             "RadioLogoReport.swift": (1, "an age in German diagnosis text, not a duration")
         ]
         var found: [String: Int] = [:]

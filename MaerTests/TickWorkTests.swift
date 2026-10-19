@@ -120,9 +120,18 @@ struct TickWorkTests {
                 "the progress or the live time is no longer a leaf of the clock")
         #expect(!code.contains(".currentTime"), "the drive page reads the model's time past the clock")
         #expect(DriveModeView.remainingText(time: 600, duration: 4200) == "-1:00 h")
-        #expect(DriveModeView.remainingText(time: 3000, duration: 3600) == "-10 min")
+        #expect(DriveModeView.remainingText(time: 3000, duration: 3600) == "-" + DurationText.length(minutes: 10))
         #expect(DriveModeView.elapsedText(3900) == "1:05 h")
-        #expect(DriveModeView.elapsedText(-5) == "0 min")
+        #expect(DriveModeView.elapsedText(-5) == DurationText.length(minutes: 0))
+    }
+
+    /// Below an hour the drive page writes minutes in the app's one duration
+    /// form (in German "12 Min."), from an hour on its clock form stays.
+    @Test("die Fahrseite schreibt Minuten unter einer Stunde in der einen Form der App, die Uhrform ab einer Stunde bleibt")
+    func theDrivePageWritesMinutesByTheRule() {
+        #expect(DriveModeView.elapsedText(12 * 60 + 30) == DurationText.length(minutes: 12))
+        #expect(DriveModeView.remainingText(time: 0, duration: 12 * 60 + 30) == "-" + DurationText.length(minutes: 12))
+        #expect(DriveModeView.elapsedText(3600) == "1:00 h", "an hour keeps the clock form")
     }
 
     /// Every read of a `.currentTime` property in a view, whatever the model

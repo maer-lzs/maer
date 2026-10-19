@@ -7,6 +7,11 @@ below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from
 its own, and the note now says so.
 
+**Drive mode writes minutes like the rest of the app.** Below an hour,
+the running time and the time left in drive mode read "12 min", in German
+"12 Min."; before, German showed the untranslated "12 min". From an hour
+on, drive mode keeps its clock form "1:05 h", quicker to read in the car.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

@@ -309,16 +309,19 @@ struct DriveModeView: View {
         }
     }
 
+    /// From an hour on the clock form ("1:05 h"), quicker to read in the
+    /// car; below an hour the minutes in the app's one duration form.
     nonisolated static func elapsedText(_ time: Double) -> String {
         let seconds = Int(max(time, 0))
         let h = seconds / 3600, m = (seconds % 3600) / 60
-        return h > 0 ? String(format: "%d:%02d h", h, m) : "\(m) min"
+        return h > 0 ? String(format: "%d:%02d h", h, m) : DurationText.length(minutes: m)
     }
 
+    /// The same two forms for what is left, with a minus sign in front.
     nonisolated static func remainingText(time: Double, duration: Double) -> String {
         let remaining = max(duration - time, 0)
         let h = Int(remaining) / 3600, m = (Int(remaining) % 3600) / 60
-        return h > 0 ? "-\(h):\(String(format: "%02d", m)) h" : "-\(m) min"
+        return h > 0 ? "-\(h):\(String(format: "%02d", m)) h" : "-" + DurationText.length(minutes: m)
     }
 
     // MARK: - Idle: continue tiles (only when nothing plays)
