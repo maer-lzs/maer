@@ -85,34 +85,44 @@ private struct ContinueListeningView: View {
             }
         }
         .containerBackground(for: .widget) {
-            Color(.systemBackground)
+            if family == .systemSmall, entry.snapshot != nil {
+                smallBackground
+            } else {
+                Color(.systemBackground)
+            }
         }
     }
 
-    /// Small: cover fills the widget, title + progress bar at the bottom.
+    /// Small: the cover is the widget's background, which the system draws
+    /// to every edge whatever its content margins are on this device; title
+    /// and progress bar stand at the bottom inside those margins.
     private func small(_ snapshot: WidgetSnapshot) -> some View {
-        ZStack(alignment: .bottom) {
+        VStack(alignment: .leading, spacing: 4) {
+            Spacer(minLength: 0)
+            Text(snapshot.title)
+                .font(.caption.bold())
+                .foregroundStyle(.white)
+                .lineLimit(2)
+            ProgressView(value: snapshot.shown(at: entry.date).fraction)
+                .tint(.orange)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    }
+
+    /// The cover of the small widget with the shade that keeps the title
+    /// readable.
+    private var smallBackground: some View {
+        ZStack {
             coverImage
             LinearGradient(
                 colors: [.clear, .black.opacity(0.75)],
                 startPoint: .center, endPoint: .bottom
             )
-            VStack(alignment: .leading, spacing: 4) {
-                Text(snapshot.title)
-                    .font(.caption.bold())
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                ProgressView(value: snapshot.shown(at: entry.date).fraction)
-                    .tint(.orange)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
         }
-        // Reach into the widget corners (offset the containerBackground insets).
-        .padding(-16)
     }
 
-    /// Mittel: Cover links, rechts Titel/Autor/Restzeit/Balken.
+    /// Medium: cover on the left, title, author, remaining time and bar on
+    /// the right.
     private func medium(_ snapshot: WidgetSnapshot) -> some View {
         HStack(spacing: 12) {
             coverImage
