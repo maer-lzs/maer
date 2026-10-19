@@ -1,4 +1,4 @@
-Mär — Additional Terms under GNU GPL Version 3, Section 7
+Mär: Additional Terms under GNU GPL Version 3, Section 7
 
 Copyright (C) 2026 Laurenz Schröder
 
@@ -7,15 +7,15 @@ supplement the GNU General Public License version 3; in every other respect
 that License applies unchanged.
 
 ────────────────────────────────────────────────────────────────────────
-PART 1 — ADDITIONAL PERMISSION: distribution channels
+PART 1. ADDITIONAL PERMISSION: distribution channels
 ────────────────────────────────────────────────────────────────────────
 
 As an additional permission under section 7 of the GNU General Public License
 version 3, you are granted permission to distribute copies of Mär, or works
 based on Mär, through any managed application distribution channel operated by
-a third party — including application stores, app marketplaces, and comparable
+a third party (including application stores, app marketplaces, and comparable
 platforms, whatever their name, operator, or target operating system, existing
-now or established in the future — even where the terms of service of such a
+now or established in the future), even where the terms of service of such a
 channel impose limitations that would otherwise conflict with sections 6 and 10
 of the GNU General Public License.
 
@@ -30,9 +30,9 @@ This permission is subject to all of the following conditions:
 
   (a) The complete corresponding source code of the distributed version is
       publicly available, free of charge, under the GNU General Public License
-      version 3 or later — at https://codeberg.org/LzS/maer, also reachable at
+      version 3 or later, at https://codeberg.org/LzS/maer, also reachable at
       https://maer.fm/source, through a distribution channel that does not
-      impose the limitations described above — for as long as that version is
+      impose the limitations described above, for as long as that version is
       distributed.
 
   (b) Recipients are informed, in the application itself or in its listing on
@@ -53,15 +53,15 @@ channels. In every other respect the GNU General Public License version 3
 applies unchanged.
 
 ────────────────────────────────────────────────────────────────────────
-PART 2 — NAME AND ARTWORK
+PART 2. NAME AND ARTWORK
 ────────────────────────────────────────────────────────────────────────
 
 Forks are welcome, but the name is not part of what the licence hands over.
-"Mär" — and "Maer", its plain-ASCII spelling — and the application icon are
+"Mär" (and "Maer", its plain-ASCII spelling) and the application icon are
 reserved to the copyright holder, in any capitalisation; neither the GNU
 General Public License nor Part 1 grants any rights in them. Only the copyright
-holder — and a distribution channel releasing a build submitted to it by the
-copyright holder — may publish the application under either spelling. Anyone
+holder (and a distribution channel releasing a build submitted to it by the
+copyright holder) may publish the application under either spelling. Anyone
 else who publishes it, changed or not, gives it a name and an icon of their
 own.
 
@@ -70,7 +70,7 @@ project's name wherever it is copied, you may build it for your own use, and
 you may say freely that your work is a fork of Mär or a client for Mär.
 
 ────────────────────────────────────────────────────────────────────────
-PART 3 — CONTRIBUTIONS
+PART 3. CONTRIBUTIONS
 ────────────────────────────────────────────────────────────────────────
 
 By contributing to this project you agree that your contribution is licensed
@@ -78,7 +78,7 @@ under the GNU General Public License version 3, and that the copyright holder
 may grant the additional permission of Part 1 for it as well.
 
 The reservation of the name and the artwork in Part 2 is not affected by
-contributing, and it does not restrict forks — they carry their own name.
+contributing, and it does not restrict forks: they carry their own name.
 
 ────────────────────────────────────────────────────────────────────────
 

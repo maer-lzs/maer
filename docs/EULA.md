@@ -1,4 +1,4 @@
-# Mär — End User License Agreement
+# Mär: End User License Agreement
 
 This is the custom end-user licence agreement supplied to Apple's App Store in
 place of Apple's standard agreement. It exists because the platform requires
@@ -6,7 +6,7 @@ one. It does not narrow the rights that the GNU General Public License and
 [LICENSE-ADDITIONAL-TERMS](../LICENSE-ADDITIONAL-TERMS) give you.
 
 ```
-Mär — End User License Agreement
+Mär: End User License Agreement
 
 Mär is free software. This agreement exists because the distribution platform
 requires one; it does not take away any right the software's licence gives you.
@@ -90,7 +90,7 @@ requires one; it does not take away any right the software's licence gives you.
 8. LICENSOR NAME AND ADDRESS
 
    Laurenz Schröder
-   <POSTANSCHRIFT — noch einzutragen>
+   <POSTANSCHRIFT, noch einzutragen>
    https://maer.fm
 
    Questions, complaints, and claims relating to Mär may be directed to this
@@ -99,8 +99,8 @@ requires one; it does not take away any right the software's licence gives you.
 9. THIRD PARTY TERMS
 
    Mär connects only to servers and services that you choose. When you use it
-   to reach a service operated by someone else — your own media server, a
-   public catalogue, a podcast directory, a radio directory — your use of that
+   to reach a service operated by someone else (your own media server, a
+   public catalogue, a podcast directory, a radio directory), your use of that
    service is governed by that operator's terms, and the rights in the
    recordings you obtain through it are governed by the law applicable to them.
    The Licensor is not a party to those relationships and provides no rights in
@@ -109,7 +109,7 @@ requires one; it does not take away any right the software's licence gives you.
 10. THIRD PARTY BENEFICIARY
 
    Apple Inc. and its subsidiaries are third-party beneficiaries of this
-   agreement and, upon your acceptance of it, will have the right — and are
-   deemed to have accepted the right — to enforce this agreement against you as
+   agreement and, upon your acceptance of it, will have the right (and are
+   deemed to have accepted the right) to enforce this agreement against you as
    a third-party beneficiary of it.
 ```

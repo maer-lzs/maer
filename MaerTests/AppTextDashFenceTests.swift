@@ -77,6 +77,33 @@ struct AppTextDashFenceTests {
         #expect(offenders.isEmpty, "dashes in the catalog: \(offenders.sorted())")
     }
 
+    /// The texts that are published or sent with the app: the two READMEs,
+    /// the changelog, the end-user licence agreement, the additional licence
+    /// terms and the store checklist with its review notes. Box-drawing
+    /// lines are not dashes.
+    nonisolated static let publishedTexts = [
+        "README.md", "README.de.md", "CHANGELOG.md", "docs/EULA.md", "LICENSE-ADDITIONAL-TERMS", "docs/appstore.md",
+    ]
+
+    /// The one-based lines of a text that carry an em or en dash.
+    nonisolated static func dashLines(in text: String) -> [Int] {
+        text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
+            .filter { $0.element.contains(where: { dashes.contains($0) }) }
+            .map { $0.offset + 1 }
+    }
+
+    @Test("Kein veroeffentlichter Text traegt einen Gedankenstrich", .needsTheDocs)
+    func publishedTextsCarryNoDash() throws {
+        #expect(Self.dashLines(in: "a\nb — c\n────\nd – e") == [2, 4], "the reader sees both dashes and no box line")
+        var offenders: [String] = []
+        for name in Self.publishedTexts {
+            let text = try String(contentsOf: SourceTree.root.appendingPathComponent(name), encoding: .utf8)
+            let lines = Self.dashLines(in: text)
+            if !lines.isEmpty { offenders.append("\(name): \(lines)") }
+        }
+        #expect(offenders.isEmpty, "a published text writes a dash; a comma, colon, bracket or full stop instead: \(offenders)")
+    }
+
     @Test("Kein sichtbares Literal in Sources traegt einen Gedankenstrich", .needsTheSources)
     func sourceLiteralsCarryNoDash() throws {
         var offenders: [String] = []
