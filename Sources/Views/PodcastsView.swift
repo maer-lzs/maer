@@ -639,27 +639,10 @@ RowHeading(title: "Recommended",
 
     // MARK: - Downloaded (3 rows, horizontally scrollable)
 
-    @ViewBuilder
     /// Entry to the listen history. It lives WHERE podcasts live (a
-    /// library fact, not a setting; proposal per report). Last row of the tab.
+    /// library fact, not a setting). Last row of the tab.
     private var historyRow: some View {
-        NavigationLink(value: PodcastRoute.history) {
-            HStack {
-                Label("Listening History", systemImage: "checkmark.circle")
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.06)))
-            .padding(.horizontal)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("podcast-history-row")
+        ListeningHistoryRow(route: PodcastRoute.history, accessibilityId: "podcast-history-row")
     }
 
     @ViewBuilder

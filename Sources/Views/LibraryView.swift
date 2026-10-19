@@ -1186,11 +1186,7 @@ struct LibraryView: View {
     /// Serverless: the listening history as a row at the end of the tab.
     /// The same route the tile deck opens with a server.
     private var historySection: some View {
-        NavigationLink(value: LibraryListRoute.history) {
-            Label(LibraryListRoute.history.title, systemImage: ListenHistory.systemImage)
-                .padding(.horizontal)
-        }
-        .accessibilityIdentifier(LibraryListRoute.history.tileId)
+        ListeningHistoryRow(route: LibraryListRoute.history, accessibilityId: LibraryListRoute.history.tileId)
     }
 
     /// With a server: the entries into the own library as the SAME deck of

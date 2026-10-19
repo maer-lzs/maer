@@ -128,10 +128,11 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.shownDate(now) == Date(timeIntervalSince1970: 1_700_000_000))
     }
 
-    /// Both tabs open the one page, each with its family, the serverless
-    /// books tab by a row at its end; the episode history and this page
-    /// draw the one row.
-    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, ohne Server als Zeile am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
+    /// Both tabs open the one page, each with its family: the music tab and
+    /// the serverless books tab by the one entry row at their end (the
+    /// podcast tab too), the books tab with a server by its tile; the
+    /// episode history and this page draw the one row.
+    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, die Musik und Buecher ohne Server ueber die eine Reihe am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
     func bothTabsOpenTheOnePage() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -142,12 +143,15 @@ struct ListenHistoryRuleTests {
         let library = try code("Sources/Views/LibraryView.swift")
         #expect(FetchAnswerTests.squeezed(library).contains("case .history: ListenHistoryScreen(family: .book)"),
                 "the books route opens another page")
-        #expect(library.contains("NavigationLink(value: LibraryListRoute.history)"), "the serverless tab has no history row")
+        #expect(library.contains("ListeningHistoryRow(route: LibraryListRoute.history"), "the serverless tab has no history row")
         let music = try code("Sources/Views/Music/MusicNavigation.swift")
         #expect(FetchAnswerTests.squeezed(music).contains("case .history: ListenHistoryScreen(family: .music)"),
                 "the music route opens another page")
-        let deck = try code("Sources/Views/Music/MusicView.swift")
-        #expect(FetchAnswerTests.squeezed(deck).contains("route: .history)"), "the music deck has no history tile")
+        let tab = try code("Sources/Views/Music/MusicView.swift")
+        #expect(tab.contains("ListeningHistoryRow(route: MusicRoute.history"), "the music tab has no history row at its end")
+        #expect(!FetchAnswerTests.squeezed(tab).contains("route: .history)"), "the music deck carries a history tile again")
+        let podcastTab = try code("Sources/Views/PodcastsView.swift")
+        #expect(podcastTab.contains("ListeningHistoryRow(route: PodcastRoute.history"), "the podcast tab has its own history row again")
         var rows: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
             if SyncContractFenceTests.stripped(text).contains("\"Title unknown\"") { rows.append(name) }

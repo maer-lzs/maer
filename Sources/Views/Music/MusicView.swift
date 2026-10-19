@@ -215,6 +215,9 @@ struct MusicView: View {
                     }
                 }
             }
+            // The songs heard on this device, as the last row of the tab
+            // like in the podcast and audiobook tabs.
+            ListeningHistoryRow(route: MusicRoute.history, accessibilityId: MusicRoute.history.accessibilityId)
         }
         .padding(.top, TabContentLayout.topInset)
     }
@@ -242,8 +245,6 @@ struct MusicView: View {
                       route: .playlists(sortedPlaylists)),
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
             deckEntry(String(localized: "Downloads list"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
-            deckEntry(String(localized: "Listening History"), systemImage: ListenHistory.systemImage, count: nil,
-                      route: .history),
         ]
         // No free shelf here: the deck is
         // the way into the OWN library, and one of ten Archive shelves sat
