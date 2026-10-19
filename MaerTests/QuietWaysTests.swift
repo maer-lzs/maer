@@ -11,14 +11,8 @@ import Foundation
 /// The quiet ways: an older service is named and stops the rounds, and
 /// every failure of a sign-in or a password change says itself in the log.
 struct QuietWaysTests {
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     private func failure(_ body: () throws -> Void) -> MaerSyncFailure? {

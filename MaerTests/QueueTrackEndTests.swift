@@ -15,14 +15,8 @@ import Combine
 struct QueueTrackEndTests {
     /// Comments out, whitespace runs squeezed to one space: the fences look
     /// for CALLS, and a formatter's line break must not tear them.
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     // MARK: - The queue
@@ -268,7 +262,7 @@ struct QueueTrackEndTests {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/ItemNamespace.swift")
             && !file.path.hasSuffix("/MusicSourceRule.swift") {
-            all += Self.squeezed(try String(contentsOf: file, encoding: .utf8)) + "\n"
+            all += FetchAnswerTests.squeezed(try String(contentsOf: file, encoding: .utf8)) + "\n"
         }
         #expect(all.contains("MusicSourceRule.isServerMusic("), "the precondition: the sources were read")
         #expect(all.components(separatedBy: "ItemNamespace.isSubsonic(").count - 1 == 0)

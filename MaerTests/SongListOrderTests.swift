@@ -13,14 +13,8 @@ import Foundation
 /// old it is, and a failure is a sentence.
 @MainActor
 struct SongListOrderTests {
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     static func song(_ id: String, _ title: String, artist: String? = nil, added: Double? = nil,

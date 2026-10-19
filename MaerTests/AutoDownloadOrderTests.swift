@@ -11,14 +11,8 @@ import Foundation
 /// "In order" fetches from where the listener is, the settings sheet
 /// writes only what changed, and a run says which direction it read.
 struct AutoDownloadOrderTests {
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     /// The cases live in `Fixtures/Shared/abos/auto-download-order.json`, read

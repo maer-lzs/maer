@@ -74,9 +74,16 @@ struct FetchAnswerTests {
         ("Sources/CarPlay/CarPlaySceneDelegate.swift", "try? await AppSession.shared.musicProvider.fetchLibraryItems("),
     ]
 
+    /// Comment lines out, every run of whitespace one space: the form the
+    /// source fences read code in. The one copy for the whole test target.
     nonisolated static func squeezed(_ raw: String) -> String {
         SyncContractFenceTests.stripped(raw)
             .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+
+    /// A file below the repository root, read and squeezed.
+    nonisolated static func squeezedSource(_ relative: String) throws -> String {
+        squeezed(try String(contentsOf: SourceTree.root.appendingPathComponent(relative), encoding: .utf8))
     }
 
     @Test("die Abrufe, die einen Fehler als leere Liste zeigten, fragen ueber FetchAnswer", .needsTheSources)

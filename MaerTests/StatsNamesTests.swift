@@ -11,14 +11,8 @@ import Foundation
 /// The statistics name what they count, never show a key,
 /// keep the duration on the right, and leave out what was barely heard.
 struct StatsNamesTests {
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     /// The cases live in `Fixtures/Shared/abos/show-names.json`, read by

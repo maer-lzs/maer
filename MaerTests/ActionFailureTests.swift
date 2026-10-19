@@ -28,8 +28,7 @@ struct ActionFailureTests {
     ]
 
     private static func squeezed(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return FetchAnswerTests.squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     @Test("die Handlungen, die ein Scheitern verschluckten, fragen die Antwort und sagen eine Weigerung", .needsTheSources)

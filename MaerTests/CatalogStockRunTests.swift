@@ -11,14 +11,8 @@ import Foundation
 /// A stock run that is interrupted loses at most a slice and says so,
 /// and the runs start with the app for every collection this device holds.
 struct CatalogStockRunTests {
-    private static func squeezed(_ raw: String) -> String {
-        SyncContractFenceTests.stripped(raw)
-            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    }
-
     private static func source(_ relative: String) throws -> String {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
+        try FetchAnswerTests.squeezedSource(relative)
     }
 
     // MARK: - Which run a surface has
