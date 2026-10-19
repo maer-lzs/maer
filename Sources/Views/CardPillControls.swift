@@ -13,11 +13,14 @@ struct PillLabel: View {
     let title: Text
     let foreground: Color
     let fill: Color
+    /// The glyph behind the word ("Details ⓘ") instead of in front of it.
+    var glyphAfterTitle = false
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: systemImage).font(.caption)
+            if !glyphAfterTitle { Image(systemName: systemImage).font(.caption) }
             title.font(.subheadline.weight(.medium))
+            if glyphAfterTitle { Image(systemName: systemImage).font(.caption) }
         }
         .foregroundStyle(foreground)
         .padding(.horizontal, 14)
@@ -31,14 +34,15 @@ struct PillLabel: View {
 /// THE card "Details" pill. Book- and PodcastFeaturedCard carried
 /// byte-identical private copies and the playlist card is the third caller,
 /// so the anatomy lives in ONE component.
-/// Bottom-LEFT of a card, opens the detail route.
+/// Bottom-LEFT of a card, opens the detail route; the glyph stands behind
+/// the word, "Details ⓘ".
 struct CardDetailPill<Value: Hashable>: View {
     let value: Value
 
     var body: some View {
         NavigationLink(value: value) {
             PillLabel(systemImage: "info.circle", title: Text("Details"),
-                      foreground: .white, fill: .white.opacity(0.22))
+                      foreground: .white, fill: .white.opacity(0.22), glyphAfterTitle: true)
         }
         .buttonStyle(.plain)
     }

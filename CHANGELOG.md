@@ -12,6 +12,10 @@ the running time and the time left in drive mode read "12 min", in German
 "12 Min."; before, German showed the untranslated "12 min". From an hour
 on, drive mode keeps its clock form "1:05 h", quicker to read in the car.
 
+**Details with the symbol behind the word.** The Details pill on the
+Continue Listening, episode, playlist and station cards reads "Details ⓘ"
+now, the info symbol behind the word.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what
