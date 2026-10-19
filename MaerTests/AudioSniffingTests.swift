@@ -160,5 +160,26 @@ struct AudioSniffingTests {
         defer { try? FileManager.default.removeItem(at: url) }
         #expect(DownloadManager.repairedAudioURL(url) == nil)
     }
+
+    /// A good track that cannot be read right now is no garbage: the
+    /// folder's self-heal removes what the track map leaves out.
+    @Test("eine Spur, die sich nicht lesen laesst, bleibt eine Spur und wird nicht Abfall")
+    func anUnreadableTrackStays() throws {
+        let url = try tempFile([0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00], ext: "mp3")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+        #expect(DownloadManager.sniffAudio(url) == .audio("mp3"), "the precondition: readable, it is audio")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        try #require(DownloadManager.sniffAudio(url) == .unreadable, "the file must not read for this case")
+        #expect(DownloadManager.repairedAudioURL(url) == url, "an unreadable track keeps its place in the map")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        let missing = url.deletingLastPathComponent().appendingPathComponent("missing-\(UUID().uuidString).mp3")
+        #expect(DownloadManager.sniffAudio(missing) == .unreadable)
+        let short = try tempFile([0x00, 0x01], ext: "mp3")
+        defer { try? FileManager.default.removeItem(at: short) }
+        #expect(DownloadManager.sniffAudio(short) == .notAudio, "too short is no audio")
+    }
 }
 #endif

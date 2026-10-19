@@ -35,6 +35,12 @@ History as the last row of the tab, like Podcasts; the tile in the library
 deck is gone. Podcasts, music and audiobooks without a server share this
 one row, with the same clock symbol.
 
+**A download keeps a track it cannot read.** When a finished download
+holds a track whose first bytes cannot be read, the track keeps its name
+and place and stays on the device; before, it counted as not audio and
+the cleanup after the download deleted it. A file that is not audio is
+still removed.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

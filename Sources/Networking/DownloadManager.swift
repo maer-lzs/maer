@@ -508,25 +508,52 @@ final class DownloadManager {
     /// (layer bits 00 = ADTS/AAC, otherwise MPEG audio = mp3).
     // internal (not private): unit-tested with synthetic byte patterns.
     nonisolated static func sniffedAudioExtension(_ url: URL) -> String? {
-        guard let handle = try? FileHandle(forReadingFrom: url),
-              let head = try? handle.read(upToCount: 12), head.count >= 4 else { return nil }
-        let b = [UInt8](head)
+        if case .audio(let ext) = sniffAudio(url) { return ext }
+        return nil
+    }
+
+    /// What the first bytes of a file say: its audio container, no audio at
+    /// all, or nothing, because the file could not be read. A read that
+    /// fails is no verdict about the file.
+    nonisolated enum AudioSniff: Equatable {
+        case audio(String)
+        case notAudio
+        case unreadable
+    }
+
+    nonisolated static func sniffAudio(_ url: URL) -> AudioSniff {
+        let handle: FileHandle
+        let head: Data
+        do {
+            handle = try FileHandle(forReadingFrom: url)
+            head = try handle.read(upToCount: 12) ?? Data()
+        } catch {
+            return .unreadable
+        }
         defer { try? handle.close() }
+        guard head.count >= 4 else { return .notAudio }
+        let b = [UInt8](head)
         // MP4/M4A/M4B: "ftyp" at offset 4
-        if head.count >= 8, b[4] == 0x66, b[5] == 0x74, b[6] == 0x79, b[7] == 0x70 { return "m4b" }
-        if Array(b[0..<4]) == [0x66, 0x4C, 0x61, 0x43] { return "flac" }
-        if Array(b[0..<4]) == [0x4F, 0x67, 0x67, 0x53] { return "ogg" }
-        if Array(b[0..<4]) == [0x52, 0x49, 0x46, 0x46] { return "wav" }
-        if Array(b[0..<4]) == [0x46, 0x4F, 0x52, 0x4D] { return "aiff" }
-        if Array(b[0..<4]) == [0x63, 0x61, 0x66, 0x66] { return "caf" }
+        if head.count >= 8, b[4] == 0x66, b[5] == 0x74, b[6] == 0x79, b[7] == 0x70 { return .audio("m4b") }
+        if Array(b[0..<4]) == [0x66, 0x4C, 0x61, 0x43] { return .audio("flac") }
+        if Array(b[0..<4]) == [0x4F, 0x67, 0x67, 0x53] { return .audio("ogg") }
+        if Array(b[0..<4]) == [0x52, 0x49, 0x46, 0x46] { return .audio("wav") }
+        if Array(b[0..<4]) == [0x46, 0x4F, 0x52, 0x4D] { return .audio("aiff") }
+        if Array(b[0..<4]) == [0x63, 0x61, 0x66, 0x66] { return .audio("caf") }
         if b[0] == 0x49, b[1] == 0x44, b[2] == 0x33, head.count >= 10 {
             // ID3v2: syncsafe tag size at bytes 6-9; frame header follows.
             let tagSize = (Int(b[6]) << 21) | (Int(b[7]) << 14) | (Int(b[8]) << 7) | Int(b[9])
-            try? handle.seek(toOffset: UInt64(10 + tagSize))
-            guard let frame = try? handle.read(upToCount: 2), frame.count == 2 else { return nil }
-            return classifyFrameSync([UInt8](frame))
+            let frame: Data
+            do {
+                try handle.seek(toOffset: UInt64(10 + tagSize))
+                frame = try handle.read(upToCount: 2) ?? Data()
+            } catch {
+                return .unreadable
+            }
+            guard frame.count == 2 else { return .notAudio }
+            return classifyFrameSync([UInt8](frame)).map { .audio($0) } ?? .notAudio
         }
-        return classifyFrameSync(b)
+        return classifyFrameSync(b).map { .audio($0) } ?? .notAudio
     }
 
     /// 0xFFEx/Fx sync word: layer bits 00 → ADTS (AAC), else MPEG audio.
@@ -539,9 +566,19 @@ final class DownloadManager {
     /// AVFoundation trusts the extension. An MP3 stored as ".m4b" (ABS
     /// content URLs often carry no extension, the download defaulted to m4b)
     /// fails to parse (-12864) and plays silence. Renames if needed and
-    /// returns the playable URL; nil for non-audio garbage.
+    /// returns the playable URL; nil for non-audio garbage. A file that
+    /// cannot be read keeps its name and stays: the folder's self-heal
+    /// removes what is not in the track map, and a read error must never
+    /// make a good track garbage.
     nonisolated static func repairedAudioURL(_ url: URL) -> URL? {
-        guard let real = sniffedAudioExtension(url) else { return nil }
+        let real: String
+        switch sniffAudio(url) {
+        case .audio(let ext): real = ext
+        case .notAudio: return nil
+        case .unreadable:
+            Logger.library.error("DOWNLOAD sniff unreadable file=\(url.lastPathComponent, privacy: .public), kept as it is")
+            return url
+        }
         // mp4-family extensions are interchangeable for the parser.
         let mp4Family = ["m4b", "m4a", "mp4"]
         let current = url.pathExtension.lowercased()

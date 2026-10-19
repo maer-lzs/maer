@@ -40,8 +40,10 @@ struct PublicLogAddressFenceTests {
         return out
     }
 
-    /// Public catalogue streams (Radio Browser, no account, no token).
+    /// Public catalogue streams (Radio Browser, no account, no token), and the
+    /// name of a downloaded file on the device.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
+        "DownloadManager.swift": (1, "the name of a downloaded file on the device, no host and no query"),
         "RadioProvider.swift": (1, "radio stream from the public catalogue, no credentials"),
         "PlayerViewModel.swift": (1, "radio stream from the public catalogue, no credentials"),
         "RadioComponents.swift": (1, "radio stream from the public catalogue, no credentials"),
