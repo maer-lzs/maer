@@ -189,6 +189,33 @@ struct CloudKitChoiceCarrierTests {
         #expect(changes.remove == ["playbackRate.a"], "\(changes.remove)")
     }
 
+    /// The same entry in the service's form: after a switch from the Mär
+    /// sync service to iCloud the blob carries an unknown value as the
+    /// service's tag (`rawWire`), not as an unknown "v". It is held too.
+    @Test("ein Eintrag unbekannter Art in der Form des Dienstes loescht den Datensatz ebenso nicht")
+    func anUnknownEntryInTheServiceFormDeletesNoRecord() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let zone = FakeZone()
+        let carrier = carrier(zone, defaults)
+        await carrier.refresh(by: "witness")
+        let held = CloudChoiceRecord(key: "sort.books", payload: CloudChoicePayload.encode(.string("title")),
+                                     t: 1000, tombstone: false)
+        zone.foreignWrite(held)
+        await carrier.refresh(by: "fetch")
+        #expect(entries(carrier.loadBlob())["sort.books"]?.value == .string("title"), "the precondition: the mirror holds the record")
+
+        let fromService: [String: Any] = ["sort.books": ["t": 9000.0, UserChoiceEntry.rawWireKey: ["z": "neu"]]]
+        #expect(UserChoiceEntry.from(plist: fromService["sort.books"])?.unknownKind == true,
+                "the precondition: the service's tag reads as an unknown kind")
+        #expect(CloudKitChoiceCarrier.records(for: fromService).isEmpty, "the precondition: no record is made for it")
+        #expect(CloudKitChoiceCarrier.heldAsTheyAre(in: fromService) == ["sort.books"], "the service form is held")
+        carrier.storeBlob(fromService)
+        await carrier.refresh(by: "settle")
+        #expect(zone.record(forKey: "sort.books") == held, "the record stays as the other device wrote it")
+        #expect(zone.deleted[CloudStandNaming.recordName(for: "sort.books")] == nil, "no removal went out")
+    }
+
     @Test("ein gekappter Schluessel kommt nicht aus dem eingefrorenen Blob zurueck; was ein aelterer Bau danach schreibt, kommt an")
     func aPrunedKeyDoesNotReturnFromTheFrozenBlob() async throws {
         let (defaults, name) = suite()
