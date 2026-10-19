@@ -106,6 +106,9 @@ struct ReadmeVersionFenceTests {
                                   "the changelog's first version heading names no build")
         #expect(newest.version == version && newest.build == build,
                 "the changelog's newest stamp is \(newest.version) (Build \(newest.build)), the project says \(version) (Build \(build))")
+        // Today neither README names a version with its build, so this half
+        // finds nothing to check; it holds a stamp written into a README
+        // later to the project's.
         for name in Self.readmes {
             let wrong = Self.namedStamps(in: try Self.text(name))
                 .filter { $0.version != version || $0.build != build }
@@ -114,13 +117,20 @@ struct ReadmeVersionFenceTests {
         }
     }
 
-    @Test("beide READMEs tragen dieselben Ueberschriften und Code-Bloecke", .needsTheSources)
+    /// What this measures is the outline, not the wording: the sequence of
+    /// heading levels and the number of code fences, the same in both
+    /// languages. A heading translated wrongly passes; a section missing in
+    /// one README does not. An odd number of fence markers is an unclosed
+    /// code block.
+    @Test("beide READMEs tragen dieselbe Gliederung: Ebenenfolge der Ueberschriften und Zahl der Code-Bloecke", .needsTheSources)
     func bothReadmesHaveTheSameOutline() throws {
         let english = Self.outline(of: try Self.text("README.md"))
         let german = Self.outline(of: try Self.text("README.de.md"))
         #expect(english.headings.count > 10, "the outline reader found no sections")
-        #expect(english.headings == german.headings, "headings: \(english.headings) against \(german.headings)")
+        #expect(english.headings == german.headings, "heading levels: \(english.headings) against \(german.headings)")
         #expect(english.fences == german.fences, "code fences: \(english.fences) against \(german.fences)")
+        #expect(english.fences % 2 == 0 && german.fences % 2 == 0,
+                "a code block is not closed: \(english.fences) and \(german.fences) fence markers")
     }
 
     /// The readers on planted text: each would see the drift it guards.
@@ -146,6 +156,7 @@ struct ReadmeVersionFenceTests {
         let missing = Self.outline(of: "# A\n### C\n")
         #expect(full.headings == [1, 2, 3] && full.fences == 2)
         #expect(full.headings != missing.headings)
+        #expect(Self.outline(of: "# A\n```text\nopen\n## B\n").fences % 2 == 1, "the reader sees an unclosed block")
     }
 }
 #endif
