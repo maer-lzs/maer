@@ -176,9 +176,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// delivering mid-play leaves `isPlaying` true and never fails (measured
     /// over 100 s); only the wait shows it. Rebuilt per queue.
     private var stallObserver: NSKeyValueObservation?
-    /// Track indices that already got their ONE automatic recovery attempt.
-    /// Guards against a rebuild loop on a persistently broken track.
-    private var trackRetryAttempts: Set<Int> = []
+    /// The ONE automatic recovery attempt of each track, and the one way of
+    /// a local file to the server (`FailedLoad.TrackAttempts`). Guards
+    /// against a rebuild loop on a persistently broken track.
+    private var trackAttempts = FailedLoad.TrackAttempts()
     /// The playing item failed to load and playback stopped for it; the
     /// next play or the network's return builds the queue anew.
     private var loadFailureNoted = false
@@ -500,7 +501,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         localTrackFiles = localTracks(item.id)
         shortLocalTracks = []
         dropShortLocalFiles(tracks: sortedTracks)
-        trackRetryAttempts.removeAll()
+        trackAttempts = FailedLoad.TrackAttempts()
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
         // exactly those in the background (valid ones are skipped). Only for
@@ -1425,7 +1426,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// playback with a visible hint instead of silent stalling.
     private func handleTrackFailure(_ playerItem: AVPlayerItem) {
         guard let index = itemTrackIndex[ObjectIdentifier(playerItem)] else { return }
-        if trackRetryAttempts.contains(index) {
+        // Only drop the file when streaming can take over; offline the
+        // retry re-reads the same file (it may fail transiently) and keeps
+        // the file's way to the server for a later failure with network.
+        let attempt = trackAttempts.failedWhilePlaying(index, online: isOnline())
+        if attempt.spent {
             pause()
             // The hold every load failure leaves: nothing from the failed
             // track on waits in the queue, and the next play builds anew at
@@ -1436,10 +1441,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             forgetCatalogAnswer()
             return
         }
-        trackRetryAttempts.insert(index)
-        // Only drop the file when streaming can take over; offline the
-        // retry re-reads the same file (it may fail transiently).
-        if isOnline() { dropLocalFile(at: index) }
+        if attempt.dropFile { dropLocalFile(at: index) }
         let idx = trackIndex(for: currentTime)
         let rebuilt = buildQueue(
             startingAtTrackIndex: idx,
@@ -1524,10 +1526,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let inCurrentQueue = itemTrackIndex[failedItem] != nil
         let fallback = inCurrentQueue && index >= currentTrackIndex && !isRadio
             ? FailedLoad.localFallback(fromLocalFile: localTrackFiles[index] != nil || shortLocalTracks.contains(index),
-                                       retried: trackRetryAttempts.contains(index), online: isOnline())
+                                       retried: trackAttempts.hadItsWayToTheServer(index), online: isOnline())
             : .none
         if fallback == .stream {
-            trackRetryAttempts.insert(index)
+            trackAttempts.sentToServerOnLoad(index)
             dropLocalFile(at: index)
             Logger.player.notice("LOADFAIL local file dropped track=\(index), plays on from the server")
         }

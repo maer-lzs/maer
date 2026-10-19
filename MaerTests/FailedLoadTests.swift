@@ -576,5 +576,32 @@ struct FailedLoadTests {
         #expect(model.player.map(ObjectIdentifier.init) == queue, "nothing builds the track again by itself")
         model.stop()
     }
+
+    /// A local file that fails while playing without network keeps its way
+    /// to the server: the retry re-read the same file. Failing again at
+    /// load with network, it plays on from the server instead of being
+    /// unavailable with the sentence that it would play from the server.
+    @Test("eine Datei, die ohne Netz scheiterte, laeuft beim naechsten Scheitern mit Netz vom Server")
+    func anOfflineRetryKeepsTheWayToTheServer() {
+        var attempts = FailedLoad.TrackAttempts()
+        let offline = attempts.failedWhilePlaying(3, online: false)
+        #expect(offline.spent == false && offline.dropFile == false, "offline: a retry on the same file, nothing dropped")
+        #expect(!attempts.hadItsWayToTheServer(3))
+        #expect(FailedLoad.localFallback(fromLocalFile: true, retried: attempts.hadItsWayToTheServer(3), online: true) == .stream,
+                "with network the file now plays on from the server")
+        attempts.sentToServerOnLoad(3)
+        #expect(attempts.hadItsWayToTheServer(3))
+        #expect(FailedLoad.localFallback(fromLocalFile: true, retried: attempts.hadItsWayToTheServer(3), online: true) == .unavailable,
+                "a second time is unavailable, no loop")
+
+        var online = FailedLoad.TrackAttempts()
+        let first = online.failedWhilePlaying(1, online: true)
+        #expect(first.spent == false && first.dropFile == true, "with network the file is dropped at once")
+        #expect(online.hadItsWayToTheServer(1))
+        let second = online.failedWhilePlaying(1, online: true)
+        #expect(second.spent, "the one retry is spent, playback stops")
+        let other = online.failedWhilePlaying(2, online: false)
+        #expect(other.spent == false, "each track has its own retry")
+    }
 }
 #endif

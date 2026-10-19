@@ -54,14 +54,44 @@ nonisolated enum FailedLoad {
         case unavailable
     }
 
-    /// Only a local file falls back. One attempt per track: a local file
-    /// that already had it is unavailable, so is one without network; with
+    /// Only a local file falls back. One way to the server per track
+    /// (`retried`: `TrackAttempts.hadItsWayToTheServer`): a local file that
+    /// already went that way is unavailable, so is one without network; with
     /// network it streams instead. A streamed track keeps the network rules
     /// after its attempt, because in a dead spot the network is the cause.
     static func localFallback(fromLocalFile: Bool, retried: Bool, online: Bool) -> LocalFallback {
         guard fromLocalFile else { return .none }
         if retried || !online { return .unavailable }
         return .stream
+    }
+
+    /// The attempts of the tracks of one item. A track that fails while it
+    /// plays gets one retry; a local file gets one way to the server, spent
+    /// only when the file is dropped for the server. A retry without network
+    /// re-reads the same file and spends no way to the server, so the same
+    /// file failing later with network still plays on from the server.
+    struct TrackAttempts: Equatable {
+        private(set) var retried: Set<Int> = []
+        private(set) var sentToServer: Set<Int> = []
+
+        /// A track failed while playing: whether its retry was already
+        /// spent (playback stops), and whether to drop its local file now
+        /// (only with network, so the server can take over).
+        mutating func failedWhilePlaying(_ index: Int, online: Bool) -> (spent: Bool, dropFile: Bool) {
+            if retried.contains(index) { return (true, false) }
+            retried.insert(index)
+            guard online else { return (false, false) }
+            sentToServer.insert(index)
+            return (false, true)
+        }
+
+        /// A local file that failed to load was dropped for the server.
+        mutating func sentToServerOnLoad(_ index: Int) {
+            retried.insert(index)
+            sentToServer.insert(index)
+        }
+
+        func hadItsWayToTheServer(_ index: Int) -> Bool { sentToServer.contains(index) }
     }
 
     /// What a held point does when it fires. A download dropped for the
