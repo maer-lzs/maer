@@ -106,7 +106,7 @@ struct BookmarkProgressMathTests {
                 contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/\(name)"), encoding: .utf8))
         }
         let expected = ["JellyfinProvider.swift": (stand: 2, own: 0), "SubsonicProvider.swift": (stand: 2, own: 1),
-                        "RSSProvider.swift": (stand: 1, own: 0)]
+                        "RSSProvider.swift": (stand: 1, own: 0), "LocalProvider.swift": (stand: 1, own: 0)]
         for (file, count) in expected {
             // Whitespace collapsed: a call broken after its parenthesis is
             // the same call.

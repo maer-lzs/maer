@@ -53,24 +53,10 @@ final class LocalProvider: AudioProvider {
         library.fileURL(forContentPath: contentPath)
     }
 
-    /// Pure (tested): one stored `[time, lastUpdate]` pair + duration → the
-    /// progress value. `nil` when the stored shape is not the expected pair.
-    nonisolated static func storedProgress(_ stored: [Double]?, duration: Double) -> BookProgress? {
-        guard duration > 0, let stored, stored.count >= 2 else { return nil }
-        let time = stored[0]
-        return BookProgress(
-            fraction: min(max(time / duration, 0), 1),
-            // The same one rule as everywhere: if the entry knows the
-            // duration that applied back then, that one counts. Otherwise
-            // today's.
-            isFinished: ProgressMark.reachedEnd(stored: stored, currentDuration: duration),
-            lastUpdate: stored[1],
-            currentTime: time
-        )
-    }
-
-    /// Progress comes purely locally from `localPosition`. The provider is the
-    /// ONLY interface to the outside, the core never reads it itself.
+    /// Progress comes purely locally from `localPosition`, through the one
+    /// rule of every source whose continue lives on the device
+    /// (`BookmarkProgressMath.progress(fromStand:duration:)`). The provider
+    /// is the ONLY interface to the outside, the core never reads it itself.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         // Snapshot the item list on the actor, then read the per-item
         // defaults OFF the main actor (UserDefaults is thread-safe). A large
@@ -84,7 +70,7 @@ final class LocalProvider: AudioProvider {
             var map: [String: BookProgress] = [:]
             for (id, duration) in inputs {
                 let stored = ListeningStore.backup(id)
-                if let progress = Self.storedProgress(stored, duration: duration) {
+                if let progress = BookmarkProgressMath.progress(fromStand: stored, duration: duration) {
                     map[id] = progress
                 }
             }
