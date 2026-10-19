@@ -7657,16 +7657,6 @@
         }
       }
     },
-    "One music server at a time: with both on, Subsonic is used." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Musikserver zur Zeit: Sind beide an, wird Subsonic verwendet."
-          }
-        }
-      }
-    },
     "Only a Mac gives this file away; the iPhone does not." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13107,6 +13097,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Will use your %1$@ login (from “%2$@”)"
+          }
+        }
+      }
+    },
+    "With both on, the Music tab asks both servers and plays each title from its own." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sind beide an, fragt der Musik-Reiter beide Server und spielt jeden Titel von seinem eigenen."
           }
         }
       }

@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**The music servers' note says what happens.** Under Settings, the note
+below the music servers said that with both on only Subsonic is used.
+With both on, the Music tab asks both servers and plays each title from
+its own, and the note now says so.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

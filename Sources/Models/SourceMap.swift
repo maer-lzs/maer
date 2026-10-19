@@ -90,9 +90,9 @@ extension SourceMapFacts {
             let host = SourceMap.host(from: absServer)
             return absConnected && !host.isEmpty ? .connected(host: host) : .needsServer
         case .music:
-            // One music server at a time, Subsonic first. The same order the
-            // provider choice uses, so the line cannot claim a server that is
-            // not the one being asked.
+            // The line names one host: the Subsonic server when it is set
+            // up, else Jellyfin. With both on, the tab asks both servers;
+            // the line still names only the first.
             if subsonicConfigured, case let host = SourceMap.host(from: subsonicServer), !host.isEmpty {
                 return .connected(host: host)
             }

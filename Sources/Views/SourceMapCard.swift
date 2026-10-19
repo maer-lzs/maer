@@ -259,7 +259,7 @@ struct SourceAreaPage: View {
             }
             .accessibilityIdentifier("settings-jellyfin-source")
         } footer: {
-            Text("One music server at a time: with both on, Subsonic is used.")
+            Text("With both on, the Music tab asks both servers and plays each title from its own.")
         }
     }
 
