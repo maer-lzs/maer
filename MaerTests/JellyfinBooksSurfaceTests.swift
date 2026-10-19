@@ -320,12 +320,19 @@ import Foundation
     }
 
     /// The shelf's own half of the same seam: the merge that lets a second
-    /// source into the audiobook tab asks exactly this question.
+    /// source into the audiobook tab asks exactly this question, as a rule
+    /// with its cases, and the shelf asks the rule.
     @Test("das Regal mischt jede Zweitquelle ein, die Hoerbuecher bedient", .needsTheSources)
     func theShelfMergesEverySourceThatServesAudiobooks() throws {
-        let source = try String(contentsOfFile: Self.shelfPath, encoding: .utf8)
-        #expect(source.contains("provider.mediaTypes.contains(.audiobooks)"),
-                "die Misch-Bedingung des Regals hat ihre Form geaendert, der Zeuge oben prueft dann nichts mehr")
+        #expect(LibraryViewModel.mixesIn(isMain: false, servesBooks: true, available: true), "a books source is mixed in")
+        #expect(!LibraryViewModel.mixesIn(isMain: true, servesBooks: true, available: true), "the main source never twice")
+        #expect(!LibraryViewModel.mixesIn(isMain: false, servesBooks: false, available: true), "a music-only source stays out")
+        #expect(!LibraryViewModel.mixesIn(isMain: false, servesBooks: true, available: false), "an unavailable source stays out")
+        let source = SyncContractFenceTests.stripped(try String(contentsOfFile: Self.shelfPath, encoding: .utf8))
+        #expect(source.contains("Self.mixesIn(isMain: provider === session.provider"),
+                "the shelf no longer asks the rule for its secondary sources")
+        #expect(source.contains("servesBooks: provider.mediaTypes.contains(.audiobooks)"),
+                "the rule is no longer fed the source's own types")
     }
 
     /// The other half of the same seam: the signature only helps if someone

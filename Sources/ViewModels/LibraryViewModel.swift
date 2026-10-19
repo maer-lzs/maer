@@ -1338,7 +1338,8 @@ final class LibraryViewModel: ObservableObject {
         let session = AppSession.shared
         let sources = session.allProviders
             .filter { provider in
-                provider !== session.provider && provider.mediaTypes.contains(.audiobooks) && provider.isAvailable
+                Self.mixesIn(isMain: provider === session.provider,
+                             servesBooks: provider.mediaTypes.contains(.audiobooks), available: provider.isAvailable)
             }
             .map { provider in
                 SecondaryShelf.Source(key: provider.providerId,
@@ -1367,6 +1368,13 @@ final class LibraryViewModel: ObservableObject {
     /// music would move this value, and the audiobook shelf would re-fetch
     /// every secondary source over the network for a change that cannot
     /// reach it. `serving` therefore answers for the audiobook type alone.
+    /// Which source the audiobook shelf mixes in beside the main one: a
+    /// source that serves audiobooks and is available, never the main
+    /// source itself.
+    nonisolated static func mixesIn(isMain: Bool, servesBooks: Bool, available: Bool) -> Bool {
+        !isMain && servesBooks && available
+    }
+
     nonisolated static func secondarySignature(
         of sources: [(id: String, servesBooks: Bool, available: Bool, serving: String)]) -> String {
         sources.filter { $0.servesBooks && $0.available }
