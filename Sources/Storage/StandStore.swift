@@ -132,9 +132,14 @@ actor StandStore {
         _ = try await connection.transaction(statements + also)
     }
 
+    /// One title's stand; a row that is there but does not read is said like
+    /// in `all()`, and answers nil like a missing one.
     func stand(for itemId: String) async throws -> Stand? {
-        try await connection.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand WHERE item_id = ?",
-                                   [.text(itemId)]).first.flatMap(Self.stand(from:))
+        guard let row = try await connection.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand WHERE item_id = ?",
+                                                   [.text(itemId)]).first else { return nil }
+        let stand = Self.stand(from: row)
+        Self.sayRowsSkipped(stand == nil ? 1 : 0, by: "one")
+        return stand
     }
 
     func all() async throws -> [String: Stand] {
@@ -275,6 +280,8 @@ actor StandStore {
         return (changed.count, gone.count)
     }
 
+    /// Nil for a row that does not read; every caller counts it and says it
+    /// through `sayRowsSkipped`.
     private nonisolated static func stand(from row: [String: SQLiteValue]) -> Stand? {
         guard let id = row["item_id"]?.string, let position = row["position"]?.double,
               let updated = row["updated_at_ms"]?.double else { return nil }
