@@ -19,11 +19,10 @@ struct StatsView: View {
     /// accessibility size every third, so a two-digit day has the width of
     /// its empty neighbours and stands in one line (at AX3 it split into a
     /// digit over a digit; at AX5 on a 375 pt screen it still stands in one
-    /// line). The count starts at the oldest day, the left end, so today,
-    /// the right end, carries no day: that is the form as it is, and
-    /// moving the anchor to today changes what the chart shows.
-    nonisolated static func labelsDay(at index: Int, accessibilitySize: Bool) -> Bool {
-        index % (accessibilitySize ? 3 : 2) == 0
+    /// line). The count starts at today, the right end, so today always
+    /// carries its date and the others step back from it.
+    nonisolated static func labelsDay(at index: Int, of count: Int, accessibilitySize: Bool) -> Bool {
+        (count - 1 - index) % (accessibilitySize ? 3 : 2) == 0
     }
 
     /// What VoiceOver says for one bar: the day as its label, the listening
@@ -165,7 +164,7 @@ struct StatsView: View {
                         .font(.caption2)
                         .frame(maxWidth: .infinity)
                         .overlay {
-                            if Self.labelsDay(at: index, accessibilitySize: dynamicTypeSize.isAccessibilitySize) {
+                            if Self.labelsDay(at: index, of: days.count, accessibilitySize: dynamicTypeSize.isAccessibilitySize) {
                                 Text(day.date.formatted(.dateTime.day()))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)

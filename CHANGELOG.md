@@ -25,6 +25,11 @@ Recently Added and Listen Again lay their tiles out in as many columns
 as fit, each tile as wide as its column; before, every tile stood at a
 fixed width with room on both sides.
 
+**Today carries its date in the statistics.** The day labels under the
+bars of the last 14 days count back from today, so today's bar always
+shows its date; before, they counted from the oldest day and today's bar
+had none.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

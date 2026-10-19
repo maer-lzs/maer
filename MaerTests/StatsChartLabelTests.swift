@@ -14,11 +14,11 @@ import Foundation
 struct StatsChartLabelTests {
     @Test("die Tagesbeschriftung der 14 Tage: jede zweite, in AX3 jede dritte")
     func theDayLabelsThinAtAccessibilitySizes() {
-        let normal = (0..<14).filter { StatsView.labelsDay(at: $0, accessibilitySize: false) }
-        let large = (0..<14).filter { StatsView.labelsDay(at: $0, accessibilitySize: true) }
-        #expect(normal == [0, 2, 4, 6, 8, 10, 12])
-        #expect(large == [0, 3, 6, 9, 12])
-        #expect(!normal.contains(13) && !large.contains(13), "the anchor is the oldest day; today carries no day")
+        let normal = (0..<14).filter { StatsView.labelsDay(at: $0, of: 14, accessibilitySize: false) }
+        let large = (0..<14).filter { StatsView.labelsDay(at: $0, of: 14, accessibilitySize: true) }
+        #expect(normal == [1, 3, 5, 7, 9, 11, 13])
+        #expect(large == [1, 4, 7, 10, 13])
+        #expect(normal.contains(13) && large.contains(13), "the anchor is today, the right end; today always carries its date")
     }
 
     @Test("jede Saeule sagt VoiceOver ihren Tag und ihre Hoerzeit")
