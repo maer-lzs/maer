@@ -80,7 +80,7 @@ Was das Gerät verlässt, wohin es geht und was bleibt. Jede Aussage unten läss
 - **Siri & Kurzbefehle**: „Weiterhören in Mär“, „*Buch* in Mär abspielen“ (die Buchnamen kommen aus den Bibliothekszeilen in der Datenbank der App) und „Mär Fahrmodus“, dazu eine Schnellaktion auf dem Home-Bildschirm, die das zuletzt gespielte Buch fortsetzt
 - **CarPlay**: Hörbuch-Tabs (Weiterhören / Geladen / Bibliothek), dazu ein Podcast- und ein Musik-Tab, sobald diese Quellen eingerichtet sind, je mit Cover-Vorschauen und dem Now-Playing-Bildschirm des Systems, mit derselben Wiedergabe-Sitzung wie das Telefon. Geht auch bei einem Kaltstart im Auto, mit Rückfall auf den Offline-Cache; im Simulator sofort testbar, echte Autos brauchen Apples CarPlay-Audio-Berechtigung (developer.apple.com/contact/carplay)
 - Adaptives helles und dunkles Design mit **dunkelgrauem Markenakzent**; jede Medienart trägt ihre eigene Farbe im Tab-Wähler: Hörbücher orange, Podcasts lila, Musik rot, Radio cyan. Das Liquid-Glass-Chrome (Mini-Leiste, Suche, Werkzeugknöpfe) nimmt im hellen Modus einen zarten Pastellton der aktuellen Cover-Farbe an, und die Mini-Leiste taucht beim Buchwechsel kurz ab und federt zurück
-- Leistung: Raster-Zellen dekodieren ein kleines abgeleitetes Vorschaubild statt des vollen Covers, für flüssiges Scrollen und viel weniger Speicher bei großen Bibliotheken; große Cover werden auf ihre Anzeigegröße gebracht, bevor die App sie hält, zwei zugleich, und eine Kachel, die den Bildschirm verlassen hat, lädt ihr Cover nicht mehr; die Buchliste kommt im verkleinerten Format von Audiobookshelf
+- Leistung: Raster-Zellen dekodieren ein kleines abgeleitetes Vorschaubild statt des vollen Covers, für flüssiges Scrollen und viel weniger Speicher bei großen Bibliotheken; große Cover werden auf ihre Anzeigegröße gebracht, bevor die App sie hält, zwei zugleich, und eine Kachel, die den Bildschirm verlassen hat, lädt ihr Cover nicht mehr; die Buchliste kommt im verkleinerten Format von Audiobookshelf; was die App zwischen zwei Sync-Runden hält (Stände, Wahlen, Playlisten und Statistik deiner anderen Geräte), liegt Zeile für Zeile in ihrer Datenbank, also schreibt ein Speichern während der Wiedergabe nur, was sich geändert hat
 - **Barrierefreiheit**: volle Unterstützung von Dynamic Type bis zu den Bedienungshilfen-Größen: Bedienzeilen brechen in ein zweispaltiges Raster um, Kacheln fester Breite bekommen Zeilen dazu, und feste Maße skalieren über `@ScaledMetric`; VoiceOver-Beschriftungen an allen Bedienelementen und 44-pt-Trefferflächen; geprüft über Gerätegrößen von der 375-pt-Klasse bis zum iPad in beiden Ausrichtungen
 - Härtung: Speicherplatz-Prüfung vor dem Download, Container-Erkennung über die ersten Bytes mit automatischer Reparatur der Dateiendung (mit Tests), automatische Erholung, wenn eine Spur mitten in der Wiedergabe ausfällt, statt stillem Stehenbleiben, ein Titel, der nicht laden kann, hält mit einem kurzen Hinweis an und lädt beim nächsten Tippen auf Play neu (und von selbst, ohne zu starten, wenn das Netz zurückkommt), eine geladene Datei, die nicht gelesen werden kann, läuft an derselben Stelle vom Server weiter und wird neu geladen, eine Spur, die mit weniger Bytes ankommt, als der Server nennt, gilt als fehlgeschlagener Download, nicht als fertiger, ein Strom, der nicht mehr liefert, zeigt „Wartet auf das Netz …“ und hält die Wiedergabe nie an, eine Liste, die nicht laden konnte, sagt es mit Erneut versuchen statt eines leeren Ergebnisses, VoiceOver-Beschriftungen an allen Transport-Knöpfen
 
@@ -236,7 +236,7 @@ iPhone und iPad sind im Projekt beide aktiviert. Das Bibliotheks-Raster passt si
 
 ## Aufbau der Quellen
 
-Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält 539 Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
+Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält 540 Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
 
 ```text
 Sources/
@@ -259,6 +259,8 @@ Sources/
 │   ├── OwnerMark.swift             Welchem Konto die Zeilen einer Familie gehören, mit ihnen geschrieben
 │   ├── RestingShelf.swift          Wo die Zeilen einer Familie ruhen, während ein anderes Konto das Gerät hält
 │   ├── ShelfFollower.swift         Der eine Weg, auf dem eine Familie dem Konto durch die Ablage folgt
+│   ├── CarrierRows.swift           Was die Träger zwischen zwei Runden halten, als Zeilen (Abbilder,
+│   │                               Warteschlangen, Stempel der Wahlen, Dokumente), Sprungverlauf und Offline-Lesezeichen je Buch
 │   ├── PodcastRowStore.swift       Sendungen und Folgen als Zeilen
 │   ├── LibraryRowStore.swift       Bibliotheks-Titel und Fortschritt als Zeilen
 │   └── StandStore.swift, StandMirror.swift   Hörstände als Zeilen, gespiegelt aus den Defaults

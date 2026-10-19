@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.5 (Build 55)
+
 **Less work while you listen.** With iCloud or a Mär sync service, what
 the app knows of the listening positions on your other devices now lives
 in its database, one row per title, instead of one large block in the

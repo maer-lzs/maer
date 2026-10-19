@@ -80,7 +80,7 @@ What leaves the device, where it goes, and what stays. Every statement below can
 - **Siri & Shortcuts**: “Continue listening in Mär”, “Play *book* in Mär” (book names come from the library rows in the app's database) and “Mär drive mode”, plus a home-screen quick action that resumes the last played book
 - **CarPlay**: audiobook tabs (Continue Listening / Downloads / Library), plus a Podcasts tab and a Music tab once those sources are set up, each with cover thumbnails and the system Now Playing screen, sharing the phone's playback session. It works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
 - Adaptive light and dark design with a **dark-gray brand accent**; each media type carries its own color on the tab selector: audiobooks orange, podcasts purple, music red, radio cyan. The Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
-- Performance: grid cells decode a small derived thumbnail instead of the full cover, for smooth scrolling and far less memory with large libraries; large covers are brought to their display size before the app holds them, two at a time, and a tile that left the screen no longer loads its cover; the book list is fetched in Audiobookshelf’s minified format
+- Performance: grid cells decode a small derived thumbnail instead of the full cover, for smooth scrolling and far less memory with large libraries; large covers are brought to their display size before the app holds them, two at a time, and a tile that left the screen no longer loads its cover; the book list is fetched in Audiobookshelf’s minified format; what the app keeps between sync rounds (positions, choices, playlists and statistics of your other devices) lives in its database row by row, so a save while something plays writes only what changed
 - **Accessibility**: full Dynamic Type support up to the accessibility text sizes: control rows reflow to a two-column grid, fixed-width tiles gain lines, and hard-coded metrics scale via `@ScaledMetric`; VoiceOver labels on all controls and 44 pt tap targets; verified across device sizes from the 375 pt class to iPad in both orientations
 - Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, a title that cannot load stops with a short note and loads again on the next tap on play (and by itself, without starting, when the network returns), a downloaded file that cannot be read plays on from the server at the same point and is fetched again, a track that arrives with fewer bytes than the server names counts as a failed download, not a finished one, a stream that stops delivering shows “Waiting for the network…” and never stops playback, a list that could not load says so with Retry instead of showing an empty result, VoiceOver labels on all transport controls
 
@@ -236,7 +236,7 @@ iPhone and iPad are both enabled in the project. The library grid adapts automat
 
 ## Source layout
 
-The tree below is a selection, not the whole repository (`Sources/` holds 539 files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
+The tree below is a selection, not the whole repository (`Sources/` holds 540 files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
 
 ```text
 Sources/
@@ -259,6 +259,8 @@ Sources/
 │   ├── OwnerMark.swift             Which account a family's rows belong to, written with them
 │   ├── RestingShelf.swift          Where a family's rows rest while another account owns the device
 │   ├── ShelfFollower.swift         The one way a family follows the account through the shelf
+│   ├── CarrierRows.swift           What the carriers keep between rounds as rows (mirrors, queues,
+│   │                               choice stamps, documents), the jump rings and offline bookmarks per book
 │   ├── PodcastRowStore.swift       Shows and episodes as rows
 │   ├── LibraryRowStore.swift       Library items and progress as rows
 │   └── StandStore.swift, StandMirror.swift   Listening positions as rows, mirrored from the defaults
