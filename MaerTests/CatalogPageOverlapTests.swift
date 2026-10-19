@@ -54,9 +54,11 @@ struct CatalogPageOverlapTests {
     private static func ids(_ rows: [[Title]]) -> [[String]] { rows.map { $0.map(\.id) } }
 
     /// On the overview each title stands once, in the first row of the page
-    /// that shows it; a later row fills from deeper in its own stock, a row
-    /// that keeps nothing comes back empty and is counted.
-    @Test("auf der Uebersicht steht jeder Titel einmal, in der ersten Reihe der Seitenfolge; eine spaetere Reihe fuellt aus ihrem Bestand nach")
+    /// that shows it; a later row fills from deeper in its own stock when
+    /// that stock holds more than the preview (Popular and New do; shelves
+    /// and decades fetch only the preview and never fill), and a row that
+    /// keeps nothing comes back empty and is counted.
+    @Test("auf der Uebersicht steht jeder Titel einmal, in der ersten Reihe der Seitenfolge; eine spaetere Reihe fuellt nach, wenn ihr Bestand mehr haelt als die Vorschau")
     func eachTitleStandsInItsFirstRowOnly() {
         let stocks = [["a", "b", "c"], ["b", "d", "e", "f"], ["a", "c"], ["g", "g", "h"]]
             .map { $0.map(Title.init) }
