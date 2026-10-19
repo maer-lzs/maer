@@ -23,6 +23,20 @@ struct ExternalSourcesTests {
         "host", "seed.invalid",
     ]
 
+    /// Hosts the app contacts outside the page of sources, each with its
+    /// reason; the README names them beside the page.
+    private static let outsideThePage: [String: String] = [
+        "api.pocketcasts.com": "the import from Pocket Casts, only when the person starts it",
+        "refresh.pocketcasts.com": "the import from Pocket Casts, only when the person starts it",
+        "cache.pocketcasts.com": "the import from Pocket Casts, only when the person starts it",
+    ]
+
+    /// A host given without a scheme, as the literal assigned to a name that
+    /// ends in "host" (`static let apiHost = "api.example.org"`).
+    nonisolated static func bareHosts(in text: String) -> [String] {
+        text.matches(of: #/[A-Za-z_]*[Hh]ost[A-Za-z_]*\s*[:=]\s*"([a-z0-9.\-]+\.[a-z]{2,})"/#).map { String($0.output.1) }
+    }
+
     /// Beispiel- und Fixture-Hosts: Platzhalter in Kommentaren und Seeds,
     /// nie ein echter Kontakt. Am Muster erkannt statt einzeln gepflegt.
     private static func isExampleHost(_ host: String) -> Bool {
@@ -44,6 +58,7 @@ struct ExternalSourcesTests {
                 if host.contains(".") { hosts.insert(String(host)) }
                 rest = after
             }
+            hosts.formUnion(Self.bareHosts(in: text))
         }
         return hosts
     }
@@ -77,8 +92,16 @@ struct ExternalSourcesTests {
             // Browser oeffnet, die App ruft sie nie (ServerGuidesTests haelt
             // sie aus jeder Datei heraus, die eine Verbindung oeffnen kann).
             if ServerGuidesTests.projectHosts.contains(host) { continue }
+            if Self.outsideThePage[host] != nil { continue }
             unexplained.append(host)
         }
+        // The scan sees a host without a scheme, and the named list holds
+        // nothing the code does not contact.
+        #expect(Self.bareHosts(in: #"static let apiHost = "api.pocketcasts.com" // x"#) == ["api.pocketcasts.com"])
+        #expect(Self.bareHosts(in: #"let name = "file.sqlite""#).isEmpty, "a file name is no host")
+        let scanned = try scannedHosts()
+        let ghosts = Self.outsideThePage.keys.filter { !scanned.contains($0) }.sorted()
+        #expect(ghosts.isEmpty, "named outside the page but contacted nowhere: \(ghosts)")
         #expect(unexplained.isEmpty,
                 "Hosts ohne erklaerte Quelle: \(unexplained.sorted()). Entweder gehoeren sie einer neuen Quelle auf der Seite, oder der Inhalts-Ausnahmeliste hier — beides ist eine benannte Entscheidung.")
     }
