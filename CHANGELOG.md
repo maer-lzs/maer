@@ -20,6 +20,11 @@ now, the info symbol behind the word.
 an album, a show, a catalogue page) fade their content softly under the
 top bar like the tab itself; before, they showed a hard milky band.
 
+**Full pages fill their columns.** The pages behind Continue Listening,
+Recently Added and Listen Again lay their tiles out in as many columns
+as fit, each tile as wide as its column; before, every tile stood at a
+fixed width with room on both sides.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

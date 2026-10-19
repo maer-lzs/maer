@@ -91,9 +91,20 @@ struct MixedMediaPage: View {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
-    /// BOTH pages use the compact grid. The XXL continue cards
-    /// stacked single-column on a phone ("Blaupause Zuletzt hinzugefügt").
-    private var cardWidth: CGFloat { 150 }
+    /// Every route uses the compact grid; the large continue cards stood
+    /// one per row on a phone. Columns of at least 150 pt, and each cell
+    /// as wide as its column (`GridColumns`), measured from the page.
+    private static let minimumCellWidth: CGFloat = 150
+    private static let cellSpacing: CGFloat = 16
+    private static let sideMargin: CGFloat = 16
+    @State private var pageWidth: CGFloat = 0
+
+    private var grid: GridColumns.Layout {
+        GridColumns.layout(available: pageWidth - 2 * Self.sideMargin,
+                           minimum: Self.minimumCellWidth, spacing: Self.cellSpacing)
+    }
+
+    private var cardWidth: CGFloat { grid.width }
 
     /// The page shows the same mixture with a longer history.
     /// 120 is a pragmatic ceiling. The radio MRU is capped anyway and the
@@ -126,7 +137,8 @@ struct MixedMediaPage: View {
     var body: some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: cardWidth), spacing: 16, alignment: .top)],
+                columns: Array(repeating: GridItem(.fixed(cardWidth), spacing: Self.cellSpacing, alignment: .top),
+                               count: grid.count),
                 alignment: .leading, spacing: 20
             ) {
                 switch route {
@@ -184,9 +196,10 @@ struct MixedMediaPage: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, Self.sideMargin)
             .bottomBarClearance()
         }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { pageWidth = $0 }
         .navigationTitle(route.title)
         .navigationBarTitleDisplayMode(.inline)
     }
