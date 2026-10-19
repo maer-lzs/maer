@@ -347,6 +347,25 @@ extension PlayerViewModel {
         }
     }
 
+    /// Runs a mark under the guard of the position writes. A deliberate
+    /// write that asked meanwhile (a pause) runs once after the mark, unless
+    /// the mark wrote the title finished (`MarkFollowUp`); before, it was
+    /// noted and never run, and the pause's position was not written.
+    private func underTheMarkGuard<Result>(_ mark: () async -> (result: Result, markedFinished: Bool)) async -> Result {
+        await waitForTheRunningWrite()
+        syncInFlight = true
+        let outcome = await mark()
+        syncInFlight = false
+        let asked = syncFollowUpOrigin
+        syncFollowUpOrigin = nil
+        if let origin = MarkFollowUp.origin(asked: asked, markedFinished: outcome.markedFinished) {
+            await syncProgress(origin)
+        } else if asked != nil {
+            Logger.player.notice("SYNC follow-up dropped: the finished mark is the newer stand item=\(self.item?.id ?? "-", privacy: .private(mask: .hash))")
+        }
+        return outcome.result
+    }
+
     /// The player's mark for a book takes the door of the tile menu and the
     /// detail page (`BookFinishMark`): the same gesture, the same result. A
     /// refused mark changes neither position nor playback nor Up Next, and
@@ -358,31 +377,31 @@ extension PlayerViewModel {
             Logger.player.notice("MARK book door not run: the player holds item=\(self.item?.id ?? "-", privacy: .private(mask: .hash)), asked item=\(entryItem.id, privacy: .private(mask: .hash))")
             return nil
         }
-        await waitForTheRunningWrite()
-        syncInFlight = true
-        defer { syncInFlight = false }
-        let target = !isFinished
-        let progress = BookProgress(fraction: duration > 0 ? min(currentTime / duration, 1) : 0,
-                                    isFinished: isFinished,
-                                    lastUpdate: Date().timeIntervalSince1970 * 1000,
-                                    currentTime: currentTime)
-        let outcome = await BookFinishMark.apply(LibraryEntry(item: entryItem, progress: progress), target: target,
-                                                 progress: progress, provider: provider,
-                                                 coordinator: coordinator, libraryViewModel: libraryViewModel)
-        // Every refusal carries its sentence, as on the detail page.
-        if let reason = outcome.reason { return reason }
-        isFinished = target
-        lastSyncedTime = target ? duration : currentTime
-        return nil
+        return await underTheMarkGuard {
+            let target = !isFinished
+            let progress = BookProgress(fraction: duration > 0 ? min(currentTime / duration, 1) : 0,
+                                        isFinished: isFinished,
+                                        lastUpdate: Date().timeIntervalSince1970 * 1000,
+                                        currentTime: currentTime)
+            let outcome = await BookFinishMark.apply(LibraryEntry(item: entryItem, progress: progress), target: target,
+                                                     progress: progress, provider: provider,
+                                                     coordinator: coordinator, libraryViewModel: libraryViewModel)
+            // Every refusal carries its sentence, as on the detail page.
+            if let reason = outcome.reason { return (reason, false) }
+            isFinished = target
+            lastSyncedTime = target ? duration : currentTime
+            return (nil, target)
+        }
     }
 
     /// Sets the episode to "finished", or reverses it.
     func toggleFinished() async {
         guard let item else { return }
-        await waitForTheRunningWrite()
-        syncInFlight = true
-        defer { syncInFlight = false }
+        await underTheMarkGuard { ((), await toggleFinishedMark(of: item)) }
+    }
 
+    /// The mark itself, under the guard; true when it set the title finished.
+    private func toggleFinishedMark(of item: LibraryItemDetail) async -> Bool {
         let target = !isFinished
         // Marking as finished sets the progress explicitly to the book end;
         // undoing keeps the current state and only flips the flag.
@@ -448,6 +467,7 @@ extension PlayerViewModel {
         } else {
             lastSyncedTime = currentTime
         }
+        return target
     }
 
 

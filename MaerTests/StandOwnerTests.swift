@@ -635,7 +635,7 @@ struct StandOwnerTests {
     /// The writes and claims of the player that may go without the epoch,
     /// with the reason.
     nonisolated static let epochExceptions: [String: String] = [
-        "toggleFinished": "the person marks the item played or unplayed by hand, under the account now",
+        "toggleFinishedMark": "the person marks the item played or unplayed by hand, under the account now",
     ]
 
     /// Every write and claim of the player: the function it stands in, and
@@ -657,7 +657,7 @@ struct StandOwnerTests {
         return sites
     }
 
-    @Test("jede Aufnahme und jeder Anspruch im Player traegt die Epoche, toggleFinished ist die benannte Ausnahme", .needsTheSources)
+    @Test("jede Aufnahme und jeder Anspruch im Player traegt die Epoche, toggleFinishedMark ist die benannte Ausnahme", .needsTheSources)
     func everyPlayerWriteCarriesTheEpoch() throws {
         let folder = SourceTree.root.appendingPathComponent("Sources/ViewModels")
         let files = try FileManager.default.contentsOfDirectory(atPath: folder.path)
