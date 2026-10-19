@@ -50,6 +50,41 @@ struct AppShortcutPhrasesTests {
         #expect(!Self.namesTheApp("Höre mein Hörbuch in Maer weiter, appetitlich"), "a word containing app is not the word")
     }
 
+    /// A phrase as the catalog spells it: the literal without its quotes and
+    /// comma, the app name and the book parameter as catalog placeholders.
+    nonisolated static func catalogForm(_ line: String) -> String {
+        var text = line.trimmingCharacters(in: .whitespaces)
+        if text.hasSuffix(",") { text.removeLast() }
+        text = text.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        return text.replacingOccurrences(of: "\\(.applicationName)", with: "${applicationName}")
+            .replacingOccurrences(of: "\\(\\.$book)", with: "${book}")
+    }
+
+    /// The build files each shortcut's phrases under its first phrase in the
+    /// table AppShortcuts; without a catalog of that name they travel with no
+    /// German form. The German set holds every phrase of the source, so a
+    /// German device hears what it heard before the catalog.
+    @Test("der Siri-Katalog traegt je Absicht ihren ersten Satz mit allen Saetzen auf Deutsch", .needsTheSources)
+    func theShortcutCatalogCarriesEveryPhraseInGerman() throws {
+        #expect(Self.catalogForm(#"                "Play \(\.$book) in the \(.applicationName) app","#)
+                == "Play ${book} in the ${applicationName} app")
+        let source = try String(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.swift"), encoding: .utf8)
+        let blocks = Self.phraseBlocks(in: source).map { $0.map(Self.catalogForm) }
+        try #require(blocks.count >= 3, "the finder must still find the phrase blocks")
+        let data = try Data(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.xcstrings"))
+        let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let strings = try #require(catalog?["strings"] as? [String: Any], "the catalog has no strings")
+        #expect(Set(strings.keys) == Set(blocks.compactMap(\.first)), "one key per shortcut, its first phrase: \(strings.keys.sorted())")
+        for block in blocks {
+            let key = try #require(block.first)
+            let entry = strings[key] as? [String: Any]
+            let german = ((entry?["localizations"] as? [String: Any])?["de"] as? [String: Any])?["stringSet"] as? [String: Any]
+            let values = german?["values"] as? [String] ?? []
+            #expect(Set(values) == Set(block), "the German phrases of \(key) are not the source's: \(values)")
+            #expect(german?["state"] as? String == "translated", "\(key) has no translated German set")
+        }
+    }
+
     @Test("die Info.plist nennt gesprochene Alternativen des Namens, JE MIT ihrem Laut", .needsTheInfoPlist)
     func infoPlistOffersAlternativeAppNames() throws {
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))

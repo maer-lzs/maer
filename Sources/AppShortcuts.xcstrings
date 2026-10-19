@@ -1,0 +1,109 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "${applicationName} drive mode" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName} Fahrmodus",
+              "Fahrmodus in der ${applicationName}-App",
+              "Fahrmodus der App ${applicationName}",
+              "${applicationName} drive mode",
+              "Drive mode in the ${applicationName} app"
+            ]
+          }
+        },
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "${applicationName} drive mode",
+              "Drive mode in the ${applicationName} app",
+              "${applicationName} Fahrmodus",
+              "Fahrmodus in der ${applicationName}-App",
+              "Fahrmodus der App ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Continue listening in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Weiterhören in ${applicationName}",
+              "Weiterhören in der ${applicationName}-App",
+              "Weiterhören mit der App ${applicationName}",
+              "Höre mein Hörbuch in ${applicationName} weiter",
+              "Höre mein Hörbuch in der ${applicationName}-App weiter",
+              "Continue listening in ${applicationName}",
+              "Continue listening in the ${applicationName} app",
+              "Resume my audiobook in ${applicationName}",
+              "Resume my audiobook in the ${applicationName} app"
+            ]
+          }
+        },
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Continue listening in ${applicationName}",
+              "Continue listening in the ${applicationName} app",
+              "Resume my audiobook in ${applicationName}",
+              "Resume my audiobook in the ${applicationName} app",
+              "Weiterhören in ${applicationName}",
+              "Weiterhören in der ${applicationName}-App",
+              "Weiterhören mit der App ${applicationName}",
+              "Höre mein Hörbuch in ${applicationName} weiter",
+              "Höre mein Hörbuch in der ${applicationName}-App weiter"
+            ]
+          }
+        }
+      }
+    },
+    "Play ${book} in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Spiele ${book} in ${applicationName}",
+              "Spiele ${book} in der ${applicationName}-App",
+              "Spiele ${book} mit der App ${applicationName}",
+              "Spiele ${book} von der App ${applicationName}",
+              "Spiel ${book} von der App ${applicationName}",
+              "Spiel ${book} in der ${applicationName}-App",
+              "Play ${book} in ${applicationName}",
+              "Play ${book} in the ${applicationName} app",
+              "Play ${book} with the ${applicationName} app"
+            ]
+          }
+        },
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Play ${book} in ${applicationName}",
+              "Play ${book} in the ${applicationName} app",
+              "Play ${book} with the ${applicationName} app",
+              "Spiele ${book} in ${applicationName}",
+              "Spiele ${book} in der ${applicationName}-App",
+              "Spiele ${book} mit der App ${applicationName}",
+              "Spiele ${book} von der App ${applicationName}",
+              "Spiel ${book} von der App ${applicationName}",
+              "Spiel ${book} in der ${applicationName}-App"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
