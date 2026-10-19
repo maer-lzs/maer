@@ -977,17 +977,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Called ~every 30 s and on pause/seek, so the position stays fresh.
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
-        guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
-        // Scrobble once per song change (play counts). Unchanged.
+        guard let song = ScrobbleTurn.song(at: currentTime, in: songs) else { return }
+        // Scrobble once per song change (play counts), by the one rule.
         // A scrobble the server did not take is logged and asked again at the
         // next call, not booked as done.
-        if song.id != lastScrobbledSong[itemId] {
-            lastScrobbledSong[itemId] = song.id
+        if let due = ScrobbleTurn.due(song, last: lastScrobbledSong[itemId]) {
+            lastScrobbledSong[itemId] = due
             do {
-                try await client.scrobble(id: song.id, submission: true)
+                try await client.scrobble(id: due, submission: true)
             } catch {
                 lastScrobbledSong[itemId] = nil
-                Logger.music.error("SCROBBLE failed song=\(song.id, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+                Logger.music.error("SCROBBLE failed song=\(due, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
             }
         }
         // Continue-listening bookmark for playlists and albums; a Booksonic

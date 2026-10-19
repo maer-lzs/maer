@@ -788,11 +788,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         }
         // Music keeps no position. A song is not resumed, it is played again.
         guard let songs = songsByItemId[itemId], !songs.isEmpty else { return }
-        guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
-        if song.id != lastScrobbledSong[itemId] {
-            lastScrobbledSong[itemId] = song.id
-            // Best-effort play-count bump; failures may not surface in the UI.
-            try? await client.markPlayed(itemId: song.id)
+        // A play is counted once per song change, by the one rule; a count
+        // the server did not take is logged and asked again at the next
+        // call, not booked as done.
+        if let due = ScrobbleTurn.due(ScrobbleTurn.song(at: currentTime, in: songs), last: lastScrobbledSong[itemId]) {
+            lastScrobbledSong[itemId] = due
+            do {
+                try await client.markPlayed(itemId: due)
+            } catch {
+                lastScrobbledSong[itemId] = nil
+                Logger.music.error("JELLYFIN play count failed song=\(due, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+            }
         }
     }
 
