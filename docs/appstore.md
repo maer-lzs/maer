@@ -31,17 +31,17 @@ woran sie gemessen ist; was nicht im Repository steht, nennt, wer es klärt.
       (beide aus derselben dunklen Datei).
 - [x] **Kategorie:** `LSApplicationCategoryType` ist
       `public.app-category.books`.
-- [ ] **Privacy-Manifest** (`Sources/PrivacyInfo.xcprivacy`): kein Tracking,
-      keine Tracking-Domains, keine erfassten Daten; als Schnittstelle mit
-      Grund steht nur UserDefaults (`CA92.1`). **Es fehlen zwei Gründe:** die
-      App liest den freien Speicherplatz
-      (`volumeAvailableCapacityForImportantUsage` in `DownloadManager.swift`
-      und `ImageCache.swift`, Kategorie Disk Space) und Zeitstempel von
-      Dateien im eigenen Container (`contentModificationDate` in denselben
-      zwei Dateien, `.modificationDate` in `ImageCache.swift`, Kategorie File
-      Timestamp). Ohne Grund weist App Store Connect die Einreichung ab. Das
-      verlangt einen neuen Build vor der Einreichung. Das Widget nutzt keine
-      dieser Schnittstellen (es liest nur Dateien aus dem Gruppen-Container).
+- [x] **Privacy-Manifest** (`Sources/PrivacyInfo.xcprivacy`): kein Tracking,
+      keine Tracking-Domains, keine erfassten Daten. Schnittstellen mit
+      Grund: UserDefaults (`CA92.1`), freier Speicherplatz (`E174.1`:
+      `volumeAvailableCapacityForImportantUsage` in `DownloadManager.swift`
+      und `ImageCache.swift`) und Zeitstempel von Dateien im eigenen
+      Container (`C617.1`: `contentModificationDate` in denselben zwei
+      Dateien, `.modificationDate` in `ImageCache.swift`). Ohne Grund für
+      eine gerufene Kategorie nimmt App Store Connect die Einreichung nicht
+      an. Das Widget ruft keine dieser Schnittstellen und braucht kein
+      eigenes Manifest. Der Zaun `PrivacyManifestFenceTests` hält beide
+      Ziele in beiden Richtungen gegen ihre Quellen.
 - [x] **App Transport Security:** `Maer-Info.plist` trägt
       `NSAllowsArbitraryLoads = true` und keinen feineren Schlüssel daneben
       (Apple ignoriert den globalen, sobald `…ForMedia`, `…InWebContent` oder

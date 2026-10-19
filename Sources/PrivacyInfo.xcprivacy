@@ -2,10 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Mär sammelt keine Nutzerdaten. Server-URL und API-Token werden
-	     ausschließlich lokal im Keychain gespeichert und nie an Dritte
-	     (auch nicht an den App-Entwickler) übertragen — nur an den vom
-	     Nutzer selbst konfigurierten, eigenen Audiobookshelf-Server. -->
+	<!-- Mär collects no data about the person and tracks nothing. Server
+	     addresses and logins stay in this device's keychain and go only to
+	     the servers the person sets up. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
@@ -13,10 +12,14 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 
-	<!-- Required Reason APIs: UserDefaults wird genutzt, um sich die zuletzt
-	     gehörte Buch-ID für den Mini-Player über App-Neustarts hinweg zu
-	     merken — ausschließlich innerhalb der eigenen App, kein App Group,
-	     kein Zugriff auf Daten anderer Apps. -->
+	<!-- Required reason APIs, one entry per category the app's code calls;
+	     PrivacyManifestFenceTests holds this list against the sources in
+	     both directions. UserDefaults: the app's own settings, no App Group
+	     suite. Disk space: the free space is checked before a download, and
+	     the size cap of the cover cache follows it. File timestamps: the
+	     modification dates of files in the app's own container give the age
+	     of cached covers and of leftover download folders, and tell which
+	     of two copies of a track is newer. -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -25,6 +28,22 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>E174.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
 			</array>
 		</dict>
 	</array>
