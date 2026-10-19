@@ -186,8 +186,14 @@ struct LibraryView: View {
             }
         }
         // On the STACK, not on its root content: pushed destinations inherit
-        // the environment only from here. Every hook pushes into the path of
-        // EXACTLY THIS tab, so a push on Home also lands in Home.
+        // the environment only from here. The scroll edge effect is DECLARED,
+        // not inherited from the platform: its default changed between SDK
+        // 26.5 and 27 (the top edge became a hard-edged milky band reaching
+        // far under the status bar, measured at the pixel on both SDKs), and
+        // named here it holds for the tab root and every page pushed on it.
+        .softTopScrollEdge()
+        // Every hook pushes into the path of EXACTLY THIS tab, so a push on
+        // Home also lands in Home.
         .environment(\.pushPodcastRoute) { push($0, to: type) }
         .environment(\.pushBookDetail) { push($0, to: type) }
         .environment(\.pushFreeAudiobooksRoute) { push($0, to: type) }
@@ -251,14 +257,6 @@ struct LibraryView: View {
     private func librarySurface<Content: View>(
         title: String, @ViewBuilder content: () -> Content) -> some View {
         content()
-            // The scroll edge effect is DECLARED, not inherited. Nothing in
-            // the tree named it, so it was the platform's default, and that
-            // default changed between SDK 26.5 and 27: the top edge became a
-            // hard-edged milky band that reaches far under the status bar
-            // (measured at the pixel on both SDKs). Named here, at the one
-            // container every tab root lives in, so a new surface inherits
-            // OUR choice instead of the next SDK's.
-            .softTopScrollEdge()
             .navigationTitle(Text(verbatim: title))
             // The large title stands IN the bar, level with the settings
             // gear, instead of in a row of its own below it: one row less
@@ -1702,8 +1700,9 @@ extension View {
 }
 
 private extension View {
-    /// The declared soft top edge of every tab root. Scroll edge effects
-    /// exist from iOS 26; below it there is none to declare.
+    /// The declared soft top edge of every tab stack, its root and its pushed
+    /// pages. Scroll edge effects exist from iOS 26; below it there is none
+    /// to declare.
     @ViewBuilder
     func softTopScrollEdge() -> some View {
         if #available(iOS 26.0, *) {

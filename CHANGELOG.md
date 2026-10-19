@@ -16,6 +16,10 @@ on, drive mode keeps its clock form "1:05 h", quicker to read in the car.
 Continue Listening, episode, playlist and station cards reads "Details ⓘ"
 now, the info symbol behind the word.
 
+**A soft top edge on every page.** Pages opened from a tab (a full row,
+an album, a show, a catalogue page) fade their content softly under the
+top bar like the tab itself; before, they showed a hard milky band.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what
