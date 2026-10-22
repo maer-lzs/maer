@@ -98,19 +98,16 @@ final class CloudKitStatsCarrier: StatsCarrier {
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
-        if rows.unread {
-            // The mirror is unknown, not empty: the next round fetches from
-            // the start, and the rows join the mirror once they are read.
+        rows.forgetUntilRead({
             token = nil
             defaults.removeObject(forKey: Self.tokenKey)
-            rows.whenRead { [weak self] in self?.takeTheReadRows() }
-        }
+        }, then: { [weak self] in self?.takeTheReadRows() })
     }
 
     /// The rows read after a start that could not read them, under what
     /// this run learned since: this run wins per device.
     private func takeTheReadRows() {
-        mirror = Self.records(of: carrierRows.rows(Self.mirrorKey)).merging(mirror) { _, run in run }
+        mirror = CarrierRecordRows.laterRead(Self.records(of: carrierRows.rows(Self.mirrorKey)), under: mirror)
         queued = queued ?? Self.records(of: carrierRows.rows(Self.queueKey)).values.first
     }
 

@@ -324,28 +324,28 @@ final class MaerSyncSession {
     /// empty: the version goes, so the next fetch reads the whole document,
     /// and the rows join the stands once they are read.
     private func forgetStandsIfUnread() {
-        guard rows.unread else { return }
-        standsVersion = nil
-        defaults.removeObject(forKey: key(Self.versionKey))
-        rows.whenRead { [weak self] in self?.takeTheReadStands() }
+        rows.forgetUntilRead({
+            standsVersion = nil
+            defaults.removeObject(forKey: key(Self.versionKey))
+        }, then: { [weak self] in self?.takeTheReadStands() })
     }
 
     /// The rows read after a start that could not read them, under what
-    /// this run learned since: this run wins per item.
+    /// this run learned since.
     private func takeTheReadStands() {
-        stands = rows.rows(key(Self.mirrorKey)).merging(stands) { _, run in run }
-        queue = rows.rows(key(Self.queueKey)).merging(queue) { _, run in run }
+        stands = CarrierStandRows.laterRead(rows.rows(key(Self.mirrorKey)), under: stands)
+        queue = CarrierStandRows.laterRead(rows.rows(key(Self.queueKey)), under: queue)
     }
 
     /// The same for the documents: their versions go, and the bodies read
     /// later stand where this run holds none.
     private func forgetDocumentsIfUnread() {
-        guard documentRows.unread else { return }
-        playlistsVersion = nil
-        choicesVersion = nil
-        defaults.removeObject(forKey: key(Self.playlistsVersionKey))
-        defaults.removeObject(forKey: key(Self.choicesVersionKey))
-        documentRows.whenRead { [weak self] in self?.takeTheReadDocuments() }
+        documentRows.forgetUntilRead({
+            playlistsVersion = nil
+            choicesVersion = nil
+            defaults.removeObject(forKey: key(Self.playlistsVersionKey))
+            defaults.removeObject(forKey: key(Self.choicesVersionKey))
+        }, then: { [weak self] in self?.takeTheReadDocuments() })
     }
 
     private func takeTheReadDocuments() {

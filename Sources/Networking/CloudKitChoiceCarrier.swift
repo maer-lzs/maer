@@ -142,20 +142,17 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
-        if rows.unread {
-            // The mirror is unknown, not empty: the next round fetches from
-            // the start, and the rows join the mirror once they are read.
+        rows.forgetUntilRead({
             token = nil
             defaults.removeObject(forKey: Self.tokenKey)
-            rows.whenRead { [weak self] in self?.takeTheReadRows() }
-        }
+        }, then: { [weak self] in self?.takeTheReadRows() })
     }
 
     /// The rows read after a start that could not read them, under what
     /// this run learned since: this run wins per key.
     private func takeTheReadRows() {
-        mirror = Self.records(of: carrierRows.rows(Self.mirrorKey)).merging(mirror) { _, run in run }
-        queue = Self.records(of: carrierRows.rows(Self.queueKey)).merging(queue) { _, run in run }
+        mirror = CarrierRecordRows.laterRead(Self.records(of: carrierRows.rows(Self.mirrorKey)), under: mirror)
+        queue = CarrierRecordRows.laterRead(Self.records(of: carrierRows.rows(Self.queueKey)), under: queue)
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }

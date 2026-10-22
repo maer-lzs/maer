@@ -62,8 +62,9 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
     /// Whether the rows could not be read at the start and are not read
     /// yet: an owner's entries are then unknown, not empty. A carrier drops
     /// its token or version, so its next round fetches from the start, and
-    /// takes the rows into its memory once they are read (`whenRead`);
-    /// otherwise its next write would give every read row as removed.
+    /// takes the rows into its memory once they are read
+    /// (`forgetUntilRead`); otherwise its next write would give every read
+    /// row as removed.
     var unread: Bool {
         startIfNeeded()
         return keeper.startReadFailed
@@ -75,6 +76,23 @@ final class CarrierRows<Value: Codable & Equatable & Sendable> {
         onRead.append(body)
     }
     private var onRead: [@MainActor () -> Void] = []
+
+    /// THE rule of a carrier over rows the start could not read. What it
+    /// fetched against is unknown, not empty: `forget` drops its token or
+    /// version now, so the next round fetches from the start, and `take`
+    /// folds the rows into its memory once they are read (`laterRead`).
+    /// Over read rows nothing happens.
+    func forgetUntilRead(_ forget: () -> Void, then take: @escaping @MainActor () -> Void) {
+        guard unread else { return }
+        forget()
+        whenRead(take)
+    }
+
+    /// Rows read late, under what the run learned since: the run wins per
+    /// entry.
+    nonisolated static func laterRead<Key, Entry>(_ read: [Key: Entry], under run: [Key: Entry]) -> [Key: Entry] {
+        read.merging(run) { _, run in run }
+    }
 
     /// What an owner holds.
     func rows(_ owner: String) -> [String: Value] {

@@ -65,20 +65,17 @@ final class CloudKitStandCarrier: StandCarrier {
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
-        if rows.unread {
-            // The mirror is unknown, not empty: the next round fetches from
-            // the start, and the rows join the mirror once they are read.
+        rows.forgetUntilRead({
             token = nil
             defaults.removeObject(forKey: Self.tokenKey)
-            rows.whenRead { [weak self] in self?.takeTheReadRows() }
-        }
+        }, then: { [weak self] in self?.takeTheReadRows() })
     }
 
     /// The rows read after a start that could not read them, under what
-    /// this run learned since: this run wins per item.
+    /// this run learned since.
     private func takeTheReadRows() {
-        mirror = rows.rows(Self.mirrorKey).merging(mirror) { _, run in run }
-        queue = rows.rows(Self.queueKey).merging(queue) { _, run in run }
+        mirror = CarrierStandRows.laterRead(rows.rows(Self.mirrorKey), under: mirror)
+        queue = CarrierStandRows.laterRead(rows.rows(Self.queueKey), under: queue)
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
