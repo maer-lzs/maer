@@ -1053,4 +1053,13 @@ nonisolated enum AppStorageKeys {
         ItemNamespace.of(id) == nil && !validItemIds.contains(id)
     }
 
+    /// Whether a fully loaded list may judge the books at all. The list
+    /// holds ONE library; with a second book library on the server its
+    /// books are absent from the list, not gone, and their positions,
+    /// speeds and bookmarks must stay. An unknown number of libraries
+    /// knows nothing either.
+    nonisolated static func listJudgesEveryBook(bookLibraries: Int?) -> Bool {
+        bookLibraries == 1
+    }
+
 }

@@ -55,5 +55,28 @@ struct BookCleanupTests {
             #expect(!AppStorageKeys.prunedByBookCleanup(id, validItemIds: valid), "\(id) is not the cleanup's to judge")
         }
     }
+
+    @Test("eine zweite Buchbibliothek: die Liste einer Bibliothek richtet nicht ueber die Buecher der anderen")
+    func oneLibraryDoesNotJudgeTheOther() {
+        #expect(AppStorageKeys.listJudgesEveryBook(bookLibraries: 1))
+        #expect(!AppStorageKeys.listJudgesEveryBook(bookLibraries: 2), "the other library's books are absent, not gone")
+        #expect(!AppStorageKeys.listJudgesEveryBook(bookLibraries: nil), "an unknown number knows nothing")
+        #expect(!AppStorageKeys.listJudgesEveryBook(bookLibraries: 0))
+    }
+
+    @Test("die Buchkeys gehen nur in cleanUpPerBook und nur hinter der Regel", .needsTheSources)
+    func theLoadCleansOnlyBehindTheRule() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/LibraryViewModel.swift"), encoding: .utf8))
+        let body = try #require(code.components(separatedBy: "private func cleanUpPerBook(").dropFirst().first)
+        let guardAt = try #require(body.range(of: "AppStorageKeys.listJudgesEveryBook(bookLibraries:"))
+        let rowsAt = try #require(body.range(of: "CarrierRowStores.cleanupPerBookRows("))
+        #expect(guardAt.lowerBound < rowsAt.lowerBound, "the rows go before the rule asks")
+        for call in ["cleanupPerBookRows(", "cleanupPerBookKeys("] {
+            #expect(code.components(separatedBy: call).count - 1 == 1, "\(call) stands outside the one cleanup")
+        }
+        #expect(code.components(separatedBy: "cleanUpPerBook(full:").count - 1 == 2,
+                "both load paths hand their full list to the one cleanup")
+    }
 }
 #endif

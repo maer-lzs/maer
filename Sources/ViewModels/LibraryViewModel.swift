@@ -783,11 +783,13 @@ final class LibraryViewModel: ObservableObject {
                     try await self.provider.fetchLibraries()
                 }.filter { !$0.isPodcast }
                 do {
-                    try await loadContent(libraryId: storedId)
+                    let full = try await loadContent(libraryId: storedId)
                     // Late validation: the id no longer exists → reload properly.
-                    if let libraries = await validationTask,
-                       !libraries.contains(where: { $0.id == storedId }) {
+                    let libraries = await validationTask
+                    if let libraries, !libraries.contains(where: { $0.id == storedId }) {
                         try await resolveAndLoad(libraries: libraries)
+                    } else {
+                        cleanUpPerBook(full: full, bookLibraries: libraries?.count)
                     }
                 } catch {
                     // The direct load failed. Maybe the stored library is gone
@@ -838,7 +840,26 @@ final class LibraryViewModel: ObservableObject {
             errorMessage = String(localized: "No library found on the server.")
             return
         }
-        try await loadContent(libraryId: library.id)
+        let full = try await loadContent(libraryId: library.id)
+        cleanUpPerBook(full: full, bookLibraries: libraries.count)
+    }
+
+    /// The keys and rows of books that left the library go, only with a
+    /// fully loaded list and only when that list is every book library of
+    /// the server (`AppStorageKeys.listJudgesEveryBook`); otherwise a line
+    /// and nothing goes.
+    private func cleanUpPerBook(full validIds: Set<String>?, bookLibraries: Int?) {
+        guard let validIds else { return }
+        guard AppStorageKeys.listJudgesEveryBook(bookLibraries: bookLibraries) else {
+            Logger.library.notice("CLEANUP per book skipped: book libraries=\(bookLibraries.map(String.init) ?? "unknown", privacy: .public), the list holds one")
+            return
+        }
+        // The rows live on the main actor; their entries leave here.
+        CarrierRowStores.cleanupPerBookRows(validItemIds: validIds)
+        // detached because a store sweep after the load must not die with the load's task; off the MainActor
+        Task.detached(priority: .utility) {
+            AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+        }
     }
 
     /// The last library id that actually loaded. The search endpoint's
@@ -846,11 +867,12 @@ final class LibraryViewModel: ObservableObject {
     static var lastKnownLibraryId: String?
 
     /// Full progressive content load of one library: progress + seed in
-    /// parallel, first page immediately, remaining pages quietly, disk cache and
-    /// key cleanup only when complete. Extracted so the fast path (stored
-    /// library id, no prior fetchLibraries round-trip) shares one implementation
-    /// with the resolve path.
-    private func loadContent(libraryId id: String) async throws {
+    /// parallel, first page immediately, remaining pages quietly, disk cache
+    /// only when complete. Extracted so the fast path (stored library id, no
+    /// prior fetchLibraries round-trip) shares one implementation with the
+    /// resolve path. Returns the ids of the fully loaded list, nil when the
+    /// list stayed partial; the caller cleans up (`cleanUpPerBook`).
+    private func loadContent(libraryId id: String) async throws -> Set<String>? {
         Self.lastKnownLibraryId = id
         async let progressTask = provider.fetchAllProgress()
         // Prebuilt "Continue"/"Recently Added" rows from the server (one small
@@ -923,20 +945,13 @@ final class LibraryViewModel: ObservableObject {
         await rebuild(items: accumulated, progress: progress)   // final rebuild
         isLoadingMore = false
 
-        // Only persist/clean up with a FULLY loaded list. Otherwise a
-        // partial list would overwrite the good offline cache, or (cleanup)
-        // wrongly delete per-book keys of not-yet-loaded books.
-        if accumulated.count >= total {
-            saveLibraryDiskCache(items: accumulated, progress: progress)
-            let validIds = Set(accumulated.map(\.id))
-            // The rows live on the main actor; their entries leave here.
-            CarrierRowStores.cleanupPerBookRows(validItemIds: validIds)
-            // detached because a store sweep after the load must not die with the load's task; off the MainActor
-            Task.detached(priority: .utility) {
-                AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
-            }
-        }
         Task { await prefetchAllCovers() }
+        // Only persist and hand out ids with a FULLY loaded list. Otherwise
+        // a partial list would overwrite the good offline cache, or (cleanup)
+        // wrongly delete per-book keys of not-yet-loaded books.
+        guard accumulated.count >= total else { return nil }
+        saveLibraryDiskCache(items: accumulated, progress: progress)
+        return Set(accumulated.map(\.id))
     }
 
     /// Silently refreshes only the progress data (bars, "Continue"), without

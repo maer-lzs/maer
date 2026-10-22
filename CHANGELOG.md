@@ -49,6 +49,12 @@ and you can start it again. Music downloads from a Subsonic server are
 held to the song's size too, when the server sends the original file:
 a song that arrives shorter is not kept as finished.
 
+**A second library keeps the first one's places.** With two audiobook
+libraries on one Audiobookshelf server, loading the second one removed
+the saved positions, speeds, jump backs and offline bookmarks of every
+book in the first. The cleanup now runs only when the server has one
+audiobook library.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what
