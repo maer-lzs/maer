@@ -7,6 +7,20 @@ import Foundation
 import Combine
 import OSLog
 
+/// Whether a model plays without a mini player for it, pure: it sounds
+/// while it is not the session, or while the session names no title (the
+/// bar draws only with both).
+nonisolated enum SoundWithoutBar {
+    static func strays(isPlaying: Bool, isSession: Bool, hasTitle: Bool) -> Bool {
+        isPlaying && !(isSession && hasTitle)
+    }
+}
+
+/// A model the coordinator watches without keeping it alive.
+struct WeakPlayerModel {
+    weak var model: PlayerViewModel?
+}
+
 /// Holds the currently running playback session, regardless of whether the full
 /// player screen is visible or not. This is the prerequisite for the mini-player
 /// bar: the player used to stop when leaving the screen, now it keeps running
@@ -53,6 +67,7 @@ final class PlayerCoordinator: ObservableObject {
                 self?.notices.streamWaits(waits, title: self?.viewModel?.item?.media.metadata?.title)
             }
             if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
+            listenForSoundWithoutBar()
         }
     }
 
@@ -63,7 +78,15 @@ final class PlayerCoordinator: ObservableObject {
     /// The running ICY line of the active item, mirrored for list surfaces
     /// (radio tiles/cards) that must not each observe the nested view model.
     @Published private(set) var nowPlayingLine: String?
-    @Published private(set) var activeItem: LibraryItem?
+    @Published private(set) var activeItem: LibraryItem? {
+        didSet { listenForSoundWithoutBar() }
+    }
+    /// The models this run built, newest last, each with its play state
+    /// watched: a model that sounds while the bar shows no session for it
+    /// is a line (`SoundWithoutBar`). Seen on a device: music played on
+    /// after a title change and the mini player stayed gone.
+    private var builtModels: [(model: WeakPlayerModel, watch: AnyCancellable)] = []
+    private var soundWithoutBarSaid: ObjectIdentifier?
     /// The songs this session played before the running one, newest last:
     /// the title button's way back. In memory only, never saved, never shown;
     /// the queue itself keeps no played titles.
@@ -75,6 +98,13 @@ final class PlayerCoordinator: ObservableObject {
     /// The orders, reached in one place.
     private var orders: PlayQueue { PlayQueue.shared }
     @Published private(set) var isLoading = false
+    /// Set while the end of a title opens the next one, across the titles
+    /// it skips (`advance(to:)`).
+    @Published private(set) var isAdvancing = false
+    /// A title is on its way: what shows a session holds the one it showed.
+    var isChangingTitle: Bool { isLoading || isAdvancing }
+    /// The titles in a row the advance skips when they do not start.
+    static let unstartedSkipLimit = 3
     @Published private(set) var isPlaying = false
     @Published var loadError: String?
 
@@ -553,6 +583,7 @@ final class PlayerCoordinator: ObservableObject {
         if effectiveRestart { onItemRestarted?(item.id) }   // clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
+        watchForSoundWithoutBar(newViewModel)
         // The open stands. What the pointer said before it is no longer
         // needed, and the next gesture starts again from a title that
         // really played.
@@ -675,7 +706,71 @@ final class PlayerCoordinator: ObservableObject {
         // preserves the context: an advance is consumption, never a fresh
         // user intent.
         guard let next = resolveAdvance(after: finishedItemId) else { return }
-        Task { await self.open(item: next, preservesContext: true) }
+        Task { await self.advance(to: next) }
+    }
+
+    /// Watches a model this run attached; the last four are kept, an older
+    /// one was stopped long before.
+    private func watchForSoundWithoutBar(_ model: PlayerViewModel) {
+        let watch = model.$isPlaying.removeDuplicates().dropFirst()
+            .sink { [weak self] _ in Task { @MainActor in self?.listenForSoundWithoutBar() } }
+        builtModels.append((WeakPlayerModel(model: model), watch))
+        if builtModels.count > 4 { builtModels.removeFirst() }
+    }
+
+    /// One line per model that sounds while the bar shows no session for it.
+    private func listenForSoundWithoutBar() {
+        let stray = builtModels.lazy.compactMap(\.model.model).first {
+            SoundWithoutBar.strays(isPlaying: $0.isPlaying, isSession: $0 === self.viewModel,
+                                   hasTitle: self.activeItem != nil)
+        }
+        guard let stray else { soundWithoutBarSaid = nil; return }
+        guard soundWithoutBarSaid != ObjectIdentifier(stray) else { return }
+        soundWithoutBarSaid = ObjectIdentifier(stray)
+        Logger.player.error("PLAYER sound without bar vm=\(PlaybackClaimSync.instanceTag(stray), privacy: .public) session=\(stray === self.viewModel ? "this" : (self.viewModel.map { PlaybackClaimSync.instanceTag($0) } ?? "none"), privacy: .public) title=\(self.activeItem == nil ? "none" : "set", privacy: .public) loading=\(self.isChangingTitle)")
+    }
+
+    /// Opens what the end of a title resolved. A title that does not start
+    /// ends nothing: its open said why, it leaves both lists and the
+    /// advance goes on to the one after it, at most `unstartedSkipLimit`
+    /// in a row. Measured: one dead catalogue title ended a shuffle with
+    /// seven titles left, and the mini player with it.
+    private func advance(to first: LibraryItem) async {
+        isAdvancing = true
+        defer { isAdvancing = false }
+        await Self.advance(from: first, limit: Self.unstartedSkipLimit,
+                           open: { item in
+                               await self.open(item: item, preservesContext: true)
+                               // Started, or a newer open owns the session.
+                               return self.activeItem != nil || self.viewModel != nil || self.isLoading
+                           },
+                           leave: { self.leaveBothLists($0) },
+                           after: { self.resolveAdvance(after: $0) })
+    }
+
+    /// The advance's walk, apart from the session so a witness can drive
+    /// it: open, and on a title that did not start, leave it and open the
+    /// one after it until one starts, none follows or `limit` titles in a
+    /// row did not start. Answers the ids that did not start.
+    @discardableResult
+    static func advance(from first: LibraryItem, limit: Int,
+                        open: (LibraryItem) async -> Bool,
+                        leave: (String) -> Void,
+                        after: (String) -> LibraryItem?) async -> [String] {
+        var next = first
+        var unstarted: [String] = []
+        while !(await open(next)) {
+            unstarted.append(next.id)
+            leave(next.id)
+            guard unstarted.count < limit else {
+                Logger.player.notice("ADVANCE stops: \(unstarted.count) titles in a row did not start")
+                return unstarted
+            }
+            guard let following = after(next.id) else { return unstarted }
+            Logger.player.notice("ADVANCE skips unstarted item=\(next.id, privacy: .private(mask: .hash)) next=\(following.id, privacy: .private(mask: .hash))")
+            next = following
+        }
+        return unstarted
     }
 
     /// The ONE resolution of "what plays after this title". The advance

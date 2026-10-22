@@ -79,10 +79,11 @@ struct LibraryView: View {
     // The bar accent persists across sessions. It only ever changes
     // cover-to-cover (see the environment wiring below).
     @StateObject private var bottomColorLoader = CoverColorLoader(persistenceKey: AppStorageKeys.bottomBarAccent)
-    /// Book-switch swap animation of the mini player (pushed below the
-    /// screen while the new accent loads, then springs back up).
-    @State private var miniPlayerSwapOffset: CGFloat = 0
-    @State private var lastBottomAccentItemId: String?
+    /// The session the mini player showed last. The coordinator drops its
+    /// model while a title change loads; the bar keeps this one in place,
+    /// taking no input, until the new one is ready (`PlayerScreenContent`,
+    /// the rule the full player holds by).
+    @State private var miniShown: PlayerScreen.ShownSession?
     // ARCHITECTURE (25.07): the bottom clearance is the CONSTANT
     // `BottomBarReserve`. The whole live-measurement path (GeometryReader,
     // bottomBarHeight state, settle-debounce, fire-time re-validation) is
@@ -546,40 +547,28 @@ struct LibraryView: View {
                 // into the middle of the screen; ignoring the zone there means
                 // a stuck inset has nothing to lift.
                 .ignoresSafeArea(.keyboard, edges: isShowingSearch ? [] : .bottom)
+                // A title change keeps the bar in place: the accent follows
+                // the new cover where it stands. The bar used to dip below
+                // the screen for the swap; between two titles no part of it
+                // may leave.
                 .task(id: playerCoordinator.activeItem?.id) {
-                    let previousId = lastBottomAccentItemId
-                    lastBottomAccentItemId = playerCoordinator.activeItem?.id
-                    guard let item = playerCoordinator.activeItem else {
-                        miniPlayerSwapOffset = 0
-                        return
-                    }
-                    let coverURL = router.coverURL(item.id)
-                    // Real book SWITCH (not first appearance): dip the mini
-                    // player below the screen, swap content + accent while it
-                    // is hidden, then spring it back up. Masks the async
-                    // accent load that used to pop the glass color hard.
-                    guard let previousId, previousId != item.id else {
-                        // First appearance (row insertion animates already):
-                        // no dip, but clear any offset a cancelled swap left.
-                        miniPlayerSwapOffset = 0
-                        await bottomColorLoader.load(from: coverURL)
-                        return
-                    }
-                    withAnimation(.easeIn(duration: 0.25)) {
-                        miniPlayerSwapOffset = 160
-                    }
-                    await bottomColorLoader.load(from: coverURL)
-                    // Hold below the edge for a beat even when the cover is
-                    // cached (accent load would be instant → visible twitch).
-                    try? await Task.sleep(nanoseconds: 350_000_000)
-                    // Rapid double switch: a newer task owns the offset now.
-                    // Springing up here would interrupt ITS dip mid-swap.
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                        miniPlayerSwapOffset = 0
-                    }
+                    guard let item = playerCoordinator.activeItem else { return }
+                    await bottomColorLoader.load(from: router.coverURL(item.id))
                 }
             }
+        }
+        // The bar's held session follows the coordinator also while the bar
+        // is not drawn (full player open), so it never holds an older title.
+        // A failed load or the end of the session lets it go.
+        .onChange(of: miniContent, initial: true) { _, content in
+            switch content {
+            case .player: miniShown = runningSession
+            case .error, .nothing: miniShown = nil
+            case .held, .loading: break
+            }
+        }
+        .onChange(of: playerCoordinator.viewModel.map(ObjectIdentifier.init)) {
+            if miniContent == .player { miniShown = runningSession }
         }
         // Hoisted OUTSIDE the bottom row so the toolbar buttons (sort,
         // settings) inherit the same cover accent as the glass elements in
@@ -597,7 +586,7 @@ struct LibraryView: View {
         // mini-player mount is a REAL composition change and may adjust it.
         // Never `collapsed`/the morph).
         .environment(\.bottomBarInset,
-                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil))
+                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil || miniContent == .held))
         .task {
             // Series data lives here. Hand the coordinator a lookup for the
             // auto-play-next-in-series setting.
@@ -868,11 +857,33 @@ struct LibraryView: View {
         ResumeMessageBanner(notices: playerCoordinator.notices)
     }
 
+    /// What the bar shows, by the full player's rule: the running session,
+    /// or while a title change loads, the one it showed before.
+    private var miniContent: PlayerScreenContent {
+        playerCoordinator.screenContent(holdsShown: miniShown != nil)
+    }
+
+    private var runningSession: PlayerScreen.ShownSession? {
+        guard let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem else { return nil }
+        return PlayerScreen.ShownSession(viewModel: vm, item: item)
+    }
+
+    private var miniDisplayed: PlayerScreen.ShownSession? {
+        switch miniContent {
+        case .player:
+            return runningSession
+        case .held:
+            return miniShown
+        case .loading, .error, .nothing:
+            return nil
+        }
+    }
+
     @ViewBuilder
     private func miniPlayer(collapsed barCollapsed: Bool) -> some View {
-        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
+        if let session = miniDisplayed {
             MiniPlayerBar(
-                coordinator: playerCoordinator, viewModel: vm, item: item,
+                coordinator: playerCoordinator, viewModel: session.viewModel, item: session.item,
                 compact: barCollapsed,
                 onOpenPlayer: {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
@@ -893,7 +904,9 @@ struct LibraryView: View {
                 // Locale-independent handle for the UI-test harness.
                 .accessibilityIdentifier("mini-queue-entry")
             }
-            .offset(y: miniPlayerSwapOffset)
+            // The held session is the stopped one: its buttons would act on
+            // nothing.
+            .takesInput(miniContent == .player)
             .matchedGeometryEffect(id: "player", in: barNS)
         }
     }

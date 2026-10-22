@@ -119,9 +119,9 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         // Hitch fix lever 3 (trace-backed): the tint cross-fade animated a GLASS
         // PARAMETER per frame (`AnimatableAttribute<…UnwrappedMaterial>` 374×
         // in a 9 s trace → per-frame backdrop re-render). Glass tint now changes
-        // WITHOUT animation. The mini-player swap choreography (dip below the
-        // edge while the new accent loads) already masks the change on the main
-        // surface. The cheap material fallback keeps the cross-fade.
+        // WITHOUT animation; on a title change the mini player stays where it
+        // stands and takes the new tint at once. The cheap material fallback
+        // keeps the cross-fade.
         .animation(tier == .glass ? nil : .easeInOut(duration: 0.4), value: lightTint)
     }
 

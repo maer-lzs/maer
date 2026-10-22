@@ -54,9 +54,7 @@ struct PlayerScreen: View {
     }
 
     private var content: PlayerScreenContent {
-        PlayerScreenContent.of(hasSession: coordinator.viewModel != nil && coordinator.activeItem != nil,
-                               isLoading: coordinator.isLoading, loadError: coordinator.loadError,
-                               holdsShown: shown != nil)
+        coordinator.screenContent(holdsShown: shown != nil)
     }
 
     var body: some View {
@@ -126,8 +124,12 @@ struct PlayerScreen: View {
 extension PlayerCoordinator {
     /// The full player's content, asked by the screen and by the overlay
     /// that closes itself on `.nothing`.
-    var screenContent: PlayerScreenContent {
+    var screenContent: PlayerScreenContent { screenContent(holdsShown: false) }
+
+    /// The same for a view that showed a session: it holds that one while a
+    /// title is on its way. The full player and the mini player ask here.
+    func screenContent(holdsShown: Bool) -> PlayerScreenContent {
         PlayerScreenContent.of(hasSession: viewModel != nil && activeItem != nil,
-                               isLoading: isLoading, loadError: loadError)
+                               isLoading: isChangingTitle, loadError: loadError, holdsShown: holdsShown)
     }
 }

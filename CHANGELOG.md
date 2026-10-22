@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**The mini player stays through a title change.** When one song ends and
+the next one starts, the mini player keeps showing the old one until the
+new one is ready; before, it left the screen for up to a second. A title
+that cannot start no longer ends a shuffle or an album: the app says
+which one it skipped and plays the next, after three in a row it stops.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

@@ -223,7 +223,8 @@ struct QueueTrackEndTests {
         #expect(overlay.contains(".onChange(of: coordinator.screenContent == .nothing, initial: true)"))
         #expect(overlay.contains("if isEmpty { slideOutAndDismiss() }"))
         let screen = try Self.source("Sources/Views/PlayerScreen.swift")
-        #expect(screen.contains("switch content") && screen.contains("PlayerScreenContent.of(hasSession: coordinator.viewModel != nil && coordinator.activeItem != nil"))
+        #expect(screen.contains("switch content") && screen.contains("coordinator.screenContent(holdsShown: shown != nil)")
+                    && screen.contains("PlayerScreenContent.of(hasSession: viewModel != nil && activeItem != nil"))
         #expect(screen.components(separatedBy: "ProgressView(").count - 1 == 1,
                 "one spinner, the one for loading; the bare one is gone")
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
