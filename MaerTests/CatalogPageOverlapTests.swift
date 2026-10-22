@@ -87,6 +87,9 @@ struct CatalogPageOverlapTests {
         let body = code[page.upperBound..<(next?.lowerBound ?? code.endIndex)]
         #expect(body.contains("CatalogPageOverlap.firstRowOnly("), "the overview does not split its rows")
         #expect(!body.contains("RowPreview.cut("), "a row of the overview cuts its own stock again")
+        #expect(body.components(separatedBy: "LazyHStack").count - 1 == 1, "a row of the overview draws its own strip")
+        #expect(body.components(separatedBy: "previewStrip(").count - 1 == 5,
+                "the one strip and its four rows (popular, new at LibriVox, shelf, decade)")
     }
 }
 #endif

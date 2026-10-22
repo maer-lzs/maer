@@ -224,16 +224,7 @@ struct CatalogSourcePage: View {
             // same source. The overview shows one row per source only.
             if source == .librivox, let fresh = rows.byKey[Self.newRowKey], !fresh.isEmpty {
                 RowHeading.plain("New at LibriVox")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(fresh) { item in
-                            tile(item)
-                                .cardRowSlot(spacing: 14)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
+                previewStrip(fresh)
             }
             // Genres are the STANDARD FORM where the
             // axis carries. Tile row per filled shelf, counting chevron onto
@@ -271,20 +262,43 @@ struct CatalogSourcePage: View {
     private func popularRow(_ preview: [LibraryItem]) -> some View {
         if !preview.isEmpty {
             RowHeading.entry("Popular", destination: FreeAudiobooksRoute.popular(source))
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
-                    ForEach(preview) { item in
-                        tile(item).cardRowSlot(spacing: 14)
-                    }
-                }
-                .padding(.horizontal)
-            }
-            .scrollClipDisabled()
+            previewStrip(preview)
         } else if isLoading {
             ProgressView().frame(maxWidth: .infinity).padding()
         } else if pageFailure != nil {
             LoadFailedView(form: .line, sentence: "Could not load more.") { Task { await load() } }
                 .padding()
+        }
+    }
+
+    /// THE preview row of the overview: the row's share of the split as
+    /// tiles side by side. Popular, New at LibriVox, the shelves and the
+    /// decades draw through it.
+    private func previewStrip(_ shown: [LibraryItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(shown) { item in
+                    tile(item).cardRowSlot(spacing: 14)
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
+
+    /// The heading of a shelf or decade row. The chevron counts the
+    /// SOURCE's stock; with the pool count it was `1 > 1` for every shelf,
+    /// so the door to the full shelf was invisible everywhere. Sources whose
+    /// API states no stock (LibriVox genre feed, gutendex topic) earn the
+    /// chevron by the target's existence, never by an invented number.
+    @ViewBuilder
+    private func stockHeading(title: String, total: Int?, shown: Int, key: String) -> some View {
+        if let total {
+            RowHeading(title: "", verbatimTitle: title, total: total, shown: shown, showsTotal: true,
+                       destination: FreeAudiobooksRoute.shelf(source, key))
+        } else {
+            RowHeading(title: "", verbatimTitle: title, font: .title3, variant: .entry,
+                       destination: FreeAudiobooksRoute.shelf(source, key))
         }
     }
 
@@ -340,27 +354,10 @@ struct CatalogSourcePage: View {
     /// A decade's preview row; `shown` is its share of the overview split.
     @ViewBuilder
     private func decadeRow(_ decade: (key: String, title: String), shown: [LibraryItem]) -> some View {
-        let stock = decadeStock[decade.key]
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                if let total = stock?.total {
-                    RowHeading(title: "", verbatimTitle: decade.title,
-                               total: total, shown: shown.count, showsTotal: true,
-                               destination: FreeAudiobooksRoute.shelf(source, decade.key))
-                } else {
-                    RowHeading(title: "", verbatimTitle: decade.title, font: .title3,
-                               variant: .entry,
-                               destination: FreeAudiobooksRoute.shelf(source, decade.key))
-                }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(shown) { item in
-                            tile(item).cardRowSlot(spacing: 14)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
+                stockHeading(title: decade.title, total: decadeStock[decade.key]?.total, shown: shown.count, key: decade.key)
+                previewStrip(shown)
             }
         }
     }
@@ -381,32 +378,8 @@ struct CatalogSourcePage: View {
     private func genreRow(_ shelf: (key: String, title: String), shown: [LibraryItem]) -> some View {
         if let stock = shelfStock[shelf.key], !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                // The chevron counts the SOURCE's stock. With the pool
-                // count it was `1 > 1` for every shelf, so the door to the
-                // full shelf was invisible everywhere. The rule was right,
-                // it was fed the wrong number.
-                if let total = stock.total {
-                    RowHeading(title: "", verbatimTitle: shelf.title,
-                               total: total, shown: shown.count, showsTotal: true,
-                               destination: FreeAudiobooksRoute.shelf(source, shelf.key))
-                } else {
-                    // Sources whose API does not state a stock (LibriVox
-                    // genre feed, gutendex topic): the chevron is earned by
-                    // the target's existence. Never by an invented number.
-                    RowHeading(title: "", verbatimTitle: shelf.title, font: .title3,
-                               variant: .entry,
-                               destination: FreeAudiobooksRoute.shelf(source, shelf.key))
-                }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(shown) { item in
-                            tile(item)
-                                .cardRowSlot(spacing: 14)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
+                stockHeading(title: shelf.title, total: stock.total, shown: shown.count, key: shelf.key)
+                previewStrip(shown)
             }
         }
     }
