@@ -83,7 +83,13 @@ struct TitleChangeHoldTests {
         #expect(squeezed.contains("playerCoordinator.screenContent(holdsShown: miniShown != nil)"),
                 "the mini player asks its own rule")
         #expect(squeezed.contains("if let session = miniDisplayed { MiniPlayerBar("), "the bar draws from the coordinator only")
-        #expect(squeezed.contains(".takesInput(miniContent == .player)"), "the held bar takes input")
+        // An open that hangs holds the bar as long as the detail fetch waits
+        // (measured past 10 s): its buttons stay dead, the bar opens the player.
+        #expect(squeezed.contains("controlsLive: miniContent == .player"), "the held bar's buttons act on the stopped session")
+        #expect(!squeezed.contains(".takesInput(miniContent"), "a hanging open leaves a dead bar")
+        let bar = FetchAnswerTests.squeezed(try code("Sources/Views/MiniPlayerBar.swift"))
+        #expect(bar.contains("showsAirPlay: !compact && (showExtendedControls || isCompactPortrait)) .takesInput(controlsLive)"),
+                "the bar's buttons do not ask whether they are live")
         #expect(!library.contains("miniPlayerSwapOffset"), "the bar dips below the screen again")
         let screen = FetchAnswerTests.squeezed(try code("Sources/Views/PlayerScreen.swift"))
         #expect(screen.contains("coordinator.screenContent(holdsShown: shown != nil)")

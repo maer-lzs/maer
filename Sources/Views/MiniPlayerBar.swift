@@ -23,6 +23,10 @@ struct MiniPlayerBar: View {
     let item: LibraryItem
     /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
     var compact: Bool = false
+    /// False while the bar holds the stopped session of a title change: its
+    /// buttons would act on nothing. The bar still opens the full player,
+    /// so an open that hangs leaves a way in.
+    var controlsLive: Bool = true
     /// Opens the full player. Passed in as a callback instead of an own
     /// NavigationLink, because this bar (deliberately, so it stays visible on
     /// every level) hangs outside the NavigationStack and a NavigationLink would
@@ -106,6 +110,7 @@ struct MiniPlayerBar: View {
             MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
                                 showsSkip: showExtendedControls && !isCompactPortrait,
                                 showsAirPlay: !compact && (showExtendedControls || isCompactPortrait))
+            .takesInput(controlsLive)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

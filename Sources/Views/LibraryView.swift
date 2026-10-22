@@ -885,6 +885,9 @@ struct LibraryView: View {
             MiniPlayerBar(
                 coordinator: playerCoordinator, viewModel: session.viewModel, item: session.item,
                 compact: barCollapsed,
+                // The held session is the stopped one: its buttons would act
+                // on nothing, the bar itself still opens the full player.
+                controlsLive: miniContent == .player,
                 onOpenPlayer: {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                         isShowingFullPlayer = true
@@ -904,9 +907,6 @@ struct LibraryView: View {
                 // Locale-independent handle for the UI-test harness.
                 .accessibilityIdentifier("mini-queue-entry")
             }
-            // The held session is the stopped one: its buttons would act on
-            // nothing.
-            .takesInput(miniContent == .player)
             .matchedGeometryEffect(id: "player", in: barNS)
         }
     }
