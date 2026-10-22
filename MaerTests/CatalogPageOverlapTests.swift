@@ -53,26 +53,55 @@ struct CatalogPageOverlapTests {
 
     private static func ids(_ rows: [[Title]]) -> [[String]] { rows.map { $0.map(\.id) } }
 
-    /// On the overview each title stands once, in the first row of the page
-    /// that shows it; a later row fills from deeper in its own stock when
-    /// that stock holds more than the preview (Popular and New do; shelves
-    /// and decades fetch only the preview and never fill), and a row that
-    /// keeps nothing comes back empty and is counted.
-    @Test("auf der Uebersicht steht jeder Titel einmal, in der ersten Reihe der Seitenfolge; eine spaetere Reihe fuellt nach, wenn ihr Bestand mehr haelt als die Vorschau")
-    func eachTitleStandsInItsFirstRowOnly() {
-        let stocks = [["a", "b", "c"], ["b", "d", "e", "f"], ["a", "c"], ["g", "g", "h"]]
-            .map { $0.map(Title.init) }
-        let kept = CatalogPageOverlap.firstRowOnly(stocks, limit: 2)
+    private static func titles(_ ids: [String]) -> [Title] { ids.map(Title.init) }
+
+    @Test("geteilte Titel gehen an die kuerzere Reihe: zwei Regale mit denselben sechs Titeln enden gleich lang")
+    func sharedTitlesSpreadEvenly() {
+        let six = (1...6).map { "x\($0)" }
+        let kept = Self.ids(CatalogPageOverlap.balanced([Self.titles(six), Self.titles(six)], buffer: nil, limit: 12))
+        #expect(kept == [["x1", "x3", "x5"], ["x2", "x4", "x6"]], "three and three, not six and none: \(kept)")
+        let withOwn = [Self.titles(["a", "b", "s"]), Self.titles(["s", "t"]), Self.titles(["t", "u", "v", "w"])]
+        #expect(Self.ids(CatalogPageOverlap.balanced(withOwn, buffer: nil, limit: 12)) == [["a", "b"], ["s", "t"], ["u", "v", "w"]],
+                "own titles stay; the middle row holds none of its own, so it is the shortest and gets both shared ones")
+    }
+
+    @Test("Beliebt ist der Puffer: teilt es Titel mit einem Regal, steht der Titel im Regal, und Beliebt fuellt aus seinem Vorrat nach")
+    func popularRefillsFromItsStock() {
+        let popular = Self.titles((1...30).map { "p\($0)" })
+        let shelf = Self.titles((1...5).map { "p\($0)" } + (1...7).map { "s\($0)" })
+        let kept = CatalogPageOverlap.balanced([popular, shelf], buffer: 0, limit: 12)
+        #expect(Self.ids(kept)[1] == shelf.map(\.id), "the shelf keeps all twelve")
+        #expect(Self.ids(kept)[0] == (6...17).map { "p\($0)" }, "popular shows twelve from deeper in its thirty")
+        #expect(CatalogPageOverlap.refilled(popular, to: kept[0], limit: 12) == 5)
+        #expect(CatalogPageOverlap.shorter([popular, shelf], to: kept, limit: 12) == 0)
+    }
+
+    @Test("jeder Titel einmal, keine Reihe ueber 12, gleiche Bestaende geben dieselbe Seite, eine Reihe entfaellt nur ganz anderswo")
+    func theInvariantsHold() {
+        let pool = (0..<40).map { "t\($0)" }
+        let stocks = (0..<7).map { row in Self.titles((0..<20).map { pool[($0 * (row + 1) + row * 3) % pool.count] }) }
+        let kept = CatalogPageOverlap.balanced(stocks, buffer: 0, limit: 12)
         let rows = Self.ids(kept)
-        #expect(rows == [["a", "b"], ["d", "e"], ["c"], ["g", "h"]], "rows: \(rows)")
         let count = CatalogPageOverlap.count(rows: rows)
         #expect(count.duplicates == 0, "a title stands twice: \(count.examples)")
-        let fullyShown = [["a", "b"], ["b", "a"], ["c"]].map { $0.map(Title.init) }
-        let emptiedRows = Self.ids(CatalogPageOverlap.firstRowOnly(fullyShown, limit: 12))
-        #expect(emptiedRows == [["a", "b"], [], ["c"]], "rows: \(emptiedRows)")
-        #expect(CatalogPageOverlap.emptied(fullyShown, to: CatalogPageOverlap.firstRowOnly(fullyShown, limit: 12)) == 1)
-        let noStock: [[Title]] = [[], ["x"].map(Title.init)]
-        #expect(CatalogPageOverlap.emptied(noStock, to: CatalogPageOverlap.firstRowOnly(noStock, limit: 12)) == 0,
+        let longest = rows.map(\.count).max() ?? 0
+        #expect(longest <= 12, "a row longer than twelve: \(rows.map(\.count))")
+        for _ in 0..<20 {
+            #expect(Self.ids(CatalogPageOverlap.balanced(stocks, buffer: 0, limit: 12)) == rows, "the same stocks drew another page")
+        }
+        let shownAll = Set(rows.joined())
+        for (index, row) in rows.enumerated() where row.isEmpty {
+            let lost = stocks[index].map(\.id).filter { !shownAll.contains($0) }
+            #expect(lost.isEmpty, "row \(index) went empty though \(lost) stand nowhere")
+        }
+        let none = [Self.titles(["a", "b"]), Self.titles(["a", "b"]), Self.titles(["c"])]
+        #expect(CatalogPageOverlap.emptied(none, to: CatalogPageOverlap.balanced(none, buffer: nil, limit: 12)) == 0,
+                "two rows with the same titles share them")
+        let whole = [Self.titles(["a", "b"]), Self.titles(["a", "b"])]
+        #expect(CatalogPageOverlap.emptied(whole, to: CatalogPageOverlap.balanced(whole, buffer: 0, limit: 12)) == 1,
+                "the buffer whose whole stock stands in the shelf goes")
+        let noStock: [[Title]] = [[], Self.titles(["x"])]
+        #expect(CatalogPageOverlap.emptied(noStock, to: CatalogPageOverlap.balanced(noStock, buffer: 0, limit: 12)) == 0,
                 "a row without a stock of its own is no emptied row")
     }
 
@@ -85,7 +114,7 @@ struct CatalogPageOverlapTests {
         let page = try #require(code.range(of: "struct CatalogSourcePage: View"))
         let next = code.range(of: "struct CatalogPopularPage", range: page.upperBound..<code.endIndex)
         let body = code[page.upperBound..<(next?.lowerBound ?? code.endIndex)]
-        #expect(body.contains("CatalogPageOverlap.firstRowOnly("), "the overview does not split its rows")
+        #expect(body.contains("CatalogPageOverlap.balanced(stocks, buffer: 0,"), "the overview does not split its rows, Popular first as the buffer")
         #expect(!body.contains("RowPreview.cut("), "a row of the overview cuts its own stock again")
         #expect(body.components(separatedBy: "LazyHStack").count - 1 == 1, "a row of the overview draws its own strip")
         #expect(body.components(separatedBy: "previewStrip(").count - 1 == 5,

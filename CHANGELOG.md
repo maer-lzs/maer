@@ -55,6 +55,12 @@ the saved positions, speeds, jump backs and offline bookmarks of every
 book in the first. The cleanup now runs only when the server has one
 audiobook library.
 
+**Catalogue rows share their titles evenly.** On a free catalogue's
+page each title still stands once, but a title two rows hold now goes
+to the shorter row instead of always the first, so later shelves no
+longer shrink. Popular gives way to the shelves and fills its row from
+the deeper titles it already has; nothing more is fetched.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

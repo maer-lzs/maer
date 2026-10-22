@@ -317,10 +317,11 @@ struct CatalogSourcePage: View {
     static func decadeRowKey(_ key: String) -> String { "decade." + key }
 
     /// The overview's rows in page order (popular, new at LibriVox, the
-    /// filled shelves, the decades), each title once, in the first row that
-    /// shows it (`CatalogPageOverlap.firstRowOnly`). Drawing and the page's
-    /// log line read this one split.
-    private var overviewRows: (byKey: [String: [LibraryItem]], rows: [[LibraryItem]], emptied: Int) {
+    /// filled shelves, the decades), each title once, spread evenly with
+    /// Popular as the buffer (`CatalogPageOverlap.balanced`). Drawing and the
+    /// page's log line read this one split.
+    private var overviewRows: (byKey: [String: [LibraryItem]], rows: [[LibraryItem]],
+                               emptied: Int, shorter: Int, refilled: Int) {
         var keys = [Self.popularRowKey]
         var stocks = [items]
         if source == .librivox {
@@ -335,9 +336,12 @@ struct CatalogSourcePage: View {
             keys.append(Self.decadeRowKey(decade.key))
             stocks.append(decadeStock[decade.key]?.items ?? [])
         }
-        let kept = CatalogPageOverlap.firstRowOnly(stocks, limit: RowPreview.limit)
+        // Popular is the first row and the buffer: it fetches more than it shows.
+        let kept = CatalogPageOverlap.balanced(stocks, buffer: 0, limit: RowPreview.limit)
         return (Dictionary(zip(keys, kept), uniquingKeysWith: { first, _ in first }), kept,
-                CatalogPageOverlap.emptied(stocks, to: kept))
+                CatalogPageOverlap.emptied(stocks, to: kept),
+                CatalogPageOverlap.shorter(stocks, to: kept, limit: RowPreview.limit),
+                CatalogPageOverlap.refilled(stocks[0], to: kept[0], limit: RowPreview.limit))
     }
 
     /// One line per finished pass: how many titles stand in more than one
@@ -348,7 +352,7 @@ struct CatalogSourcePage: View {
                                         shelvesLoaded: shelvesLoaded) else { return }
         let split = overviewRows
         let count = CatalogPageOverlap.count(rows: split.rows.map { $0.map(\.id) })
-        Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) emptied=\(split.emptied) examples=\(count.examples.joined(separator: ","), privacy: .public)")
+        Logger.library.notice("CATALOG page source=\(source.rawValue, privacy: .public) by=\(caller, privacy: .public) rows=\(count.rows) titles=\(count.titles) duplicates=\(count.duplicates) emptied=\(split.emptied) shorter=\(split.shorter) refilled=\(split.refilled) examples=\(count.examples.joined(separator: ","), privacy: .public)")
     }
 
     /// A decade's preview row; `shown` is its share of the overview split.
@@ -371,9 +375,9 @@ struct CatalogSourcePage: View {
     /// One shelf's preview row, from the shelf's own stock.
     ///
     /// Each row asks its source for its own shelf, so a title that carries
-    /// two subjects is in both stocks; on the overview it stands only in
-    /// the first row that shows it (`shown`, the row's share of the split),
-    /// and its full shelf page keeps the whole stock.
+    /// two subjects is in both stocks; on the overview it stands in one
+    /// row only (`shown`, the row's share of the split), and its full shelf
+    /// page keeps the whole stock.
     @ViewBuilder
     private func genreRow(_ shelf: (key: String, title: String), shown: [LibraryItem]) -> some View {
         if let stock = shelfStock[shelf.key], !shown.isEmpty {
