@@ -39,6 +39,42 @@ nonisolated enum TrackFileSize {
         return size
     }
 
+    /// What a source that may transcode states for a file: its size and
+    /// type as the original. It holds only when the answer shows the
+    /// original arrived (`statedByAnswer`).
+    struct Claim: Equatable, Sendable {
+        let size: Int64
+        let contentType: String
+    }
+
+    /// Why a claim held a file to no size.
+    enum Unheld: String, Equatable {
+        /// The answer carried no length.
+        case noLength
+        /// The answer's type is not the original's: the server transcoded.
+        case transcoded
+    }
+
+    /// The size a claim holds a finished download to, read from the answer:
+    /// the claimed size when the answer carries a length and the original's
+    /// type, else none and why. Measured on Navidrome: `stream` without
+    /// `format` delivers the original byte for byte.
+    static func statedByAnswer(_ claim: Claim, answerLength: Int64, answerType: String?)
+        -> (stated: Int64?, unheld: Unheld?) {
+        guard answerLength > 0 else { return (nil, .noLength) }
+        guard let answerType, answerType.lowercased() == claim.contentType.lowercased() else {
+            return (nil, .transcoded)
+        }
+        return (claim.size, nil)
+    }
+
+    /// The claim of a track whose source may transcode: only with a size
+    /// above zero and a type.
+    static func claim(size: Int64?, contentType: String?) -> Claim? {
+        guard let size, size > 0, let contentType, !contentType.isEmpty else { return nil }
+        return Claim(size: size, contentType: contentType)
+    }
+
     static func verdict(bytes: Int64?, stated: Int64?) -> Verdict {
         guard let stated else { return .unstated }
         guard let bytes else { return .unread }

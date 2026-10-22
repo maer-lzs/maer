@@ -41,6 +41,14 @@ and place and stays on the device; before, it counted as not audio and
 the cleanup after the download deleted it. A file that is not audio is
 still removed.
 
+**A download that goes round in circles ends.** When a server states a
+length and closes the connection early, the download started over again
+and again for up to seven days without a word. After the third run that
+ends at the same byte it now fails with "A track arrived incomplete",
+and you can start it again. Music downloads from a Subsonic server are
+held to the song's size too, when the server sends the original file:
+a song that arrives shorter is not kept as finished.
+
 ## v3.5 (Build 55)
 
 **Less work while you listen.** With iCloud or a Mär sync service, what

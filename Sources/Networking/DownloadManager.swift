@@ -784,6 +784,10 @@ final class DownloadManager {
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
                 let stated = TrackFileSize.stated(
                     track.metadata?.size, downloadsTheOriginalFile: provider.capabilities.contains(.downloadsTheOriginalFile))
+                // A source that may transcode holds the file to its size only
+                // once the answer shows the original (Subsonic states a type).
+                let claim = stated == nil
+                    ? TrackFileSize.claim(size: track.metadata?.size, contentType: track.metadata?.contentType) : nil
 
                 // Resume-by-skip: tracks from an earlier attempt are kept,
                 // unless one holds fewer bytes than its source states; that
@@ -823,6 +827,7 @@ final class DownloadManager {
                     to: destination,
                     resumeData: resumeData,
                     statedBytes: stated,
+                    claim: claim,
                     onProgress: { fraction in
                         Task { @MainActor in
                             // -1 = indeterminate (no server size); pass the

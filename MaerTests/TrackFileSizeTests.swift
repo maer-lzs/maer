@@ -109,7 +109,8 @@ struct TrackFileSizeTests {
 
     /// One download through the app's session; what it threw and what lies
     /// at the destination afterwards.
-    func store(head: String, body: Data, stated: Int64?) async throws -> (error: Error?, bytes: Int64?) {
+    func store(head: String, body: Data, stated: Int64?,
+               claim: TrackFileSize.Claim? = nil) async throws -> (error: Error?, bytes: Int64?) {
         let host = try FixedAnswerHost(head: head, body: body)
         try await host.start()
         defer { host.stop() }
@@ -117,7 +118,7 @@ struct TrackFileSizeTests {
         defer { try? FileManager.default.removeItem(at: destination) }
         do {
             try await FileDownloader.shared.download(request: URLRequest(url: host.url), to: destination,
-                                                     statedBytes: stated, onProgress: { _ in })
+                                                     statedBytes: stated, claim: claim, onProgress: { _ in })
             return (nil, TrackFileSize.bytes(at: destination))
         } catch {
             return (error, TrackFileSize.bytes(at: destination))
@@ -146,6 +147,71 @@ struct TrackFileSizeTests {
     func storingWithoutAStatedSizeKeepsWhatCame() async throws {
         let stored = try await store(head: Self.noLength, body: Self.audioBytes(50_000), stated: nil)
         #expect(stored.error == nil && stored.bytes == 50_000, "the open case, named in the inventory")
+    }
+
+    @Test("ein Anspruch haelt nur, wenn die Antwort eine Laenge und den Typ des Originals traegt")
+    func aClaimHoldsOnlyByTheAnswer() {
+        let claim = TrackFileSize.Claim(size: 60_000, contentType: "audio/mpeg")
+        let original = TrackFileSize.statedByAnswer(claim, answerLength: 60_000, answerType: "Audio/MPEG")
+        #expect(original.stated == 60_000 && original.unheld == nil, "the original arrived, its size holds")
+        let transcoded = TrackFileSize.statedByAnswer(claim, answerLength: 30_000, answerType: "audio/aac")
+        #expect(transcoded.stated == nil && transcoded.unheld == .transcoded)
+        let untyped = TrackFileSize.statedByAnswer(claim, answerLength: 60_000, answerType: nil)
+        #expect(untyped.stated == nil && untyped.unheld == .transcoded, "no type is no proof of the original")
+        let noLength = TrackFileSize.statedByAnswer(claim, answerLength: -1, answerType: "audio/mpeg")
+        #expect(noLength.stated == nil && noLength.unheld == .noLength)
+        #expect(TrackFileSize.claim(size: 60_000, contentType: "audio/flac") == TrackFileSize.Claim(size: 60_000, contentType: "audio/flac"))
+        #expect(TrackFileSize.claim(size: 0, contentType: "audio/flac") == nil)
+        #expect(TrackFileSize.claim(size: 60_000, contentType: nil) == nil)
+        #expect(TrackFileSize.claim(size: 60_000, contentType: "") == nil)
+    }
+
+    @Test("Subsonic: die Spur traegt Groesse und Typ des Songs, ein kuerzeres Original wird nicht abgelegt, ein umkodiertes bleibt")
+    func aSubsonicDownloadIsHeldWhenTheOriginalArrives() async throws {
+        let built = MusicTrackAssembly.build([.init(id: "s1", title: nil, duration: 1, size: 60_000, contentType: "audio/mpeg")])
+        let metadata = try #require(built.tracks.first?.metadata)
+        #expect(metadata.size == 60_000 && metadata.contentType == "audio/mpeg", "the track carries the song's claim")
+        let claim = try #require(TrackFileSize.claim(size: metadata.size, contentType: metadata.contentType))
+        let half = Self.audioBytes(50_000)
+        let short = try await store(head: Self.withLength(50_000), body: half, stated: nil, claim: claim)
+        #expect(short.error is ShortDownloadError, "the original arrived shorter than the song: \(String(describing: short.error))")
+        #expect(short.bytes == nil)
+        let transcodedHead = "HTTP/1.1 200 OK\r\nContent-Type: audio/aac\r\nContent-Length: 50000\r\nConnection: close\r\n\r\n"
+        let transcoded = try await store(head: transcodedHead, body: half, stated: nil, claim: claim)
+        #expect(transcoded.error == nil && transcoded.bytes == 50_000, "a transcoded answer is held to nothing, as before")
+        let noLength = try await store(head: Self.noLength, body: half, stated: nil, claim: claim)
+        #expect(noLength.error == nil && noLength.bytes == 50_000, "an answer without length is held to nothing, as before")
+    }
+
+    @Test("ein Server, der eine Laenge nennt und frueh schliesst, endet als unvollstaendige Spur statt ohne Ende")
+    func aServerThatClosesEarlyEndsTheDownload() async throws {
+        let host = try FixedAnswerHost(head: Self.withLength(100_000), body: Self.audioBytes(50_000))
+        try await host.start()
+        defer { host.stop() }
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("trackfile-\(UUID().uuidString).mp3")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let ended = OSAllocatedUnfairLock<Error??>(initialState: nil)
+        let task = OSAllocatedUnfairLock<URLSessionDownloadTask?>(initialState: nil)
+        let download = Task {
+            do {
+                try await FileDownloader.shared.download(request: URLRequest(url: host.url), to: destination,
+                                                         onProgress: { _ in }, onTask: { live in task.withLock { $0 = live } })
+                ended.withLock { $0 = .some(nil) }
+            } catch {
+                ended.withLock { $0 = .some(error) }
+            }
+        }
+        // Measured: runs end at about 1, 2, 4 and 9 s; the fourth run is the
+        // third at the same byte. Without the rule nothing ends for days.
+        for _ in 0..<120 where ended.withLock({ $0 }) == nil {
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        let outcome = ended.withLock { $0 }
+        if outcome == nil { task.withLock { $0?.cancel() } }
+        _ = await download.result
+        let error = try #require(outcome, "no end after 60 s")
+        #expect(error is ShortDownloadError, "ends as a track that arrived incomplete: \(String(describing: error))")
+        #expect(TrackFileSize.bytes(at: destination) == nil, "nothing lies as a track")
     }
 
     /// A source whose capability says whether its download is the file.
@@ -202,6 +268,31 @@ struct TrackFileSizeTests {
 
         let stored = try #require(manager.localTrackMap(forItemId: itemId)[0], "a track lies there")
         #expect(TrackFileSize.bytes(at: stored) == 50_000, "the short track was loaded again: \(String(describing: TrackFileSize.bytes(at: stored)))")
+    }
+
+    @Test("der Download-Weg reicht den Anspruch einer Quelle ohne die Faehigkeit weiter: ein kuerzeres Original liegt nicht als Spur")
+    func theDownloadHandsTheClaimOn() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("trackfile-claim-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let itemId = "trackfile-\(UUID().uuidString)"
+        let host = try FixedAnswerHost(head: Self.withLength(50_000), body: Self.audioBytes(50_000))
+        try await host.start()
+        defer { host.stop() }
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        await manager.ensureScanned()
+        let song = LibraryItemDetail(
+            id: itemId,
+            media: LibraryItemMedia(metadata: nil, duration: 1, chapters: nil, tracks: [
+                ABSAudioTrack(index: 0, startOffset: 0, duration: 1, contentUrl: host.url.absoluteString,
+                              metadata: ABSFileMetadata(size: 60_000, contentType: "audio/mpeg")),
+            ]),
+            userMediaProgress: nil)
+
+        await manager.download(item: song, provider: SizedProvider(original: false), kind: nil)
+
+        #expect(manager.localTrackMap(forItemId: itemId)[0] == nil, "the original arrived shorter than the song states")
     }
 
     /// A tone the player plays, as the "server" file of a track.

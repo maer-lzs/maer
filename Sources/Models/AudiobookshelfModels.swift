@@ -342,6 +342,10 @@ nonisolated struct ABSFileMetadata: Codable, Equatable {
     /// releases do, and without a place to put it the app fell back to the
     /// file name.
     var title: String? = nil
+    /// The type the source states for the original file. A music server
+    /// that may transcode states it; a download is held to `size` only
+    /// when its answer carries this type (`TrackFileSize.Claim`).
+    var contentType: String? = nil
 }
 
 // MARK: - Progress

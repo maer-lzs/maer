@@ -196,6 +196,8 @@ nonisolated enum MusicTrackAssembly {
         let title: String?
         let duration: Double
         let size: Int64?
+        /// The original's type, where the server states it (Subsonic).
+        var contentType: String? = nil
     }
 
     static func build(_ songs: [Song])
@@ -206,7 +208,7 @@ nonisolated enum MusicTrackAssembly {
         for (i, song) in songs.enumerated() {
             tracks.append(ABSAudioTrack(
                 index: i, startOffset: offset, duration: song.duration,
-                contentUrl: song.id, metadata: ABSFileMetadata(size: song.size)
+                contentUrl: song.id, metadata: ABSFileMetadata(size: song.size, contentType: song.contentType)
             ))
             chapters.append(ABSChapter(
                 id: i, start: offset, end: offset + song.duration,

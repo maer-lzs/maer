@@ -43,6 +43,12 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         /// The size the source states for this file, where its download is
         /// that file; nil holds the result to no size.
         let statedBytes: Int64?
+        /// The size and type a source that may transcode states for the
+        /// original; it holds the result only when the answer shows the
+        /// original arrived (`TrackFileSize.statedByAnswer`).
+        let claim: TrackFileSize.Claim?
+        /// The runs of this task so far (`DownloadStall`).
+        var stall = DownloadStall()
     }
 
     // An implicitly-unwrapped `var` only because the delegate-`self` pattern
@@ -87,12 +93,16 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     /// must exist). `resumeData` continues a previously paused transfer.
     /// `onTask` hands the live task to the caller for pause/cancel control.
     /// `statedBytes` is the size the result must reach (`TrackFileSize`):
-    /// fewer bytes are not kept and throw `ShortDownloadError`.
+    /// fewer bytes are not kept and throw `ShortDownloadError`. `claim`
+    /// does the same for a source that may transcode, once the answer
+    /// shows the original arrived. A task that ends `DownloadStall.limit`
+    /// runs at the same byte also throws `ShortDownloadError`.
     func download(
         request: URLRequest,
         to destination: URL,
         resumeData: Data? = nil,
         statedBytes: Int64? = nil,
+        claim: TrackFileSize.Claim? = nil,
         onProgress: @escaping (Double) -> Void,
         onTask: ((URLSessionDownloadTask) -> Void)? = nil
     ) async throws {
@@ -106,7 +116,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
                 ?? session.downloadTask(with: request)
             lock.lock()
             handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation,
-                                                    statedBytes: statedBytes)
+                                                    statedBytes: statedBytes, claim: claim)
             var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
             map[String(task.taskIdentifier)] = destination.path
             AppStorageKeys.set(map, for: destinationsKey)
@@ -139,8 +149,20 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         totalBytesExpectedToWrite: Int64
     ) {
         lock.lock()
+        let stalled = handlers[downloadTask.taskIdentifier]?.stall.written(bytesWritten, total: totalBytesWritten) ?? false
         let handler = handlers[downloadTask.taskIdentifier]
         lock.unlock()
+        // A server that states a length and closes early makes the session
+        // start over without end (`DownloadStall`): the task ends here as a
+        // track that arrived incomplete.
+        if stalled, let taken = takeHandler(downloadTask.taskIdentifier) {
+            _ = takeDestination(downloadTask.taskIdentifier)
+            Logger.library.error("DOWNLOAD stalled task=\(downloadTask.taskIdentifier) bytes=\(taken.stall.best) expected=\(totalBytesExpectedToWrite) rounds=\(DownloadStall.limit), failed")
+            downloadTask.cancel()
+            taken.continuation.resume(throwing: ShortDownloadError(bytes: taken.stall.best,
+                                                                   stated: max(totalBytesExpectedToWrite, 0)))
+            return
+        }
         // Servers without a Content-Length (chunked transfer. Common for
         // podcast CDNs and transcoded streams) report an unknown total: signal
         // an indeterminate download (-1) instead of never reporting, which left
@@ -175,7 +197,17 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         // length or a chunked body lost its last chunk (measured): the size
         // the source states decides. An orphan has no stated size here; the
         // resume and the player hold the file to it later.
-        if let stated = handler?.statedBytes {
+        var held = handler?.statedBytes
+        if held == nil, let claim = handler?.claim {
+            let answer = downloadTask.response
+            let byAnswer = TrackFileSize.statedByAnswer(claim, answerLength: answer?.expectedContentLength ?? -1,
+                                                        answerType: answer?.mimeType)
+            held = byAnswer.stated
+            if let unheld = byAnswer.unheld {
+                Logger.library.notice("DOWNLOAD size unheld file=\(destination.lastPathComponent, privacy: .public) reason=\(unheld.rawValue, privacy: .public) claimed=\(claim.size)")
+            }
+        }
+        if let stated = held {
             let bytes = TrackFileSize.bytes(at: location)
             switch TrackFileSize.verdict(bytes: bytes, stated: stated) {
             case .short:
