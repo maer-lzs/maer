@@ -51,21 +51,33 @@ nonisolated enum TrackFileSize {
     enum Unheld: String, Equatable {
         /// The answer carried no length.
         case noLength
-        /// The answer's type is not the original's: the server transcoded.
+        /// The answer names another size or type than the original's: the
+        /// server transcoded (a lower bitrate keeps the type, so the size
+        /// decides) or sent another file.
         case transcoded
     }
 
     /// The size a claim holds a finished download to, read from the answer:
-    /// the claimed size when the answer carries a length and the original's
-    /// type, else none and why. Measured on Navidrome: `stream` without
-    /// `format` delivers the original byte for byte.
-    static func statedByAnswer(_ claim: Claim, answerLength: Int64, answerType: String?)
-        -> (stated: Int64?, unheld: Unheld?) {
-        guard answerLength > 0 else { return (nil, .noLength) }
-        guard let answerType, answerType.lowercased() == claim.contentType.lowercased() else {
+    /// the claimed size only when the answer itself names it (its length,
+    /// or for a partial answer the whole size in its range) and the
+    /// original's type, else none and why. Measured on Navidrome: `stream`
+    /// without `format` delivers the original byte for byte.
+    static func statedByAnswer(_ claim: Claim, answerLength: Int64, answerTotal: Int64? = nil,
+                               answerType: String?) -> (stated: Int64?, unheld: Unheld?) {
+        let named = answerTotal ?? answerLength
+        guard named > 0 else { return (nil, .noLength) }
+        guard named == claim.size, let answerType,
+              answerType.lowercased() == claim.contentType.lowercased() else {
             return (nil, .transcoded)
         }
         return (claim.size, nil)
+    }
+
+    /// The whole size a partial answer names in `Content-Range`
+    /// (`bytes 0-99/1234` → 1234); nil without one or for `*`.
+    static func total(contentRange: String?) -> Int64? {
+        guard let contentRange, let slash = contentRange.lastIndex(of: "/") else { return nil }
+        return Int64(contentRange[contentRange.index(after: slash)...].trimmingCharacters(in: .whitespaces))
     }
 
     /// The claim of a track whose source may transcode: only with a size

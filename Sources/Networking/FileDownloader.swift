@@ -200,8 +200,11 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         var held = handler?.statedBytes
         if held == nil, let claim = handler?.claim {
             let answer = downloadTask.response
+            let http = answer as? HTTPURLResponse
+            let total = http?.statusCode == 206
+                ? TrackFileSize.total(contentRange: http?.value(forHTTPHeaderField: "Content-Range")) : nil
             let byAnswer = TrackFileSize.statedByAnswer(claim, answerLength: answer?.expectedContentLength ?? -1,
-                                                        answerType: answer?.mimeType)
+                                                        answerTotal: total, answerType: answer?.mimeType)
             held = byAnswer.stated
             if let unheld = byAnswer.unheld {
                 Logger.library.notice("DOWNLOAD size unheld file=\(destination.lastPathComponent, privacy: .public) reason=\(unheld.rawValue, privacy: .public) claimed=\(claim.size)")

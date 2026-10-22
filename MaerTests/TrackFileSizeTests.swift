@@ -149,13 +149,21 @@ struct TrackFileSizeTests {
         #expect(stored.error == nil && stored.bytes == 50_000, "the open case, named in the inventory")
     }
 
-    @Test("ein Anspruch haelt nur, wenn die Antwort eine Laenge und den Typ des Originals traegt")
+    @Test("ein Anspruch haelt nur, wenn die Antwort selbst die Groesse und den Typ des Originals nennt")
     func aClaimHoldsOnlyByTheAnswer() {
         let claim = TrackFileSize.Claim(size: 60_000, contentType: "audio/mpeg")
         let original = TrackFileSize.statedByAnswer(claim, answerLength: 60_000, answerType: "Audio/MPEG")
         #expect(original.stated == 60_000 && original.unheld == nil, "the original arrived, its size holds")
         let transcoded = TrackFileSize.statedByAnswer(claim, answerLength: 30_000, answerType: "audio/aac")
         #expect(transcoded.stated == nil && transcoded.unheld == .transcoded)
+        let lowerBitrate = TrackFileSize.statedByAnswer(claim, answerLength: 36_000, answerType: "audio/mpeg")
+        #expect(lowerBitrate.stated == nil && lowerBitrate.unheld == .transcoded,
+                "mp3 320 to mp3 192 keeps the type, the length tells it")
+        let partial = TrackFileSize.statedByAnswer(claim, answerLength: 50_000, answerTotal: 60_000, answerType: "audio/mpeg")
+        #expect(partial.stated == 60_000, "a partial answer names the whole size in its range")
+        #expect(TrackFileSize.total(contentRange: "bytes 0-49999/60000") == 60_000)
+        #expect(TrackFileSize.total(contentRange: "bytes 0-49999/*") == nil)
+        #expect(TrackFileSize.total(contentRange: nil) == nil)
         let untyped = TrackFileSize.statedByAnswer(claim, answerLength: 60_000, answerType: nil)
         #expect(untyped.stated == nil && untyped.unheld == .transcoded, "no type is no proof of the original")
         let noLength = TrackFileSize.statedByAnswer(claim, answerLength: -1, answerType: "audio/mpeg")
@@ -166,6 +174,10 @@ struct TrackFileSizeTests {
         #expect(TrackFileSize.claim(size: 60_000, contentType: "") == nil)
     }
 
+    /// A partial answer that names the original's whole size and delivers
+    /// less: the one answer a claim holds while the body falls short.
+    static let partialOfTheOriginal = "HTTP/1.1 206 Partial Content\r\nContent-Type: audio/mpeg\r\nContent-Length: 50000\r\nContent-Range: bytes 0-49999/60000\r\nConnection: close\r\n\r\n"
+
     @Test("Subsonic: die Spur traegt Groesse und Typ des Songs, ein kuerzeres Original wird nicht abgelegt, ein umkodiertes bleibt")
     func aSubsonicDownloadIsHeldWhenTheOriginalArrives() async throws {
         let built = MusicTrackAssembly.build([.init(id: "s1", title: nil, duration: 1, size: 60_000, contentType: "audio/mpeg")])
@@ -173,9 +185,12 @@ struct TrackFileSizeTests {
         #expect(metadata.size == 60_000 && metadata.contentType == "audio/mpeg", "the track carries the song's claim")
         let claim = try #require(TrackFileSize.claim(size: metadata.size, contentType: metadata.contentType))
         let half = Self.audioBytes(50_000)
-        let short = try await store(head: Self.withLength(50_000), body: half, stated: nil, claim: claim)
+        let short = try await store(head: Self.partialOfTheOriginal, body: half, stated: nil, claim: claim)
         #expect(short.error is ShortDownloadError, "the original arrived shorter than the song: \(String(describing: short.error))")
         #expect(short.bytes == nil)
+        let sameType = try await store(head: Self.withLength(50_000), body: half, stated: nil, claim: claim)
+        #expect(sameType.error == nil && sameType.bytes == 50_000,
+                "same type, another length: transcoded at a lower bitrate, held to nothing")
         let transcodedHead = "HTTP/1.1 200 OK\r\nContent-Type: audio/aac\r\nContent-Length: 50000\r\nConnection: close\r\n\r\n"
         let transcoded = try await store(head: transcodedHead, body: half, stated: nil, claim: claim)
         #expect(transcoded.error == nil && transcoded.bytes == 50_000, "a transcoded answer is held to nothing, as before")
@@ -276,7 +291,7 @@ struct TrackFileSizeTests {
             .appendingPathComponent("trackfile-claim-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let itemId = "trackfile-\(UUID().uuidString)"
-        let host = try FixedAnswerHost(head: Self.withLength(50_000), body: Self.audioBytes(50_000))
+        let host = try FixedAnswerHost(head: Self.partialOfTheOriginal, body: Self.audioBytes(50_000))
         try await host.start()
         defer { host.stop() }
         let manager = DownloadManager(documents: directory,
