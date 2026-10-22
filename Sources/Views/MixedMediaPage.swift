@@ -64,14 +64,16 @@ struct HomeRecentlyAddedTile: View {
     let item: LibraryItem
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
+    /// The row's slot; the full page hands in its column's width.
+    var width: CGFloat = 150
 
     var body: some View {
         if let entry = libraryViewModel.entry(id: item.id) {
-            BookGridCell(entry: entry, width: 150,
+            BookGridCell(entry: entry, width: width,
                          playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
                 .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         } else {
-            AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
+            AlbumCell(item: item, width: width, playerCoordinator: playerCoordinator)
                 .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         }
     }
@@ -160,7 +162,8 @@ struct MixedMediaPage: View {
                     ForEach(addedItems) { item in
                         HomeRecentlyAddedTile(item: item,
                                               playerCoordinator: playerCoordinator,
-                                              libraryViewModel: libraryViewModel)
+                                              libraryViewModel: libraryViewModel,
+                                              width: cardWidth)
                             .frame(width: cardWidth, alignment: .top)
                     }
                 case .listenAgain:

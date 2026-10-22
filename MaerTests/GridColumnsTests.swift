@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// A cell of the full row page is as wide as its column: on a 393 pt phone
@@ -29,6 +30,22 @@ struct GridColumnsTests {
         #expect(GridColumns.layout(available: 315, minimum: 150, spacing: 16) == .init(count: 1, width: 315),
                 "one point short of two columns: one column, as wide as the page")
         #expect(GridColumns.layout(available: 316, minimum: 150, spacing: 16) == .init(count: 2, width: 150))
+    }
+
+    /// The grid gives the column; a tile that draws itself at a fixed
+    /// width inside it stands in the column with room on both sides.
+    @Test("die Vollseite gibt jeder Zelle die Spaltenbreite, keine Zelle zeichnet fest 150", .needsTheSources)
+    func everyCellOfThePageTakesTheColumn() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MixedMediaPage.swift"), encoding: .utf8))
+        let tile = try #require(code.components(separatedBy: "struct HomeRecentlyAddedTile").dropFirst().first?
+            .components(separatedBy: "\nstruct ").first)
+        #expect(!tile.contains("width: 150,") && !tile.contains("width: 150)"), "the tile draws at a fixed width")
+        // The last case is the page's grid; the first names the row.
+        let added = try #require(code.components(separatedBy: "case .recentlyAdded:").dropFirst().last?
+            .components(separatedBy: ".frame(").first)
+        #expect(added.contains("HomeRecentlyAddedTile(") && added.contains("width: cardWidth"),
+                "the page hands the tile its column's width")
     }
 }
 #endif
