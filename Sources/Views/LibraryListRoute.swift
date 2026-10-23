@@ -36,8 +36,9 @@ nonisolated enum LibraryListRoute: Hashable {
     case history
 
     /// The entries of the books tab's tile deck, in order. Genres stand
-    /// in the search deck only.
-    static let bookTabEntries: [LibraryListRoute] = [.groups(.series), .groups(.authors), .localFiles, .history]
+    /// in the search deck only; the history is the row at the end of the
+    /// tab, as in music and podcasts.
+    static let bookTabEntries: [LibraryListRoute] = [.groups(.series), .groups(.authors), .localFiles]
 
     /// The books of one group of a kind: the route a row of the groups page
     /// opens, the same a typed hit opens.

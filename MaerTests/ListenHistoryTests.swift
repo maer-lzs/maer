@@ -128,22 +128,25 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.shownDate(now) == Date(timeIntervalSince1970: 1_700_000_000))
     }
 
-    /// Both tabs open the one page, each with its family: the music tab and
-    /// the serverless books tab by the one entry row at their end (the
-    /// podcast tab too), the books tab with a server by its tile; the
-    /// episode history and this page draw the one row.
-    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, die Musik und Buecher ohne Server ueber die eine Reihe am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
+    /// Both tabs open the one page, each with its family: music and books,
+    /// with and without a server, by the one entry row at the end of the
+    /// tab (the podcast tab too); the episode history and this page draw
+    /// the one row.
+    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, Musik und Buecher mit und ohne Server ueber die eine Reihe am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
     func bothTabsOpenTheOnePage() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
-        #expect(LibraryListRoute.bookTabEntries.last == .history, "the books tab deck has no history tile")
+        #expect(!LibraryListRoute.bookTabEntries.contains(.history), "the books tab deck carries a history tile again")
         #expect(LibraryListRoute.history.title == String(localized: "Listening History"))
         #expect(MusicRoute.history.accessibilityId == "music-route-history")
         let library = try code("Sources/Views/LibraryView.swift")
-        #expect(FetchAnswerTests.squeezed(library).contains("case .history: ListenHistoryScreen(family: .book)"),
+        let squeezedLibrary = FetchAnswerTests.squeezed(library)
+        #expect(squeezedLibrary.contains("case .history: ListenHistoryScreen(family: .book)"),
                 "the books route opens another page")
-        #expect(library.contains("ListeningHistoryRow(route: LibraryListRoute.history"), "the serverless tab has no history row")
+        #expect(library.contains("ListeningHistoryRow(route: LibraryListRoute.history"), "the books tab has no history row")
+        #expect(squeezedLibrary.contains("historySection } else {") && squeezedLibrary.contains("bookTabDeck historySection }"),
+                "the books tab ends without its history row, with or without a server")
         let music = try code("Sources/Views/Music/MusicNavigation.swift")
         #expect(FetchAnswerTests.squeezed(music).contains("case .history: ListenHistoryScreen(family: .music)"),
                 "the music route opens another page")

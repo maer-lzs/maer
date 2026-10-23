@@ -36,10 +36,10 @@ bars of the last 14 days count back from today, so today's bar always
 shows its date; before, they counted from the oldest day and today's bar
 had none.
 
-**The music history at the end of the tab.** Music shows its Listening
-History as the last row of the tab, like Podcasts; the tile in the library
-deck is gone. Podcasts, music and audiobooks without a server share this
-one row, with the same clock symbol.
+**The listening history at the end of every tab.** Music and Audiobooks
+show their Listening History as the last row of the tab, like Podcasts;
+the tiles in the music deck and in the audiobook deck with a server are
+gone. All three tabs share this one row, with the same clock symbol.
 
 **A download keeps a track it cannot read.** When a finished download
 holds a track whose first bytes cannot be read, the track keeps its name

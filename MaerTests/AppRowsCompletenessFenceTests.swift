@@ -229,7 +229,7 @@ struct AppRowsCompletenessFenceTests {
                       ("FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)", "books.catalog"),
                       ("} else {", nil), ("AbsSessionStateBanner()", nil), ("stockSections", nil),
                       ("librarySectionState", nil), ("allBooksSection", "books.allBooks"),
-                      ("freeAudiobooksSection", "books.catalog"), ("bookTabDeck", nil)]),
+                      ("freeAudiobooksSection", "books.catalog"), ("bookTabDeck", nil), ("historySection", nil)]),
         Order(file: "Sources/Views/LibraryView.swift",
               from: "private var stockSections: some View {",
               steps: [("downloadedSection", "books.downloaded"), ("recentlyAddedGrid", "books.recentlyAdded")]),

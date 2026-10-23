@@ -35,7 +35,7 @@ struct BookGroupsTests {
 
     @Test("der Reiter und die Suche oeffnen fuer Serien und Autoren dieselbe Seite, ein Tipp in einer Gruppe dieselbe Buchliste wie ein Treffer")
     func tabAndSearchOpenTheSamePage() {
-        #expect(LibraryListRoute.bookTabEntries == [.groups(.series), .groups(.authors), .localFiles, .history])
+        #expect(LibraryListRoute.bookTabEntries == [.groups(.series), .groups(.authors), .localFiles])
         let tiles = SearchDeckTiles.tiles(scope: .audiobooks, counts: SearchDeckCounts())
         let searchKinds: [BookGroupKind] = tiles.compactMap {
             if case .group(let kind) = $0.destination { return kind } else { return nil }

@@ -1196,8 +1196,8 @@ struct LibraryView: View {
         }
     }
 
-    /// Serverless: the listening history as a row at the end of the tab.
-    /// The same route the tile deck opens with a server.
+    /// The listening history as the row at the end of the tab, with and
+    /// without a server: the one row music and podcasts end with.
     private var historySection: some View {
         ListeningHistoryRow(route: LibraryListRoute.history, accessibilityId: LibraryListRoute.history.tileId)
     }
@@ -1316,8 +1316,10 @@ struct LibraryView: View {
                     if freeAudiobooksArea {
                         freeAudiobooksSection
                     }
-                    // Place 7: the entries into the own library.
+                    // The entries into the own library, then the history
+                    // at the end of the tab.
                     bookTabDeck
+                    historySection
                 }
             }
             // Force full width explicitly. Without it the stack's width follows
