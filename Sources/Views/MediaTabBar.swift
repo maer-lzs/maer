@@ -22,6 +22,10 @@ struct MediaTabBar: View {
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
+    /// Upright where the system stands its bars upright (`TabBarPlacement`):
+    /// the same cells one under the other, symbols only as at accessibility
+    /// sizes, the name stays for VoiceOver.
+    var upright = false
 
     /// At accessibility sizes the caption labels truncated anyway.
     /// Icons only, the label lives on as the accessibility label.
@@ -86,16 +90,25 @@ struct MediaTabBar: View {
         // ladder probes the REAL rows invisibly on main and builds only the
         // chosen one; the behaviour contract (one size per bar, whole titles,
         // descending rungs) is unchanged and the journeys still fence it.
-        MeasuredLadder(rungs: Self.labelSizes) { size, probing in
-            TabRowCandidate(types: types, selected: selected,
-                            labelSize: size, hideLabels: hideLabels,
-                            namespace: namespace, probing: probing,
-                            onSelect: onSelect)
+        Group {
+            if upright {
+                // A column has no width to fall back on: no labels, no ladder.
+                TabRowCandidate(types: types, selected: selected,
+                                labelSize: Self.baseLabelSize, hideLabels: true,
+                                namespace: namespace, upright: true, onSelect: onSelect)
+            } else {
+                MeasuredLadder(rungs: Self.labelSizes) { size, probing in
+                    TabRowCandidate(types: types, selected: selected,
+                                    labelSize: size, hideLabels: hideLabels,
+                                    namespace: namespace, probing: probing,
+                                    onSelect: onSelect)
+                }
+            }
         }
         .animation(.snappy(duration: 0.3), value: selected)
-        // The end padding IS the pill gap. The pill's horizontal distance
-        // to the bar's rounded ends equals its vertical inset everywhere.
-        .padding(.horizontal, Self.pillGap)
+        // The end padding IS the pill gap. The pill's distance to the bar's
+        // rounded ends equals its inset along the bar everywhere.
+        .padding(upright ? .vertical : .horizontal, Self.pillGap)
         .modifier(AdaptiveGlassBackground(
             shape: Capsule(), tier: .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
@@ -117,6 +130,8 @@ nonisolated private struct TabRowCandidate: View {
     /// Probe rows must not mount the matched-geometry pill. Seven hidden
     /// copies of one geometry id would fight over it.
     var probing: Bool = false
+    /// The cells one under the other (`MediaTabBar.upright`).
+    var upright: Bool = false
     let onSelect: (MediaType) -> Void
 
     /// Mirror. Kept in sync with `MediaTabBar.pillGap` via the shared
@@ -125,7 +140,9 @@ nonisolated private struct TabRowCandidate: View {
     private static let cellSpacing: CGFloat = 4
 
     var body: some View {
-        HStack(spacing: Self.cellSpacing) {
+        let layout = upright ? AnyLayout(VStackLayout(spacing: Self.cellSpacing))
+                             : AnyLayout(HStackLayout(spacing: Self.cellSpacing))
+        layout {
             ForEach(types) { type in
                 Button {
                     onSelect(type)
@@ -165,7 +182,7 @@ nonisolated private struct TabRowCandidate: View {
                             Capsule()
                                 .fill(type.tint.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabPill", in: namespace)
-                                .padding(.vertical, Self.pillGap)
+                                .padding(upright ? .horizontal : .vertical, Self.pillGap)
                         }
                     }
                     .contentShape(Rectangle())

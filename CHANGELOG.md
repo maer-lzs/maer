@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**On the folded iPhone Duo the tabs stand at the side.** Where the
+system stands its own bars upright, the tabs and the search stand
+upright under the clock, as the system's bars do, and the bottom keeps
+only what is playing.
+
 **The book page fits its window.** On the iPhone Duo, folded or open,
 and in a window that shares the screen, the cover at the top of a book
 takes the width of the window, and on its side the page shows the large

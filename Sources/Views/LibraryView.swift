@@ -47,6 +47,12 @@ struct LibraryView: View {
     /// not the goal; it comes with the smallest way there and is named.
     @State private var navigationPaths: [MediaType: NavigationPath] = [:]
     @State private var isShowingFullPlayer = false
+    /// Where the system stands its bars upright (folded iPhone Duo); the
+    /// tab bar follows it (`TabBarPlacement`).
+    @State private var verticalBarSide: VerticalBarSide?
+    /// How far down the system reserves the side strip (status bar, camera).
+    @State private var reservedSideTop: CGFloat = 0
+    private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
     /// Up-Next queue sheet (mini-player long-press entry).
     @State private var showQueueSheet = false
     /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
@@ -506,6 +512,27 @@ struct LibraryView: View {
                         selectedMediaType = .home
                     }
                 }
+        // Where the system stands its bars upright, the tabs and the search
+        // stand in the strip the system keeps free at that edge, under the
+        // status bar; the bottom keeps only what plays.
+        .overlay {
+            if tabBarPlacement.isSide, !isShowingFullPlayer, !isShowingSearch {
+                GeometryReader { proxy in
+                    let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
+                    VStack(spacing: 10) {
+                        mediaBar(upright: true)
+                        searchButton
+                    }
+                    .frame(width: max(strip, 60))
+                    .padding(.top, reservedSideTop + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity,
+                           alignment: verticalBarSide == .leading ? .topLeading : .topTrailing)
+                    .ignoresSafeArea()
+                    .readsReservedTop(ofStripWidth: strip, $reservedSideTop)
+                }
+            }
+        }
+        .readsVerticalBarSide($verticalBarSide)
         // Bottom zone as an OVERLAY (reserves no space). The free space is
         // provided by the scroll contents themselves via `bottomBarClearance()`,
         // which also covers pushed screens (detail, podcast show) cleanly.
@@ -832,15 +859,17 @@ struct LibraryView: View {
                 }
             } else {
             let composedCollapsed = barCollapsed
+            // With the tabs at the side the bottom keeps only what plays.
+            let tabsBelow = !tabBarPlacement.isSide
             if !composedCollapsed { banner }
             HStack(spacing: 8) {
-                if composedCollapsed { homeButton }
+                if composedCollapsed && tabsBelow { homeButton }
                 miniPlayer(collapsed: barCollapsed)
-                if composedCollapsed { searchButton }
+                if composedCollapsed && tabsBelow { searchButton }
             }
-            if !composedCollapsed {
+            if !composedCollapsed && tabsBelow {
                 HStack(spacing: 10) {
-                    mediaBar
+                    mediaBar()
                     Spacer(minLength: 0)
                     searchButton
                 }
@@ -912,7 +941,7 @@ struct LibraryView: View {
     }
 
     @ViewBuilder
-    private var mediaBar: some View {
+    private func mediaBar(upright: Bool = false) -> some View {
         if availableMediaTypes.count > 1 {
             MediaTabBar(
                 types: availableMediaTypes, selected: selectedMediaType,
@@ -924,7 +953,8 @@ struct LibraryView: View {
                     BottomBarState.shared.reset()   // switching tabs expands the bar
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
                 },
-                glassMorphID: "media", glassMorphNamespace: bottomGlassNS)
+                glassMorphID: "media", glassMorphNamespace: bottomGlassNS,
+                upright: upright)
             .matchedGeometryEffect(id: "media", in: barNS)
         }
     }
