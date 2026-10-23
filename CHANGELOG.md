@@ -8,6 +8,12 @@ new one is ready; before, it left the screen for up to a second. A title
 that cannot start no longer ends a shuffle or an album: the app says
 which one it skipped and plays the next, after three in a row it stops.
 
+**The Continue Listening widget shows its cover to the edge.** In both
+sizes the cover fills the whole widget, with title, author, time left and
+progress over it at the bottom; before, the medium widget showed a small
+cover beside the text, and the small one left a dark strip on some
+devices.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

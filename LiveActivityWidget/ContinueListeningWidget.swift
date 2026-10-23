@@ -85,17 +85,18 @@ private struct ContinueListeningView: View {
             }
         }
         .containerBackground(for: .widget) {
-            if family == .systemSmall, entry.snapshot != nil {
-                smallBackground
+            if entry.snapshot != nil {
+                coverBackground
             } else {
                 Color(.systemBackground)
             }
         }
     }
 
-    /// Small: the cover is the widget's background, which the system draws
-    /// to every edge whatever its content margins are on this device; title
-    /// and progress bar stand at the bottom inside those margins.
+    /// Small and medium: the cover is the widget's background, which the
+    /// system draws to every edge whatever its content margins are on this
+    /// device; the text and the progress bar stand at the bottom inside
+    /// those margins.
     private func small(_ snapshot: WidgetSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Spacer(minLength: 0)
@@ -109,48 +110,44 @@ private struct ContinueListeningView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }
 
-    /// The cover of the small widget with the shade that keeps the title
-    /// readable.
-    private var smallBackground: some View {
+    /// The cover with the shade that keeps the text readable. The medium
+    /// widget carries four lines of text, so its shade starts at the top.
+    private var coverBackground: some View {
         ZStack {
             coverImage
             LinearGradient(
-                colors: [.clear, .black.opacity(0.75)],
-                startPoint: .center, endPoint: .bottom
+                colors: family == .systemMedium ? [.black.opacity(0.2), .black.opacity(0.8)] : [.clear, .black.opacity(0.75)],
+                startPoint: family == .systemMedium ? .top : .center, endPoint: .bottom
             )
         }
     }
 
-    /// Medium: cover on the left, title, author, remaining time and bar on
-    /// the right.
+    /// Medium: title, author, remaining time and bar at the bottom, over
+    /// the cover.
     private func medium(_ snapshot: WidgetSnapshot) -> some View {
-        HStack(spacing: 12) {
-            coverImage
-                .frame(width: 96, height: 96)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(snapshot.title)
-                    .font(.subheadline.bold())
-                    .lineLimit(2)
-                if let author = snapshot.author {
-                    Text(author)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 2)
-                // The step of this entry's minute while playing.
-                let shown = snapshot.shown(at: entry.date)
-                if let remaining = shown.remainingText {
-                    Text(remaining)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                ProgressView(value: shown.fraction)
-                    .tint(.orange)
+        VStack(alignment: .leading, spacing: 3) {
+            Spacer(minLength: 0)
+            Text(snapshot.title)
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .lineLimit(2)
+            if let author = snapshot.author {
+                Text(author)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
             }
+            // The step of this entry's minute while playing.
+            let shown = snapshot.shown(at: entry.date)
+            if let remaining = shown.remainingText {
+                Text(remaining)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            ProgressView(value: shown.fraction)
+                .tint(.orange)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }
 
     @ViewBuilder
