@@ -7,8 +7,8 @@ import SwiftUI
 
 /// The tone of every mark and pill on a cover or card: the fill of the
 /// card's Details pill over a dark disc. One place, so a change of tone is
-/// these lines. The shade is 0.55: at 0.35 a white mark on a white cover
-/// stood at about 1.95 to 1 (computed), at 0.55 about 3.1 to 1.
+/// these lines. The shade is 0.55 so a white mark on a white cover keeps
+/// about 3.1 to 1 (computed); a lighter shade falls under 3 to 1.
 enum GlyphTone {
     static let fill = Color.white.opacity(0.22)
     static let shade = Color.black.opacity(0.55)

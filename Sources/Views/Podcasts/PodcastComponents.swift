@@ -206,9 +206,8 @@ struct RecentShowTile: View {
             // The shorter side: see `MediaTile`.
             .onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }
             // The lock, not available offline and the count in the one
-            // stack at the top right. Before, the offline disc stood at the
-            // top left, the lock at the bottom right, the count alone at
-            // the top right.
+            // stack at the top right, the same corner and order as every
+            // tile.
             .overlay(alignment: .topTrailing) {
                 // A show tile has no control at the bottom right; the count
                 // keeps its red as a signal.

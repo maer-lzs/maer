@@ -108,9 +108,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
                 // The kind, the lock and the offline disc stand in the one
-                // stack at the top right, in this order; before, the kind
-                // stood at the top left and the disc lay over the lock. The
-                // bottom right carries the tile's control.
+                // stack at the top right, in this order, so no mark lies over
+                // another. The bottom right carries the tile's control.
                 .overlay(alignment: .topTrailing) {
                     StandardCoverMarks(kind: kind, lock: lock, availability: unavailable ? .offline : nil,
                                        coverSide: coverSide, cornerSide: cornerSide)

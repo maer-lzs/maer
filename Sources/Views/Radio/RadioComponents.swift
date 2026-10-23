@@ -145,7 +145,7 @@ struct RadioStationCard: View {
                     .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     // The kind in a mixed row and the star stand in the one
-                    // stack at the top right; before, both took the top left.
+                    // stack at the top right, the same corner as every tile.
                     .overlay(alignment: .topTrailing) {
                         StandardCoverMarks(kind: kind, favourite: isFavorite, coverSide: width, cornerSide: cornerSide)
                     }

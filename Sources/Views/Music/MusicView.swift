@@ -517,8 +517,7 @@ struct AlbumCell: View {
                     .onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }
                     // Dimming alone never carries the state: the kind in a
                     // mixed row and not available offline stand in the one
-                    // stack at the top right; before, the kind stood at the
-                    // top left.
+                    // stack at the top right, the same corner as every tile.
                     .overlay(alignment: .topTrailing) {
                         StandardCoverMarks(kind: kind, availability: unavailable ? .offline : nil, coverSide: coverSide)
                     }

@@ -84,9 +84,9 @@ struct CardDownloadBadge: View {
 /// The marks of a FeaturedCard at its top right, in the one stack of the
 /// tiles: the kind in a mixed row (`stackedKind`), the lock of a feed, and
 /// what availability says (`CoverAvailability.of`: downloaded, or not
-/// available offline). Before, downloaded and offline stood as capsules in
-/// the bottom-right corner beside the download ring. The one observing
-/// leaf of the card's download state at the top.
+/// available offline). The bottom right stays the download ring's alone, so
+/// a tap there only ever reaches the ring. The one observing leaf of the
+/// card's download state at the top.
 struct CardMarks: View {
     let itemId: String
     /// The lock of the episode's feed; nil for what has no feed (a book).

@@ -66,9 +66,9 @@ struct BookCoverView: View {
         // checkmark. Desaturated and slightly dimmed.
         .saturation(progress?.countsAsFinished == true ? 0 : 1)
         .opacity(progress?.countsAsFinished == true ? 0.55 : (unavailable ? 0.5 : 1))
-        // The one stack at the top right. Before, the finished check and
-        // the offline disc shared this corner and the download state stood
-        // at the bottom left. The bottom right keeps room for the install
+        // The one stack at the top right carries finished, availability and
+        // the download state together, so no corner holds two marks over
+        // each other. The bottom right keeps room for the install
         // ring the enclosing cell lays over the cover (see BookGridCell), so
         // a tap on the ring cancels instead of navigating.
         .overlay(alignment: .topTrailing) {

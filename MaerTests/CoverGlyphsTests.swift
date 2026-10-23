@@ -178,8 +178,8 @@ struct CoverGlyphsTests {
         let pills = try FetchAnswerTests.squeezedSource("Sources/Views/CardPillControls.swift")
         #expect(pills.contains("fill: GlyphTone.fill, shade: GlyphTone.shade, glyphAfterTitle: true") && pills.contains(".glyphCapsule()"),
                 "the card's pill or corner button lost the dark shade of the tone")
-        // No tile marks its kind at the top left any more; the grip that did
-        // is gone, and so is the old offline modifier beside the stack.
+        // No tile marks its kind at the top left, and no offline modifier
+        // stands beside the stack: the kind and availability live in it.
         let kindFile = try FetchAnswerTests.squeezedSource("Sources/Views/KindGlyph.swift")
         let badgeFile = try FetchAnswerTests.squeezedSource("Sources/Views/CoverBadge.swift")
         #expect(!kindFile.contains("alignment: .topLeading") && !badgeFile.contains("func offlineUnavailableBadge("),
