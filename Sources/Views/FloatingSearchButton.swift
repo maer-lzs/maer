@@ -20,6 +20,8 @@ struct FloatingSearchButton: View {
     /// 56 at the bottom; the side column is narrower (46, never under the
     /// 44 pt a finger needs). The glyph keeps its share of the circle.
     var diameter: CGFloat = 56
+    /// Glass at the bottom; the system's bar material in the side column.
+    var tier: GlassTier = .glass
 
     var body: some View {
         Button(action: action) {
@@ -33,7 +35,7 @@ struct FloatingSearchButton: View {
         }
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(
-            shape: Circle(), tier: .glass,
+            shape: Circle(), tier: tier,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         .accessibilityLabel(Text(label))
     }

@@ -34,7 +34,10 @@ extension EnvironmentValues {
 /// few hero/control surfaces (bottom bar, sort, settings) opt into `.glass`, so
 /// the expensive glass runs on a handful of surfaces instead of ~20 (Apple's
 /// "use glass sparingly"; glass everywhere caused the bottom-bar morph hitch).
-nonisolated enum GlassTier { case material, glass }
+/// `.bar`: the system's own bar material, the milk glass behind the clock
+/// and Wi-Fi in an upright status column; our side column takes it so its
+/// buttons read as dense and as bright as the system's (Laurenz, 24.10.2026).
+nonisolated enum GlassTier { case material, glass, bar }
 
 extension View {
     /// Wraps a bottom-bar cluster in a `GlassEffectContainer` on iOS 26 so its
@@ -103,7 +106,9 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         Group {
             // Real Liquid Glass ONLY for `.glass` surfaces on iOS 26; everything
             // else (default `.material`, or older OS) gets the cheap look.
-            if tier == .glass, #available(iOS 26.0, *) {
+            if tier == .bar {
+                content.background(.bar, in: shape)
+            } else if tier == .glass, #available(iOS 26.0, *) {
                 glassContent(content)
             } else {
                 materialFallback(content)

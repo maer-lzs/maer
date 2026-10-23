@@ -164,11 +164,13 @@ struct FullPlayerOverlay: View {
             // A tap on the handle does what pulling it does. The handle
             // reads as a control, and a control that only answers a drag
             // is a control that looks broken. ONE closing function, called
-            // by the pull, the tap and VoiceOver's escape.
-            .onTapGesture { slideOutAndDismiss() }
-            .highPriorityGesture(dismissGesture(minimumDistance: 0))
+            // by the pull, the tap and VoiceOver's escape. The pull takes
+            // every touch first, so the tap is a pull that did not move
+            // (`PlayerDismiss`); a separate tap gesture never fired.
+            .highPriorityGesture(dismissGesture(minimumDistance: 0, onHandle: true))
             .accessibilityLabel(Text("Close player"))
             .accessibilityAddTraits(.isButton)
+            .accessibilityAction { slideOutAndDismiss() }
     }
 
     /// Slides the player out, then tears it down. The one way this player
@@ -249,12 +251,12 @@ struct FullPlayerOverlay: View {
     }
 
     /// Measured globally (offset container).
-    private func dismissGesture(minimumDistance: CGFloat) -> some Gesture {
+    private func dismissGesture(minimumDistance: CGFloat, onHandle: Bool = false) -> some Gesture {
         DragGesture(minimumDistance: minimumDistance, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
                 state = max(0, value.translation.height)
             }
-            .onEnded { value in handleDismissEnd(value) }
+            .onEnded { value in handleDismissEnd(value, onHandle: onHandle) }
     }
 
     /// The top strip lies OVER the cover, so with `minimumDistance 0` its
@@ -282,10 +284,11 @@ struct FullPlayerOverlay: View {
             }
     }
 
-    private func handleDismissEnd(_ value: DragGesture.Value) {
+    private func handleDismissEnd(_ value: DragGesture.Value, onHandle: Bool = false) {
         let end = max(0, value.translation.height)
-        let shouldDismiss = end > dismissThreshold
-            || value.predictedEndTranslation.height > dismissThreshold * 2
+        let shouldDismiss = PlayerDismiss.closes(translation: value.translation,
+                                                 predictedHeight: value.predictedEndTranslation.height,
+                                                 threshold: dismissThreshold, onHandle: onHandle)
         // Take over the offset seamlessly (GestureState resets instantly).
         releaseOffset = end
         if shouldDismiss {

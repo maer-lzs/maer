@@ -133,8 +133,9 @@ struct MediaTabBar: View {
         // The end padding IS the pill gap. The pill's distance to the bar's
         // rounded ends equals its inset along the bar everywhere.
         .padding(upright ? .vertical : .horizontal, Self.pillGap)
+        // Upright in the system's column it takes the system's bar material.
         .modifier(AdaptiveGlassBackground(
-            shape: Capsule(), tier: .glass,
+            shape: Capsule(), tier: upright ? .bar : .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
     }
 }

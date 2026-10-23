@@ -234,7 +234,7 @@ struct LibraryView: View {
         // 26.5 and 27 (the top edge became a hard-edged milky band reaching
         // far under the status bar, measured at the pixel on both SDKs), and
         // named here it holds for the tab root and every page pushed on it.
-        .softTopScrollEdge()
+        .topScrollEdge(hard: tabBarPlacement.isSide)
         // Every hook pushes into the path of EXACTLY THIS tab, so a push on
         // Home also lands in Home.
         .environment(\.pushPodcastRoute) { push($0, to: type) }
@@ -571,11 +571,11 @@ struct LibraryView: View {
                     VStack(spacing: Self.sideGap) {
                         FloatingSearchButton(action: { showSettings = true },
                                              systemImage: "gearshape", label: "Settings",
-                                             diameter: Self.sideColumnWidth)
+                                             diameter: Self.sideColumnWidth, tier: .bar)
                             .accessibilityIdentifier("open-settings")
                         Spacer(minLength: 16)
                         mediaBar(upright: true)
-                        searchButton(diameter: Self.sideColumnWidth)
+                        searchButton(diameter: Self.sideColumnWidth, tier: .bar)
                     }
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
@@ -1184,7 +1184,7 @@ struct LibraryView: View {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
     }
 
-    private func searchButton(diameter: CGFloat = 56) -> some View {
+    private func searchButton(diameter: CGFloat = 56, tier: GlassTier = .glass) -> some View {
         FloatingSearchButton(
             action: {
                 searchModel.query = ""
@@ -1199,7 +1199,7 @@ struct LibraryView: View {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
             },
             glassMorphID: "search", glassMorphNamespace: bottomGlassNS,
-            diameter: diameter)
+            diameter: diameter, tier: tier)
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
         // Locale-independent handle for the UI-test harness.
@@ -1819,13 +1819,14 @@ extension View {
 }
 
 private extension View {
-    /// The declared soft top edge of every tab stack, its root and its pushed
-    /// pages. Scroll edge effects exist from iOS 26; below it there is none
-    /// to declare.
+    /// The declared top edge of every tab stack, its root and its pushed
+    /// pages: soft, and hard beside the side column, where the soft edge let
+    /// the first row read through the title (Laurenz, 24.10.2026). Scroll
+    /// edge effects exist from iOS 26; below it there is none to declare.
     @ViewBuilder
-    func softTopScrollEdge() -> some View {
+    func topScrollEdge(hard: Bool) -> some View {
         if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: .top)
+            scrollEdgeEffectStyle(hard ? .hard : .soft, for: .top)
         } else {
             self
         }
