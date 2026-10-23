@@ -109,6 +109,7 @@ struct CoverGlyphsTests {
         "Sources/Views/BookCoverView.swift": (0, "the book cover's marks; a failed download keeps its accent"),
         "Sources/Views/CardDownloadBadge.swift": (0, "the card's download ring and its marks"),
         "Sources/Views/CardPillControls.swift": (0, "the card's Details pill and corner button"),
+        "Sources/Views/Podcasts/PodcastComponents.swift": (0, "the show tiles' marks, Pinchflat, subscribe"),
     ]
 
     /// The tiles that still mark their kind at the top left, outside the
@@ -158,6 +159,13 @@ struct CoverGlyphsTests {
                 "the book card leaves its marks outside the stack")
         #expect(episodeCard.contains("CardMarks(itemId: item.id, lock: PodcastSubscriptions.shared.lock(feedURL: feed))"),
                 "the episode card leaves its marks outside the stack")
+        #expect(episodeCard.contains(".overlay(alignment: .topTrailing) { ShowTileMarks(lock: lock, unavailable: unavailable,")
+                    && episodeCard.contains(".overlay(alignment: .topTrailing) { ShowTileMarks(lock: lock, coverSide: size) }")
+                    && !episodeCard.contains("OfflineUnavailableBadge().padding(5) } }"),
+                "a show tile carries its lock, offline or count outside the stack again")
+        let measure = ".onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }"
+        #expect(tile.contains(measure) && episodeCard.contains(measure),
+                "a tile measures only its width and promises room a cover pressed out of square does not have")
         let pills = try FetchAnswerTests.squeezedSource("Sources/Views/CardPillControls.swift")
         #expect(pills.contains("fill: GlyphTone.fill, shade: GlyphTone.shade, glyphAfterTitle: true") && pills.contains(".glyphCapsule()"),
                 "the card's pill or corner button lost the dark shade of the tone")

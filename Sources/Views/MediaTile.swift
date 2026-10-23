@@ -215,7 +215,9 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         // The corner control and the marks stay crisp ON TOP (sibling
         // overlays in body); only the image dims.
         .opacity(unavailable ? 0.5 : 1)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { coverSide = $0 }
+        // The shorter side: a cover pressed out of square must not promise
+        // room its height does not have.
+        .onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }
     }
 
     /// Thin bar along the image's bottom edge. Only for started items.

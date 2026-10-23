@@ -45,6 +45,13 @@ cover; the bottom right only holds the ring while a download runs. The
 Details pill, the ring and the shuffle button wear the same tone as the
 marks, the pill's fill over a dark shade.
 
+**Show tiles carry their marks in the same column.** On the podcast show
+tiles, the lock, not available offline and the number of episodes stand
+at the top right, one under the other; before, the offline mark stood at
+the top left and the lock at the bottom right. The number keeps its red.
+The Pinchflat mark stays at the bottom left, on the same disc as the
+other marks.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

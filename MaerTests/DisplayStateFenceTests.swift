@@ -58,7 +58,7 @@ struct DisplayStateFenceTests {
                 "Latest Episodes does not hand on the one answer")
         let card = StockDriftTests.squeezed(try code("Sources/Views/Podcasts/PodcastComponents.swift"))
         #expect(card.contains("CardMarks(itemId:item.id,lock:PodcastSubscriptions.shared.lock("), "the Continue card does not ask the one question")
-        #expect(card.components(separatedBy: ".premiumLock(lock)").count == 3, "a show tile does not draw the lock it was handed")
+        #expect(card.components(separatedBy: "ShowTileMarks(lock:lock").count == 3, "a show tile does not draw the lock it was handed")
         // The search view asks no store itself: its show grid draws the
         // locks the door asked with the deck.
         let search = StockDriftTests.squeezed(try code("Sources/Views/SearchScreen.swift"))

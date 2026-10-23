@@ -44,10 +44,3 @@ struct PremiumLockBadge: View {
         }
     }
 }
-
-extension View {
-    /// The badge at its canonical place: bottom-trailing on the artwork.
-    func premiumLock(_ lock: FeedLock) -> some View {
-        overlay(alignment: .bottomTrailing) { PremiumLockBadge(lock: lock) }
-    }
-}
