@@ -155,9 +155,9 @@ struct DisplayStateFenceTests {
         #expect(unnamed.isEmpty, "an offline mark without a name or a text beside it: \(unnamed)")
         let components = try code("Sources/Views/Podcasts/PodcastComponents.swift")
         let tight = StockDriftTests.squeezed(components)
-        let check = try #require(tight.range(of: "Image(systemName:\"checkmark.circle.fill\").foregroundStyle(.white,.green)"),
+        let check = try #require(tight.range(of: "Image(systemName:\"checkmark\").font("),
                                  "the subscribed check is gone or spelled another way")
-        #expect(tight[check.upperBound...].prefix(160).contains(".accessibilityLabel(Text(\"Subscribed\"))"),
+        #expect(tight[check.upperBound...].prefix(200).contains(".accessibilityLabel(Text(\"Subscribed\"))"),
                 "the subscribed check has no name")
         #expect(!components.contains("Image(systemName: \"wifi.slash\")"), "the show tile draws its own offline mark again")
         let album = try code("Sources/Views/Music/MusicAlbumView.swift")

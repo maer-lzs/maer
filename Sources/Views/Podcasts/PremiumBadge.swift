@@ -36,7 +36,7 @@ struct PremiumLockBadge: View {
                 .font(.caption2)
                 .foregroundStyle(.white)
                 .padding(5)
-                .background(Circle().fill(.black.opacity(0.55)))
+                .glyphDisc()
                 .padding(6)
                 .accessibilityLabel(Text("Premium Feed"))
         case .none:

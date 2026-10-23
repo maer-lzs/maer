@@ -53,7 +53,7 @@ struct CatalogMixTile: View {
                 artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                 subtitle: entry.form?.label,
                 badgeText: entry.ccLicense)
-                .kindGlyph(marksKind ? .podcasts : nil)
+                .stackedKind(marksKind ? .podcasts : nil)
         case .item(let item):
             FreeCatalogBookTile(
                 item: item,
@@ -64,7 +64,7 @@ struct CatalogMixTile: View {
                     pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                 }
             )
-            .kindGlyph(marksKind ? MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)) : nil)
+            .stackedKind(marksKind ? MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)) : nil)
             .contextMenu {
                 Button {
                     Task { await playerCoordinator.open(item: item) }

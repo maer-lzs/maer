@@ -21,12 +21,10 @@ struct FreeCatalogImportBadge: View {
         if importer.activeBookId == itemId,
            let fraction = LibriVoxImporter.ringFraction(importer.phase) {
             Button { importer.cancel() } label: {
-                ZStack {
-                    Circle().fill(.black.opacity(0.45))
-                        .frame(width: ringSize + 10, height: ringSize + 10)
-                    UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
-                        .frame(width: ringSize, height: ringSize)
-                }
+                UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
+                    .frame(width: ringSize, height: ringSize)
+                    .padding(5)
+                    .glyphDisc()
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))

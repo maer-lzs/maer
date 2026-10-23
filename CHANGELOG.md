@@ -21,6 +21,14 @@ mark lay over the lock. The marks grow with the text up to the first
 accessibility size, and where a tile still has room for one mark only,
 it shows that the episode is not available offline.
 
+**One tone for the marks on episode, catalog and recommendation tiles.**
+The kind of a tile in a mixed row now stands first in the column of marks
+at the top right instead of at the top left. Every mark and every corner
+button on these tiles (kind, lock, offline, play, subscribe, import) is a
+white symbol on the same soft disc, the tone of the Details pill over a
+dark shade, so it reads on light covers too; before, they used three
+different darks, and subscribe was a green check or an orange plus.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

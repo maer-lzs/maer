@@ -96,9 +96,12 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// text like the play glyph.
     @ScaledMetric(relativeTo: .title3) private var cornerSide: CGFloat = 32
 
-    /// The marks this tile carries: the lock and the offline disc.
+    /// The kind of this tile in a mixed row (`stackedKind`), nil elsewhere.
+    @Environment(\.coverGlyphKind) private var kind
+
+    /// The marks this tile carries: the kind, the lock and the offline disc.
     private var marks: [CoverGlyph] {
-        (lock == .none ? [] : [.lock]) + (unavailable ? [.availability] : [])
+        (kind == nil ? [] : [.kind]) + (lock == .none ? [] : [.lock]) + (unavailable ? [.availability] : [])
     }
 
     private static var imageShape: RoundedRectangle {
@@ -109,20 +112,23 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
-                // The lock and the offline disc stand in the one stack at
-                // the top right, the lock above; before, both took the top
-                // right corner and the disc lay over the lock. The bottom
-                // right carries the tile's control.
+                // The kind, the lock and the offline disc stand in the one
+                // stack at the top right, in this order; before, the kind
+                // stood at the top left and the disc lay over the lock. The
+                // bottom right carries the tile's control.
                 .overlay(alignment: .topTrailing) {
                     CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: cornerSide,
                                     label: { mark in
-                                        mark != .lock ? Text("Not available offline")
-                                            : lock == .refused ? Text("Access refused") : Text("Premium Feed")
+                                        switch mark {
+                                        case .kind: Text(verbatim: kind?.label ?? "")
+                                        case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
+                                        default: Text("Not available offline")
+                                        }
                                     }) { mark in
-                        if mark == .lock {
-                            PremiumLockBadge(lock: lock)
-                        } else {
-                            OfflineUnavailableBadge().padding(5)
+                        switch mark {
+                        case .kind: if let kind { KindGlyph(kind: kind) }
+                        case .lock: PremiumLockBadge(lock: lock)
+                        default: OfflineUnavailableBadge().padding(5)
                         }
                     }
                 }
@@ -299,16 +305,19 @@ extension MediaTile where Corner == EmptyView, CoverOverride == EmptyView {
     }
 }
 
-/// Standard bottom-right corner control: the small play badge (direct start).
+/// Standard bottom-right corner control: the small play badge (direct start),
+/// a white play on the disc of the tone, as large as the offline disc.
 struct MediaTilePlayBadge: View {
     let action: () -> Void
+    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "play.circle.fill")
-                .font(.title3)
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, .black.opacity(0.45))
+            Image(systemName: "play.fill")
+                .font(.system(size: diameter * 0.45, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: diameter, height: diameter)
+                .glyphDisc()
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

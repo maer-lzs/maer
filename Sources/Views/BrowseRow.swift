@@ -62,7 +62,7 @@ struct BrowseRow: View {
         switch tile {
         case .recommendation(let result):
             RecommendationTile(result: result, subtitle: reason(result))
-                .kindGlyph(.podcasts)
+                .stackedKind(.podcasts)
                 .recommendationHideMenu(result)
         case .music(let item):
             FreeCatalogBookTile(
@@ -71,7 +71,7 @@ struct BrowseRow: View {
                 placeholderSystemImage: MediaFamily.placeholderSymbol(
                     for: item.id, markedForm: ListeningStore.startedForm(item.id) ?? .album),
                 onTap: { detailItem = item })
-                .kindGlyph(.music)
+                .stackedKind(.music)
                 .contextMenu {
                     Button {
                         Task { await playerCoordinator.open(item: item) }

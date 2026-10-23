@@ -926,7 +926,7 @@ struct RediscoverTile: View {
                     lock: PodcastSubscriptions.shared.lock(feedURL: feedURL),
                     onTap: { pushRoute(.show(feedURL: feedURL)) }
                 )
-                .kindGlyph(.podcasts)
+                .stackedKind(.podcasts)
             }
         } else if let entry = libraryViewModel.entry(id: pick.id) {
             MediaAvailabilityScope(itemId: entry.id) { unavailable in
@@ -942,7 +942,7 @@ struct RediscoverTile: View {
                 ) {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
                 }
-                .kindGlyph(MediaFamily.kind(for: entry.id, markedForm: ListeningStore.startedForm(entry.id)))
+                .stackedKind(MediaFamily.kind(for: entry.id, markedForm: ListeningStore.startedForm(entry.id)))
             }
         } else if let item = router.item(pick.id) {
             MediaAvailabilityScope(itemId: item.id) { unavailable in
@@ -960,7 +960,7 @@ struct RediscoverTile: View {
                 ) {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
                 }
-                .kindGlyph(MediaFamily.kind(for: item.id))
+                .stackedKind(MediaFamily.kind(for: item.id))
             }
         }
     }

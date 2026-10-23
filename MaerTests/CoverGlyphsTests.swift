@@ -81,5 +81,51 @@ struct CoverGlyphsTests {
         }
         #expect(literal == ["CoverGlyphStack.swift"], "a pill or mark writes the tone by hand: \(literal.sorted())")
     }
+
+    /// The marks and corner controls that carry the tone: a dark fill of
+    /// their own is a mark outside the tone. What still has one stands
+    /// here with its reason, counted.
+    static let darkFills: [String: (count: Int, reason: String)] = [
+        "Sources/Views/KindGlyph.swift": (0, "the kind mark"),
+        "Sources/Views/Podcasts/PremiumBadge.swift": (0, "the lock; refused keeps its orange"),
+        "Sources/Views/MediaTile.swift": (0, "the play badge"),
+        "Sources/Views/FreeCatalogRows.swift": (0, "the import ring"),
+        "Sources/Views/CoverBadge.swift": (1, "the downloaded mark, which takes the tone with the book tiles"),
+    ]
+
+    /// The tiles that still mark their kind at the top left, outside the
+    /// stack; they take the stack in their own steps.
+    static let topLeftKinds: [String: (count: Int, reason: String)] = [
+        "Sources/Views/HomeView.swift": (3, "album, catalog track and station tile of Listen Again"),
+        "Sources/Views/MixedMediaPage.swift": (7, "book and episode card, book and album cell, album, track and station tile"),
+    ]
+
+    @Test("Zeichen und Ecken tragen den Ton ueber der dunklen Scheibe, die MediaTile stapelt ihre Art", .needsTheSources)
+    func theMarksWearTheToneAndTheKindStacks() throws {
+        var fills: [String: Int] = [:]
+        for path in Self.darkFills.keys {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+            fills[path] = code.components(separatedBy: ".black.opacity(").count - 1
+        }
+        #expect(fills == Self.darkFills.mapValues(\.count), "dark fills of their own per mark file: \(fills)")
+        let components = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastComponents.swift")
+        let badge = try #require(components.range(of: "struct PodcastSubscribeBadge: View {"))
+        let body = components[badge.upperBound...].prefix(1600)
+        #expect(!body.contains(".black.opacity(") && !body.contains(".green") && body.components(separatedBy: ".glyphDisc()").count == 4,
+                "the subscribe control has a colour of its own again")
+        let stack = try FetchAnswerTests.squeezedSource("Sources/Views/CoverGlyphStack.swift")
+        #expect(stack.contains("static let shade = Color.black.opacity(0.35)")
+                    && stack.contains("Circle().fill(GlyphTone.shade) Circle().fill(GlyphTone.fill)"),
+                "the disc is not the tone over the dark shade")
+        let tile = try FetchAnswerTests.squeezedSource("Sources/Views/MediaTile.swift")
+        #expect(tile.contains("@Environment(\\.coverGlyphKind) private var kind")
+                    && tile.contains("(kind == nil ? [] : [.kind])"), "the tile leaves its kind outside the stack")
+        var left: [String: Int] = [:]
+        for (path, text) in try MixedRowGlyphTests.sources() {
+            let n = text.components(separatedBy: ".kindGlyph(").count - 1
+            if n > 0 { left[path] = n }
+        }
+        #expect(left == Self.topLeftKinds.mapValues(\.count), "kind marks at the top left: \(left)")
+    }
 }
 #endif

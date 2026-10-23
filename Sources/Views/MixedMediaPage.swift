@@ -219,7 +219,7 @@ struct MixedMediaPage: View {
                       lock: .none,
                       progress: entry.progress?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: entry.item) } })
-                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                 .modifier(BookCellContextMenu(
                     entry: entry, playerCoordinator: playerCoordinator,
                     libraryViewModel: libraryViewModel, showsContinueHide: true))
@@ -231,7 +231,7 @@ struct MixedMediaPage: View {
                           for: id, markedForm: ListeningStore.startedForm(id)),
                       lock: PodcastSubscriptions.shared.lock(feedURL: PodcastShowSources.show(forEpisodeId: id)?.feedURL ?? ""),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
-                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         }
     }
 }

@@ -27,8 +27,8 @@ enum CoverBadge {
     }
 }
 
-/// THE offline disc. A white wifi.slash on a dark circle, sized to
-/// MATCH the corner play glyph (`play.circle.fill` at `.title3`) so the two
+/// THE offline disc. A white wifi.slash on the disc of the tone, sized to
+/// MATCH the corner play glyph (`MediaTilePlayBadge`) so the two
 /// corner marks read equal on every tile; scales with Dynamic Type like the
 /// play glyph. Used by the `offlineUnavailableBadge` modifier and inline where a
 /// surface can't take the modifier (BookCoverView's finished-state interplay).
@@ -40,7 +40,7 @@ struct OfflineUnavailableBadge: View {
             .font(.system(size: diameter * 0.5, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: diameter, height: diameter)
-            .background(.black.opacity(0.45), in: Circle())
+            .glyphDisc()
             // The disc is the state; VoiceOver hears it as such.
             .accessibilityLabel(Text("Not available offline"))
     }

@@ -609,16 +609,22 @@ struct PodcastSubscribeBadge: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @State private var subscribing = false
+    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
     var body: some View {
+        // A white glyph on the disc of the tone in every state, as large as
+        // the play badge it stands in for.
         if Self.isSubscribed(feedURL) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.white, .green)
-                .background(Circle().fill(.black.opacity(0.25)))
+            Image(systemName: "checkmark")
+                .font(.system(size: diameter * 0.45, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: diameter, height: diameter)
+                .glyphDisc()
                 .accessibilityLabel(Text("Subscribed"))
         } else if subscribing {
-            ProgressView().controlSize(.small)
-                .padding(4).background(Circle().fill(.black.opacity(0.35)))
+            ProgressView().controlSize(.small).tint(.white)
+                .frame(width: diameter, height: diameter)
+                .glyphDisc()
         } else {
             Button {
                 subscribing = true
@@ -627,9 +633,12 @@ struct PodcastSubscribeBadge: View {
                     subscribing = false
                 }
             } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.white, AppTheme.accent)
+                Image(systemName: "plus")
+                    .font(.system(size: diameter * 0.45, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: diameter, height: diameter)
+                    .glyphDisc()
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Subscribe"))

@@ -6,9 +6,24 @@
 import SwiftUI
 
 /// The tone of every mark and pill on a cover or card: the fill of the
-/// card's Details pill. One constant, so a change of tone is this line.
+/// card's Details pill over a dark disc, so it carries on a light cover
+/// too. One place, so a change of tone is these lines.
 enum GlyphTone {
     static let fill = Color.white.opacity(0.22)
+    static let shade = Color.black.opacity(0.35)
+}
+
+extension View {
+    /// THE disc of a mark or a corner control on a cover: the dark shade,
+    /// the tone over it.
+    func glyphDisc() -> some View {
+        background {
+            ZStack {
+                Circle().fill(GlyphTone.shade)
+                Circle().fill(GlyphTone.fill)
+            }
+        }
+    }
 }
 
 /// THE stack of state marks at the top right of a cover: the marks the
