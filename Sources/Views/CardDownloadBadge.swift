@@ -88,7 +88,7 @@ struct CardDownloadBadge: View {
         .foregroundStyle(.white)
         .padding(.vertical, 7)
         .padding(.horizontal, 9)
-        .background(Capsule().fill(.white.opacity(0.22)))
+        .background(Capsule().fill(GlyphTone.fill))
         .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl,
                alignment: .bottomTrailing)
         .contentShape(Rectangle())

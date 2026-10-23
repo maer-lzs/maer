@@ -14,6 +14,11 @@ progress over it at the bottom; before, the medium widget showed a small
 cover beside the text, and the small one left a dark strip on some
 devices.
 
+**The lock and the offline mark no longer cover each other.** An episode
+of a premium feed that is not downloaded while you are offline shows both
+marks at the top right of its tile, the lock above; before, the offline
+mark lay over the lock.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

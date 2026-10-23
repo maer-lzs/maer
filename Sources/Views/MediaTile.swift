@@ -90,6 +90,17 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.corner = corner
     }
 
+    /// The side of the cover, measured; decides how many marks fit.
+    @State private var coverSide: CGFloat?
+    /// The height one mark takes in the stack, and the corner control's,
+    /// both grown with the text like the marks themselves.
+    @ScaledMetric(relativeTo: .title3) private var glyphSide: CGFloat = 32
+
+    /// The marks this tile carries: the lock and the offline disc.
+    private var marks: [CoverGlyph] {
+        (lock == .none ? [] : [.lock]) + (unavailable ? [.availability] : [])
+    }
+
     private static var imageShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
     }
@@ -98,12 +109,25 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
-                // On the COVER. A deviation from the family's
-                // bottom-trailing spot, because that corner carries this
-                // tile's play control, so the lock takes
-                // the free top one. The show tiles, which have no corner
-                // control, keep the bottom position.
-                .overlay(alignment: .topTrailing) { PremiumLockBadge(lock: lock) }
+                // The lock and the offline disc stand in the one stack at
+                // the top right, the lock above; before, both took the top
+                // right corner and the disc lay over the lock. The bottom
+                // right carries the tile's control.
+                .overlay(alignment: .topTrailing) {
+                    CoverGlyphStack(present: marks,
+                                    room: CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,
+                                                           cornerSide: glyphSide),
+                                    label: { mark in
+                                        mark != .lock ? Text("Not available offline")
+                                            : lock == .refused ? Text("Access refused") : Text("Premium Feed")
+                                    }) { mark in
+                        if mark == .lock {
+                            PremiumLockBadge(lock: lock)
+                        } else {
+                            OfflineUnavailableBadge().padding(5)
+                        }
+                    }
+                }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
                 // Two places at the bottom-left, never one over the other:
@@ -184,9 +208,10 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) { progressBar }
         .clipShape(Self.imageShape)
-        // The corner control stays crisp ON TOP (sibling overlay in body);
-        // only the image dims and carries the badge.
-        .offlineUnavailableBadge(unavailable)
+        // The corner control and the marks stay crisp ON TOP (sibling
+        // overlays in body); only the image dims.
+        .opacity(unavailable ? 0.5 : 1)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { coverSide = $0 }
     }
 
     /// Thin bar along the image's bottom edge. Only for started items.

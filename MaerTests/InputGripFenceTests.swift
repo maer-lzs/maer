@@ -21,6 +21,7 @@ struct InputGripFenceTests {
     static let fingerOnly: [String: (count: Int, reason: String)] = [
         "RefreshActivityPill.swift": (1, "a status pill over the content: touches pass through, VoiceOver reads it"),
         "KindGlyph.swift": (1, "a glyph over artwork: touches reach the tile below, its label is read"),
+        "CoverGlyphStack.swift": (1, "the state marks over a cover: touches reach the tile below, each label is read"),
         "PlayerView.swift": (1, "the chapter ticks over the scrubber: drags reach the scrubber below"),
         "TabContentLayout.swift": (1, "a placeholder row, hidden from the accessibility tree at its root"),
     ]

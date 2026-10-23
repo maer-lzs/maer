@@ -42,7 +42,7 @@ struct CardDetailPill<Value: Hashable>: View {
     var body: some View {
         NavigationLink(value: value) {
             PillLabel(systemImage: "info.circle", title: Text("Details"),
-                      foreground: .white, fill: .white.opacity(0.22), glyphAfterTitle: true)
+                      foreground: .white, fill: GlyphTone.fill, glyphAfterTitle: true)
         }
         .buttonStyle(.plain)
     }
@@ -67,7 +67,7 @@ struct CardCornerButton: View {
             .foregroundStyle(.white)
             .padding(.vertical, 7)
             .padding(.horizontal, 9)
-            .background(Capsule().fill(.white.opacity(0.22)))
+            .background(Capsule().fill(GlyphTone.fill))
             .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl,
                    alignment: .bottomTrailing)
             .contentShape(Rectangle())
