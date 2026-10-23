@@ -43,28 +43,30 @@ import Foundation
 /// paragraph had lost its own sentence halfway through. A fence against stale
 /// numbers whose head goes stale is the proof of its own rule.
 struct SharedGrowthFenceTests {
-    /// Grips on singletons in `Sources/Views`, measured 374 (the lock on
+    /// Grips on singletons in `Sources/Views`, measured 373 (the lock on
     /// every feed surface: Rediscover show and episode, recommendation tile,
-    /// an episode on the mixed page, the Continue page ask the one question).
+    /// an episode on the mixed page, the Continue page ask the one question;
+    /// the book page stopped asking the application for its screen).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 374
+    nonisolated static let stock = 373
 
-    /// The same count over all of `Sources`, measured 735 (the listening
+    /// The same count over all of `Sources`, measured 734 (the listening
     /// history, the refusal on the Continue card, then the lock on every
     /// feed surface, the search door asking it for the deck, then the player
     /// asking the books shelf whether a title is a book, then the stores of
-    /// the carriers' rows naming the one database once for all six). This is the
+    /// the carriers' rows naming the one database once for all six, then the
+    /// book page leaving the application's scenes alone). This is the
     /// number that tells a move from a collapse, and it is allowed to RISE:
     /// a store that moves into the database gains one grip on the one
     /// database, and if nothing in its neighbourhood was written twice there
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 735
+    nonisolated static let sourcesStock = 734
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

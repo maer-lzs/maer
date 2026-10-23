@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**The book page fits its window.** On the iPhone Duo, folded or open,
+and in a window that shares the screen, the cover at the top of a book
+takes the width of the window, and on its side the page shows the large
+cover where it fits.
+
 **Diagnostics stay with the developers.** The Diagnostics page, the sync
 history with its runs and counters, the progress diagnosis on book pages
 and in a show's settings, and the device measurements are no longer part

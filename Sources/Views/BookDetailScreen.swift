@@ -86,19 +86,6 @@ struct BookDetailScreen: View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
     }
 
-    private var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
-    }
-
-
-    /// Deliberately screen width instead of GeometryReader. The cover should
-    /// always use exactly the full device width (not some ScrollView width).
-    /// Via the WindowScene instead of UIScreen.main (deprecated iOS 26).
-    private var heroCoverSize: CGFloat {
-        let screen = UIApplication.shared.connectedScenes
-            .compactMap { ($0 as? UIWindowScene)?.screen }.first
-        return screen?.bounds.width ?? 400
-    }
 
     /// The cover's long press downloads or deletes the book, with the same
     /// entries as the book cells' menu. The labelled capsule below stays;
@@ -110,9 +97,12 @@ struct BookDetailScreen: View {
         }
     }
 
-    private var heroCover: some View {
+    /// The cover across the page's own width, edge to edge: the width the
+    /// window gives this page, not the screen's, so a split window and an
+    /// unfolded iPhone Duo get a cover that fits.
+    private func heroCover(side: CGFloat) -> some View {
         coverImageContent
-            .frame(width: heroCoverSize, height: heroCoverSize)
+            .frame(width: side, height: side)
             .clipped()
             .contextMenu { coverDownloadMenu }
             // Progress bar sitting ON the cover's bottom edge, edge to edge.
@@ -265,16 +255,16 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Side-by-side layout (iPad / iPhone landscape): cover column pinned to
-    /// the screen edges on the left, scrollable info column on the right.
-    /// iPhone: full-height SHARP cover (screen height ≈ 390pt fits the cache
-    /// resolution). iPad: a full-height cover would need >2300px source.
-    /// Instead a heavily BLURRED ambient panel (blur hides any resolution)
-    /// with the sharp cover floating on top.
+    /// Side-by-side layout (landscape): cover column pinned to the edges on
+    /// the left, scrollable info column on the right. A short page fills the
+    /// full height with the SHARP cover; a tall one would need a far larger
+    /// source, so a heavily BLURRED ambient panel (blur hides any resolution)
+    /// carries the height with the sharp cover floating on top
+    /// (`BookDetailCover`, by the page's height, not the device).
     private var sideBySideLayoutView: some View {
         GeometryReader { geo in
             HStack(spacing: 0) {
-                if isPhone {
+                if BookDetailCover.sharpFills(height: geo.size.height) {
                     coverImageContent
                         .frame(width: geo.size.height, height: geo.size.height)
                         .clipped()
@@ -501,7 +491,7 @@ struct BookDetailScreen: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         VStack(spacing: 8) {
-                            heroCover
+                            heroCover(side: geo.size.width)
                             titleBlock(alignment: .center)
                                 .padding(.horizontal)
                         }
