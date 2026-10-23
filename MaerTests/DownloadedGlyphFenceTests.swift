@@ -84,7 +84,7 @@ struct DownloadedGlyphFenceTests {
         #expect(Self.checksAfterDownloadQuestions(in: far).isEmpty)
     }
 
-    @Test("P3-3: EIN Geladen-Zeichen, das Symbol eine Konstante, an allen sechs Stellen dieselbe Komponente, nie grau", .needsTheSources)
+    @Test("P3-3: EIN Geladen-Zeichen, das Symbol eine Konstante, an jeder Stelle dieselbe Komponente, nie grau", .needsTheSources)
     func oneDownloadedMark() throws {
         var literal: [String] = []
         var marks: [String: Int] = [:]
@@ -100,9 +100,11 @@ struct DownloadedGlyphFenceTests {
         }
         #expect(literal == ["CoverBadge.swift: static let symbol = \"arrow.down.circle.fill\""],
                 "the symbol is written once, as the mark's constant: \(literal)")
-        #expect(marks == ["CardDownloadBadge.swift": 1, "BookCoverView.swift": 1, "MediaRowContent.swift": 1,
-                          "PodcastComponents.swift": 1, "CoverGlyphStack.swift": 1, "MusicAlbumView.swift": 1],
-                "the six places draw the one mark: \(marks)")
+        // The tiles and cards draw it through their one view of marks; the
+        // row cover, the episode control and the album page draw it there.
+        #expect(marks == ["CoverGlyphStack.swift": 1, "MediaRowContent.swift": 1,
+                          "PodcastComponents.swift": 1, "MusicAlbumView.swift": 1],
+                "the places draw the one mark: \(marks)")
         let badge = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "CoverBadge.swift" })
         let mark = try #require(functionBody(of: "struct DownloadedMark: View {",
                                              in: try String(contentsOf: badge, encoding: .utf8)))

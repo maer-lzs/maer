@@ -95,9 +95,11 @@ struct CoverGlyphStack<Glyph: View>: View {
     }
 }
 
-/// The stack with the standard view of every mark, for a tile that only
-/// hands over its states: kind, lock, availability, finished, favourite,
-/// count. A mark is present only when it has something to say.
+/// THE marks of every tile: the stack with the standard view of each mark,
+/// from the states the tile hands over (kind, lock, availability, finished,
+/// favourite, count). Which marks stand comes from `CoverGlyphs.marks`; a
+/// mark is present only when it has something to say. No tile builds its
+/// own stack.
 struct StandardCoverMarks: View {
     var kind: MediaType? = nil
     var lock: FeedLock? = nil
@@ -110,9 +112,8 @@ struct StandardCoverMarks: View {
     @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
     private var marks: [CoverGlyph] {
-        (kind == nil ? [] : [.kind]) + ((lock ?? .none) == .none ? [] : [.lock])
-            + (availability == nil ? [] : [.availability]) + (finished ? [.finished] : [])
-            + (favourite ? [.favourite] : []) + (count == nil ? [] : [.count])
+        CoverGlyphs.marks(hasKind: kind != nil, locked: (lock ?? .none) != .none, availability: availability,
+                          finished: finished, favourite: favourite, hasCount: count != nil)
     }
 
     var body: some View {
@@ -130,6 +131,7 @@ struct StandardCoverMarks: View {
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Capsule().fill(.red))
                         .padding(7)
+                        .accessibilityIdentifier("show-tile-count")
                 }
             }
         }
@@ -163,7 +165,7 @@ struct StandardCoverMarks: View {
                 .background(Circle().fill(AppTheme.accent))
                 .padding(5)
                 .accessibilityLabel(Text("Download failed"))
-        case .downloaded: DownloadedMark(size: .large).padding(4)
+        case .downloaded: DownloadedMark(size: .large).padding(4).accessibilityIdentifier("download-done")
         case .offline: OfflineUnavailableBadge().padding(5)
         case nil: EmptyView()
         }

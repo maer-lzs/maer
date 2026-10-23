@@ -210,10 +210,12 @@ struct RecentShowTile: View {
             // top left, the lock at the bottom right, the count alone at
             // the top right.
             .overlay(alignment: .topTrailing) {
-                ShowTileMarks(lock: lock, unavailable: unavailable,
-                              count: PodcastTileCount.mode(raw: tileCountMode)
-                                  .badge(unplayed: info.unplayedCount, newSinceLastPlayed: info.newCount),
-                              coverSide: coverSide)
+                // A show tile has no control at the bottom right; the count
+                // keeps its red as a signal.
+                StandardCoverMarks(lock: lock, availability: unavailable ? .offline : nil,
+                                   count: PodcastTileCount.mode(raw: tileCountMode)
+                                       .badge(unplayed: info.unplayedCount, newSinceLastPlayed: info.newCount),
+                                   coverSide: coverSide)
             }
             // The mirror's own glyph, the one its source carries in the
             // settings: folded into the subscriptions, a Pinchflat show
@@ -252,44 +254,6 @@ struct PinchflatGlyph: View {
     }
 }
 
-/// The marks of a show tile at its top right, in the one stack of the
-/// tiles: the lock, not available offline, the count (new or unplayed
-/// episodes, red: a number keeps its signal colour). A show tile has no
-/// control at the bottom right.
-struct ShowTileMarks: View {
-    let lock: FeedLock
-    var unavailable = false
-    var count: Int? = nil
-    let coverSide: CGFloat?
-
-    var body: some View {
-        let marks: [CoverGlyph] = (lock == .none ? [] : [.lock]) + (unavailable ? [.availability] : [])
-            + (count == nil ? [] : [.count])
-        CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: 0,
-                        label: { mark in
-                            switch mark {
-                            case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
-                            case .availability: Text("Not available offline")
-                            default: Text(verbatim: "\(count ?? 0)")
-                            }
-                        }) { mark in
-            switch mark {
-            case .lock: PremiumLockBadge(lock: lock)
-            case .availability: OfflineUnavailableBadge().padding(5)
-            default:
-                if let count {
-                    Text("\(count)")
-                        .font(.caption2.bold()).foregroundStyle(.white)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Capsule().fill(.red))
-                        .padding(7)
-                        .accessibilityIdentifier("show-tile-count")
-                }
-            }
-        }
-    }
-}
-
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
@@ -304,7 +268,7 @@ struct ShowTile: View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
                 // The same marks as the recent-shows grid, at the top right.
-                .overlay(alignment: .topTrailing) { ShowTileMarks(lock: lock, coverSide: size) }
+                .overlay(alignment: .topTrailing) { StandardCoverMarks(lock: lock, coverSide: size) }
             Text(show.title)
                 .font(.caption)
                 // Jank convention: reserved lines. A short title must not

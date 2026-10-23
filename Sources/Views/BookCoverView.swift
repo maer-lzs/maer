@@ -76,7 +76,8 @@ struct BookCoverView: View {
             if let itemId {
                 BookCoverMarks(itemId: itemId, unavailable: unavailable, finished: finished, kind: kind, size: size)
             } else {
-                BookCoverStack(availability: nil, finished: finished, kind: kind, size: size)
+                StandardCoverMarks(kind: kind, finished: finished, coverSide: size,
+                                   cornerSide: CoverBadge.size(tileWidth: size) + 10)
             }
         }
     }
@@ -134,79 +135,12 @@ struct BookCoverMarks: View {
 
     var body: some View {
         let failed: Bool = { if case .failed = downloadManager.phase[itemId] { return true }; return false }()
-        BookCoverStack(availability: CoverAvailability.of(failed: failed,
-                                                          downloaded: downloadManager.isDownloaded(itemId: itemId),
-                                                          unavailable: unavailable),
-                       finished: finished, kind: kind, size: size)
-    }
-}
-
-/// The stack of a book cover at its top right: kind, availability,
-/// finished. Only a mark that has something to say takes a place, so an
-/// empty availability never pushes the check out. The bottom right keeps
-/// room for the install ring the enclosing cell lays over the cover.
-struct BookCoverStack: View {
-    let availability: CoverAvailability?
-    let finished: Bool
-    let kind: MediaType?
-    let size: CGFloat
-    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
-
-    private var marks: [CoverGlyph] {
-        CoverGlyphs.book(hasKind: kind != nil, availability: availability, finished: finished)
-    }
-
-    var body: some View {
-        CoverGlyphStack(present: marks, coverSide: size, cornerSide: CoverBadge.size(tileWidth: size) + 10,
-                        label: { mark in
-                            switch mark {
-                            case .kind: Text(verbatim: kind?.label ?? "")
-                            case .finished: Text("Finished")
-                            default:
-                                switch availability {
-                                case .failed: Text("Download failed")
-                                case .downloaded: Text("Downloaded")
-                                default: Text("Not available offline")
-                                }
-                            }
-                        }) { mark in
-            switch mark {
-            case .kind: if let kind { KindGlyph(kind: kind) }
-            case .availability: availabilityMark
-            default: finishedMark
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var availabilityMark: some View {
-        switch availability {
-        case .failed:
-            // A failure keeps its signal colour, like a refused feed.
-            Image(systemName: "exclamationmark")
-                .font(.system(size: diameter * 0.45, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: diameter, height: diameter)
-                .background(Circle().fill(AppTheme.accent))
-                .padding(5)
-                .accessibilityLabel(Text("Download failed"))
-        case .downloaded:
-            DownloadedMark(size: .large).padding(4)
-        case .offline:
-            OfflineUnavailableBadge().padding(5)
-        case nil:
-            EmptyView()
-        }
-    }
-
-    /// Finished: a white check on the disc of the tone.
-    private var finishedMark: some View {
-        Image(systemName: "checkmark")
-            .font(.system(size: diameter * 0.45, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: diameter, height: diameter)
-            .glyphDisc()
-            .padding(5)
-            .accessibilityLabel(Text("Finished"))
+        // The bottom right keeps room for the install ring the enclosing
+        // cell lays over the cover.
+        StandardCoverMarks(kind: kind,
+                           availability: CoverAvailability.of(failed: failed,
+                                                              downloaded: downloadManager.isDownloaded(itemId: itemId),
+                                                              unavailable: unavailable),
+                           finished: finished, coverSide: size, cornerSide: CoverBadge.size(tileWidth: size) + 10)
     }
 }

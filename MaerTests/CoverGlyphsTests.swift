@@ -54,11 +54,17 @@ struct CoverGlyphsTests {
         #expect(CoverAvailability.of(failed: false, downloaded: false, unavailable: true) == .offline)
         // A finished book in a mixed row, nothing to say about availability,
         // room for two: kind and check, no empty place between them.
-        let marks = CoverGlyphs.book(hasKind: true, availability: nil, finished: true)
+        let marks = CoverGlyphs.marks(hasKind: true, locked: false, availability: nil, finished: true,
+                                      favourite: false, hasCount: false)
         #expect(marks == [.kind, .finished], "an empty availability takes a place: \(marks)")
         #expect(CoverGlyphs.stack(marks, room: 2).shown == [.kind, .finished], "the check is pushed out")
-        #expect(CoverGlyphs.book(hasKind: false, availability: .offline, finished: true) == [.availability, .finished])
-        #expect(CoverGlyphs.book(hasKind: false, availability: nil, finished: false).isEmpty)
+        #expect(CoverGlyphs.marks(hasKind: false, locked: false, availability: .offline, finished: true,
+                                  favourite: false, hasCount: false) == [.availability, .finished])
+        #expect(CoverGlyphs.marks(hasKind: false, locked: false, availability: nil, finished: false,
+                                  favourite: false, hasCount: false).isEmpty)
+        #expect(CoverGlyphs.marks(hasKind: true, locked: true, availability: .downloaded, finished: true,
+                                  favourite: true, hasCount: true) == CoverGlyph.allCases,
+                "a state the tile hands over stands outside the order")
     }
 
     @Test("die Zeichen wachsen bis zur ersten Bedienhilfen-Groesse, der Platz wird in dieser Groesse gemessen", .needsTheSources)
@@ -85,8 +91,16 @@ struct CoverGlyphsTests {
     @Test("die Kachel stapelt Schloss und Offline in der einen Komponente, ein Ton fuer Zeichen und Pillen", .needsTheSources)
     func theTileStacksAndOneToneDraws() throws {
         let tile = try FetchAnswerTests.squeezedSource("Sources/Views/MediaTile.swift")
-        #expect(tile.contains(".overlay(alignment: .topTrailing) { CoverGlyphStack(present: marks,"),
+        #expect(tile.contains(".overlay(alignment: .topTrailing) { StandardCoverMarks(kind: kind, lock: lock, availability: unavailable ? .offline : nil,"),
                 "the tile's marks stand outside the stack")
+        // Every tile hands its states to the one view of marks; no tile
+        // builds its own stack.
+        var builders: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
+        where SyncContractFenceTests.stripped(text).contains("CoverGlyphStack(present:") {
+            builders.append(name)
+        }
+        #expect(builders == ["CoverGlyphStack.swift"], "a tile builds its own stack of marks again: \(builders.sorted())")
         #expect(!tile.contains(".offlineUnavailableBadge(") && !tile.contains(".overlay(alignment: .topTrailing) { PremiumLockBadge("),
                 "the lock and the offline disc take the same corner again")
         var literal: [String] = []
@@ -135,15 +149,13 @@ struct CoverGlyphsTests {
                 "the disc is not the tone over the dark shade")
         let tile = try FetchAnswerTests.squeezedSource("Sources/Views/MediaTile.swift")
         #expect(tile.contains("@Environment(\\.coverGlyphKind) private var kind")
-                    && tile.contains("(kind == nil ? [] : [.kind])"), "the tile leaves its kind outside the stack")
+                    && tile.contains("StandardCoverMarks(kind: kind,"), "the tile leaves its kind outside the stack")
+        #expect(stack.contains("CoverGlyphs.marks(hasKind: kind != nil, locked: (lock ?? .none) != .none, availability: availability,"),
+                "the one view of marks builds them outside the rule")
         let book = try FetchAnswerTests.squeezedSource("Sources/Views/BookCoverView.swift")
-        #expect(book.contains("CoverGlyphStack(present: marks, coverSide: size,")
+        #expect(book.contains("StandardCoverMarks(kind: kind, availability: CoverAvailability.of(failed: failed,")
                     && !book.contains(".overlay(alignment: .bottomLeading)"),
-                "the book cover's marks stand outside the stack again")
-        #expect(book.contains("CoverGlyphs.book(hasKind: kind != nil, availability: availability, finished: finished)"),
-                "the book cover builds its marks outside the rule")
-        #expect(book.contains("BookCoverStack(availability: CoverAvailability.of(failed: failed,"),
-                "the book cover asks no rule what its availability says")
+                "the book cover's marks stand outside the stack again, or it asks no rule what its availability says")
         let cardFile = try FetchAnswerTests.squeezedSource("Sources/Views/CardDownloadBadge.swift")
         let ring = try #require(cardFile.range(of: "struct CardDownloadBadge: View {"))
         let marksStart = try #require(cardFile.range(of: "struct CardMarks: View {"))
@@ -156,8 +168,8 @@ struct CoverGlyphsTests {
                 "the book card leaves its marks outside the stack")
         #expect(episodeCard.contains("CardMarks(itemId: item.id, lock: PodcastSubscriptions.shared.lock(feedURL: feed))"),
                 "the episode card leaves its marks outside the stack")
-        #expect(episodeCard.contains(".overlay(alignment: .topTrailing) { ShowTileMarks(lock: lock, unavailable: unavailable,")
-                    && episodeCard.contains(".overlay(alignment: .topTrailing) { ShowTileMarks(lock: lock, coverSide: size) }")
+        #expect(episodeCard.contains(".overlay(alignment: .topTrailing) { StandardCoverMarks(lock: lock, availability: unavailable ? .offline : nil,")
+                    && episodeCard.contains(".overlay(alignment: .topTrailing) { StandardCoverMarks(lock: lock, coverSide: size) }")
                     && !episodeCard.contains("OfflineUnavailableBadge().padding(5) } }"),
                 "a show tile carries its lock, offline or count outside the stack again")
         let measure = ".onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }"

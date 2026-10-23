@@ -106,28 +106,6 @@ struct CardMarks: View {
         let availability = CoverAvailability.of(
             failed: false, downloaded: downloaded,
             unavailable: MediaAvailability.offlineUnavailable(isConnected: isOnline, isDownloaded: downloaded))
-        let locked = lock.map { $0 != .none } ?? false
-        let marks: [CoverGlyph] = (kind == nil ? [] : [.kind]) + (locked ? [.lock] : [])
-            + (availability == nil ? [] : [.availability])
-        CoverGlyphStack(present: marks, coverSide: nil, cornerSide: 0,
-                        label: { mark in
-                            switch mark {
-                            case .kind: Text(verbatim: kind?.label ?? "")
-                            case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
-                            default: availability == .downloaded ? Text("Downloaded") : Text("Not available offline")
-                            }
-                        }) { mark in
-            switch mark {
-            case .kind: if let kind { KindGlyph(kind: kind) }
-            case .lock: if let lock { PremiumLockBadge(lock: lock) }
-            default:
-                if availability == .downloaded {
-                    DownloadedMark(size: .large).padding(4)
-                        .accessibilityIdentifier("download-done")
-                } else {
-                    OfflineUnavailableBadge().padding(5)
-                }
-            }
-        }
+        StandardCoverMarks(kind: kind, lock: lock, availability: availability, coverSide: nil)
     }
 }

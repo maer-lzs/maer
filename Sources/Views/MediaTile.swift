@@ -99,11 +99,6 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// The kind of this tile in a mixed row (`stackedKind`), nil elsewhere.
     @Environment(\.coverGlyphKind) private var kind
 
-    /// The marks this tile carries: the kind, the lock and the offline disc.
-    private var marks: [CoverGlyph] {
-        (kind == nil ? [] : [.kind]) + (lock == .none ? [] : [.lock]) + (unavailable ? [.availability] : [])
-    }
-
     private static var imageShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
     }
@@ -117,20 +112,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 // stood at the top left and the disc lay over the lock. The
                 // bottom right carries the tile's control.
                 .overlay(alignment: .topTrailing) {
-                    CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: cornerSide,
-                                    label: { mark in
-                                        switch mark {
-                                        case .kind: Text(verbatim: kind?.label ?? "")
-                                        case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
-                                        default: Text("Not available offline")
-                                        }
-                                    }) { mark in
-                        switch mark {
-                        case .kind: if let kind { KindGlyph(kind: kind) }
-                        case .lock: PremiumLockBadge(lock: lock)
-                        default: OfflineUnavailableBadge().padding(5)
-                        }
-                    }
+                    StandardCoverMarks(kind: kind, lock: lock, availability: unavailable ? .offline : nil,
+                                       coverSide: coverSide, cornerSide: cornerSide)
                 }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }

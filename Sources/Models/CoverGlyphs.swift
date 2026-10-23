@@ -59,11 +59,14 @@ nonisolated enum CoverGlyphs {
         return (shown, ordered.filter { !shown.contains($0) })
     }
 
-    /// The marks of a book cover: its kind in a mixed row, its availability
-    /// when there is one to say, finished. An availability with nothing to
-    /// say takes no place, so it never pushes the check out of the room.
-    static func book(hasKind: Bool, availability: CoverAvailability?, finished: Bool) -> [CoverGlyph] {
-        (hasKind ? [.kind] : []) + (availability == nil ? [] : [.availability]) + (finished ? [.finished] : [])
+    /// The marks of a tile from its states, one place for every tile. A
+    /// mark is present only when it has something to say: an availability
+    /// with nothing to say takes no place, so it never pushes the check out
+    /// of the room.
+    static func marks(hasKind: Bool, locked: Bool, availability: CoverAvailability?,
+                      finished: Bool, favourite: Bool, hasCount: Bool) -> [CoverGlyph] {
+        (hasKind ? [.kind] : []) + (locked ? [.lock] : []) + (availability == nil ? [] : [.availability])
+            + (finished ? [.finished] : []) + (favourite ? [.favourite] : []) + (hasCount ? [.count] : [])
     }
 
     /// How many marks of `glyphSide` fit above the control at the bottom
