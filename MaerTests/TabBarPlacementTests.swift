@@ -22,6 +22,16 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(.trailing).isSide)
     }
 
+    @Test("die Achse der Statuszeichen liegt in beiden Haltungen des Duo auf den gemessenen Zeichen")
+    func theStatusAxisMatchesBothPostures() {
+        // Folded: column from 382, 84 wide, glyphs measured at 418.1.
+        #expect(abs(StatusColumnAxis.x(columnMinX: 382, columnWidth: 84) - 418.1) < 1)
+        // Open on its side: column from 867, 84 wide, glyphs at 903.7.
+        #expect(abs(StatusColumnAxis.x(columnMinX: 867, columnWidth: 84) - 903.7) < 1)
+        // Not the column's middle, which lay 6 pt off.
+        #expect(abs(StatusColumnAxis.x(columnMinX: 867, columnWidth: 84) - 909) > 5)
+    }
+
     @Test("eine Reiterleiste: die Bibliothek und die Einstellungen bauen dieselbe, je einmal", .needsTheSources)
     func oneTabBar() throws {
         var builds: [String] = []

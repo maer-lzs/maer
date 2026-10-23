@@ -28,14 +28,6 @@ struct ReservedStrip: Equatable {
     /// How far the axis of the system's column (clock, Wi-Fi) lies from the
     /// strip's centre; 0 where nothing is there.
     var axisShift: CGFloat = 0
-
-    /// Where the status glyphs stand in the status column, from its leading
-    /// edge. Measured on the iPhone Duo in the pictures: folded the axis lies
-    /// at 418.1 with the column from 382, open on its side at 903.7 with the
-    /// column from 867: 36.1 and 36.7, not the column's middle (42). The
-    /// camera matched folded only by chance; on its side it sits at the top
-    /// edge, outside the strip.
-    static let statusGlyphInset: CGFloat = 36.4
 }
 
 /// Cuts the library at the edge of the side column only: where the tabs
@@ -89,10 +81,10 @@ private struct ReservedStripReader: UIViewRepresentable {
                     .filter { $0.isActive && $0.frame.intersects(strip) }
                 value.top = regions.map(\.frame.maxY).max() ?? 0
                 // The axis: the status column is the widest region in the
-                // strip, and its glyphs stand a fixed way in from its leading
-                // edge, not in its middle (`statusGlyphInset`).
+                // strip; its glyphs stand on `StatusColumnAxis`.
                 if let column = regions.max(by: { $0.frame.width < $1.frame.width }) {
-                    value.axisShift = column.frame.minX + ReservedStrip.statusGlyphInset - strip.midX
+                    value.axisShift = StatusColumnAxis.x(columnMinX: column.frame.minX,
+                                                         columnWidth: column.frame.width) - strip.midX
                 }
             }
             DispatchQueue.main.async { [report] in report?(value) }

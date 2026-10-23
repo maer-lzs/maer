@@ -65,7 +65,7 @@ struct LibraryView: View {
     private static let sideColumnWidth: CGFloat = 46
     /// THE one gap of the side column (Laurenz, 23.10.2026): Wi-Fi glyph to
     /// cog, search to tabs, playback bar to search.
-    private static let sideGap: CGFloat = 11
+    private static let sideGap: CGFloat = 14
     /// How much more the system reserves under the Wi-Fi glyph than it draws
     /// (measured: region to 174 pt, glyph to about 151). The cog reaches
     /// into it, to stand `sideGap` under the glyph; a tap there reaches the

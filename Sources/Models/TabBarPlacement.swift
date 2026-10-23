@@ -26,3 +26,17 @@ nonisolated enum TabBarPlacement: Equatable, Sendable {
 
     var isSide: Bool { self != .bottom }
 }
+
+/// The axis of the glyphs in the system's upright status column (clock,
+/// Wi-Fi): the middle of the column without its margin at the window's
+/// edge. Measured on the iPhone Duo: column 84 pt, glyphs at its leading edge
+/// plus 36.1 folded and 36.7 open on its side; the camera lay on the axis
+/// folded only by chance and on its side sits outside the column.
+nonisolated enum StatusColumnAxis {
+    /// The column's margin at the window's edge, which its glyphs leave out.
+    static let edgeMargin: CGFloat = 12
+
+    static func x(columnMinX: CGFloat, columnWidth: CGFloat) -> CGFloat {
+        columnMinX + (columnWidth - edgeMargin) / 2
+    }
+}
