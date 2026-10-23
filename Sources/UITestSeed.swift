@@ -17,6 +17,9 @@ import UIKit
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
 
+    /// The seeded book server: `.invalid` never resolves (RFC 6761).
+    static let bookServer = URL(string: "https://example.invalid")!
+
     /// Any start by the UI harness, seeded or bare: every launch site of
     /// the UI tests passes an argument with this prefix (a source fence
     /// keeps it so). The cloud families read THIS, so a bare start (null
@@ -145,6 +148,11 @@ enum UITestSeed {
         // `isAvailable` is token-driven now. The harness needs one so
         // the audiobooks tab (and the ABS search path) stay seeded-visible.
         session.apiClient.updateToken("uitest-token")
+        // The book server is the seed's own, a host that never resolves:
+        // whatever address the simulator holds from a real sign-in, the
+        // harness token never goes there (it went to a production server).
+        session.authViewModel.serverURLString = Self.bookServer.absoluteString
+        session.apiClient.updateBaseURL(Self.bookServer)
         // The plain seed shows no error. Two error states on request, for
         // sight checks: the server refused the sign-in, or it is not answering.
         let args = ProcessInfo.processInfo.arguments

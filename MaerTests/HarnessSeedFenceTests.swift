@@ -124,5 +124,21 @@ struct HarnessSeedFenceTests {
         let after = cloud.dictionary(forKey: UserChoiceCloudSync.blobKey)?[key] as? [String: Any]
         #expect(after != nil && after?["v"] == nil, "a removal is a tombstone, not an absence")
     }
+
+    /// The harness never reaches a real server: it sets its own book server,
+    /// a host that never resolves, and names no production host. On
+    /// 23.10.2026 it kept whatever address the simulator held and sent its
+    /// made-up token to a production server.
+    @Test("der Testmodus setzt seinen eigenen Buchserver und nennt keinen Produktivnamen", .needsTheSources)
+    func theHarnessNeverReachesARealServer() throws {
+        #expect(UITestSeed.bookServer.host?.hasSuffix(".invalid") == true)
+        let seed = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/UITestSeed.swift"), encoding: .utf8))
+        #expect(seed.contains("session.apiClient.updateBaseURL(Self.bookServer)"),
+                "the seed no longer sets its own book server")
+        let production = seed.components(separatedBy: "maer.fm").count - 1
+            - (seed.components(separatedBy: "demo.maer.fm").count - 1)
+        #expect(production == 0, "the test data names a production host")
+    }
 }
 #endif
