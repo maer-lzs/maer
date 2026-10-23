@@ -287,15 +287,19 @@ struct LibraryView: View {
                 // Books" grid, the podcast show grid, the album grid). The
                 // gate that hid it on Home/Radio goes with it: there is
                 // nothing left to hide. The cog keeps its position, so nothing
-                // the user aims at moves.
-                if #available(iOS 26.0, *) {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        settingsLink
-                    }
-                    .sharedBackgroundVisibility(.hidden)
-                } else {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        settingsLink
+                // the user aims at moves. With the tabs at the side the cog
+                // stands at the top of that column instead: the head's
+                // trailing end lies against the status bar there.
+                if !tabBarPlacement.isSide {
+                    if #available(iOS 26.0, *) {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            settingsLink
+                        }
+                        .sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            settingsLink
+                        }
                     }
                 }
             }
@@ -520,9 +524,13 @@ struct LibraryView: View {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
                     VStack(spacing: 10) {
+                        settingsLink
                         mediaBar(upright: true)
                         searchButton
                     }
+                    // Air at both sides, as the search has: the bar stays
+                    // clear of the window's rounded corner.
+                    .padding(.horizontal, 8)
                     .frame(width: max(strip, 60))
                     .padding(.top, reservedSideTop + 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity,
