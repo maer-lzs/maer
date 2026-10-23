@@ -56,17 +56,29 @@ struct LibraryView: View {
     /// The playback bar's middle in window points, measured: the search in
     /// the side column stands on it. Nil while no bar is drawn.
     @State private var miniPlayerMidY: CGFloat?
+    /// The side strip's width, measured by the column.
+    @State private var sideStripWidth: CGFloat = 0
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
     /// The side column's width: the tab capsule, the cog and the search, as
     /// narrow as the system's own column (Apple Music on the device) and
     /// above the 44 pt a finger needs.
     private static let sideColumnWidth: CGFloat = 46
-    /// How far the cog rises into the reserved area under the Wi-Fi glyph:
-    /// the system reserves about 23 pt more than it draws (measured: region
-    /// to 174 pt, glyph to about 151), and the cog stands as close to the
-    /// glyph as the clock does. Whether a tap there still reaches the cog is
-    /// not measured.
-    private static let cogRise: CGFloat = 12
+    /// THE one gap of the side column (Laurenz, 23.10.2026): Wi-Fi glyph to
+    /// cog, search to tabs, playback bar to search.
+    private static let sideGap: CGFloat = 11
+    /// How much more the system reserves under the Wi-Fi glyph than it draws
+    /// (measured: region to 174 pt, glyph to about 151). The cog reaches
+    /// into it, to stand `sideGap` under the glyph; a tap there reaches the
+    /// cog (Laurenz' review).
+    private static let reservedBelowGlyph: CGFloat = 23
+
+    /// How far past the content's edge the playback bar reaches beside the
+    /// side column, so the gap to the search is `sideGap`: the search's
+    /// leading edge lies half the strip plus the axis shift minus half its
+    /// width from that edge.
+    private static func sideBarReach(strip: CGFloat, axisShift: CGFloat) -> CGFloat {
+        strip / 2 + axisShift - sideColumnWidth / 2 - sideGap
+    }
 
     /// The distance from the window's bottom to the side search's bottom
     /// edge, so the search's middle lies on the playback bar's middle.
@@ -546,13 +558,16 @@ struct LibraryView: View {
         // stand in the strip the system keeps free at that edge, under the
         // status bar; the bottom keeps only what plays.
         .overlay {
-            if tabBarPlacement.isSide, !isShowingFullPlayer, !isShowingSearch {
+            // Under an open sheet the column draws nothing of its own: the
+            // sheet leaves the strip free, and our glass showed through it.
+            if tabBarPlacement.isSide, !isShowingFullPlayer, !isShowingSearch,
+               !showSettings, !showQueueSheet {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
                     // From the top as the system's own column (Apple Music on
                     // the device): the system, then the page's buttons, a
                     // gap, the tabs, the search at the very bottom.
-                    VStack(spacing: 10) {
+                    VStack(spacing: Self.sideGap) {
                         FloatingSearchButton(action: { showSettings = true },
                                              systemImage: "gearshape", label: "Settings",
                                              diameter: Self.sideColumnWidth)
@@ -567,7 +582,7 @@ struct LibraryView: View {
                     .offset(x: reservedSide.axisShift)
                     .frame(width: max(strip, Self.sideColumnWidth + 8))
                     .frame(maxHeight: .infinity)
-                    .padding(.top, max(0, reservedSide.top - Self.cogRise))
+                    .padding(.top, max(0, reservedSide.top - Self.reservedBelowGlyph + Self.sideGap))
                     // The search stands on the playback bar's middle; with no
                     // bar, clear of the bottom edge.
                     .padding(.bottom, Self.sideSearchBottom(
@@ -578,6 +593,7 @@ struct LibraryView: View {
                            alignment: verticalBarSide == .leading ? .topLeading : .topTrailing)
                     .ignoresSafeArea()
                     .readsReservedStrip(ofWidth: strip, $reservedSide)
+                    .onChange(of: strip, initial: true) { _, width in sideStripWidth = width }
                 }
             }
         }
@@ -614,7 +630,12 @@ struct LibraryView: View {
                         : .spring(response: 0.55, dampingFraction: 0.85),
                     value: barCollapsed)
                 }
-                .padding(.horizontal, 10)
+                .padding(.leading, 10)
+                // Beside the side column the bar reaches up to the search,
+                // with the column's own gap between them.
+                .padding(.trailing, tabBarPlacement.isSide
+                         ? -Self.sideBarReach(strip: sideStripWidth, axisShift: reservedSide.axisShift)
+                         : 10)
                 .padding(.bottom, 2)
                 // The bar avoids the keyboard ONLY while the search field can
                 // own one. That is the single reason the overlay ever wanted

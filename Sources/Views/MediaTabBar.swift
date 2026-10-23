@@ -12,13 +12,15 @@ import SwiftUI
 /// its media type's tint (Audible orange / Podcasts purple / Music red, Home
 /// neutral. See MediaType.tint). Pure component, the state (selected type)
 /// lives in LibraryView. Only shown when at least two types are available.
+/// The settings' sections take the same bar upright beside a side column,
+/// with their own cells (`init(cells:selectedID:onSelectID:upright:)`).
 struct MediaTabBar: View {
-    let types: [MediaType]
-    let selected: MediaType
+    let cells: [TabBarCell]
+    let selectedID: String
     /// Direct callback instead of a binding. The switch has side effects
     /// (resetting the navigation path) that were unreliable in a binding setter
     /// (a tap "did nothing").
-    let onSelect: (MediaType) -> Void
+    let onSelectID: (String) -> Void
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
@@ -26,6 +28,28 @@ struct MediaTabBar: View {
     /// the same cells one under the other, symbols only as at accessibility
     /// sizes, the name stays for VoiceOver.
     var upright = false
+
+    /// The library's media tabs.
+    init(types: [MediaType], selected: MediaType, onSelect: @escaping (MediaType) -> Void,
+         glassMorphID: String? = nil, glassMorphNamespace: Namespace.ID? = nil, upright: Bool = false) {
+        self.cells = types.map(TabBarCell.init(mediaType:))
+        self.selectedID = TabBarCell(mediaType: selected).id
+        self.onSelectID = { id in
+            if let type = types.first(where: { "tab-\($0.rawValue)" == id }) { onSelect(type) }
+        }
+        self.glassMorphID = glassMorphID
+        self.glassMorphNamespace = glassMorphNamespace
+        self.upright = upright
+    }
+
+    /// Any other set of sections in the same bar.
+    init(cells: [TabBarCell], selectedID: String, onSelectID: @escaping (String) -> Void,
+         upright: Bool = false) {
+        self.cells = cells
+        self.selectedID = selectedID
+        self.onSelectID = onSelectID
+        self.upright = upright
+    }
 
     /// At accessibility sizes the caption labels truncated anyway.
     /// Icons only, the label lives on as the accessibility label.
@@ -79,11 +103,11 @@ struct MediaTabBar: View {
         // cause. Same class as `AppTheme.accentUIColor`, one layer up.
         // So the candidates are built from PLAIN COPIES taken here, and the
         // closures touch data only, never self.
-        let types = self.types
-        let selected = self.selected
+        let cells = self.cells
+        let selected = self.selectedID
         let hideLabels = dynamicTypeSize.isAccessibilitySize
         let namespace = pillNS
-        let onSelect = self.onSelect
+        let onSelect = self.onSelectID
         // MeasuredLadder, never ViewThatFits. Four device
         // crashes proved the sizing engine's off-main reach cannot be
         // enumerated (even nonisolated data-pure candidates trapped). The
@@ -93,12 +117,12 @@ struct MediaTabBar: View {
         Group {
             if upright {
                 // A column has no width to fall back on: no labels, no ladder.
-                TabRowCandidate(types: types, selected: selected,
+                TabRowCandidate(cells: cells, selected: selected,
                                 labelSize: Self.baseLabelSize, hideLabels: true,
                                 namespace: namespace, upright: true, onSelect: onSelect)
             } else {
                 MeasuredLadder(rungs: Self.labelSizes) { size, probing in
-                    TabRowCandidate(types: types, selected: selected,
+                    TabRowCandidate(cells: cells, selected: selected,
                                     labelSize: size, hideLabels: hideLabels,
                                     namespace: namespace, probing: probing,
                                     onSelect: onSelect)
@@ -115,6 +139,27 @@ struct MediaTabBar: View {
     }
 }
 
+/// One section of the bar: what its cell shows and the handle it answers to.
+nonisolated struct TabBarCell: Identifiable, Equatable {
+    /// The locale-independent handle (`tab-<rawValue>` for the media tabs).
+    let id: String
+    let systemImage: String
+    let label: String
+    let tint: Color
+
+    init(id: String, systemImage: String, label: String, tint: Color) {
+        self.id = id
+        self.systemImage = systemImage
+        self.label = label
+        self.tint = tint
+    }
+
+    @MainActor init(mediaType type: MediaType) {
+        self.init(id: "tab-\(type.rawValue)", systemImage: type.systemImage,
+                  label: type.label, tint: type.tint)
+    }
+}
+
 /// One row of the bar at one ladder size. As a ViewThatFits candidate this
 /// was data-pure and `nonisolated` and STILL trapped on the AsyncRenderer:
 /// the sizing engine wraps evaluation in ObservationCenter and reaches a live
@@ -122,8 +167,8 @@ struct MediaTabBar: View {
 /// path. As `MeasuredLadder`'s hidden probe or as the chosen row.
 /// `nonisolated` stays as belt and braces, not as the load-bearing fix.
 nonisolated private struct TabRowCandidate: View {
-    let types: [MediaType]
-    let selected: MediaType
+    let cells: [TabBarCell]
+    let selected: String
     let labelSize: CGFloat
     let hideLabels: Bool
     let namespace: Namespace.ID
@@ -132,7 +177,7 @@ nonisolated private struct TabRowCandidate: View {
     var probing: Bool = false
     /// The cells one under the other (`MediaTabBar.upright`).
     var upright: Bool = false
-    let onSelect: (MediaType) -> Void
+    let onSelect: (String) -> Void
 
     /// Mirror. Kept in sync with `MediaTabBar.pillGap` via the shared
     /// constant there.
@@ -143,15 +188,15 @@ nonisolated private struct TabRowCandidate: View {
         let layout = upright ? AnyLayout(VStackLayout(spacing: Self.cellSpacing))
                              : AnyLayout(HStackLayout(spacing: Self.cellSpacing))
         layout {
-            ForEach(types) { type in
+            ForEach(cells) { cell in
                 Button {
-                    onSelect(type)
+                    onSelect(cell.id)
                 } label: {
                     VStack(spacing: 2) {
-                        Image(systemName: type.systemImage)
+                        Image(systemName: cell.systemImage)
                             .font(.system(size: 17, weight: .semibold))
                         if !hideLabels {
-                            Text(type.label)
+                            Text(cell.label)
                                 .font(.system(size: labelSize))
                                 // Whole or not at all: a cut-off word is a
                                 // defect, a small word only a metric. Refusing
@@ -163,7 +208,7 @@ nonisolated private struct TabRowCandidate: View {
                     }
                     // Selected → the type's own tint; unselected → neutral. The
                     // colour appears only on the active selector, never always.
-                    .foregroundStyle(selected == type ? type.tint : Color.primary)
+                    .foregroundStyle(selected == cell.id ? cell.tint : Color.primary)
                     // The ONE capsule metric. Horizontal stays (that
                     // width is exactly the room the longest title needs),
                     // vertical is what grew.
@@ -178,9 +223,9 @@ nonisolated private struct TabRowCandidate: View {
                         // ONE pill gap → concentric to the bar capsule (see
                         // `pillGap`); no horizontal inset within the cell, the
                         // bar's end padding provides the same gap at the ends.
-                        if !probing, selected == type {
+                        if !probing, selected == cell.id {
                             Capsule()
-                                .fill(type.tint.opacity(0.16))
+                                .fill(cell.tint.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabPill", in: namespace)
                                 .padding(upright ? .horizontal : .vertical, Self.pillGap)
                         }
@@ -188,9 +233,9 @@ nonisolated private struct TabRowCandidate: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text(type.label))
+                .accessibilityLabel(Text(cell.label))
                 // Locale-independent handle for the UI-test harness.
-                .accessibilityIdentifier("tab-\(type.rawValue)")
+                .accessibilityIdentifier(cell.id)
             }
         }
     }

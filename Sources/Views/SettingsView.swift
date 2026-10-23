@@ -61,6 +61,17 @@ struct SettingsView: View {
             }
         }
 
+        /// The same name as text, for the upright cell's VoiceOver label.
+        var title: String {
+            switch self {
+            case .general: return String(localized: "General")
+            case .audiobooks: return String(localized: "Audiobooks")
+            case .podcasts: return String(localized: "Podcasts")
+            case .music: return String(localized: "Music")
+            case .radio: return String(localized: "Radio")
+            }
+        }
+
         /// THE tab bar's glyphs, one symbol source.
         /// A second symbol language would cost the recognition that makes
         /// the glyph rung work at all. General has none: it stays text
@@ -87,6 +98,11 @@ struct SettingsView: View {
         }
     }
     @State private var tab: Tab = .general
+    /// Where the system stands its bars upright: the sections then stand in
+    /// the side column like the library's tabs (`TabBarPlacement`).
+    @State private var verticalBarSide: VerticalBarSide?
+    @State private var reservedSide = ReservedStrip()
+    private var sectionsAtSide: Bool { TabBarPlacement.of(verticalBarSide: verticalBarSide).isSide }
 
     /// Media-type pills only when the type is enabled (no dead pill for a
     /// hidden library). General is always there.
@@ -139,7 +155,7 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            pillTabs
+            if !sectionsAtSide { pillTabs }
             Form {
                 // Variante b: General = everything cross-cutting, in the
                 // placement-rule order below (the sequence in this switch IS
@@ -220,6 +236,45 @@ struct SettingsView: View {
         .task {
             coverCacheBytes = Artwork.cacheSizeBytes()
         }
+        // The sections at the bottom of the side column, the library's tab
+        // bar upright, on the axis of the system's own column.
+        .overlay {
+            if sectionsAtSide {
+                GeometryReader { proxy in
+                    let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
+                    VStack {
+                        Spacer(minLength: 0)
+                        sectionColumn
+                    }
+                    .frame(width: 46)
+                    .offset(x: reservedSide.axisShift)
+                    .frame(width: max(strip, 54))
+                    .padding(.top, reservedSide.top)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity,
+                           alignment: verticalBarSide == .leading ? .bottomLeading : .bottomTrailing)
+                    .ignoresSafeArea()
+                    .readsReservedStrip(ofWidth: strip, $reservedSide)
+                }
+            }
+        }
+        .readsVerticalBarSide($verticalBarSide)
+    }
+
+    /// The sections as the library's tab bar, upright: one cell per pill,
+    /// General with the cog (decided for the column), the same handles.
+    private var sectionColumn: some View {
+        MediaTabBar(
+            cells: visibleTabs.map { t in
+                TabBarCell(id: "settings-tab-\(t.rawValue)", systemImage: t.glyph ?? "gearshape",
+                           label: t.title, tint: AppTheme.accent)
+            },
+            selectedID: "settings-tab-\(tab.rawValue)",
+            onSelectID: { id in
+                guard let chosen = visibleTabs.first(where: { "settings-tab-\($0.rawValue)" == id }) else { return }
+                withAnimation(.snappy(duration: 0.2)) { tab = chosen }
+            },
+            upright: true)
     }
 
     // MARK: - Pill-Tabs

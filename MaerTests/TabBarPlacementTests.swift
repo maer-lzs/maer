@@ -22,7 +22,7 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(.trailing).isSide)
     }
 
-    @Test("eine Reiterleiste: gebaut an einer Stelle, aufrecht und unten aus derselben", .needsTheSources)
+    @Test("eine Reiterleiste: die Bibliothek und die Einstellungen bauen dieselbe, je einmal", .needsTheSources)
     func oneTabBar() throws {
         var builds: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -30,7 +30,10 @@ struct TabBarPlacementTests {
             let count = text.components(separatedBy: "MediaTabBar(").count - 1
             if count > 0 { builds.append("\(file.lastPathComponent): \(count)") }
         }
-        #expect(builds == ["LibraryView.swift: 1"], "the tab bar is built more than once: \(builds)")
+        // The settings' sections take the library's bar upright in the side
+        // column (decided 23.10.2026); no other place builds a tab bar.
+        #expect(builds.sorted() == ["LibraryView.swift: 1", "SettingsView.swift: 1"],
+                "the tab bar is built somewhere else too: \(builds)")
         let library = FetchAnswerTests.squeezed(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
         #expect(library.contains("mediaBar(upright: true)") && library.contains("upright: upright)"),
