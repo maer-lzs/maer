@@ -142,17 +142,26 @@ struct CategoryDeckGrid: View {
 
     var body: some View {
         if !entries.isEmpty {
-            LazyVGrid(columns: Self.columns(for: typeSize), spacing: 12) {
-                ForEach(entries) { entry in
-                    CategoryTile(title: entry.title, systemImage: entry.systemImage,
-                                 count: entry.count,
-                                 accessibilityId: entry.accessibilityId ?? "deck-tier-\(entry.id)",
-                                 action: entry.action)
+            // A single tile in the last row takes the full width
+            // (`DeckRows.lastSpansAll`) instead of standing in half of it.
+            let columns = Self.columns(for: typeSize)
+            let spans = DeckRows.lastSpansAll(count: entries.count, columns: columns.count)
+            VStack(spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(spans ? Array(entries.dropLast()) : entries) { tile($0) }
                 }
+                if spans, let last = entries.last { tile(last) }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
         }
+    }
+
+    private func tile(_ entry: CategoryDeckEntry) -> some View {
+        CategoryTile(title: entry.title, systemImage: entry.systemImage,
+                     count: entry.count,
+                     accessibilityId: entry.accessibilityId ?? "deck-tier-\(entry.id)",
+                     action: entry.action)
     }
 }
 

@@ -18,6 +18,20 @@ struct CategoryDeckTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
+    @Test("eine einzelne Kachel in der letzten Zeile nimmt die volle Breite, und das Raster fragt die Regel", .needsTheSources)
+    func aLoneLastTileSpansTheRow() throws {
+        #expect(DeckRows.lastSpansAll(count: 3, columns: 2), "the books tab deck: series, authors, local files")
+        #expect(!DeckRows.lastSpansAll(count: 4, columns: 2), "a full last row spans nothing")
+        #expect(!DeckRows.lastSpansAll(count: 3, columns: 1), "one column needs no span")
+        #expect(DeckRows.lastSpansAll(count: 1, columns: 2), "a deck of one tile takes the row")
+        #expect(!DeckRows.lastSpansAll(count: 0, columns: 2))
+        #expect(!DeckRows.lastSpansAll(count: 5, columns: 3), "two in a row of three are no single tile")
+        let grid = FetchAnswerTests.squeezed(try sourceText("Sources/Views/CategoryTile.swift"))
+        #expect(grid.contains("let spans = DeckRows.lastSpansAll(count: entries.count, columns: columns.count)")
+                    && grid.contains("if spans, let last = entries.last { tile(last) }"),
+                "the deck lays its last tile out without the rule")
+    }
+
     @Test("Suchseite und Musik-Tab rendern dieselbe Kachel-Liste mit denselben Eintraegen", .needsTheSources)
     func bothHostsRenderTheOneDeck() throws {
         let search = try sourceText("Sources/Views/SearchScreen.swift")

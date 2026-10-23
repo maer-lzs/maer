@@ -26,8 +26,12 @@ The kind of a tile in a mixed row now stands first in the column of marks
 at the top right instead of at the top left. Every mark and every corner
 button on these tiles (kind, lock, offline, play, subscribe, import) is a
 white symbol on the same soft disc, the tone of the Details pill over a
-dark shade; before, they used three different darks, and subscribe was
-a green check or an orange plus.
+dark shade deep enough to read on light covers; before, they used three
+different darks, and subscribe was a green check or an orange plus.
+
+**A single tile takes the whole row.** When a deck of tiles ends with
+one tile alone in its row, like Local Files on the Audiobooks tab, that
+tile now spans the full width instead of standing in half of it.
 
 **Book covers carry their marks in one column.** At the top right of a
 book cover stand, one under the other, its kind in a mixed row, whether

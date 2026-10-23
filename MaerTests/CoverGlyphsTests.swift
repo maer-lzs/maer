@@ -130,7 +130,7 @@ struct CoverGlyphsTests {
         #expect(!body.contains(".black.opacity(") && !body.contains(".green") && body.components(separatedBy: ".glyphDisc()").count == 4,
                 "the subscribe control has a colour of its own again")
         let stack = try FetchAnswerTests.squeezedSource("Sources/Views/CoverGlyphStack.swift")
-        #expect(stack.contains("static let shade = Color.black.opacity(0.35)")
+        #expect(stack.contains("static let shade = Color.black.opacity(0.55)")
                     && stack.contains("Circle().fill(GlyphTone.shade) Circle().fill(GlyphTone.fill)"),
                 "the disc is not the tone over the dark shade")
         let tile = try FetchAnswerTests.squeezedSource("Sources/Views/MediaTile.swift")
