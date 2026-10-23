@@ -46,6 +46,21 @@ struct CoverGlyphsTests {
         #expect(CoverGlyphs.stack([.availability], room: 0) == ([], [.availability]), "no room still shows a mark")
     }
 
+    @Test("ein Cover ohne Aussage zur Verfuegbarkeit belegt keinen Platz, der Haken abgeschlossen bleibt")
+    func anEmptyAvailabilityTakesNoPlace() {
+        #expect(CoverAvailability.of(failed: false, downloaded: false, unavailable: false) == nil)
+        #expect(CoverAvailability.of(failed: true, downloaded: true, unavailable: true) == .failed)
+        #expect(CoverAvailability.of(failed: false, downloaded: true, unavailable: true) == .downloaded)
+        #expect(CoverAvailability.of(failed: false, downloaded: false, unavailable: true) == .offline)
+        // A finished book in a mixed row, nothing to say about availability,
+        // room for two: kind and check, no empty place between them.
+        let marks = CoverGlyphs.book(hasKind: true, availability: nil, finished: true)
+        #expect(marks == [.kind, .finished], "an empty availability takes a place: \(marks)")
+        #expect(CoverGlyphs.stack(marks, room: 2).shown == [.kind, .finished], "the check is pushed out")
+        #expect(CoverGlyphs.book(hasKind: false, availability: .offline, finished: true) == [.availability, .finished])
+        #expect(CoverGlyphs.book(hasKind: false, availability: nil, finished: false).isEmpty)
+    }
+
     @Test("die Zeichen wachsen bis zur ersten Bedienhilfen-Groesse, der Platz wird in dieser Groesse gemessen", .needsTheSources)
     func theMarksStopGrowing() throws {
         let stack = try FetchAnswerTests.squeezedSource("Sources/Views/CoverGlyphStack.swift")
@@ -122,11 +137,13 @@ struct CoverGlyphsTests {
         #expect(tile.contains("@Environment(\\.coverGlyphKind) private var kind")
                     && tile.contains("(kind == nil ? [] : [.kind])"), "the tile leaves its kind outside the stack")
         let book = try FetchAnswerTests.squeezedSource("Sources/Views/BookCoverView.swift")
-        #expect(book.contains(".overlay(alignment: .topTrailing) { CoverGlyphStack(present: marks, coverSide: size,")
+        #expect(book.contains("CoverGlyphStack(present: marks, coverSide: size,")
                     && !book.contains(".overlay(alignment: .bottomLeading)"),
                 "the book cover's marks stand outside the stack again")
-        #expect(book.contains("(kind == nil ? [] : [.kind]) + (itemId == nil ? [] : [.availability])"),
-                "the book cover leaves its kind or its availability outside the stack")
+        #expect(book.contains("CoverGlyphs.book(hasKind: kind != nil, availability: availability, finished: finished)"),
+                "the book cover builds its marks outside the rule")
+        #expect(book.contains("BookCoverStack(availability: CoverAvailability.of(failed: failed,"),
+                "the book cover asks no rule what its availability says")
         var left: [String: Int] = [:]
         for (path, text) in try MixedRowGlyphTests.sources() {
             let n = text.components(separatedBy: ".kindGlyph(").count - 1

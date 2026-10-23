@@ -26,6 +26,21 @@ nonisolated enum CoverGlyph: Int, CaseIterable, Comparable, Sendable {
     static func < (lhs: CoverGlyph, rhs: CoverGlyph) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
+/// What the availability mark of a cover says, if anything: a failed
+/// download, else a stored title, else a title not available offline.
+/// Nothing to say is no mark, so it takes no place in the stack.
+nonisolated enum CoverAvailability: Equatable, Sendable {
+    case failed
+    case downloaded
+    case offline
+
+    static func of(failed: Bool, downloaded: Bool, unavailable: Bool) -> CoverAvailability? {
+        if failed { return .failed }
+        if downloaded { return .downloaded }
+        return unavailable ? .offline : nil
+    }
+}
+
 /// Which marks a cover shows and which it only says.
 nonisolated enum CoverGlyphs {
     /// The marks in the order of the stack, as many as `room` shown, the
@@ -42,6 +57,13 @@ nonisolated enum CoverGlyphs {
             shown.sort()
         }
         return (shown, ordered.filter { !shown.contains($0) })
+    }
+
+    /// The marks of a book cover: its kind in a mixed row, its availability
+    /// when there is one to say, finished. An availability with nothing to
+    /// say takes no place, so it never pushes the check out of the room.
+    static func book(hasKind: Bool, availability: CoverAvailability?, finished: Bool) -> [CoverGlyph] {
+        (hasKind ? [.kind] : []) + (availability == nil ? [] : [.availability]) + (finished ? [.finished] : [])
     }
 
     /// How many marks of `glyphSide` fit above the control at the bottom

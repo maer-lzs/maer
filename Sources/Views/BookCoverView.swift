@@ -13,7 +13,7 @@ import SwiftUI
 /// GeometryReader. Every grid cell used to set up two Combine subscriptions
 /// and a layout subpass on creation (the per-cell scroll bump). The offline
 /// dim resolves in the MediaAvailabilityScope leaf, the live download state
-/// in the tiny observing BookAvailabilityMark; the progress bar computes from
+/// in the tiny observing BookCoverMarks; the progress bar computes from
 /// the KNOWN `size` instead of measuring it.
 struct BookCoverView: View {
     let url: URL?
@@ -24,14 +24,6 @@ struct BookCoverView: View {
     var size: CGFloat = 56
     /// The kind of this cover in a mixed row (`stackedKind`), nil elsewhere.
     @Environment(\.coverGlyphKind) private var kind
-    @ScaledMetric(relativeTo: .title3) private var markDiameter: CGFloat = 22
-
-    /// The marks this cover carries. Availability stands whenever the
-    /// book is known; its leaf draws nothing while there is nothing to say.
-    private var marks: [CoverGlyph] {
-        (kind == nil ? [] : [.kind]) + (itemId == nil ? [] : [.availability])
-            + (progress?.countsAsFinished == true ? [.finished] : [])
-    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -80,32 +72,13 @@ struct BookCoverView: View {
         // ring the enclosing cell lays over the cover (see BookGridCell), so
         // a tap on the ring cancels instead of navigating.
         .overlay(alignment: .topTrailing) {
-            CoverGlyphStack(present: marks, coverSide: size, cornerSide: CoverBadge.size(tileWidth: size) + 10,
-                            label: { mark in
-                                switch mark {
-                                case .kind: Text(verbatim: kind?.label ?? "")
-                                case .finished: Text("Finished")
-                                default: unavailable ? Text("Not available offline") : Text(verbatim: "")
-                                }
-                            }) { mark in
-                switch mark {
-                case .kind: if let kind { KindGlyph(kind: kind) }
-                case .availability: if let itemId { BookAvailabilityMark(itemId: itemId, unavailable: unavailable) }
-                default: finishedMark
-                }
+            let finished = progress?.countsAsFinished == true
+            if let itemId {
+                BookCoverMarks(itemId: itemId, unavailable: unavailable, finished: finished, kind: kind, size: size)
+            } else {
+                BookCoverStack(availability: nil, finished: finished, kind: kind, size: size)
             }
         }
-    }
-
-    /// Finished: a white check on the disc of the tone.
-    private var finishedMark: some View {
-        Image(systemName: "checkmark")
-            .font(.system(size: markDiameter * 0.45, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: markDiameter, height: markDiameter)
-            .glyphDisc()
-            .padding(5)
-            .accessibilityLabel(Text("Finished"))
     }
 
     /// Thin bar below the cover. Width from the KNOWN cover size, no
@@ -136,26 +109,79 @@ struct BookCoverView: View {
     }
 }
 
-/// The availability mark of a book cover in the stack: download failed,
-/// else downloaded, else not available offline, else nothing. The ONE
+/// The marks of a known book: asks the live download state and hands the
+/// stack what availability says (`CoverAvailability.of`). The ONE
 /// observing leaf of the book cell (its purpose IS the live download
 /// state; it is tiny).
-struct BookAvailabilityMark: View {
+struct BookCoverMarks: View {
     let itemId: String
     let unavailable: Bool
+    let finished: Bool
+    let kind: MediaType?
+    let size: CGFloat
     private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
-    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
-    init(itemId: String, unavailable: Bool) {
+    init(itemId: String, unavailable: Bool, finished: Bool, kind: MediaType?, size: CGFloat) {
         self.itemId = itemId
         self.unavailable = unavailable
+        self.finished = finished
+        self.kind = kind
+        self.size = size
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
     }
 
     var body: some View {
-        if case .failed = downloadManager.phase[itemId] {
+        let failed: Bool = { if case .failed = downloadManager.phase[itemId] { return true }; return false }()
+        BookCoverStack(availability: CoverAvailability.of(failed: failed,
+                                                          downloaded: downloadManager.isDownloaded(itemId: itemId),
+                                                          unavailable: unavailable),
+                       finished: finished, kind: kind, size: size)
+    }
+}
+
+/// The stack of a book cover at its top right: kind, availability,
+/// finished. Only a mark that has something to say takes a place, so an
+/// empty availability never pushes the check out. The bottom right keeps
+/// room for the install ring the enclosing cell lays over the cover.
+struct BookCoverStack: View {
+    let availability: CoverAvailability?
+    let finished: Bool
+    let kind: MediaType?
+    let size: CGFloat
+    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
+
+    private var marks: [CoverGlyph] {
+        CoverGlyphs.book(hasKind: kind != nil, availability: availability, finished: finished)
+    }
+
+    var body: some View {
+        CoverGlyphStack(present: marks, coverSide: size, cornerSide: CoverBadge.size(tileWidth: size) + 10,
+                        label: { mark in
+                            switch mark {
+                            case .kind: Text(verbatim: kind?.label ?? "")
+                            case .finished: Text("Finished")
+                            default:
+                                switch availability {
+                                case .failed: Text("Download failed")
+                                case .downloaded: Text("Downloaded")
+                                default: Text("Not available offline")
+                                }
+                            }
+                        }) { mark in
+            switch mark {
+            case .kind: if let kind { KindGlyph(kind: kind) }
+            case .availability: availabilityMark
+            default: finishedMark
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var availabilityMark: some View {
+        switch availability {
+        case .failed:
             // A failure keeps its signal colour, like a refused feed.
             Image(systemName: "exclamationmark")
                 .font(.system(size: diameter * 0.45, weight: .bold))
@@ -164,11 +190,23 @@ struct BookAvailabilityMark: View {
                 .background(Circle().fill(AppTheme.accent))
                 .padding(5)
                 .accessibilityLabel(Text("Download failed"))
-        } else if downloadManager.isDownloaded(itemId: itemId) {
-            DownloadedMark(size: .large)
-                .padding(4)
-        } else if unavailable {
+        case .downloaded:
+            DownloadedMark(size: .large).padding(4)
+        case .offline:
             OfflineUnavailableBadge().padding(5)
+        case nil:
+            EmptyView()
         }
+    }
+
+    /// Finished: a white check on the disc of the tone.
+    private var finishedMark: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: diameter * 0.45, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: diameter, height: diameter)
+            .glyphDisc()
+            .padding(5)
+            .accessibilityLabel(Text("Finished"))
     }
 }
