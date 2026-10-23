@@ -21,6 +21,28 @@ extension View {
     }
 }
 
+/// Cuts the library at the edge of the side column only: where the tabs
+/// stand at the side, nothing is drawn past the content's edge there; top,
+/// bottom and the other side stay open (backgrounds under the status bar and
+/// the bottom bar). With the tabs at the bottom it cuts nothing.
+nonisolated struct SideColumnClip: Shape {
+    let placement: TabBarPlacement
+
+    func path(in rect: CGRect) -> Path {
+        let open: CGFloat = 10_000
+        switch placement {
+        case .bottom:
+            return Path(rect.insetBy(dx: -open, dy: -open))
+        case .side(.trailing):
+            return Path(CGRect(x: rect.minX - open, y: rect.minY - open,
+                               width: rect.width + open, height: rect.height + 2 * open))
+        case .side(.leading):
+            return Path(CGRect(x: rect.minX, y: rect.minY - open,
+                               width: rect.width + open, height: rect.height + 2 * open))
+        }
+    }
+}
+
 /// Apple's way for a bar of our own: the window's occlusion regions
 /// (`UIView.reservedRegions`, iOS 27.1), read whenever the window lays out.
 private struct ReservedTopReader: UIViewRepresentable {

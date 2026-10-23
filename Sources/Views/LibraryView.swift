@@ -516,6 +516,10 @@ struct LibraryView: View {
                         selectedMediaType = .home
                     }
                 }
+        // The rows draw past their frame on purpose (`scrollClipDisabled`);
+        // with the tabs at the side they end at that column, so no card
+        // lies behind it. Top and bottom stay open.
+        .clipShape(SideColumnClip(placement: tabBarPlacement))
         // Where the system stands its bars upright, the tabs and the search
         // stand in the strip the system keeps free at that edge, under the
         // status bar; the bottom keeps only what plays.
@@ -523,8 +527,14 @@ struct LibraryView: View {
             if tabBarPlacement.isSide, !isShowingFullPlayer, !isShowingSearch {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
+                    // From the top as the system's own column (Apple Music on
+                    // the device): the system, then the page's buttons, a
+                    // gap, the tabs, the search at the very bottom.
                     VStack(spacing: 10) {
-                        settingsLink
+                        FloatingSearchButton(action: { showSettings = true },
+                                             systemImage: "gearshape", label: "Settings")
+                            .accessibilityIdentifier("open-settings")
+                        Spacer(minLength: 16)
                         mediaBar(upright: true)
                         searchButton
                     }
@@ -532,7 +542,9 @@ struct LibraryView: View {
                     // clear of the window's rounded corner.
                     .padding(.horizontal, 8)
                     .frame(width: max(strip, 60))
+                    .frame(maxHeight: .infinity)
                     .padding(.top, reservedSideTop + 8)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity,
                            alignment: verticalBarSide == .leading ? .topLeading : .topTrailing)
                     .ignoresSafeArea()
