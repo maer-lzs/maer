@@ -25,10 +25,17 @@ extension View {
 struct ReservedStrip: Equatable {
     /// How far down the reserved regions reach; 0 where nothing is there.
     var top: CGFloat = 0
-    /// How far the axis of the system's column (clock, Wi-Fi: the centre of
-    /// the narrowest reserved region, the camera) lies from the strip's
-    /// centre; 0 where nothing is there.
+    /// How far the axis of the system's column (clock, Wi-Fi) lies from the
+    /// strip's centre; 0 where nothing is there.
     var axisShift: CGFloat = 0
+
+    /// Where the status glyphs stand in the status column, from its leading
+    /// edge. Measured on the iPhone Duo in the pictures: folded the axis lies
+    /// at 418.1 with the column from 382, open on its side at 903.7 with the
+    /// column from 867: 36.1 and 36.7, not the column's middle (42). The
+    /// camera matched folded only by chance; on its side it sits at the top
+    /// edge, outside the strip.
+    static let statusGlyphInset: CGFloat = 36.4
 }
 
 /// Cuts the library at the edge of the side column only: where the tabs
@@ -78,15 +85,14 @@ private struct ReservedStripReader: UIViewRepresentable {
             if #available(iOS 27.1, *) {
                 let strip = CGRect(x: window.bounds.maxX - stripWidth, y: 0,
                                    width: stripWidth, height: window.bounds.height)
-                let regions = window.reservedRegions(kind: .occlusion, options: .includeInactive)
-                    .filter { $0.frame.intersects(strip) }
-                // How far down: only what the system reserves now.
-                value.top = regions.filter(\.isActive).map(\.frame.maxY).max() ?? 0
-                // The axis: the camera stands where it stands, active or not
-                // (on its side the open Duo reports it inactive, and the
-                // status column alone lies 6 pt off the glyphs' axis).
-                if let narrowest = regions.min(by: { $0.frame.width < $1.frame.width }) {
-                    value.axisShift = narrowest.frame.midX - strip.midX
+                let regions = window.reservedRegions(kind: .occlusion)
+                    .filter { $0.isActive && $0.frame.intersects(strip) }
+                value.top = regions.map(\.frame.maxY).max() ?? 0
+                // The axis: the status column is the widest region in the
+                // strip, and its glyphs stand a fixed way in from its leading
+                // edge, not in its middle (`statusGlyphInset`).
+                if let column = regions.max(by: { $0.frame.width < $1.frame.width }) {
+                    value.axisShift = column.frame.minX + ReservedStrip.statusGlyphInset - strip.midX
                 }
             }
             DispatchQueue.main.async { [report] in report?(value) }
