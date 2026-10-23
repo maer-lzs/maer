@@ -102,6 +102,9 @@ struct SettingsView: View {
     /// the side column like the library's tabs (`TabBarPlacement`).
     @State private var verticalBarSide: VerticalBarSide?
     @State private var reservedSide = ReservedStrip()
+    /// The strip's trailing edge in window points: the sheet ends short of
+    /// the window's edge, and the axis is reckoned from that edge.
+    @State private var stripMaxX: CGFloat = 0
     private var sectionsAtSide: Bool { TabBarPlacement.of(verticalBarSide: verticalBarSide).isSide }
 
     /// Media-type pills only when the type is enabled (no dead pill for a
@@ -247,8 +250,9 @@ struct SettingsView: View {
                         sectionColumn
                     }
                     .frame(width: 46)
-                    .offset(x: reservedSide.axisShift)
+                    .offset(x: reservedSide.shift(stripMaxX: stripMaxX))
                     .frame(width: max(strip, 54))
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { stripMaxX = $0 }
                     .padding(.top, reservedSide.top)
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity,

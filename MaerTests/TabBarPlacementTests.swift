@@ -33,6 +33,20 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(systemEdge: nil, freeColumn: 84) == nil)
     }
 
+    @Test("eine Rechnung fuer Bibliothek und Blatt: die Spalte trifft die Achse auch, wo ihr Streifen vor dem Fensterrand endet")
+    func oneReckoningForLibraryAndSheet() {
+        var reading = ReservedStrip()
+        reading.axisShift = -6
+        reading.windowMaxX = 466
+        // The library's strip ends at the window's edge.
+        #expect(reading.shift(stripMaxX: 466) == -6)
+        // The settings sheet's strip ended 8 pt short (measured on the
+        // folded Duo): the column moves those 8 pt back onto the axis.
+        #expect(reading.shift(stripMaxX: 458) == 2)
+        // Unmeasured, the shift stays the axis alone.
+        #expect(ReservedStrip(axisShift: -6).shift(stripMaxX: 458) == -6)
+    }
+
     @Test("die Achse der Statuszeichen liegt in beiden Haltungen des Duo auf den gemessenen Zeichen")
     func theStatusAxisMatchesBothPostures() {
         // Folded: column from 382, 84 wide, glyphs measured at 418.1.

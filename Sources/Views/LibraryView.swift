@@ -58,6 +58,8 @@ struct LibraryView: View {
     @State private var miniPlayerMidY: CGFloat?
     /// The side strip's width, measured by the column.
     @State private var sideStripWidth: CGFloat = 0
+    /// The side strip's trailing edge in window points, measured.
+    @State private var sideStripMaxX: CGFloat = 0
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
     /// The side column's width: the tab capsule, the cog and the search, as
     /// narrow as the system's own column (Apple Music on the device) and
@@ -578,8 +580,9 @@ struct LibraryView: View {
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
                     .frame(width: Self.sideColumnWidth)
-                    .offset(x: reservedSide.axisShift)
+                    .offset(x: reservedSide.shift(stripMaxX: sideStripMaxX))
                     .frame(width: max(strip, Self.sideColumnWidth + 8))
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { sideStripMaxX = $0 }
                     .frame(maxHeight: .infinity)
                     .padding(.top, max(0, reservedSide.top - Self.reservedBelowGlyph + Self.sideGap))
                     // The search stands on the playback bar's middle; with no
