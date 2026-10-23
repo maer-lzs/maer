@@ -78,9 +78,13 @@ private struct ReservedStripReader: UIViewRepresentable {
             if #available(iOS 27.1, *) {
                 let strip = CGRect(x: window.bounds.maxX - stripWidth, y: 0,
                                    width: stripWidth, height: window.bounds.height)
-                let regions = window.reservedRegions(kind: .occlusion)
-                    .filter { $0.isActive && $0.frame.intersects(strip) }
-                value.top = regions.map(\.frame.maxY).max() ?? 0
+                let regions = window.reservedRegions(kind: .occlusion, options: .includeInactive)
+                    .filter { $0.frame.intersects(strip) }
+                // How far down: only what the system reserves now.
+                value.top = regions.filter(\.isActive).map(\.frame.maxY).max() ?? 0
+                // The axis: the camera stands where it stands, active or not
+                // (on its side the open Duo reports it inactive, and the
+                // status column alone lies 6 pt off the glyphs' axis).
                 if let narrowest = regions.min(by: { $0.frame.width < $1.frame.width }) {
                     value.axisShift = narrowest.frame.midX - strip.midX
                 }
