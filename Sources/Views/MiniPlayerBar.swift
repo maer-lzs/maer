@@ -35,6 +35,9 @@ struct MiniPlayerBar: View {
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
+    /// Beside a side column the bar takes the search's height (46 pt): a
+    /// smaller cover and buttons, both lines of text, 44 pt to tap.
+    var slim: Bool = false
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -94,7 +97,7 @@ struct MiniPlayerBar: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: slim ? 44 : 48, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -109,11 +112,12 @@ struct MiniPlayerBar: View {
 
             MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
                                 showsSkip: showExtendedControls && !isCompactPortrait,
-                                showsAirPlay: !compact && (showExtendedControls || isCompactPortrait))
+                                showsAirPlay: !compact && (showExtendedControls || isCompactPortrait),
+                                buttonHeight: slim ? 44 : 48)
             .takesInput(controlsLive)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, slim ? 1 : 6)
         .modifier(AdaptiveGlassBackground(
             shape: shape, tier: .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
@@ -130,7 +134,8 @@ struct MiniPlayerBar: View {
 
     /// Cover with the observing progress ring child around it.
     private var coverWithProgressRing: some View {
-        MiniPlayerRing(viewModel: viewModel, clock: viewModel.clock, itemId: item.id)
+        MiniPlayerRing(viewModel: viewModel, clock: viewModel.clock, itemId: item.id,
+                       coverSize: slim ? 30 : 34)
     }
 }
 
@@ -286,13 +291,12 @@ private struct MiniPlayerRing: View {
     /// The ring moves with the time: this leaf observes the clock.
     @ObservedObject var clock: PlaybackClock
     let itemId: String
-
+    var coverSize: CGFloat = 34
 
     var body: some View {
-        let coverSize: CGFloat = 34
         // Ring as large as cover + stroke width: the inner edge of the ring thus
         // sits directly on the cover edge, with no gap in between.
-        let ringSize: CGFloat = 36
+        let ringSize: CGFloat = coverSize + 2
 
         ZStack {
             Circle()
@@ -350,6 +354,9 @@ private struct MiniPlayerTransport: View {
     let coordinator: PlayerCoordinator
     let showsSkip: Bool
     let showsAirPlay: Bool
+    /// 48, or 44 in the slim bar beside a side column (`MiniPlayerBar.slim`).
+    var buttonHeight: CGFloat = 48
+    private var glyph: Font { buttonHeight < 48 ? .title3 : .title2 }
 
     var body: some View {
         // Skip buttons only when there is enough room AND not in iPhone
@@ -361,9 +368,9 @@ private struct MiniPlayerTransport: View {
                 viewModel.skip(by: -viewModel.skipInterval)
             } label: {
                 Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
-                    .font(.title2)
+                    .font(glyph)
                     .foregroundStyle(.primary)
-                    .frame(width: 44, height: 48)
+                    .frame(width: 44, height: buttonHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -373,9 +380,9 @@ private struct MiniPlayerTransport: View {
                 viewModel.skip(by: viewModel.skipInterval)
             } label: {
                 Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
-                    .font(.title2)
+                    .font(glyph)
                     .foregroundStyle(.primary)
-                    .frame(width: 44, height: 48)
+                    .frame(width: 44, height: buttonHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -387,7 +394,7 @@ private struct MiniPlayerTransport: View {
         if showsAirPlay {
             AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
                 .frame(width: 26, height: 26)
-                .frame(width: 44, height: 48)
+                .frame(width: 44, height: buttonHeight)
         }
 
         // Play/pause: plain white icon, no own background. Again the same
@@ -398,9 +405,9 @@ private struct MiniPlayerTransport: View {
             coordinator.miniPlayTapped(viewModel)
         } label: {
             Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                .font(.title2)
+                .font(glyph)
                 .foregroundStyle(.primary)
-                .frame(width: 44, height: 48)
+                .frame(width: 44, height: buttonHeight)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

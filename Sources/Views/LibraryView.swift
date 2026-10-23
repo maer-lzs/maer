@@ -965,7 +965,9 @@ struct LibraryView: View {
                         isShowingFullPlayer = true
                     }
                 },
-                glassMorphID: "player", glassMorphNamespace: bottomGlassNS)
+                glassMorphID: "player", glassMorphNamespace: bottomGlassNS,
+                // Beside the side column at the search's height.
+                slim: tabBarPlacement.isSide)
             // Up-Next entry from EVERY tab: long-press on the mini player (tap
             // keeps opening the full player). A context menu adds no glass
             // surface and no layout change. The fresh GlassEffectContainer/
