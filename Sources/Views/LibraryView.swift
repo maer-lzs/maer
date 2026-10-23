@@ -994,6 +994,7 @@ struct LibraryView: View {
                         isShowingFullPlayer = true
                     }
                 },
+                onOpenQueue: { showQueueSheet = true },
                 glassMorphID: "player", glassMorphNamespace: bottomGlassNS,
                 // Beside the side column at the search's height.
                 slim: tabBarPlacement.isSide)

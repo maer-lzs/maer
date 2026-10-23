@@ -50,8 +50,6 @@ struct PlayerView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
 
-    private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
-    private let sleepOptions: [Double] = [5, 15, 30, 45, 60]
 
     var body: some View {
         GeometryReader { geo in
@@ -820,21 +818,7 @@ struct PlayerView: View {
     }
 
     private var speedControl: some View {
-            Menu {
-                // Picker inside a Menu shows a checkmark on the active rate.
-                Picker("Speed", selection: Binding(
-                    get: { Double(viewModel.playbackRate) },
-                    set: { viewModel.setPlaybackRate(Float($0)) }
-                )) {
-                    ForEach(availableRates, id: \.self) { rate in
-                        Text(rateLabel(rate) + "×").tag(rate)
-                    }
-                }
-            } label: {
-                Label(rateLabel(Double(viewModel.playbackRate)) + "×", systemImage: "speedometer")
-                    // Non-default speed is visible at a glance.
-                    .foregroundStyle(viewModel.playbackRate != 1.0 ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
-            }
+        SpeedMenu(viewModel: viewModel)
     }
 
     private var chaptersControl: some View {
@@ -858,50 +842,7 @@ struct PlayerView: View {
     }
 
     private var sleepControl: some View {
-            Menu {
-                // The duration of the last time, at the top and in one tap.
-                // Only shown while no timer runs, and only when it is not
-                // already the first row anyway.
-                if viewModel.sleepTimerRemaining == nil,
-                   let last = AppStorageKeys.sleepTimerRemembered,
-                   last != sleepOptions.first {
-                    Button("Again: \(DurationText.length(minutes: Int(last)))") {
-                        viewModel.startSleepTimer(minutes: last)
-                    }
-                    Divider()
-                }
-                ForEach(sleepOptions, id: \.self) { minutes in
-                    Button(DurationText.length(minutes: Int(minutes))) {
-                        viewModel.startSleepTimer(minutes: minutes)
-                    }
-                }
-                // Music has no "chapter" boundary. "Until End of Track"
-                // (below) is the song boundary, so skip the chapter option.
-                if !viewModel.chapters.isEmpty && !viewModel.isMusicItem {
-                    Button("Until End of Chapter") {
-                        viewModel.startSleepTimerUntilChapterEnd()
-                    }
-                }
-                if viewModel.canSleepUntilTrackEnd {
-                    Button("Until End of Track") {
-                        viewModel.startSleepTimerUntilTrackEnd()
-                    }
-                }
-                if viewModel.sleepTimerRemaining != nil {
-                    Divider()
-                    Button("+15 min") {
-                        viewModel.extendSleepTimer(byMinutes: 15)
-                    }
-                    Button("Stop Timer", role: .destructive) {
-                        viewModel.cancelSleepTimer()
-                    }
-                }
-            } label: {
-                // Active timer: filled icon + accent color + live countdown.
-                // The status is visible at a glance, not only inside the menu.
-                Label(sleepTimerLabel, systemImage: viewModel.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
-                    .foregroundStyle(viewModel.sleepTimerRemaining != nil ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
-            }
+        SleepTimerMenu(viewModel: viewModel)
     }
 
     /// Variant A for ALL media types.
@@ -1115,20 +1056,6 @@ struct PlayerView: View {
         return viewModel.isMusicItem
             ? String(localized: "Track \(idx + 1) of \(count)")
             : String(localized: "Chapter \(idx + 1) of \(count)")
-    }
-
-    private var sleepTimerLabel: String {
-        guard let remaining = viewModel.sleepTimerRemaining else { return String(localized: "Sleep") }
-        let minutes = Int(remaining) / 60
-        let seconds = Int(remaining) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    private func rateLabel(_ rate: Double) -> String {
-        var text = String(format: "%.2f", rate)
-        while text.hasSuffix("0") { text.removeLast() }
-        if text.hasSuffix(".") { text.removeLast() }
-        return text
     }
 
     private func format(_ seconds: Double) -> String {

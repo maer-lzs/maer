@@ -32,6 +32,8 @@ struct MiniPlayerBar: View {
     /// every level) hangs outside the NavigationStack and a NavigationLink would
     /// find no stack to navigate there.
     let onOpenPlayer: () -> Void
+    /// Opens Up Next; the wide bar of a song offers it as a button.
+    var onOpenQueue: (() -> Void)? = nil
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
@@ -113,7 +115,13 @@ struct MiniPlayerBar: View {
             MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
                                 showsSkip: showExtendedControls && !isCompactPortrait,
                                 showsAirPlay: !compact && (showExtendedControls || isCompactPortrait),
-                                buttonHeight: slim ? 44 : 48)
+                                buttonHeight: slim ? 44 : 48,
+                                // A wide bar carries each medium's full controls.
+                                wideControls: !compact && PlaybackBarControls.isWide(barWidth: measuredWidth)
+                                    ? PlaybackBarControls.wide(isLive: viewModel.isLiveStream,
+                                                               isMusic: viewModel.isMusicItem)
+                                    : nil,
+                                onOpenQueue: onOpenQueue)
             .takesInput(controlsLive)
         }
         .padding(.horizontal, 12)
@@ -356,14 +364,22 @@ private struct MiniPlayerTransport: View {
     let showsAirPlay: Bool
     /// 48, or 44 in the slim bar beside a side column (`MiniPlayerBar.slim`).
     var buttonHeight: CGFloat = 48
+    /// The wide bar's controls (`PlaybackBarControls.wide`); nil keeps the
+    /// narrow set below.
+    var wideControls: [PlaybackBarControls.Control]? = nil
+    var onOpenQueue: (() -> Void)? = nil
     private var glyph: Font { buttonHeight < 48 ? .title3 : .title2 }
 
     var body: some View {
+        if let wideControls {
+            ForEach(wideControls, id: \.self) { control in
+                wideButton(control)
+            }
+        } else if showsSkip && !viewModel.isLiveStream {
         // Skip buttons only when there is enough room AND not in iPhone
         // portrait. There more of the title should be visible. A live
         // stream has nothing to skip into. The bar gates like the
         // full player (play/pause stays).
-        if showsSkip && !viewModel.isLiveStream {
             Button {
                 viewModel.skip(by: -viewModel.skipInterval)
             } label: {
@@ -412,5 +428,54 @@ private struct MiniPlayerTransport: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
+    }
+
+    /// One control of the wide bar, with the full player's action.
+    @ViewBuilder
+    private func wideButton(_ control: PlaybackBarControls.Control) -> some View {
+        let skip = Int(viewModel.skipInterval)
+        let keys = RemoteCommandRule.keyLabels(for: viewModel.titleStep)
+        switch control {
+        case .titleBack:
+            barButton("backward.end.fill", label: Text(keys.back)) { viewModel.stepTitle(forward: false) }
+                .disabled(viewModel.chapters.isEmpty)
+                .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
+        case .titleForward:
+            barButton("forward.end.fill", label: Text(keys.forward)) { viewModel.stepTitle(forward: true) }
+                .disabled(viewModel.chapters.isEmpty)
+                .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
+        case .skipBack:
+            barButton("gobackward.\(skip)", label: Text("Skip back \(skip) seconds")) {
+                viewModel.skip(by: -viewModel.skipInterval)
+            }
+        case .skipForward:
+            barButton("goforward.\(skip)", label: Text("Skip forward \(skip) seconds")) {
+                viewModel.skip(by: viewModel.skipInterval)
+            }
+        case .speed:
+            SpeedMenu(viewModel: viewModel, iconOnly: true)
+                .font(glyph)
+                .frame(width: 44, height: buttonHeight)
+        case .sleepTimer:
+            SleepTimerMenu(viewModel: viewModel, iconOnly: true)
+                .font(glyph)
+                .frame(width: 44, height: buttonHeight)
+        case .queue:
+            if let onOpenQueue {
+                barButton("text.line.first.and.arrowtriangle.forward", label: Text("Up Next"), action: onOpenQueue)
+            }
+        }
+    }
+
+    private func barButton(_ symbol: String, label: Text, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(glyph)
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: buttonHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
