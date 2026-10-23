@@ -29,10 +29,31 @@ struct CoverGlyphsTests {
 
     @Test("was ueber dem Play nicht Platz hat, faellt von unten weg und bleibt gesagt")
     func whatDoesNotFitIsHiddenFromTheBottom() {
-        let split = CoverGlyphs.stack([.kind, .lock, .availability, .finished], room: 2)
-        #expect(split.shown == [.kind, .lock] && split.hidden == [.availability, .finished], "\(split)")
+        let split = CoverGlyphs.stack([.kind, .lock, .finished, .favourite], room: 2)
+        #expect(split.shown == [.kind, .lock] && split.hidden == [.finished, .favourite], "\(split)")
         #expect(CoverGlyphs.stack([.lock], room: 0) == ([], [.lock]))
         #expect(CoverGlyphs.stack([.lock], room: -3) == ([], [.lock]), "a negative room shows a mark")
+    }
+
+    @Test("die Verfuegbarkeit bleibt sichtbar, solange ein Zeichen Platz hat; die Zeichen darueber weichen")
+    func availabilityIsNeverTheOneHidden() {
+        let one = CoverGlyphs.stack([.lock, .availability], room: 1)
+        #expect(one.shown == [.availability] && one.hidden == [.lock], "a dimmed cover carries offline alone: \(one)")
+        let two = CoverGlyphs.stack([.kind, .lock, .availability, .finished], room: 2)
+        #expect(two.shown == [.kind, .availability] && two.hidden == [.lock, .finished], "\(two)")
+        let fits = CoverGlyphs.stack([.kind, .availability, .count], room: 2)
+        #expect(fits.shown == [.kind, .availability], "availability is moved although it fits: \(fits)")
+        #expect(CoverGlyphs.stack([.availability], room: 0) == ([], [.availability]), "no room still shows a mark")
+    }
+
+    @Test("die Zeichen wachsen bis zur ersten Bedienhilfen-Groesse, der Platz wird in dieser Groesse gemessen", .needsTheSources)
+    func theMarksStopGrowing() throws {
+        let stack = try FetchAnswerTests.squeezedSource("Sources/Views/CoverGlyphStack.swift")
+        #expect(stack.contains("static var largestSize: DynamicTypeSize { .accessibility1 }"))
+        #expect(stack.contains(".dynamicTypeSize(...Self.largestSize)"), "the marks grow with every text size again")
+        #expect(stack.contains("@ScaledMetric(relativeTo: .title3) private var glyphSide")
+                    && stack.contains("CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,"),
+                "the room is not measured inside the capped size")
     }
 
     @Test("der Platz: Kachel weniger Ecke, durch die Hoehe eines Zeichens; ungemessen verbirgt nichts")

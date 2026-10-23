@@ -92,9 +92,9 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
 
     /// The side of the cover, measured; decides how many marks fit.
     @State private var coverSide: CGFloat?
-    /// The height one mark takes in the stack, and the corner control's,
-    /// both grown with the text like the marks themselves.
-    @ScaledMetric(relativeTo: .title3) private var glyphSide: CGFloat = 32
+    /// The height the corner control takes with its inset, grown with the
+    /// text like the play glyph.
+    @ScaledMetric(relativeTo: .title3) private var cornerSide: CGFloat = 32
 
     /// The marks this tile carries: the lock and the offline disc.
     private var marks: [CoverGlyph] {
@@ -114,9 +114,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 // right corner and the disc lay over the lock. The bottom
                 // right carries the tile's control.
                 .overlay(alignment: .topTrailing) {
-                    CoverGlyphStack(present: marks,
-                                    room: CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,
-                                                           cornerSide: glyphSide),
+                    CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: cornerSide,
                                     label: { mark in
                                         mark != .lock ? Text("Not available offline")
                                             : lock == .refused ? Text("Access refused") : Text("Premium Feed")

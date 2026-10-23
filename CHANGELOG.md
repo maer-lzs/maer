@@ -17,7 +17,9 @@ devices.
 **The lock and the offline mark no longer cover each other.** An episode
 of a premium feed that is not downloaded while you are offline shows both
 marks at the top right of its tile, the lock above; before, the offline
-mark lay over the lock.
+mark lay over the lock. The marks grow with the text up to the first
+accessibility size, and where a tile still has room for one mark only,
+it shows that the episode is not available offline.
 
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.

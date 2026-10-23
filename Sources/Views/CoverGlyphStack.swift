@@ -15,26 +15,55 @@ enum GlyphTone {
 /// tile carries, one under the other in the order of `CoverGlyphs`, as
 /// many as fit above the bottom right control. A mark that does not fit
 /// is still said to VoiceOver. Each mark keeps its own view and its own
-/// inset, so a single mark stands where it stood alone.
+/// inset, so a single mark stands where it stood alone. The marks grow
+/// with the text up to the first accessibility size and no further:
+/// measured at AX3, a 150 pt tile held only one grown mark above its play
+/// control.
 struct CoverGlyphStack<Glyph: View>: View {
     let present: [CoverGlyph]
-    let room: Int
+    /// The side of the cover, nil until measured (hides nothing).
+    let coverSide: CGFloat?
+    /// The side of the control at the bottom right, as the tile draws it.
+    let cornerSide: CGFloat
     /// What VoiceOver hears for a mark that does not fit.
     let label: (CoverGlyph) -> Text
     @ViewBuilder let glyph: (CoverGlyph) -> Glyph
 
+    /// The largest text size the marks grow with.
+    static var largestSize: DynamicTypeSize { .accessibility1 }
+
     var body: some View {
-        let split = CoverGlyphs.stack(present, room: room)
-        VStack(alignment: .trailing, spacing: 0) {
-            ForEach(split.shown, id: \.self) { glyph($0) }
-        }
-        // Marks are states, not controls: a tap on one reaches the tile.
-        .allowsHitTesting(false)
-        .overlay {
-            if let first = split.hidden.first {
-                Color.clear
-                    .accessibilityElement()
-                    .accessibilityLabel(split.hidden.dropFirst().reduce(label(first)) { $0 + Text(verbatim: ", ") + label($1) })
+        Marks(present: present, coverSide: coverSide, cornerSide: cornerSide, label: label, glyph: glyph)
+            .dynamicTypeSize(...Self.largestSize)
+    }
+
+    /// The marks under the capped text size, so the height of one mark is
+    /// measured at the size they are drawn in.
+    private struct Marks: View {
+        let present: [CoverGlyph]
+        let coverSide: CGFloat?
+        let cornerSide: CGFloat
+        let label: (CoverGlyph) -> Text
+        let glyph: (CoverGlyph) -> Glyph
+        /// The height one mark takes in the stack: the offline disc and the
+        /// lock with their insets.
+        @ScaledMetric(relativeTo: .title3) private var glyphSide: CGFloat = 32
+
+        var body: some View {
+            let room = CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,
+                                        cornerSide: cornerSide)
+            let split = CoverGlyphs.stack(present, room: room)
+            VStack(alignment: .trailing, spacing: 0) {
+                ForEach(split.shown, id: \.self) { glyph($0) }
+            }
+            // Marks are states, not controls: a tap on one reaches the tile.
+            .allowsHitTesting(false)
+            .overlay {
+                if let first = split.hidden.first {
+                    Color.clear
+                        .accessibilityElement()
+                        .accessibilityLabel(split.hidden.dropFirst().reduce(label(first)) { $0 + Text(verbatim: ", ") + label($1) })
+                }
             }
         }
     }

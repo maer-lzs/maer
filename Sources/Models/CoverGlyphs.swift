@@ -28,13 +28,20 @@ nonisolated enum CoverGlyph: Int, CaseIterable, Comparable, Sendable {
 
 /// Which marks a cover shows and which it only says.
 nonisolated enum CoverGlyphs {
-    /// The marks in the order of the stack, the first `room` of them shown,
-    /// the rest hidden (the tile says them to VoiceOver). A mark given twice
-    /// stands once.
+    /// The marks in the order of the stack, as many as `room` shown, the
+    /// rest hidden (the tile says them to VoiceOver). Availability is never
+    /// the one hidden while there is room for a mark at all: a dimmed cover
+    /// alone does not carry the state, so the marks above it give way.
+    /// A mark given twice stands once.
     static func stack(_ present: [CoverGlyph], room: Int) -> (shown: [CoverGlyph], hidden: [CoverGlyph]) {
         let ordered = Array(Set(present)).sorted()
         let fits = min(max(room, 0), ordered.count)
-        return (Array(ordered.prefix(fits)), Array(ordered.dropFirst(fits)))
+        var shown = Array(ordered.prefix(fits))
+        if fits > 0, ordered.contains(.availability), !shown.contains(.availability) {
+            shown[fits - 1] = .availability
+            shown.sort()
+        }
+        return (shown, ordered.filter { !shown.contains($0) })
     }
 
     /// How many marks of `glyphSide` fit above the control at the bottom
