@@ -5,6 +5,7 @@
 
 #if DEBUG
 import Foundation
+import UIKit
 
 /// DEBUG-only UI-test seeding. Active ONLY when the process is launched with the
 /// `-uitest` argument (the MaerUITests harness passes it). The entire file
@@ -161,7 +162,25 @@ enum UITestSeed {
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
         // carry "Seed" in their names. The search journeys query "Seed" and
         // must keep finding the canonical seeds inside the capped sections.
-        + (3...24).map {
+        // A shelf that reads like one (sight checks, screenshots): one
+        // finished, a series of two, several started. Never "Seed" in a name.
+        + [
+            bookEntry(id: "seed-book-3", title: "Der Leuchtturmwärter", author: "Hanna Berg", chapters: nil,
+                      progress: BookProgress(fraction: 1, isFinished: true,
+                                             lastUpdate: Date().timeIntervalSince1970 - 2 * 24 * 3600)),
+            bookEntry(id: "seed-book-4", title: "Nordlicht", author: "Jonas Lind", chapters: nil,
+                      progress: BookProgress(fraction: 0.6, isFinished: false,
+                                             lastUpdate: Date().timeIntervalSince1970 - 3600),
+                      series: "Nordlicht #1"),
+            bookEntry(id: "seed-book-5", title: "Polarnacht", author: "Jonas Lind", chapters: nil,
+                      series: "Nordlicht #2"),
+            bookEntry(id: "seed-book-6", title: "Die stille Bibliothek", author: "Mira Holm", chapters: nil,
+                      progress: BookProgress(fraction: 0.15, isFinished: false,
+                                             lastUpdate: Date().timeIntervalSince1970 - 26 * 3600)),
+            bookEntry(id: "seed-book-7", title: "Fernweh", author: "Paul Sander", chapters: nil),
+            bookEntry(id: "seed-book-8", title: "Das Uhrwerk", author: "Lea Kranz", chapters: nil),
+        ]
+        + (9...24).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
         // Through the library's one harness door: the books become the
@@ -178,7 +197,8 @@ enum UITestSeed {
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
         let show = PodcastShow(
-            id: "seed-show", title: "Seed Show", author: "Cara Host", artworkURL: nil,
+            id: "seed-show", title: "Seed Show", author: "Cara Host",
+            artworkURL: "https://seed.example/art/seed-show.png",
             description: "A seeded podcast.", feedURL: "https://seed.example/feed",
             episodes: [
                 episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
@@ -193,7 +213,20 @@ enum UITestSeed {
             link: "https://seed.example/site")
         // Such-Freeze probe: device-sized podcast stock (30 shows × 60
         // episodes) so the first-query scan is measurable on the sim.
-        PodcastSubscriptions.shared._seedForUITest([show])
+        // Two more shows, so the podcast tab reads like a subscription list.
+        let moreShows = [
+            PodcastShow(id: "seed-show-2", title: "Abendfunk", author: "Studio Nord",
+                        artworkURL: "https://seed.example/art/seed-show-2.png",
+                        description: "Gespräche am Abend.", feedURL: "https://seed.example/feed-2",
+                        episodes: (1...4).map { episode(guid: "rss:seed:s2-ep-\($0)", title: "Abendfunk \($0)") },
+                        link: nil),
+            PodcastShow(id: "seed-show-3", title: "Werkstattgespräch", author: "Ida Werner",
+                        artworkURL: "https://seed.example/art/seed-show-3.png",
+                        description: "Über Handwerk.", feedURL: "https://seed.example/feed-3",
+                        episodes: (1...3).map { episode(guid: "rss:seed:s3-ep-\($0)", title: "Werkstatt \($0)") },
+                        link: nil),
+        ]
+        PodcastSubscriptions.shared._seedForUITest([show] + moreShows)
         if seedsLateEntry { scheduleLateEntry() }
 
         // Music: make the tab AVAILABLE (fake config → a non-nil client) and
@@ -238,6 +271,13 @@ enum UITestSeed {
         queue.playLast("seed-book-1")
         queue.playLast("sub:album:seed-1")
         queue.playLast("rss:seed:ep-1")
+
+        // Every seeded book, album and show with a cover, before the first
+        // tile asks: a tile that asked first would keep its miss.
+        let itemCovers = (books.map(\.item) + seedAlbums).map { ($0.id, $0.media?.metadata?.title ?? "") }
+            + [("seed-nowplaying", "Now Playing Book")]
+        placeCovers(items: itemCovers,
+                    shows: ([show] + moreShows).compactMap { s in s.artworkURL.map { ($0, s.title) } })
 
         // A presentation-only active player (no audio) so the harness can
         // open the full player. A book with FALLBACK chapters ("Teil N von M").
@@ -321,13 +361,47 @@ enum UITestSeed {
                       duration: 4320, changedAt: 1_784_541_600_000),
     ]
 
+    /// Generated covers (a colour field and the title's initials) written into
+    /// the cover cache under the address each tile asks for, so the seeded
+    /// pages look filled without a network. An id without an address (its
+    /// source not set up) gets none.
+    private static func placeCovers(items: [(id: String, title: String)], shows: [(artwork: String, title: String)]) {
+        let targets = items.compactMap { item in ItemRouter.live.coverURL(item.id).map { ($0, item.title) } }
+            + shows.compactMap { show in URL(string: show.artwork).map { ($0, show.title) } }
+        for (index, (url, title)) in targets.enumerated() {
+            guard let data = coverPicture(seed: index, label: title) else { continue }
+            _ = ImageCache.shared.testPlaceInCache(data, for: url)
+        }
+    }
+
+    private static func coverPicture(seed: Int, label: String) -> Data? {
+        let side: CGFloat = 600
+        let hue = CGFloat((seed * 37) % 100) / 100
+        let top = UIColor(hue: hue, saturation: 0.55, brightness: 0.85, alpha: 1)
+        let bottom = UIColor(hue: hue, saturation: 0.75, brightness: 0.45, alpha: 1)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { context in
+            let colors = [top.cgColor, bottom.cgColor] as CFArray
+            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
+                                            locations: [0, 1]) else { return }
+            context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: side), options: [])
+            let mark = String(label.split(separator: " ").prefix(2).compactMap(\.first)).uppercased()
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 180, weight: .bold),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.9)]
+            let size = (mark as NSString).size(withAttributes: attributes)
+            (mark as NSString).draw(at: CGPoint(x: (side - size.width) / 2, y: (side - size.height) / 2),
+                                    withAttributes: attributes)
+        }
+        return image.jpegData(compressionQuality: 0.85)
+    }
+
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?,
-                                  progress: BookProgress? = nil) -> LibraryEntry {
+                                  progress: BookProgress? = nil, series: String? = nil) -> LibraryEntry {
         LibraryEntry(item: LibraryItem(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(title: title, authorName: author, narratorName: nil,
-                                              seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                                              seriesName: series, genres: nil, publishedYear: nil, description: nil),
                 duration: 3600, chapters: chapters, tracks: nil),
             addedAt: 0), progress: progress)
     }
