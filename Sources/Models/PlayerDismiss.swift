@@ -8,7 +8,7 @@ import Foundation
 /// Whether a touch on the full player ends with the player closed: a pull
 /// past the threshold or flung beyond twice it, and on the grab handle also
 /// a tap. The handle's pull takes every touch first, so a tap on it is a
-/// pull that did not move; it closes the same way (Laurenz, 24.10.2026).
+/// pull that did not move; it closes the same way.
 nonisolated enum PlayerDismiss {
     /// A touch that moved less than this is a tap.
     static let tapSlop: CGFloat = 10

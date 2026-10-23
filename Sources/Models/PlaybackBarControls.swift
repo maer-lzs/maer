@@ -6,8 +6,8 @@
 import Foundation
 
 /// What the playback bar offers beyond play and AirPlay, by medium, once it
-/// is wide (Laurenz, 23.10.2026: from a 600 pt window, the full controls of
-/// each medium in the one bar). A narrow bar keeps its own small set.
+/// is wide (from a 600 pt window: the full controls of each medium in the
+/// one bar). A narrow bar keeps its own small set.
 nonisolated enum PlaybackBarControls {
     enum Control: Hashable, Sendable {
         /// The title way back and forward: a chapter for a book or episode,

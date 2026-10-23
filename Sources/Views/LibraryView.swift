@@ -65,13 +65,13 @@ struct LibraryView: View {
     /// narrow as the system's own column (Apple Music on the device) and
     /// above the 44 pt a finger needs.
     private static let sideColumnWidth: CGFloat = 46
-    /// THE one gap of the side column (Laurenz, 23.10.2026): Wi-Fi glyph to
-    /// cog, search to tabs, playback bar to search.
+    /// THE one gap of the side column: Wi-Fi glyph to cog, search to tabs,
+    /// playback bar to search.
     private static let sideGap: CGFloat = 14
     /// How much more the system reserves under the Wi-Fi glyph than it draws
     /// (measured: region to 174 pt, glyph to about 151). The cog reaches
     /// into it, to stand `sideGap` under the glyph; a tap there reaches the
-    /// cog (Laurenz' review).
+    /// cog.
     private static let reservedBelowGlyph: CGFloat = 23
 
     /// How far past the content's edge the playback bar reaches beside the
@@ -571,11 +571,11 @@ struct LibraryView: View {
                     VStack(spacing: Self.sideGap) {
                         FloatingSearchButton(action: { showSettings = true },
                                              systemImage: "gearshape", label: "Settings",
-                                             diameter: Self.sideColumnWidth, tier: .bar)
+                                             diameter: Self.sideColumnWidth, tier: .sideColumn)
                             .accessibilityIdentifier("open-settings")
                         Spacer(minLength: 16)
                         mediaBar(upright: true)
-                        searchButton(diameter: Self.sideColumnWidth, tier: .bar)
+                        searchButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
                     }
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
@@ -1821,8 +1821,8 @@ extension View {
 private extension View {
     /// The declared top edge of every tab stack, its root and its pushed
     /// pages: soft, and hard beside the side column, where the soft edge let
-    /// the first row read through the title (Laurenz, 24.10.2026). Scroll
-    /// edge effects exist from iOS 26; below it there is none to declare.
+    /// the first row read through the title. Scroll edge effects exist from
+    /// iOS 26; below it there is none to declare.
     @ViewBuilder
     func topScrollEdge(hard: Bool) -> some View {
         if #available(iOS 26.0, *) {

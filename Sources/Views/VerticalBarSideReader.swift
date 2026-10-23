@@ -51,7 +51,7 @@ extension View {
     /// THE way a horizontal row draws past its frame (`scrollClipDisabled`).
     /// Beside a side column it runs under the column to the window's edge
     /// and ends with a margin of the column's width, so at rest nothing one
-    /// taps stands behind the column (Laurenz, 23.10.2026).
+    /// taps stands behind the column.
     func rowReachesUnderSideColumn() -> some View {
         modifier(RowUnderSideColumn())
     }
