@@ -61,6 +61,12 @@ struct LibraryView: View {
     /// narrow as the system's own column (Apple Music on the device) and
     /// above the 44 pt a finger needs.
     private static let sideColumnWidth: CGFloat = 46
+    /// How far the cog rises into the reserved area under the Wi-Fi glyph:
+    /// the system reserves about 23 pt more than it draws (measured: region
+    /// to 174 pt, glyph to about 151), and the cog stands as close to the
+    /// glyph as the clock does. Whether a tap there still reaches the cog is
+    /// not measured.
+    private static let cogRise: CGFloat = 12
 
     /// The distance from the window's bottom to the side search's bottom
     /// edge, so the search's middle lies on the playback bar's middle.
@@ -561,7 +567,7 @@ struct LibraryView: View {
                     .offset(x: reservedSide.axisShift)
                     .frame(width: max(strip, Self.sideColumnWidth + 8))
                     .frame(maxHeight: .infinity)
-                    .padding(.top, reservedSide.top + 8)
+                    .padding(.top, max(0, reservedSide.top - Self.cogRise))
                     // The search stands on the playback bar's middle; with no
                     // bar, clear of the bottom edge.
                     .padding(.bottom, Self.sideSearchBottom(
