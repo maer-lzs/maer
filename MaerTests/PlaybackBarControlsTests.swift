@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import CoreGraphics
 @testable import Maer
 
 /// The wide playback bar carries each medium's full controls, and the speed
