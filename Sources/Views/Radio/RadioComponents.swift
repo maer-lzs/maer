@@ -600,7 +600,7 @@ struct RadioFeaturedCardRow: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
         }
     }
 }

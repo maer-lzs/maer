@@ -411,7 +411,7 @@ RowHeading(title: "Recommended",
                     }
                     .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .rowReachesUnderSideColumn()
             }
         }
     }
@@ -537,7 +537,7 @@ RowHeading(title: "Recommended",
                     }
                     .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .rowReachesUnderSideColumn()
             }
         }
     }
@@ -970,7 +970,7 @@ struct RadioPlayChartsPage: View {
                                 }
                                 .padding(.horizontal)
                             }
-                            .scrollClipDisabled()
+                            .rowReachesUnderSideColumn()
                         }
                     }
                 }

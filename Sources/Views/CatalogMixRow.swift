@@ -29,7 +29,7 @@ struct CatalogMixRow: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 }
 

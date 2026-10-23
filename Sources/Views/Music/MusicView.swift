@@ -287,7 +287,7 @@ struct MusicView: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     /// ONE "Recently Played" row: the server's history and the
@@ -340,7 +340,7 @@ struct MusicView: View {
                     }
                     .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .rowReachesUnderSideColumn()
             }
         }
     }
@@ -399,7 +399,7 @@ struct MusicView: View {
                     }
                     .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .rowReachesUnderSideColumn()
             } else {
                 // Nothing to show yet, in neither world: ONE compact entry
                 // leads into the one dialog, which asks WHERE. A full-size

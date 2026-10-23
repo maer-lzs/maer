@@ -674,7 +674,7 @@ struct FreeJamendoPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 }
 
@@ -798,7 +798,7 @@ struct JamendoShelfPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     private func filterChip(title: String, selected: Bool,
@@ -963,7 +963,7 @@ struct MusicCatalogAreaPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 }
 

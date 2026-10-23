@@ -283,7 +283,7 @@ struct CatalogSourcePage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     /// The heading of a shelf or decade row. The chevron counts the

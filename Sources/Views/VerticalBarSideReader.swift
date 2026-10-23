@@ -30,25 +30,30 @@ struct ReservedStrip: Equatable {
     var axisShift: CGFloat = 0
 }
 
-/// Cuts the library at the edge of the side column only: where the tabs
-/// stand at the side, nothing is drawn past the content's edge there; top,
-/// bottom and the other side stay open (backgrounds under the status bar and
-/// the bottom bar). With the tabs at the bottom it cuts nothing.
-nonisolated struct SideColumnClip: Shape {
-    let placement: TabBarPlacement
+extension EnvironmentValues {
+    /// How far the side column reaches over the content's trailing edge:
+    /// 0 with the tabs at the bottom.
+    @Entry var sideColumnReach: CGFloat = 0
+}
 
-    func path(in rect: CGRect) -> Path {
-        let open: CGFloat = 10_000
-        switch placement {
-        case .bottom:
-            return Path(rect.insetBy(dx: -open, dy: -open))
-        case .side(.trailing):
-            return Path(CGRect(x: rect.minX - open, y: rect.minY - open,
-                               width: rect.width + open, height: rect.height + 2 * open))
-        case .side(.leading):
-            return Path(CGRect(x: rect.minX, y: rect.minY - open,
-                               width: rect.width + open, height: rect.height + 2 * open))
-        }
+extension View {
+    /// THE way a horizontal row draws past its frame (`scrollClipDisabled`).
+    /// Beside a side column it runs under the column to the window's edge
+    /// and ends with a margin of the column's width, so at rest nothing one
+    /// taps stands behind the column (Laurenz, 23.10.2026).
+    func rowReachesUnderSideColumn() -> some View {
+        modifier(RowUnderSideColumn())
+    }
+}
+
+private struct RowUnderSideColumn: ViewModifier {
+    @Environment(\.sideColumnReach) private var reach
+
+    func body(content: Content) -> some View {
+        content
+            .scrollClipDisabled()
+            .contentMargins(.trailing, reach, for: .scrollContent)
+            .padding(.trailing, -reach)
     }
 }
 

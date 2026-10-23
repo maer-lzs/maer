@@ -32,6 +32,20 @@ struct TabBarPlacementTests {
         #expect(abs(StatusColumnAxis.x(columnMinX: 867, columnWidth: 84) - 909) > 5)
     }
 
+    @Test("jede Reihe, die ueber ihren Rahmen zeichnet, laeuft unter die Seitenspalte und endet vor ihr", .needsTheSources)
+    func everyRowReachesUnderTheSideColumn() throws {
+        var bare: [String] = []
+        var rows = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            rows += text.components(separatedBy: ".rowReachesUnderSideColumn()").count - 1
+            guard file.lastPathComponent != "VerticalBarSideReader.swift" else { continue }
+            if text.contains(".scrollClipDisabled()") { bare.append(file.lastPathComponent) }
+        }
+        #expect(rows >= 20, "the fence read the rows: \(rows)")
+        #expect(bare.isEmpty, "a row draws past its frame without the side column: \(bare)")
+    }
+
     @Test("eine Reiterleiste: die Bibliothek und die Einstellungen bauen dieselbe, je einmal", .needsTheSources)
     func oneTabBar() throws {
         var builds: [String] = []

@@ -403,7 +403,7 @@ struct ShelfPlaceholderRow: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
             .allowsHitTesting(false)
         }
         .accessibilityHidden(true)

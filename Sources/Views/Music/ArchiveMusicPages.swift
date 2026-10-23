@@ -183,7 +183,7 @@ struct ArchiveMusicPage: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
         }
     }
 
@@ -245,7 +245,7 @@ struct ArchiveMusicPage: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
         }
     }
 

@@ -234,7 +234,7 @@ struct FreeAudiobooksPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     /// A catalog source: preview tile row. An EMPTY row with a recorded
@@ -286,7 +286,7 @@ struct FreeAudiobooksPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
 
@@ -307,7 +307,7 @@ struct FreeAudiobooksPage: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     private func chipLabel(_ chip: CatalogGenreAxis.Chip, selected: Bool) -> some View {
@@ -353,7 +353,7 @@ struct FreeAudiobooksPage: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
         }
     }
 
@@ -441,7 +441,7 @@ struct OERRCountriesPage: View {
                                 }
                                 .padding(.horizontal)
                             }
-                            .scrollClipDisabled()
+                            .rowReachesUnderSideColumn()
                         }
                     }
                 }

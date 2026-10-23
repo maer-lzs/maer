@@ -79,7 +79,7 @@ struct ShellacSection: View {
             }
             .padding(.horizontal)
         }
-        .scrollClipDisabled()
+        .rowReachesUnderSideColumn()
     }
 
     private func load() async {

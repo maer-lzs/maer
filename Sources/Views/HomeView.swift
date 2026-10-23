@@ -501,7 +501,7 @@ RowHeading(title: "Rediscover",
                     }
                     .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .rowReachesUnderSideColumn()
             }
         }
     }

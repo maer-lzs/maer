@@ -550,10 +550,9 @@ struct LibraryView: View {
                         selectedMediaType = .home
                     }
                 }
-        // The rows draw past their frame on purpose (`scrollClipDisabled`);
-        // with the tabs at the side they end at that column, so no card
-        // lies behind it. Top and bottom stay open.
-        .clipShape(SideColumnClip(placement: tabBarPlacement))
+        // The rows run under the side column to the edge and end with its
+        // width as a margin (`rowReachesUnderSideColumn`).
+        .environment(\.sideColumnReach, tabBarPlacement.isSide ? sideStripWidth : 0)
         // Where the system stands its bars upright, the tabs and the search
         // stand in the strip the system keeps free at that edge, under the
         // status bar; the bottom keeps only what plays.

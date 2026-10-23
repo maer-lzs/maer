@@ -49,7 +49,7 @@ struct BrowseRow: View {
                 }
                 .padding(.horizontal)
             }
-            .scrollClipDisabled()
+            .rowReachesUnderSideColumn()
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
