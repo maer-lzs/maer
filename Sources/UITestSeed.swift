@@ -145,6 +145,14 @@ enum UITestSeed {
         // `isAvailable` is token-driven now. The harness needs one so
         // the audiobooks tab (and the ABS search path) stay seeded-visible.
         session.apiClient.updateToken("uitest-token")
+        // The plain seed shows no error. Two error states on request, for
+        // sight checks: the server refused the sign-in, or it is not answering.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-uitest-auth-rejected") {
+            session.authViewModel._seedSessionState(rejected: true)
+        } else if args.contains("-uitest-server-unreachable") {
+            session.authViewModel._seedSessionState(rejected: false)
+        }
 
         // Audiobooks. One with chapters, one without.
         let books = [

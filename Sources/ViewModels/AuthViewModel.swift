@@ -193,6 +193,19 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// Harness door: the two error states a sight check asks for by launch
+    /// argument (`UITestSeed`), without a server. Rejected: the server
+    /// answered and refused; otherwise: it is not answering.
+    func _seedSessionState(rejected: Bool) {
+        sessionSuspect = true
+        needsReauth = rejected
+        errorMessage = rejected
+            ? String(localized: "Session expired. Please sign in again.")
+            : String(localized: "Session expired, checking the server…")
+    }
+    #endif
+
     /// The 401 path: doubt, probe, and only offer a fresh sign-in once the
     /// server is demonstrably reachable and still rejects us. Nothing is
     /// deleted here. Not even then.
@@ -200,6 +213,11 @@ final class AuthViewModel: ObservableObject {
         // An access that could not be read is no rejected one: the client
         // sends nothing then (`APIError.accessUnknown`), and no doubt starts.
         guard !sessionSuspect, !accessUnknown else { return }
+        #if DEBUG
+        // The seeded harness has no book server: its token lives only in
+        // memory, so any 401 it meets says nothing about a sign-in.
+        if UITestSeed.isActive { return }
+        #endif
         sessionSuspect = true
         errorMessage = String(localized: "Session expired, checking the server…")
         Logger.library.warning("ABS session SUSPECT after 401 — token kept, probing")
