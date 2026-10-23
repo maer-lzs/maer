@@ -56,10 +56,12 @@ struct BookFeaturedCard: View {
         // input). Not on every redraw, and never on a download tick.
         .onChange(of: entry.progress?.currentTime) { recomputeChapter() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // The unified download/offline badge (family) at the CARD's
-        // bottom-right corner. A tap on the running ring cancels instead of
-        // triggering the card's play action underneath; downloading is an
-        // entry of the long-press menu below.
+        // The marks at the top right of the cover: kind in a mixed row,
+        // downloaded or not available offline.
+        .overlay(alignment: .topTrailing) { CardMarks(itemId: entry.id, lock: nil) }
+        // The download ring at the CARD's bottom-right corner. A tap on the
+        // running ring cancels instead of triggering the card's play action
+        // underneath; downloading is an entry of the long-press menu below.
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: entry.id)
             .padding(12)

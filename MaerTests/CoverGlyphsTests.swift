@@ -107,13 +107,15 @@ struct CoverGlyphsTests {
         "Sources/Views/FreeCatalogRows.swift": (0, "the import ring"),
         "Sources/Views/CoverBadge.swift": (0, "the offline disc and the downloaded mark"),
         "Sources/Views/BookCoverView.swift": (0, "the book cover's marks; a failed download keeps its accent"),
+        "Sources/Views/CardDownloadBadge.swift": (0, "the card's download ring and its marks"),
+        "Sources/Views/CardPillControls.swift": (0, "the card's Details pill and corner button"),
     ]
 
     /// The tiles that still mark their kind at the top left, outside the
     /// stack; they take the stack in their own steps.
     static let topLeftKinds: [String: (count: Int, reason: String)] = [
         "Sources/Views/HomeView.swift": (3, "album, catalog track and station tile of Listen Again"),
-        "Sources/Views/MixedMediaPage.swift": (6, "book and episode card, album cell, album, track and station tile"),
+        "Sources/Views/MixedMediaPage.swift": (4, "album cell, album, track and station tile"),
     ]
 
     @Test("Zeichen und Ecken tragen den Ton ueber der dunklen Scheibe, die MediaTile stapelt ihre Art", .needsTheSources)
@@ -144,6 +146,21 @@ struct CoverGlyphsTests {
                 "the book cover builds its marks outside the rule")
         #expect(book.contains("BookCoverStack(availability: CoverAvailability.of(failed: failed,"),
                 "the book cover asks no rule what its availability says")
+        let cardFile = try FetchAnswerTests.squeezedSource("Sources/Views/CardDownloadBadge.swift")
+        let ring = try #require(cardFile.range(of: "struct CardDownloadBadge: View {"))
+        let marksStart = try #require(cardFile.range(of: "struct CardMarks: View {"))
+        let ringBody = cardFile[ring.upperBound..<marksStart.lowerBound]
+        #expect(!ringBody.contains("DownloadedMark(") && !ringBody.contains("wifi.slash") && ringBody.contains(".glyphCapsule()"),
+                "the corner of the card says a state again instead of holding the ring")
+        let bookCard = try FetchAnswerTests.squeezedSource("Sources/Views/BookFeaturedCard.swift")
+        let episodeCard = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastComponents.swift")
+        #expect(bookCard.contains(".overlay(alignment: .topTrailing) { CardMarks(itemId: entry.id, lock: nil) }"),
+                "the book card leaves its marks outside the stack")
+        #expect(episodeCard.contains("CardMarks(itemId: item.id, lock: PodcastSubscriptions.shared.lock(feedURL: feed))"),
+                "the episode card leaves its marks outside the stack")
+        let pills = try FetchAnswerTests.squeezedSource("Sources/Views/CardPillControls.swift")
+        #expect(pills.contains("fill: GlyphTone.fill, shade: GlyphTone.shade, glyphAfterTitle: true") && pills.contains(".glyphCapsule()"),
+                "the card's pill or corner button lost the dark shade of the tone")
         var left: [String: Int] = [:]
         for (path, text) in try MixedRowGlyphTests.sources() {
             let n = text.components(separatedBy: ".kindGlyph(").count - 1

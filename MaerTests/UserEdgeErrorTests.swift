@@ -206,7 +206,7 @@ struct UserEdgeErrorTests {
         #expect(view.components(separatedBy: "retryPill").count - 1 == 4, "a form builds its own Retry")
         #expect(!view.contains("Button(\"Retry\""), "a plain text Retry came back")
         #expect(view.contains("PillLabel(systemImage: \"arrow.clockwise\""), "Retry is not the card pill")
-        #expect(try code("Sources/Views/CardPillControls.swift").contains(".background(Capsule().fill(fill))"), "the pill lost its capsule")
+        #expect(try code("Sources/Views/CardPillControls.swift").contains("Capsule().fill(fill)"), "the pill lost its capsule")
         #expect(rowBody.contains(".frame(maxWidth: .infinity, alignment: .leading)"), "the row is not leading")
         #expect(!rowBody.contains(".font(.footnote)"), "the row is smaller than the empty text beside it")
         let users = ["Sources/Views/Music/AddToPlaylistSheet.swift": "LoadFailedView(form: .row, sentence: \"Playlists could not be loaded.\")",

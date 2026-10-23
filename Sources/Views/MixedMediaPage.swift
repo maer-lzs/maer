@@ -50,10 +50,10 @@ struct HomeContinueCard: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
-                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         } else if let item = router.item(id) {
             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
-                .kindGlyph(MediaFamily.kind(for: id))
+                .stackedKind(MediaFamily.kind(for: id))
         }
     }
 }

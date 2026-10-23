@@ -24,6 +24,16 @@ extension View {
             }
         }
     }
+
+    /// The same tone as a capsule: the pills and corner buttons of a card.
+    func glyphCapsule() -> some View {
+        background {
+            ZStack {
+                Capsule().fill(GlyphTone.shade)
+                Capsule().fill(GlyphTone.fill)
+            }
+        }
+    }
 }
 
 /// THE stack of state marks at the top right of a cover: the marks the

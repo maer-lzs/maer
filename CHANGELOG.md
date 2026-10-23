@@ -38,6 +38,13 @@ downloaded arrow and the finished check sit on the same disc as the other
 marks, everywhere the downloaded arrow appears. A failed download keeps
 its accent colour.
 
+**Continue Listening cards show states at the top, controls at the
+bottom.** On the book and episode cards, downloaded and not available
+offline now stand with the kind and the lock at the top right of the
+cover; the bottom right only holds the ring while a download runs. The
+Details pill, the ring and the shuffle button wear the same tone as the
+marks, the pill's fill over a dark shade.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

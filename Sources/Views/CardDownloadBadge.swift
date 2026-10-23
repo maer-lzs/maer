@@ -5,23 +5,24 @@
 
 import SwiftUI
 
-/// Unified download/offline status badge for the FeaturedCards, pinned to the
-/// card's bottom-right corner. One component for the book AND
-/// podcast cards so every card reads identically. The badge matches
-/// the card's OWN "Details" pill (the info pill in the same card row) BY
-/// CONSTRUCTION. A capsule around subheadline-metric content with the pill's
-/// 7 pt vertical padding, so both are always the same height, at every Dynamic
-/// Type size. Solid semi-transparent fill, deliberately NO glass/blur (the
-/// info pill's performance note applies: blur is expensive per frame during
-/// horizontal scrolling). Iconography:
-/// - offline & not downloaded → wifi.slash
-/// - downloading / paused → progress ring (tap cancels)
-/// - downloaded → the one `DownloadedMark` (the check means heard)
-/// - otherwise nothing: downloading lives in the card's long-press menu
+/// The one download manager both card views of this file ask.
+private var cardDownloads: DownloadManager { DownloadManager.shared }
+
+/// The download control of the FeaturedCards, pinned to the card's
+/// bottom-right corner: the progress ring while a download runs or is
+/// paused (a tap cancels), otherwise nothing. One component for the book AND
+/// podcast cards. The ring matches the card's OWN "Details" pill BY
+/// CONSTRUCTION: a capsule around subheadline-metric content with the pill's
+/// 7 pt vertical padding, so both are always the same height, at every
+/// Dynamic Type size. Solid semi-transparent tone, deliberately NO
+/// glass/blur (blur is expensive per frame during horizontal scrolling).
+/// Downloaded and not available offline are states, not controls: they
+/// stand in the card's marks at the top right (`CardMarks`). Downloading
+/// itself lives in the card's long-press menu.
 struct CardDownloadBadge: View {
     let itemId: String
 
-    private let downloads = DownloadManager.shared
+    private let downloads = cardDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
 
@@ -29,24 +30,13 @@ struct CardDownloadBadge: View {
         self.itemId = itemId
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
     }
-    @Environment(\.isOnline) private var isOnline
 
     /// Ring diameter for the downloading state. Scaled relative to the
     /// subheadline metric so it tracks the pill height at accessibility sizes.
     @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
 
-    private var isOfflineUnavailable: Bool {
-        MediaAvailability.offlineUnavailable(isConnected: isOnline,
-                                             isDownloaded: downloads.isDownloaded(itemId: itemId))
-    }
-
     var body: some View {
-        if isOfflineUnavailable {
-            badge {
-                Image(systemName: "wifi.slash").font(.subheadline.weight(.semibold))
-                    .accessibilityLabel(Text("Not available offline"))
-            }
-        } else if let fraction = downloads.phase[itemId]?.progress {
+        if let fraction = downloads.phase[itemId]?.progress {
             let paused: Bool = { if case .paused = downloads.phase[itemId] { return true } else { return false } }()
             Button { downloads.cancelDownload(itemId: itemId) } label: {
                 badge {
@@ -62,15 +52,11 @@ struct CardDownloadBadge: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
-            // Locale-independent handles: the three states must be tellable
-            // apart without reading a translated label.
+            // Locale-independent handles: the states must be tellable apart
+            // without reading a translated label.
             .accessibilityIdentifier("download-cancel")
-        } else if downloads.isDownloaded(itemId: itemId) {
-            DownloadedMark(size: .large)
-                .accessibilityIdentifier("download-done")
         }
-        // Not downloaded: nothing. Downloading is an entry of the card's
-        // long-press menu, never a sign on the card.
+        // Not downloading: nothing in this corner.
     }
 
     /// The info pill's construction: a capsule around subheadline-metric
@@ -88,9 +74,60 @@ struct CardDownloadBadge: View {
         .foregroundStyle(.white)
         .padding(.vertical, 7)
         .padding(.horizontal, 9)
-        .background(Capsule().fill(GlyphTone.fill))
+        .glyphCapsule()
         .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl,
                alignment: .bottomTrailing)
         .contentShape(Rectangle())
+    }
+}
+
+/// The marks of a FeaturedCard at its top right, in the one stack of the
+/// tiles: the kind in a mixed row (`stackedKind`), the lock of a feed, and
+/// what availability says (`CoverAvailability.of`: downloaded, or not
+/// available offline). Before, downloaded and offline stood as capsules in
+/// the bottom-right corner beside the download ring. The one observing
+/// leaf of the card's download state at the top.
+struct CardMarks: View {
+    let itemId: String
+    /// The lock of the episode's feed; nil for what has no feed (a book).
+    let lock: FeedLock?
+    @Environment(\.coverGlyphKind) private var kind
+    @Environment(\.isOnline) private var isOnline
+    private let downloads = cardDownloads
+    @ObservedObject private var downloadStock = DownloadManager.stock
+
+    init(itemId: String, lock: FeedLock?) {
+        self.itemId = itemId
+        self.lock = lock
+    }
+
+    var body: some View {
+        let downloaded = downloads.isDownloaded(itemId: itemId)
+        let availability = CoverAvailability.of(
+            failed: false, downloaded: downloaded,
+            unavailable: MediaAvailability.offlineUnavailable(isConnected: isOnline, isDownloaded: downloaded))
+        let locked = lock.map { $0 != .none } ?? false
+        let marks: [CoverGlyph] = (kind == nil ? [] : [.kind]) + (locked ? [.lock] : [])
+            + (availability == nil ? [] : [.availability])
+        CoverGlyphStack(present: marks, coverSide: nil, cornerSide: 0,
+                        label: { mark in
+                            switch mark {
+                            case .kind: Text(verbatim: kind?.label ?? "")
+                            case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
+                            default: availability == .downloaded ? Text("Downloaded") : Text("Not available offline")
+                            }
+                        }) { mark in
+            switch mark {
+            case .kind: if let kind { KindGlyph(kind: kind) }
+            case .lock: if let lock { PremiumLockBadge(lock: lock) }
+            default:
+                if availability == .downloaded {
+                    DownloadedMark(size: .large).padding(4)
+                        .accessibilityIdentifier("download-done")
+                } else {
+                    OfflineUnavailableBadge().padding(5)
+                }
+            }
+        }
     }
 }

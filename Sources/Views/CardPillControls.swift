@@ -13,6 +13,8 @@ struct PillLabel: View {
     let title: Text
     let foreground: Color
     let fill: Color
+    /// A dark capsule under the fill (the card pill: the tone of the marks).
+    var shade: Color? = nil
     /// The glyph behind the word ("Details ⓘ") instead of in front of it.
     var glyphAfterTitle = false
 
@@ -27,7 +29,12 @@ struct PillLabel: View {
         .padding(.vertical, 7)
         // Solid, semi-transparent capsule instead of material blur. Blur
         // is expensive per frame during horizontal scrolling.
-        .background(Capsule().fill(fill))
+        .background {
+            ZStack {
+                if let shade { Capsule().fill(shade) }
+                Capsule().fill(fill)
+            }
+        }
     }
 }
 
@@ -42,7 +49,7 @@ struct CardDetailPill<Value: Hashable>: View {
     var body: some View {
         NavigationLink(value: value) {
             PillLabel(systemImage: "info.circle", title: Text("Details"),
-                      foreground: .white, fill: GlyphTone.fill, glyphAfterTitle: true)
+                      foreground: .white, fill: GlyphTone.fill, shade: GlyphTone.shade, glyphAfterTitle: true)
         }
         .buttonStyle(.plain)
     }
@@ -67,7 +74,7 @@ struct CardCornerButton: View {
             .foregroundStyle(.white)
             .padding(.vertical, 7)
             .padding(.horizontal, 9)
-            .background(Capsule().fill(GlyphTone.fill))
+            .glyphCapsule()
             .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl,
                    alignment: .bottomTrailing)
             .contentShape(Rectangle())

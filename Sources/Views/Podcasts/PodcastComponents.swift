@@ -60,19 +60,18 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // The Continue card carries the lock too. A free and a
-        // premium copy of the SAME show can sit next to each other here,
-        // and then the mark tells them apart. It sits
-        // on the COVER (the card's cover fills the top), never at the text;
-        // the bottom corners carry the info pill and the download badge.
-        // A lasting refusal of the feed turns the lock into the warning, as
-        // on the show tiles.
+        // The marks at the top right of the cover, as on the book card:
+        // kind in a mixed row, the lock (a free and a premium copy of the
+        // SAME show can sit next to each other here, and the mark tells them
+        // apart; a lasting refusal turns it into the warning), downloaded or
+        // not available offline. The bottom corners carry the info pill and
+        // the download ring.
         .overlay(alignment: .topTrailing) {
             let feed = PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""
-            PremiumLockBadge(lock: PodcastSubscriptions.shared.lock(feedURL: feed))
+            CardMarks(itemId: item.id, lock: PodcastSubscriptions.shared.lock(feedURL: feed))
         }
-        // The SHARED download/offline badge family at the card corner,
-        // identical to the book card.
+        // The SHARED download ring at the card corner, identical to the
+        // book card.
         .overlay(alignment: .bottomTrailing) {
             // Downloading is an entry of the long-press menu below.
             CardDownloadBadge(itemId: item.id)
