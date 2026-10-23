@@ -26,8 +26,17 @@ The kind of a tile in a mixed row now stands first in the column of marks
 at the top right instead of at the top left. Every mark and every corner
 button on these tiles (kind, lock, offline, play, subscribe, import) is a
 white symbol on the same soft disc, the tone of the Details pill over a
-dark shade, so it reads on light covers too; before, they used three
-different darks, and subscribe was a green check or an orange plus.
+dark shade; before, they used three different darks, and subscribe was
+a green check or an orange plus.
+
+**Book covers carry their marks in one column.** At the top right of a
+book cover stand, one under the other, its kind in a mixed row, whether
+it is downloaded, failed to download or not available offline, and
+whether it is finished; before, the download state stood at the bottom
+left, and a finished book hid that it is not available offline. The
+downloaded arrow and the finished check sit on the same disc as the other
+marks, everywhere the downloaded arrow appears. A failed download keeps
+its accent colour.
 
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.

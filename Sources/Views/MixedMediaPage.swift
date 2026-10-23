@@ -71,7 +71,7 @@ struct HomeRecentlyAddedTile: View {
         if let entry = libraryViewModel.entry(id: item.id) {
             BookGridCell(entry: entry, width: width,
                          playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
-                .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
+                .stackedKind(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         } else {
             AlbumCell(item: item, width: width, playerCoordinator: playerCoordinator)
                 .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))

@@ -106,7 +106,8 @@ struct DownloadedGlyphFenceTests {
         let badge = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "CoverBadge.swift" })
         let mark = try #require(functionBody(of: "struct DownloadedMark: View {",
                                              in: try String(contentsOf: badge, encoding: .utf8)))
-        #expect(mark.contains(".foregroundStyle(.white, .black.opacity(0.55))"), "white on the dark disc")
+        #expect(mark.contains(".foregroundStyle(.white, .clear)") && mark.contains(".glyphDisc()"),
+                "white on the disc of the tone")
         #expect(!mark.contains(".secondary"), "never a grey glyph (GT-17)")
         #expect(mark.contains("min(rowDiameter, Self.rowCap)") && mark.contains("min(largeDiameter, CoverBadge.detailControl)"),
                 "the mark grows with the text only as far as its cover carries it")

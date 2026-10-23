@@ -90,14 +90,15 @@ struct CoverGlyphsTests {
         "Sources/Views/Podcasts/PremiumBadge.swift": (0, "the lock; refused keeps its orange"),
         "Sources/Views/MediaTile.swift": (0, "the play badge"),
         "Sources/Views/FreeCatalogRows.swift": (0, "the import ring"),
-        "Sources/Views/CoverBadge.swift": (1, "the downloaded mark, which takes the tone with the book tiles"),
+        "Sources/Views/CoverBadge.swift": (0, "the offline disc and the downloaded mark"),
+        "Sources/Views/BookCoverView.swift": (0, "the book cover's marks; a failed download keeps its accent"),
     ]
 
     /// The tiles that still mark their kind at the top left, outside the
     /// stack; they take the stack in their own steps.
     static let topLeftKinds: [String: (count: Int, reason: String)] = [
         "Sources/Views/HomeView.swift": (3, "album, catalog track and station tile of Listen Again"),
-        "Sources/Views/MixedMediaPage.swift": (7, "book and episode card, book and album cell, album, track and station tile"),
+        "Sources/Views/MixedMediaPage.swift": (6, "book and episode card, album cell, album, track and station tile"),
     ]
 
     @Test("Zeichen und Ecken tragen den Ton ueber der dunklen Scheibe, die MediaTile stapelt ihre Art", .needsTheSources)
@@ -120,6 +121,12 @@ struct CoverGlyphsTests {
         let tile = try FetchAnswerTests.squeezedSource("Sources/Views/MediaTile.swift")
         #expect(tile.contains("@Environment(\\.coverGlyphKind) private var kind")
                     && tile.contains("(kind == nil ? [] : [.kind])"), "the tile leaves its kind outside the stack")
+        let book = try FetchAnswerTests.squeezedSource("Sources/Views/BookCoverView.swift")
+        #expect(book.contains(".overlay(alignment: .topTrailing) { CoverGlyphStack(present: marks, coverSide: size,")
+                    && !book.contains(".overlay(alignment: .bottomLeading)"),
+                "the book cover's marks stand outside the stack again")
+        #expect(book.contains("(kind == nil ? [] : [.kind]) + (itemId == nil ? [] : [.availability])"),
+                "the book cover leaves its kind or its availability outside the stack")
         var left: [String: Int] = [:]
         for (path, text) in try MixedRowGlyphTests.sources() {
             let n = text.components(separatedBy: ".kindGlyph(").count - 1

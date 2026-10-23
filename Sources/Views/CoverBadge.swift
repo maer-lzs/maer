@@ -48,8 +48,9 @@ struct OfflineUnavailableBadge: View {
 
 /// THE downloaded mark: this is on the device. One component for every place
 /// that says so, drawn only when it is true, never as an offer to download.
-/// A white arrow on the dark disc the offline mark wears, so it reads on any
-/// cover and is never a grey glyph lost in the page. It grows with the text.
+/// A white arrow on the disc of the tone the other marks wear (the symbol's
+/// circle layer stays clear over it), never a grey glyph lost in the page.
+/// It grows with the text.
 ///
 /// The symbol is ONE constant. Its form is a product decision; a change of
 /// form is this line and nothing else.
@@ -76,7 +77,8 @@ struct DownloadedMark: View {
             .font(.system(size: size == .row ? min(rowDiameter, Self.rowCap)
                                              : min(largeDiameter, CoverBadge.detailControl)))
             .symbolRenderingMode(.palette)
-            .foregroundStyle(.white, .black.opacity(0.55))
+            .foregroundStyle(.white, .clear)
+            .glyphDisc()
             .accessibilityElement()
             .accessibilityLabel(Text("Downloaded"))
     }
