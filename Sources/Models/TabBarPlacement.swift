@@ -24,6 +24,17 @@ nonisolated enum TabBarPlacement: Equatable, Sendable {
         verticalBarSide.map(TabBarPlacement.side) ?? .bottom
     }
 
+    /// The narrowest column a finger can use; the side bar needs it free.
+    static let minimumFreeColumn: CGFloat = 44
+
+    /// The side the bar takes: the system's edge, but only where the system
+    /// keeps a column free there. The folded Duo on its side names an edge
+    /// and keeps nothing free at it; a bar there slid off the screen.
+    static func side(systemEdge: VerticalBarSide?, freeColumn: CGFloat) -> VerticalBarSide? {
+        guard let systemEdge, freeColumn >= minimumFreeColumn else { return nil }
+        return systemEdge
+    }
+
     var isSide: Bool { self != .bottom }
 }
 

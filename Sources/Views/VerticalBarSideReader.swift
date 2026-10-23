@@ -110,16 +110,28 @@ private struct VerticalBarSideReader: View {
     private struct SystemEdge: View {
         @Binding var side: VerticalBarSide?
         @Environment(\.toolbarVerticalEdge) private var edge
+        /// The safe area at the window's edges: the column the system keeps
+        /// free at its edge, if any.
+        @State private var insets = EdgeInsets()
+
+        private var systemEdge: VerticalBarSide? {
+            switch edge {
+            case .leading: .leading
+            case .trailing: .trailing
+            case nil: nil
+            }
+        }
+
+        private var freeColumn: CGFloat {
+            systemEdge == .leading ? insets.leading : insets.trailing
+        }
 
         var body: some View {
             Color.clear
                 .accessibilityHidden(true)
-                .onChange(of: edge, initial: true) { _, edge in
-                    switch edge {
-                    case .leading: side = .leading
-                    case .trailing: side = .trailing
-                    case nil: side = nil
-                    }
+                .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets = $0 }
+                .onChange(of: [systemEdge.map { "\($0)" } ?? "", "\(freeColumn)"], initial: true) {
+                    side = TabBarPlacement.side(systemEdge: systemEdge, freeColumn: freeColumn)
                 }
         }
     }

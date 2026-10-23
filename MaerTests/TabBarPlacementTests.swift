@@ -22,6 +22,17 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(.trailing).isSide)
     }
 
+    @Test("seitlich nur, wo das System an der Kante eine Spalte frei haelt")
+    func theSideNeedsAFreeColumn() {
+        // Folded upright: the status column keeps 84 pt free at the right.
+        #expect(TabBarPlacement.side(systemEdge: .trailing, freeColumn: 84) == .trailing)
+        // Folded on its side: an edge, but nothing free at it (the bar slid
+        // off the screen).
+        #expect(TabBarPlacement.side(systemEdge: .trailing, freeColumn: 0) == nil)
+        #expect(TabBarPlacement.side(systemEdge: .trailing, freeColumn: 43) == nil)
+        #expect(TabBarPlacement.side(systemEdge: nil, freeColumn: 84) == nil)
+    }
+
     @Test("die Achse der Statuszeichen liegt in beiden Haltungen des Duo auf den gemessenen Zeichen")
     func theStatusAxisMatchesBothPostures() {
         // Folded: column from 382, 84 wide, glyphs measured at 418.1.
