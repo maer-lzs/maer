@@ -107,7 +107,7 @@ struct PlaylistCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 // The ONE observing leaf, like every tile: offline disc and
                 // dim when nothing of the list is here, the downloaded mark
-                // when all of it is.
+                // when all of it is, both in the one stack at the top right.
                 MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in
                     PlaylistArtwork(playlistID: source.id, coverURLs: coverURLs, cornerRadius: 0)
                         .overlay(alignment: .bottom) {
@@ -115,9 +115,12 @@ struct PlaylistCard: View {
                                            startPoint: .top, endPoint: .bottom)
                                 .frame(height: CardMetrics.featuredCardWidth * 0.3)
                         }
-                        .offlineUnavailableBadge(unavailable)
+                        .opacity(unavailable ? 0.5 : 1)
                         .overlay(alignment: .topTrailing) {
-                            if allHere { PlaylistDownloadedMark() }
+                            StandardCoverMarks(availability: CoverAvailability.of(failed: false, downloaded: allHere,
+                                                                                  unavailable: unavailable),
+                                               coverSide: nil)
+                                .padding(3)
                         }
                         .overlay(alignment: .topLeading) { placeCapsule }
                 }
@@ -354,16 +357,5 @@ extension PlaylistCardSource {
     @MainActor
     private static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
         list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
-    }
-}
-
-/// The card's downloaded mark: all of the list is on the device. Plain
-/// value view; the availability scope that draws it observes the stock and
-/// hands down `allHere`, so neither the card nor the mark holds a grip.
-struct PlaylistDownloadedMark: View {
-    var body: some View {
-        DownloadedMark(size: .large)
-            .padding(8)
-            .accessibilityIdentifier("playlist-card-downloaded")
     }
 }

@@ -126,6 +126,10 @@ struct RadioStationCard: View {
     /// station out of the last-heard ring (travels as a tombstone).
     var onRemoveFromRecents: (() -> Void)? = nil
     @Environment(\.pushRadioRoute) private var pushRadioRoute
+    /// The kind of this tile in a mixed row (`stackedKind`), nil elsewhere.
+    @Environment(\.coverGlyphKind) private var kind
+    /// The play corner with its insets, grown with the text like its glyph.
+    @ScaledMetric(relativeTo: .caption) private var cornerSide: CGFloat = 38
 
     /// The tile's own default metric (browse rows, the radio tab).
     static let width: CGFloat = 128
@@ -140,16 +144,10 @@ struct RadioStationCard: View {
                              name: station.name, homepage: station.homepage)
                     .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(alignment: .topLeading) {
-                        if isFavorite {
-                            Image(systemName: "star.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.white)
-                                .padding(5)
-                                .background(Circle().fill(.black.opacity(0.45)))
-                                .padding(6)
-                                .accessibilityLabel(Text("Favorite"))
-                        }
+                    // The kind in a mixed row and the star stand in the one
+                    // stack at the top right; before, both took the top left.
+                    .overlay(alignment: .topTrailing) {
+                        StandardCoverMarks(kind: kind, favourite: isFavorite, coverSide: width, cornerSide: cornerSide)
                     }
                     .overlay(alignment: .bottomTrailing) {
                         // Play stays reachable in ONE tap. The corner glyph,
@@ -161,7 +159,7 @@ struct RadioStationCard: View {
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.white)
                                 .padding(7)
-                                .background(Circle().fill(.black.opacity(0.45)))
+                                .glyphDisc()
                         }
                         .buttonStyle(.plain)
                         .padding(6)

@@ -8,7 +8,7 @@ import SwiftUI
 /// THE single observer of `DownloadManager` for a card or tile. It resolves
 /// the pure `MediaAvailability.offlineUnavailable` predicate for ONE item and
 /// hands the `unavailable` value to its content. Which stays value-driven
-/// (`.offlineUnavailableBadge`, `MediaTile(unavailable:)`). Whether the app is
+/// (the tiles' stacks of marks, `MediaTile(unavailable:)`). Whether the app is
 /// online comes as a value from the root, which observes the monitor anyway.
 ///
 /// Why it exists: `DownloadManager` republishes `phase` on every download

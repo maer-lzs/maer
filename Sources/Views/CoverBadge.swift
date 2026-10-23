@@ -30,8 +30,7 @@ enum CoverBadge {
 /// THE offline disc. A white wifi.slash on the disc of the tone, sized to
 /// MATCH the corner play glyph (`MediaTilePlayBadge`) so the two
 /// corner marks read equal on every tile; scales with Dynamic Type like the
-/// play glyph. Used by the `offlineUnavailableBadge` modifier and inline where a
-/// surface can't take the modifier (BookCoverView's finished-state interplay).
+/// play glyph. Every tile draws it in its stack of marks (`CoverGlyphStack`).
 struct OfflineUnavailableBadge: View {
     @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
@@ -81,23 +80,5 @@ struct DownloadedMark: View {
             .glyphDisc()
             .accessibilityElement()
             .accessibilityLabel(Text("Downloaded"))
-    }
-}
-
-extension View {
-    /// Gray/dimming is NEVER the only state carrier. Unavailable
-    /// content dims AND carries the white wifi.slash badge. TOP-RIGHT so it
-    /// clears the bottom-right corner control (play badge, subscribe plus);
-    /// the disc matches the play glyph's size (see `OfflineUnavailableBadge`).
-    @ViewBuilder
-    func offlineUnavailableBadge(_ active: Bool) -> some View {
-        if active {
-            self.opacity(0.5)
-                .overlay(alignment: .topTrailing) {
-                    OfflineUnavailableBadge().padding(5)
-                }
-        } else {
-            self
-        }
     }
 }

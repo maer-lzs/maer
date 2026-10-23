@@ -74,7 +74,7 @@ struct HomeRecentlyAddedTile: View {
                 .stackedKind(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         } else {
             AlbumCell(item: item, width: width, playerCoordinator: playerCoordinator)
-                .kindGlyph(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
+                .stackedKind(MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id)))
         }
     }
 }
@@ -176,13 +176,13 @@ struct MixedMediaPage: View {
                             if let item = listenAgainAlbums.first(where: { $0.id == id }) {
                                 AlbumCell(item: item, width: cardWidth,
                                           playerCoordinator: playerCoordinator)
-                                    .kindGlyph(MediaFamily.kind(for: id))
+                                    .stackedKind(MediaFamily.kind(for: id))
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         case .catalogTrack(let id):
                             CatalogTrackCell(itemId: id, width: cardWidth,
                                              playerCoordinator: playerCoordinator)
-                                .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                                .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
                                 // Kachel navigiert (siehe HomeView).
@@ -192,7 +192,7 @@ struct MixedMediaPage: View {
                                                  onRemoveFromRecents: {
                                                      RadioStore.removeRecentNoting(station)
                                                  })
-                                    .kindGlyph(.radio)
+                                    .stackedKind(.radio)
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         }

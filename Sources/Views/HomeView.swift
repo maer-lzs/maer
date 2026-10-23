@@ -364,7 +364,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                 if let item = recentMusicItems.first(where: { $0.id == id }) {
                                     AlbumCell(item: item, width: Self.recentlyPlayedTileWidth,
                                               playerCoordinator: playerCoordinator)
-                                        .kindGlyph(MediaFamily.kind(for: id))
+                                        .stackedKind(MediaFamily.kind(for: id))
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }
@@ -372,7 +372,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                 CatalogTrackCell(itemId: id,
                                                  width: Self.recentlyPlayedTileWidth,
                                                  playerCoordinator: playerCoordinator)
-                                    .kindGlyph(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                                    .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
                                     // The ROW's metric, not the class's.
@@ -387,7 +387,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                                      onRemoveFromRecents: {
                                                          RadioStore.removeRecentNoting(station)
                                                      })
-                                        .kindGlyph(.radio)
+                                        .stackedKind(.radio)
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }

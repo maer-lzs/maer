@@ -110,14 +110,11 @@ struct CoverGlyphsTests {
         "Sources/Views/CardDownloadBadge.swift": (0, "the card's download ring and its marks"),
         "Sources/Views/CardPillControls.swift": (0, "the card's Details pill and corner button"),
         "Sources/Views/Podcasts/PodcastComponents.swift": (0, "the show tiles' marks, Pinchflat, subscribe"),
+        "Sources/Views/Music/MusicView.swift": (0, "the album cell's marks"),
+        "Sources/Views/Music/PlaylistCard.swift": (0, "the playlist card's marks"),
+        "Sources/Views/Radio/RadioComponents.swift": (2, "the ink of the radio card's title and caption on a light ground; no mark"),
     ]
 
-    /// The tiles that still mark their kind at the top left, outside the
-    /// stack; they take the stack in their own steps.
-    static let topLeftKinds: [String: (count: Int, reason: String)] = [
-        "Sources/Views/HomeView.swift": (3, "album, catalog track and station tile of Listen Again"),
-        "Sources/Views/MixedMediaPage.swift": (4, "album cell, album, track and station tile"),
-    ]
 
     @Test("Zeichen und Ecken tragen den Ton ueber der dunklen Scheibe, die MediaTile stapelt ihre Art", .needsTheSources)
     func theMarksWearTheToneAndTheKindStacks() throws {
@@ -169,12 +166,17 @@ struct CoverGlyphsTests {
         let pills = try FetchAnswerTests.squeezedSource("Sources/Views/CardPillControls.swift")
         #expect(pills.contains("fill: GlyphTone.fill, shade: GlyphTone.shade, glyphAfterTitle: true") && pills.contains(".glyphCapsule()"),
                 "the card's pill or corner button lost the dark shade of the tone")
-        var left: [String: Int] = [:]
-        for (path, text) in try MixedRowGlyphTests.sources() {
-            let n = text.components(separatedBy: ".kindGlyph(").count - 1
-            if n > 0 { left[path] = n }
-        }
-        #expect(left == Self.topLeftKinds.mapValues(\.count), "kind marks at the top left: \(left)")
+        // No tile marks its kind at the top left any more; the grip that did
+        // is gone, and so is the old offline modifier beside the stack.
+        let kindFile = try FetchAnswerTests.squeezedSource("Sources/Views/KindGlyph.swift")
+        let badgeFile = try FetchAnswerTests.squeezedSource("Sources/Views/CoverBadge.swift")
+        #expect(!kindFile.contains("alignment: .topLeading") && !badgeFile.contains("func offlineUnavailableBadge("),
+                "a mark stands outside the stack again")
+        let album = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
+        let station = try FetchAnswerTests.squeezedSource("Sources/Views/Radio/RadioComponents.swift")
+        #expect(album.contains("StandardCoverMarks(kind: kind, availability: unavailable ? .offline : nil, coverSide: coverSide)")
+                    && station.contains("StandardCoverMarks(kind: kind, favourite: isFavorite, coverSide: width, cornerSide: cornerSide)"),
+                "the album cell or the station tile carries its marks outside the stack")
     }
 }
 #endif

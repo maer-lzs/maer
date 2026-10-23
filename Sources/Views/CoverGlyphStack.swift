@@ -93,3 +93,88 @@ struct CoverGlyphStack<Glyph: View>: View {
         }
     }
 }
+
+/// The stack with the standard view of every mark, for a tile that only
+/// hands over its states: kind, lock, availability, finished, favourite,
+/// count. A mark is present only when it has something to say.
+struct StandardCoverMarks: View {
+    var kind: MediaType? = nil
+    var lock: FeedLock? = nil
+    var availability: CoverAvailability? = nil
+    var finished = false
+    var favourite = false
+    var count: Int? = nil
+    let coverSide: CGFloat?
+    var cornerSide: CGFloat = 0
+    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
+
+    private var marks: [CoverGlyph] {
+        (kind == nil ? [] : [.kind]) + ((lock ?? .none) == .none ? [] : [.lock])
+            + (availability == nil ? [] : [.availability]) + (finished ? [.finished] : [])
+            + (favourite ? [.favourite] : []) + (count == nil ? [] : [.count])
+    }
+
+    var body: some View {
+        CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: cornerSide, label: label) { mark in
+            switch mark {
+            case .kind: if let kind { KindGlyph(kind: kind) }
+            case .lock: if let lock { PremiumLockBadge(lock: lock) }
+            case .availability: availabilityMark
+            case .finished: disc("checkmark").accessibilityLabel(Text("Finished"))
+            case .favourite: disc("star.fill").accessibilityLabel(Text("Favorite"))
+            case .count:
+                if let count {
+                    Text("\(count)")
+                        .font(.caption2.bold()).foregroundStyle(.white)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Capsule().fill(.red))
+                        .padding(7)
+                }
+            }
+        }
+    }
+
+    private func label(_ mark: CoverGlyph) -> Text {
+        switch mark {
+        case .kind: Text(verbatim: kind?.label ?? "")
+        case .lock: lock == .refused ? Text("Access refused") : Text("Premium Feed")
+        case .availability:
+            switch availability {
+            case .failed: Text("Download failed")
+            case .downloaded: Text("Downloaded")
+            default: Text("Not available offline")
+            }
+        case .finished: Text("Finished")
+        case .favourite: Text("Favorite")
+        case .count: Text(verbatim: "\(count ?? 0)")
+        }
+    }
+
+    @ViewBuilder
+    private var availabilityMark: some View {
+        switch availability {
+        case .failed:
+            // A failure keeps its signal colour, like a refused feed.
+            Image(systemName: "exclamationmark")
+                .font(.system(size: diameter * 0.45, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: diameter, height: diameter)
+                .background(Circle().fill(AppTheme.accent))
+                .padding(5)
+                .accessibilityLabel(Text("Download failed"))
+        case .downloaded: DownloadedMark(size: .large).padding(4)
+        case .offline: OfflineUnavailableBadge().padding(5)
+        case nil: EmptyView()
+        }
+    }
+
+    /// A white symbol on the disc of the tone, as large as the offline disc.
+    private func disc(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: diameter * 0.45, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: diameter, height: diameter)
+            .glyphDisc()
+            .padding(5)
+    }
+}

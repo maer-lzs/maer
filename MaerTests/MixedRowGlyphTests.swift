@@ -74,10 +74,9 @@ struct MixedRowGlyphTests {
     func everyMixedRowMarksItsTiles() throws {
         let files = try Self.sources()
         #expect(files.count > 100, "the walk found only \(files.count) files")
-        // A tile marks its kind at the top left or, a MediaTile, first in
-        // its stack: both count.
+        // A tile marks its kind first in its stack of marks.
         let marked = files.compactMapValues { text -> Int? in
-            let n = Self.count(".kindGlyph(", in: text) + Self.count(".stackedKind(", in: text)
+            let n = Self.count(".stackedKind(", in: text)
             return n > 0 ? n : nil
         }
         #expect(marked == Self.marks.mapValues(\.count), "kind marks per file: \(marked)")

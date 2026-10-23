@@ -52,6 +52,13 @@ the top left and the lock at the bottom right. The number keeps its red.
 The Pinchflat mark stays at the bottom left, on the same disc as the
 other marks.
 
+**Albums, playlists and stations follow.** Album tiles, the playlist
+card and station tiles carry their kind in a mixed row, not available
+offline, downloaded and the favourite star in the same column at the top
+right; before, the kind and the star stood at the top left. The play
+button of a station sits on the same disc as the other marks. No tile
+carries a mark at the top left any more.
+
 **The music servers' note says what happens.** Under Settings, the note
 below the music servers said that with both on only Subsonic is used.
 With both on, the Music tab asks both servers and plays each title from

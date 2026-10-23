@@ -79,8 +79,8 @@ struct OfflineDetailTests {
     func theCardWearsTheTileScope() throws {
         let card = try Self.source("Sources/Views/Music/PlaylistCard.swift")
         #expect(card.contains("MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in"))
-        #expect(card.contains(".offlineUnavailableBadge(unavailable)"))
-        #expect(card.contains("if allHere { PlaylistDownloadedMark() }"))
+        #expect(card.contains(".opacity(unavailable ? 0.5 : 1)"))
+        #expect(card.contains("StandardCoverMarks(availability: CoverAvailability.of(failed: false, downloaded: allHere,"))
         // The scope observes and hands `allHere` down: neither the card nor
         // the mark holds a grip on the downloader.
         #expect(!card.contains("DownloadManager"), "the card reads no download state itself")

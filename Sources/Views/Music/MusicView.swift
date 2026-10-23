@@ -487,6 +487,10 @@ struct AlbumCell: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Single-line titles truncate to fragments at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The kind of this cell in a mixed row (`stackedKind`), nil elsewhere.
+    @Environment(\.coverGlyphKind) private var kind
+    /// The shorter side of the cover, measured; decides how many marks fit.
+    @State private var coverSide: CGFloat?
 
     var body: some View {
         // Value-based push (MusicRoute) so the tab bar can switch library
@@ -509,8 +513,15 @@ struct AlbumCell: View {
                     .aspectRatio(1, contentMode: .fit)
                     .frame(width: width)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                    // Dimming alone never carries the state.
-                    .offlineUnavailableBadge(unavailable)
+                    .opacity(unavailable ? 0.5 : 1)
+                    .onGeometryChange(for: CGFloat.self) { min($0.size.width, $0.size.height) } action: { coverSide = $0 }
+                    // Dimming alone never carries the state: the kind in a
+                    // mixed row and not available offline stand in the one
+                    // stack at the top right; before, the kind stood at the
+                    // top left.
+                    .overlay(alignment: .topTrailing) {
+                        StandardCoverMarks(kind: kind, availability: unavailable ? .offline : nil, coverSide: coverSide)
+                    }
                     // With two music servers the cell says whose it is; with
                     // one, and for a catalogue title, nothing.
                     .overlay(alignment: .bottomLeading) {
