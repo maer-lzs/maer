@@ -50,9 +50,25 @@ struct LibraryView: View {
     /// Where the system stands its bars upright (folded iPhone Duo); the
     /// tab bar follows it (`TabBarPlacement`).
     @State private var verticalBarSide: VerticalBarSide?
-    /// How far down the system reserves the side strip (status bar, camera).
-    @State private var reservedSideTop: CGFloat = 0
+    /// What the system reserves in the side strip (status bar, camera): how
+    /// far down, and the axis of its own column.
+    @State private var reservedSide = ReservedStrip()
+    /// The playback bar's middle in window points, measured: the search in
+    /// the side column stands on it. Nil while no bar is drawn.
+    @State private var miniPlayerMidY: CGFloat?
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
+    /// The side column's width: the tab capsule, the cog and the search, as
+    /// narrow as the system's own column (Apple Music on the device) and
+    /// above the 44 pt a finger needs.
+    private static let sideColumnWidth: CGFloat = 46
+
+    /// The distance from the window's bottom to the side search's bottom
+    /// edge, so the search's middle lies on the playback bar's middle.
+    private static func sideSearchBottom(windowHeight: CGFloat, playbackMidY: CGFloat?,
+                                         fallback: CGFloat) -> CGFloat {
+        guard let playbackMidY else { return fallback }
+        return max(0, windowHeight - playbackMidY - sideColumnWidth / 2)
+    }
     /// Up-Next queue sheet (mini-player long-press entry).
     @State private var showQueueSheet = false
     /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
@@ -532,23 +548,30 @@ struct LibraryView: View {
                     // gap, the tabs, the search at the very bottom.
                     VStack(spacing: 10) {
                         FloatingSearchButton(action: { showSettings = true },
-                                             systemImage: "gearshape", label: "Settings")
+                                             systemImage: "gearshape", label: "Settings",
+                                             diameter: Self.sideColumnWidth)
                             .accessibilityIdentifier("open-settings")
                         Spacer(minLength: 16)
                         mediaBar(upright: true)
-                        searchButton
+                        searchButton(diameter: Self.sideColumnWidth)
                     }
-                    // Air at both sides, as the search has: the bar stays
-                    // clear of the window's rounded corner.
-                    .padding(.horizontal, 8)
-                    .frame(width: max(strip, 60))
+                    // As narrow as the system's own column and on its axis,
+                    // under clock and Wi-Fi, clear of the rounded corner.
+                    .frame(width: Self.sideColumnWidth)
+                    .offset(x: reservedSide.axisShift)
+                    .frame(width: max(strip, Self.sideColumnWidth + 8))
                     .frame(maxHeight: .infinity)
-                    .padding(.top, reservedSideTop + 8)
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
+                    .padding(.top, reservedSide.top + 8)
+                    // The search stands on the playback bar's middle; with no
+                    // bar, clear of the bottom edge.
+                    .padding(.bottom, Self.sideSearchBottom(
+                        windowHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
+                        playbackMidY: miniPlayerMidY,
+                        fallback: proxy.safeAreaInsets.bottom + 8))
                     .frame(maxWidth: .infinity, maxHeight: .infinity,
                            alignment: verticalBarSide == .leading ? .topLeading : .topTrailing)
                     .ignoresSafeArea()
-                    .readsReservedTop(ofStripWidth: strip, $reservedSideTop)
+                    .readsReservedStrip(ofWidth: strip, $reservedSide)
                 }
             }
         }
@@ -885,13 +908,13 @@ struct LibraryView: View {
             HStack(spacing: 8) {
                 if composedCollapsed && tabsBelow { homeButton }
                 miniPlayer(collapsed: barCollapsed)
-                if composedCollapsed && tabsBelow { searchButton }
+                if composedCollapsed && tabsBelow { searchButton() }
             }
             if !composedCollapsed && tabsBelow {
                 HStack(spacing: 10) {
                     mediaBar()
                     Spacer(minLength: 0)
-                    searchButton
+                    searchButton()
                 }
             }
             }
@@ -957,6 +980,8 @@ struct LibraryView: View {
                 .accessibilityIdentifier("mini-queue-entry")
             }
             .matchedGeometryEffect(id: "player", in: barNS)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { miniPlayerMidY = $0 }
+            .onDisappear { miniPlayerMidY = nil }
         }
     }
 
@@ -1127,7 +1152,7 @@ struct LibraryView: View {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
     }
 
-    private var searchButton: some View {
+    private func searchButton(diameter: CGFloat = 56) -> some View {
         FloatingSearchButton(
             action: {
                 searchModel.query = ""
@@ -1141,7 +1166,8 @@ struct LibraryView: View {
                 returnToRoot(selectedMediaType)
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
             },
-            glassMorphID: "search", glassMorphNamespace: bottomGlassNS)
+            glassMorphID: "search", glassMorphNamespace: bottomGlassNS,
+            diameter: diameter)
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
         // Locale-independent handle for the UI-test harness.

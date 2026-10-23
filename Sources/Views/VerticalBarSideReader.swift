@@ -13,12 +13,22 @@ extension View {
         background { VerticalBarSideReader(side: side) }
     }
 
-    /// Reports how far down the system reserves the strip at the window's
-    /// right edge (status bar, camera), in window points: a bar of our own in
-    /// that strip starts below it. 0 where nothing is reserved there.
-    func readsReservedTop(ofStripWidth width: CGFloat, _ top: Binding<CGFloat>) -> some View {
-        background { ReservedTopReader(stripWidth: width, top: top).accessibilityHidden(true) }
+    /// Reports what the system reserves in the strip at the window's right
+    /// edge (status bar, camera): a bar of our own in that strip starts below
+    /// it and stands on the axis of the system's own column.
+    func readsReservedStrip(ofWidth width: CGFloat, _ reading: Binding<ReservedStrip>) -> some View {
+        background { ReservedStripReader(stripWidth: width, reading: reading).accessibilityHidden(true) }
     }
+}
+
+/// What the system reserves in the side strip, in window points.
+struct ReservedStrip: Equatable {
+    /// How far down the reserved regions reach; 0 where nothing is there.
+    var top: CGFloat = 0
+    /// How far the axis of the system's column (clock, Wi-Fi: the centre of
+    /// the narrowest reserved region, the camera) lies from the strip's
+    /// centre; 0 where nothing is there.
+    var axisShift: CGFloat = 0
 }
 
 /// Cuts the library at the edge of the side column only: where the tabs
@@ -45,35 +55,36 @@ nonisolated struct SideColumnClip: Shape {
 
 /// Apple's way for a bar of our own: the window's occlusion regions
 /// (`UIView.reservedRegions`, iOS 27.1), read whenever the window lays out.
-private struct ReservedTopReader: UIViewRepresentable {
+private struct ReservedStripReader: UIViewRepresentable {
     let stripWidth: CGFloat
-    @Binding var top: CGFloat
+    @Binding var reading: ReservedStrip
 
     func makeUIView(context: Context) -> ReaderView { ReaderView() }
 
     func updateUIView(_ view: ReaderView, context: Context) {
         view.stripWidth = stripWidth
-        view.report = { value in if top != value { top = value } }
+        view.report = { value in if reading != value { reading = value } }
         view.setNeedsLayout()
     }
 
     final class ReaderView: UIView {
         var stripWidth: CGFloat = 0
-        var report: ((CGFloat) -> Void)?
+        var report: ((ReservedStrip) -> Void)?
 
         override func layoutSubviews() {
             super.layoutSubviews()
             guard let window, stripWidth > 0 else { return }
-            var bottom: CGFloat = 0
+            var value = ReservedStrip()
             if #available(iOS 27.1, *) {
                 let strip = CGRect(x: window.bounds.maxX - stripWidth, y: 0,
                                    width: stripWidth, height: window.bounds.height)
-                for region in window.reservedRegions(kind: .occlusion) where region.isActive
-                    && region.frame.intersects(strip) {
-                    bottom = max(bottom, region.frame.maxY)
+                let regions = window.reservedRegions(kind: .occlusion)
+                    .filter { $0.isActive && $0.frame.intersects(strip) }
+                value.top = regions.map(\.frame.maxY).max() ?? 0
+                if let narrowest = regions.min(by: { $0.frame.width < $1.frame.width }) {
+                    value.axisShift = narrowest.frame.midX - strip.midX
                 }
             }
-            let value = bottom
             DispatchQueue.main.async { [report] in report?(value) }
         }
     }

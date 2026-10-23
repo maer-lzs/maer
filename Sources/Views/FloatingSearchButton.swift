@@ -17,15 +17,18 @@ struct FloatingSearchButton: View {
     var glassMorphNamespace: Namespace.ID? = nil
     var systemImage = "magnifyingglass"
     var label: LocalizedStringKey = "Search"
+    /// 56 at the bottom; the side column is narrower (46, never under the
+    /// 44 pt a finger needs). The glyph keeps its share of the circle.
+    var diameter: CGFloat = 56
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 // Same glyph size as the collapsed home button's tab
                 // glyph; circle size unchanged.
-                .font(.system(size: 21, weight: .semibold))
+                .font(.system(size: 21 * diameter / 56, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 56, height: 56)
+                .frame(width: max(diameter, 44), height: max(diameter, 44))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
