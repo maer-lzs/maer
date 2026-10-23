@@ -79,7 +79,8 @@ woran sie gemessen ist; was nicht im Repository steht, nennt, wer es klärt.
       nicht. Am Mac von uns nicht gemessen; die App ist dort im Gebrauch.
 - [ ] **App-Privacy-Angaben:** „Keine Daten erfasst“ wird vor der
       Einreichung je Datenfluss neu hergeleitet (Mär-Sync, Pocket-Casts-Import,
-      MetricKit nur in TestFlight, Kataloge).
+      Kataloge). MetricKit und alle Diagnose-Flaechen laufen nur in Builds aus
+      Xcode, in keinem Release-Build (TestFlight, App Store).
 - [ ] **Angabe zum Digital Services Act (Händler oder nicht):** Feld des
       Kontoinhabers.
 - [ ] **Altersfreigabe, EULA, Zusatzbedingungen, Export:** Rechtsfrage vor

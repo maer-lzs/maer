@@ -156,7 +156,11 @@ struct SettingsView: View {
                     driveModeSection
                     appearanceSection
                     statsSection
+                    #if DEBUG
+                    // Diagnostics only in builds from Xcode, never in a
+                    // release build (TestFlight, App Store).
                     diagnosticsSection
+                    #endif
                     networkServicesSection
                     aboutSection
                 // The pill is the COMPLETE entry point of its media type:
@@ -408,6 +412,7 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
+            ReloadCatalogDataRow()
             // Destructive: a kind whose pill is gone (its tab is off) and
             // that still holds downloads, then the row that deletes every
             // download.
@@ -416,7 +421,10 @@ struct SettingsView: View {
         } header: {
             Text("Storage")
         } footer: {
-            Text("Deleting downloads never deletes listening progress.")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit.")
+                Text("Deleting downloads never deletes listening progress.")
+            }
         }
     }
 
@@ -485,11 +493,15 @@ struct SettingsView: View {
     /// pages (one pattern, no scattered "Sync Now" variants).
     private var globalSyncSection: some View {
         Section {
+            // The runs and counters of every sync are a diagnostic: only in
+            // builds from Xcode, never in a release build.
+            #if DEBUG
             NavigationLink {
                 SyncHistoryView()
             } label: {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
+            #endif
             // The same log the pill opens: notices of playback on this device.
             NavigationLink {
                 NoticeLogView(notices: coordinator.notices)
@@ -706,9 +718,9 @@ struct SettingsView: View {
     /// The SOURCES page: whom may this app ask. Its own entry (the order
     /// decided it must not hide under network services); it inherits the
     /// old network-services slot in the placement rule.
-    /// The developer-diagnostics home (the reload lever lived under
-    /// Storage and was not findable there; text-producing levers gather on
-    /// the page, surface-bound ones are indexed).
+    #if DEBUG
+    /// The developer-diagnostics home, only in builds from Xcode: a release
+    /// build does not even compile the way in (`ReleaseDiagnosticsFenceTests`).
     private var diagnosticsSection: some View {
         Section {
             NavigationLink {
@@ -719,6 +731,7 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings-diagnostics")
         }
     }
+    #endif
 
     private var networkServicesSection: some View {
         Section {

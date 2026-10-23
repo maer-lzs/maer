@@ -64,10 +64,13 @@ enum AppHousekeeping {
         // the change at its moment.
         PodcastListenLog.shared.followAtStart()
         ListenHistory.shared.followAtStart()
-        // MetricKit only where its gate lets it (Xcode, TestFlight). The
-        // gate may ask the App Store for the environment, so in its own
-        // task: nothing here waits on the network.
+        // MetricKit feeds only the diagnostics page, so it runs only in
+        // builds from Xcode, never in a release build. The gate may ask the
+        // App Store for the environment, so in its own task: nothing here
+        // waits on the network.
+        #if DEBUG
         Task { await MetricReceiver.startIfAllowed() }
+        #endif
         // The catalogue stock runs start with the app, not with a page:
         // every collection whose source is on, continuing what an earlier
         // run (or an earlier version) reached, so a page is whole the first

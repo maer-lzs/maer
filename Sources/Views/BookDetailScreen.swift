@@ -389,7 +389,10 @@ struct BookDetailScreen: View {
         // state, local second backup and the cached detail side by side, each
         // with its
         // timestamp, and names the start the app would pick right now.
+        // Only in builds from Xcode, never in a release build.
+        #if DEBUG
         diagnosisSection
+        #endif
     }
 
     @ViewBuilder

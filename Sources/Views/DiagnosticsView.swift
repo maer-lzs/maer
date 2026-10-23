@@ -5,45 +5,17 @@
 
 import SwiftUI
 
-/// The ONE place for developer diagnostics. Born from a real miss: the
-/// catalog-reload lever lived in the storage section, and its owner could
-/// not find it there. Rule of sorting: levers that produce text or clear
-/// derived state live HERE; diagnostics bound to a surface's own session
-/// (the radio logo report reads what THIS session showed, the book
-/// progress diagnosis reads THIS book) stay at their place, and this page
-/// is the index that says where.
+/// The ONE place for developer diagnostics, reachable only in builds from
+/// Xcode (the settings link stands in `#if DEBUG`); no release build shows
+/// a diagnostics surface. Diagnostics bound to a surface's own session (the
+/// radio logo report reads what THIS session showed, the book progress
+/// diagnosis reads THIS book) stay at their place, and this page is the
+/// index that says where. The lever for the derived stores is no
+/// diagnostic: it stands in the settings' storage section
+/// (`ReloadCatalogDataRow`).
 struct DiagnosticsView: View {
-    /// What the derived-store lever cleared last. It says so instead of
-    /// acting silently.
-    @State private var clearedStores: String?
-
     var body: some View {
         Form {
-            Section {
-                // The debug lever for the DERIVED stores, so the cold state
-                // is reachable by hand instead of once in 24 hours. It
-                // touches NOTHING that belongs to the user; the boundary
-                // stands as a list in `DerivedStores`, not in this label.
-                Button {
-                    let geleert = DerivedStores.clear()
-                    clearedStores = geleert.isEmpty
-                        ? String(localized: "Nothing to clear")
-                        : geleert.joined(separator: " · ")
-                } label: {
-                    Label("Reload Catalog Data", systemImage: "arrow.clockwise.circle")
-                }
-                .accessibilityIdentifier("diagnostics-reload-catalog")
-                if let clearedStores {
-                    Text(verbatim: clearedStores)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Actions")
-            } footer: {
-                Text("Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit.")
-            }
-
             // MetricKit's numbers of this device: only where the gate let the
             // receiver subscribe (Xcode, TestFlight), never in the App Store.
             if MetricReceiver.isOn {

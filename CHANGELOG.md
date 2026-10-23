@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Diagnostics stay with the developers.** The Diagnostics page, the sync
+history with its runs and counters, the progress diagnosis on book pages
+and in a show's settings, and the device measurements are no longer part
+of the app you install. Reload Catalog Data, which clears only derived
+caches, is back under Storage in the settings.
+
 **The mini player stays through a title change.** When one song ends and
 the next one starts, the mini player keeps showing the old one until the
 new one is ready; before, it left the screen for up to a second. A title

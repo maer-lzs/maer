@@ -210,7 +210,11 @@ struct PodcastShowSettingsSheet: View {
                         }
                     }
                 }
+                // The diagnosis only in builds from Xcode, never in a
+                // release build.
+                #if DEBUG
                 diagnosisSection
+                #endif
 
                 Section("Sort") {
                     Picker("Order", selection: $newestFirst) {
