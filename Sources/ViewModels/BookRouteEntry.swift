@@ -9,7 +9,8 @@ import Foundation
 /// loaded grid does not hold (the playing title before the grid pages in, a
 /// title only on a shelf): the grid and the shelves (with progress), then
 /// the source that knows the item, then the player. Nil means the route
-/// shows an empty state.
+/// shows an empty state. Beside the library's view model, whose entry it
+/// answers with.
 nonisolated enum BookRouteEntry {
     static func resolve(_ itemId: String, shelved: LibraryEntry?, known: LibraryItem?,
                         playing: LibraryItem?) -> LibraryEntry? {
