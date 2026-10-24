@@ -33,6 +33,25 @@ nonisolated final class StandMirror: Sendable {
         /// A replacement of the stock whose write with its mark has not
         /// landed: every write until then is that whole write.
         var replacement: ListeningStore.Replacement?
+        /// How many writes were handed to the chain; a write's number is
+        /// its place among them.
+        var handed = 0
+        /// The whole writes that landed, each with the number of writes
+        /// handed over when it read the stock, and what travelled in it.
+        var wholes: [(readAfter: Int, travels: @Sendable (String) -> Bool)] = []
+
+        /// Whether a whole write carries what the write numbered `index`
+        /// wrote for `itemId`: it read the stock after that write was
+        /// handed over, and the id travels in it. The stock is written
+        /// before its write is handed over, so such a whole holds the
+        /// entry as it stands now, and the write's own entry may belong to
+        /// the account before (several writes queued at a change of account
+        /// all lie behind the one that lands the whole). Wholes read before
+        /// this write carry nothing for it or for any later one, and go.
+        mutating func whole(carries itemId: String, writtenAt index: Int) -> Bool {
+            wholes.removeAll { $0.readAfter <= index }
+            return wholes.contains { $0.travels(itemId) }
+        }
     }
 
     private let state = Mutex(State())
@@ -40,6 +59,9 @@ nonisolated final class StandMirror: Sendable {
     /// The tables read synchronously, for the start of the stock; nil when
     /// this mirror has none (a witness over a memory table).
     private let loadNow: (@Sendable () throws -> ListeningStore.Stock?)?
+    /// Awaited by every write before it runs; nil but in a witness, which
+    /// holds the chain with it to queue writes behind one another.
+    private let gate: (@Sendable () async -> Void)?
 
     init() {
         let database = MaerDatabase.shared
@@ -48,13 +70,17 @@ nonisolated final class StandMirror: Sendable {
             guard let reader = try database.readerNow() else { return nil }
             return try StandStore.loadNow(reader: reader)
         }
+        gate = nil
     }
 
     /// A mirror over a given table, for witnesses; `loadNow` reads the same
-    /// file synchronously when the witness asks for the move.
-    init(store: StandStore, loadNow: (@Sendable () throws -> ListeningStore.Stock?)? = nil) {
+    /// file synchronously when the witness asks for the move, `gate` holds
+    /// the chain until the witness opens it.
+    init(store: StandStore, loadNow: (@Sendable () throws -> ListeningStore.Stock?)? = nil,
+         gate: (@Sendable () async -> Void)? = nil) {
         open = nil
         self.loadNow = loadNow
+        self.gate = gate
         state.withLock { $0.store = store }
     }
 
@@ -120,38 +146,32 @@ nonisolated final class StandMirror: Sendable {
         return true
     }
 
-    /// What the whole write of an open replacement did before a write ran.
-    private enum Whole {
-        /// No replacement was open.
-        case none
-        /// It landed now, with the travelling part as it stands: a write of
-        /// a travelling id is in it already.
-        case landed(travels: @Sendable (String) -> Bool)
-        /// It could not land; it stays open, is tried again with the next
-        /// write, and every write runs as it is.
-        case held
-    }
-
-    /// The open replacement written whole, if one is open.
-    private func writeOpenReplacement(_ store: StandStore) async -> Whole {
+    /// The open replacement written whole, if one is open. Landed, it
+    /// carries the travelling part as it stands when it read the stock
+    /// (`State.wholes`). It may not land (the stock not loaded, a throw):
+    /// then it stays open, is tried again with the next write, and every
+    /// write runs as it is.
+    private func writeOpenReplacement(_ store: StandStore) async {
         guard let pending = state.withLock({ state in
-            state.replacement.flatMap { open in state.followed.map { (open, $0) } }
-        }) else { return .none }
-        let (open, followed) = pending
+            state.replacement.flatMap { open in state.followed.map { (open, $0, state.handed) } }
+        }) else { return }
+        let (open, followed, readAfter) = pending
         guard let stock = ListeningStore.resting(where: open.travels, of: followed) else {
             Logger.library.error("STAND replacement held, tried again with the next write: the stock is not loaded")
-            return .held
+            return
         }
         do {
             try await store.replaceTravelling(backups: stock.backups, flushed: stock.flushed, travels: open.travels,
                                               also: OwnerMark.statements(family: open.family, replacement: open.name))
         } catch {
             Logger.library.error("STAND replacement held, tried again with the next write reason=\(String(describing: error), privacy: .public)")
-            return .held
+            return
         }
-        state.withLock { if $0.replacement?.name == open.name { $0.replacement = nil } }
+        state.withLock {
+            if $0.replacement?.name == open.name { $0.replacement = nil }
+            $0.wholes.append((readAfter: readAfter, travels: open.travels))
+        }
         open.landed()
-        return .landed(travels: open.travels)
     }
 
     /// One write of what this device last pushed: an entry, or nil for a removal.
@@ -186,15 +206,19 @@ nonisolated final class StandMirror: Sendable {
 
     /// One write in the chain. While a replacement is open its whole write
     /// goes first; the write itself then runs, unless it is of a travelling
-    /// id (`itemId`) the whole write just carried as it stands now.
+    /// id (`itemId`) a whole write carried as it stands now, one that read
+    /// the stock after this write was handed over.
     private func enqueue(itemId: String? = nil, _ work: @escaping @Sendable (StandStore) async throws -> Void) {
         state.withLock { state in
             let previous = state.pendingWrite
+            let index = state.handed
+            state.handed += 1
             state.pendingWrite = Task { [self] in
                 await previous?.value
+                await gate?()
                 guard let store = await openIfNeeded() else { return }
-                if case .landed(let travels) = await self.writeOpenReplacement(store),
-                   let itemId, travels(itemId) { return }
+                await self.writeOpenReplacement(store)
+                if let itemId, self.state.withLock({ $0.whole(carries: itemId, writtenAt: index) }) { return }
                 do {
                     try await work(store)
                 } catch {

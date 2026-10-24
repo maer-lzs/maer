@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Synchronization
 @testable import Maer
 
 /// The stands follow the account (decision of 03.10.2026, a new beginning):
@@ -503,6 +504,82 @@ struct StandOwnerTests {
             #expect(afterLanding != nil, "the write after the landing was dropped")
             let settled = try rig.shelf.holding(of: "stands")
             #expect(settled == .init(owner: "account-b"), "the replacement was not tried again")
+            withExtendedLifetime(runner) {}
+        }
+    }
+
+    /// Holds a mirror's chain while closed, until the witness opens it.
+    private final class Latch: Sendable {
+        private let state = Mutex<(open: Bool, waiting: [CheckedContinuation<Void, Never>])>((true, []))
+        func close() { state.withLock { $0.open = false } }
+        func wait() async {
+            await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
+                let goes = state.withLock { state -> Bool in
+                    if state.open { return true }
+                    state.waiting.append(waiter)
+                    return false
+                }
+                if goes { waiter.resume() }
+            }
+        }
+        func open() {
+            let waiting = state.withLock { state in
+                state.open = true
+                defer { state.waiting = [] }
+                return state.waiting
+            }
+            waiting.forEach { $0.resume() }
+        }
+    }
+
+    @Test("mehrere Schriebe wandernder Kennungen des Kontos davor stehen beim Wechsel in der Kette: keiner schreibt seinen alten Stand in die Zeilen des neuen Kontos, ein Schrieb nach dem Lesen laeuft")
+    func queuedWritesOfTheAccountBeforeStayOutOfTheRows() async throws {
+        let rig = rig()
+        defer { rig.cleanup() }
+        let defaults = rig.defaults
+        let latch = Latch()
+        let rows = try await StandStore(connection: try SQLiteConnection(path: ":memory:"))
+        let mirror = StandMirror(store: rows, gate: { await latch.wait() })
+        defer { unhook(defaults) }
+        mirror.start(defaults: defaults)
+        try await withSyncOn {
+            var scope = "account-a"
+            let carrier = AccountCarrier(scope: { scope })
+            carrier.pots["account-b"] = ["rss:b-1": [120, 1_700_000_000_000, 1800]]
+            let runner = PodcastCloudSync(carrier: carrier, defaults: defaults, identity: { scope },
+                                          shelf: rig.shelf, standsMarked: { _ in false })
+            runner.reconcile(pushing: false)
+            // The start's own write lands first: run behind the switch, it
+            // would bring the rows to the stock of the start.
+            await mirror.awaitPendingWrites()
+            latch.close()
+            let t = 1_700_000_100_000.0
+            let epochOfA = ListeningStore.ownerEpoch(in: defaults)
+            // The chain is held: two writes of A wait in it, the switch after them.
+            ListeningStore.record("rss:a-1", position: 600, duration: 3600, atMs: t, epoch: epochOfA, in: defaults)
+            ListeningStore.record("rss:a-2", position: 900, duration: 3600, atMs: t, epoch: epochOfA, in: defaults)
+            scope = "account-b"
+            runner.reconcile(pushing: false)
+            #expect(ListeningStore.backup("rss:a-2", in: defaults) == nil, "the precondition: B's stock holds nothing of A")
+            let waited = try await rows.stand(for: "rss:a-1")
+            #expect(waited == nil, "the precondition: the writes of A waited in the chain")
+            latch.open()
+            await mirror.awaitPendingWrites()
+            let landed = try rig.shelf.holding(of: "stands")
+            #expect(landed == .init(owner: "account-b"), "the precondition: the replacement landed")
+            let first = try await rows.stand(for: "rss:a-1")
+            let second = try await rows.stand(for: "rss:a-2")
+            let ofB = try await rows.stand(for: "rss:b-1")
+            #expect(first == nil, "the write that landed the whole wrote A's stand into B's rows")
+            #expect(second == nil, "a queued write of A wrote its stand into B's rows")
+            #expect(ofB != nil, "B's stand is not in the rows")
+
+            // A write handed over after the whole read the stock runs.
+            ListeningStore.record("rss:b-2", position: 30, duration: 600, atMs: t + 70_000,
+                                  epoch: ListeningStore.ownerEpoch(in: defaults), in: defaults)
+            await mirror.awaitPendingWrites()
+            let after = try await rows.stand(for: "rss:b-2")
+            #expect(after != nil, "a write after the whole was dropped")
             withExtendedLifetime(runner) {}
         }
     }
