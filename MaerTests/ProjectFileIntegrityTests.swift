@@ -2275,14 +2275,15 @@ extension ProjectFileIntegrityTests {
     /// Nutzer sieht einer Flaeche nicht an, ob sie Wurzel oder geschoben
     /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
     /// Kommentars, weil die naechste Detailseite ihn sonst wieder
-    /// mitbringt. Die Tab-Wurzel traegt es an zwei Stellen, nie beide
-    /// zugleich: in der Kopfzeile, und bei seitlicher Leiste oben in der
-    /// Spalte, weil die Kopfzeile dort an der Statusleiste endet.
+    /// mitbringt. Die Tab-Wurzel traegt es an einer Stelle, als Element
+    /// ihrer Kopfzeile, auch bei seitlicher Leiste. Die Spalte des Systems
+    /// traegt auf einer geschobenen Seite den Zurueck-Knopf; eine eigene
+    /// Zeichnung des Zahnrads dort laege unter ihm.
     nonisolated static let gearExceptions: [String: String] = [
         "SettingsView.swift": "das Zeichen des Bereichs Allgemein in der Bereichsleiste der Einstellungen, kein Weg in sie",
     ]
 
-    @Test("das Zahnrad steht nur an der Tab-Wurzel, in Kopfzeile und Seitenspalte", .needsTheSources)
+    @Test("das Zahnrad steht nur an der Tab-Wurzel, als Element ihrer Kopfzeile", .needsTheSources)
     func settingsGearLivesOnlyAtTheTabRoot() throws {
         var fundstellen: [String] = []
         var ausnahmen: Set<String> = []
@@ -2300,12 +2301,17 @@ extension ProjectFileIntegrityTests {
                 }
             }
         }
-        #expect(fundstellen.count == 2,
-                "das Zahnrad steht nicht mehr an genau zwei Stellen der Tab-Wurzel: \(fundstellen)")
+        #expect(fundstellen.count == 1,
+                "das Zahnrad steht nicht mehr an genau einer Stelle der Tab-Wurzel: \(fundstellen)")
         #expect(fundstellen.allSatisfy { $0.hasPrefix("LibraryView.swift") },
                 "eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
         #expect(ausnahmen == Set(Self.gearExceptions.keys),
                 "eine Ausnahme ohne Zahnrad ist eine, die niemand mehr nachsieht: \(ausnahmen)")
+        // Das Element steht in jeder Lage der Leiste, nie hinter ihr verborgen.
+        let library = try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)
+        #expect(!library.contains("if !tabBarPlacement.isSide {"),
+                "das Zahnrad der Kopfzeile haengt wieder an der Lage der Leiste")
         // Rot-Probe: der Zaun saehe eine zweite Stelle sehr wohl.
         #expect("            Image(systemName: \"gearshape\")".contains("gearshape"))
     }

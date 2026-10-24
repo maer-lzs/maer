@@ -61,18 +61,13 @@ struct LibraryView: View {
     /// The side strip's trailing edge in window points, measured.
     @State private var sideStripMaxX: CGFloat = 0
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
-    /// The side column's width: the tab capsule, the cog and the search, as
-    /// narrow as the system's own column (Apple Music on the device) and
-    /// above the 44 pt a finger needs.
+    /// The side column's width: the tab capsule and the search, as narrow as
+    /// the system's own column (Apple Music on the device) and above the
+    /// 44 pt a finger needs.
     private static let sideColumnWidth: CGFloat = 46
-    /// THE one gap of the side column: Wi-Fi glyph to cog, search to tabs,
-    /// playback bar to search.
+    /// THE one gap of the side column: search to tabs, playback bar to
+    /// search.
     private static let sideGap: CGFloat = 14
-    /// How much more the system reserves under the Wi-Fi glyph than it draws
-    /// (measured: region to 174 pt, glyph to about 151). The cog reaches
-    /// into it, to stand `sideGap` under the glyph; a tap there reaches the
-    /// cog.
-    private static let reservedBelowGlyph: CGFloat = 23
 
     /// How far past the content's edge the playback bar reaches beside the
     /// side column, so the gap to the search is `sideGap`: the search's
@@ -323,19 +318,18 @@ struct LibraryView: View {
                 // Books" grid, the podcast show grid, the album grid). The
                 // gate that hid it on Home/Radio goes with it: there is
                 // nothing left to hide. The cog keeps its position, so nothing
-                // the user aims at moves. With the tabs at the side the cog
-                // stands at the top of that column instead: the head's
-                // trailing end lies against the status bar there.
-                if !tabBarPlacement.isSide {
-                    if #available(iOS 26.0, *) {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            settingsLink
-                        }
-                        .sharedBackgroundVisibility(.hidden)
-                    } else {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            settingsLink
-                        }
+                // the user aims at moves. With the tabs at the side it stays
+                // in the head beside the status column (leading or trailing
+                // alike, measured); the system's own column holds the back
+                // button of a pushed page, which has no cog.
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        settingsLink
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        settingsLink
                     }
                 }
             }
@@ -572,13 +566,10 @@ struct LibraryView: View {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
                     // From the top as the system's own column (Apple Music on
-                    // the device): the system, then the page's buttons, a
-                    // gap, the tabs, the search at the very bottom.
+                    // the device): the system with the page's buttons (the
+                    // cog is the page's toolbar item), a gap, the tabs, the
+                    // search at the very bottom.
                     VStack(spacing: Self.sideGap) {
-                        FloatingSearchButton(action: { showSettings = true },
-                                             systemImage: "gearshape", label: "Settings",
-                                             diameter: Self.sideColumnWidth, tier: .sideColumn)
-                            .accessibilityIdentifier("open-settings")
                         Spacer(minLength: 16)
                         mediaBar(upright: true)
                         searchButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
@@ -590,7 +581,7 @@ struct LibraryView: View {
                     .frame(width: max(strip, Self.sideColumnWidth + 8))
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { sideStripMaxX = $0 }
                     .frame(maxHeight: .infinity)
-                    .padding(.top, max(0, reservedSide.top - Self.reservedBelowGlyph + Self.sideGap))
+                    .padding(.top, reservedSide.top)
                     // The search stands on the playback bar's middle; with no
                     // bar, clear of the bottom edge.
                     .padding(.bottom, Self.sideSearchBottom(
