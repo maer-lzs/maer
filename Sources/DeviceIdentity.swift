@@ -11,5 +11,15 @@ import UIKit
 /// the person gave the device. The ONE place UIKit is asked; the sync
 /// carriers in Networking take the name as an input and stay UI-free.
 enum DeviceIdentity {
-    static var name: String { UIDevice.current.name }
+    static var name: String {
+        name(system: UIDevice.current.name, onMac: ProcessInfo.processInfo.isiOSAppOnMac)
+    }
+
+    /// The name for the other devices. On a Mac the app runs as an iPad app
+    /// and the system says "iPad"; the takeover notice on the other devices
+    /// then named the Mac an iPad. The Mac is called "Mac", as general as
+    /// the system's "iPhone" and "iPad".
+    nonisolated static func name(system: String, onMac: Bool) -> String {
+        onMac ? "Mac" : system
+    }
 }
