@@ -116,11 +116,18 @@ final class LibraryViewModel: ObservableObject {
     /// The shelves are checked too, so an item that is only on a shelf still
     /// resolves before the full grid has paged in.
     func libraryItem(forId itemId: String) -> LibraryItem? {
+        shelvedEntry(id: itemId)?.item
+    }
+
+    /// The entry with its progress, from the grid or a shelf. The book page
+    /// asks this: a title only on a shelf has its page before the grid
+    /// has paged in.
+    func shelvedEntry(id itemId: String) -> LibraryEntry? {
         // The big `entries` list resolves via the O(1) index; the two small
         // shelves stay a linear scan (an item only there still resolves).
-        if let hit = entriesById[itemId] { return hit.item }
+        if let hit = entriesById[itemId] { return hit }
         for list in [continueListening, recentlyAdded] {
-            if let hit = list.first(where: { $0.id == itemId }) { return hit.item }
+            if let hit = list.first(where: { $0.id == itemId }) { return hit }
         }
         return nil
     }

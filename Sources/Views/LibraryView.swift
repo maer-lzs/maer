@@ -341,9 +341,15 @@ struct LibraryView: View {
             }
             // Programmatic push from the search overlay (book tap): the overlay
             // slides down and puts the item id on the path.
+            // The full player's title pushes the same route, for a book the
+            // grid may not hold (`BookRouteEntry`).
             .navigationDestination(for: String.self) { itemId in
-                if let entry = viewModel.entries.first(where: { $0.id == itemId }) {
+                if let entry = BookRouteEntry.resolve(itemId, shelved: viewModel.shelvedEntry(id: itemId),
+                                                      known: router.item(itemId),
+                                                      playing: playerCoordinator.activeItem) {
                     BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
+                } else {
+                    ContentUnavailableView("Audiobook could not be loaded.", systemImage: "book.closed")
                 }
             }
             // Podcast routes registered on the stack ROOT (not the podcast tab):

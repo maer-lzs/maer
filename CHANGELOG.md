@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The title in the full player opens its book.** A tap on the title of a
+book that the library list had not loaded yet led to an empty white
+page. Now the book page opens, and a book nobody knows says so.
+
 **Cards open again on the iPhone Duo.** With the tabs at the side, an
 invisible layer lay over the page, and no card, tile or Details button
 beneath it reacted to a tap. Now every card opens its page.

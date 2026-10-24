@@ -17,9 +17,8 @@ extension View {
     /// edge (status bar, camera): a bar of our own in that strip starts below
     /// it and stands on the axis of the system's own column.
     /// The reader is a UIView behind a column that spans the whole window,
-    /// so it never takes a touch: a UIView takes touches by default, and this
-    /// one lay over every card and tile while the tabs stood at the side
-    /// (nothing beneath it could be tapped, measured on the iPhone Duo).
+    /// so it never takes a touch: a UIView takes touches by default, and
+    /// over the whole window it would cover every card and tile.
     func readsReservedStrip(ofWidth width: CGFloat, _ reading: Binding<ReservedStrip>) -> some View {
         background {
             ReservedStripReader(stripWidth: width, reading: reading)
