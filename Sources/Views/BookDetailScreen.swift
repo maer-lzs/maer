@@ -829,7 +829,8 @@ struct BookDetailScreen: View {
                                                itemDuration: entry.item.media?.duration,
                                                tail: PlayedTail.seconds(forItemId: entry.id))
         }
-        return libraryViewModel?.entries.first(where: { $0.id == entry.id })?.progress
+        // The same source as the route that opened the page: grid and shelves.
+        return libraryViewModel?.shelvedEntry(id: entry.id)?.progress
             ?? entry.progress
     }
 

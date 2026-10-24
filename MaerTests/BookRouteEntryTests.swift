@@ -38,6 +38,20 @@ struct BookRouteEntryTests {
         #expect(BookRouteEntry.resolve("x", shelved: nil, known: nil, playing: nil) == nil)
     }
 
+    @Test("a title only on a shelf brings its progress, for the route and the page alike")
+    @MainActor
+    func shelfOnlyTitleBringsItsProgress() throws {
+        let library = LibraryViewModel(provider: MockProvider())
+        let progress = BookProgress(fraction: 0.25, isFinished: false, lastUpdate: 0, currentTime: 25)
+        library.continueListening = [LibraryEntry(item: item("shelf"), progress: progress)]
+        #expect(library.entry(id: "shelf") == nil)
+        #expect(library.shelvedEntry(id: "shelf")?.progress?.fraction == 0.25)
+        let page = try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8)
+        #expect(page.contains("libraryViewModel?.shelvedEntry(id: entry.id)?.progress"),
+                "the page reads its progress from another source than the route")
+    }
+
     @Test("the route asks the rule and draws an empty state, never nothing")
     func routeNeverDrawsNothing() throws {
         let source = try String(

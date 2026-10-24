@@ -2312,8 +2312,6 @@ extension ProjectFileIntegrityTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)
         #expect(!library.contains("if !tabBarPlacement.isSide {"),
                 "das Zahnrad der Kopfzeile haengt wieder an der Lage der Leiste")
-        // Rot-Probe: der Zaun saehe eine zweite Stelle sehr wohl.
-        #expect("            Image(systemName: \"gearshape\")".contains("gearshape"))
     }
 
     @Test("der alte Stamm kommt in Sources nicht mehr vor", .needsTheSources)

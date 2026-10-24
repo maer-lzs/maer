@@ -5,11 +5,11 @@
 
 import Foundation
 
-/// Where the book route finds the entry its page shows. The route asked the
-/// loaded grid alone, and a book outside it (the playing title before the
-/// grid paged in, a title only on a shelf) pushed a page that drew nothing.
-/// Now it asks the grid and the shelves (with progress), then the source
-/// that knows the item, then the player; nil means an honest empty state.
+/// Where the book route finds the entry its page shows, also for a book the
+/// loaded grid does not hold (the playing title before the grid pages in, a
+/// title only on a shelf): the grid and the shelves (with progress), then
+/// the source that knows the item, then the player. Nil means the route
+/// shows an empty state.
 nonisolated enum BookRouteEntry {
     static func resolve(_ itemId: String, shelved: LibraryEntry?, known: LibraryItem?,
                         playing: LibraryItem?) -> LibraryEntry? {
