@@ -901,6 +901,8 @@ struct LibraryView: View {
                             isShowingFullPlayer = false
                         }
                     }
+                    // The overlay lies outside the library's environment.
+                    .environment(\.playerToolsAtSide, tabBarPlacement.isSide)
                 }
                 // No .move transition: slide in/out runs via the offset in the
                 // overlay (interruptible, can no longer get stuck).

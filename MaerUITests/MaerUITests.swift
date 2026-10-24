@@ -368,6 +368,16 @@ nonisolated final class MaerUITests: XCTestCase {
         mini.tap()
         let title = app.buttons["player-source-title"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 15), "book title must be tappable (source target)")
+        // A swipe down closes the player on every device, also where the
+        // player stands in a stack of its own beside the side column.
+        let window = app.windows.firstMatch
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.12))
+            .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.9)),
+                   withVelocity: .fast, thenHoldForDuration: 0)
+        XCTAssertTrue(title.waitForNonExistence(timeout: 10), "a swipe down must close the full player")
+        XCTAssertTrue(mini.waitForExistence(timeout: 10), "the mini bar must come back after the swipe")
+        mini.tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 15), "the full player must open again")
         let pill = app.buttons["notice-pill"].firstMatch
         XCTAssertTrue(pill.waitForExistence(timeout: 10), "the stopping notice must stand in the full player")
         let covered = app.buttons.allElementsBoundByIndex.filter {
@@ -377,9 +387,11 @@ nonisolated final class MaerUITests: XCTestCase {
         title.tap()
         // Player minimized: the mini bar is back …
         XCTAssertTrue(mini.waitForExistence(timeout: 10), "player must MINIMIZE, playback keeps running")
-        // … and a detail page is pushed (back button present on the stack).
-        XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10),
-                      "a source page must be pushed onto the stack")
+        // … and a detail page is pushed (back button present on the stack;
+        // with the tabs at the side the system stands it in its column).
+        let back = app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10)
+            || app.buttons["BackButton"].firstMatch.exists
+        XCTAssertTrue(back, "a source page must be pushed onto the stack")
         snap(app, "player-to-source")
         // Back in the full player, the pill takes its own tap: no dismiss
         // zone lies over it.

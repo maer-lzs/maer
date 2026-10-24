@@ -49,6 +49,9 @@ struct PlayerView: View {
     /// tertiary rows fall back to icon-only (`MeasuredFits`, never ViewThatFits).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
+    /// The tabs stand at the side (`FullPlayerOverlay` hands it in): the
+    /// symbol tools become the system's bar buttons in its column.
+    @Environment(\.playerToolsAtSide) private var toolsAtSide
 
 
     var body: some View {
@@ -72,6 +75,9 @@ struct PlayerView: View {
                 )
                 // At rest ~0.9, fade out quickly while dragging → glass dominates.
                 .opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))
+                // Beside a side column the content keeps to the free area,
+                // the ground still reaches every edge.
+                .ignoresSafeArea()
             // The corners the rounded sheet leaves open: at rest the ground
             // reaches every corner of the display, also a square one (the
             // hinge side of a foldable, an iPad). Gone as soon as the drag
@@ -81,6 +87,7 @@ struct PlayerView: View {
                                      startPoint: .top, endPoint: .bottom),
                       style: FillStyle(eoFill: true))
                 .opacity(SheetCorners.opacity(dragProgress: dragProgress))
+                .ignoresSafeArea()
 
             // Landscape (iPhone AND iPad): cover to the left of the controls.
             // Height guard: on the first layout pass geo can report 0. Otherwise
@@ -117,9 +124,24 @@ struct PlayerView: View {
             }
             // No bounce when the content fits → no scroll snap at drag start.
             .scrollBounceBehavior(.basedOnSize)
+            // The system's bar stands in the column, not over the bottom
+            // rows: its soft edge would fade the value row out (measured).
+            .bottomScrollEdgeHidden(toolsAtSide)
             // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
+            // Beside the side column the stack holds room at the bottom for
+            // its bar, which stands in the column: the scroll ended above the
+            // value row and cut it off (measured, 610 of 678 pt). The bottom
+            // keeps only the explicit inset above.
+            .ignoresSafeArea(.container, edges: toolsAtSide ? .bottom : [])
+        }
+        // The symbol tools as the system's bar buttons: with the tabs at the
+        // side the system stands them in its column.
+        .toolbar {
+            if toolsAtSide {
+                ToolbarItemGroup(placement: .bottomBar) { extrasItems }
+            }
         }
         .foregroundStyle(.white)
         .tint(.white)
@@ -868,18 +890,22 @@ struct PlayerView: View {
     /// gated entries missing (no lyrics/transcript), labels usually fit.
     private var tertiaryControls: some View {
         VStack(spacing: 18) {
-            // MeasuredFits, not ViewThatFits. Same bomb as
-            // the secondary row, same cure.
-            MeasuredFits {
-                HStack(spacing: 36) {
-                    extrasItems
+            // With the tabs at the side the system stands these tools in
+            // its own column (the `.bottomBar` group of `body`).
+            if !toolsAtSide {
+                // MeasuredFits, not ViewThatFits. Same bomb as
+                // the secondary row, same cure.
+                MeasuredFits {
+                    HStack(spacing: 36) {
+                        extrasItems
+                    }
+                } compact: {
+                    HStack(spacing: 28) {
+                        extrasItems
+                    }
+                    .labelStyle(.iconOnly)
+                    .font(.body)
                 }
-            } compact: {
-                HStack(spacing: 28) {
-                    extrasItems
-                }
-                .labelStyle(.iconOnly)
-                .font(.body)
             }
             airPlayControl
         }
@@ -1100,5 +1126,26 @@ nonisolated struct SheetCorners: Shape {
         var path = Path(rect)
         path.addRoundedRect(in: rect, cornerSize: CGSize(width: radius, height: radius), style: .continuous)
         return path
+    }
+}
+
+extension EnvironmentValues {
+    /// The tabs stand at the side: the full player stands in a navigation
+    /// stack of its own and its symbol tools are the system's bar buttons,
+    /// which the system puts in its column. Set by the library.
+    @Entry var playerToolsAtSide = false
+}
+
+private extension View {
+    /// No soft edge at the bottom of the player's scroll where a system bar
+    /// would draw one over the value row. Scroll edge effects exist from
+    /// iOS 26; below it there is none to hide.
+    @ViewBuilder
+    func bottomScrollEdgeHidden(_ hidden: Bool) -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(hidden, for: .bottom)
+        } else {
+            self
+        }
     }
 }

@@ -33,6 +33,7 @@ struct FullPlayerOverlay: View {
     /// the line under the controls (`NoticePlacement`).
     @State private var pillHasRoom = true
     private let dismissThreshold: CGFloat = 180
+    @Environment(\.playerToolsAtSide) private var toolsAtSide
 
     init(
         coordinator: PlayerCoordinator,
@@ -68,14 +69,8 @@ struct FullPlayerOverlay: View {
 
             // The WHOLE glass sheet moves as one unit with the finger.
             ZStack(alignment: .top) {
-                PlayerScreen(
-                    coordinator: coordinator,
-                    dragProgress: visual,
-                    cornerRadius: corner,
-                    topInset: topInset,
-                    bottomInset: bottomInset
-                )
-                .environment(\.noticePillHasRoom, pillHasRoom)
+                playerScreen(dragProgress: visual, cornerRadius: corner)
+                    .environment(\.noticePillHasRoom, pillHasRoom)
                 sideDismissZones
                 topDismissZone
                 bottomDismissZone
@@ -110,6 +105,28 @@ struct FullPlayerOverlay: View {
 
     /// Static glass: tint/shape constant. The dynamic reveal runs exclusively via
     /// cheap opacity fades (background + dim).
+    /// The player itself. With the tabs at the side it stands in a
+    /// navigation stack of its own: there the system puts the player's bar
+    /// buttons in its column and keeps the content to the free area beside
+    /// it. iPhone and iPad keep the player as it was.
+    @ViewBuilder
+    private func playerScreen(dragProgress: CGFloat, cornerRadius: CGFloat) -> some View {
+        let screen = PlayerScreen(
+            coordinator: coordinator,
+            dragProgress: dragProgress,
+            cornerRadius: cornerRadius,
+            topInset: topInset,
+            bottomInset: bottomInset
+        )
+        if toolsAtSide {
+            NavigationStack {
+                screen.toolbar(.hidden, for: .navigationBar)
+            }
+        } else {
+            screen
+        }
+    }
+
     @ViewBuilder
     private func containerGlass(corner: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)

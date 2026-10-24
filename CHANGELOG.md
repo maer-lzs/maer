@@ -8,6 +8,12 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**The full player uses the side column on the iPhone Duo.** Queue,
+bookmarks, drive mode, mark as finished and add to playlist stand in
+the side column as the system's buttons, and cover, title and controls
+stand in the middle of the free area beside it. The player still fills
+the whole screen and closes with a swipe down.
+
 **The search keeps the side column.** On the iPhone Duo the search's
 sections stand in the side column with the tabs' symbols, and the close
 button takes the place of the search button; the search field stays
