@@ -133,12 +133,41 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 }
 
 final class SceneDelegate: NSObject, UIWindowSceneDelegate {
+    /// Whether the hinge is closed (the folded iPhone Duo); nil without a hinge.
+    private var hingeClosed: Bool?
+    /// The interaction that reads the hinge, once on the scene's window.
+    private var hingeReader: NSObject?
+
     /// Cold start via quick action: the shortcut arrives in the connection
     /// options, not via performActionFor.
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if connectionOptions.shortcutItem?.type == ResumeRequest.quickActionType {
             ResumeRequest.pending = true
         }
+    }
+
+    /// The window exists once the scene is active: the hinge reader goes on it.
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        guard hingeReader == nil, let windowScene = scene as? UIWindowScene,
+              let window = windowScene.windows.first else { return }
+        if #available(iOS 27.1, *) {
+            let reader = UIHingeInteraction { [weak self, weak windowScene] _, update in
+                let closed = update.hinge.map { $0.status == .closed }
+                guard let self, closed != self.hingeClosed else { return }
+                self.hingeClosed = closed
+                windowScene?.windows.first?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+            }
+            window.addInteraction(reader)
+            hingeReader = reader
+        }
+    }
+
+    /// Folded, the Duo stays upright (`FoldOrientation`).
+    @available(iOS 27.0, *)
+    func supportedInterfaceOrientations(for windowScene: UIWindowScene) -> UIInterfaceOrientationMask {
+        if FoldOrientation.uprightOnly(hingeClosed: hingeClosed) { return .portrait }
+        // The Info.plist's own set, which this answer replaces.
+        return windowScene.traitCollection.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
     }
 
     func windowScene(

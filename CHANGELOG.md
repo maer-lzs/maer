@@ -8,6 +8,11 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**The folded iPhone Duo stays upright.** Folded on its side there was no
+room for the side column and the camera sat in the content; the app now
+keeps the folded Duo upright. Open, on the iPhone and on the iPad
+nothing changes.
+
 **The full player uses the side column on the iPhone Duo.** Queue,
 bookmarks, drive mode, mark as finished and add to playlist stand in
 the side column as the system's buttons, and cover, title and controls
