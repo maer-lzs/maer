@@ -285,6 +285,29 @@ struct ListenHistoryStoreTests {
         #expect(songs(later) == ["sub:song:b"], "a restart under B shows another stock: \(songs(later))")
     }
 
+    @Test("unter B nach der Ersetzung gehoert, steht der Eintrag nach einem Neustart bei B, keiner von A")
+    func anEntryHeardAfterTheReplacementSurvivesARestart() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        var signedIn: String? = "account-a"
+        let history = ListenHistory(database: rig.database, identity: { signedIn })
+        #expect(history.follow(owner: "account-a", previous: nil))
+        history.noteHeard(id: "of-a", family: .book, title: "A", subtitle: "", at: 1_700_000_000_000)
+        await history.awaitPendingWrites()
+
+        signedIn = "account-b"
+        #expect(history.follow(owner: "account-b", previous: "account-a"))
+        history.noteHeard(id: "sub:song:of-b", family: .music, title: "B", subtitle: "", at: 1_700_000_100_000)
+        await history.awaitPendingWrites()
+
+        // A restart: a new store on the same file, under B.
+        let later = ListenHistory(database: rig.database, identity: { signedIn })
+        #expect(later.follow(owner: "account-b", previous: "account-a"))
+        await later.awaitPendingWrites()
+        #expect(songs(later) == ["sub:song:of-b"], "what B heard after the replacement is gone: \(songs(later))")
+        #expect(books(later).isEmpty, "A's entry came along: \(books(later))")
+    }
+
     @Test("ein Eintrag waehrend einer gehaltenen Uebergabe wartet und steht danach bei B, keiner bei A")
     func anEntryDuringAHeldHandOverWaits() async throws {
         let rig = try rig()

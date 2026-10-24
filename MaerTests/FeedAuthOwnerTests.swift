@@ -317,6 +317,36 @@ struct FeedAuthOwnerTests {
         #expect(!replaced, "an item still there counted as left because its bytes do not decode")
     }
 
+    /// How the incoming credential reads back after it was written.
+    enum IncomingReadBack: CaseIterable { case missing, different, unreadable }
+
+    @Test("liest der eingehende Zugang nach dem Schreiben nicht zurueck, geht der lebende Zugang des Kontos davor nicht",
+          arguments: IncomingReadBack.allCases)
+    func anIncomingCredentialNotReadBackReplacesNothing(_ readBack: IncomingReadBack) {
+        let suite = "feed-incoming-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        defaults.set(["a-key": 1000.0], forKey: PodcastFeedAuth.stampsKey)
+        var items: [String: String] = ["feedAuth.a-key": "anna\ngeheim"]
+        let incoming = ["b-key": FeedAuthBlock.Entry(credentials: .init(user: "bert", password: "pw"), at: 2000)]
+        let replaced = PodcastFeedAuth.replaceForNewOwner(
+            with: incoming, leaving: ["a-key"], defaults: defaults,
+            saving: { account, value, _ in items[account] = value; return true },
+            reading: { account in
+                guard account == "feedAuth.b-key" else { return items[account].map(KeychainRead.value) ?? .missing }
+                switch readBack {
+                case .missing: return .missing
+                case .different: return .value("bert\nanderes")
+                case .unreadable: return .unreadable
+                }
+            },
+            deleting: { items[$0] = nil })
+        #expect(!replaced, "an incoming credential that did not read back counted as landed")
+        #expect(items["feedAuth.a-key"] == "anna\ngeheim", "the live credential of the account before left")
+        #expect(PodcastFeedAuth.moment(feedKey: "a-key", defaults: defaults) == 1000, "its moment was cleared")
+        #expect(PodcastFeedAuth.moment(feedKey: "b-key", defaults: defaults) == nil, "the new one got a moment")
+    }
+
     @Test("liest die Ruecklese nach dem Entfernen nicht lesbar, gilt der Zugang nicht als gegangen: nichts ersetzt, kein Moment abgeraeumt")
     func anUnreadableReadBackAfterARemovalHolds() {
         let suite = "feed-leave-unreadable-\(UUID().uuidString)"
