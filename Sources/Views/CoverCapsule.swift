@@ -13,19 +13,25 @@ struct CoverCapsule: View {
     var systemImage: String? = nil
     /// Distance to the cover's edge; a large card sits it further in.
     var inset: CGFloat = 6
+    /// Half the height of one line with its padding: one line reads as the
+    /// capsule it always was, two lines as a rounded box.
+    @ScaledMetric(relativeTo: .caption2) private var radius: CGFloat = 9
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
             if let systemImage {
                 Image(systemName: systemImage).font(.caption2)
             }
+            // Wraps to a second line where the cover is narrower than the
+            // text ("Laut Quelle gemeinfrei" on a three-column tile was cut).
             Text(verbatim: text)
                 .font(.caption2.weight(.medium))
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
-        .background(.black.opacity(0.55), in: Capsule())
+        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: radius, style: .continuous))
         .foregroundStyle(.white)
         .padding(inset)
     }

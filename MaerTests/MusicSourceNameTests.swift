@@ -128,13 +128,18 @@ struct MusicSourceNameTests {
 
     @Test("F5b-4b: eine Cover-Kapsel, keine Datei zeichnet sie selbst", .needsTheSources)
     func oneCoverCapsuleLook() throws {
+        // The look as it stands and as it stood (pill), so neither form
+        // comes back as a copy.
+        let looks = [".background(.black.opacity(0.55), in: Capsule())",
+                     ".background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: radius"]
         var own: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoverCapsule.swift" {
-            if try String(contentsOf: file, encoding: .utf8).contains(".background(.black.opacity(0.55), in: Capsule())") {
-                own.append(file.lastPathComponent)
-            }
+            let text = try String(contentsOf: file, encoding: .utf8)
+            if looks.contains(where: text.contains) { own.append(file.lastPathComponent) }
         }
         #expect(own.isEmpty, "eine eigene Kopie der Cover-Kapsel: \(own)")
+        let home = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CoverCapsule.swift"), encoding: .utf8)
+        #expect(home.contains(looks[1]), "the look the fence watches is not the one the capsule draws")
     }
 
     @Test("der Ausfall-Satz nimmt dieselben Namen wie die Kapsel")
