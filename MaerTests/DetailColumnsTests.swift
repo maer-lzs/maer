@@ -57,6 +57,8 @@ struct DetailColumnsTests {
         ("Sources/Views/Podcasts/PodcastShowView.swift", "DetailListColumns {"),
         ("Sources/Views/Music/MusicAlbumView.swift", "DetailListColumns {"),
         ("Sources/Views/Music/MusicBrowseViews.swift", "DetailScrollColumns(spacing:"),
+        // The full player, side by side on a display with a fold.
+        ("Sources/Views/PlayerView.swift", "FoldColumns { column in"),
     ]
 
     @Test("Buchseite, Sendung, Album und Playlist, Kuenstler nehmen den einen Rahmen", .needsTheSources)

@@ -73,6 +73,13 @@ struct LibraryView: View {
     private var sideColumnScheme: ColorScheme {
         SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme)
     }
+    /// Where a two-column page and the full player divide: the fold the
+    /// strip reader saw (it reads only while the tabs stand at the side),
+    /// else the middle of the window.
+    private var foldLine: FoldLine {
+        FoldLine(fold: tabBarPlacement.isSide ? reservedSide.division.map { $0.minX...$0.maxX } : nil,
+                 windowWidth: windowWidth)
+    }
     /// Where the side column stands, from the measured strip (`SideColumnPlacement`).
     private func sideColumnPlacement(strip: CGFloat) -> SideColumnPlacement {
         SideColumnPlacement(leading: verticalBarSide == .leading,
@@ -586,12 +593,8 @@ struct LibraryView: View {
         // The rows run under the side column to the edge and end with its
         // width as a margin (`rowReachesUnderSideColumn`).
         .environment(\.sideColumnReach, tabBarPlacement.isSide ? sideStripWidth : 0)
-        // Where a two-column page divides: the fold the strip reader saw
-        // (it reads only while the tabs stand at the side), else the middle
-        // of the window.
-        .environment(\.foldLine, FoldLine(
-            fold: tabBarPlacement.isSide ? reservedSide.division.map { $0.minX...$0.maxX } : nil,
-            windowWidth: windowWidth))
+        // Where a two-column page divides (`foldLine`).
+        .environment(\.foldLine, foldLine)
         .onGeometryChange(for: CGFloat.self) {
             $0.size.width + $0.safeAreaInsets.leading + $0.safeAreaInsets.trailing
         } action: { windowWidth = $0 }
@@ -922,6 +925,8 @@ struct LibraryView: View {
                     // The player stands its own column where the library's stands.
                     .environment(\.sideColumnPlacement,
                                  tabBarPlacement.isSide ? sideColumnPlacement(strip: sideStripWidth) : nil)
+                    // And divides at the same fold as the library's pages.
+                    .environment(\.foldLine, foldLine)
                 }
                 // No .move transition: slide in/out runs via the offset in the
                 // overlay (interruptible, can no longer get stuck).

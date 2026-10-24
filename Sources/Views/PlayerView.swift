@@ -54,6 +54,8 @@ struct PlayerView: View {
     /// side column (`sideColumn`), placed where the library's stands.
     @Environment(\.playerToolsAtSide) private var toolsAtSide
     @Environment(\.sideColumnPlacement) private var columnPlacement
+    /// The display's fold, where there is one (`FullPlayerOverlay` hands it in).
+    @Environment(\.foldLine) private var foldLine
     /// The controls column's height, measured; it does not change with the
     /// cover, so sizing the cover by it never loops.
     @State private var controlsHeight: CGFloat = 0
@@ -105,44 +107,53 @@ struct PlayerView: View {
             let layout = sideBySide
                 ? AnyLayout(HStackLayout(alignment: .center, spacing: 32))
                 : AnyLayout(VStackLayout(spacing: 24))
-            ScrollView {
-                layout {
-                    // Beside the side column the cover takes only as much
-                    // height as leaves the controls in sight at rest
-                    // (`DetailCoverSide`).
-                    cover
-                        .frame(maxWidth: toolsAtSide && !sideBySide
-                               ? DetailCoverSide.side(columnWidth: Self.portraitColumn,
-                                                      height: geo.size.height,
-                                                      top: topInset + 24, below: controlsHeight + 24,
-                                                      bottomReserve: bottomInset + 16)
-                               : nil)
-                    VStack(spacing: 20) { controlsColumn }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                            controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)
+            let viewportHeight = max(0, geo.size.height - topInset - bottomInset)
+            Group {
+                // Side by side on a display with a fold (the Duo open or
+                // half open): divided at the fold, the cover in the leading
+                // column, the controls in the trailing one (`FoldColumns`).
+                if sideBySide, foldLine.fold != nil {
+                    FoldColumns { column in
+                        cover
+                            .frame(maxWidth: min(column.width, column.height))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } trailing: { _ in
+                        ScrollView {
+                            controlsBlock
+                                .padding(.vertical)
+                                .frame(maxWidth: .infinity, minHeight: viewportHeight)
                         }
-                        // Report the interactive controls' frame to the overlay:
-                        // its top and bottom zones are capped against it so the
-                        // chapter buttons and the scrubber stay tappable.
-                        .background(GeometryReader { controls in
-                            Color.clear.preference(
-                                key: PlayerControlsFramePreferenceKey.self,
-                                value: controls.frame(in: .named(CoordinateSpace.fullPlayerOverlayName))
-                            )
-                        })
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                } else {
+                    ScrollView {
+                        layout {
+                            // Beside the side column the cover takes only as much
+                            // height as leaves the controls in sight at rest
+                            // (`DetailCoverSide`).
+                            cover
+                                .frame(maxWidth: toolsAtSide && !sideBySide
+                                       ? DetailCoverSide.side(columnWidth: Self.portraitColumn,
+                                                              height: geo.size.height,
+                                                              top: topInset + 24, below: controlsHeight + 24,
+                                                              bottomReserve: bottomInset + 16)
+                                       : nil)
+                            controlsBlock
+                        }
+                        .padding()
+                        .padding(.top, 8)
+                        // Readable column in portrait, wider side by side.
+                        .frame(maxWidth: sideBySide ? 900 : 500)
+                        // Side by side: center vertically in the viewport (iPad).
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: sideBySide ? viewportHeight : 0
+                        )
+                    }
+                    // No bounce when the content fits → no scroll snap at drag start.
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .padding()
-                .padding(.top, 8)
-                // Readable column in portrait, wider side by side.
-                .frame(maxWidth: sideBySide ? 900 : 500)
-                // Side by side: center vertically in the viewport (iPad).
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: sideBySide ? max(0, geo.size.height - topInset - bottomInset) : 0
-                )
             }
-            // No bounce when the content fits → no scroll snap at drag start.
-            .scrollBounceBehavior(.basedOnSize)
             // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
@@ -1078,6 +1089,22 @@ struct PlayerView: View {
             Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
         }
         .accessibilityIdentifier("player-queue")
+    }
+
+    /// The controls under or beside the cover, measured: their height sizes
+    /// the cover beside the side column, their frame caps the overlay's
+    /// dismiss zones so the chapter buttons and the scrubber stay tappable.
+    private var controlsBlock: some View {
+        VStack(spacing: 20) { controlsColumn }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)
+            }
+            .background(GeometryReader { controls in
+                Color.clear.preference(
+                    key: PlayerControlsFramePreferenceKey.self,
+                    value: controls.frame(in: .named(CoordinateSpace.fullPlayerOverlayName))
+                )
+            })
     }
 
     /// The player's side column: the library's column with the player's

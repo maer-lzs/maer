@@ -47,6 +47,24 @@ struct PlayerToolsAtSideTests {
         #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))
     }
 
+    @Test("der Player teilt am Falz, den die Bibliothek nennt, und oeffnet nie von selbst", .needsTheSources)
+    func thePlayerDividesAtTheFoldAndNeverOpensItself() throws {
+        let library = try source("Sources/Views/LibraryView.swift")
+        // One fold for the pages and the player.
+        #expect(library.components(separatedBy: ".environment(\\.foldLine, foldLine)").count - 1 == 2)
+        #expect(library.components(separatedBy: "FoldLine(").count - 1 == 1)
+        let player = try source("Sources/Views/PlayerView.swift")
+        #expect(player.contains("if sideBySide, foldLine.fold != nil {\n                    FoldColumns { column in"))
+        // Only a tap on the playback bar opens the player: no posture
+        // change, no binding, no second writer.
+        let opens = ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]).reduce(0) {
+            $0 + SyncContractFenceTests.stripped($1.1).components(separatedBy: "isShowingFullPlayer = true").count - 1
+        }
+        #expect(opens == 1)
+        #expect(library.contains("onOpenPlayer: {\n                    withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {\n                        isShowingFullPlayer = true"))
+        #expect(!library.contains("$isShowingFullPlayer") && !library.contains("isShowingFullPlayer.toggle"))
+    }
+
     @Test("der Grund reicht bis an jede Ecke, der Inhalt bleibt in der freien Flaeche", .needsTheSources)
     func theGroundFillsAndTheContentKeepsClear() throws {
         let player = try source("Sources/Views/PlayerView.swift")
