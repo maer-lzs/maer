@@ -96,7 +96,7 @@ struct BookFeaturedCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 let sub = [remainingText, lastPlayedText].compactMap { $0 }.joined(separator: " · ")
                 if !sub.isEmpty {
-                    Text(sub).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                    CardStatusLine(text: sub)
                 }
                 // Fixed heights for the variable lines (title 1 line, author,
                 // chapter). Otherwise a card with more text gets taller than its

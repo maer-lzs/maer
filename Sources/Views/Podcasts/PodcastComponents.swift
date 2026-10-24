@@ -121,15 +121,12 @@ struct PodcastFeaturedCard: View {
                 .overlay(alignment: .bottomLeading) { showBadge }
 
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    if isPlayed { Image(systemName: "checkmark.circle.fill").font(.caption) }
-                    // Remaining · last played (formerly in the play pill). For
-                    // played episodes just "Played".
-                    Text(isPlayed
-                         ? String(localized: "Played")
-                         : [remainingText, lastPlayedText].joined(separator: " · "))
-                }
-                .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                // Remaining · last played (formerly in the play pill). For
+                // played episodes just "Played".
+                CardStatusLine(text: isPlayed
+                                   ? String(localized: "Played")
+                                   : [remainingText, lastPlayedText].joined(separator: " · "),
+                               played: isPlayed)
                 // Fixed heights for the variable lines (title 2 lines, show).
                 // Otherwise a card with more text gets taller than its neighbours.
                 Text(item.title)
