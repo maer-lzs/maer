@@ -16,5 +16,17 @@ struct DeviceIdentityTests {
         #expect(DeviceIdentity.name(system: "iPad", onMac: false) == "iPad")
         #expect(DeviceIdentity.name(system: "iPhone", onMac: false) == "iPhone")
     }
+
+    @Test("die Frage, ob die App auf einem Mac laeuft, stellt nur PlatformIdiom; DeviceIdentity fragt dort", .needsTheSources)
+    func oneQuestionForTheMac() throws {
+        var askers: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if text.contains("isiOSAppOnMac") || text.contains("isMacCatalystApp") { askers.append(file.lastPathComponent) }
+        }
+        #expect(askers.isEmpty, "a second place asks the system whether it runs on a Mac: \(askers)")
+        let identity = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/DeviceIdentity.swift"), encoding: .utf8)
+        #expect(identity.contains("onMac: PlatformIdiom.isAppOnMac"), "DeviceIdentity does not ask the one place")
+    }
 }
 #endif

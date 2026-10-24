@@ -12,7 +12,8 @@ import UIKit
 /// carriers in Networking take the name as an input and stay UI-free.
 enum DeviceIdentity {
     static var name: String {
-        name(system: UIDevice.current.name, onMac: ProcessInfo.processInfo.isiOSAppOnMac)
+        // The one question "runs on a Mac" (iPad app on the Mac and Catalyst).
+        name(system: UIDevice.current.name, onMac: PlatformIdiom.isAppOnMac)
     }
 
     /// The name for the other devices. On a Mac the app runs as an iPad app
