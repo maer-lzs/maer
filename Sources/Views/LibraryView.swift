@@ -631,8 +631,8 @@ struct LibraryView: View {
         .task(id: activeTabAtRoot) {
             let step = SideColumnCog.step(atRoot: activeTabAtRoot)
             if step.after > 0 {
-                try? await Task.sleep(for: .seconds(step.after))
-                guard !Task.isCancelled else { return }
+                // Cancelled by a new push: the cog stays away.
+                do { try await Task.sleep(for: .seconds(step.after)) } catch { return }
             }
             withAnimation(step.visible ? .easeIn(duration: 0.2) : nil) { sideCogShown = step.visible }
         }

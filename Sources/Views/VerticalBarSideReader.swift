@@ -23,8 +23,7 @@ extension View {
     func readsReservedStrip(ofWidth width: CGFloat, _ reading: Binding<ReservedStrip>) -> some View {
         background {
             ReservedStripReader(stripWidth: width, reading: reading)
-                .accessibilityHidden(true)
-                .allowsHitTesting(false)
+                .takesInput(false)
         }
     }
 }

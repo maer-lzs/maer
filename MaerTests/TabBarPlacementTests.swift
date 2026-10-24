@@ -114,7 +114,7 @@ struct TabBarPlacementTests {
         #expect(touchable.isEmpty, "a measuring UIKit view takes touches: \(touchable)")
         let reader = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/VerticalBarSideReader.swift"), encoding: .utf8))
-        #expect(reader.contains(".allowsHitTesting(false)"), "the strip reader's background takes hits")
+        #expect(reader.contains(".takesInput(false)"), "the strip reader's background takes input")
     }
 
     @Test("ein Mass fuer die Seitenspalte: Reiter, Lupe, Zahnrad und die Wiedergabeleiste daneben", .needsTheSources)
