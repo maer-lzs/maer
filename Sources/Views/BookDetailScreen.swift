@@ -642,8 +642,7 @@ struct BookDetailScreen: View {
                 .environment(\.colorScheme, .dark)
                 // The side column beside it turns dark as well, while this
                 // page is the top one: a page pushed over it (the chapters)
-                // stands light, and a covered page still sat in the stack and
-                // kept the column dark (measured).
+                // stands light, and its own brightness reaches the column.
                 .sideColumnScheme(isTopPage ? .dark : nil)
                 .onAppear { isTopPage = true }
                 .onDisappear { isTopPage = false }

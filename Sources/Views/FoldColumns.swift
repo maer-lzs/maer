@@ -18,8 +18,7 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
     /// THE distance of both columns' content from the fold (`FoldSplit.foldDistance`).
     /// The frame gives all of it but the page's own gutter, which a page
     /// in it keeps on its fold edge at `FoldSplit.pageGutter`, the standard
-    /// padding. Measured before: the book page 24 pt before the fold, its
-    /// chapters 20 pt after.
+    /// padding.
     static var foldMargin: CGFloat { FoldSplit.foldDistance - FoldSplit.pageGutter }
 
     var body: some View {
