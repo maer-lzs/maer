@@ -143,6 +143,7 @@ struct ABSLoginForm: View {
             if let error = viewModel.errorMessage {
                 Section {
                     Text(error).foregroundStyle(.red)
+                        .accessibilityIdentifier("setup-error")
                 }
             }
 

@@ -129,6 +129,7 @@ struct SubsonicSourceView: View {
                     Label("Test connection", systemImage: "bolt.horizontal")
                 }
                 .disabled(isTesting || !SourceReadiness.fieldsFilled(address: serverURL, username: username))
+                .accessibilityIdentifier("subsonic-test-connection")
 
                 // The library refresh as a VISIBLE sync (parity with the
                 // other sources). Lands in Settings → Sync → Sync History.
@@ -152,6 +153,8 @@ struct SubsonicSourceView: View {
                     Text(statusMessage)
                         .font(.footnote)
                         .foregroundStyle(statusIsError ? .red : .secondary)
+                        // The outcome as a handle, for the server journeys; the colour alone is no handle.
+                        .accessibilityIdentifier(statusIsError ? "subsonic-status-error" : "subsonic-status-ok")
                 }
             }
         }

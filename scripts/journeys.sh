@@ -17,6 +17,13 @@
 #                          (default the project's own)
 #   MAER_BERICHTE_DIR      a checkout of implementer-reports; when set, the summary
 #                          is committed and pushed there
+#   MAER_JOURNEY_SERVERS   1 runs the journeys against the test instances
+#                          (ServerJourneys) instead of the fixed test data;
+#                          without it they are left out
+#   MAER_SERVER_ACCESS_FILE  for a server run: lines `<name>.url=`, `<name>.user=`,
+#                          `<name>.pass=` or `<name>.token=`; copied for the run
+#                          into a file only this user reads, removed after it.
+#                          Its values never reach an argument or the log.
 set -u
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
@@ -44,6 +51,30 @@ while [[ $# -gt 0 ]]; do
 done
 [[ ${#only[@]} -eq 0 ]] && only=("-only-testing:MaerUITests")
 
+# Against the test instances, or on the fixed test data. A server that does
+# not answer is its own outcome: the journey skips and names it, the run is
+# not red for the code. Reached means any HTTP answer at the address.
+skip=(-skip-testing:MaerUITests/ServerJourneys)
+REACH=""
+if [[ "${MAER_JOURNEY_SERVERS:-0}" == 1 ]]; then
+    [[ -r "${MAER_SERVER_ACCESS_FILE:-}" ]] || { echo "server run without a readable MAER_SERVER_ACCESS_FILE" >&2; exit 2; }
+    ACCESS="$DD/server-access"
+    (umask 077; cp "$MAER_SERVER_ACCESS_FILE" "$ACCESS") || exit 2
+    trap 'rm -f "$ACCESS"' EXIT
+    reach=()
+    while IFS= read -r line; do
+        [[ "$line" == *.url=* ]] || continue
+        name=${line%%.url=*}
+        code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${line#*.url=}")
+        [[ "$code" != 000 ]] && reach+=("$name=ok") || reach+=("$name=down")
+    done < "$ACCESS"
+    REACH=${(j:,:)reach}
+    export TEST_RUNNER_MAER_SERVER_ACCESS="$ACCESS" TEST_RUNNER_MAER_SERVER_REACH="$REACH"
+    [[ "${only[*]}" == "-only-testing:MaerUITests" ]] && only=("-only-testing:MaerUITests/ServerJourneys")
+    skip=()
+    echo "server run: $REACH"
+fi
+
 # 0. The reader of the summary checks itself first: a reader that counts
 # nothing makes a whole run measure nothing (it did, from 07.09.2026 on).
 python3 scripts/journeys-summary.py --selbstprobe >/dev/null \
@@ -61,7 +92,10 @@ runtime=${MAER_JOURNEY_RUNTIME:-$(xcrun simctl list runtimes available -j | pyth
 TEMPLATE="Maer-Journeys-${runtime##*.}"
 udid=$(xcrun simctl list devices -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for l in d.values() for x in l if x['name']=='$TEMPLATE'), ''))")
 if [[ -z "$udid" ]]; then
-    udid=$(xcrun simctl create "$TEMPLATE" "$DEVICE" "$runtime")
+    # A runtime without the device type (iOS 27.1 has no "iPhone 17") answers
+    # with an error text, and the run went on with that text as the device.
+    udid=$(xcrun simctl create "$TEMPLATE" "$DEVICE" "$runtime") \
+        || { echo "no template: $DEVICE does not exist on $runtime, set MAER_JOURNEY_DEVICE or MAER_JOURNEY_RUNTIME" >&2; exit 2; }
     echo "template created: $TEMPLATE ($udid)"
 fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
@@ -120,7 +154,7 @@ fi
 xcodebuild test-without-building "${built[@]}" \
     -destination "platform=iOS Simulator,id=$udid" \
     "${parallel[@]}" -collect-test-diagnostics never \
-    -resultBundlePath "$RESULT" "${only[@]}" > "$LOG" 2>&1
+    -resultBundlePath "$RESULT" "${only[@]}" "${skip[@]}" > "$LOG" 2>&1
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
 # the script right here and no summary was ever written.
 rc=$?
@@ -135,6 +169,7 @@ TABLE=$(python3 scripts/journeys-summary.py "$LOG")
 {
     echo "# Journeys $STAMP: $( [[ $rc -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE, ${runtime##*.}"
     echo
+    [[ -n "$REACH" ]] && { echo "Gegen die Testinstanzen: $REACH"; echo; }
     echo "| Journey | Ergebnis | Dauer |"
     echo "|---|---|---|"
     echo "$TABLE"

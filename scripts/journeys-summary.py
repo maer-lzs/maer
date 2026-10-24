@@ -20,14 +20,22 @@
 import re
 import sys
 
-PARALLEL = re.compile(r"Test case '([^']*)' (passed|failed) on '[^']*' \(([0-9.]+) seconds\)")
-SERIAL = re.compile(r"Test Case '-\[(?:[\w]+\.)?(\w+) (\w+)\]' (passed|failed) \(([0-9.]+) seconds\)")
+PARALLEL = re.compile(r"Test case '([^']*)' (passed|failed|skipped) on '[^']*' \(([0-9.]+) seconds\)")
+SERIAL = re.compile(r"Test Case '-\[(?:[\w]+\.)?(\w+) (\w+)\]' (passed|failed|skipped) \(([0-9.]+) seconds\)")
 EXECUTED = re.compile(r"Executed (\d+) tests?, with")
+# A skip names its reason on a line of its own before the closing line (a
+# server journey that did not reach its server says so there).
+SKIP_REASON = re.compile(r"-\[(?:[\w]+\.)?(\w+) (\w+)\] : Test skipped - (.*)$")
 
 
 def rows(text):
     found = []
+    reasons = {}
     for line in text.splitlines():
+        m = SKIP_REASON.search(line)
+        if m:
+            reasons[f"{m.group(1)}/{m.group(2)}"] = m.group(3).strip()
+            continue
         m = SERIAL.search(line)
         if m:
             found.append((f"{m.group(1)}/{m.group(2)}", m.group(3), float(m.group(4))))
@@ -36,7 +44,15 @@ def rows(text):
         if m:
             name = m.group(1).replace("()", "").replace(".", "/", 1)
             found.append((name, m.group(2), float(m.group(3))))
-    return found
+    return [(n, r if r != "skipped" else f"skipped:{reasons.get(n, 'ohne Grund')}", d) for n, r, d in found]
+
+
+def verdict(result):
+    if result == "failed":
+        return "ROT"
+    if result.startswith("skipped:"):
+        return "übersprungen: " + result[len("skipped:"):]
+    return "grün"
 
 
 def executed(text):
@@ -47,7 +63,7 @@ def executed(text):
 def table(text):
     """(lines, error) for a log: the table rows and why they cannot be trusted."""
     found = sorted(rows(text), key=lambda r: (r[1] != "failed", r[0]))
-    lines = [f"| {n} | {'ROT' if r == 'failed' else 'grün'} | {d:.0f} s |" for n, r, d in found]
+    lines = [f"| {n} | {verdict(r)} | {d:.0f} s |" for n, r, d in found]
     ran = executed(text)
     error = None
     if ran == 0 and not found:
@@ -69,6 +85,14 @@ def selbstprobe():
                      "| SourcesAllOffJourney/testTurningOff | grün | 12 s |"], lines
     lines, error = table(parallel)
     assert error is None and lines == ["| SourcesAllOffJourney/testTurningOff | grün | 12 s |"], lines
+    # A server journey that did not reach its server is its own outcome,
+    # with the reason, and still counts as a row.
+    skipped = ("/x/ServerJourneys.swift:220: -[MaerUITests.ServerJourneys testMusic] : Test skipped - Server nicht erreichbar: https://gonic.example\n"
+               "Test Case '-[MaerUITests.ServerJourneys testMusic]' skipped (0.512 seconds).\n"
+               "\t Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.5 (0.6) seconds\n")
+    lines, error = table(skipped)
+    assert error is None, error
+    assert lines == ["| ServerJourneys/testMusic | übersprungen: Server nicht erreichbar: https://gonic.example | 1 s |"], lines
     # The failure this reader had: tests ran, the table stayed empty.
     lines, error = table("\t Executed 10 tests, with 1 failure (0 unexpected) in 1 (1) seconds\n")
     assert lines == [] and error and "10" in error, error
