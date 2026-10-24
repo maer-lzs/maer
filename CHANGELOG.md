@@ -8,6 +8,10 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**Each part says its time once.** In a book from one file with gaps in
+its chapters, the parts are named by their start, "from 15:00", and the
+list showed "15:00" again below. Now the time stands once.
+
 **A book page says when you last listened, as its card does.** The page
 read the server's date alone; a book heard offline or on this device
 showed an older day there than on its card. Now both say the same, and

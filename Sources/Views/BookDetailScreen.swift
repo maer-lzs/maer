@@ -1138,9 +1138,12 @@ private struct DetailChapterList: View {
                         Text(chapter.title)
                             .font(.subheadline)
                             .foregroundStyle(.primary)
-                        Text(formatted(chapter.start))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        // A jump mark names its start already.
+                        if !ChapterModel.namesItsStart(chapter) {
+                            Text(ChapterModel.timeLabel(chapter.start))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if isActiveBook, coordinator.viewModel?.currentChapter == chapter {
@@ -1165,12 +1168,6 @@ private struct DetailChapterList: View {
             await coordinator.open(item: entry.item)
             await coordinator.viewModel?.seek(to: chapter.start)
         }
-    }
-
-    private func formatted(_ seconds: Double) -> String {
-        let t = Int(seconds)
-        let h = t / 3600, m = (t % 3600) / 60, s = t % 60
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
     private func durationText(_ chapter: ABSChapter) -> String {

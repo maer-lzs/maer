@@ -146,12 +146,22 @@ nonisolated enum ChapterModel {
         var id = (valid.last?.id ?? -1) + 1
         while start < duration - 1 {
             let end = min(start + step, duration)
-            marks.append(ABSChapter(id: id, start: start, end: end,
-                                    title: String(localized: "from \(timeLabel(start))")))
+            marks.append(ABSChapter(id: id, start: start, end: end, title: markTitle(start)))
             start = end
             id += 1
         }
         return valid + marks
+    }
+
+    /// The title of a jump mark, named by its start ("from 3:15").
+    static func markTitle(_ start: Double) -> String {
+        String(localized: "from \(timeLabel(start))")
+    }
+
+    /// Whether a chapter's title already names its start (a jump mark): a
+    /// chapter row then does not repeat the time under it.
+    static func namesItsStart(_ chapter: ABSChapter) -> Bool {
+        chapter.title == markTitle(chapter.start)
     }
 
     /// Compact h:mm:ss / m:ss label for a position in seconds.
