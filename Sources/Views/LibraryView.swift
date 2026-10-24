@@ -1369,9 +1369,19 @@ struct LibraryView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                // The order of the tabs: what you are hearing, the
-                // notice when needed, your stock, and the offer from
-                // outside at the bottom.
+                // The order of the tabs: the notice when needed, what you
+                // are hearing, your stock, and the offer from outside at
+                // the bottom.
+                if AppSession.shared.authViewModel.isLoggedIn {
+                    // 🔴 A doubted session says so first. The tab keeps
+                    // its content (the token is intact, the server is
+                    // merely unreachable), and the line names the state
+                    // instead of the library silently looking empty. It
+                    // stands above the large cards: under them it reached
+                    // the fold, and its button rested behind the playback
+                    // bar (measured, unfolded landscape).
+                    AbsSessionStateBanner()
+                }
                 if !viewModel.continueListening.isEmpty {
                     continueFeaturedSection
                 }
@@ -1394,12 +1404,6 @@ struct LibraryView: View {
                     }
                     historySection
                 } else {
-                    // 🔴 A doubted session says so HERE, right under what
-                    // you are hearing. The tab keeps its content (the token
-                    // is intact, the server is merely unreachable), and the
-                    // line names the state instead of the library silently
-                    // looking empty.
-                    AbsSessionStateBanner()
                     stockSections
                     // The library's loading/error/empty state sits WHERE the
                     // library renders.
