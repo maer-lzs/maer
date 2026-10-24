@@ -162,6 +162,9 @@ struct PlayerView: View {
                 ToolbarItemGroup(placement: .bottomBar) { extrasItems }
             }
         }
+        // The kept controls height only grows; a new window starts it again
+        // (`DetailCoverSide.settled`).
+        .onChange(of: geo.size) { _, _ in controlsHeight = 0 }
         .foregroundStyle(.white)
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }

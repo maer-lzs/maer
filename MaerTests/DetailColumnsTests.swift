@@ -109,6 +109,27 @@ struct DetailColumnsTests {
                     .truncatingRemainder(dividingBy: 1) == 0)
     }
 
+    @Test("auch eine Schwingung ab einem Punkt endet: die gehaltene Hoehe kehrt zu keinem verlassenen Wert zurueck")
+    func aSwingOfWholePointsEndsToo() {
+        // A layout that answers a large cover with a tall height and a small
+        // cover with a short one, 4 pt apart: the height shrinks the cover,
+        // the cover shrinks the height, and back; unsettled it flips for ever.
+        func measured(side: CGFloat) -> CGFloat { side >= 249 ? 305 : 301 }
+        var kept: CGFloat = 0
+        var seen: [CGFloat] = []
+        for _ in 0..<20 {
+            let side = DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126)
+            kept = DetailCoverSide.settled(kept, measured: measured(side: side))
+            seen.append(kept)
+        }
+        #expect(Set(seen.suffix(10)).count == 1, "the kept height still moves: \(seen)")
+        #expect(seen == seen.sorted(), "the kept height went back: \(seen)")
+        // Shorter measurements under the kept height never lower it.
+        #expect(DetailCoverSide.settled(305, measured: 301) == 305)
+        #expect(DetailCoverSide.settled(305, measured: 305.4) == 305)
+        #expect(DetailCoverSide.settled(305, measured: 306.2) == 307)
+    }
+
     @Test("Buchseite und Player halten die gemessene Hoehe nur ueber die Regel des Stillstands", .needsTheSources)
     func theMeasurementsGoThroughTheSettle() throws {
         let page = SyncContractFenceTests.stripped(

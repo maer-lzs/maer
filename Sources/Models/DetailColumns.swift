@@ -48,10 +48,13 @@ nonisolated enum DetailCoverSide {
     /// What the page keeps as the height below the cover, from a new
     /// measurement: the measurement depends on where the cover lands, and
     /// pixel rounding moves it by a fraction each pass (measured: the page
-    /// re-rendered without end, 100 % CPU). A change under one point is kept
-    /// out, so the cover settles after a finite number of passes.
+    /// re-rendered without end, 100 % CPU). The kept height only grows, by a
+    /// whole point at least, until the window changes (the page then starts
+    /// again from zero): it can never return to a value it left, and as the
+    /// content bounds it from above, the cover settles after finitely many
+    /// passes, whatever the swing.
     static func settled(_ kept: CGFloat, measured: CGFloat) -> CGFloat {
-        abs(measured - kept) < 1 ? kept : measured.rounded()
+        measured >= kept + 1 ? measured.rounded(.up) : kept
     }
 }
 

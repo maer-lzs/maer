@@ -644,6 +644,9 @@ struct BookDetailScreen: View {
         // yields the same accent. The bar itself lives outside this page and
         // keeps its own accent + the system appearance.
         .environment(\.glassAccent, colorLoader.accent)
+        // The kept height below the cover only grows; a new window starts
+        // it again (`DetailCoverSide.settled`).
+        .onChange(of: geo.size) { _, _ in belowCover = 0 }
         } // GeometryReader
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
