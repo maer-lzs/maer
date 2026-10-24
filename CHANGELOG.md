@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The full player reaches every corner.** On a screen with square
+corners, the hinge side of the folded iPhone Duo or an iPad, the light
+page behind no longer shows beside the player's rounded corners.
+
 **On the folded iPhone Duo the tabs stand at the side.** Where the
 system stands its own bars upright, the tabs and the search stand
 upright under the clock, as the system's bars do, and the bottom keeps

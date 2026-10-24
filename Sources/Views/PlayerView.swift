@@ -72,6 +72,15 @@ struct PlayerView: View {
                 )
                 // At rest ~0.9, fade out quickly while dragging → glass dominates.
                 .opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))
+            // The corners the rounded sheet leaves open: at rest the ground
+            // reaches every corner of the display, also a square one (the
+            // hinge side of a foldable, an iPad). Gone as soon as the drag
+            // starts, so the moving sheet keeps its rounded corners.
+            SheetCorners(radius: cornerRadius)
+                .fill(LinearGradient(colors: [colorLoader.accent, Color.black],
+                                     startPoint: .top, endPoint: .bottom),
+                      style: FillStyle(eoFill: true))
+                .opacity(SheetCorners.opacity(dragProgress: dragProgress))
 
             // Landscape (iPhone AND iPad): cover to the left of the controls.
             // Height guard: on the first layout pass geo can report 0. Otherwise
@@ -1065,5 +1074,31 @@ struct PlayerView: View {
         let m = (total % 3600) / 60
         let s = total % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
+    }
+}
+
+/// The four corners a rounded sheet leaves open in its full-screen rect:
+/// the rect with the rounded rect cut out (even-odd). The glass keeps its one
+/// constant radius (a changing glass shape re-renders on every drag frame);
+/// this shape fills what it leaves open while the sheet rests.
+/// `nonisolated`: `Shape` is not main-actor bound, and the path is pure geometry.
+nonisolated struct SheetCorners: Shape {
+    var radius: CGFloat
+
+    /// The sheet's reveal at rest (`FullPlayerOverlay`): the drag progress
+    /// never goes below it, so it is the zero point of the corners' fade.
+    static let restReveal: CGFloat = 0.15
+    /// How much drag progress past rest fades the corners out completely.
+    static let fadeSpan: CGFloat = 0.1
+
+    /// Full at rest, gone a short way into the drag.
+    static func opacity(dragProgress: CGFloat) -> Double {
+        Double(min(1, max(0, 1 - (dragProgress - restReveal) / fadeSpan)))
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path(rect)
+        path.addRoundedRect(in: rect, cornerSize: CGSize(width: radius, height: radius), style: .continuous)
+        return path
     }
 }

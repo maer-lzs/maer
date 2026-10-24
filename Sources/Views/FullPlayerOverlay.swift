@@ -55,7 +55,7 @@ struct FullPlayerOverlay: View {
         let progress = min(1, offset / dismissThreshold)
         // Base reveal > 0: at rest the sheet IS already the same glass sheet (no
         // mode switch at frame 1); the drag only intensifies it.
-        let visual = CGFloat(0.15 + 0.85 * pow(Double(progress), 1.6))
+        let visual = SheetCorners.restReveal + (1 - SheetCorners.restReveal) * CGFloat(pow(Double(progress), 1.6))
         // Constant: glassEffect parameters must NOT change per frame, otherwise
         // the system re-renders the effect → stutter at drag start.
         let corner: CGFloat = 28
