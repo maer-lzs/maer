@@ -97,7 +97,10 @@ nonisolated final class StandMirror: Sendable {
     /// the move the rows are the stock already.
     /// Either way an old key goes only when the table covers its entry; a
     /// key it does not cover stays, a line says how many, and the next start
-    /// counts again.
+    /// counts again. A resuming start whose read of the table failed holds
+    /// the old keys alone, which lack what the broken start wrote: it
+    /// repairs nothing, sets no marker and retires no key, and the next
+    /// start resumes again.
     func start(defaults: UserDefaults = .standard) {
         let followed = ObjectIdentifier(defaults)
         state.withLock { $0.followed = followed }
@@ -114,7 +117,12 @@ nonisolated final class StandMirror: Sendable {
         let legacy = ListeningStore.legacyEntries(in: defaults)
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
+        let unread = resumes && ListeningStore.readFailed(in: defaults)
         enqueue { store in
+            if unread {
+                Logger.library.error("STAND repair held: the move resumes over a table it could not read")
+                return
+            }
             if !moved {
                 let written = try await store.importEntries(entries)
                 let removed = try await store.retainOnly(Set(entries.keys))

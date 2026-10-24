@@ -178,6 +178,35 @@ struct PositionStockTests {
                 && defaults.object(forKey: "flushedPosition.rss:win:a") == nil, "the old keys are covered by newer rows and go")
     }
 
+    @Test("Schritt 2: bricht der erste Start vor der Marke ab und scheitert beim naechsten das Lesen der Tabelle, bleiben ihre Zeilen, die Marke kommt nicht, die Schluessel bleiben")
+    func aResumeOverAFailedReadKeepsTheRows() async throws {
+        let (defaults, name) = suite()
+        let (store, _, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        // The same broken first start; this time the synchronous read of the
+        // table fails, while the chain's own connection still writes.
+        defaults.set(true, forKey: ListeningStore.moveStartedKey)
+        defaults.set([10.0, 1_000.0], forKey: "localPosition.rss:win:a")
+        try await store.upsert(Stand(itemId: "rss:win:a", position: 50, updatedAtMs: 5_000, duration: nil))
+        try await store.upsert(Stand(itemId: "rss:win:b", position: 20, updatedAtMs: 3_000, duration: nil))
+        struct Unreadable: Error {}
+
+        let mirror = StandMirror(store: store, loadNow: { throw Unreadable() })
+        mirror.start(defaults: defaults)
+        #expect(ListeningStore.readFailed(in: defaults), "the precondition: the stock answered from the old keys")
+        #expect(ListeningStore.backup("rss:win:b", in: defaults) == nil, "the precondition: the old keys lack the broken start's row")
+        await mirror.awaitPendingWrites()
+        let rows = try await store.all()
+        #expect(rows["rss:win:b"]?.entry == [20, 3_000], "the repair took a row the old keys lack")
+        #expect(rows["rss:win:a"]?.entry == [50, 5_000], "the repair wrote an older key over a newer row")
+        #expect(!ListeningStore.isMoved(in: defaults), "the marker came over a stock that is not whole")
+        #expect(defaults.object(forKey: "localPosition.rss:win:a") != nil, "an old key went over an unread table")
+    }
+
     @Test("Schritt 2: die Deckung, je Eintrag gleich oder neuer, ein Grabstein zaehlt wie jeder Eintrag")
     func theCoverageRule() {
         let legacy = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000], "radio:x": [5, 1],
