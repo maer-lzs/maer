@@ -764,13 +764,11 @@ struct BookDetailScreen: View {
                 if let duration, duration > 0 {
                     infoRow(label: "Total Duration", value: formattedDuration(duration), isHero: withPadding)
                 }
-                if let last = entry.progress?.lastUpdate, last > 0 {
-                    infoRow(
-                        label: "Last Listened",
-                        value: Date(timeIntervalSince1970: last / 1000)
-                            .formatted(date: .abbreviated, time: .omitted),
-                        isHero: withPadding
-                    )
+                // The card's words for the same moment (`ListeningMoment`):
+                // the newer of the local and the server stand, or playing now.
+                if let heard = CardStatusLine.lastHeard(itemId: entry.id,
+                                                        server: currentProgress?.lastUpdate ?? 0) {
+                    infoRow(label: "Last Listened", value: heard, isHero: withPadding)
                 }
             }
             .padding(.horizontal, withPadding ? 16 : 0)

@@ -8,6 +8,11 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**A book page says when you last listened, as its card does.** The page
+read the server's date alone; a book heard offline or on this device
+showed an older day there than on its card. Now both say the same, and
+"Playing now" while it plays.
+
 **The title in the full player opens its book.** A tap on the title of a
 book that the library list had not loaded yet led to an empty white
 page. Now the book page opens, and a book nobody knows says so.

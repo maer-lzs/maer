@@ -54,5 +54,21 @@ struct CardStatusLineTests {
             #expect(!text.contains("private var lastPlayedText"), "\(use.file) keeps its own last-heard words")
         }
     }
+
+    @Test("die Buchseite sagt zuletzt gehoert mit den Worten der Karte", .needsTheSources)
+    @MainActor
+    func theBookPageSaysWhatTheCardSays() throws {
+        // A server stand in seconds, as an old server or the seed once gave:
+        // the card's words name the same moment as in milliseconds.
+        let id = "card-equals-page-\(UUID().uuidString)"
+        let ms = Date().timeIntervalSince1970 * 1000 - 26 * 3600 * 1000
+        let heard = CardStatusLine.lastHeard(itemId: id, server: ms)
+        #expect(heard != nil)
+        #expect(CardStatusLine.lastHeard(itemId: id, server: ms / 1000) == heard)
+        let page = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(page.contains("CardStatusLine.lastHeard(itemId: entry.id,"), "the book page names the moment by itself")
+        #expect(!page.contains("lastUpdate / 1000"), "the book page reads the server stand raw")
+    }
 }
 #endif
