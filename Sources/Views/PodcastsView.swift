@@ -479,6 +479,13 @@ RowHeading(title: "Recommended",
                     }
                 }
                 .padding(.horizontal)
+                // The line under the grid leads to the same page as the
+                // chevron above, as under the audiobook tab's grid: who
+                // scrolled down does not scroll back up to go on.
+                ShowAllRow(total: recentShows.count,
+                           hasMore: recentShows.count > recentShowsPreview.count,
+                           destination: PodcastRoute.subscriptions,
+                           accessibilityId: "subscriptions-show-all")
             }
         }
     }
