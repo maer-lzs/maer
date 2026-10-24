@@ -52,6 +52,41 @@ struct BookRouteEntryTests {
                 "the page reads its progress from another source than the route")
     }
 
+    /// A catalog title the player restored by its id alone: no metadata.
+    private func bare(_ id: String) -> LibraryItem {
+        LibraryItem(id: id, media: nil, addedAt: nil)
+    }
+
+    @Test("ein Kandidat mit Titel schlaegt einen ohne, der Stand des Regals bleibt")
+    func aTitledCandidateWins() {
+        let id = "lva:secret_garden"
+        #expect(BookRouteEntry.resolve(id, shelved: nil, known: nil, playing: bare(id))?.item.title
+                == bare(id).title, "a bare item still gets its page")
+        #expect(BookRouteEntry.resolve(id, shelved: nil, known: bare(id), playing: item(id))?.item.title == "T")
+        let progress = BookProgress(fraction: 0.3, isFinished: false, lastUpdate: 0, currentTime: 30)
+        let hit = BookRouteEntry.resolve(id, shelved: LibraryEntry(item: bare(id), progress: progress),
+                                         known: nil, playing: item(id))
+        #expect(hit?.item.title == "T" && hit?.progress?.fraction == 0.3)
+    }
+
+    @Test("die Seite nennt den Titel der geladenen Details, wenn der Eintrag keinen traegt", .needsTheSources)
+    func thePageNamesTheDetailsTitle() throws {
+        let id = "lva:secret_garden"
+        let detail = LibraryItemDetail(id: id, media: try #require(item(id).media), userMediaProgress: nil)
+        #expect(BookPageItem.shown(entry: bare(id), detail: detail).title == "T")
+        #expect(BookPageItem.shown(entry: bare(id), detail: nil).id == id)
+        // A titled entry keeps its own words.
+        let other = LibraryItemDetail(id: id, media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: "Other", authorName: nil, narratorName: nil, seriesName: nil,
+                                          genres: [], publishedYear: nil, description: nil),
+            duration: 1, chapters: [], tracks: []), userMediaProgress: nil)
+        #expect(BookPageItem.shown(entry: item(id), detail: other).title == "T")
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(!page.contains("entry.item.title") && !page.contains("entry.item.author"),
+                "the page names the entry past the rule")
+    }
+
     @Test("the route asks the rule and draws an empty state, never nothing")
     func routeNeverDrawsNothing() throws {
         let source = try String(

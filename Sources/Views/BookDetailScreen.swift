@@ -65,6 +65,9 @@ struct BookDetailScreen: View {
     private var detailProvider: any AudioProvider { router.provider(entry.id) }
 
     @State private var detail: LibraryItemDetail?
+    /// The item the page names (`BookPageItem`): the entry's, else the
+    /// loaded detail's when the entry carries no title.
+    private var shownItem: LibraryItem { BookPageItem.shown(entry: entry.item, detail: detail) }
     @State private var isLoading = true
     /// The detail could not be fetched: the page says so and offers the
     /// retry, instead of an empty description and a silent download button.
@@ -182,11 +185,11 @@ struct BookDetailScreen: View {
     private func titleBlock(alignment: HorizontalAlignment) -> some View {
         let isHero = alignment == .center
         return VStack(alignment: alignment, spacing: 6) {
-            Text(entry.item.title)
+            Text(shownItem.title)
                 .font(.title2).bold()
                 .multilineTextAlignment(isHero ? .center : .leading)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-            if let author = entry.item.author {
+            if let author = shownItem.author {
                 // Round author portrait next to the author line. ONLY when
                 // the server ships an image (no placeholder, no initials; the
                 // row looks like before otherwise, same rule as music artists
@@ -231,7 +234,7 @@ struct BookDetailScreen: View {
     /// The author's works in the library. The tap filter is only active
     /// for more than one work (pure rule, tested).
     private var authorWorks: [LibraryEntry] {
-        guard let author = entry.item.author else { return [] }
+        guard let author = shownItem.author else { return [] }
         return (libraryViewModel?.entries ?? []).filter { $0.item.author == author }
     }
 
@@ -263,7 +266,7 @@ struct BookDetailScreen: View {
             }
             if let libraryViewModel,
                LibraryViewModel.authorFilterEnabled(workCount: works.count),
-               let author = entry.item.author {
+               let author = shownItem.author {
                 NavigationLink {
                     BrowseBooksScreen(title: author, entries: works,
                                       playerCoordinator: coordinator,
@@ -413,7 +416,7 @@ struct BookDetailScreen: View {
                     .padding(.trailing, 20)
                     .padding(.top, 60)
                     .padding(.bottom, 8)
-                DetailChapterList(bookTitle: entry.item.title, chapters: resolved.chapters,
+                DetailChapterList(bookTitle: shownItem.title, chapters: resolved.chapters,
                                   coordinator: coordinator, entry: entry, embedded: true)
             }
         } else if isLoading {
@@ -544,7 +547,7 @@ struct BookDetailScreen: View {
             pendingSyncOperations: BookmarkQueue.shared.pendingOps()
                 .filter { $0.itemId == entry.id }.count)
         return ProgressDiagnosis.bookReport(
-            title: entry.item.title,
+            title: shownItem.title,
             sources: sources,
             now: Date().timeIntervalSince1970,
             format: { Date(timeIntervalSince1970: $0).formatted(date: .abbreviated, time: .standard) },
@@ -734,7 +737,7 @@ struct BookDetailScreen: View {
     private func chapterLink(_ chapters: [ABSChapter], isFallback: Bool, isHero: Bool) -> some View {
         NavigationLink {
             DetailChapterList(
-                bookTitle: entry.item.title,
+                bookTitle: shownItem.title,
                 chapters: chapters,
                 coordinator: coordinator,
                 entry: entry
