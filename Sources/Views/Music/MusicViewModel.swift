@@ -108,6 +108,11 @@ final class MusicViewModel: ObservableObject {
     var hasAsked: Bool { runs.hasStarted }
     /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
     var sort: MusicSortOption = .nameAZ
+    /// How long the first album page may take before the page says the
+    /// server takes too long, with its retry. Measured before: no deadline
+    /// of its own, only the session's limits and the retry of the first
+    /// load, so a server that never answered kept the bar for minutes.
+    var firstPageDeadline: Duration = .seconds(15)
 
     init(source: MusicSource = .live) {
         self.source = source
@@ -202,9 +207,14 @@ final class MusicViewModel: ObservableObject {
         async let playlistsTask = source.playlists()
 
         let pageSize = 100
+        let start = ContinuousClock.now
         do {
             let sort = sort
-            let first = try await source.albumsPage(sort, 0, pageSize)
+            let source = source
+            let first = try await MusicPageLoad.withDeadline(firstPageDeadline) {
+                try await source.albumsPage(sort, 0, pageSize)
+            }
+            MusicPageLoad.logStep("albums first page", since: start, count: first.count)
             if MusicPageLoad.superseded("albums", isCurrent()) { return }
             albums = first
             isLoading = false   // grid is on screen — the rest arrives silently
@@ -241,30 +251,43 @@ final class MusicViewModel: ObservableObject {
             // (the view shows the full-screen error page only when empty).
             // No client-type cast in the UI: the one sentence rule keeps the
             // text of a SubsonicError and names any other error by its kind.
+            // The deadline of the first page ends here as a timeout.
+            MusicPageLoad.logStep("albums first page", since: start, failure: error)
             errorText = ErrorSentence.of(error)
             Logger.music.error("album page load failed: \(String(describing: error), privacy: .public)")
             return
         }
 
         // Late best-effort arrivals reshape the shelves. Same calm gate, and
-        // only while this run is the page's.
-        if let value = try? await newestTask {
+        // only while this run is the page's. A failure keeps the previous
+        // state and says so in its step line.
+        do {
+            let value = try await newestTask
+            MusicPageLoad.logStep("shelf newest", since: start, count: value.count)
             ScrollCalm.run { [self] in if isCurrent() { newest = value } }
-        }
-        if let value = try? await recentTask {
+        } catch { MusicPageLoad.logStep("shelf newest", since: start, failure: error) }
+        do {
+            let value = try await recentTask
+            MusicPageLoad.logStep("shelf recent", since: start, count: value.count)
             ScrollCalm.run { [self] in if isCurrent() { recent = value } }
-        }
-        if let value = try? await frequentTask {
+        } catch { MusicPageLoad.logStep("shelf recent", since: start, failure: error) }
+        do {
+            let value = try await frequentTask
+            MusicPageLoad.logStep("shelf frequent", since: start, count: value.count)
             ScrollCalm.run { [self] in if isCurrent() { frequent = value } }
-        }
-        if let value = try? await artistsTask {
+        } catch { MusicPageLoad.logStep("shelf frequent", since: start, failure: error) }
+        do {
+            let value = try await artistsTask
+            MusicPageLoad.logStep("artists", since: start, count: value.count)
             ScrollCalm.run { [self] in if isCurrent() { artists = value } }
-        }
+        } catch { MusicPageLoad.logStep("artists", since: start, failure: error) }
         // Filter junk playlists (name == id / nameless, 0 songs) at THE one
         // feed, so both the playlist card row and the Playlists browse page are clean.
-        if let value = try? await playlistsTask {
+        do {
+            let value = try await playlistsTask
+            MusicPageLoad.logStep("playlists", since: start, count: value.count)
             ScrollCalm.run { [self] in if isCurrent() { playlists = PlaylistPresentation.realPlaylists(value) } }
-        }
+        } catch { MusicPageLoad.logStep("playlists", since: start, failure: error) }
         // With two music servers, a list may carry only one server's half.
         // The inline hint names who did not answer.
         if MusicPageLoad.superseded("music shelves", isCurrent()) { return }

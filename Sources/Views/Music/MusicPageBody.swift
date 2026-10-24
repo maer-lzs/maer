@@ -87,6 +87,37 @@ enum MusicPageLoad {
         Logger.music.notice("MUSIC page=\(page, privacy: .public) superseded, answer dropped")
         return true
     }
+
+    /// The work within a deadline. Past it the work is cancelled and the
+    /// answer is a server that takes too long (`URLError.timedOut`), so the
+    /// page shows that sentence with its retry instead of a bar that waits
+    /// as long as the session's own limits, a minute and more with the retry
+    /// of the first load. The work must answer its cancellation; the
+    /// session's requests do.
+    static func withDeadline<Value: Sendable>(_ limit: Duration,
+                                              _ work: @escaping @MainActor @Sendable () async throws -> Value) async throws -> Value {
+        try await withThrowingTaskGroup(of: Value.self) { group in
+            group.addTask { try await work() }
+            group.addTask {
+                try await Task.sleep(for: limit)
+                throw URLError(.timedOut)
+            }
+            defer { group.cancelAll() }
+            guard let value = try await group.next() else { throw CancellationError() }
+            return value
+        }
+    }
+
+    /// One line per step of a load, with its time and how it ended.
+    static func logStep(_ step: String, since start: ContinuousClock.Instant, failure: Error? = nil, count: Int? = nil) {
+        let ms = Int((ContinuousClock.now - start) / .milliseconds(1))
+        if let failure {
+            let outcome = failure.isCancellation ? "cancelled" : "failed reason=\(FailureReason.of(failure))"
+            Logger.music.notice("MUSIC load step=\(step, privacy: .public) ms=\(ms) outcome=\(outcome, privacy: .public)")
+        } else {
+            Logger.music.notice("MUSIC load step=\(step, privacy: .public) ms=\(ms) outcome=ok count=\(count ?? 0)")
+        }
+    }
 }
 
 extension View {

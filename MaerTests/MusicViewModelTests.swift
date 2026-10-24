@@ -48,6 +48,31 @@ struct MusicViewModelTests {
         ))
     }
 
+    /// A server that takes the request and never answers: the first page
+    /// ends at its deadline with the sentence of a server that takes too
+    /// long, the bar goes, and the retry surface has its sentence.
+    @Test("die erste Albumseite endet an ihrer Frist mit dem Satz eines zu langsamen Servers statt endlos zu laden", .timeLimit(.minutes(1)))
+    func theFirstPageEndsAtItsDeadline() async {
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, _, _ in
+                try await Task.sleep(for: .seconds(3600))
+                return []
+            },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] },
+            reachable: { true }
+        ))
+        vm.firstPageDeadline = .milliseconds(300)
+        let started = ContinuousClock.now
+        await vm.reload()
+        let took = ContinuousClock.now - started
+        #expect(took < .seconds(10), "the first page did not end at its deadline: \(took)")
+        #expect(!vm.isLoading, "the bar stayed")
+        #expect(vm.albums.isEmpty)
+        #expect(vm.errorText == ErrorSentence.of(URLError(.timedOut)), "no sentence for the retry surface: \(vm.errorText ?? "nil")")
+    }
+
     /// Music on, no server to ask on this device (measured on a device: the
     /// music switch arrived over sync, the server's access did not). The
     /// page said "your server reported an empty library" about a server it
