@@ -386,7 +386,7 @@ enum UITestSeed {
             + shows.compactMap { show in URL(string: show.artwork).map { ($0, show.title) } }
         for (index, (url, title)) in targets.enumerated() {
             guard let data = coverPicture(seed: index, label: title) else { continue }
-            _ = ImageCache.shared.testPlaceInCache(data, for: url)
+            Artwork.placeSeedCover(data, for: url)
         }
     }
 

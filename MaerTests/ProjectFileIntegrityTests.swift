@@ -2275,24 +2275,37 @@ extension ProjectFileIntegrityTests {
     /// Nutzer sieht einer Flaeche nicht an, ob sie Wurzel oder geschoben
     /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
     /// Kommentars, weil die naechste Detailseite ihn sonst wieder
-    /// mitbringt.
-    @Test("das Zahnrad steht an genau EINER Stelle im Quelltext", .needsTheSources)
+    /// mitbringt. Die Tab-Wurzel traegt es an zwei Stellen, nie beide
+    /// zugleich: in der Kopfzeile, und bei seitlicher Leiste oben in der
+    /// Spalte, weil die Kopfzeile dort an der Statusleiste endet.
+    nonisolated static let gearExceptions: [String: String] = [
+        "SettingsView.swift": "das Zeichen des Bereichs Allgemein in der Bereichsleiste der Einstellungen, kein Weg in sie",
+    ]
+
+    @Test("das Zahnrad steht nur an der Tab-Wurzel, in Kopfzeile und Seitenspalte", .needsTheSources)
     func settingsGearLivesOnlyAtTheTabRoot() throws {
         var fundstellen: [String] = []
+        var ausnahmen: Set<String> = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.hasPrefix("//"), !trimmed.hasPrefix("///") else { continue }
                 if trimmed.contains("gearshape") {
-                    fundstellen.append("\(file.lastPathComponent):\(number + 1)")
+                    if Self.gearExceptions[file.lastPathComponent] != nil {
+                        ausnahmen.insert(file.lastPathComponent)
+                    } else {
+                        fundstellen.append("\(file.lastPathComponent):\(number + 1)")
+                    }
                 }
             }
         }
-        #expect(fundstellen.count == 1,
-                "das Zahnrad steht nicht mehr an genau einer Stelle: \(fundstellen)")
-        #expect(fundstellen.first?.hasPrefix("LibraryView.swift") == true,
-                "die eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
+        #expect(fundstellen.count == 2,
+                "das Zahnrad steht nicht mehr an genau zwei Stellen der Tab-Wurzel: \(fundstellen)")
+        #expect(fundstellen.allSatisfy { $0.hasPrefix("LibraryView.swift") },
+                "eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
+        #expect(ausnahmen == Set(Self.gearExceptions.keys),
+                "eine Ausnahme ohne Zahnrad ist eine, die niemand mehr nachsieht: \(ausnahmen)")
         // Rot-Probe: der Zaun saehe eine zweite Stelle sehr wohl.
         #expect("            Image(systemName: \"gearshape\")".contains("gearshape"))
     }

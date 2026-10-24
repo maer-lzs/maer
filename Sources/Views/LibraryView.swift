@@ -1372,7 +1372,7 @@ struct LibraryView: View {
                 // The order of the tabs: the notice when needed, what you
                 // are hearing, your stock, and the offer from outside at
                 // the bottom.
-                if AppSession.shared.authViewModel.isLoggedIn {
+                if session.authViewModel.isLoggedIn {
                     // 🔴 A doubted session says so first. The tab keeps
                     // its content (the token is intact, the server is
                     // merely unreachable), and the line names the state

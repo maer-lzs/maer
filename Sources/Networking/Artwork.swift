@@ -167,6 +167,15 @@ enum Artwork {
         await tiers.makePersistent(coverURL: url, data: data)
     }
 
+    #if DEBUG
+    /// A generated cover placed for the test mode, synchronously and before
+    /// the first render, where a tile's fetch would leave it.
+    @discardableResult
+    static func placeSeedCover(_ data: Data, for url: URL) -> Bool {
+        tiers.testPlaceInCache(data, for: url)
+    }
+    #endif
+
     /// The persistent copy goes back to the purgeable tier.
     static func forget(_ url: URL?) {
         tiers.removePersistent(coverURL: url)

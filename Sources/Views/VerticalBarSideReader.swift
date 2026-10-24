@@ -104,7 +104,8 @@ private struct ReservedStripReader: UIViewRepresentable {
                                                          columnWidth: column.frame.width) - strip.midX
                 }
             }
-            DispatchQueue.main.async { [report] in report?(value) }
+            // After the layout pass, not inside it: the report writes view state.
+            Task { [report] in report?(value) }
         }
     }
 }

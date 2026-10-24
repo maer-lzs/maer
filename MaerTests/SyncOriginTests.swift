@@ -17,10 +17,16 @@ struct SyncOriginTests {
         #expect(SyncOrigin.allCases.count == 11, "elf Anlaesse, einer je Rufer")
     }
 
+    /// The callers that pass on an occasion a caller above already named,
+    /// by their argument, each with its reason. They count as `forwarded`.
+    nonisolated static let forwarders: [String: String] = [
+        "origin": "the follow-up of a mark runs the occasion that asked while the mark held the guard (MarkFollowUp)",
+    ]
+
     /// The occasion each call of `syncProgress` names, counted over the
-    /// sources. A call that passes anything but a named occasion counts as
-    /// `"?"`, the former `force:` form among them. Comments go first; the
-    /// argument is read across a line break.
+    /// sources. A call that passes anything but a named occasion or a named
+    /// forwarder counts as `"?"`, the former `force:` form among them.
+    /// Comments go first; the argument is read across a line break.
     nonisolated static func origins(in text: String) -> [String: Int] {
         let code = text.split(separator: "\n", omittingEmptySubsequences: false)
             .map { String(IdQuestionDoorFenceTests.withoutComment($0)) }
@@ -32,6 +38,10 @@ struct SyncOriginTests {
         // receiver would slip through.
         for match in code.matches(of: #/(?:^|[^A-Za-z0-9_])syncProgress\(\s*([^)]*)\)/#) {
             let argument = String(match.output.1).trimmingCharacters(in: .whitespacesAndNewlines)
+            if forwarders[argument] != nil {
+                found["forwarded", default: 0] += 1
+                continue
+            }
             let name = argument.hasPrefix(".") ? String(argument.dropFirst()) : "?"
             found[SyncOrigin(rawValue: name) != nil ? name : "?", default: 0] += 1
         }
@@ -49,7 +59,12 @@ struct SyncOriginTests {
             found.merge(Self.origins(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
         }
         let expected = Dictionary(uniqueKeysWithValues: SyncOrigin.allCases.map { ($0.rawValue, 1) })
+            .merging(["forwarded": Self.forwarders.count]) { $1 }
         #expect(found == expected, "Anlaesse der Rufer: \(found.sorted { $0.key < $1.key })")
+        #expect(Self.origins(in: "await syncProgress(origin)") == ["forwarded": 1],
+                "ein benannter Weiterreicher zaehlt als solcher")
+        #expect(Self.origins(in: "await syncProgress(someOrigin)") == ["?": 1],
+                "ein anderer Weiterreicher bleibt ungenannt")
         #expect(Self.origins(in: "Task { await syncProgress(force: true) }") == ["?": 1],
                 "die fruehere Form zaehlt als ungenannt")
         #expect(Self.origins(in: "await self.syncProgress(\n    .pause)") == ["pause": 1],

@@ -88,7 +88,9 @@ struct TitleChangeHoldTests {
         #expect(squeezed.contains("controlsLive: miniContent == .player"), "the held bar's buttons act on the stopped session")
         #expect(!squeezed.contains(".takesInput(miniContent"), "a hanging open leaves a dead bar")
         let bar = FetchAnswerTests.squeezed(try code("Sources/Views/MiniPlayerBar.swift"))
-        #expect(bar.contains("showsAirPlay: !compact && (showExtendedControls || isCompactPortrait)) .takesInput(controlsLive)"),
+        // The transport's call ends with its last argument; the modifier right after it is the one that asks.
+        #expect(bar.contains("MiniPlayerTransport(viewModel: viewModel"), "the bar draws its buttons elsewhere")
+        #expect(bar.contains("onOpenQueue: onOpenQueue) .takesInput(controlsLive)"),
                 "the bar's buttons do not ask whether they are live")
         #expect(!library.contains("miniPlayerSwapOffset"), "the bar dips below the screen again")
         let screen = FetchAnswerTests.squeezed(try code("Sources/Views/PlayerScreen.swift"))
