@@ -706,7 +706,7 @@ struct RadioCountryPickerList: View {
     var onWorldwide: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var countries: [(code: String, name: String, count: Int)] = []
+    @State private var countries: [RadioCountryList.Country] = []
     @State private var loadFailed = false
 
     private var isMultiple: Bool { selection != nil }
@@ -736,7 +736,7 @@ struct RadioCountryPickerList: View {
                     Text("Genres show the stations of the selected countries. Several are allowed.")
                 }
             }
-            ForEach(filtered, id: \.code) { country in
+            ForEach(RadioCountryList.filtered(countries, query: query)) { country in
                 Button {
                     if isMultiple {
                         onToggle?(country.code)
@@ -756,7 +756,7 @@ struct RadioCountryPickerList: View {
                     } label: {
                         // Localized display; the English name is what the
                         // states endpoint needs and is what gets persisted.
-                        Text(Locale.current.localizedString(forRegionCode: country.code) ?? country.name)
+                        Text(country.shown)
                     }
                 }
                 .tint(.primary)
@@ -786,28 +786,15 @@ struct RadioCountryPickerList: View {
         .task {
             guard countries.isEmpty else { return }
             let raw = (try? await RadioBrowserClient.countries()) ?? []
-            let mapped = raw.compactMap { entry -> (String, String, Int)? in
+            let mapped = raw.compactMap { entry -> (code: String, name: String, count: Int)? in
                 guard let code = entry.iso_3166_1, !code.isEmpty,
                       let name = entry.name?.trimmingCharacters(in: .whitespacesAndNewlines),
                       !name.isEmpty else { return nil }
                 return (code.uppercased(), name, entry.stationcount ?? 0)
             }
-            // Same rules as the states: threshold, count-desc, then name.
-            let curatedList = mapped
-                .filter { $0.2 >= 2 }
-                .sorted { $0.2 == $1.2 ? $0.1 < $1.1 : $0.2 > $1.2 }
-                .map { (code: $0.0, name: $0.1, count: $0.2) }
+            let curatedList = RadioCountryList.curated(mapped) { Locale.current.localizedString(forRegionCode: $0) }
             countries = curatedList
             loadFailed = curatedList.isEmpty
-        }
-    }
-
-    private var filtered: [(code: String, name: String, count: Int)] {
-        let q = RadioBrowseCuration.mergeKey(query)
-        guard !q.isEmpty else { return countries }
-        return countries.filter {
-            RadioBrowseCuration.mergeKey($0.name).contains(q)
-                || RadioBrowseCuration.mergeKey(Locale.current.localizedString(forRegionCode: $0.code) ?? "").contains(q)
         }
     }
 }

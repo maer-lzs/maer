@@ -825,6 +825,43 @@ nonisolated enum RadioBrowseCuration {
     }
 }
 
+/// The country layer of the radio picker: every country with at least two
+/// stations, in the order of its shown name (a list one searches by name,
+/// not by size), and a search that asks names worked out once. Before, the
+/// list stood by station count and every keystroke folded and localized
+/// each country's name twice.
+nonisolated enum RadioCountryList {
+    struct Country: Equatable, Identifiable, Sendable {
+        /// The code and the English name the states endpoint needs.
+        let code: String
+        let name: String
+        /// The name in the language of the device.
+        let shown: String
+        let count: Int
+        /// Both names folded once, apart so a hit never spans the two.
+        let searchKey: String
+        var id: String { code }
+    }
+
+    static func curated(_ raw: [(code: String, name: String, count: Int)],
+                        shownName: (String) -> String?, minStations: Int = 2) -> [Country] {
+        raw.filter { $0.count >= minStations }
+            .map { entry in
+                let shown = shownName(entry.code) ?? entry.name
+                return Country(code: entry.code, name: entry.name, shown: shown, count: entry.count,
+                               searchKey: RadioBrowseCuration.mergeKey(entry.name) + "\u{1F}"
+                                   + RadioBrowseCuration.mergeKey(shown))
+            }
+            .sorted { $0.shown.localizedStandardCompare($1.shown) == .orderedAscending }
+    }
+
+    static func filtered(_ countries: [Country], query: String) -> [Country] {
+        let q = RadioBrowseCuration.mergeKey(query)
+        guard !q.isEmpty else { return countries }
+        return countries.filter { $0.searchKey.contains(q) }
+    }
+}
+
 /// Which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING. Pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
