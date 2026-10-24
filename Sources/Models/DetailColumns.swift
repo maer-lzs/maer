@@ -46,11 +46,14 @@ nonisolated enum DetailCoverSide {
 
 /// The two buttons under the main one (download, mark as heard) stand side
 /// by side only where both fit whole; in a narrower column one under the
-/// other, never cut or wrapped. From the width, not from trying.
+/// other, never cut or wrapped. From the width, not from trying; the page
+/// scales the need with the type size.
 nonisolated enum DetailButtonRow {
     /// Two buttons of the longest German label (about 170 pt each) and the
-    /// gap between them.
+    /// gap between them, at the standard type size.
     static let sideBySideMinWidth: CGFloat = 360
 
-    static func stacked(width: CGFloat) -> Bool { width < sideBySideMinWidth }
+    /// `needs`: the width both take at the current type size (the page's
+    /// `@ScaledMetric` of `sideBySideMinWidth`).
+    static func stacked(width: CGFloat, needs: CGFloat) -> Bool { width < needs }
 }

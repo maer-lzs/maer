@@ -77,6 +77,9 @@ struct BookDetailScreen: View {
     /// Label column scales with Dynamic Type. 90pt fixed broke
     /// "Erzähler/Erschienen" mid-word at AX sizes.
     @ScaledMetric(relativeTo: .caption) private var infoLabelWidth: CGFloat = 90
+    /// What the two buttons under the main one take side by side, at the
+    /// current type size (`DetailButtonRow`).
+    @ScaledMetric(relativeTo: .body) private var buttonPairWidth: CGFloat = DetailButtonRow.sideBySideMinWidth
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
@@ -372,7 +375,7 @@ struct BookDetailScreen: View {
     /// The download and mark buttons: side by side where both fit whole,
     /// else one under the other (`DetailButtonRow`).
     private func buttonRow(width: CGFloat) -> some View {
-        let layout = DetailButtonRow.stacked(width: width)
+        let layout = DetailButtonRow.stacked(width: width, needs: buttonPairWidth)
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
             : AnyLayout(HStackLayout(spacing: 12))
         return layout {

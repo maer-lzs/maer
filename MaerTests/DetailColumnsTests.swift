@@ -74,9 +74,20 @@ struct DetailColumnsTests {
 
     @Test("zwei Knoepfe nebeneinander nur, wo beide ganz Platz haben")
     func twoButtonsSideBySideOnlyWhereTheyFit() {
-        #expect(DetailButtonRow.stacked(width: 342))
-        #expect(!DetailButtonRow.stacked(width: 407))
-        #expect(!DetailButtonRow.stacked(width: DetailButtonRow.sideBySideMinWidth))
+        let standard = DetailButtonRow.sideBySideMinWidth
+        #expect(DetailButtonRow.stacked(width: 342, needs: standard))
+        #expect(!DetailButtonRow.stacked(width: 407, needs: standard))
+        #expect(!DetailButtonRow.stacked(width: standard, needs: standard))
+        // Large type: the same column stacks them.
+        #expect(DetailButtonRow.stacked(width: 407, needs: standard * 1.35))
+    }
+
+    @Test("die Buchseite skaliert den Bedarf der Knopfreihe mit der Schrift", .needsTheSources)
+    func theNeedScalesWithTheType() throws {
+        let page = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(page.contains("@ScaledMetric(relativeTo: .body) private var buttonPairWidth: CGFloat = DetailButtonRow.sideBySideMinWidth"))
+        #expect(page.contains("DetailButtonRow.stacked(width: width, needs: buttonPairWidth)"))
     }
 }
 #endif

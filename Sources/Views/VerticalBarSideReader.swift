@@ -5,7 +5,6 @@
 
 import SwiftUI
 import UIKit
-import OSLog
 
 extension View {
     /// Reports the edge at which the system stands its bars upright, nil
@@ -108,8 +107,6 @@ private struct ReservedStripReader: UIViewRepresentable {
     final class ReaderView: UIView {
         var stripWidth: CGFloat = 0
         var report: ((ReservedStrip) -> Void)?
-        /// The division last logged, so a layout pass logs only a change.
-        private var lastLine = ""
 
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -131,11 +128,6 @@ private struct ReservedStripReader: UIViewRepresentable {
                 // The fold of the open Duo: inactive while the device lies
                 // flat open (measured), and still where the page divides.
                 value.division = window.reservedRegions(kind: .division, options: .includeInactive).first?.frame
-            }
-            let line = value.division.map { "\($0)" } ?? "none"
-            if line != lastLine {
-                lastLine = line
-                Logger.library.notice("SIDESTRIP division=\(line, privacy: .public) window=\(window.bounds.width, privacy: .public)")
             }
             // After the layout pass, not inside it: the report writes view state.
             Task { [report] in report?(value) }
