@@ -172,7 +172,7 @@ enum UITestSeed {
             bookEntry(id: "seed-book-old", title: "Seed Book Old", author: "Cora Author", chapters: nil,
                       progress: BookProgress(
                           fraction: 0.4, isFinished: false,
-                          lastUpdate: Date().timeIntervalSince1970 - 35 * 24 * 3600)),
+                          lastUpdate: msAgo(35 * 24 * 3600))),
         ]
         // Scroll depth for collapse-threshold journeys (the two-book grid never
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
@@ -183,15 +183,15 @@ enum UITestSeed {
         + [
             bookEntry(id: "seed-book-3", title: "Der Leuchtturmwärter", author: "Hanna Berg", chapters: nil,
                       progress: BookProgress(fraction: 1, isFinished: true,
-                                             lastUpdate: Date().timeIntervalSince1970 - 2 * 24 * 3600)),
+                                             lastUpdate: msAgo(2 * 24 * 3600))),
             fullBook(progress: BookProgress(fraction: 0.6, isFinished: false,
-                                            lastUpdate: Date().timeIntervalSince1970 - 3600,
+                                            lastUpdate: msAgo(3600),
                                             currentTime: 0.6 * fullBookDuration)),
             bookEntry(id: "seed-book-5", title: "Polarnacht", author: "Jonas Lind", chapters: nil,
                       series: "Nordlicht #2"),
             bookEntry(id: "seed-book-6", title: "Die stille Bibliothek", author: "Mira Holm", chapters: nil,
                       progress: BookProgress(fraction: 0.15, isFinished: false,
-                                             lastUpdate: Date().timeIntervalSince1970 - 26 * 3600)),
+                                             lastUpdate: msAgo(26 * 3600))),
             bookEntry(id: "seed-book-7", title: "Fernweh", author: "Paul Sander", chapters: nil),
             bookEntry(id: "seed-book-8", title: "Das Uhrwerk", author: "Lea Kranz", chapters: nil),
         ]
@@ -421,6 +421,12 @@ enum UITestSeed {
     private(set) static var seededDetails: [String: LibraryItemDetail] = [:]
 
     static let fullBookDuration: Double = 9 * 3600
+
+    /// A moment `seconds` before now in milliseconds since 1970, the unit
+    /// the server gives `lastUpdate` in. Every seeded progress takes it.
+    nonisolated static func msAgo(_ seconds: Double) -> Double {
+        (Date().timeIntervalSince1970 - seconds) * 1000
+    }
 
     /// ONE book with everything a book page can show: author, narrator,
     /// series with its number, year, genres, a description of several
