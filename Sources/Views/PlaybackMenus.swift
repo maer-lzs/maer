@@ -53,6 +53,9 @@ struct SpeedMenu: View {
 struct SleepTimerMenu: View {
     @ObservedObject var viewModel: PlayerViewModel
     var iconOnly = false
+    /// A cell of the side column's capsule: the glyph, and while a timer
+    /// runs its remaining minutes small under it.
+    var columnCell = false
 
     static let options: [Double] = [5, 15, 30, 45, 60]
 
@@ -109,7 +112,19 @@ struct SleepTimerMenu: View {
             // The status is visible at a glance, not only inside the menu.
             let symbol = running ? "moon.zzz.fill" : "moon.zzz"
             Group {
-                if iconOnly {
+                if columnCell {
+                    VStack(spacing: 1) {
+                        Image(systemName: symbol)
+                        if let remaining = viewModel.sleepTimerRemaining {
+                            Text(DurationText.length(minutes: Int((remaining / 60).rounded(.up))))
+                                .font(.caption2.monospacedDigit())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(label))
+                } else if iconOnly {
                     Image(systemName: symbol)
                         .accessibilityLabel(Text(label))
                 } else {
@@ -117,7 +132,7 @@ struct SleepTimerMenu: View {
                 }
             }
             .foregroundStyle(running ? AnyShapeStyle(AppTheme.accent)
-                                     : (iconOnly ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
+                                     : (iconOnly || columnCell ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
         }
     }
 }

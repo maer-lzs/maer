@@ -50,8 +50,10 @@ struct PlayerView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
     /// The tabs stand at the side (`FullPlayerOverlay` hands it in): the
-    /// symbol tools become the system's bar buttons in its column.
+    /// glyph tools, the sleep timer and AirPlay stand in the player's own
+    /// side column (`sideColumn`), placed where the library's stands.
     @Environment(\.playerToolsAtSide) private var toolsAtSide
+    @Environment(\.sideColumnPlacement) private var columnPlacement
     /// The controls column's height, measured; it does not change with the
     /// cover, so sizing the cover by it never loops.
     @State private var controlsHeight: CGFloat = 0
@@ -106,14 +108,12 @@ struct PlayerView: View {
             ScrollView {
                 layout {
                     // Beside the side column the cover takes only as much
-                    // height as leaves the controls down to AirPlay in sight
-                    // at rest (`DetailCoverSide`); it stood cut off at the
-                    // bottom edge (measured). The height counts the room the
-                    // stack keeps for its bar, which the scroll does not keep.
+                    // height as leaves the controls in sight at rest
+                    // (`DetailCoverSide`).
                     cover
                         .frame(maxWidth: toolsAtSide && !sideBySide
                                ? DetailCoverSide.side(columnWidth: Self.portraitColumn,
-                                                      height: geo.size.height + geo.safeAreaInsets.bottom,
+                                                      height: geo.size.height,
                                                       top: topInset + 24, below: controlsHeight + 24,
                                                       bottomReserve: bottomInset + 16)
                                : nil)
@@ -143,23 +143,16 @@ struct PlayerView: View {
             }
             // No bounce when the content fits → no scroll snap at drag start.
             .scrollBounceBehavior(.basedOnSize)
-            // The system's bar stands in the column, not over the bottom
-            // rows: its soft edge would fade the value row out (measured).
-            .bottomScrollEdgeHidden(toolsAtSide)
             // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
-            // Beside the side column the stack holds room at the bottom for
-            // its bar, which stands in the column: the scroll ended above the
-            // value row and cut it off (measured, 610 of 678 pt). The bottom
-            // keeps only the explicit inset above.
-            .ignoresSafeArea(.container, edges: toolsAtSide ? .bottom : [])
+            // Beside the side column the content keeps to the free area.
+            .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
         }
-        // The symbol tools as the system's bar buttons: with the tabs at the
-        // side the system stands them in its column.
-        .toolbar {
-            if toolsAtSide {
-                ToolbarItemGroup(placement: .bottomBar) { extrasItems }
+        .overlay {
+            if toolsAtSide, let columnPlacement {
+                sideColumn
+                    .placedInSideColumn(columnPlacement, bottom: bottomInset + 8)
             }
         }
         // The kept controls height only grows; a new window starts it again
@@ -827,12 +820,15 @@ struct PlayerView: View {
         if viewModel.isLiveStream {
             // No speed, no chapters, no skip interval for live audio.
             // The sleep timer stays (clock-based options only; the chapter/
-            // track-end options gate themselves out without chapters).
-            HStack(spacing: 32) {
-                sleepControl
+            // track-end options gate themselves out without chapters); with
+            // the tabs at the side it stands in the column.
+            if !toolsAtSide {
+                HStack(spacing: 32) {
+                    sleepControl
+                }
+                .font(.footnote)
+                .padding(.top, 4)
             }
-            .font(.footnote)
-            .padding(.top, 4)
         } else {
             regularSecondaryControls
         }
@@ -852,7 +848,8 @@ struct PlayerView: View {
                 speedControl
                 if hasChapterEntry { chaptersControl }
                 skipIntervalControl
-                sleepControl
+                // With the tabs at the side the timer stands in the column.
+                if !toolsAtSide { sleepControl }
             }
         } compact: {
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
@@ -862,7 +859,7 @@ struct PlayerView: View {
                 }
                 GridRow {
                     skipIntervalControl
-                    sleepControl
+                    if !toolsAtSide { sleepControl }
                 }
             }
         }
@@ -912,9 +909,12 @@ struct PlayerView: View {
     /// gated entries missing (no lyrics/transcript), labels usually fit.
     private var tertiaryControls: some View {
         VStack(spacing: 18) {
-            // With the tabs at the side the system stands these tools in
-            // its own column (the `.bottomBar` group of `body`).
-            if !toolsAtSide {
+            // With the tabs at the side the glyph tools and AirPlay stand
+            // in the player's own column (`sideColumn`); the source line
+            // stays here, it is text.
+            if toolsAtSide {
+                if tools.contains(.source) { catalogSourceControl }
+            } else {
                 // MeasuredFits, not ViewThatFits. Same bomb as
                 // the secondary row, same cure.
                 MeasuredFits {
@@ -926,10 +926,10 @@ struct PlayerView: View {
                         extrasItems
                     }
                     .labelStyle(.iconOnly)
-                    .font(.body)
                 }
+                .font(.footnote)
+                airPlayControl
             }
-            airPlayControl
         }
         .padding(.top, 4)
     }
@@ -957,6 +957,14 @@ struct PlayerView: View {
 
     @ViewBuilder
     private var extrasItems: some View {
+        glyphTools
+        if tools.contains(.source) { catalogSourceControl }
+    }
+
+    /// The tools that are one glyph each: the row's, or in the side
+    /// column the capsule's cells.
+    @ViewBuilder
+    private var glyphTools: some View {
         let tools = tools
         if tools.contains(.queue) { queueControl }
         if tools.contains(.bookmarks) { bookmarksControl }
@@ -965,7 +973,6 @@ struct PlayerView: View {
         if tools.contains(.driveMode) { driveModeControl }
         if tools.contains(.markFinished) { markFinishedControl }
         if tools.contains(.playlist) { playlistControl }
-        if tools.contains(.source) { catalogSourceControl }
     }
 
     /// The player is the surface with the strongest reason to put a running
@@ -979,7 +986,6 @@ struct PlayerView: View {
                 CatalogQueueButtons(itemId: id)
             } label: {
                 Label("Add to Playlist", systemImage: "text.badge.plus")
-                    .font(.footnote)
             }
             .accessibilityIdentifier("player-add-to-playlist")
         }
@@ -989,7 +995,6 @@ struct PlayerView: View {
         Button { DriveModeController.shared.enter() } label: {
             Label("Drive Mode", systemImage: "car.fill")
         }
-        .font(.footnote)
         .accessibilityIdentifier("player-drive-mode")
     }
 
@@ -1054,7 +1059,6 @@ struct PlayerView: View {
             Label(gesture.marksPlayed ? String(localized: "Mark Finished") : String(localized: "Mark Unfinished"),
                   systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill")
         }
-        .font(.footnote)
         .accessibilityIdentifier("player-mark-finished")
     }
 
@@ -1065,7 +1069,6 @@ struct PlayerView: View {
         Button { showTranscript = true } label: {
             Label("Transcript", systemImage: "text.quote")
         }
-        .font(.footnote)
         .accessibilityIdentifier("player-transcript")
     }
 
@@ -1075,8 +1078,28 @@ struct PlayerView: View {
         Button { showQueue = true } label: {
             Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
         }
-        .font(.footnote)
         .accessibilityIdentifier("player-queue")
+    }
+
+    /// The player's side column: the library's column with the player's
+    /// parts in it. The glyph tools and the sleep timer are the capsule's
+    /// cells, AirPlay is the round button at its foot, where the search
+    /// stands in the library. The player is a dark page: dark glass.
+    private var sideColumn: some View {
+        VStack(spacing: SideColumnStyle.gap) {
+            Spacer(minLength: 16)
+            SideCapsule {
+                Group {
+                    glyphTools
+                    SleepTimerMenu(viewModel: viewModel, columnCell: true)
+                }
+                .modifier(SideCapsuleToolCell())
+            }
+            SideRound {
+                AirPlayButton(tintColor: .white, activeTintColor: AppTheme.accentUIColor)
+            }
+        }
+        .environment(\.colorScheme, .dark)
     }
 
     private var airPlayControl: some View {
@@ -1091,7 +1114,6 @@ struct PlayerView: View {
         Button { showLyrics = true } label: {
             Label("Lyrics", systemImage: "quote.bubble")
         }
-        .font(.footnote)
     }
 
     /// Shown only when `tools` says so (a source that keeps bookmarks);
@@ -1100,7 +1122,6 @@ struct PlayerView: View {
         Button { showBookmarks = true } label: {
             Label("Bookmarks", systemImage: "bookmark")
         }
-        .font(.footnote)
     }
 
     // MARK: - Helfer
@@ -1152,22 +1173,7 @@ nonisolated struct SheetCorners: Shape {
 }
 
 extension EnvironmentValues {
-    /// The tabs stand at the side: the full player stands in a navigation
-    /// stack of its own and its symbol tools are the system's bar buttons,
-    /// which the system puts in its column. Set by the library.
+    /// The tabs stand at the side: the full player stands its own side
+    /// column with its tools in it. Set by the library.
     @Entry var playerToolsAtSide = false
-}
-
-private extension View {
-    /// No soft edge at the bottom of the player's scroll where a system bar
-    /// would draw one over the value row. Scroll edge effects exist from
-    /// iOS 26; below it there is none to hide.
-    @ViewBuilder
-    func bottomScrollEdgeHidden(_ hidden: Bool) -> some View {
-        if #available(iOS 26.0, *) {
-            scrollEdgeEffectHidden(hidden, for: .bottom)
-        } else {
-            self
-        }
-    }
 }

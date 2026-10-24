@@ -8,42 +8,51 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// With the tabs at the side the full player stands in a stack of its own:
-/// its symbol tools are the system's bar buttons in the column, its content
-/// keeps to the free area, its ground reaches every corner and its value row
-/// stays in sight. Everywhere else the player stays as it was.
+/// With the tabs at the side the full player stands its own side column,
+/// where the library's stands and from the same two parts: its glyph tools
+/// and the sleep timer in the capsule, AirPlay as the round button at its
+/// foot. Its content keeps to the free area, its ground reaches every
+/// corner, its dismiss zones leave the column's strip free. Everywhere else
+/// the player stays as it was.
 struct PlayerToolsAtSideTests {
     private func source(_ path: String) throws -> String {
         SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("nur bei seitlicher Leiste steht der Player im eigenen Stapel, mit den Werkzeugen als Leistenknoepfe", .needsTheSources)
-    func onlyBesideTheColumnTheStackAndTheBar() throws {
+    @Test("bei seitlicher Leiste steht der Player seine Spalte aus den zwei Bauteilen, ohne eigenen Stapel", .needsTheSources)
+    func besideTheColumnThePlayerStandsItsOwn() throws {
         let library = try source("Sources/Views/LibraryView.swift")
         #expect(library.contains(".environment(\\.playerToolsAtSide, tabBarPlacement.isSide)"))
-        let overlay = try source("Sources/Views/FullPlayerOverlay.swift")
-        #expect(overlay.contains("if toolsAtSide {\n            NavigationStack {"), "the stack stands without the side column too")
-        #expect(overlay.components(separatedBy: "NavigationStack").count - 1 == 1)
+        #expect(library.contains(".environment(\\.sideColumnPlacement,\n                                 tabBarPlacement.isSide ? sideColumnPlacement(strip: sideStripWidth) : nil)"))
+        // Both columns stand by the one placement.
+        #expect(library.components(separatedBy: ".placedInSideColumn(").count - 1 == 1)
         let player = try source("Sources/Views/PlayerView.swift")
-        #expect(player.contains("if toolsAtSide {\n                ToolbarItemGroup(placement: .bottomBar) { extrasItems }"))
-        // AirPlay stays in the player (the system's column took five, a sixth
-        // stood alone over the value row, measured); the cover leaves it in
-        // sight at rest.
-        #expect(player.contains(".frame(maxWidth: toolsAtSide && !sideBySide\n                               ? DetailCoverSide.side("))
-        #expect(player.contains("if !toolsAtSide {\n                MeasuredFits {"), "the own row stands beside the system's bar")
+        #expect(player.components(separatedBy: ".placedInSideColumn(").count - 1 == 1)
+        #expect(player.contains("SideCapsule {\n                Group {\n                    glyphTools\n                    SleepTimerMenu(viewModel: viewModel, columnCell: true)"))
+        #expect(player.contains("SideRound {\n                AirPlayButton("))
+        #expect(!player.contains("ToolbarItemGroup"), "the system's bar is back in the player")
+        let overlay = try source("Sources/Views/FullPlayerOverlay.swift")
+        #expect(!overlay.contains("NavigationStack"), "the player stands in a stack of its own again")
+        #expect(overlay.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"),
+                "the dismiss zones take the column's taps")
     }
 
-    @Test("der Grund reicht bis an jede Ecke, die Wertezeile bleibt sichtbar", .needsTheSources)
-    func theGroundFillsAndTheValueRowStays() throws {
+    @Test("die Werkzeuge stehen einmal: in der Reihe oder in der Spalte, der Timer ebenso", .needsTheSources)
+    func theToolsStandOnce() throws {
         let player = try source("Sources/Views/PlayerView.swift")
-        // Both grounds of the sheet ignore the stack's safe area.
+        #expect(player.contains("if toolsAtSide {\n                if tools.contains(.source) { catalogSourceControl }\n            } else {\n                MeasuredFits {"))
+        #expect(player.components(separatedBy: "if !toolsAtSide { sleepControl }").count - 1 == 2)
+        // The tools carry no type size of their own; the row and the cell give it.
+        #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))
+    }
+
+    @Test("der Grund reicht bis an jede Ecke, der Inhalt bleibt in der freien Flaeche", .needsTheSources)
+    func theGroundFillsAndTheContentKeepsClear() throws {
+        let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
         #expect(player.contains(".opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))\n                .ignoresSafeArea()"))
-        // The scroll keeps no room for a bar that stands in the column, and
-        // draws no soft edge over the value row.
-        #expect(player.contains(".ignoresSafeArea(.container, edges: toolsAtSide ? .bottom : [])"))
-        #expect(player.contains(".bottomScrollEdgeHidden(toolsAtSide)"))
+        #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 }
 #endif

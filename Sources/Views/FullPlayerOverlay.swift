@@ -33,7 +33,7 @@ struct FullPlayerOverlay: View {
     /// the line under the controls (`NoticePlacement`).
     @State private var pillHasRoom = true
     private let dismissThreshold: CGFloat = 180
-    @Environment(\.playerToolsAtSide) private var toolsAtSide
+    @Environment(\.sideColumnPlacement) private var columnPlacement
 
     init(
         coordinator: PlayerCoordinator,
@@ -71,9 +71,14 @@ struct FullPlayerOverlay: View {
             ZStack(alignment: .top) {
                 playerScreen(dragProgress: visual, cornerRadius: corner)
                     .environment(\.noticePillHasRoom, pillHasRoom)
-                sideDismissZones
-                topDismissZone
-                bottomDismissZone
+                Group {
+                    sideDismissZones
+                    topDismissZone
+                    bottomDismissZone
+                }
+                // The side column's strip stays free for its parts: the zones
+                // lie over the player and would take their taps.
+                .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
                 noticePill
                 grabHandle
             }
@@ -103,26 +108,16 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    /// The player itself. With the tabs at the side it stands in a
-    /// navigation stack of its own: there the system puts the player's bar
-    /// buttons in its column and keeps the content to the free area beside
-    /// it. iPhone and iPad keep the player as it was.
-    @ViewBuilder
+    /// The player itself; with the tabs at the side it stands its own side
+    /// column (`PlayerView`).
     private func playerScreen(dragProgress: CGFloat, cornerRadius: CGFloat) -> some View {
-        let screen = PlayerScreen(
+        PlayerScreen(
             coordinator: coordinator,
             dragProgress: dragProgress,
             cornerRadius: cornerRadius,
             topInset: topInset,
             bottomInset: bottomInset
         )
-        if toolsAtSide {
-            NavigationStack {
-                screen.toolbar(.hidden, for: .navigationBar)
-            }
-        } else {
-            screen
-        }
     }
 
     /// Static glass: tint/shape constant. The dynamic reveal runs exclusively via

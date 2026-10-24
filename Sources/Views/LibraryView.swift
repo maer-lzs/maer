@@ -73,6 +73,13 @@ struct LibraryView: View {
     private var sideColumnScheme: ColorScheme {
         SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme)
     }
+    /// Where the side column stands, from the measured strip (`SideColumnPlacement`).
+    private func sideColumnPlacement(strip: CGFloat) -> SideColumnPlacement {
+        SideColumnPlacement(leading: verticalBarSide == .leading,
+                            top: max(0, reservedSide.top - Self.reservedBelowGlyph + Self.sideGap),
+                            shift: reservedSide.shift(stripMaxX: sideStripMaxX),
+                            strip: strip)
+    }
     /// The active tab stands at its root: nothing pushed.
     private var activeTabAtRoot: Bool { navigationPaths[selectedMediaType]?.isEmpty ?? true }
     /// The side column's width: the tab capsule, the cog and the search, as
@@ -80,7 +87,7 @@ struct LibraryView: View {
     private static let sideColumnWidth = TabBarPlacement.sideMeasure
     /// THE one gap of the side column: Wi-Fi glyph to cog, search to tabs,
     /// playback bar to search.
-    private static let sideGap: CGFloat = 14
+    private static let sideGap = SideColumnStyle.gap
     /// How much more the system reserves under the Wi-Fi glyph than it draws
     /// (measured: region to 174 pt, glyph to about 151). The cog reaches
     /// into it, to stand `sideGap` under the glyph; a tap there reaches the
@@ -632,21 +639,15 @@ struct LibraryView: View {
                     .environment(\.colorScheme, sideColumnScheme)
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
-                    .frame(width: Self.sideColumnWidth)
-                    .offset(x: reservedSide.shift(stripMaxX: sideStripMaxX))
-                    .frame(width: max(strip, Self.sideColumnWidth + 8))
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { sideStripMaxX = $0 }
-                    .frame(maxHeight: .infinity)
-                    .padding(.top, max(0, reservedSide.top - Self.reservedBelowGlyph + Self.sideGap))
                     // The search stands on the playback bar's middle; with no
                     // bar, clear of the bottom edge.
-                    .padding(.bottom, Self.sideSearchBottom(
-                        windowHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
-                        playbackMidY: miniPlayerMidY,
-                        fallback: proxy.safeAreaInsets.bottom + 8))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity,
-                           alignment: verticalBarSide == .leading ? .topLeading : .topTrailing)
-                    .ignoresSafeArea()
+                    .placedInSideColumn(
+                        sideColumnPlacement(strip: strip),
+                        bottom: Self.sideSearchBottom(
+                            windowHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
+                            playbackMidY: miniPlayerMidY,
+                            fallback: proxy.safeAreaInsets.bottom + 8),
+                        onMaxX: { sideStripMaxX = $0 })
                     .readsReservedStrip(ofWidth: strip, $reservedSide)
                     .onChange(of: strip, initial: true) { _, width in sideStripWidth = width }
                 }
@@ -916,6 +917,9 @@ struct LibraryView: View {
                     }
                     // The overlay lies outside the library's environment.
                     .environment(\.playerToolsAtSide, tabBarPlacement.isSide)
+                    // The player stands its own column where the library's stands.
+                    .environment(\.sideColumnPlacement,
+                                 tabBarPlacement.isSide ? sideColumnPlacement(strip: sideStripWidth) : nil)
                 }
                 // No .move transition: slide in/out runs via the offset in the
                 // overlay (interruptible, can no longer get stuck).

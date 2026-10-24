@@ -18,6 +18,9 @@ nonisolated enum SideColumnStyle {
     static let pillGap: CGFloat = 5
     /// The spacing between the cells.
     static let cellSpacing: CGFloat = 4
+    /// THE one gap between the column's parts: Wi-Fi glyph to cog, capsule
+    /// to round button, playback bar to search.
+    static let gap: CGFloat = 14
     /// The glyph size of a cell.
     static let glyphSize: CGFloat = 17
     /// The glass of every part of the column: the system's bar material.
@@ -50,6 +53,62 @@ extension View {
     }
 }
 
+/// Where the side column stands: its edge, its top under the system's
+/// glyphs, the shift onto the system's axis and the width of the strip the
+/// system keeps free. The library measures it; the library and the full
+/// player stand their column by it (`placedInSideColumn`), so the player's
+/// column is the library's column with other parts in it.
+struct SideColumnPlacement: Equatable {
+    var leading: Bool
+    var top: CGFloat
+    var shift: CGFloat
+    var strip: CGFloat
+
+    /// The edge the column stands at.
+    var edge: Edge.Set { leading ? .leading : .trailing }
+}
+
+extension EnvironmentValues {
+    /// The side column's placement, nil while the tabs stand below.
+    @Entry var sideColumnPlacement: SideColumnPlacement? = nil
+}
+
+extension View {
+    /// Stands this stack of parts as THE side column: in the column's
+    /// measure on the system's axis, from `placement.top` down to `bottom`
+    /// above the window's lower edge. `onMaxX` hears the column's right edge
+    /// in the window (the library reads the axis from it).
+    func placedInSideColumn(_ placement: SideColumnPlacement, bottom: CGFloat,
+                            onMaxX: @escaping (CGFloat) -> Void = { _ in }) -> some View {
+        frame(width: SideColumnStyle.measure)
+            .offset(x: placement.shift)
+            .frame(width: max(placement.strip, SideColumnStyle.measure + 8))
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { onMaxX($0) }
+            .frame(maxHeight: .infinity)
+            .padding(.top, placement.top)
+            .padding(.bottom, bottom)
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: placement.leading ? .topLeading : .topTrailing)
+            .ignoresSafeArea()
+    }
+}
+
+/// A cell of the side capsule that is one tool: its label as a glyph in the
+/// column's glyph size, the cell's square as the tap area. The sleep timer
+/// adds its remaining time under the glyph (`SleepTimerMenu.columnCell`).
+struct SideCapsuleToolCell: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .labelStyle(.iconOnly)
+            .font(.system(size: SideColumnStyle.glyphSize))
+            .foregroundStyle(.primary)
+            .tint(.primary)
+            .frame(width: SideColumnStyle.measure - 2 * SideColumnStyle.pillGap,
+                   height: SideColumnStyle.measure - 2 * SideColumnStyle.pillGap)
+            .contentShape(Rectangle())
+    }
+}
+
 /// THE upright capsule of the side column: its cells one under the other,
 /// the pill gap as end padding, the column's glass.
 struct SideCapsule<Content: View>: View {
@@ -71,15 +130,30 @@ struct SideRoundButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 21 * SideColumnStyle.measure / 56, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: max(SideColumnStyle.measure, 44), height: max(SideColumnStyle.measure, 44))
-                .contentShape(Circle())
+        SideRound {
+            Button(action: action) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 21 * SideColumnStyle.measure / 56, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: SideRound<EmptyView>.side, height: SideRound<EmptyView>.side)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: SideColumnStyle.tier))
         .accessibilityLabel(Text(label))
+    }
+}
+
+/// The round surface of the side column: its circle in the column's
+/// measure on the column's glass. `SideRoundButton` stands on it, and a
+/// control that brings its own button (AirPlay's route picker) too.
+struct SideRound<Content: View>: View {
+    static var side: CGFloat { max(SideColumnStyle.measure, 44) }
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .frame(width: Self.side, height: Self.side)
+            .modifier(AdaptiveGlassBackground(shape: Circle(), tier: SideColumnStyle.tier))
     }
 }
