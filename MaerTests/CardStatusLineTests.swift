@@ -20,6 +20,23 @@ struct CardStatusLineTests {
         #expect(CardStatusLine.lines(for: .accessibility1) == 2)
     }
 
+    @Test("die Zeile bricht nur hinter dem Trenner, nie mitten in einer Angabe wie vor 1 Stunde")
+    func theLineBreaksOnlyAfterTheSeparator() {
+        let line = CardStatusLine.joined(["noch 24 Min.", "vor 1 Stunde"])
+        #expect(line == "noch\u{00A0}24\u{00A0}Min.\u{00A0}· vor\u{00A0}1\u{00A0}Stunde", "\(line.unicodeScalars.map { String($0.value, radix: 16) })")
+        // Exactly one place where a line may break: the space after the separator.
+        #expect(line.filter { $0 == " " }.count == 1)
+        #expect(CardStatusLine.joined(["Gehoert"]) == "Gehoert")
+    }
+
+    @Test("Buch- und Folgenzeile setzen ihre Teile ueber joined zusammen", .needsTheSources)
+    func bothTextsJoinThroughTheRule() throws {
+        let text = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CardStatusLine.swift"), encoding: .utf8))
+        #expect(text.components(separatedBy: "return joined(").count - 1 == 2, "a text joins its parts by hand")
+        #expect(!text.contains(".joined(separator: \" · \")"), "a plain separator lets a part break inside")
+    }
+
     @Test("Karten und Weiterhoeren-Seiten sagen dieselben Worte: Statuszeile ueber CardStatusLine, Text aus einer Stelle", .needsTheSources)
     func cardsAndPagesUseTheOneLine() throws {
         let uses: [(file: String, needles: [String])] = [

@@ -52,7 +52,15 @@ extension CardStatusLine {
     static func bookText(_ entry: LibraryEntry) -> String {
         let remaining = entry.progress.flatMap { $0.isStarted ? $0.remainingText(bookDuration: entry.item.media?.duration) : nil }
         let heard = lastHeard(itemId: entry.id, server: entry.progress?.lastUpdate ?? 0)
-        return [remaining, heard].compactMap { $0 }.joined(separator: " · ")
+        return joined([remaining, heard].compactMap { $0 })
+    }
+
+    /// The parts of a line, each kept whole: a wrap falls after a separator,
+    /// never inside "vor 1 Stunde". The spaces inside a part and the one
+    /// before the separator do not break; only the one after it does.
+    nonisolated static func joined(_ parts: [String]) -> String {
+        parts.map { $0.replacingOccurrences(of: " ", with: "\u{00A0}") }
+            .joined(separator: "\u{00A0}· ")
     }
 
     /// An episode's line: time left (or its length) · last heard (or its
@@ -64,6 +72,6 @@ extension CardStatusLine {
         if case .inProgress(_, let left) = state, left > 0 { remaining = DurationText.remaining(seconds: left) }
         let heard = lastHeard(itemId: item.id, server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0)
             ?? relativeDateText(item)
-        return [remaining, heard].joined(separator: " · ")
+        return joined([remaining, heard])
     }
 }
