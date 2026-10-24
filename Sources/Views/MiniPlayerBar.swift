@@ -37,9 +37,13 @@ struct MiniPlayerBar: View {
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
-    /// Beside a side column the bar takes the search's height (46 pt): a
-    /// smaller cover and buttons, both lines of text, 44 pt to tap.
+    /// Beside a side column the bar takes the column's measure as its height
+    /// (`TabBarPlacement.sideMeasure`, with the search on its middle): a
+    /// smaller cover and buttons, both lines of text.
     var slim: Bool = false
+    /// The height of the content inside the bar; the slim bar adds one point
+    /// above and below to reach the column's measure.
+    private var contentHeight: CGFloat { slim ? TabBarPlacement.sideMeasure - 2 : 48 }
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -99,7 +103,7 @@ struct MiniPlayerBar: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: slim ? 44 : 48, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: contentHeight, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -115,7 +119,7 @@ struct MiniPlayerBar: View {
             MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
                                 showsSkip: showExtendedControls && !isCompactPortrait,
                                 showsAirPlay: !compact && (showExtendedControls || isCompactPortrait),
-                                buttonHeight: slim ? 44 : 48,
+                                buttonHeight: contentHeight,
                                 // A wide bar carries each medium's full controls.
                                 wideControls: !compact && PlaybackBarControls.isWide(barWidth: measuredWidth)
                                     ? PlaybackBarControls.wide(isLive: viewModel.isLiveStream,
@@ -364,7 +368,8 @@ private struct MiniPlayerTransport: View {
     let coordinator: PlayerCoordinator
     let showsSkip: Bool
     let showsAirPlay: Bool
-    /// 48, or 44 in the slim bar beside a side column (`MiniPlayerBar.slim`).
+    /// 48, or the slim bar's content height beside a side column
+    /// (`MiniPlayerBar.slim`).
     var buttonHeight: CGFloat = 48
     /// The wide bar's controls (`PlaybackBarControls.wide`); nil keeps the
     /// narrow set below.

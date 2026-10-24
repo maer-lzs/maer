@@ -66,9 +66,8 @@ struct LibraryView: View {
     /// The active tab stands at its root: nothing pushed.
     private var activeTabAtRoot: Bool { navigationPaths[selectedMediaType]?.isEmpty ?? true }
     /// The side column's width: the tab capsule, the cog and the search, as
-    /// narrow as the system's own column (Apple Music on the device) and
-    /// above the 44 pt a finger needs.
-    private static let sideColumnWidth: CGFloat = 46
+    /// wide as the system's back button in that column.
+    private static let sideColumnWidth = TabBarPlacement.sideMeasure
     /// THE one gap of the side column: Wi-Fi glyph to cog, search to tabs,
     /// playback bar to search.
     private static let sideGap: CGFloat = 14

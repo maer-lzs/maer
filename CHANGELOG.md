@@ -8,6 +8,10 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**The side column takes the size of the back button.** On the iPhone
+Duo the tabs, the search, the settings button and the playback bar
+beside them now share the size of the system's back button.
+
 **Each part says its time once.** In a book from one file with gaps in
 its chapters, the parts are named by their start, "from 15:00", and the
 list showed "15:00" again below. Now the time stands once.

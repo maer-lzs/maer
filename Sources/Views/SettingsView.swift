@@ -249,9 +249,9 @@ struct SettingsView: View {
                         Spacer(minLength: 0)
                         sectionColumn
                     }
-                    .frame(width: 46)
+                    .frame(width: TabBarPlacement.sideMeasure)
                     .offset(x: reservedSide.shift(stripMaxX: stripMaxX))
-                    .frame(width: max(strip, 54))
+                    .frame(width: max(strip, TabBarPlacement.sideMeasure + 8))
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { stripMaxX = $0 }
                     .padding(.top, reservedSide.top)
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 8)

@@ -116,5 +116,25 @@ struct TabBarPlacementTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/VerticalBarSideReader.swift"), encoding: .utf8))
         #expect(reader.contains(".allowsHitTesting(false)"), "the strip reader's background takes hits")
     }
+
+    @Test("ein Mass fuer die Seitenspalte: Reiter, Lupe, Zahnrad und die Wiedergabeleiste daneben", .needsTheSources)
+    func oneMeasureForTheSideColumn() throws {
+        #expect(TabBarPlacement.sideMeasure == 48)
+        func source(_ path: String) throws -> String {
+            try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8)
+        }
+        let library = try source("Sources/Views/LibraryView.swift")
+        #expect(library.contains("private static let sideColumnWidth = TabBarPlacement.sideMeasure"))
+        #expect(library.components(separatedBy: "diameter: Self.sideColumnWidth").count - 1 == 2,
+                "cog and search take the measure")
+        let settings = try source("Sources/Views/SettingsView.swift")
+        #expect(settings.contains(".frame(width: TabBarPlacement.sideMeasure)"))
+        let bar = try source("Sources/Views/MiniPlayerBar.swift")
+        #expect(bar.contains("slim ? TabBarPlacement.sideMeasure - 2 : 48"), "the bar beside the column has its own height")
+        // Rot-Probe: eine eigene Zahl in der Spalte faellt auf.
+        for text in [library, settings, bar] {
+            #expect(!text.contains("frame(width: 46)") && !text.contains("slim ? 44"))
+        }
+    }
 }
 #endif

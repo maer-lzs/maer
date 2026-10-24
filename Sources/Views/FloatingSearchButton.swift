@@ -17,8 +17,8 @@ struct FloatingSearchButton: View {
     var glassMorphNamespace: Namespace.ID? = nil
     var systemImage = "magnifyingglass"
     var label: LocalizedStringKey = "Search"
-    /// 56 at the bottom; the side column is narrower (46, never under the
-    /// 44 pt a finger needs). The glyph keeps its share of the circle.
+    /// 56 at the bottom; the side column is narrower
+    /// (`TabBarPlacement.sideMeasure`). The glyph keeps its share of the circle.
     var diameter: CGFloat = 56
     /// Glass at the bottom; the system's bar material in the side column.
     var tier: GlassTier = .glass
