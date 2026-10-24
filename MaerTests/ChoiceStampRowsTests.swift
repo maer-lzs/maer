@@ -200,7 +200,12 @@ struct ChoiceStampRowsTests {
         sync.noteScalar(key: "librarySortOption", value: "title")
         place.defaults.set("author", forKey: "podcastSortOption")
         sync.noteScalar(key: "podcastSortOption", value: "author")
-        #expect(rows.unread, "the precondition: the notes ran over unread rows")
+        // The notes' writes run before the table is made readable: they hold
+        // over the unreadable rows. Left running, one of them could read the
+        // fresh empty table before the read stamp was put in, take that as
+        // the rows, and the later read was never asked for (1 in 7 runs).
+        await rows.awaitPendingWrites()
+        #expect(rows.unread, "the precondition: the notes ran over unread rows and held")
         try await connection.execute("DROP TABLE choice_stamp")
         let store = try await KeyedRowStore<Double>(connection: connection, table: .choiceStamp)
         _ = try await store.apply(previous: [:], current: [ChoiceStampRows.key("", "playbackRate.buch"): 4_000.0])

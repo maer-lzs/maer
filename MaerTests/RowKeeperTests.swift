@@ -476,6 +476,11 @@ struct RowKeeperTests {
         #expect(storage.startReadFailed, "the precondition: the start read failed")
         let queue = SyncQueue(storage: storage)
         await queue.enqueue(itemId: "new", currentTime: 10, duration: 100, isFinished: false)
+        // Its write runs before the table is made readable, and holds; left
+        // running it could read the fresh empty table before the old row was
+        // put in, take that as the rows, and nobody would read them again.
+        await storage.awaitPendingWrites()
+        #expect(storage.startReadFailed, "the precondition: the first write held over the unread rows")
         try await healed(.pendingSync, rows: ["old": SyncQueue.PendingUpdate(currentTime: 50, duration: 100,
                                                                              isFinished: false, queuedAt: 1_000)],
                          in: database)
