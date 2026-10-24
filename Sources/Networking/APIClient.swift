@@ -229,6 +229,9 @@ final class APIClient {
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+        #if DEBUG
+        if UITestSeed.isActive, let seeded = UITestSeed.seededDetails[itemId] { return seeded }   // seeded stock, no server
+        #endif
         let data = try await get(
             path: "api/items/\(itemId)",
             query: [

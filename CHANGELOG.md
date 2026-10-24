@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A book in two columns on a wide screen.** On the open iPhone Duo and
+on an iPad on its side, a book page shows the cover, the facts, the
+buttons and the description on the left and the chapters as a list on
+the right. Folded and on the iPhone the page stays as it was.
+
 **The full player reaches every corner.** On a screen with square
 corners, the hinge side of the folded iPhone Duo or an iPad, the light
 page behind no longer shows beside the player's rounded corners.

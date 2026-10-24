@@ -145,7 +145,8 @@ struct DownloadedGlyphFenceTests {
         let episode = try Self.view("PodcastEpisodeDetailView.swift")
         #expect(episode.contains(".podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)"))
         let book = try Self.view("BookDetailScreen.swift")
-        #expect(book.components(separatedBy: ".contextMenu { coverDownloadMenu }").count - 1 == 3,
+        // Hero, two forms beside the text, and the left column of the wide page.
+        #expect(book.components(separatedBy: ".contextMenu { coverDownloadMenu }").count - 1 == 4,
                 "every layout of the book page carries the long press")
         let bookMenu = try #require(functionBody(of: "private var coverDownloadMenu: some View {", in: book))
         #expect(bookMenu.contains("BookDownloadMenuItems(itemId: entry.id)"), "the book cover's menu downloads")

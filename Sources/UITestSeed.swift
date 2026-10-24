@@ -184,10 +184,9 @@ enum UITestSeed {
             bookEntry(id: "seed-book-3", title: "Der Leuchtturmwärter", author: "Hanna Berg", chapters: nil,
                       progress: BookProgress(fraction: 1, isFinished: true,
                                              lastUpdate: Date().timeIntervalSince1970 - 2 * 24 * 3600)),
-            bookEntry(id: "seed-book-4", title: "Nordlicht", author: "Jonas Lind", chapters: nil,
-                      progress: BookProgress(fraction: 0.6, isFinished: false,
-                                             lastUpdate: Date().timeIntervalSince1970 - 3600),
-                      series: "Nordlicht #1"),
+            fullBook(progress: BookProgress(fraction: 0.6, isFinished: false,
+                                            lastUpdate: Date().timeIntervalSince1970 - 3600,
+                                            currentTime: 0.6 * fullBookDuration)),
             bookEntry(id: "seed-book-5", title: "Polarnacht", author: "Jonas Lind", chapters: nil,
                       series: "Nordlicht #2"),
             bookEntry(id: "seed-book-6", title: "Die stille Bibliothek", author: "Mira Holm", chapters: nil,
@@ -210,6 +209,12 @@ enum UITestSeed {
         // load, so that is the harness's gap, not the app's.
         session.libraryViewModel._seedForUITest(books)
         session.libraryViewModel._testPersistCache()
+        // The book page asks the server for the detail; the seed answers
+        // with each book's own entry, so no page waits on a host that never
+        // resolves.
+        seededDetails = Dictionary(books.compactMap { entry in
+            entry.item.media.map { (entry.item.id, LibraryItemDetail(id: entry.item.id, media: $0, userMediaProgress: nil)) }
+        }, uniquingKeysWith: { first, _ in first })
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
         let show = PodcastShow(
@@ -409,6 +414,46 @@ enum UITestSeed {
                                     withAttributes: attributes)
         }
         return image.jpegData(compressionQuality: 0.85)
+    }
+
+    /// The details the book page gets for the seeded books
+    /// (`APIClient.fetchItemDetail` asks here first under `-uitest`).
+    private(set) static var seededDetails: [String: LibraryItemDetail] = [:]
+
+    static let fullBookDuration: Double = 9 * 3600
+
+    /// ONE book with everything a book page can show: author, narrator,
+    /// series with its number, year, genres, a description of several
+    /// paragraphs, fourteen chapters, a position. For the sight checks of
+    /// the book page in every width.
+    private static func fullBook(progress: BookProgress) -> LibraryEntry {
+        let titles = ["Ankunft in Tromsø", "Das Haus am Fjord", "Die erste Nacht", "Briefe aus Bergen",
+                      "Polarlicht über dem Hafen", "Die Karte des Großvaters", "Sturm auf der Hurtigrute",
+                      "Was das Eis bewahrt", "Ein Fremder in Hammerfest", "Die Werft", "Stille Tage",
+                      "Der Leuchtturm von Vardø", "Abschied im Schnee", "Heimkehr"]
+        let length = fullBookDuration / Double(titles.count)
+        let chapters = titles.enumerated().map { index, title in
+            chapter(index, Double(index) * length, Double(index + 1) * length, "\(index + 1). \(title)")
+        }
+        let description = """
+            <p>Als die Restauratorin Liv Aaland das Haus ihres Großvaters am Lyngenfjord erbt, \
+            ahnt sie nicht, dass mit den Schlüsseln auch ein Versprechen auf sie übergeht. \
+            Zwischen Kisten voller Seekarten findet sie Briefe, die nie abgeschickt wurden.</p>
+            <p>Der Winter kommt früh in diesem Jahr. Während das Polarlicht über dem Hafen steht, \
+            folgt Liv den Spuren eines Sommers, über den in ihrer Familie niemand spricht, \
+            von Tromsø über Bergen bis zum Leuchtturm von Vardø.</p>
+            <p>Ein leiser Roman über Herkunft, Schweigen und die Frage, was wir denen schulden, \
+            die vor uns da waren. Der erste Band der Nordlicht-Reihe.</p>
+            """
+        return LibraryEntry(item: LibraryItem(
+            id: "seed-book-4",
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(title: "Nordlicht", authorName: "Jonas Lind",
+                                              narratorName: "Greta Sund", seriesName: "Nordlicht #1",
+                                              genres: ["Roman", "Skandinavien"],
+                                              publishedYear: LenientString("2021"), description: description),
+                duration: fullBookDuration, chapters: chapters, tracks: nil),
+            addedAt: 0), progress: progress)
     }
 
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?,

@@ -316,20 +316,85 @@ struct BookDetailScreen: View {
         .ignoresSafeArea()
     }
 
-    /// Chapter link, error text and description. Shared between the portrait and
-    /// landscape layouts.
-    @ViewBuilder
-    private func trailingSections(isHero: Bool) -> some View {
-        // Use the SAME validated/resolved chapter list the player uses, never
-        // the raw server chapters. Otherwise a coverage-fallback book shows a
-        // different (broken) chapter list here than in the player.
-        if let media = detail?.media {
-            let resolved = ChapterModel.resolved(
-                chapters: media.chapters ?? [], tracks: media.tracks ?? [],
-                duration: media.duration ?? 0)
-            if !resolved.chapters.isEmpty {
-                chapterLink(resolved.chapters, isFallback: resolved.isFallback, isHero: isHero)
+    /// A wide window (the open iPhone Duo, an iPad in landscape): cover and
+    /// facts in the left column, the chapters as their own list in the
+    /// right one. Each column scrolls on its own.
+    private var twoColumnLayoutView: some View {
+        GeometryReader { geo in
+            let left = BookDetailLayout.leftColumnWidth(total: geo.size.width)
+            HStack(alignment: .top, spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        BookCoverView(
+                            url: router.coverURL(entry.id),
+                            progress: currentProgress,
+                            itemId: entry.id,
+                            size: left - 48
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .contextMenu { coverDownloadMenu }
+                        VStack(alignment: .leading, spacing: 14) {
+                            titleBlock(alignment: .leading)
+                            infoSection(withPadding: false)
+                            playArea(withPadding: false)
+                            HStack(spacing: 12) {
+                                downloadSection
+                                markAsFinishedButton
+                            }
+                        }
+                        trailingSections(isHero: false, showsChapterLink: false)
+                    }
+                    .padding(.top, 60)
+                    .padding(.bottom, 20)
+                    .bottomBarClearance()
+                    .padding(.horizontal, 24)
+                }
+                .frame(width: left)
+                .scrollContentBackground(.hidden)
+                .reportsBottomBarScroll()
+
+                chapterColumn
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
+        }
+    }
+
+    /// The right column of the wide page: the chapter list itself, not a
+    /// link to it.
+    @ViewBuilder
+    private var chapterColumn: some View {
+        if let resolved = resolvedChapters, !resolved.chapters.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(ChapterModel.selectorLabel(isMusic: false, isFallback: resolved.isFallback))
+                    .font(.headline)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 60)
+                    .padding(.bottom, 8)
+                DetailChapterList(bookTitle: entry.item.title, chapters: resolved.chapters,
+                                  coordinator: coordinator, entry: entry, embedded: true)
+            }
+        } else if isLoading {
+            ProgressView().padding(.top, 80)
+        }
+    }
+
+    /// The SAME validated/resolved chapter list the player uses, never the
+    /// raw server chapters. Otherwise a coverage-fallback book shows a
+    /// different (broken) chapter list here than in the player.
+    private var resolvedChapters: (chapters: [ABSChapter], isFallback: Bool)? {
+        guard let media = detail?.media else { return nil }
+        let resolved = ChapterModel.resolved(
+            chapters: media.chapters ?? [], tracks: media.tracks ?? [],
+            duration: media.duration ?? 0)
+        return (resolved.chapters, resolved.isFallback)
+    }
+
+    /// Chapter link, error text and description. Shared between the portrait and
+    /// landscape layouts; the wide page shows the chapters in their own column.
+    @ViewBuilder
+    private func trailingSections(isHero: Bool, showsChapterLink: Bool = true) -> some View {
+        if showsChapterLink, let resolved = resolvedChapters, !resolved.chapters.isEmpty {
+            chapterLink(resolved.chapters, isFallback: resolved.isFallback, isHero: isHero)
         }
 
         if let errorMessage {
@@ -451,8 +516,9 @@ struct BookDetailScreen: View {
         // geometry. Its size classes don't change on rotation). Portrait
         // always uses the single-column hero layout, on iPad too.
         GeometryReader { geo in
-        let useSideBySideLayout = verticalSizeClass == .compact
-            || (geo.size.height > 0 && geo.size.width > geo.size.height)
+        let layout = BookDetailLayout.of(width: geo.size.width, height: geo.size.height,
+                                         compactHeight: verticalSizeClass == .compact)
+        let useSideBySideLayout = layout != .hero
         ZStack {
             if !useSideBySideLayout {
                 // Gradient as the BACKGROUND for the whole upper area, like the
@@ -485,7 +551,9 @@ struct BookDetailScreen: View {
                 .ignoresSafeArea()
             }
 
-            if useSideBySideLayout {
+            if layout == .twoColumns {
+                twoColumnLayoutView
+            } else if useSideBySideLayout {
                 sideBySideLayoutView
             } else {
                 ScrollView {
@@ -1043,10 +1111,25 @@ private struct DetailChapterList: View {
     let chapters: [ABSChapter]
     @ObservedObject var coordinator: PlayerCoordinator
     let entry: LibraryEntry
+    /// In the right column of the wide book page instead of a page of its
+    /// own: no title of its own, the page's ground shows through.
+    var embedded = false
 
     private var isActiveBook: Bool { coordinator.activeItem?.id == entry.id }
 
     var body: some View {
+        if embedded {
+            rows
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+        } else {
+            rows
+                .navigationTitle(bookTitle)
+                .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private var rows: some View {
         List(chapters) { chapter in
             Button {
                 Task { await play(chapter) }
@@ -1071,9 +1154,8 @@ private struct DetailChapterList: View {
                     }
                 }
             }
+            .listRowBackground(embedded ? Color.clear : nil)
         }
-        .navigationTitle(bookTitle)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func play(_ chapter: ABSChapter) async {
