@@ -52,6 +52,11 @@ struct PlayerView: View {
     /// The tabs stand at the side (`FullPlayerOverlay` hands it in): the
     /// symbol tools become the system's bar buttons in its column.
     @Environment(\.playerToolsAtSide) private var toolsAtSide
+    /// The controls column's height, measured; it does not change with the
+    /// cover, so sizing the cover by it never loops.
+    @State private var controlsHeight: CGFloat = 0
+    /// The readable column in portrait, less its padding.
+    private static let portraitColumn: CGFloat = 500 - 32
 
 
     var body: some View {
@@ -100,8 +105,20 @@ struct PlayerView: View {
                 : AnyLayout(VStackLayout(spacing: 24))
             ScrollView {
                 layout {
+                    // Beside the side column the cover takes only as much
+                    // height as leaves the controls down to AirPlay in sight
+                    // at rest (`DetailCoverSide`); it stood cut off at the
+                    // bottom edge (measured). The height counts the room the
+                    // stack keeps for its bar, which the scroll does not keep.
                     cover
+                        .frame(maxWidth: toolsAtSide && !sideBySide
+                               ? DetailCoverSide.side(columnWidth: Self.portraitColumn,
+                                                      height: geo.size.height + geo.safeAreaInsets.bottom,
+                                                      top: topInset + 24, below: controlsHeight + 24,
+                                                      bottomReserve: bottomInset + 16)
+                               : nil)
                     VStack(spacing: 20) { controlsColumn }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { controlsHeight = $0 }
                         // Report the interactive controls' frame to the overlay:
                         // its top and bottom zones are capped against it so the
                         // chapter buttons and the scrubber stay tappable.

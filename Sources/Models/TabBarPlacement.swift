@@ -28,9 +28,9 @@ nonisolated enum TabBarPlacement: Equatable, Sendable {
     static let minimumFreeColumn: CGFloat = 44
 
     /// THE one measure of the side column, the size of the system's back
-    /// button there (measured on the iPhone Duo: 48 pt, the search was 2 pt
-    /// smaller). The width of the tabs, the search and the cog, and the
-    /// height of the playback bar beside them.
+    /// button there (measured on the iPhone Duo: 48 pt). The width of the
+    /// tabs, the search and the cog, and the height of the playback bar
+    /// beside them.
     static let sideMeasure: CGFloat = 48
 
     /// The side the bar takes: the system's edge, but only where the system

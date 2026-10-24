@@ -27,6 +27,10 @@ struct PlayerToolsAtSideTests {
         #expect(overlay.components(separatedBy: "NavigationStack").count - 1 == 1)
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("if toolsAtSide {\n                ToolbarItemGroup(placement: .bottomBar) { extrasItems }"))
+        // AirPlay stays in the player (the system's column took five, a sixth
+        // stood alone over the value row, measured); the cover leaves it in
+        // sight at rest.
+        #expect(player.contains(".frame(maxWidth: toolsAtSide && !sideBySide\n                               ? DetailCoverSide.side("))
         #expect(player.contains("if !toolsAtSide {\n                MeasuredFits {"), "the own row stands beside the system's bar")
     }
 
