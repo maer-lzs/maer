@@ -90,5 +90,31 @@ struct TabBarPlacementTests {
         #expect(library.contains(".readsVerticalBarSide($verticalBarSide)"),
                 "the placement no longer follows the system's edge")
     }
+
+    /// The reader of the reserved strip lay as a UIView over the whole window
+    /// while the tabs stood at the side, and a UIView takes touches: no card,
+    /// tile or pill under it could be tapped (measured on the iPhone Duo,
+    /// 24.10.2026; the accessibility tree still called them hittable). A
+    /// UIKit view that only measures never takes a touch; a control
+    /// (`AirPlayButton`) is the one that may.
+    @Test("eine UIKit-Ansicht, die nur misst, nimmt keine Beruehrung an", .needsTheSources)
+    func measuringViewsTakeNoTouch() throws {
+        let controls: Set<String> = ["AirPlayButton.swift"]
+        var readers: [String] = []
+        var touchable: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            guard text.contains(": UIViewRepresentable"), !controls.contains(file.lastPathComponent) else { continue }
+            readers.append(file.lastPathComponent)
+            let representables = text.components(separatedBy: ": UIViewRepresentable").count - 1
+            let refused = text.components(separatedBy: "isUserInteractionEnabled = false").count - 1
+            if refused < representables { touchable.append(file.lastPathComponent) }
+        }
+        #expect(readers.count >= 2, "the fence read the readers: \(readers)")
+        #expect(touchable.isEmpty, "a measuring UIKit view takes touches: \(touchable)")
+        let reader = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/VerticalBarSideReader.swift"), encoding: .utf8))
+        #expect(reader.contains(".allowsHitTesting(false)"), "the strip reader's background takes hits")
+    }
 }
 #endif

@@ -16,8 +16,16 @@ extension View {
     /// Reports what the system reserves in the strip at the window's right
     /// edge (status bar, camera): a bar of our own in that strip starts below
     /// it and stands on the axis of the system's own column.
+    /// The reader is a UIView behind a column that spans the whole window,
+    /// so it never takes a touch: a UIView takes touches by default, and this
+    /// one lay over every card and tile while the tabs stood at the side
+    /// (nothing beneath it could be tapped, measured on the iPhone Duo).
     func readsReservedStrip(ofWidth width: CGFloat, _ reading: Binding<ReservedStrip>) -> some View {
-        background { ReservedStripReader(stripWidth: width, reading: reading).accessibilityHidden(true) }
+        background {
+            ReservedStripReader(stripWidth: width, reading: reading)
+                .accessibilityHidden(true)
+                .allowsHitTesting(false)
+        }
     }
 }
 
@@ -74,7 +82,11 @@ private struct ReservedStripReader: UIViewRepresentable {
     let stripWidth: CGFloat
     @Binding var reading: ReservedStrip
 
-    func makeUIView(context: Context) -> ReaderView { ReaderView() }
+    func makeUIView(context: Context) -> ReaderView {
+        let view = ReaderView()
+        view.isUserInteractionEnabled = false
+        return view
+    }
 
     func updateUIView(_ view: ReaderView, context: Context) {
         view.stripWidth = stripWidth

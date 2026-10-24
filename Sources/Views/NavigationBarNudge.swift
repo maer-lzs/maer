@@ -25,7 +25,11 @@ enum NavigationBarNudge {
 
     /// Zero-size capture leaf. Mount exactly once inside the stack content.
     struct Probe: UIViewRepresentable {
-        func makeUIView(context: Context) -> ProbeView { ProbeView() }
+        func makeUIView(context: Context) -> ProbeView {
+            let view = ProbeView()
+            view.isUserInteractionEnabled = false
+            return view
+        }
         func updateUIView(_ uiView: ProbeView, context: Context) {}
     }
 

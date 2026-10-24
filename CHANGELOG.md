@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**Cards open again on the iPhone Duo.** With the tabs at the side, an
+invisible layer lay over the page, and no card, tile or Details button
+beneath it reacted to a tap. Now every card opens its page.
+
 **A book in two columns on a wide screen.** On the open iPhone Duo and
 on an iPad on its side, a book page shows the cover, the facts, the
 buttons and the description on the left and the chapters as a list on
