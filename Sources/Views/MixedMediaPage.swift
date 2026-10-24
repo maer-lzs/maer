@@ -218,6 +218,9 @@ struct MixedMediaPage: View {
                       placeholderSystemImage: "book.closed",
                       lock: .none,
                       progress: entry.progress?.fraction,
+                      // The status line of the card in the row, under the
+                      // tile: the same words in the row and on its page.
+                      meta: CardStatusLine.bookText(entry),
                       onTap: { Task { await playerCoordinator.open(item: entry.item) } })
                 .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
                 .modifier(BookCellContextMenu(
@@ -230,6 +233,7 @@ struct MixedMediaPage: View {
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
                       lock: PodcastSubscriptions.shared.lock(feedURL: PodcastShowSources.show(forEpisodeId: id)?.feedURL ?? ""),
+                      meta: CardStatusLine.episodeText(item),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
                 .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
         }

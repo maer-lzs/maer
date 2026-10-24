@@ -50,9 +50,13 @@ struct ListeningMomentTests {
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")
         }
-        // The cards ask the one rule, not their own arithmetic.
-        for card in ["Sources/Views/BookFeaturedCard.swift", "Sources/Views/Podcasts/PodcastComponents.swift"] {
-            #expect(try code(card).contains("ListeningMoment.label("), "\(card) asks the one rule")
+        // The cards ask the one rule, not their own arithmetic: through the
+        // one place their status words come from.
+        #expect(try code("Sources/Views/CardStatusLine.swift").contains("ListeningMoment.label("),
+                "the cards' status words ask the one rule")
+        for (card, words) in [("Sources/Views/BookFeaturedCard.swift", "CardStatusLine.bookText("),
+                              ("Sources/Views/Podcasts/PodcastComponents.swift", "CardStatusLine.episodeText(")] {
+            #expect(try code(card).contains(words), "\(card) takes its words from the one place")
         }
         // And the row hands the playing moment in, on every stream.
         let home = try code("Sources/Views/HomeView.swift")

@@ -824,6 +824,8 @@ struct PodcastContinuePage: View {
                               coverURL: router.coverURL(item.id),
                               placeholderSystemImage: "waveform.and.mic",
                               lock: PodcastSubscriptions.shared.lock(feedURL: PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""),
+                              // The episode card's status line, as in the row.
+                              meta: CardStatusLine.episodeText(item),
                               onTap: { Task { await playerCoordinator.open(item: item) } })
                         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
                                             showsContinueHide: true)

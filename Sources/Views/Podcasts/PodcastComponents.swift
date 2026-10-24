@@ -81,27 +81,6 @@ struct PodcastFeaturedCard: View {
                             showsContinueHide: true)
     }
 
-    /// Last played (relative) from local/ABS progress.
-    private var lastPlayedText: String {
-        // The ONE moment the Home row ranks by as well.
-        switch ListeningMoment.label(
-            local: ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0,
-            server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0,
-            playingNowMs: PlayingNow.momentMs(forId: item.id)) {
-        case .playing: return String(localized: "Playing now")
-        case .at(let ts): return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
-        case .none: return relativeDateText(item)
-        }
-    }
-
-    /// "12 min left" when in progress, otherwise the duration.
-    private var remainingText: String {
-        if case .inProgress(_, let remaining) = podcastPlayState(for: item), remaining > 0 {
-            return DurationText.remaining(seconds: remaining)
-        }
-        return durationText(item)
-    }
-
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             // The offline dim resolves in the ONE observing
@@ -123,10 +102,7 @@ struct PodcastFeaturedCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 // Remaining · last played (formerly in the play pill). For
                 // played episodes just "Played".
-                CardStatusLine(text: isPlayed
-                                   ? String(localized: "Played")
-                                   : [remainingText, lastPlayedText].joined(separator: " · "),
-                               played: isPlayed)
+                CardStatusLine(text: CardStatusLine.episodeText(item), played: isPlayed)
                 // Fixed heights for the variable lines (title 2 lines, show).
                 // Otherwise a card with more text gets taller than its neighbours.
                 Text(item.title)

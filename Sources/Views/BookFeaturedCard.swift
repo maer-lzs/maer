@@ -94,7 +94,7 @@ struct BookFeaturedCard: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                let sub = [remainingText, lastPlayedText].compactMap { $0 }.joined(separator: " · ")
+                let sub = CardStatusLine.bookText(entry)
                 if !sub.isEmpty {
                     CardStatusLine(text: sub)
                 }
@@ -124,27 +124,6 @@ struct BookFeaturedCard: View {
     }
 
     // MARK: - Rich card content
-
-    private var remainingText: String? {
-        guard let p = entry.progress, p.isStarted else { return nil }
-        return p.remainingText(bookDuration: entry.item.media?.duration)
-    }
-
-    /// The same question the episode card asks and the row ranks by: the
-    /// newer of the local and the server stand, and "playing" while it
-    /// runs. The card used to read the server's stand alone, so a title
-    /// heard here without the server named a different time than the row
-    /// it stood in.
-    private var lastPlayedText: String? {
-        switch ListeningMoment.label(
-            local: ProgressMark.timestamp(ListeningStore.backup(entry.id)) ?? 0,
-            server: entry.progress?.lastUpdate ?? 0,
-            playingNowMs: PlayingNow.momentMs(forId: entry.id)) {
-        case .playing: return String(localized: "Playing now")
-        case .at(let ts): return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
-        case .none: return nil
-        }
-    }
 
     /// Recompute the memoized chapter title from the current inputs. Called
     /// only when the chapters load or the position changes (see the modifiers),

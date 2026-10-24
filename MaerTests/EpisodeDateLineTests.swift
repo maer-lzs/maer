@@ -77,9 +77,11 @@ struct EpisodeDateLineTests {
         #expect(dateText.contains("EpisodeDateLine.text(ms: item.addedAt)"))
         let components = try source("Sources/Views/Podcasts/PodcastComponents.swift")
         #expect(components.contains("Text(EpisodeDateLine.text(ms: info.lastUpdated))"), "the show tile, Last updated")
-        // The episode row, the continue row's fallback and the episode page go
-        // through relativeDateText.
-        #expect(components.components(separatedBy: "relativeDateText(item)").count - 1 == 2)
+        // The episode row, the continue row's fallback (in the cards' status
+        // words) and the episode page go through relativeDateText.
+        #expect(components.components(separatedBy: "relativeDateText(item)").count - 1 == 1)
+        let statusWords = try source("Sources/Views/CardStatusLine.swift")
+        #expect(statusWords.contains("relativeDateText(item)"), "the continue card's fallback date")
         let detail = try source("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift")
         #expect(detail.contains("relativeDateText(item)"))
         // No episode date is formatted past the rule any more.

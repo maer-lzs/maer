@@ -20,13 +20,21 @@ struct CardStatusLineTests {
         #expect(CardStatusLine.lines(for: .accessibility1) == 2)
     }
 
-    @Test("Buch- und Folgenkarte zeichnen ihre Statuszeile ueber CardStatusLine", .needsTheSources)
-    func bothCardsUseTheOneLine() throws {
-        for file in ["Sources/Views/BookFeaturedCard.swift", "Sources/Views/Podcasts/PodcastComponents.swift"] {
-            let text = try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8)
-            #expect(text.contains("CardStatusLine(text:"), "\(file) draws its status line by hand")
-            #expect(!text.contains("[remainingText, lastPlayedText].compactMap { $0 }.joined(separator: \" · \")).font"),
-                    "\(file) keeps a second form of the line")
+    @Test("Karten und Weiterhoeren-Seiten sagen dieselben Worte: Statuszeile ueber CardStatusLine, Text aus einer Stelle", .needsTheSources)
+    func cardsAndPagesUseTheOneLine() throws {
+        let uses: [(file: String, needles: [String])] = [
+            ("Sources/Views/BookFeaturedCard.swift", ["CardStatusLine(text:", "CardStatusLine.bookText(entry)"]),
+            ("Sources/Views/Podcasts/PodcastComponents.swift", ["CardStatusLine(text: CardStatusLine.episodeText(item)"]),
+            ("Sources/Views/MixedMediaPage.swift", ["meta: CardStatusLine.bookText(entry)", "meta: CardStatusLine.episodeText(item)"]),
+            ("Sources/Views/PodcastsView.swift", ["meta: CardStatusLine.episodeText(item)"]),
+        ]
+        for use in uses {
+            let text = try String(contentsOf: SourceTree.root.appendingPathComponent(use.file), encoding: .utf8)
+            for needle in use.needles {
+                #expect(text.contains(needle), "\(use.file) does not say \(needle)")
+            }
+            // The card's own forms of the words are gone.
+            #expect(!text.contains("private var lastPlayedText"), "\(use.file) keeps its own last-heard words")
         }
     }
 }

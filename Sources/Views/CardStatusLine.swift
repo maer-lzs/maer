@@ -30,3 +30,40 @@ struct CardStatusLine: View {
         size > .large ? 2 : 1
     }
 }
+
+/// The words of the status line, for the cards and for the tiles of the
+/// continue page, so a title says the same in the row and on its page.
+extension CardStatusLine {
+    /// "Playing now", or when the title was last heard: the newer of the
+    /// local and the server stand, the moment the rows rank by. Nil when
+    /// neither knows one.
+    static func lastHeard(itemId: String, server: Double) -> String? {
+        switch ListeningMoment.label(
+            local: ProgressMark.timestamp(ListeningStore.backup(itemId)) ?? 0,
+            server: server,
+            playingNowMs: PlayingNow.momentMs(forId: itemId)) {
+        case .playing: return String(localized: "Playing now")
+        case .at(let ts): return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
+        case .none: return nil
+        }
+    }
+
+    /// A book's line: time left · last heard; empty before it was started.
+    static func bookText(_ entry: LibraryEntry) -> String {
+        let remaining = entry.progress.flatMap { $0.isStarted ? $0.remainingText(bookDuration: entry.item.media?.duration) : nil }
+        let heard = lastHeard(itemId: entry.id, server: entry.progress?.lastUpdate ?? 0)
+        return [remaining, heard].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// An episode's line: time left (or its length) · last heard (or its
+    /// date); "Played" once it was heard to the end.
+    static func episodeText(_ item: LibraryItem) -> String {
+        let state = podcastPlayState(for: item)
+        if case .played = state { return String(localized: "Played") }
+        var remaining = durationText(item)
+        if case .inProgress(_, let left) = state, left > 0 { remaining = DurationText.remaining(seconds: left) }
+        let heard = lastHeard(itemId: item.id, server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0)
+            ?? relativeDateText(item)
+        return [remaining, heard].joined(separator: " · ")
+    }
+}
