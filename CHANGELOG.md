@@ -4,8 +4,9 @@
 
 **One button where there were two on the iPhone Duo.** With the tabs at
 the side, the settings button lay over the back button of every page
-you opened. The settings button now stands in the header of each tab,
-and the back button keeps its place alone.
+you opened. The settings button now stands at the top of the side
+column only on a tab's first page; a page you open shows the back
+button there alone.
 
 **The title in the full player opens its book.** A tap on the title of a
 book that the library list had not loaded yet led to an empty white

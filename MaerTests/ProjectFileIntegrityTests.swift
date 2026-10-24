@@ -2275,43 +2275,54 @@ extension ProjectFileIntegrityTests {
     /// Nutzer sieht einer Flaeche nicht an, ob sie Wurzel oder geschoben
     /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
     /// Kommentars, weil die naechste Detailseite ihn sonst wieder
-    /// mitbringt. Die Tab-Wurzel traegt es an einer Stelle, als Element
-    /// ihrer Kopfzeile, auch bei seitlicher Leiste. Die Spalte des Systems
-    /// traegt auf einer geschobenen Seite den Zurueck-Knopf; eine eigene
-    /// Zeichnung des Zahnrads dort laege unter ihm.
+    /// mitbringt. Die Tab-Wurzel traegt es an zwei Stellen, nie beide
+    /// zugleich: in der Kopfzeile, und bei seitlicher Leiste oben in der
+    /// Spalte, nur an der Wurzel, weil die Kopfzeile dort an der
+    /// Statusleiste endet und eine geschobene Seite an dieser Stelle den
+    /// Zurueck-Knopf des Systems traegt.
     nonisolated static let gearExceptions: [String: String] = [
         "SettingsView.swift": "das Zeichen des Bereichs Allgemein in der Bereichsleiste der Einstellungen, kein Weg in sie",
     ]
 
-    @Test("das Zahnrad steht nur an der Tab-Wurzel, als Element ihrer Kopfzeile", .needsTheSources)
+    @Test("das Zahnrad steht nur an der Tab-Wurzel, in Kopfzeile und Seitenspalte", .needsTheSources)
     func settingsGearLivesOnlyAtTheTabRoot() throws {
         var fundstellen: [String] = []
         var ausnahmen: Set<String> = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
-            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                guard !trimmed.hasPrefix("//"), !trimmed.hasPrefix("///") else { continue }
-                if trimmed.contains("gearshape") {
-                    if Self.gearExceptions[file.lastPathComponent] != nil {
-                        ausnahmen.insert(file.lastPathComponent)
-                    } else {
-                        fundstellen.append("\(file.lastPathComponent):\(number + 1)")
-                    }
+            for number in Self.gearLines(in: text) {
+                if Self.gearExceptions[file.lastPathComponent] != nil {
+                    ausnahmen.insert(file.lastPathComponent)
+                } else {
+                    fundstellen.append("\(file.lastPathComponent):\(number)")
                 }
             }
         }
-        #expect(fundstellen.count == 1,
-                "das Zahnrad steht nicht mehr an genau einer Stelle der Tab-Wurzel: \(fundstellen)")
+        #expect(fundstellen.count == 2,
+                "das Zahnrad steht nicht mehr an genau zwei Stellen der Tab-Wurzel: \(fundstellen)")
         #expect(fundstellen.allSatisfy { $0.hasPrefix("LibraryView.swift") },
                 "eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
         #expect(ausnahmen == Set(Self.gearExceptions.keys),
                 "eine Ausnahme ohne Zahnrad ist eine, die niemand mehr nachsieht: \(ausnahmen)")
-        // Das Element steht in jeder Lage der Leiste, nie hinter ihr verborgen.
+        // Die Spalte zeichnet es nur, solange die Regel es zeigt.
         let library = try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)
-        #expect(!library.contains("if !tabBarPlacement.isSide {"),
-                "das Zahnrad der Kopfzeile haengt wieder an der Lage der Leiste")
+        #expect(library.contains("if sideCogShown {\n                            FloatingSearchButton(action: { showSettings = true },"),
+                "das Zahnrad der Spalte steht ohne die Regel der Tab-Wurzel")
+        // Rot-Probe des Zaehlers: ein Text mit zwei Zahnraedern und einem im
+        // Kommentar zaehlt zwei.
+        let probe = "Image(systemName: \"gearshape\")\n// gearshape\n    systemImage: \"gearshape\","
+        #expect(Self.gearLines(in: probe) == [1, 3])
+    }
+
+    /// Die Zeilen eines Textes (ab 1), die das Zahnrad ausserhalb eines
+    /// Kommentars nennen.
+    nonisolated static func gearLines(in text: String) -> [Int] {
+        text.split(separator: "\n", omittingEmptySubsequences: false).enumerated().compactMap { number, line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.hasPrefix("//"), trimmed.contains("gearshape") else { return nil }
+            return number + 1
+        }
     }
 
     @Test("der alte Stamm kommt in Sources nicht mehr vor", .needsTheSources)
