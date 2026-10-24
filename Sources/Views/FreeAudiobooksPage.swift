@@ -219,7 +219,7 @@ struct FreeAudiobooksPage: View {
     }
 
     private func feedTileRow(_ feeds: [HoerspielCuration.Entry]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 12) {
                 ForEach(feeds) { entry in
                     // X²·1: form meta line + CC capsule only where the feed
@@ -277,7 +277,7 @@ struct FreeAudiobooksPage: View {
     }
 
     private func tileRow(_ items: [LibraryItem], placeholder: String) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
                     tile(item, placeholder: placeholder)
@@ -293,7 +293,7 @@ struct FreeAudiobooksPage: View {
     // ── Radio-play charts ───────────────────────────────────────────────
 
     private var chipRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 ForEach(CatalogGenreAxis.hoerspielChips) { chip in
                     Button {
@@ -344,7 +344,7 @@ struct FreeAudiobooksPage: View {
                        shown: RowPreview.cut(chartResults).count,
                        destination: PodcastRoute.chartGenre(selectedChip))
         } content: {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
                         RecommendationTile(result: result)
@@ -430,7 +430,7 @@ struct OERRCountriesPage: View {
                     if !rows.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             RowHeading.plain(verbatim: country.title)
-                            ScrollView(.horizontal, showsIndicators: false) {
+                            ScrollView(.horizontal) {
                                 LazyHStack(alignment: .top, spacing: 12) {
                                     ForEach(rows) { entry in
                                         RecommendationTile(result: PodcastSearchResult(

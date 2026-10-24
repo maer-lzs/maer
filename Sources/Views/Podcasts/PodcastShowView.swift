@@ -429,7 +429,7 @@ struct PodcastShowView: View {
         if let s = liveShow {
             VStack(spacing: 8) {
                 if let cats = s.categories, !cats.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         HStack(spacing: 6) {
                             ForEach(cats, id: \.self) { c in
                                 Text(c)

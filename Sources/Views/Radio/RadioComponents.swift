@@ -274,7 +274,7 @@ struct RadioCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.title3).bold().padding(.horizontal)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 14) {
                     // The radio card rows ran UNCAPPED. Part of why
                     // the cold start felt sluggish (every station a cell).
@@ -589,7 +589,7 @@ struct RadioFeaturedCardRow: View {
             } else {
                 Text(title).font(.title3).bold().padding(.horizontal)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(RowPreview.cut(stations)) { station in
                         RadioFeaturedCard(station: station,

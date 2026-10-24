@@ -17,7 +17,10 @@ struct AppearanceHost: ViewModifier {
     @AppStorage(AppStorageKeys.appearance) private var appearance = AppearanceChoice.system.rawValue
 
     func body(content: Content) -> some View {
-        content.preferredColorScheme(Self.scheme(AppearanceChoice.of(appearance)))
+        content
+            .preferredColorScheme(Self.scheme(AppearanceChoice.of(appearance)))
+            // A presentation host does not inherit this either.
+            .noScrollBars()
     }
 
     /// The choice as SwiftUI's scheme; nil follows the system.
@@ -37,5 +40,13 @@ extension View {
     /// stands in the fence's exception list instead.
     func followsAppearanceChoice() -> some View {
         modifier(AppearanceHost())
+    }
+
+    /// THE one place for scroll bars: the app shows none, on every device
+    /// and in every posture. The root and every presented leaf carry it
+    /// with the appearance (`followsAppearanceChoice`); a leaf that keeps
+    /// its own scheme carries it itself.
+    func noScrollBars() -> some View {
+        scrollIndicators(.hidden)
     }
 }

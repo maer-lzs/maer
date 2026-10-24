@@ -80,6 +80,8 @@ struct BookDetailScreen: View {
     /// What the two buttons under the main one take side by side, at the
     /// current type size (`DetailButtonRow`).
     @ScaledMetric(relativeTo: .body) private var buttonPairWidth: CGFloat = DetailButtonRow.sideBySideMinWidth
+    /// The same in their compact form.
+    @ScaledMetric(relativeTo: .body) private var compactPairWidth: CGFloat = DetailButtonRow.compactMinWidth
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
@@ -117,8 +119,9 @@ struct BookDetailScreen: View {
 
     /// The cover across the page's own width, edge to edge: the width the
     /// window gives this page, not the screen's, so a split window and an
-    /// unfolded iPhone Duo get a cover that fits.
-    private func heroCover(side: CGFloat) -> some View {
+    /// unfolded iPhone Duo get a cover that fits. Smaller than that width it
+    /// stands as a card (`DetailCoverCard`).
+    private func heroCover(side: CGFloat, card: Bool) -> some View {
         coverImageContent
             .frame(width: side, height: side)
             .clipped()
@@ -137,6 +140,7 @@ struct BookDetailScreen: View {
                     .frame(height: 4)
                 }
             }
+            .coverCard(card)
             // The author portrait floats on the SEAM between cover and
             // gradient (avatar-over-banner pattern), trailing side. Mostly
             // above the edge, dipping slightly below it.
@@ -384,14 +388,16 @@ struct BookDetailScreen: View {
     }
 
     /// The download and mark buttons: side by side where both fit whole,
-    /// else one under the other (`DetailButtonRow`).
+    /// else side by side with glyph and short word, else one under the
+    /// other (`DetailButtonRow`).
     private func buttonRow(width: CGFloat) -> some View {
-        let layout = DetailButtonRow.stacked(width: width, needs: buttonPairWidth)
+        let form = DetailButtonRow.form(width: width, needs: buttonPairWidth, compactNeeds: compactPairWidth)
+        let layout = form == .stacked
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
             : AnyLayout(HStackLayout(spacing: 12))
         return layout {
-            downloadSection
-            markAsFinishedButton
+            downloadSection(compact: form == .compact)
+            markAsFinishedButton(compact: form == .compact)
         }
     }
 
@@ -598,12 +604,14 @@ struct BookDetailScreen: View {
                         VStack(spacing: 8) {
                             // The full width where the window is tall enough,
                             // else as large as leaves title and play above the
-                            // playback bar (`DetailCoverSide`).
-                            heroCover(side: DetailCoverSide.side(
-                                columnWidth: geo.size.width,
+                            // playback bar, as a card (`DetailCoverCard`).
+                            let coverForm = DetailCoverCard.form(
+                                width: geo.size.width,
                                 height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom,
-                                top: 0, below: belowCover,
-                                bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom))
+                                safeTop: geo.safeAreaInsets.top, below: belowCover,
+                                bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom)
+                            heroCover(side: coverForm.side, card: coverForm.isCard)
+                                .padding(.top, coverForm.top)
                                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                                     coverBottom = $0
                                     noteBelowCover()
@@ -900,15 +908,20 @@ struct BookDetailScreen: View {
         ProgressMark.markGesture(atTrueEnd: isFinishedOverride ?? currentProgress?.atTrueEnd ?? false)
     }
 
-    private var markAsFinishedButton: some View {
+    /// `compact`: the short word, so both buttons share one row.
+    private func markAsFinishedButton(compact: Bool) -> some View {
         let gesture = finishGesture
+        let title = switch (gesture.marksPlayed, compact) {
+        case (true, false): String(localized: "Mark as Finished")
+        case (false, false): String(localized: "Mark as Unfinished")
+        case (true, true): String(localized: "Mark Finished")
+        case (false, true): String(localized: "Mark Unfinished")
+        }
         return Button {
             Task { await toggleFinishedMark() }
         } label: {
-            Label(
-                gesture.marksPlayed ? String(localized: "Mark as Finished") : String(localized: "Mark as Unfinished"),
-                systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill"
-            )
+            Label(title, systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill")
+                .lineLimit(1)
             .font(.subheadline)
             .foregroundStyle(.primary)
             // Same height source as the download capsule next to it.
@@ -933,8 +946,9 @@ struct BookDetailScreen: View {
 
     // MARK: - Download
 
+    /// `compact`: the short word, so both buttons share one row.
     @ViewBuilder
-    private var downloadSection: some View {
+    private func downloadSection(compact: Bool) -> some View {
         // The secondary buttons follow the RIGHTS. A catalog title has no
         // download path today (the copy stays gated on a stated licence,
         // and the shellac records never state one); a download button here
@@ -943,7 +957,7 @@ struct BookDetailScreen: View {
         if isCatalogTitle {
             EmptyView()
         } else {
-            BookDownloadCapsule(itemId: entry.id, canStart: detail != nil && isOnline) {
+            BookDownloadCapsule(itemId: entry.id, canStart: detail != nil && isOnline, compact: compact) {
                 await startDownloadWithWiFiCheck()
             }
         }
@@ -993,11 +1007,15 @@ private struct BookDownloadCapsule: View {
     /// The page knows whether a start can work: the detail must be loaded and
     /// the device online.
     let canStart: Bool
+    /// The short word at the start, so the capsule shares one row with
+    /// the mark button.
+    let compact: Bool
     let start: () async -> Void
 
-    init(itemId: String, canStart: Bool, start: @escaping () async -> Void) {
+    init(itemId: String, canStart: Bool, compact: Bool, start: @escaping () async -> Void) {
         self.itemId = itemId
         self.canStart = canStart
+        self.compact = compact
         self.start = start
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
     }
@@ -1139,17 +1157,23 @@ private struct BookDownloadCapsule: View {
                 } label: {
                     // A leftover partial folder means only missing files load.
                     Label(
-                        downloadManager.hasPartialDownload(itemId: itemId)
-                            ? String(localized: "Load Missing Files")
-                            : String(localized: "Save Offline"),
+                        compact
+                            ? String(localized: "Offline")
+                            : downloadManager.hasPartialDownload(itemId: itemId)
+                                ? String(localized: "Load Missing Files")
+                                : String(localized: "Save Offline"),
                         systemImage: "arrow.down.circle"
                     )
+                    .lineLimit(1)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
                     .padding(.vertical, 2)
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                // The spoken label keeps the full words in the compact form.
+                .accessibilityLabel(downloadManager.hasPartialDownload(itemId: itemId)
+                                    ? Text("Load Missing Files") : Text("Save Offline"))
                 // Offline a download can't start. Disable instead of failing.
                 .disabled(!canStart)
                 // Locale-independent handles for the offline states. The

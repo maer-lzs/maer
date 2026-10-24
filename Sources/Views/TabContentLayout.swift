@@ -392,7 +392,7 @@ struct ShelfPlaceholderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             RowHeading.plain(verbatim: title)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(0..<RowPreview.limit, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: 8)

@@ -38,7 +38,7 @@ struct BrowseRow: View {
         VStack(alignment: .leading, spacing: 10) {
             RowHeading.entry("Browse", destination: MixedRowRoute.browse)
                 .accessibilityIdentifier("home-browse")
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(BrowseMix.columns(tiles), id: \.first?.id) { column in
                         VStack(alignment: .leading, spacing: 16) {

@@ -275,7 +275,7 @@ struct CatalogSourcePage: View {
     /// tiles side by side. Popular, New at LibriVox, the shelves and the
     /// decades draw through it.
     private func previewStrip(_ shown: [LibraryItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(shown) { item in
                     tile(item).cardRowSlot(spacing: 14)

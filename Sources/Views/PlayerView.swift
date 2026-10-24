@@ -357,8 +357,7 @@ struct PlayerView: View {
             }
         }
         .frame(maxWidth: 300)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(radius: 12, y: 6)
+        .coverCard()
         // Horizontal swipe on the cover = previous/next chapter. For music
         // each song is a chapter, so this is prev/next track. `simultaneous` so
         // it never blocks vertical scroll or the drag-to-dismiss; only a clearly

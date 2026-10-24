@@ -799,7 +799,9 @@ struct LibraryView: View {
             get: { driveMode.isActive },
             set: { if !$0 { driveMode.exit() } }
         )) {
+            // Its own scheme (always dark), so it carries the scroll bars itself.
             DriveModeView(coordinator: playerCoordinator, libraryViewModel: viewModel)
+                .noScrollBars()
         }
         .onChange(of: scenePhase) { _, newPhase in
             // The app-level half (drive mode, iCloud pull, reconnect, cover
@@ -1574,7 +1576,7 @@ struct LibraryView: View {
                        total: viewModel.recentlyAdded.count,
                        shown: RowPreview.cut(viewModel.recentlyAdded).count,
                        destination: LibraryListRoute.recentlyAdded)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 // Eager HStack: the lazy variant froze the shelf height on the
                 // first measured cell and clipped taller cells' last text line.
                 HStack(alignment: .top, spacing: 16) {
@@ -1599,7 +1601,7 @@ struct LibraryView: View {
                        total: viewModel.continueListening.count,
                        shown: RowPreview.cut(viewModel.continueListening).count,
                        destination: LibraryListRoute.continueListening)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(RowPreview.cut(viewModel.continueListening)) { entry in
                         BookFeaturedCard(entry: entry,

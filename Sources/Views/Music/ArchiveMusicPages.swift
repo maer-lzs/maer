@@ -158,7 +158,7 @@ struct ArchiveMusicPage: View {
         let preview = RowPreview.cut(items)
         if !preview.isEmpty {
             RowHeading.entry("Popular", destination: MusicRoute.archiveMusicPopular(area.key))
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(preview) { item in
                         FreeCatalogBookTile(
@@ -220,7 +220,7 @@ struct ArchiveMusicPage: View {
                            destination: MusicRoute.archiveMusicShelf(area: area.key,
                                                                      shelf: shelf.key))
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(stock?.items ?? []) { item in
                         FreeCatalogBookTile(
@@ -540,7 +540,7 @@ struct ShellacShelvesPage: View {
     }
 
     private func tileRow(_ items: [LibraryItem], shelf: ArchiveMusicArea) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
                     // For MUSIC the tap plays. On a book it leads into the

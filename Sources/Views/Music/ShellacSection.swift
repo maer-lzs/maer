@@ -55,7 +55,7 @@ struct ShellacSection: View {
     }
 
     private var tileRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(titles)) { item in
                     FreeCatalogBookTile(

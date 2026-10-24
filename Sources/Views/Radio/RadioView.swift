@@ -271,7 +271,7 @@ struct RadioView: View {
     /// The card strip WITHOUT its own title. The counted RowHeading above
     /// carries title and page entry.
     private func browseCardScroller(stations: [RadioStation]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(stations)) { station in
                     RadioStationCard(station: station, playerCoordinator: playerCoordinator,

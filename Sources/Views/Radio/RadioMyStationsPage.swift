@@ -59,7 +59,7 @@ struct RadioMyStationsPage: View {
         // ▶ plays), star on the favorite tiles.
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.title3).bold().padding(.horizontal)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(stations) { station in
                         RadioStationCard(station: station,

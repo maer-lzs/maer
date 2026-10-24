@@ -70,8 +70,6 @@ struct DetailColumnsTests {
         let frame = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"),
                                encoding: .utf8)
         #expect(frame.components(separatedBy: "FoldSplit.columns(").count - 1 == 1)
-        // No scroll bars in the two columns, set once for every page in them.
-        #expect(frame.contains("}\n            // No scroll bars in the two columns, for every page in them.\n            .scrollIndicators(.hidden)"))
         #expect(frame.components(separatedBy: "FoldColumns {").count - 1 == 2)
     }
 
@@ -179,7 +177,43 @@ struct DetailColumnsTests {
         let page = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
         #expect(page.contains("@ScaledMetric(relativeTo: .body) private var buttonPairWidth: CGFloat = DetailButtonRow.sideBySideMinWidth"))
-        #expect(page.contains("DetailButtonRow.stacked(width: width, needs: buttonPairWidth)"))
+        #expect(page.contains("@ScaledMetric(relativeTo: .body) private var compactPairWidth: CGFloat = DetailButtonRow.compactMinWidth"))
+        #expect(page.contains("DetailButtonRow.form(width: width, needs: buttonPairWidth, compactNeeds: compactPairWidth)"))
+    }
+
+    @Test("zwischen voller Zeile und untereinander stehen die zwei Knoepfe knapp in einer Zeile")
+    func theCompactRowStandsBetween() {
+        let full = DetailButtonRow.sideBySideMinWidth, compact = DetailButtonRow.compactMinWidth
+        #expect(DetailButtonRow.form(width: 380, needs: full, compactNeeds: compact) == .sideBySide)
+        #expect(DetailButtonRow.form(width: 342, needs: full, compactNeeds: compact) == .compact)
+        #expect(DetailButtonRow.form(width: 240, needs: full, compactNeeds: compact) == .stacked)
+        // Large type scales both needs: the same width stacks.
+        #expect(DetailButtonRow.form(width: 342, needs: full * 1.35, compactNeeds: compact * 1.35) == .stacked)
+    }
+
+    @Test("das Cover wird zur Karte, sobald es schmaler als die Seite ist, sonst bleibt es randlos")
+    func theCoverBecomesACard() {
+        // iPhone 17: the full width fits, edge to edge.
+        #expect(DetailCoverCard.form(width: 402, height: 874, safeTop: 62, below: 305, bottomReserve: 126)
+                == .init(side: 402, isCard: false, top: 0))
+        // Folded Duo upright: smaller than the page, a card under the status bar.
+        let card = DetailCoverCard.form(width: 412, height: 678, safeTop: 32, below: 305, bottomReserve: 126)
+        #expect(card.isCard && card.top == 32 + DetailCoverCard.gap)
+        #expect(card.side == DetailCoverSide.side(columnWidth: 412 - 2 * DetailCoverCard.gap, height: 678,
+                                                  top: card.top, below: 305, bottomReserve: 126))
+        #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
+    }
+
+    @Test("Buchseite und Player tragen die eine Form der Karte", .needsTheSources)
+    func bookPageAndPlayerShareTheCard() throws {
+        let page = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(page.contains("let coverForm = DetailCoverCard.form("))
+        #expect(page.contains(".coverCard(card)"))
+        let player = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
+        #expect(player.contains(".frame(maxWidth: 300)\n        .coverCard()"))
+        #expect(!player.contains("RoundedRectangle(cornerRadius: 12))\n        .shadow("), "the player keeps a card of its own")
     }
 }
 #endif

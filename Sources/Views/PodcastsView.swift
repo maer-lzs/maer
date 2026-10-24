@@ -321,7 +321,7 @@ RowHeading(title: "Keep Listening", font: .title2,
                            total: nextUpShown.count,
                            shown: RowPreview.cut(nextUpShown).count,
                            destination: PodcastRoute.nextUpAll)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         // Preview cap for every row of this tab.
                         // Hidden entries are gone from this row too.
@@ -400,7 +400,7 @@ RowHeading(title: "Recommended",
                            total: recommendationItems.count,
                            shown: RowPreview.cut(recommendationItems).count,
                            destination: PodcastRoute.recommendations)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(recommendationItems)) { r in
                             recommendationTile(r)
@@ -529,7 +529,7 @@ RowHeading(title: "Recommended",
                            total: mirroredShows.count,
                            shown: RowPreview.cut(mirroredShows).count,
                            destination: PodcastRoute.pinchflatGroup)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(RowPreview.cut(mirroredShows)) { info in
                             NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
@@ -628,7 +628,7 @@ RowHeading(title: "Recommended",
                     Label("Premium", systemImage: "lock.fill")
                         .font(.title3).bold().padding(.horizontal)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(shows)) { show in
                             NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
@@ -970,7 +970,7 @@ struct RadioPlayChartsPage: View {
                                        total: results.count,
                                        shown: RowPreview.cut(results).count,
                                        destination: PodcastRoute.chartGenre(chip.key))
-                            ScrollView(.horizontal, showsIndicators: false) {
+                            ScrollView(.horizontal) {
                                 LazyHStack(alignment: .top, spacing: 12) {
                                     ForEach(RowPreview.cut(results), id: \.feedURL) { result in
                                         RecommendationTile(result: result)

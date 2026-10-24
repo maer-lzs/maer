@@ -650,7 +650,7 @@ struct FreeJamendoPage: View {
     }
 
     private func jamendoTileRow(_ rowItems: [LibraryItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(rowItems) { item in
                     // Musik-Kachel. Tap spielt, Langdruck zeigt Details.
@@ -775,7 +775,7 @@ struct JamendoShelfPage: View {
     /// page throws nothing away afterwards.
     @ViewBuilder
     private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 filterChip(title: String(localized: "Instrumental"),
                            selected: filter.instrumentalOnly) {
@@ -939,7 +939,7 @@ struct MusicCatalogAreaPage: View {
     /// Same tile anatomy as the source rows (NACHSCHLAGEN, license capsule on
     /// the detail sheet; long-press keeps the Play shortcut).
     private func tileRow(_ items: [LibraryItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
                     // A tap plays (music), the context menu shows details.

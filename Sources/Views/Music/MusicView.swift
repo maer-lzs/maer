@@ -262,7 +262,7 @@ struct MusicView: View {
     /// Free-catalog tile row on the tab. NACHSCHLAGEN taps (detail
     /// sheet with attribution), same tiles as Home.
     private func freeTileRow(_ items: [LibraryItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
                     FreeCatalogBookTile(
@@ -322,7 +322,7 @@ struct MusicView: View {
                 } else {
                     RowHeading.plain("Recently Played")
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(RowPreview.cut(entries), id: \.self) { entry in
                             switch entry {
@@ -350,7 +350,7 @@ struct MusicView: View {
         VStack(alignment: .leading, spacing: 8) {
             RowHeading(title: title, total: items.count,
                        shown: RowPreview.cut(items).count, destination: page)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 16) {
                     // Music shelves ran UNCAPPED. Every shelf built
                     // a cell per album of the library. A row is a preview.
@@ -385,7 +385,7 @@ struct MusicView: View {
             let sources = playlistSources
             if !sources.isEmpty {
                 RowHeading.plain("Playlists")
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(sources) { source in
                             // The card names ITSELF. A name set here

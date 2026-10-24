@@ -31,7 +31,7 @@ struct MusicArtistsView: View {
         List {
             if portraitRow.count >= 4, query.isEmpty {
                 Section {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         HStack(spacing: 14) {
                             ForEach(portraitRow) { artist in
                                 NavigationLink(value: MusicRoute.artist(artist)) {
@@ -312,7 +312,7 @@ struct MusicArtistView: View {
         if !similarInLibrary.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 RowHeading.plain("Similar Artists")
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: 12) {
                         ForEach(similarInLibrary) { similar in
                             NavigationLink(value: MusicRoute.artist(similar)) {

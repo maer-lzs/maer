@@ -264,7 +264,7 @@ struct HomeView: View {
                            total: continueIdsAll.count,
                            shown: RowPreview.cut(continueIds).count,
                            destination: MixedRowRoute.continueListening)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         // Preview cap. The row is not the shelf.
                         ForEach(RowPreview.cut(continueIds), id: \.self) { id in
@@ -356,7 +356,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                            total: listenAgainTotal,
                            shown: entries.count,
                            destination: MixedRowRoute.listenAgain)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(entries, id: \.self) { entry in
                             switch entry {
@@ -490,7 +490,7 @@ RowHeading(title: "Rediscover",
                            total: rediscoverPool.count,
                            shown: RowPreview.cut(rediscoverPicks).count,
                            destination: MixedRowRoute.rediscoverPool)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(rediscoverPicks), id: \.id) { pick in
                             rediscoverTile(pick)
@@ -524,7 +524,7 @@ RowHeading(title: "Rediscover",
                            total: recentlyAddedAll.count,
                            shown: RowPreview.cut(recentlyAddedItems).count,
                            destination: MixedRowRoute.recentlyAdded)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     // LazyHStack (was eager). The lazy variant used to freeze
                     // the shelf height on the first cell and clip taller ones. An
                     // EXPLICIT per-cell height fixes that: the cover is a fixed 150,

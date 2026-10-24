@@ -586,7 +586,7 @@ struct SearchScreen: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 4)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(recents, id: \.self) { term in
                         Button {
@@ -956,7 +956,7 @@ struct MusicServerRow: View {
                     .padding(.horizontal)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: 8) { chips }
                         .padding(.horizontal)
                 }

@@ -72,8 +72,50 @@ nonisolated enum DetailButtonRow {
     /// Two buttons of the longest German label (about 170 pt each) and the
     /// gap between them, at the standard type size.
     static let sideBySideMinWidth: CGFloat = 360
+    /// Two compact buttons (glyph and short word) and the gap between
+    /// them, at the standard type size.
+    static let compactMinWidth: CGFloat = 260
 
     /// `needs`: the width both take at the current type size (the page's
     /// `@ScaledMetric` of `sideBySideMinWidth`).
     static func stacked(width: CGFloat, needs: CGFloat) -> Bool { width < needs }
+
+    enum Form: Equatable { case sideBySide, compact, stacked }
+
+    /// Side by side with their full words where both fit, else side by
+    /// side in their compact form, which leaves more height to the cover,
+    /// else one under the other. `compactNeeds` scales like `needs`.
+    static func form(width: CGFloat, needs: CGFloat, compactNeeds: CGFloat) -> Form {
+        if !stacked(width: width, needs: needs) { return .sideBySide }
+        return stacked(width: width, needs: compactNeeds) ? .stacked : .compact
+    }
+}
+
+/// The cover of a detail page as a card: once the page's height makes it
+/// smaller than the page's full width, it stands with round corners and a
+/// shadow, `gap` under the status bar and at its sides, as in the wide
+/// page's leading column; at full width it stays edge to edge. The book
+/// page and the full player share the card's look (`coverCard()`).
+nonisolated enum DetailCoverCard {
+    static let cornerRadius: CGFloat = 12
+    static let gap: CGFloat = 16
+
+    struct Form: Equatable {
+        var side: CGFloat
+        var isCard: Bool
+        /// The room above the cover: none edge to edge, else the status
+        /// bar and the gap.
+        var top: CGFloat
+    }
+
+    static func form(width: CGFloat, height: CGFloat, safeTop: CGFloat, below: CGFloat,
+                     bottomReserve: CGFloat) -> Form {
+        let full = DetailCoverSide.side(columnWidth: width, height: height, top: 0, below: below,
+                                        bottomReserve: bottomReserve)
+        guard full < width else { return Form(side: full, isCard: false, top: 0) }
+        let top = safeTop + gap
+        return Form(side: DetailCoverSide.side(columnWidth: max(0, width - 2 * gap), height: height, top: top,
+                                               below: below, bottomReserve: bottomReserve),
+                    isCard: true, top: top)
+    }
 }

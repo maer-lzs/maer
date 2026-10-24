@@ -36,9 +36,16 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
                     .frame(width: max(0, columns.trailing - margin))
                     .padding(.leading, margin)
             }
-            // No scroll bars in the two columns, for every page in them.
-            .scrollIndicators(.hidden)
         }
+    }
+}
+
+extension View {
+    /// THE look of a detail page's cover as a card (`DetailCoverCard`):
+    /// round corners and a shadow. The book page and the full player take it.
+    func coverCard(_ isCard: Bool = true) -> some View {
+        clipShape(RoundedRectangle(cornerRadius: isCard ? DetailCoverCard.cornerRadius : 0))
+            .shadow(color: .black.opacity(isCard ? 0.35 : 0), radius: 12, y: 6)
     }
 }
 

@@ -20,7 +20,7 @@ struct CatalogMixRow: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 12) {
                 ForEach(tiles) { tile in
                     CatalogMixTile(tile: tile, marksKind: false, playerCoordinator: playerCoordinator)

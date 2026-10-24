@@ -116,7 +116,7 @@ struct KnownServerSuggestions: View {
 
     var body: some View {
         if !entries.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 6) {
                     ForEach(entries) { entry in
                         Button {
