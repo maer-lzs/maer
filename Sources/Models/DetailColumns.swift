@@ -40,7 +40,18 @@ nonisolated enum DetailCoverSide {
     static func side(columnWidth: CGFloat, height: CGFloat, top: CGFloat, below: CGFloat,
                      bottomReserve: CGFloat) -> CGFloat {
         let fitsHeight = height - top - below - bottomReserve
-        return max(min(columnWidth, minimum), min(columnWidth, fitsHeight))
+        // Whole points: a fraction lands on another pixel than asked, the
+        // measured distance below moves by it, and the side with it.
+        return max(min(columnWidth, minimum), min(columnWidth, fitsHeight)).rounded(.down)
+    }
+
+    /// What the page keeps as the height below the cover, from a new
+    /// measurement: the measurement depends on where the cover lands, and
+    /// pixel rounding moves it by a fraction each pass (measured: the page
+    /// re-rendered without end, 100 % CPU). A change under one point is kept
+    /// out, so the cover settles after a finite number of passes.
+    static func settled(_ kept: CGFloat, measured: CGFloat) -> CGFloat {
+        abs(measured - kept) < 1 ? kept : measured.rounded()
     }
 }
 

@@ -72,6 +72,56 @@ struct DetailColumnsTests {
         #expect(frame.components(separatedBy: "FoldColumns {").count - 1 == 2)
     }
 
+    /// A layout pass in the model of the measured loop: the cover lands on a
+    /// third of a point, and the measured height below it moves by the
+    /// part of its side that the pixel grid swallows.
+    private static func measuredBelow(side: CGFloat) -> CGFloat {
+        let landed = (side * 3).rounded() / 3
+        return 305 + (side - landed) * 3
+    }
+
+    @Test("Cover und gemessene Hoehe darunter kommen nach endlich vielen Durchlaeufen zur Ruhe")
+    func theCoverSettlesAfterFinitelyManyPasses() {
+        // Unsettled, the model swings without end: the loop the page showed
+        // (100 % CPU, the setters of both measurements on the main thread).
+        var raw: CGFloat = 0
+        var rawSides: Set<CGFloat> = []
+        for _ in 0..<20 {
+            let side = min(412, 678 - raw - 126.5)
+            rawSides.insert(side)
+            raw = Self.measuredBelow(side: side)
+        }
+        #expect(rawSides.count > 1, "the model does not show the swing it stands for")
+        // Settled: whole-point sides and a change under a point kept out.
+        var kept: CGFloat = 0
+        var passes = 0
+        var lastSide: CGFloat = -1
+        while passes < 20 {
+            let side = DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126.5)
+            let next = DetailCoverSide.settled(kept, measured: Self.measuredBelow(side: side))
+            passes += 1
+            if side == lastSide && next == kept { break }
+            lastSide = side
+            kept = next
+        }
+        #expect(passes < 5, "the cover did not come to rest: \(passes) passes")
+        #expect(DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126.5)
+                    .truncatingRemainder(dividingBy: 1) == 0)
+    }
+
+    @Test("Buchseite und Player halten die gemessene Hoehe nur ueber die Regel des Stillstands", .needsTheSources)
+    func theMeasurementsGoThroughTheSettle() throws {
+        let page = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(page.contains("belowCover = DetailCoverSide.settled(belowCover, measured:"))
+        // Four measurements (cover and play button in both forms) and the definition.
+        #expect(page.components(separatedBy: "noteBelowCover()").count - 1 == 5, "a measurement sets the height by itself")
+        #expect(!page.contains("private var belowCover: CGFloat {"), "the height is read raw from the two measurements")
+        let player = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
+        #expect(player.contains("controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)"))
+    }
+
     @Test("zwei Knoepfe nebeneinander nur, wo beide ganz Platz haben")
     func twoButtonsSideBySideOnlyWhereTheyFit() {
         let standard = DetailButtonRow.sideBySideMinWidth

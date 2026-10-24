@@ -118,7 +118,9 @@ struct PlayerView: View {
                                                       bottomReserve: bottomInset + 16)
                                : nil)
                     VStack(spacing: 20) { controlsColumn }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { controlsHeight = $0 }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                            controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)
+                        }
                         // Report the interactive controls' frame to the overlay:
                         // its top and bottom zones are capped against it so the
                         // chapter buttons and the scrubber stay tappable.

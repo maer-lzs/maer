@@ -90,7 +90,12 @@ struct BookDetailScreen: View {
     /// button, the same at every cover size (`DetailCoverSide`).
     @State private var coverBottom: CGFloat = 0
     @State private var playBottom: CGFloat = 0
-    private var belowCover: CGFloat { max(0, playBottom - coverBottom) }
+    /// Their distance as the cover is sized by it, settled to whole points
+    /// (`DetailCoverSide.settled`), so the page comes to rest.
+    @State private var belowCover: CGFloat = 0
+    private func noteBelowCover() {
+        belowCover = DetailCoverSide.settled(belowCover, measured: max(0, playBottom - coverBottom))
+    }
     private static let pageSpace = "bookDetailPage"
 
     private var buttonShape: RoundedRectangle {
@@ -346,6 +351,7 @@ struct BookDetailScreen: View {
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                         coverBottom = $0
+                        noteBelowCover()
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         titleBlock(alignment: .leading)
@@ -353,6 +359,7 @@ struct BookDetailScreen: View {
                         playArea(withPadding: false)
                             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                                 playBottom = $0
+                                noteBelowCover()
                             }
                         buttonRow(width: content)
                     }
@@ -594,6 +601,7 @@ struct BookDetailScreen: View {
                                 bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom))
                                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                                     coverBottom = $0
+                                    noteBelowCover()
                                 }
                             titleBlock(alignment: .center)
                                 .padding(.horizontal)
@@ -602,6 +610,7 @@ struct BookDetailScreen: View {
                         playArea(withPadding: true)
                             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                                 playBottom = $0
+                                noteBelowCover()
                             }
                         buttonRow(width: min(geo.size.width, 600) - 32)
                             .padding(.horizontal)
