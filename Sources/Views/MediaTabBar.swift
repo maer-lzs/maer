@@ -70,10 +70,8 @@ struct MediaTabBar: View {
     /// 6 → 5. The pill breathes a touch taller inside the SAME
     /// bar height (the gap is the pill's vertical inset; smaller gap =
     /// taller pill, bar metrics and morph untouched).
-    private static let pillGap: CGFloat = 5
-
-    /// Spacing between the cells.
-    private static let cellSpacing: CGFloat = 4
+    /// The value stands once, in `SideColumnStyle`, for the bar and the column.
+    private static let pillGap = SideColumnStyle.pillGap
 
     /// The label size at rest, and the sizes the bar may fall back to.
     ///
@@ -114,29 +112,30 @@ struct MediaTabBar: View {
         // ladder probes the REAL rows invisibly on main and builds only the
         // chosen one; the behaviour contract (one size per bar, whole titles,
         // descending rungs) is unchanged and the journeys still fence it.
-        Group {
-            if upright {
-                // A column has no width to fall back on: no labels, no ladder.
+        if upright {
+            // A column has no width to fall back on: no labels, no ladder.
+            // The column's one capsule (`SideCapsule`).
+            SideCapsule {
                 TabRowCandidate(cells: cells, selected: selected,
                                 labelSize: Self.baseLabelSize, hideLabels: true,
                                 namespace: namespace, upright: true, onSelect: onSelect)
-            } else {
-                MeasuredLadder(rungs: Self.labelSizes) { size, probing in
-                    TabRowCandidate(cells: cells, selected: selected,
-                                    labelSize: size, hideLabels: hideLabels,
-                                    namespace: namespace, probing: probing,
-                                    onSelect: onSelect)
-                }
             }
+            .animation(.snappy(duration: 0.3), value: selected)
+        } else {
+            MeasuredLadder(rungs: Self.labelSizes) { size, probing in
+                TabRowCandidate(cells: cells, selected: selected,
+                                labelSize: size, hideLabels: hideLabels,
+                                namespace: namespace, probing: probing,
+                                onSelect: onSelect)
+            }
+            .animation(.snappy(duration: 0.3), value: selected)
+            // The end padding IS the pill gap. The pill's distance to the bar's
+            // rounded ends equals its inset along the bar everywhere.
+            .padding(.horizontal, Self.pillGap)
+            .modifier(AdaptiveGlassBackground(
+                shape: Capsule(), tier: .glass,
+                morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         }
-        .animation(.snappy(duration: 0.3), value: selected)
-        // The end padding IS the pill gap. The pill's distance to the bar's
-        // rounded ends equals its inset along the bar everywhere.
-        .padding(upright ? .vertical : .horizontal, Self.pillGap)
-        // Upright in the system's column it takes the system's glass, untinted.
-        .modifier(AdaptiveGlassBackground(
-            shape: Capsule(), tier: upright ? .sideColumn : .glass,
-            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
     }
 }
 
@@ -180,10 +179,9 @@ nonisolated private struct TabRowCandidate: View {
     var upright: Bool = false
     let onSelect: (String) -> Void
 
-    /// Mirror. Kept in sync with `MediaTabBar.pillGap` via the shared
-    /// constant there.
-    private static let pillGap: CGFloat = 5
-    private static let cellSpacing: CGFloat = 4
+    /// The bar's and the column's measures, standing once in `SideColumnStyle`.
+    private static let pillGap = SideColumnStyle.pillGap
+    private static let cellSpacing = SideColumnStyle.cellSpacing
 
     var body: some View {
         let layout = upright ? AnyLayout(VStackLayout(spacing: Self.cellSpacing))
@@ -195,7 +193,7 @@ nonisolated private struct TabRowCandidate: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: cell.systemImage)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: SideColumnStyle.glyphSize, weight: .semibold))
                         if !hideLabels {
                             Text(cell.label)
                                 .font(.system(size: labelSize))

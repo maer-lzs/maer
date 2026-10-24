@@ -8,35 +8,27 @@ import SwiftUI
 /// Floating magnifier button at the bottom. Modeled on the separate, floating
 /// search button Apple uses since iOS 26 in Music & co. Opens the full-page
 /// `SearchScreen` (the bar morphs into the search field) instead of expanding
-/// into a field itself. The same round button carries the cog in the side
-/// column, so the two stand there at one size.
+/// into a field itself. In the side column the search is a `SideRoundButton`.
 struct FloatingSearchButton: View {
     let action: () -> Void
     /// Native glass-morph identity when hosted in the bottom-bar container.
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
-    var systemImage = "magnifyingglass"
-    var label: LocalizedStringKey = "Search"
-    /// 56 at the bottom; the side column is narrower
-    /// (`TabBarPlacement.sideMeasure`). The glyph keeps its share of the circle.
-    var diameter: CGFloat = 56
-    /// Glass at the bottom; the system's bar material in the side column.
-    var tier: GlassTier = .glass
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
+            Image(systemName: "magnifyingglass")
                 // Same glyph size as the collapsed home button's tab
                 // glyph; circle size unchanged.
-                .font(.system(size: 21 * diameter / 56, weight: .semibold))
+                .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: max(diameter, 44), height: max(diameter, 44))
+                .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(
-            shape: Circle(), tier: tier,
+            shape: Circle(), tier: .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
-        .accessibilityLabel(Text(label))
+        .accessibilityLabel(Text("Search"))
     }
 }

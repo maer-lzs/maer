@@ -596,9 +596,7 @@ struct LibraryView: View {
                     // tabs, the search at the very bottom.
                     VStack(spacing: Self.sideGap) {
                         if sideCogShown {
-                            FloatingSearchButton(action: { showSettings = true },
-                                                 systemImage: "gearshape", label: "Settings",
-                                                 diameter: Self.sideColumnWidth, tier: .sideColumn)
+                            SideRoundButton(systemImage: "gearshape", label: "Settings") { showSettings = true }
                                 .accessibilityIdentifier("open-settings")
                                 .transition(.opacity)
                         }
@@ -610,11 +608,13 @@ struct LibraryView: View {
                             if searchFieldFocused {
                                 Color.clear.frame(height: Self.sideColumnWidth)
                             } else {
-                                searchCloseButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
+                                SideRoundButton(systemImage: "xmark", label: "Close search") { closeOrClearSearch() }
+                                    .accessibilityIdentifier("search-close")
                             }
                         } else {
                             mediaBar(upright: true)
-                            searchButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
+                            SideRoundButton(systemImage: "magnifyingglass", label: "Search") { openSearch() }
+                                .accessibilityIdentifier("global-search")
                         }
                     }
                     // As narrow as the system's own column and on its axis,
@@ -1202,27 +1202,30 @@ struct LibraryView: View {
         .accessibilityIdentifier("global-search-field")
     }
 
-    /// The round glass X. Clears a typed query first, a second tap
-    /// (or an empty field) closes the search. 56 at the bottom; in the side
-    /// column at the search's place, with its measure and material.
-    private func searchCloseButton(diameter: CGFloat = 56, tier: GlassTier = .glass) -> some View {
-        Button {
-            if !searchModel.query.isEmpty {
-                searchModel.query = ""
-            } else {
-                closeSearch()
-            }
-        } label: {
+    /// The X: clears a typed query first, a second tap (or an empty field)
+    /// closes the search.
+    private func closeOrClearSearch() {
+        if !searchModel.query.isEmpty {
+            searchModel.query = ""
+        } else {
+            closeSearch()
+        }
+    }
+
+    /// The round glass X at the bottom; in the side column it is a
+    /// `SideRoundButton`.
+    private func searchCloseButton() -> some View {
+        Button { closeOrClearSearch() } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 17 * diameter / 56, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: diameter, height: diameter)
+                .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(
-            shape: Circle(), tier: tier,
-            morphID: tier == .glass ? "close" : nil, morphNamespace: tier == .glass ? bottomGlassNS : nil))
+            shape: Circle(), tier: .glass,
+            morphID: "close", morphNamespace: bottomGlassNS))
         .accessibilityLabel(Text("Close search"))
         .accessibilityIdentifier("search-close")
     }
@@ -1260,22 +1263,23 @@ struct LibraryView: View {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
     }
 
-    private func searchButton(diameter: CGFloat = 56, tier: GlassTier = .glass) -> some View {
-        FloatingSearchButton(
-            action: {
-                searchModel.query = ""
-                // The scope starts where the user is (Home → Library).
-                searchScope = SearchScope.initial(for: selectedMediaType)
-                // The search page lives on the library ROOT. Opened from a
-                // pushed detail page it sat INVISIBLY underneath it (field in
-                // the bottom bar worked, results never showed). Pop to root
-                // first; any push already closes the search, so root-only is the
-                // consistent home of the search.
-                returnToRoot(selectedMediaType)
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
-            },
-            glassMorphID: "search", glassMorphNamespace: bottomGlassNS,
-            diameter: diameter, tier: tier)
+    /// Opens the search, from the bottom bar or the side column.
+    private func openSearch() {
+        searchModel.query = ""
+        // The scope starts where the user is (Home → Library).
+        searchScope = SearchScope.initial(for: selectedMediaType)
+        // The search page lives on the library ROOT. Opened from a
+        // pushed detail page it sat INVISIBLY underneath it (field in
+        // the bottom bar worked, results never showed). Pop to root
+        // first; any push already closes the search, so root-only is the
+        // consistent home of the search.
+        returnToRoot(selectedMediaType)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
+    }
+
+    private func searchButton() -> some View {
+        FloatingSearchButton(action: { openSearch() },
+                             glassMorphID: "search", glassMorphNamespace: bottomGlassNS)
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
         // Locale-independent handle for the UI-test harness.

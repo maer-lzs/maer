@@ -2307,7 +2307,7 @@ extension ProjectFileIntegrityTests {
         // Die Spalte zeichnet es nur, solange die Regel es zeigt.
         let library = try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)
-        #expect(library.contains("if sideCogShown {\n                            FloatingSearchButton(action: { showSettings = true },"),
+        #expect(library.contains("if sideCogShown {\n                            SideRoundButton(systemImage: \"gearshape\", label: \"Settings\") { showSettings = true }"),
                 "das Zahnrad der Spalte steht ohne die Regel der Tab-Wurzel")
         // Rot-Probe des Zaehlers: ein Text mit zwei Zahnraedern und einem im
         // Kommentar zaehlt zwei.

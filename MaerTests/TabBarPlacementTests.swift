@@ -127,8 +127,11 @@ struct TabBarPlacementTests {
         }
         let library = try source("Sources/Views/LibraryView.swift")
         #expect(library.contains("private static let sideColumnWidth = TabBarPlacement.sideMeasure"))
-        #expect(library.components(separatedBy: "diameter: Self.sideColumnWidth").count - 1 == 3,
-                "cog, search and the search's close button take the measure")
+        // Cog, search and the search's close button are the column's round
+        // button, which takes the measure itself (`SideColumnStyle`).
+        #expect(library.components(separatedBy: "SideRoundButton(").count - 1 == 3)
+        let parts = try source("Sources/Views/SideColumnParts.swift")
+        #expect(parts.contains("static let measure = TabBarPlacement.sideMeasure"))
         let settings = try source("Sources/Views/SettingsView.swift")
         #expect(settings.contains(".frame(width: TabBarPlacement.sideMeasure)"))
         let bar = try source("Sources/Views/MiniPlayerBar.swift")

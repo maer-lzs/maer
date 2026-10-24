@@ -133,7 +133,7 @@ struct MiniPlayerBar: View {
         .modifier(AdaptiveGlassBackground(
             // Beside the side column the bar is a system bar like the
             // search next to it: the system's glass, no cover tint.
-            shape: shape, tier: slim ? .sideColumn : .glass,
+            shape: shape, tier: slim ? SideColumnStyle.tier : .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         .background(
             GeometryReader { geo in
