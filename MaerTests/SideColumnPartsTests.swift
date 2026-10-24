@@ -56,7 +56,12 @@ struct SideColumnPartsTests {
         let library = try source("Sources/Views/LibraryView.swift")
         #expect(library.contains(".transformPreference(SideColumnSchemeKey.self) { if selectedMediaType != type { $0 = nil } }"))
         #expect(library.contains(".onPreferenceChange(SideColumnSchemeKey.self) { sidePageScheme = $0 }"))
-        #expect(library.contains(".environment(\\.colorScheme, SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme))"))
+        // One brightness for the parts and the playback bar beside them.
+        #expect(library.components(separatedBy: "SideColumnStyle.scheme(").count - 1 == 1)
+        #expect(library.contains("SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme)"))
+        #expect(library.contains(".environment(\\.colorScheme, sideColumnScheme)"))
+        #expect(library.contains(".bottomGlassContainer()\n            .environment(\\.colorScheme, tabBarPlacement.isSide ? sideColumnScheme : systemColorScheme)"),
+                "the playback bar beside the column keeps a brightness of its own")
         let page = try source("Sources/Views/BookDetailScreen.swift")
         #expect(page.contains(".environment(\\.colorScheme, .dark)\n                .sideColumnScheme(isTopPage ? .dark : nil)"),
                 "the dark book page does not tell the column, or tells it while covered")

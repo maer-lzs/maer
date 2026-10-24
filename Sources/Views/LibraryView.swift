@@ -68,6 +68,11 @@ struct LibraryView: View {
     @State private var sideCogShown = true
     /// The brightness the visible page asks of the side column, nil for none.
     @State private var sidePageScheme: ColorScheme?
+    /// THE brightness of the side column: its two parts and the playback
+    /// bar beside it take it together (`SideColumnStyle.scheme`).
+    private var sideColumnScheme: ColorScheme {
+        SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme)
+    }
     /// The active tab stands at its root: nothing pushed.
     private var activeTabAtRoot: Bool { navigationPaths[selectedMediaType]?.isEmpty ?? true }
     /// The side column's width: the tab capsule, the cog and the search, as
@@ -624,7 +629,7 @@ struct LibraryView: View {
                     }
                     // The column's parts take the brightness the page under
                     // them asks for (`SideColumnStyle.scheme`).
-                    .environment(\.colorScheme, SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme))
+                    .environment(\.colorScheme, sideColumnScheme)
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
                     .frame(width: Self.sideColumnWidth)
@@ -968,7 +973,11 @@ struct LibraryView: View {
     /// matchedGeometry as before. No extra work at scroll start: the collapse
     /// now removes fewer views than the old full-branch swap.
     private func bottomBarContent(collapsed: Bool) -> some View {
-        bottomBarStack(collapsed: collapsed).bottomGlassContainer()
+        bottomBarStack(collapsed: collapsed)
+            .bottomGlassContainer()
+            // Beside the side column the playback bar takes the column's
+            // brightness; set on the container, which draws the glass.
+            .environment(\.colorScheme, tabBarPlacement.isSide ? sideColumnScheme : systemColorScheme)
     }
 
     private func bottomBarStack(collapsed barCollapsed: Bool) -> some View {
