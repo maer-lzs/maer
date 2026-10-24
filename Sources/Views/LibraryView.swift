@@ -66,6 +66,8 @@ struct LibraryView: View {
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
     /// Whether the side column shows the cog now (`SideColumnCog`).
     @State private var sideCogShown = true
+    /// The brightness the visible page asks of the side column, nil for none.
+    @State private var sidePageScheme: ColorScheme?
     /// The active tab stands at its root: nothing pushed.
     private var activeTabAtRoot: Bool { navigationPaths[selectedMediaType]?.isEmpty ?? true }
     /// The side column's width: the tab capsule, the cog and the search, as
@@ -241,6 +243,8 @@ struct LibraryView: View {
         // far under the status bar, measured at the pixel on both SDKs), and
         // named here it holds for the tab root and every page pushed on it.
         .topScrollEdge(hard: tabBarPlacement.isSide)
+        // Only the visible tab's page tells the side column its brightness.
+        .transformPreference(SideColumnSchemeKey.self) { if selectedMediaType != type { $0 = nil } }
         // Every hook pushes into the path of EXACTLY THIS tab, so a push on
         // Home also lands in Home.
         .environment(\.pushPodcastRoute) { push($0, to: type) }
@@ -523,6 +527,7 @@ struct LibraryView: View {
                 }
             }
         }
+        .onPreferenceChange(SideColumnSchemeKey.self) { sidePageScheme = $0 }
         .onChange(of: selectedMediaType) { _, newValue in
                     // A search set aside on another tab does not come back here.
                     searchReturn.forget()
@@ -617,6 +622,9 @@ struct LibraryView: View {
                                 .accessibilityIdentifier("global-search")
                         }
                     }
+                    // The column's parts take the brightness the page under
+                    // them asks for (`SideColumnStyle.scheme`).
+                    .environment(\.colorScheme, SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme))
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
                     .frame(width: Self.sideColumnWidth)

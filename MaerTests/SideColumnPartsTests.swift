@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// The side column is built once: one capsule, one round button. No other
@@ -37,6 +38,28 @@ struct SideColumnPartsTests {
         #expect(!bar.contains("CGFloat = 5") && !bar.contains("CGFloat = 4"), "the bar keeps a measure of its own")
         // Rot-Probe of the counter: a view with the column's glass is seen.
         #expect(Self.materialLines(in: ".modifier(AdaptiveGlassBackground(shape: Circle(), tier: .sideColumn))") == 1)
+    }
+
+    @Test("die Spalte nimmt die Helligkeit, die die Seite verlangt, sonst die der App")
+    @MainActor
+    func theColumnTakesThePagesBrightness() {
+        #expect(SideColumnStyle.scheme(page: .dark, system: .light) == .dark)
+        #expect(SideColumnStyle.scheme(page: nil, system: .light) == .light)
+        #expect(SideColumnStyle.scheme(page: nil, system: .dark) == .dark)
+    }
+
+    @Test("die dunkle Buchseite meldet sich, nur der sichtbare Reiter zaehlt, die Spalte fragt die Regel", .needsTheSources)
+    func theDarkPageReachesTheColumn() throws {
+        func source(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let library = try source("Sources/Views/LibraryView.swift")
+        #expect(library.contains(".transformPreference(SideColumnSchemeKey.self) { if selectedMediaType != type { $0 = nil } }"))
+        #expect(library.contains(".onPreferenceChange(SideColumnSchemeKey.self) { sidePageScheme = $0 }"))
+        #expect(library.contains(".environment(\\.colorScheme, SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme))"))
+        let page = try source("Sources/Views/BookDetailScreen.swift")
+        #expect(page.contains(".environment(\\.colorScheme, .dark)\n                .sideColumnScheme(.dark)"),
+                "the dark book page does not tell the column")
     }
 }
 #endif

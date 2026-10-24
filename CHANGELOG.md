@@ -8,6 +8,11 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**The side column turns dark on a dark page.** On the iPhone Duo the
+tabs, the search and the settings button take a dark glass with light
+symbols where the page beneath is dark, as the system's own status
+symbols do.
+
 **The folded iPhone Duo stays upright.** Folded on its side there was no
 room for the side column and the camera sat in the content; the app now
 keeps the folded Duo upright. Open, on the iPhone and on the iPad

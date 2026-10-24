@@ -635,6 +635,8 @@ struct BookDetailScreen: View {
                 // Portrait/hero layout is ALWAYS dark (cover gradient):
                 // pin the scheme so .primary text and glass stay light-on-dark.
                 .environment(\.colorScheme, .dark)
+                // The side column beside it turns dark as well.
+                .sideColumnScheme(.dark)
             }
         }
         // All glass buttons on this page share the book's cover accent.
