@@ -609,6 +609,10 @@ final class GPodderSync {
         }
 
         // --- Pull: server → local ---
+        // The account this round writes for, taken before the network: a
+        // change of account while the actions load or merge leaves this
+        // round writing nothing into the new account's stock.
+        let epoch = ListeningStore.ownerEpoch()
         let since = AppStorageKeys.int(AppStorageKeys.gpodderEpisodeSince) ?? 0
         let (actions, newSince) = try await client.episodeActions(since: since)
         // Cheap main-actor pass first: matching over the index and the
@@ -631,41 +635,52 @@ final class GPodderSync {
         // notifications hop back afterwards, once.
         // detached because the merge is CPU work off the MainActor
         let outcome = await Task.detached(priority: .userInitiated) {
-            () -> (pulledGuids: [String], supplemented: Int) in
+            () -> (pulledGuids: [String], supplemented: Int, accountChanged: Bool) in
             var pulledGuids: [String] = []
             var supplemented = 0
             for play in plays {
-                let localArr = ListeningStore.backup(play.guid)
-                let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
-                if play.tsMs > localTs {
-                    // PATH 1. ADOPTION: the server is newer, its state wins.
-                    // `advancing` rather than `entry`: when the server reports
-                    // no `total`, the existing reference point must NOT die.
-                    // That is how a background sync replaced good three-value
-                    // marks with two-value ones. In the worst case with a
-                    // device's own echo, because the push stamps the moment of
-                    // pushing.
-                    ListeningStore.store(play.guid,
-                                         entry: ProgressMark.advancing(localArr,
-                                                                       position: Double(play.pos),
-                                                                       duration: play.total,
-                                                                       nowMs: play.tsMs))
-                    pulledGuids.append(play.guid)
-                } else if let localArr,
-                          let healed = ProgressMark.supplementing(localArr, duration: play.total) {
-                    // PATH 2. SUPPLEMENT: the local entry is correct, it only
-                    // lacks its reference point. This is NOT an adoption, so it
-                    // has nothing to do with timestamps. For the affected
-                    // episodes both sides stem from the SAME event and the
-                    // server is never newer. Only the duration is added;
-                    // position and timestamp stay untouched, and no entry is
-                    // ever created from nothing.
-                    ListeningStore.store(play.guid, entry: healed)
-                    supplemented += 1
+                if ListeningStore.ownerEpoch() != epoch { return (pulledGuids, supplemented, true) }
+                // Read and write as one under the stock's lock: a position
+                // the player writes meanwhile is the entry the rule decides on.
+                var path: GPodderMergePath?
+                ListeningStore.merge(play.guid, epoch: epoch) { localArr in
+                    path = GPodderMergePath.of(local: localArr, serverTsMs: play.tsMs, serverTotal: play.total)
+                    switch path {
+                    case .adopt:
+                        // PATH 1. ADOPTION: the server is newer, its state wins.
+                        // `advancing` rather than `entry`: when the server reports
+                        // no `total`, the existing reference point must NOT die.
+                        // That is how a background sync replaced good three-value
+                        // marks with two-value ones. In the worst case with a
+                        // device's own echo, because the push stamps the moment of
+                        // pushing.
+                        return ProgressMark.advancing(localArr, position: Double(play.pos),
+                                                      duration: play.total, nowMs: play.tsMs)
+                    case .supplement(let healed):
+                        // PATH 2. SUPPLEMENT: the local entry is correct, it only
+                        // lacks its reference point. This is NOT an adoption, so it
+                        // has nothing to do with timestamps. For the affected
+                        // episodes both sides stem from the SAME event and the
+                        // server is never newer. Only the duration is added;
+                        // position and timestamp stay untouched, and no entry is
+                        // ever created from nothing.
+                        return healed
+                    case nil:
+                        return nil
+                    }
+                }
+                switch path {
+                case .adopt: pulledGuids.append(play.guid)
+                case .supplement: supplemented += 1
+                case nil: break
                 }
             }
-            return (pulledGuids, supplemented)
+            return (pulledGuids, supplemented, ListeningStore.ownerEpoch() != epoch)
         }.value
+        if outcome.accountChanged {
+            Logger.rss.notice("GPODDER round stopped writing: the account changed while it ran, applied=\(outcome.pulledGuids.count + outcome.supplemented) of=\(plays.count)")
+            return (0, 0)
+        }
         let pulled = outcome.pulledGuids.count
         AppStorageKeys.set(newSince, for: AppStorageKeys.gpodderEpisodeSince)
         if outcome.supplemented > 0 {
@@ -773,6 +788,22 @@ extension GPodderSync.StoredReport {
     func save() {
         guard let data = try? JSONEncoder().encode(self) else { return }
         AppStorageKeys.set(data, for: Self.key)
+    }
+}
+
+/// What a pulled play action does to the local entry: the server is newer
+/// and wins (adopt), or the local entry is right and only lacks the
+/// duration it was written against (supplement), or nothing. Decided from
+/// the entry as it stands, inside `ListeningStore.merge`.
+nonisolated enum GPodderMergePath: Equatable, Sendable {
+    case adopt
+    case supplement([Double])
+
+    static func of(local: [Double]?, serverTsMs: Double, serverTotal: Double) -> GPodderMergePath? {
+        let localTs = (local?.count ?? 0) >= 2 ? local![1] : -1
+        if serverTsMs > localTs { return .adopt }
+        if let local, let healed = ProgressMark.supplementing(local, duration: serverTotal) { return .supplement(healed) }
+        return nil
     }
 }
 

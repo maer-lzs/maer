@@ -394,14 +394,26 @@ nonisolated enum ListeningStore {
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         // Heard here: an imported position becomes this device's own.
         ForeignMarks.clearImported(itemId, in: defaults)
-        let entry = withStock(defaults) { stock in
+        let entry = withStock(defaults) { stock -> [Double]? in
+            // Asked again under the stock's lock, the one the change of
+            // account swaps the stock and moves the epoch under: a writer on
+            // another thread cannot slip between the question and the write.
+            guard holds(epoch, in: defaults) else { return nil }
             let entry = ProgressMark.advancing(stock.backups[itemId],
                                                position: position, duration: duration,
                                                nowMs: atMs)
             stock.backups[itemId] = entry
             return entry
         }
+        guard let entry else { return }
         announce(itemId, entry, in: defaults)
+    }
+
+    /// Whether a write that names `epoch` still writes into this stock: no
+    /// epoch named, or the epoch of now. Asked inside `withStock`.
+    private static func holds(_ epoch: Int?, in defaults: UserDefaults) -> Bool {
+        guard let epoch else { return true }
+        return epoch == ownerEpoch(in: defaults)
     }
 
     /// What this device pushed, and when. Written INSTEAD of removing the
@@ -418,23 +430,53 @@ nonisolated enum ListeningStore {
     /// Apple import adoption, duration repair) decide with `ProgressMark` and
     /// hand the finished entry over. Named rather than raw, so the fence can
     /// tell "a rule wrote this" from "a call site indexed the shape itself".
-    static func store(_ itemId: String, entry: [Double],
+    /// `epoch` as in `record`: a writer that took the epoch before its work
+    /// writes nothing once the account changed meanwhile.
+    static func store(_ itemId: String, entry: [Double], epoch: Int? = nil,
                       in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId), entry.count >= 2 else { return }
-        // Third write path for a position, so it carries the same rule as the
-        // two above: a position must not outlive its resolution. Marking an
-        // episode as played by hand writes the end position through here, and
-        // without this the tile would carry no name. A zero entry is the
-        // unplayed tombstone and states the opposite, so it writes nothing
-        // down.
+        let wrote = withStock(defaults) { stock -> Bool in
+            guard holds(epoch, in: defaults) else { return false }
+            stock.backups[itemId] = entry
+            return true
+        }
+        guard wrote else { return }
+        stored(itemId, entry, in: defaults)
+    }
+
+    /// One read and one write of an entry under the stock's lock: `rule`
+    /// gets the entry as it stands and returns the one to store, or nil for
+    /// none. A writer off the main thread that decides from the entry
+    /// (gpodder's merge) loses no write that came between its read and its
+    /// write. Returns what it stored; nil also when `epoch` is no longer the
+    /// account's.
+    @discardableResult
+    static func merge(_ itemId: String, epoch: Int?, in defaults: UserDefaults = .standard,
+                      _ rule: ([Double]?) -> [Double]?) -> [Double]? {
+        guard ListeningClasses.keepsPosition(itemId) else { return nil }
+        let entry = withStock(defaults) { stock -> [Double]? in
+            guard holds(epoch, in: defaults),
+                  let entry = rule(stock.backups[itemId]), entry.count >= 2 else { return nil }
+            stock.backups[itemId] = entry
+            return entry
+        }
+        guard let entry else { return nil }
+        stored(itemId, entry, in: defaults)
+        return entry
+    }
+
+    /// What follows a stored entry. Third write path for a position, so it
+    /// carries the same rule as the two above: a position must not outlive
+    /// its resolution. Marking an episode as played by hand writes the end
+    /// position through here, and without this the tile would carry no name.
+    /// A zero entry is the unplayed tombstone and states the opposite, so it
+    /// writes nothing down.
+    private static func stored(_ itemId: String, _ entry: [Double], in defaults: UserDefaults) {
         if entry[0] > 0 {
             BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         } else {
             // The tombstone forgets what another app knew about the episode.
             ForeignMarks.clear(itemId, in: defaults)
-        }
-        withStock(defaults) { stock in
-            stock.backups[itemId] = entry
         }
         announce(itemId, entry, in: defaults)
     }
@@ -633,9 +675,11 @@ nonisolated enum ListeningStore {
                 stock.flushed[id] = entry
                 flushed.append((id, entry))
             }
+            // The epoch moves in the same lock as the swap: a write that asks
+            // for the epoch under this lock sees either both or neither.
+            ownerEpochs.withLock { $0[ObjectIdentifier(defaults), default: 0] += 1 }
             return (backups, flushed)
         }
-        ownerEpochs.withLock { $0[ObjectIdentifier(defaults), default: 0] += 1 }
         // With rows that take a replacement whole, it goes as one write with
         // its mark; else every change is announced as before.
         if let replacement {
