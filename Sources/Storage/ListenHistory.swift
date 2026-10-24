@@ -238,7 +238,10 @@ final class ListenHistory {
             hold.hold(scope: scope, previous: previous)
             return false
         }
-        let waited = hold.handedOver()
+        let (waited, elsewhere) = hold.handedOver(to: scope)
+        if elsewhere > 0 {
+            Logger.library.notice("HISTORY entries wait for another account count=\(elsewhere) handedTo=\(scope, privacy: .private(mask: .hash))")
+        }
         if !waited.isEmpty {
             Logger.library.notice("HISTORY entries written after the hand-over count=\(waited.count)")
             waited.forEach { $0() }

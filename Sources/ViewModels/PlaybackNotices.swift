@@ -107,7 +107,10 @@ final class PlaybackNotices: ObservableObject {
             Logger.player.notice("NOTICES owner held unread=\(self.unread), tried again before the next line")
             return false
         }
-        let waited = hold.handedOver()
+        let (waited, elsewhere) = hold.handedOver(to: scope)
+        if elsewhere > 0 {
+            Logger.player.notice("NOTICES lines wait for another account count=\(elsewhere) handedTo=\(scope, privacy: .private(mask: .hash))")
+        }
         switch step {
         case .kept, .unread: break
         case .first: Logger.player.notice("NOTICES owner first lines=\(before)")

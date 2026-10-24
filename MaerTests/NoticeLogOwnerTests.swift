@@ -165,6 +165,30 @@ struct NoticeLogOwnerTests {
         #expect(restOfA == ["ofA"], "A's line was lost or B's rests under A: \(restOfA)")
     }
 
+    @Test("wartet eine Zeile unter B und gelingt dann der Wechsel zu C, steht sie nicht bei C")
+    func aLineWaitingForBNeverLandsAtC() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let before = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        say(before, "ofA")
+        await before.awaitPendingSave()
+
+        var signedIn = "account-b"
+        let file = rig.ablage.url(for: PlaybackNotices.documentName).path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let notices = PlaybackNotices(ablage: rig.ablage, shelf: rig.shelf, identity: { signedIn })
+        let handed = notices.follow(owner: "account-b", previous: "account-a")
+        say(notices, "ofB")
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        #expect(!handed, "the precondition: the switch to B held over an unread document")
+
+        signedIn = "account-c"
+        #expect(notices.follow(owner: "account-c", previous: "account-a"))
+        await notices.awaitPendingSave()
+        #expect(!said(notices).contains("ofB"), "what was said under B stands at C: \(said(notices))")
+    }
+
     /// The document stands but cannot be read, and no account changes: a
     /// line said meanwhile is not saved over it, the file keeps its lines;
     /// once it reads again, its lines and the new ones stand in the log.

@@ -335,6 +335,30 @@ struct ListenHistoryStoreTests {
         #expect(rested == ["of-a"], "B's entry rests under A, or A's was lost: \(rested)")
     }
 
+    @Test("wartet ein Eintrag unter B und gelingt dann der Wechsel zu C, landet er nicht bei C")
+    func anEntryWaitingForBNeverLandsAtC() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let before = ListenHistory(database: rig.database, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        before.noteHeard(id: "of-a", family: .book, title: "A", subtitle: "", at: 1_700_000_000_000)
+        await before.awaitPendingWrites()
+
+        var signedIn = "account-b"
+        let file = rig.directory.appendingPathComponent("maer.sqlite").path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let history = ListenHistory(database: rig.database, identity: { signedIn })
+        let handed = history.follow(owner: "account-b", previous: "account-a")
+        history.noteHeard(id: "of-b", family: .book, title: "B", subtitle: "", at: 1_700_000_100_000)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        #expect(!handed, "the precondition: the switch to B held over unread rows")
+
+        signedIn = "account-c"
+        #expect(history.follow(owner: "account-c", previous: "account-a"))
+        await history.awaitPendingWrites()
+        #expect(!books(history).contains("of-b"), "what B heard landed at C: \(books(history))")
+    }
+
     /// The two ways in stand once each: the tick of the player (a book into
     /// played, a song past its threshold) and the finish mark of a book.
     @Test("die Zuwege stehen je einmal: der Takt des Players fuer Buch und Lied, die Marke fertig mit Zuruecknehmen", .needsTheSources)

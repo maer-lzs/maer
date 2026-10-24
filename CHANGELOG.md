@@ -8,6 +8,11 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**What you hear stays with your account.** When switching accounts
+could not finish at once and you switched again, a title heard in
+between could land in the history of the third account. Now it waits
+for the account it was heard under.
+
 **Detail pages divide at the fold.** On the open iPhone Duo the book
 page, a show, an album, a playlist and an artist show two columns, the
 left one ending before the fold and the right one beginning after it;

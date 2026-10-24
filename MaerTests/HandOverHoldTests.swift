@@ -12,7 +12,7 @@ import Foundation
 /// (`HandOverHold`): the listen log and the notice log take it, and a new
 /// log (the listening history) takes it too instead of a third copy.
 struct HandOverHoldTests {
-    @Test("eine gehaltene Uebergabe behaelt, was waehrenddessen kommt, und gibt es danach in Reihenfolge heraus")
+    @Test("eine gehaltene Uebergabe behaelt, was waehrenddessen kommt, und gibt es nur dem Konto heraus, unter dem es entstand, in Reihenfolge")
     func aHeldHandOverKeepsAndReleasesInOrder() {
         var hold = HandOverHold<String>()
         #expect(!hold.isHeld)
@@ -23,20 +23,30 @@ struct HandOverHoldTests {
         hold.hold(scope: "B", previous: "A")
         #expect(hold.isHeld)
         #expect(hold.target?.scope == "B" && hold.target?.previous == "A")
-        let keptFirst = hold.keep("first")
-        let keptSecond = hold.keep("second")
+        let keptFirst = hold.keep("b1")
+        let keptSecond = hold.keep("b2")
         #expect(keptFirst && keptSecond)
-        // A second failed try holds for the newer target and keeps the waiting.
+        // A second failed try holds for the newer target; what came before
+        // stays B's, what comes now is C's.
         hold.hold(scope: "C", previous: "A")
         #expect(hold.target?.scope == "C")
-        #expect(hold.waiting == ["first", "second"])
+        _ = hold.keep("c1")
+        #expect(hold.waiting.map(\.scope) == ["B", "B", "C"])
 
-        let released = hold.handedOver()
-        #expect(released == ["first", "second"], "the waiting entries come back out of order or lost")
+        // The hand-over to C gives out C's entries only; B's wait on.
+        let toC = hold.handedOver(to: "C")
+        #expect(toC.released == ["c1"], "what B heard came out for C: \(toC.released)")
+        #expect(toC.stillWaiting == 2)
         #expect(!hold.isHeld)
-        #expect(hold.waiting.isEmpty)
-        let again = hold.handedOver()
-        #expect(again.isEmpty, "a hand-over gives an entry twice")
+        // Without a hold a new entry waits for nothing, B's still wait.
+        let keptAfterC = hold.keep("now")
+        #expect(!keptAfterC)
+        // The hand-over to B gives out B's, in order, once.
+        let toB = hold.handedOver(to: "B")
+        #expect(toB.released == ["b1", "b2"], "B's waiting entries come back out of order or lost")
+        #expect(toB.stillWaiting == 0)
+        let twice = hold.handedOver(to: "B")
+        #expect(twice.released.isEmpty, "a hand-over gives an entry twice")
     }
 
     /// A held target typed as the tuple of the hold, under any name.

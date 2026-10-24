@@ -141,6 +141,31 @@ struct ListenLogOwnerTests {
         #expect(restingGuids == [ofA], "B's episode rests under A, or A's was lost: \(restingGuids)")
     }
 
+    @Test("wartet eine Folge unter B und gelingt dann der Wechsel zu C, steht sie nicht bei C")
+    func anEpisodeWaitingForBNeverLandsAtC() async throws {
+        let rig = try rig()
+        defer { rig.cleanup() }
+        let run = UUID().uuidString.prefix(6)
+        let ofB = "rss:held:\(run):b"
+        let before = PodcastListenLog(database: rig.database, identity: { "account-a" })
+        #expect(before.follow(owner: "account-a", previous: nil))
+        await before.awaitPendingWrites()
+
+        var signedIn = "account-b"
+        let file = rig.directory.appendingPathComponent("maer.sqlite").path
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: file)
+        let log = PodcastListenLog(database: rig.database, identity: { signedIn })
+        let handed = log.follow(owner: "account-b", previous: "account-a")
+        hear(log, ofB, at: 1_700_000_100_000)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file)
+        #expect(!handed, "the precondition: the switch to B held over unread rows")
+
+        signedIn = "account-c"
+        #expect(log.follow(owner: "account-c", previous: "account-a"))
+        await log.awaitPendingWrites()
+        #expect(!heard(log).contains(ofB), "what B heard stands at C: \(heard(log))")
+    }
+
     /// A switch held over unreadable rows, as above: A holds, the next start
     /// cannot read the rows. Returns the log of that start and whether its
     /// switch to B went on; the rows stay unreadable while `during` runs.
