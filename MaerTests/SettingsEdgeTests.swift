@@ -32,6 +32,8 @@ struct SettingsEdgeTests {
             "the inner padding of the card corner capsule in the same file; no row",
         "MediaTabBar.swift: .padding(.horizontal, TabBarMetrics.Capsule.horizontalPadding)":
             "the inner padding of a tab cell in the upright section bar beside the side column; no row",
+        "MediaTabBar.swift: .padding(.horizontal, Self.pillGap)":
+            "the end padding of the section bar's capsule, equal to the pill's inset along it; no row",
     ]
 
     /// Symbols measured wider than the list's icon column, each with its

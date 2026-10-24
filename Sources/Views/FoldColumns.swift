@@ -15,18 +15,43 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
     @ViewBuilder var leading: (CGSize) -> Leading
     @ViewBuilder var trailing: (CGSize) -> Trailing
 
+    /// THE distance of both columns' content from the fold (`FoldSplit.foldDistance`).
+    /// The frame gives all of it but the page's own gutter, which a page
+    /// in it keeps on its fold edge at `FoldSplit.pageGutter`, the standard
+    /// padding. Measured before: the book page 24 pt before the fold, its
+    /// chapters 20 pt after.
+    static var foldMargin: CGFloat { FoldSplit.foldDistance - FoldSplit.pageGutter }
+
     var body: some View {
         GeometryReader { geo in
             let columns = FoldSplit.columns(contentMinX: geo.frame(in: .global).minX,
                                             contentWidth: geo.size.width,
                                             fold: foldLine.fold, windowWidth: foldLine.windowWidth)
+            let margin = Self.foldMargin
             HStack(spacing: 0) {
-                leading(CGSize(width: columns.leading, height: geo.size.height))
-                    .frame(width: columns.leading)
+                leading(CGSize(width: max(0, columns.leading - margin), height: geo.size.height))
+                    .frame(width: max(0, columns.leading - margin))
+                    .padding(.trailing, margin)
                 Color.clear.frame(width: columns.gap)
-                trailing(CGSize(width: columns.trailing, height: geo.size.height))
-                    .frame(width: columns.trailing)
+                trailing(CGSize(width: max(0, columns.trailing - margin), height: geo.size.height))
+                    .frame(width: max(0, columns.trailing - margin))
+                    .padding(.leading, margin)
             }
+            // No scroll bars in the two columns, for every page in them.
+            .scrollIndicators(.hidden)
+        }
+    }
+}
+
+private extension View {
+    /// Rows at the fold that keep the List's own inset (which differs from
+    /// device to device) take the page gutter there instead; a row that sets
+    /// its insets itself keeps them.
+    @ViewBuilder func rowsTakeTheFoldGutter() -> some View {
+        if #available(iOS 26, *) {
+            listRowInsets(.leading, FoldSplit.pageGutter)
+        } else {
+            self
         }
     }
 }
@@ -93,7 +118,7 @@ struct DetailListColumns<Header: View, Rows: View>: View {
                     .scrollContentBackground(.hidden)
                     .reportsBottomBarScroll()
                 } trailing: { _ in
-                    List { rows() }
+                    List { rows().rowsTakeTheFoldGutter() }
                         .listStyle(.plain)
                         .barAwareList()
                         .reportsBottomBarScroll()

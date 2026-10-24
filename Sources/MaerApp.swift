@@ -166,8 +166,9 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     @available(iOS 27.0, *)
     func supportedInterfaceOrientations(for windowScene: UIWindowScene) -> UIInterfaceOrientationMask {
         if FoldOrientation.uprightOnly(hingeClosed: hingeClosed) { return .portrait }
-        // The Info.plist's own set, which this answer replaces.
-        return windowScene.traitCollection.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
+        // Open, every turn: the root controller's own set narrows it (no
+        // upside down on a phone), so no answer here asks the device.
+        return .all
     }
 
     func windowScene(

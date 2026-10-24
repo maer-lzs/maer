@@ -58,8 +58,9 @@ struct SideColumnPartsTests {
         #expect(library.contains(".onPreferenceChange(SideColumnSchemeKey.self) { sidePageScheme = $0 }"))
         #expect(library.contains(".environment(\\.colorScheme, SideColumnStyle.scheme(page: sidePageScheme, system: systemColorScheme))"))
         let page = try source("Sources/Views/BookDetailScreen.swift")
-        #expect(page.contains(".environment(\\.colorScheme, .dark)\n                .sideColumnScheme(.dark)"),
-                "the dark book page does not tell the column")
+        #expect(page.contains(".environment(\\.colorScheme, .dark)\n                .sideColumnScheme(isTopPage ? .dark : nil)"),
+                "the dark book page does not tell the column, or tells it while covered")
+        #expect(page.contains(".onAppear { isTopPage = true }\n                .onDisappear { isTopPage = false }"))
     }
 }
 #endif

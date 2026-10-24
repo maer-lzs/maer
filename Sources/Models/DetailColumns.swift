@@ -16,6 +16,12 @@ nonisolated enum FoldSplit {
         var trailing: CGFloat
     }
 
+    /// How far the content of both columns stands from the fold.
+    static let foldDistance: CGFloat = 24
+    /// What a page in a column pads on its fold edge: the standard padding.
+    /// The frame gives the rest up to `foldDistance`.
+    static let pageGutter: CGFloat = 16
+
     /// The columns of a page that spans `contentMinX` to `contentMinX +
     /// contentWidth` in the window: a side column the page leaves free makes
     /// the trailing column narrower, never the leading one.

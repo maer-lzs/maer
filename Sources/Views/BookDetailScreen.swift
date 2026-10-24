@@ -93,6 +93,8 @@ struct BookDetailScreen: View {
     /// Their distance as the cover is sized by it, settled to whole points
     /// (`DetailCoverSide.settled`), so the page comes to rest.
     @State private var belowCover: CGFloat = 0
+    /// The page stands on top of its stack (appeared, nothing pushed over it).
+    @State private var isTopPage = false
     private func noteBelowCover() {
         belowCover = DetailCoverSide.settled(belowCover, measured: max(0, playBottom - coverBottom))
     }
@@ -334,7 +336,7 @@ struct BookDetailScreen: View {
     /// right one. Each column scrolls on its own.
     private var twoColumnLayoutView: some View {
         FoldColumns { column in
-            let content = column.width - 48
+            let content = column.width - 24 - FoldSplit.pageGutter
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // In its half and as large as leaves title and play
@@ -369,7 +371,9 @@ struct BookDetailScreen: View {
                 .padding(.top, 60)
                 .padding(.bottom, 20)
                 .bottomBarClearance()
-                .padding(.horizontal, 24)
+                // At the fold the gutter the frame counts on (`FoldColumns`).
+                .padding(.leading, 24)
+                .padding(.trailing, FoldSplit.pageGutter)
             }
             .scrollContentBackground(.hidden)
             .reportsBottomBarScroll()
@@ -399,7 +403,8 @@ struct BookDetailScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(ChapterModel.selectorLabel(isMusic: false, isFallback: resolved.isFallback))
                     .font(.headline)
-                    .padding(.horizontal, 20)
+                    .padding(.leading, FoldSplit.pageGutter)
+                    .padding(.trailing, 20)
                     .padding(.top, 60)
                     .padding(.bottom, 8)
                 DetailChapterList(bookTitle: entry.item.title, chapters: resolved.chapters,
@@ -635,8 +640,13 @@ struct BookDetailScreen: View {
                 // Portrait/hero layout is ALWAYS dark (cover gradient):
                 // pin the scheme so .primary text and glass stay light-on-dark.
                 .environment(\.colorScheme, .dark)
-                // The side column beside it turns dark as well.
-                .sideColumnScheme(.dark)
+                // The side column beside it turns dark as well, while this
+                // page is the top one: a page pushed over it (the chapters)
+                // stands light, and a covered page still sat in the stack and
+                // kept the column dark (measured).
+                .sideColumnScheme(isTopPage ? .dark : nil)
+                .onAppear { isTopPage = true }
+                .onDisappear { isTopPage = false }
             }
         }
         // All glass buttons on this page share the book's cover accent.
@@ -1207,6 +1217,8 @@ private struct DetailChapterList: View {
                 }
             }
             .listRowBackground(embedded ? Color.clear : nil)
+            // At the fold the gutter the frame counts on (`FoldColumns`).
+            .listRowInsets(embedded ? EdgeInsets(top: 8, leading: FoldSplit.pageGutter, bottom: 8, trailing: 20) : nil)
         }
     }
 

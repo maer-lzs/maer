@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// A detail page in two columns divides at the fold, its cover leaves the
@@ -69,7 +70,27 @@ struct DetailColumnsTests {
         let frame = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"),
                                encoding: .utf8)
         #expect(frame.components(separatedBy: "FoldSplit.columns(").count - 1 == 1)
+        // No scroll bars in the two columns, set once for every page in them.
+        #expect(frame.contains("}\n            // No scroll bars in the two columns, for every page in them.\n            .scrollIndicators(.hidden)"))
         #expect(frame.components(separatedBy: "FoldColumns {").count - 1 == 2)
+    }
+
+    @Test("beide Spalten stehen gleich weit vom Falz, die Strecke liegt im Rahmen", .needsTheSources)
+    @MainActor
+    func bothColumnsStandEquallyFarFromTheFold() throws {
+        #expect(FoldColumns<EmptyView, EmptyView>.foldMargin + FoldSplit.pageGutter == FoldSplit.foldDistance)
+        let frame = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"), encoding: .utf8))
+        // The leading column's trailing edge and the trailing column's leading edge, once each.
+        #expect(frame.components(separatedBy: ".padding(.trailing, margin)").count - 1 == 1)
+        #expect(frame.components(separatedBy: ".padding(.leading, margin)").count - 1 == 1)
+        #expect(frame.contains("List { rows().rowsTakeTheFoldGutter() }"))
+        // The book page keeps the gutter at the fold: its left column, the chapter heading and rows.
+        let page = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(page.contains(".padding(.leading, 24)\n                .padding(.trailing, FoldSplit.pageGutter)"))
+        #expect(page.contains(".padding(.leading, FoldSplit.pageGutter)\n                    .padding(.trailing, 20)"))
+        #expect(page.contains("EdgeInsets(top: 8, leading: FoldSplit.pageGutter, bottom: 8, trailing: 20)"))
     }
 
     /// A layout pass in the model of the measured loop: the cover lands on a
