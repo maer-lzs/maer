@@ -224,7 +224,9 @@ nonisolated enum RadioMapping {
         // Nachtrag (4): codec/bitrate TAIL junk without a separator
         // ("Deutschlandfunk AAC 192k"). Strip trailing decorations only;
         // the ORIGINAL name stays in detail/search.
-        let tailJunk = "((\\b(mp3|aac\\+?|he-?aac|opus|ogg|vorbis|flac|wma)\\b|\\b\\d{2,3}\\s?k(bps)?\\b|\\bstream\\s?\\d+\\b)[\\s.]*)+$"
+        // After a codec no letter, digit or plus may follow, instead of a
+        // word boundary: "AAC+" at the end has none after its plus.
+        let tailJunk = "((\\b(mp3|aac\\+?|he-?aac\\+?|opus|ogg|vorbis|flac|wma)(?![\\p{L}\\p{N}+])|\\b\\d{2,3}\\s?k(bps)?\\b|\\bstream\\s?\\d+\\b)[\\s.]*)+$"
         let stripped = trimmed.replacingOccurrences(
             of: tailJunk, with: "", options: [.regularExpression, .caseInsensitive])
             .trimmingCharacters(in: .whitespaces)
@@ -236,7 +238,7 @@ nonisolated enum RadioMapping {
     /// "deutschlandfunk dlf").
     static func normalizedStationName(_ name: String) -> String {
         var s = name.lowercased()
-        for pattern in ["\\b(mp3|aac\\+?|he-?aac|opus|ogg|vorbis|flac|wma)\\b",
+        for pattern in ["\\b(mp3|aac\\+?|he-?aac\\+?|opus|ogg|vorbis|flac|wma)(?![\\p{L}\\p{N}+])",
                         "\\b\\d{2,3}\\s?k(bps)?\\b"] {
             s = s.replacingOccurrences(of: pattern, with: " ", options: .regularExpression)
         }

@@ -501,6 +501,18 @@ struct RadioStateQueryTests {
         #expect(RadioMapping.displayName("A | Station") == "A | Station")
     }
 
+    @Test("AAC+ am Namensende faellt wie AAC: in der Anzeige und im Gruppenschluessel, ein Plus mitten im Namen bleibt")
+    func aacPlusAtTheEndIsStripped() {
+        #expect(RadioMapping.displayName("Radio Wien AAC+") == "Radio Wien")
+        #expect(RadioMapping.displayName("Radio Wien AAC+ 64k") == "Radio Wien")
+        #expect(RadioMapping.displayName("FM4 HE-AAC+") == "FM4")
+        #expect(RadioMapping.normalizedStationName("Radio Wien AAC+") == "radio wien")
+        #expect(RadioMapping.normalizedStationName("Radio Wien | AAC+ 64k") == "radio wien")
+        // An AAC inside a word, and a plus that is part of the name, stay.
+        #expect(RadioMapping.displayName("Canal+ Radio") == "Canal+ Radio")
+        #expect(RadioMapping.displayName("Radio Aachen") == "Radio Aachen")
+    }
+
     @Test("e4bd910: logo chain pure pieces — conservative entity match, P154, touch icon")
     func logoLookup() throws {
         // Conservative Wikidata match: label must fold-contain the name.
