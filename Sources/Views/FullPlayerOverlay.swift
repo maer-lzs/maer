@@ -103,8 +103,6 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    /// Static glass: tint/shape constant. The dynamic reveal runs exclusively via
-    /// cheap opacity fades (background + dim).
     /// The player itself. With the tabs at the side it stands in a
     /// navigation stack of its own: there the system puts the player's bar
     /// buttons in its column and keeps the content to the free area beside
@@ -127,6 +125,8 @@ struct FullPlayerOverlay: View {
         }
     }
 
+    /// Static glass: tint/shape constant. The dynamic reveal runs exclusively via
+    /// cheap opacity fades (background + dim).
     @ViewBuilder
     private func containerGlass(corner: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
