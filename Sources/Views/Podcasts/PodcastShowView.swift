@@ -177,16 +177,15 @@ struct PodcastShowView: View {
 
     var body: some View {
         // `List` (instead of ScrollView) → swipe actions on the episode rows.
-        List {
+        // In a wide window the header stands beside the list, divided at
+        // the fold (`DetailListColumns`).
+        DetailListColumns {
             header
                 // The header row holds a cover, links and the subscription
                 // button. Without a borderless style a List row hands a tap
                 // anywhere in the row to EVERY control in it: a tap on the
                 // cover opened the website and unsubscribed at once.
                 .buttonStyle(.borderless)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
                 // Force-touch the show header to bulk-update the played state.
                 .contextMenu {
                     if caps.marksAllEpisodes {
@@ -202,6 +201,7 @@ struct PodcastShowView: View {
                         }
                     }
                 }
+        } rows: {
             // The server keeps refusing this feed. Below the header,
             // above the episodes, which stay.
             if mode == .subscribed, let show = storedShow, subs.isAccessRefused(show) {
@@ -260,9 +260,6 @@ struct PodcastShowView: View {
                     .listRowSeparator(.hidden)
             }
         }
-        .listStyle(.plain)
-        .barAwareList()
-        .reportsBottomBarScroll()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

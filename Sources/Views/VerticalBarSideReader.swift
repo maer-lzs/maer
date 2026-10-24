@@ -5,6 +5,7 @@
 
 import SwiftUI
 import UIKit
+import OSLog
 
 extension View {
     /// Reports the edge at which the system stands its bars upright, nil
@@ -37,6 +38,9 @@ struct ReservedStrip: Equatable {
     var axisShift: CGFloat = 0
     /// The window's trailing edge in window points.
     var windowMaxX: CGFloat = 0
+    /// Where the system says a page should divide in two (the fold of an
+    /// open foldable), in window points; nil where there is none.
+    var division: CGRect?
 
     /// The column's shift from the middle of its strip onto the axis, for a
     /// strip whose trailing edge lies at `stripMaxX` in window points: the
@@ -52,6 +56,15 @@ extension EnvironmentValues {
     /// How far the side column reaches over the content's trailing edge:
     /// 0 with the tabs at the bottom.
     @Entry var sideColumnReach: CGFloat = 0
+    /// Where a two-column page divides (`FoldSplit`): set by the library.
+    @Entry var foldLine = FoldLine()
+}
+
+/// The fold the system names, if any, and the window's width, both in
+/// window points: what `FoldSplit` needs from outside the page.
+struct FoldLine: Equatable {
+    var fold: ClosedRange<CGFloat>?
+    var windowWidth: CGFloat = 0
 }
 
 extension View {
@@ -96,6 +109,8 @@ private struct ReservedStripReader: UIViewRepresentable {
     final class ReaderView: UIView {
         var stripWidth: CGFloat = 0
         var report: ((ReservedStrip) -> Void)?
+        /// The division last logged, so a layout pass logs only a change.
+        private var lastLine = ""
 
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -114,6 +129,14 @@ private struct ReservedStripReader: UIViewRepresentable {
                     value.axisShift = StatusColumnAxis.x(columnMinX: column.frame.minX,
                                                          columnWidth: column.frame.width) - strip.midX
                 }
+                // The fold of the open Duo: inactive while the device lies
+                // flat open (measured), and still where the page divides.
+                value.division = window.reservedRegions(kind: .division, options: .includeInactive).first?.frame
+            }
+            let line = value.division.map { "\($0)" } ?? "none"
+            if line != lastLine {
+                lastLine = line
+                Logger.library.notice("SIDESTRIP division=\(line, privacy: .public) window=\(window.bounds.width, privacy: .public)")
             }
             // After the layout pass, not inside it: the report writes view state.
             Task { [report] in report?(value) }

@@ -35,8 +35,10 @@ enum BottomBarReserve {
     /// Additional mini-player row (bar + row spacing).
     static let miniPlayer: CGFloat = 60
 
-    static func total(hasMiniPlayer: Bool) -> CGFloat {
-        base + (hasMiniPlayer ? miniPlayer : 0)
+    /// With the tabs at the side the bottom keeps only what plays: no tab
+    /// row, the bar itself with its gap.
+    static func total(hasMiniPlayer: Bool, tabsBelow: Bool) -> CGFloat {
+        (tabsBelow ? base : 0) + (hasMiniPlayer ? miniPlayer : 0)
     }
 }
 

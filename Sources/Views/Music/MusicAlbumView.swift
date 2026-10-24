@@ -85,12 +85,11 @@ struct MusicAlbumView: View {
     private var isPlaylist: Bool { music.kind(of: item.id) == .playlist }
 
     var body: some View {
-        List {
-            Section {
-                header
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+        // In a wide window the header stands beside the tracks, divided at
+        // the fold (`DetailListColumns`).
+        DetailListColumns {
+            header
+        } rows: {
             if !tracks.isEmpty {
                 Section {
                     ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
@@ -223,10 +222,8 @@ struct MusicAlbumView: View {
                 }
             }
         }
-        .listStyle(.plain)
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
-        .barAwareList()
         .toolbar {
             // Page actions inboard, the settings cog OUTERMOST. Declared
             // last so it sits at the trailing edge and never vanishes behind

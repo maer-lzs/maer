@@ -60,6 +60,9 @@ struct LibraryView: View {
     @State private var sideStripWidth: CGFloat = 0
     /// The side strip's trailing edge in window points, measured.
     @State private var sideStripMaxX: CGFloat = 0
+    /// The window's width, measured: two-column pages divide at its middle
+    /// where the system names no fold.
+    @State private var windowWidth: CGFloat = 0
     private var tabBarPlacement: TabBarPlacement { .of(verticalBarSide: verticalBarSide) }
     /// Whether the side column shows the cog now (`SideColumnCog`).
     @State private var sideCogShown = true
@@ -565,6 +568,15 @@ struct LibraryView: View {
         // The rows run under the side column to the edge and end with its
         // width as a margin (`rowReachesUnderSideColumn`).
         .environment(\.sideColumnReach, tabBarPlacement.isSide ? sideStripWidth : 0)
+        // Where a two-column page divides: the fold the strip reader saw
+        // (it reads only while the tabs stand at the side), else the middle
+        // of the window.
+        .environment(\.foldLine, FoldLine(
+            fold: tabBarPlacement.isSide ? reservedSide.division.map { $0.minX...$0.maxX } : nil,
+            windowWidth: windowWidth))
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width + $0.safeAreaInsets.leading + $0.safeAreaInsets.trailing
+        } action: { windowWidth = $0 }
         // Where the system stands its bars upright, the tabs and the search
         // stand in the strip the system keeps free at that edge, under the
         // status bar; the bottom keeps only what plays.
@@ -709,7 +721,8 @@ struct LibraryView: View {
         // mini-player mount is a REAL composition change and may adjust it.
         // Never `collapsed`/the morph).
         .environment(\.bottomBarInset,
-                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil || miniContent == .held))
+                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil || miniContent == .held,
+                                                                      tabsBelow: !tabBarPlacement.isSide))
         .task {
             // Series data lives here. Hand the coordinator a lookup for the
             // auto-play-next-in-series setting.

@@ -81,6 +81,14 @@ struct BookDetailScreen: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.isOnline) private var isOnline
+    @Environment(\.bottomBarInset) private var bottomBarInset
+    /// The bottoms of the cover and of the play button in the page's own
+    /// space: their distance is what stands under the cover down to the main
+    /// button, the same at every cover size (`DetailCoverSide`).
+    @State private var coverBottom: CGFloat = 0
+    @State private var playBottom: CGFloat = 0
+    private var belowCover: CGFloat { max(0, playBottom - coverBottom) }
+    private static let pageSpace = "bookDetailPage"
 
     private var buttonShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -295,10 +303,7 @@ struct BookDetailScreen: View {
                             titleBlock(alignment: .leading)
                             infoSection(withPadding: false)
                             playArea(withPadding: false)
-                            HStack(spacing: 12) {
-                                downloadSection
-                                markAsFinishedButton
-                            }
+                            buttonRow(width: geo.size.width - 420 - 48)
                         }
                         trailingSections(isHero: false)
                     }
@@ -320,42 +325,59 @@ struct BookDetailScreen: View {
     /// facts in the left column, the chapters as their own list in the
     /// right one. Each column scrolls on its own.
     private var twoColumnLayoutView: some View {
-        GeometryReader { geo in
-            let left = BookDetailLayout.leftColumnWidth(total: geo.size.width)
-            HStack(alignment: .top, spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        BookCoverView(
-                            url: router.coverURL(entry.id),
-                            progress: currentProgress,
-                            itemId: entry.id,
-                            size: left - 48
-                        )
-                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-                        .contextMenu { coverDownloadMenu }
-                        VStack(alignment: .leading, spacing: 14) {
-                            titleBlock(alignment: .leading)
-                            infoSection(withPadding: false)
-                            playArea(withPadding: false)
-                            HStack(spacing: 12) {
-                                downloadSection
-                                markAsFinishedButton
-                            }
-                        }
-                        trailingSections(isHero: false, showsChapterLink: false)
+        FoldColumns { column in
+            let content = column.width - 48
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // In its half and as large as leaves title and play
+                    // above the playback bar (`DetailCoverSide`).
+                    BookCoverView(
+                        url: router.coverURL(entry.id),
+                        progress: currentProgress,
+                        itemId: entry.id,
+                        size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60,
+                                                   below: belowCover, bottomReserve: bottomBarInset)
+                    )
+                    .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                    .contextMenu { coverDownloadMenu }
+                    .frame(maxWidth: .infinity)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                        coverBottom = $0
                     }
-                    .padding(.top, 60)
-                    .padding(.bottom, 20)
-                    .bottomBarClearance()
-                    .padding(.horizontal, 24)
+                    VStack(alignment: .leading, spacing: 14) {
+                        titleBlock(alignment: .leading)
+                        infoSection(withPadding: false)
+                        playArea(withPadding: false)
+                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                playBottom = $0
+                            }
+                        buttonRow(width: content)
+                    }
+                    trailingSections(isHero: false, showsChapterLink: false)
                 }
-                .frame(width: left)
-                .scrollContentBackground(.hidden)
-                .reportsBottomBarScroll()
-
-                chapterColumn
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .coordinateSpace(.named(Self.pageSpace))
+                .padding(.top, 60)
+                .padding(.bottom, 20)
+                .bottomBarClearance()
+                .padding(.horizontal, 24)
             }
+            .scrollContentBackground(.hidden)
+            .reportsBottomBarScroll()
+        } trailing: { _ in
+            chapterColumn
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    /// The download and mark buttons: side by side where both fit whole,
+    /// else one under the other (`DetailButtonRow`).
+    private func buttonRow(width: CGFloat) -> some View {
+        let layout = DetailButtonRow.stacked(width: width)
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
+            downloadSection
+            markAsFinishedButton
         }
     }
 
@@ -559,20 +581,31 @@ struct BookDetailScreen: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         VStack(spacing: 8) {
-                            heroCover(side: geo.size.width)
+                            // The full width where the window is tall enough,
+                            // else as large as leaves title and play above the
+                            // playback bar (`DetailCoverSide`).
+                            heroCover(side: DetailCoverSide.side(
+                                columnWidth: geo.size.width,
+                                height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom,
+                                top: 0, below: belowCover,
+                                bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom))
+                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                    coverBottom = $0
+                                }
                             titleBlock(alignment: .center)
                                 .padding(.horizontal)
                         }
                         infoSection(withPadding: true)
                         playArea(withPadding: true)
-                        HStack(spacing: 12) {
-                            downloadSection
-                            markAsFinishedButton
-                        }
-                        .padding(.horizontal)
+                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                playBottom = $0
+                            }
+                        buttonRow(width: min(geo.size.width, 600) - 32)
+                            .padding(.horizontal)
 
                         trailingSections(isHero: true)
                     }
+                    .coordinateSpace(.named(Self.pageSpace))
                     // Free space at the page end: mini-player + search button
                     // otherwise cover the last lines.
                     .padding(.bottom, 20)

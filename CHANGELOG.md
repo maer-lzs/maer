@@ -8,6 +8,14 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**Detail pages divide at the fold.** On the open iPhone Duo the book
+page, a show, an album, a playlist and an artist show two columns, the
+left one ending before the fold and the right one beginning after it;
+on an iPad on its side they divide in the middle. On a short screen
+the book's cover grows only as large as leaves the title and the play
+button above the playback bar, and the two buttons below stand one
+under the other where they would not fit side by side.
+
 **The side column takes the size of the back button.** On the iPhone
 Duo the tabs, the search, the settings button and the playback bar
 beside them now share the size of the system's back button.

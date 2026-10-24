@@ -28,13 +28,6 @@ struct BookDetailLayoutTests {
         #expect(BookDetailLayout.of(width: 951, height: 0, compactHeight: false) == .hero)
     }
 
-    @Test("the left column holds between 320 and 460 pt")
-    func leftColumnIsBounded() {
-        #expect(BookDetailLayout.leftColumnWidth(total: 951) == 951 * 0.45)
-        #expect(BookDetailLayout.leftColumnWidth(total: 600) == 320)
-        #expect(BookDetailLayout.leftColumnWidth(total: 1366) == 460)
-    }
-
     /// The fence: the page decides its form through the one rule, and the
     /// wide form shows the chapter list in place, not the link to it.
     @Test("the book page asks the rule and embeds the chapters in the wide form")
@@ -45,6 +38,13 @@ struct BookDetailLayoutTests {
         #expect(page.contains("trailingSections(isHero: false, showsChapterLink: false)"))
         #expect(page.contains("embedded: true"))
         #expect(!page.contains("geo.size.width > geo.size.height"))
+        // The wide form divides at the fold, the cover follows the height in
+        // both forms, the two buttons stand whole.
+        #expect(page.contains("FoldColumns { column in"))
+        #expect(page.components(separatedBy: "DetailCoverSide.side(").count - 1 == 2)
+        // Three forms and the definition.
+        #expect(page.components(separatedBy: "buttonRow(width:").count - 1 == 4)
+        #expect(!page.contains("HStack(spacing: 12) {\n                                downloadSection"))
     }
 }
 #endif

@@ -167,9 +167,11 @@ struct MusicArtistView: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 22) {
-                header
+        // In a wide window the header stands beside the albums, divided at
+        // the fold (`DetailScrollColumns`).
+        DetailScrollColumns(spacing: 22) {
+            header
+        } content: {
                 if loading {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else if albumsFailed {
@@ -185,12 +187,9 @@ struct MusicArtistView: View {
                 }
                 topSongsSection
                 similarSection
-            }
-            .padding(.vertical)
         }
         .navigationTitle(artist.name ?? String(localized: "Unknown Artist"))
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
         .task(id: artist.id) {
             // The artist's own server answers, whichever the device uses.
             let music = AppSession.shared.musicProvider(for: artist.itemId)

@@ -25,9 +25,4 @@ nonisolated enum BookDetailLayout: Equatable {
         guard height > 0, width > height else { return .hero }
         return width >= twoColumnsMinWidth ? .twoColumns : .sideBySide
     }
-
-    /// The left column of the two: cover and facts, the rest is the list.
-    static func leftColumnWidth(total: CGFloat) -> CGFloat {
-        min(460, max(320, total * 0.45))
-    }
 }
