@@ -33,6 +33,9 @@ struct SearchScreen: View {
     /// caller pushes it, and the search comes back when the person returns
     /// (`SearchReturn`).
     var onOpenLibraryPage: (LibraryListRoute) -> Void = { _ in }
+    /// The scopes stand in the side column (the tabs at the side), so the
+    /// page draws no scope bar of its own.
+    var scopesAtSide = false
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
@@ -78,8 +81,12 @@ struct SearchScreen: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            scopeBar
-                .padding(.horizontal)
+            // With the tabs at the side the scopes stand in the side column
+            // (`LibraryView.searchScopeColumn`), not on top.
+            if !scopesAtSide {
+                scopeBar
+                    .padding(.horizontal)
+            }
             serverRow
             ScrollViewReader { proxy in
                 ScrollView {

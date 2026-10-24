@@ -366,6 +366,18 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The tab whose glyph the scope wears in the side column: the library
+    /// scope the house, every other its own tab.
+    var tab: MediaType {
+        switch self {
+        case .library: return .home
+        case .audiobooks: return .audiobooks
+        case .podcasts: return .podcasts
+        case .music: return .music
+        case .radio: return .radio
+        }
+    }
+
     /// The OWN kinds this scope shows.
     var kinds: Set<SearchResult.Kind> {
         switch self {

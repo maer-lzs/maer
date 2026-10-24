@@ -290,7 +290,8 @@ struct LibraryView: View {
             onOpenLibraryPage: { route in
                 searchReturn.opensPage()
                 push(route, to: selectedMediaType)
-            }
+            },
+            scopesAtSide: tabBarPlacement.isSide
         )
         .background(Color(.systemBackground).ignoresSafeArea())
         .transition(.opacity)
@@ -583,7 +584,9 @@ struct LibraryView: View {
         .overlay {
             // Under an open sheet the column draws nothing of its own: the
             // sheet leaves the strip free, and our glass showed through it.
-            if tabBarPlacement.isSide, !isShowingFullPlayer, !isShowingSearch,
+            // In the search it stays: the scopes take the tabs' place and
+            // the close button the search's.
+            if tabBarPlacement.isSide, !isShowingFullPlayer,
                !showSettings, !showQueueSheet {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
@@ -600,8 +603,19 @@ struct LibraryView: View {
                                 .transition(.opacity)
                         }
                         Spacer(minLength: 16)
-                        mediaBar(upright: true)
-                        searchButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
+                        if isShowingSearch {
+                            searchScopeColumn
+                            // With the keyboard up the close button stands
+                            // beside the field, as on the iPhone; never both.
+                            if searchFieldFocused {
+                                Color.clear.frame(height: Self.sideColumnWidth)
+                            } else {
+                                searchCloseButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
+                            }
+                        } else {
+                            mediaBar(upright: true)
+                            searchButton(diameter: Self.sideColumnWidth, tier: .sideColumn)
+                        }
                     }
                     // As narrow as the system's own column and on its axis,
                     // under clock and Wi-Fi, clear of the rounded corner.
@@ -960,11 +974,15 @@ struct LibraryView: View {
                 // Focused, the home button steps aside and the field takes the
                 // full width; the X lives in its OWN round glass button (house
                 // → Home, X → close).
+                // With the tabs at the side the scopes and the X stand in the
+                // column; the field stays here, the X joins it only while the
+                // keyboard is up.
+                let barsBelow = !tabBarPlacement.isSide
                 if !searchFieldFocused { miniPlayer(collapsed: barCollapsed) }
                 HStack(spacing: 8) {
-                    if !searchFieldFocused { homeButton }
+                    if !searchFieldFocused && barsBelow { homeButton }
                     bottomSearchField
-                    searchCloseButton
+                    if barsBelow || searchFieldFocused { searchCloseButton() }
                 }
             } else {
             let composedCollapsed = barCollapsed
@@ -1183,8 +1201,9 @@ struct LibraryView: View {
     }
 
     /// The round glass X. Clears a typed query first, a second tap
-    /// (or an empty field) closes the search.
-    private var searchCloseButton: some View {
+    /// (or an empty field) closes the search. 56 at the bottom; in the side
+    /// column at the search's place, with its measure and material.
+    private func searchCloseButton(diameter: CGFloat = 56, tier: GlassTier = .glass) -> some View {
         Button {
             if !searchModel.query.isEmpty {
                 searchModel.query = ""
@@ -1193,17 +1212,35 @@ struct LibraryView: View {
             }
         } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17 * diameter / 56, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 56, height: 56)
+                .frame(width: diameter, height: diameter)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(
-            shape: Circle(), tier: .glass,
-            morphID: "close", morphNamespace: bottomGlassNS))
+            shape: Circle(), tier: tier,
+            morphID: tier == .glass ? "close" : nil, morphNamespace: tier == .glass ? bottomGlassNS : nil))
         .accessibilityLabel(Text("Close search"))
         .accessibilityIdentifier("search-close")
+    }
+
+    /// The search's scopes in the side column, as the tabs stand there:
+    /// the same bar upright, each scope with its tab's glyph, the same
+    /// handles as the scope bar on top (`scope-<rawValue>`).
+    private var searchScopeColumn: some View {
+        let scopes = SearchDoor.visibleScopes()
+        return MediaTabBar(
+            cells: scopes.map { scope in
+                TabBarCell(id: "scope-\(scope.rawValue)", systemImage: scope.tab.systemImage,
+                           label: SearchScreen.scopeLabel(scope), tint: scope.tab.tint)
+            },
+            selectedID: "scope-\(searchScope.rawValue)",
+            onSelectID: { id in
+                guard let chosen = scopes.first(where: { "scope-\($0.rawValue)" == id }) else { return }
+                withAnimation(.snappy(duration: 0.3)) { searchScope = chosen }
+            },
+            upright: true)
     }
 
     /// A tab's stack back at its root: Home, a tap on a tab, a new search.

@@ -8,6 +8,11 @@ you opened. The settings button now stands at the top of the side
 column only on a tab's first page; a page you open shows the back
 button there alone.
 
+**The search keeps the side column.** On the iPhone Duo the search's
+sections stand in the side column with the tabs' symbols, and the close
+button takes the place of the search button; the search field stays
+at the bottom.
+
 **What you hear stays with your account.** When switching accounts
 could not finish at once and you switched again, a title heard in
 between could land in the history of the third account. Now it waits

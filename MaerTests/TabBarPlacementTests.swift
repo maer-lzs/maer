@@ -80,8 +80,10 @@ struct TabBarPlacementTests {
             if count > 0 { builds.append("\(file.lastPathComponent): \(count)") }
         }
         // The settings' sections take the library's bar upright in the side
-        // column (decided 23.10.2026); no other place builds a tab bar.
-        #expect(builds.sorted() == ["LibraryView.swift: 1", "SettingsView.swift: 1"],
+        // column (decided 23.10.2026), and so do the search's scopes there
+        // (`searchScopeColumn`, decided 24.10.2026); no other place builds a
+        // tab bar.
+        #expect(builds.sorted() == ["LibraryView.swift: 2", "SettingsView.swift: 1"],
                 "the tab bar is built somewhere else too: \(builds)")
         let library = FetchAnswerTests.squeezed(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
@@ -125,8 +127,8 @@ struct TabBarPlacementTests {
         }
         let library = try source("Sources/Views/LibraryView.swift")
         #expect(library.contains("private static let sideColumnWidth = TabBarPlacement.sideMeasure"))
-        #expect(library.components(separatedBy: "diameter: Self.sideColumnWidth").count - 1 == 2,
-                "cog and search take the measure")
+        #expect(library.components(separatedBy: "diameter: Self.sideColumnWidth").count - 1 == 3,
+                "cog, search and the search's close button take the measure")
         let settings = try source("Sources/Views/SettingsView.swift")
         #expect(settings.contains(".frame(width: TabBarPlacement.sideMeasure)"))
         let bar = try source("Sources/Views/MiniPlayerBar.swift")
