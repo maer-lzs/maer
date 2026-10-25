@@ -36,32 +36,30 @@ struct ArchiveMusicContractTests {
         }
     }
 
-    /// Ein Bereich auf georgeblood ist nicht mehr immer nur ein Fach. Die
-    /// Flaeche hat ihre Beliebt-Reihe. Der Grund der alten Regel gilt aber
-    /// weiter, und deshalb wandert der Fall nur: die frueher entfernte
-    /// Gemeinfrei-Behauptung darf nicht zurueckkommen, denn die Sammlung
-    /// fuehrt KEIN Lizenzfeld (gemessen 0 von 187.034).
-    ///
-    /// Neue Regel: ein Bereich auf georgeblood ist entweder ein Fach (mit
-    /// Subject-Klausel) oder die EINE ausdruecklich benannte Eltern-Abfrage.
-    /// Und die behauptet nichts ueber Rechte.
-    @Test("nur EIN Bereich sieht die ganze 78er-Sammlung, und er behauptet nichts")
-    func onlyTheNamedParentSeesTheWholeCollection() {
+    /// Kein Bereich auf georgeblood sieht die ganze Sammlung: die Sicherheit
+    /// kommt aus den Faechern, und die Beliebt-Reihe der Flaeche (auch die
+    /// Reihe „Alte Schallplatten“ und Start „Entdecken · Musik“) nimmt genau
+    /// ihre Vereinigung. Sie fragte vorher `collection:georgeblood` ganz ab
+    /// und umging die Faecher.
+    @Test("kein Bereich sieht die ganze 78er-Sammlung, die Beliebt-Reihe ist die Vereinigung der Faecher")
+    func noAreaSeesTheWholeCollection() {
         let ganze = ArchiveMusicCatalog.all
             .filter { $0.query.contains("collection:georgeblood") && !$0.query.contains("subject:") }
-        #expect(ganze.map(\.key) == [ArchiveMusicCatalog.shellacAll.key],
-                "ein unbenannter Bereich zeigt die ganze Sammlung ungefiltert")
-        // Der Grund der alten Regel, als eigener Satz gepruefet.
-        for area in ganze {
-            let text = (area.headerNote + " " + area.title).lowercased()
-            #expect(!text.contains("public domain"))
-            #expect(!text.contains("gemeinfrei"))
-        }
-        // Und jedes FACH bleibt ein Fach.
+        #expect(ganze.isEmpty, "ein Bereich zeigt die ganze Sammlung ungefiltert: \(ganze.map(\.key))")
+        let eltern = ArchiveMusicCatalog.shellacAll
+        #expect(eltern.query == ArchiveMusicCatalog.shellacUnionQuery(
+            subjects: ArchiveMusicCatalog.shellacShelves.map(\.subject)))
         for shelf in ArchiveMusicCatalog.shellacShelves {
-            #expect(shelf.query.contains("subject:"),
-                    "\(shelf.key) would show the whole collection unfiltered")
+            #expect(eltern.query.contains("\"\(shelf.subject)\""), "\(shelf.key) fehlt in der Vereinigung")
         }
+        // Rot-Probe des Pruefers: die alte Abfrage faellt auf.
+        let alt = "collection:georgeblood AND mediatype:(audio)"
+        #expect(alt.contains("collection:georgeblood") && !alt.contains("subject:"))
+        // Die Vereinigung behauptet nichts ueber Rechte.
+        let text = (eltern.headerNote + " " + eltern.title).lowercased()
+        #expect(!text.contains("public domain") && !text.contains("gemeinfrei"))
+        // Gemessen am 25.10.2026: 29.807 in der Vereinigung, 187.034 in der Sammlung.
+        #expect(eltern.measuredTotal == 29_807)
     }
 
     /// „Alte Schallplatten" ist eine gewoehnliche Kachelreihe wie Netlabels
@@ -147,8 +145,8 @@ struct ArchiveMusicContractTests {
         #expect(eltern.query.contains("collection:georgeblood"),
                 "die Beliebt-Reihe zapft eine andere Sammlung an als ihre Faecher")
         #expect(eltern.query.contains("mediatype:(audio)"))
-        // Und sie traegt KEINE Fach-Klausel. Sonst waere sie ein zehntes Fach.
-        #expect(!eltern.query.contains("subject:"))
+        // Ihre Fach-Klausel ist die Vereinigung aller Faecher, kein zehntes Fach.
+        #expect(eltern.query.contains("subject:("))
         // Jedes Fach steht auf derselben Sammlung.
         for shelf in ArchiveMusicCatalog.shellacShelves {
             #expect(shelf.query.contains("collection:georgeblood"),

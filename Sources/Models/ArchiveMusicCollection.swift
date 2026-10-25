@@ -121,25 +121,33 @@ nonisolated enum ArchiveMusicCatalog {
     }
 
     /// The PARENT query of the shellac surface, with the popular row behind
-    /// its chevron.
+    /// its chevron: the UNION of the shelves, never the whole collection.
+    /// Its safety is theirs, so it asks exactly their subjects, built from
+    /// the shelf list, and a new shelf joins it by itself. Measured on
+    /// archive.org: 29,807 records (the shelves sum to 29,845, 38 stand on
+    /// two), the whole collection 187,034.
     ///
-    /// The same basis as the shelves (`collection:georgeblood`), not the
-    /// wider `78rpm` collection. Otherwise the popular row would draw from a
-    /// different set than its shelves. The contract test covers it.
-    ///
-    /// Rights: measured, ZERO of 187,034 entries carry a licence statement,
-    /// so the row carries the note about the unclear rights situation
-    /// throughout. Showing yes, downloading no. The public-domain claim that
-    /// was removed earlier does NOT return through this: the per-title
-    /// capsule and the archive.org notice apply unchanged.
+    /// Rights: the collection carries no licence statement (measured 0 of
+    /// 187,034), so the row carries the note about the unclear rights
+    /// situation throughout. Showing yes, downloading no, and no
+    /// public-domain claim.
     static let shellacAll = ArchiveMusicArea(
-        key: "shellac-all",
-        query: "collection:georgeblood AND mediatype:(audio)",
+        // Its own address: what a device keeps under `shellac-all` holds
+        // the whole collection and is never read.
+        key: "shellac-union",
+        query: shellacUnionQuery(subjects: shellacShelves.map(\.subject)),
         title: String(localized: "Popular"),
         headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states."),
         placeholderSystemImage: "opticaldisc.fill",
         statesUniformRights: true,
-        measuredTotal: 187_034)
+        measuredTotal: 29_807)
+
+    /// The query of the shelves' union: the same collection and media type
+    /// as each shelf, any of their subjects.
+    static func shellacUnionQuery(subjects: [String]) -> String {
+        let any = subjects.map { "\"\($0)\"" }.joined(separator: " OR ")
+        return "collection:georgeblood AND subject:(\(any)) AND mediatype:(audio)"
+    }
 
     /// Every area that has its own full page (for contract tests).
     static var all: [ArchiveMusicArea] { [netlabels, shellacAll] + shellacShelves }

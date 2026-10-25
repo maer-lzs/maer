@@ -413,14 +413,14 @@ struct CatalogStockTests {
     @Test("die Mobilfunk-Frage nennt eine gemessene Groesse je Sammlung")
     func theCellularQuestionNamesAMeasuredSize() {
         for flaeche in ["librivox", "archiveBooks", "oldTimeRadio", "netlabels",
-                        "shellac-all", "gutenberg"] {
+                        ArchiveMusicCatalog.shellacAll.key, "gutenberg"] {
             let mb = CatalogStockFetch.transferMegabytes(surface: flaeche)
             #expect(mb != nil, "\(flaeche) hat keine Groesse fuer die Frage")
             #expect((mb ?? 0) > 0)
         }
         // Die Groessen folgen den Bestaenden: die groesste Sammlung kostet
         // am meisten. Ohne diese Probe koennte ueberall dieselbe Zahl stehen.
-        let gross = CatalogStockFetch.transferMegabytes(surface: "shellac-all") ?? 0
+        let gross = CatalogStockFetch.transferMegabytes(surface: "netlabels") ?? 0
         let klein = CatalogStockFetch.transferMegabytes(surface: "oldTimeRadio") ?? 0
         #expect(gross > klein * 5, "die Zahlen unterscheiden die Sammlungen nicht")
         // Rot-Probe: eine Flaeche, die es nicht gibt, hat keine Zahl.

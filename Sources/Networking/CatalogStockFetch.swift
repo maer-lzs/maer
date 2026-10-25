@@ -412,7 +412,6 @@ nonisolated enum CatalogStockFetch {
             "librivox": 21_805,
             "archiveBooks": 53_707,
             "netlabels": 77_047,
-            "shellac-all": 187_029,
         ]
         let shelfTotal = ArchiveMusicCatalog.shelf(key: surface)?.measuredTotal
         if let total = totals[surface] ?? shelfTotal.flatMap({ $0 > 0 ? $0 : nil }) {
