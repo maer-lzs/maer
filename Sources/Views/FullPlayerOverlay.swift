@@ -71,6 +71,7 @@ struct FullPlayerOverlay: View {
             ZStack(alignment: .top) {
                 playerScreen(dragProgress: visual, cornerRadius: corner)
                     .environment(\.noticePillHasRoom, pillHasRoom)
+                    .environment(\.closePlayer) { slideOutAndDismiss() }
                 Group {
                     sideDismissZones
                     topDismissZone

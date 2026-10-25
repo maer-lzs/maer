@@ -73,6 +73,14 @@ struct PlayerToolsAtSideTests {
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 
+    @Test("oben in der Spalte schliesst ein runder Knopf den Player ueber die eine Funktion", .needsTheSources)
+    func theColumnClosesThePlayer() throws {
+        let player = try source("Sources/Views/PlayerView.swift")
+        #expect(player.contains("VStack(spacing: SideColumnStyle.gap) {\n            SideRoundButton(systemImage: \"xmark\", label: \"Close\") { closePlayer() }"))
+        let overlay = try source("Sources/Views/FullPlayerOverlay.swift")
+        #expect(overlay.contains(".environment(\\.closePlayer) { slideOutAndDismiss() }"))
+    }
+
     @Test("die Transportreihe gibt in ihren Abstaenden nach und weitet die Spalte nie", .needsTheSources)
     func theTransportRowGivesWayInItsGaps() throws {
         let player = try source("Sources/Views/PlayerView.swift")

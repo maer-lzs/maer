@@ -56,6 +56,7 @@ struct PlayerView: View {
     @Environment(\.sideColumnPlacement) private var columnPlacement
     /// The display's fold, where there is one (`FullPlayerOverlay` hands it in).
     @Environment(\.foldLine) private var foldLine
+    @Environment(\.closePlayer) private var closePlayer
     /// The room between the sheet's top and the cover.
     static let topRoom: CGFloat = 12
     /// The controls column's height, measured; it does not change with the
@@ -1136,6 +1137,10 @@ struct PlayerView: View {
     /// stands in the library. The player is a dark page: dark glass.
     private var sideColumn: some View {
         VStack(spacing: SideColumnStyle.gap) {
+            // Where the system stands a page's back button in the column,
+            // with the system's sign for closing a sheet.
+            SideRoundButton(systemImage: "xmark", label: "Close") { closePlayer() }
+                .accessibilityIdentifier("player-close")
             Spacer(minLength: 16)
             SideCapsule {
                 Group {
@@ -1225,4 +1230,6 @@ extension EnvironmentValues {
     /// The tabs stand at the side: the full player stands its own side
     /// column with its tools in it. Set by the library.
     @Entry var playerToolsAtSide = false
+    /// Closes the full player the one way it closes (`FullPlayerOverlay`).
+    @Entry var closePlayer: @MainActor () -> Void = {}
 }
