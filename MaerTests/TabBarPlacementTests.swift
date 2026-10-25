@@ -87,7 +87,8 @@ struct TabBarPlacementTests {
                 "the tab bar is built somewhere else too: \(builds)")
         let library = FetchAnswerTests.squeezed(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
-        #expect(library.contains("mediaBar(upright: true)") && library.contains("upright: upright)"),
+        #expect(library.contains("mediaBar(upright: true, collapsed: barCollapsed)")
+                && library.contains("upright: upright, collapsed: collapsed)"),
                 "the upright bar is not the same tab bar")
         #expect(library.contains(".readsVerticalBarSide($verticalBarSide)"),
                 "the placement no longer follows the system's edge")
