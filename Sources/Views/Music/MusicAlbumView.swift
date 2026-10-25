@@ -91,6 +91,13 @@ struct MusicAlbumView: View {
     private func songCoverURL(_ index: Int) -> URL? {
         audioTrack(index)?.metadata?.coverArt.flatMap { music.coverURL(coverArtId: $0) }
     }
+    /// The artist under a row's title: every song's in a playlist; in an
+    /// album only a song's that is not the album's (`TrackRowArtist`).
+    private func rowArtist(_ index: Int) -> String? {
+        let song = audioTrack(index)?.metadata?.artist
+        if isPlaylist { return song }
+        return TrackRowArtist.inAlbum(song: song, album: detail?.media.metadata?.authorName ?? item.author)
+    }
     /// The song's own item id, for the playing mark of a song started on
     /// its own; nil off a music server, where the track is no song id.
     private func songItemId(_ index: Int) -> String? {
@@ -123,11 +130,12 @@ struct MusicAlbumView: View {
                             Task { await play(fromTrackAt: track.start) }
                         } label: {
                             // A playlist row shows the song's cover and
-                            // artist; an album row its number.
+                            // artist; an album row its number, and the
+                            // artist only where it is not the album's.
                             TrackRowLabel(lead: isPlaylist ? .cover(songCoverURL(index), placeholder: "music.note")
                                                            : .number(index + 1),
                                           title: track.title,
-                                          artist: isPlaylist ? audioTrack(index)?.metadata?.artist : nil,
+                                          artist: rowArtist(index),
                                           duration: Self.duration(track.end - track.start),
                                           playing: TrackPlaying.Row(entryId: item.id, start: track.start,
                                                                     ownId: songItemId(index)),

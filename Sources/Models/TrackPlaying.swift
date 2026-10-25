@@ -32,3 +32,19 @@ nonisolated enum TrackPlaying {
         return abs(start - at) < 0.5
     }
 }
+
+/// The artist an album's track row names: the song's own, only where it
+/// is not the album's (a sampler, "Various Artists"). An album of one
+/// artist repeats nothing under every title.
+nonisolated enum TrackRowArtist {
+    static func inAlbum(song: String?, album: String?) -> String? {
+        guard let song = trimmed(song) else { return nil }
+        guard let album = trimmed(album) else { return song }
+        return song.compare(album, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame ? nil : song
+    }
+
+    private static func trimmed(_ s: String?) -> String? {
+        guard let s = s?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else { return nil }
+        return s
+    }
+}

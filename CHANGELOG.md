@@ -24,6 +24,11 @@ soon as the server answers.
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.
 
+**Album rows name a song's artist where it differs.** On a sampler or a
+"Various Artists" album each row names the artist of its song below
+the title; an album of one artist shows only number and title, as
+before.
+
 **A netlabel album from shuffle plays as music.** It played like a
 book, with parts, thirty second skips and "book ends". Now its songs
 play in order with the music controls, as on its own page, and that

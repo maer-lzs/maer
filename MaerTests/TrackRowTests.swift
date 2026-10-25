@@ -33,6 +33,18 @@ struct TrackRowTests {
         #expect(!TrackPlaying.isCurrent(onDevice, playingId: "sub:song:tr-9", playingChapterStart: nil))
     }
 
+    @Test("Eine Album-Zeile nennt den Kuenstler des Liedes nur, wenn er nicht der des Albums ist")
+    func anAlbumRowNamesOnlyADifferentArtist() {
+        #expect(TrackRowArtist.inAlbum(song: "Ayato", album: "Ayato") == nil, "an album of one artist")
+        #expect(TrackRowArtist.inAlbum(song: "  björk ", album: "Bjork") == nil, "case, accents and spaces are no difference")
+        #expect(TrackRowArtist.inAlbum(song: "Nina Simone", album: "Various Artists") == "Nina Simone", "a sampler")
+        #expect(TrackRowArtist.inAlbum(song: "Ayato feat. Mio", album: "Ayato") == "Ayato feat. Mio")
+        #expect(TrackRowArtist.inAlbum(song: "Ayato", album: nil) == "Ayato", "an album without an artist")
+        #expect(TrackRowArtist.inAlbum(song: "Ayato", album: " ") == "Ayato")
+        #expect(TrackRowArtist.inAlbum(song: nil, album: "Various Artists") == nil, "a song without an artist")
+        #expect(TrackRowArtist.inAlbum(song: "", album: "Ayato") == nil)
+    }
+
     @Test("Die Marke bewegt sich beim Spielen und steht in der Pause still")
     func theMarkMovesOnlyWhilePlaying() {
         let still = (0..<3).map { PlayingBars.share(bar: $0, at: 1, moving: false) }
@@ -55,7 +67,8 @@ struct TrackRowTests {
         }
         let album = try flat("Sources/Views/Music/MusicAlbumView.swift")
         #expect(album.contains("TrackRowLabel(lead: isPlaylist ? .cover(songCoverURL(index), placeholder: \"music.note\") : .number(index + 1)"))
-        #expect(album.contains("artist: isPlaylist ? audioTrack(index)?.metadata?.artist : nil"))
+        #expect(album.contains("artist: rowArtist(index)"))
+        #expect(album.contains("if isPlaylist { return song } return TrackRowArtist.inAlbum(song: song, album: detail?.media.metadata?.authorName ?? item.author)"))
         #expect(album.contains("playing: TrackPlaying.Row(entryId: item.id, start: track.start, ownId: songItemId(index))"))
         let device = try flat("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(device.contains("TrackRowLabel(lead: .cover(playlist.flatMap { PlaylistCardSource.deviceCover(of: id, in: $0, router: router) }"))
