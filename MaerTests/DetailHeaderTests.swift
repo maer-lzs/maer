@@ -144,6 +144,8 @@ struct DetailHeaderTests {
 
     /// The pages whose actions stand in the top bar and how many menus each
     /// file builds there (the music library file: the device playlist).
+    /// BESTAND OHNE EINZELGRUENDE: an inventory compared for equality, one
+    /// reason for every entry (the page's one menu).
     static let pagesWithActions: [String: Int] = [
         "Sources/Views/Music/MusicAlbumView.swift": 1,
         "Sources/Views/Podcasts/PodcastShowView.swift": 1,
@@ -155,14 +157,15 @@ struct DetailHeaderTests {
 
     @Test("eine Seite hat einen Ort fuer ihre Handlungen: das Menue oben, kein Zeichen daneben", .needsTheSources)
     func aPageHasOnePlaceForItsActions() throws {
-        for (file, menus) in Self.pagesWithActions {
+        var found: [String: Int] = [:]
+        for file in Self.pagesWithActions.keys {
             let text = SyncContractFenceTests.stripped(
                 try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
-            #expect(text.components(separatedBy: ".pageActions(").count - 1 == menus,
-                    "\(file) builds its menu another way")
+            found[file] = text.components(separatedBy: ".pageActions(").count - 1
             #expect(!text.contains("ToolbarItem(") && !text.contains("ToolbarItemGroup("),
                     "\(file) puts a control of its own in the top bar")
         }
+        #expect(found == Self.pagesWithActions, "a page builds its menu another way: \(found)")
         // The menu is built in one place, with its name for VoiceOver.
         var menus: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {

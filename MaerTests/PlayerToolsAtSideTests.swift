@@ -55,8 +55,8 @@ struct PlayerToolsAtSideTests {
     @Test("der Player teilt am Falz, den die Bibliothek nennt, und oeffnet nie von selbst", .needsTheSources)
     func thePlayerDividesAtTheFoldAndNeverOpensItself() throws {
         let library = try source("Sources/Views/LibraryView.swift")
-        // One fold for the pages, the player and the playback bar.
-        #expect(library.components(separatedBy: ".environment(\\.foldLine, foldLine)").count - 1 == 3)
+        // One fold for the pages, the player, the playback bar and the settings.
+        #expect(library.components(separatedBy: ".environment(\\.foldLine, foldLine)").count - 1 == 4)
         #expect(library.components(separatedBy: "FoldLine(").count - 1 == 1)
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("if sideBySide, foldLine.fold != nil {\n                    FoldColumns { column in"))

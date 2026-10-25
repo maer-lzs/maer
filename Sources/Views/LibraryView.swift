@@ -865,8 +865,8 @@ struct LibraryView: View {
         // Settings modal: a sheet with the tabs at the bottom, over the whole
         // window beside the side column, folded and open alike
         // (`SettingsPresentation`).
-        .sheet(isPresented: settingsShown(as: .sheet)) { settingsPage }
-        .fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage }
+        .sheet(isPresented: settingsShown(as: .sheet)) { settingsPage.followsAppearanceChoice() }
+        .fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage.followsAppearanceChoice() }
         // Up-Next home at the player: the queue sheet opened from the
         // mini-player long-press (the full player presents its own copy of the
         // same PlayQueueSheet). Root-level, so it works from every tab and
@@ -1852,7 +1852,6 @@ struct LibraryView: View {
         .labelStyle(RowLabelStyle())
         .environment(\.bottomBarInset, 0)
         .environment(\.foldLine, foldLine)
-        .followsAppearanceChoice()
     }
 
     private var settingsLink: some View {

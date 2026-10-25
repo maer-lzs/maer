@@ -46,8 +46,8 @@ struct TabBarPlacementTests {
     @Test("die Bibliothek zeigt die Einstellungen in der Form der Regel, breit stehen sie in zwei Spalten am Falz", .needsTheSources)
     func theSettingsFollowTheRuleAndTheFold() throws {
         let library = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
-        #expect(library.contains(".sheet(isPresented: settingsShown(as: .sheet)) { settingsPage }"))
-        #expect(library.contains(".fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage }"))
+        #expect(library.contains(".sheet(isPresented: settingsShown(as: .sheet)) { settingsPage.followsAppearanceChoice() }"))
+        #expect(library.contains(".fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage.followsAppearanceChoice() }"))
         #expect(library.contains("showSettings && SettingsPresentation.of(tabBarPlacement) == form"),
                 "the form does not follow the rule")
         #expect(!library.contains(".sheet(isPresented: $showSettings)"), "the settings open as a sheet everywhere again")
