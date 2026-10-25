@@ -16,14 +16,14 @@ struct PlaybackBarControlsTests {
     @Test("die breite Leiste je Medium in Gruppen und in der Reihenfolge von heute, Play ganz rechts")
     func eachMediumGetsItsControls() {
         #expect(PlaybackBarControls.wide(isLive: false, isMusic: false)
-                == [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer], [.airPlay, .play]])
+                == [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer, .airPlay], [.play]])
         #expect(PlaybackBarControls.wide(isLive: false, isMusic: true)
-                == [[.titleBack, .titleForward], [.queue], [.airPlay, .play]])
-        #expect(PlaybackBarControls.wide(isLive: true, isMusic: false) == [[.airPlay, .play]])
+                == [[.titleBack, .titleForward], [.queue, .airPlay], [.play]])
+        #expect(PlaybackBarControls.wide(isLive: true, isMusic: false) == [[.airPlay], [.play]])
         for groups in [PlaybackBarControls.wide(isLive: false, isMusic: false),
                        PlaybackBarControls.wide(isLive: false, isMusic: true),
                        PlaybackBarControls.wide(isLive: true, isMusic: false)] {
-            #expect(groups.last?.last == .play, "play leaves the right edge")
+            #expect(groups.last == [.play], "play leaves the right edge or shares its group")
         }
     }
 

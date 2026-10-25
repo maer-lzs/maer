@@ -214,7 +214,10 @@ struct DetailColumnsTests {
         #expect(page.contains(".coverCard(card)"))
         let player = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
-        #expect(player.contains(".frame(maxWidth: 300)\n        .coverCard()"))
+        #expect(player.contains(".frame(maxWidth: maxSide)\n        .coverCard()"))
+        // Beside the side column and at the fold the cover takes the room it has, not the fixed side.
+        #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 2)
+        #expect(player.contains("private static let coverSide: CGFloat = 300"))
         #expect(!player.contains("RoundedRectangle(cornerRadius: 12))\n        .shadow("), "the player keeps a card of its own")
     }
 }

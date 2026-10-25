@@ -114,8 +114,8 @@ struct PlayerView: View {
                 // column, the controls in the trailing one (`FoldColumns`).
                 if sideBySide, foldLine.fold != nil {
                     FoldColumns { column in
-                        cover
-                            .frame(maxWidth: min(column.width, column.height))
+                        // As large as its half allows, less the page margin.
+                        cover(maxSide: max(0, min(column.width, column.height) - 32))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } trailing: { _ in
                         ScrollView {
@@ -128,16 +128,19 @@ struct PlayerView: View {
                 } else {
                     ScrollView {
                         layout {
-                            // Beside the side column the cover takes only as much
-                            // height as leaves the controls in sight at rest
+                            // Upright the cover is as wide as the column the
+                            // text stands in, never after the title's length,
+                            // and narrower, still centred, where the height
+                            // must leave the controls in sight at rest
                             // (`DetailCoverSide`).
-                            cover
-                                .frame(maxWidth: toolsAtSide && !sideBySide
-                                       ? DetailCoverSide.side(columnWidth: Self.portraitColumn,
-                                                              height: geo.size.height,
-                                                              top: topInset + 24, below: controlsHeight + 24,
-                                                              bottomReserve: bottomInset + 16)
-                                       : nil)
+                            cover(maxSide: !sideBySide
+                                  ? DetailCoverSide.side(
+                                      columnWidth: min(Self.portraitColumn,
+                                                       geo.size.width - (columnPlacement?.strip ?? 0) - 32),
+                                      height: geo.size.height,
+                                      top: topInset + 24, below: controlsHeight + 24,
+                                      bottomReserve: bottomInset + 16)
+                                  : Self.coverSide)
                             controlsBlock
                         }
                         .padding()
@@ -332,8 +335,13 @@ struct PlayerView: View {
         ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)
     }
 
-    @ViewBuilder
-    private var cover: some View {
+    /// The cover's side beside the controls on a display without a fold
+    /// (iPhone and iPad across).
+    private static let coverSide: CGFloat = 300
+
+    /// The cover at most `maxSide` wide: beside the side column and at the
+    /// fold the caller gives the room it has.
+    private func cover(maxSide: CGFloat) -> some View {
         Group {
             if viewModel.isLiveStream {
                 if let songCover = viewModel.icySongArtwork {
@@ -367,7 +375,7 @@ struct PlayerView: View {
                 }
             }
         }
-        .frame(maxWidth: 300)
+        .frame(maxWidth: maxSide)
         .coverCard()
         // Horizontal swipe on the cover = previous/next chapter. For music
         // each song is a chapter, so this is prev/next track. `simultaneous` so
@@ -403,7 +411,9 @@ struct PlayerView: View {
     }
 
     private var chapterHeader: some View {
-        VStack(spacing: 4) {
+        // Title, subtitle and the time lines stand at the leading edge, on
+        // the scrubber's edge; the controls below stay centred.
+        VStack(alignment: .leading, spacing: 4) {
             if viewModel.isLiveStream {
                 // Radio shows the STATION as the big title, with the
                 // current ICY song underneath (in-app arrangement; the lock
@@ -416,14 +426,14 @@ struct PlayerView: View {
                     // Pipe-junk trimmed for display everywhere.
                     Text(RadioMapping.displayName(viewModel.stationName))
                         .font(.title3).bold()
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
                 if let nowPlaying = viewModel.icyDisplayLine {
                     Text(nowPlaying)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
             } else {
@@ -438,7 +448,7 @@ struct PlayerView: View {
             sourceTappable(target: titleTarget, a11yId: "player-source-title") {
                 Text(viewModel.nowPlayingTitle)
                     .font(.title3).bold()
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                     .lineLimit(2)
             }
             // Chapter / part line: a real chapter · author, the fallback
@@ -448,7 +458,7 @@ struct PlayerView: View {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(.leading)
                 }
             }
             // "N of M" only for REAL chapters. A fallback marker already carries
@@ -474,7 +484,7 @@ struct PlayerView: View {
             }
             }
         }
-        .padding(.horizontal)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The line under the work title in the full player. For music the

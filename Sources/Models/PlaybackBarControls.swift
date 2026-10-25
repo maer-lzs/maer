@@ -27,12 +27,13 @@ nonisolated enum PlaybackBarControls {
     static let groupGap: CGFloat = 16
 
     /// The wide bar per medium, in its groups and in order, play always
-    /// last at the right edge: the title way and the skips, the tools, then
-    /// AirPlay and play. A live stream has nothing to step, skip or speed up.
+    /// last and alone at the right edge: the title way and the skips, the
+    /// tools with AirPlay, then play. A live stream has nothing to step,
+    /// skip or speed up.
     static func wide(isLive: Bool, isMusic: Bool) -> [[Control]] {
-        if isLive { return [[.airPlay, .play]] }
-        if isMusic { return [[.titleBack, .titleForward], [.queue], [.airPlay, .play]] }
-        return [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer], [.airPlay, .play]]
+        if isLive { return [[.airPlay], [.play]] }
+        if isMusic { return [[.titleBack, .titleForward], [.queue, .airPlay], [.play]] }
+        return [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer, .airPlay], [.play]]
     }
 
     /// How wide the title may be in a bar that spans a fold: up to the
