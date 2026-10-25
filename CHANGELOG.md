@@ -24,6 +24,12 @@ soon as the server answers.
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.
 
+**A song played on its own shows its cover.** On a gonic server a single
+song, a song in the queue and a song in a device playlist showed no
+cover, because the server knows no cover under the song's own id. The
+app now asks the cover the server names for the song. A downloaded
+song keeps its old cover until the new one has arrived.
+
 **Album rows name a song's artist where it differs.** On a sampler or a
 "Various Artists" album each row names the artist of its song below
 the title; an album of one artist shows only number and title, as

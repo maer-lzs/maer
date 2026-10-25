@@ -1,0 +1,77 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// A server song shows the cover its server names for it (`coverArt`),
+/// not one asked with its own id, and keeps that address across sessions.
+struct SongCoverArtMemoTests {
+    @Test("Das Gedaechtnis lernt das Cover-Feld eines Liedes und sagt, was sich aenderte")
+    func learnsTheSongsCoverField() {
+        var memo = SongCoverArtMemo(server: "https://gonic.example|sim")
+        #expect(memo.coverArt(of: "tr-146") == nil)
+        #expect(memo.learn(songId: "tr-146", coverArt: "al-40") == .learned(previous: nil))
+        #expect(memo.coverArt(of: "tr-146") == "al-40")
+        #expect(memo.learn(songId: "tr-146", coverArt: "al-40") == .same, "the same answer again")
+        #expect(memo.learn(songId: "tr-146", coverArt: "al-41") == .learned(previous: "al-40"), "the server changed it")
+        #expect(memo.learn(songId: "tr-146", coverArt: nil) == .same, "a song without the field keeps what is known")
+        #expect(memo.learn(songId: "tr-146", coverArt: "") == .same)
+        #expect(memo.coverArt(of: "tr-146") == "al-41")
+    }
+
+    @Test("Ueber der Grenze geht das aelteste Lied, ein gehaltenes bleibt")
+    func theCapDropsTheOldestButKeepsHeldSongs() {
+        var memo = SongCoverArtMemo(server: "s")
+        for i in 0..<SongCoverArtMemo.cap {
+            _ = memo.learn(songId: "tr-\(i)", coverArt: "al-\(i)")
+        }
+        _ = memo.learn(songId: "tr-new", coverArt: "al-new", keeps: { $0 == "tr-0" })
+        #expect(memo.order.count == SongCoverArtMemo.cap)
+        #expect(memo.coverArt(of: "tr-0") == "al-0", "a downloaded song stays")
+        #expect(memo.coverArt(of: "tr-1") == nil, "the oldest not held goes")
+        #expect(memo.coverArt(of: "tr-new") == "al-new")
+    }
+
+    @Test("Das Gedaechtnis ueberdauert die Sitzung und gehoert seinem Server")
+    func theMemoryOutlivesTheSessionForItsServer() throws {
+        let defaults = try #require(UserDefaults(suiteName: "SongCoverArtMemoTests"))
+        defaults.removePersistentDomain(forName: "SongCoverArtMemoTests")
+        defer { defaults.removePersistentDomain(forName: "SongCoverArtMemoTests") }
+        #expect(SongCoverArtMemo.load(server: "a", defaults: defaults).order.isEmpty, "nothing kept yet")
+        var memo = SongCoverArtMemo(server: "a")
+        _ = memo.learn(songId: "tr-146", coverArt: "al-40")
+        memo.save(defaults: defaults)
+        #expect(SongCoverArtMemo.load(server: "a", defaults: defaults).coverArt(of: "tr-146") == "al-40")
+        let other = SongCoverArtMemo.load(server: "b", defaults: defaults)
+        #expect(other.coverArt(of: "tr-146") == nil, "another server's ids name other songs")
+        #expect(other.server == "b")
+        defaults.set(Data("kaputt".utf8), forKey: SongCoverArtMemo.storeKey)
+        #expect(SongCoverArtMemo.load(server: "a", defaults: defaults).order.isEmpty, "an unreadable memory starts empty")
+    }
+
+    /// The provider asks the memory for a song's cover, learns from every
+    /// answer that carries songs, and moves a downloaded song's kept cover.
+    @Test("Der Anbieter fragt fuer ein Lied das Cover-Feld und lernt aus jeder Antwort mit Liedern", .needsTheSources)
+    func theProviderAsksTheSongsCoverField() throws {
+        let text = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"),
+            encoding: .utf8))
+        let flat = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        #expect(flat.contains("let cover = Self.subParts(itemId)?.kind == \"song\" ? (songCoverMemo.coverArt(of: id) ?? id) : id"))
+        #expect(flat.contains("return client.mediaURL(\"getCoverArt\", [\"id\": cover, \"size\": \"600\"])"))
+        // Album, playlist and song detail; genre and top songs; the shuffle
+        // pools; the search. Each answer that hands songs to a surface.
+        let learnSites = flat.components(separatedBy: "learnCovers(").count - 2
+        #expect(learnSites == 6, "learnCovers call sites: \(learnSites)")
+        #expect(flat.contains("learnCovers(songs) let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)"))
+        #expect(flat.contains("learnCovers(hits.song ?? [])"))
+        #expect(flat.contains("Artwork.rename(from: old, to: new) Artwork.invalidate(new) await Artwork.persist(new)"))
+        #expect(flat.contains("songCoverStore = nil"), "a new server starts its own memory")
+    }
+}
+#endif

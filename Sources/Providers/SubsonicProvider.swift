@@ -103,6 +103,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } else {
             client = nil
         }
+        // The song covers belong to the server they were learned from.
+        songCoverStore = nil
         // Availability may have flipped (toggle, credentials). The tab
         // bar reacts live in both directions.
         Logger.music.notice("subsonic config reloaded (active=\(AppStorageKeys.subsonicActive), client=\(self.client != nil))")
@@ -328,6 +330,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } else {
             throw SubsonicClient.SubsonicError.decoding
         }
+        learnCovers(songs)
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
         // Remember the songs + offsets so playback can scrobble each one.
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
@@ -454,6 +457,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         guard let client else { return [] }
         let songs = try await client.songsByGenre(genre: genre, count: size, offset: offset,
                                                   musicFolderIds: folderScope(for: .music))
+        learnCovers(songs)
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
@@ -608,6 +612,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         var name = searchedArtistsById[artistId]?.name
         if name == nil { name = (try? await client.artist(id: artistId))?.name }
         guard let name, let songs = try? await client.topSongs(artist: name, count: count) else { return [] }
+        learnCovers(songs)
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
@@ -868,6 +873,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } else {
             songs = []
         }
+        learnCovers(songs)
         let items = songs.map(Self.songItem(from:))
         for item in items { itemsById[item.id] = item }
         return items
@@ -881,6 +887,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
               let songs = try? await client.randomSongs(size: limit,
                                                         musicFolderIds: folderScope(for: .music))
         else { return [] }
+        learnCovers(songs)
         let items = songs.map(Self.songItem(from:))
         for item in items { itemsById[item.id] = item }
         return items
@@ -925,7 +932,62 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// new id, its cover is renamed from the one to the other.
     func coverURL(forItemId itemId: String, canonical: Bool) -> URL? {
         guard let client, let id = Self.rawId(itemId, canonical: canonical) else { return nil }
-        return client.mediaURL("getCoverArt", ["id": id, "size": "600"])
+        // A song asks the cover its server named for it; its own id only
+        // while none is known.
+        let cover = Self.subParts(itemId)?.kind == "song" ? (songCoverMemo.coverArt(of: id) ?? id) : id
+        return client.mediaURL("getCoverArt", ["id": cover, "size": "600"])
+    }
+
+    /// What the server named as each song's cover, read once per server.
+    private var songCoverStore: SongCoverArtMemo?
+    private var songCoverMemo: SongCoverArtMemo {
+        if let memo = songCoverStore { return memo }
+        let memo = SongCoverArtMemo.load(server: Self.coverMemoServer)
+        songCoverStore = memo
+        return memo
+    }
+    nonisolated private static var coverMemoServer: String {
+        "\(AppStorageKeys.subsonicServerURLValue)|\(AppStorageKeys.subsonicUsernameValue)"
+    }
+
+    /// Learns the cover each song names (`SongCoverArtMemo`), written once
+    /// per answer. A song a download holds as its own entry takes its kept
+    /// cover to the new address (`moveKeptCover`).
+    private func learnCovers(_ songs: [SubsonicSong]) {
+        guard client != nil, !songs.isEmpty else { return }
+        var memo = songCoverMemo
+        var changed: [(itemId: String, old: URL?, new: URL?)] = []
+        let downloads = DownloadManager.shared
+        for song in songs {
+            let itemId = Self.itemId(songId: song.id)
+            let old = coverURL(forItemId: itemId)
+            guard case .learned = memo.learn(songId: song.id, coverArt: song.coverArt,
+                                             keeps: { downloads.downloadedItemIds.contains(Self.itemId(songId: $0)) })
+            else { continue }
+            songCoverStore = memo
+            changed.append((itemId, old, coverURL(forItemId: itemId)))
+        }
+        guard !changed.isEmpty else { return }
+        memo.save()
+        Task {
+            // The downloads are known only after their scan.
+            await downloads.ensureScanned()
+            let moving = changed.filter { downloads.downloadedItemIds.contains($0.itemId) }
+            guard !moving.isEmpty else { return }
+            Logger.music.notice("COVER song downloads take their cover id: \(moving.count)")
+            for move in moving { await Self.moveKeptCover(from: move.old, to: move.new) }
+        }
+    }
+
+    /// A downloaded song's cover address changed: the kept cover takes the
+    /// new address and stays the last candidate until the server's picture
+    /// under it arrives (`Artwork.invalidate`), so the song never stands
+    /// without its cover.
+    private static func moveKeptCover(from old: URL?, to new: URL?) async {
+        guard let new else { return }
+        Artwork.rename(from: old, to: new)
+        Artwork.invalidate(new)
+        await Artwork.persist(new)
     }
 
     /// A download moved from the old id to the new one: its persistent cover
@@ -1305,6 +1367,7 @@ extension SubsonicProvider: SearchableProvider {
         let hits = try await client.search3(query: query,
                                            musicFolderIds: folderScope(for: .music))
         var out: [SearchResult] = []
+        learnCovers(hits.song ?? [])
         for artist in hits.artist ?? [] {
             guard let name = artist.name else { continue }
             searchedArtistsById[artist.id] = Self.domainArtist(artist)
