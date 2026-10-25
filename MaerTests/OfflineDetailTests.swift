@@ -38,7 +38,7 @@ struct OfflineDetailTests {
         #expect(page.contains("guard plan == .network else {"),
                 "a failed refresh keeps the stored detail instead of a failure page")
         #expect(page.contains("case .offlineMissing: loadFailure = .offline"))
-        #expect(page.contains("Label(\"Not available offline\""))
+        #expect(page.contains("EmptyStateView(\"Not available offline\""))
         // No description repeats its title: the old one said "could not be
         // loaded" under "Couldn't load tracks".
         #expect(!page.contains("This could not be loaded. Check your connection."))
