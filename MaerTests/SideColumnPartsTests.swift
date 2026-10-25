@@ -67,5 +67,20 @@ struct SideColumnPartsTests {
                 "the dark book page does not tell the column, or tells it while covered")
         #expect(page.contains(".onAppear { isTopPage = true }\n                .onDisappear { isTopPage = false }"))
     }
+
+    @Test("die Kapsel klappt mit der unteren Leiste auf den aktiven Reiter ein, der Rand bleibt", .needsTheSources)
+    func theCapsuleCollapsesWithTheBar() throws {
+        func source(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let library = try source("Sources/Views/LibraryView.swift")
+        // One signal for both bars: the column reads the bottom bar's.
+        #expect(library.contains("BottomBarCollapseReader { barCollapsed in\n                                mediaBar(upright: true, collapsed: barCollapsed)"))
+        let bar = try source("Sources/Views/MediaTabBar.swift")
+        #expect(bar.contains("collapsed ? cells.filter { $0.id == selected } : cells"), "collapsed keeps the selected tab")
+        #expect(bar.components(separatedBy: "var collapsed").count - 1 == 1, "a second collapse state")
+        // The reserved strip is the system's, never the capsule's height.
+        #expect(library.contains(".readsReservedStrip(ofWidth: strip, $reservedSide)"))
+    }
 }
 #endif

@@ -28,10 +28,14 @@ struct MediaTabBar: View {
     /// the same cells one under the other, symbols only as at accessibility
     /// sizes, the name stays for VoiceOver.
     var upright = false
+    /// Upright and collapsed with the bottom bar (`BottomBarState.collapsed`):
+    /// only the selected cell stays; a tap on it opens the column again.
+    var collapsed = false
 
     /// The library's media tabs.
     init(types: [MediaType], selected: MediaType, onSelect: @escaping (MediaType) -> Void,
-         glassMorphID: String? = nil, glassMorphNamespace: Namespace.ID? = nil, upright: Bool = false) {
+         glassMorphID: String? = nil, glassMorphNamespace: Namespace.ID? = nil, upright: Bool = false,
+         collapsed: Bool = false) {
         self.cells = types.map(TabBarCell.init(mediaType:))
         self.selectedID = TabBarCell(mediaType: selected).id
         self.onSelectID = { id in
@@ -40,6 +44,7 @@ struct MediaTabBar: View {
         self.glassMorphID = glassMorphID
         self.glassMorphNamespace = glassMorphNamespace
         self.upright = upright
+        self.collapsed = collapsed
     }
 
     /// Any other set of sections in the same bar.
@@ -116,11 +121,14 @@ struct MediaTabBar: View {
             // A column has no width to fall back on: no labels, no ladder.
             // The column's one capsule (`SideCapsule`).
             SideCapsule {
-                TabRowCandidate(cells: cells, selected: selected,
+                TabRowCandidate(cells: collapsed ? cells.filter { $0.id == selected } : cells,
+                                selected: selected,
                                 labelSize: Self.baseLabelSize, hideLabels: true,
                                 namespace: namespace, upright: true, onSelect: onSelect)
             }
             .animation(.snappy(duration: 0.3), value: selected)
+            // The bottom bar's own spring, so column and bar move as one.
+            .animation(.spring(response: 0.55, dampingFraction: 0.85), value: collapsed)
         } else {
             MeasuredLadder(rungs: Self.labelSizes) { size, probing in
                 TabRowCandidate(cells: cells, selected: selected,

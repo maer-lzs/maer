@@ -627,7 +627,11 @@ struct LibraryView: View {
                                     .accessibilityIdentifier("search-close")
                             }
                         } else {
-                            mediaBar(upright: true)
+                            // Collapses on the bottom bar's signal; the
+                            // reserved strip beside it keeps its width.
+                            BottomBarCollapseReader { barCollapsed in
+                                mediaBar(upright: true, collapsed: barCollapsed)
+                            }
                             SideRoundButton(systemImage: "magnifyingglass", label: "Search") { openSearch() }
                                 .accessibilityIdentifier("global-search")
                         }
@@ -1083,7 +1087,7 @@ struct LibraryView: View {
     }
 
     @ViewBuilder
-    private func mediaBar(upright: Bool = false) -> some View {
+    private func mediaBar(upright: Bool = false, collapsed: Bool = false) -> some View {
         if availableMediaTypes.count > 1 {
             MediaTabBar(
                 types: availableMediaTypes, selected: selectedMediaType,
@@ -1096,7 +1100,7 @@ struct LibraryView: View {
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
                 },
                 glassMorphID: "media", glassMorphNamespace: bottomGlassNS,
-                upright: upright)
+                upright: upright, collapsed: collapsed)
             .matchedGeometryEffect(id: "media", in: barNS)
         }
     }
