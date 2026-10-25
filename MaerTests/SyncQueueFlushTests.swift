@@ -179,6 +179,30 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty)
     }
 
+    @Test("ein wartendes 0 ohne Dauer geht nicht ueber die Zeit des Servers, auch bei veraltetem Bruchteil")
+    func flushDropsAQueuedZeroWithoutDuration() async {
+        let (queue, storage, api) = makeQueue()
+        await queue.enqueue(itemId: "a", currentTime: 0, duration: 0, isFinished: false)
+        api.progress = ["a": BookProgress(fraction: 0, isFinished: false, lastUpdate: 0, currentTime: 3000)]
+
+        await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
+
+        #expect(api.written.isEmpty)
+        #expect(storage.dict.isEmpty)
+    }
+
+    @Test("ein Servereintrag ohne bekannte Stelle haelt den wartenden Stand in der Schlange")
+    func flushHoldsAgainstAnUnknownServerPosition() async {
+        let (queue, storage, api) = makeQueue()
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 0, isFinished: false)
+        api.progress = ["a": BookProgress(fraction: 0.9, isFinished: false, lastUpdate: 0)]
+
+        await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
+
+        #expect(api.written.isEmpty)
+        #expect(storage.dict["a"]?.currentTime == 100)
+    }
+
     @Test("finished-Updates werden auch bei weiter fortgeschrittenem Server geschrieben")
     func flushKeepsFinishedUpdates() async {
         let (queue, _, api) = makeQueue()

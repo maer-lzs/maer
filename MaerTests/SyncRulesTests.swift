@@ -86,34 +86,71 @@ struct SyncRulesTests {
         ))
     }
 
-    // MARK: - Queue-Flush (shouldDropQueuedUpdate)
+    // MARK: - Queue-Flush (queuedFate)
+
+    private func server(fraction: Double, currentTime: Double?) -> BookProgress {
+        BookProgress(fraction: fraction, isFinished: false, lastUpdate: 1000, currentTime: currentTime)
+    }
 
     @Test func dropsStaleQueuedUpdateWhenServerIsAhead() {
-        #expect(SyncRules.shouldDropQueuedUpdate(
-            queuedTime: 100, queuedIsFinished: false, duration: 1000, serverFraction: 0.5
-        ))
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: false, duration: 1000,
+            server: server(fraction: 0.5, currentTime: 500)
+        ) == .drop)
+        // Only a fraction: it counts over the queued duration.
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: false, duration: 1000,
+            server: server(fraction: 0.5, currentTime: nil)
+        ) == .drop)
     }
 
     @Test func keepsQueuedUpdateWhenServerIsBehind() {
-        #expect(!SyncRules.shouldDropQueuedUpdate(
-            queuedTime: 600, queuedIsFinished: false, duration: 1000, serverFraction: 0.5
-        ))
+        #expect(SyncRules.queuedFate(
+            queuedTime: 600, queuedIsFinished: false, duration: 1000,
+            server: server(fraction: 0.5, currentTime: 500)
+        ) == .send)
     }
 
     @Test("Statusentscheidung: finished-Updates werden nie verworfen")
     func neverDropsFinishedUpdates() {
-        #expect(!SyncRules.shouldDropQueuedUpdate(
-            queuedTime: 100, queuedIsFinished: true, duration: 1000, serverFraction: 0.9
-        ))
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: true, duration: 1000,
+            server: server(fraction: 0.9, currentTime: 900)
+        ) == .send)
     }
 
-    @Test func keepsQueuedUpdateWithoutServerEntryOrDuration() {
-        #expect(!SyncRules.shouldDropQueuedUpdate(
-            queuedTime: 100, queuedIsFinished: false, duration: 1000, serverFraction: nil
-        ))
-        #expect(!SyncRules.shouldDropQueuedUpdate(
-            queuedTime: 100, queuedIsFinished: false, duration: 0, serverFraction: 0.9
-        ))
+    @Test("ohne Servereintrag geht der wartende Stand raus, es gibt nichts zu ueberschreiben")
+    func sendsQueuedUpdateWithoutServerEntry() {
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: false, duration: 1000, server: nil
+        ) == .send)
+    }
+
+    @Test("ein wartendes 0 ohne bekannte Dauer geht nie ueber einen weiteren Serverstand")
+    func aQueuedZeroWithoutDurationNeverOverwrites() {
+        // The server's time stands, its fraction is stale: a write without a
+        // known duration sends no fraction.
+        #expect(SyncRules.queuedFate(
+            queuedTime: 0, queuedIsFinished: false, duration: 0,
+            server: server(fraction: 0, currentTime: 3000)
+        ) == .drop)
+        #expect(SyncRules.queuedFate(
+            queuedTime: 0, queuedIsFinished: false, duration: 1000,
+            server: server(fraction: 0.1, currentTime: 3000)
+        ) == .drop)
+    }
+
+    @Test("ein Servereintrag ohne bekannte Stelle haelt den wartenden Stand, er geht nicht raus")
+    func anUnknownServerPositionHoldsTheUpdate() {
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: false, duration: 0,
+            server: server(fraction: 0.9, currentTime: nil)
+        ) == .hold)
+        // A finished mark is a status decision and still goes out.
+        #expect(SyncRules.queuedFate(
+            queuedTime: 100, queuedIsFinished: true, duration: 0,
+            server: server(fraction: 0.9, currentTime: nil)
+        ) == .send)
     }
 
     // MARK: - Crash-Sicherung (shouldRestoreLocalPosition)

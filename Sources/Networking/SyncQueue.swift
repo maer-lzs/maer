@@ -261,16 +261,23 @@ final class SyncQueue {
             // another device kept listening while this one was offline. The
             // stale offline state must not overwrite it. The pending entry is
             // then dropped. A deliberate "finished" update (isFinished) is
-            // exempt, since it is a status decision, not a lagging state.
-            if SyncRules.shouldDropQueuedUpdate(
+            // exempt, since it is a status decision, not a lagging state. A
+            // server entry without a known position holds the update.
+            switch SyncRules.queuedFate(
                 queuedTime: update.currentTime,
                 queuedIsFinished: update.isFinished,
                 duration: update.duration,
-                serverFraction: serverProgress[itemId]?.fraction,
+                server: serverProgress[itemId],
                 tolerance: reconcileThreshold
             ) {
+            case .drop:
                 await remove(itemId: itemId, ifStill: update)
                 continue
+            case .hold:
+                Logger.library.notice("SYNCQUEUE held, the server position is unknown item=\(itemId, privacy: .private(mask: .hash))")
+                continue
+            case .send:
+                break
             }
             do {
                 try await apiClient.updateProgress(

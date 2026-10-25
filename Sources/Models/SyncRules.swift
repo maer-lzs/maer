@@ -113,17 +113,36 @@ nonisolated enum SyncRules {
         return false
     }
 
-    /// Queue flush: drop a pending update because the server is now further
-    /// ahead? isFinished updates are status decisions and are never dropped.
-    static func shouldDropQueuedUpdate(
+    /// What a queue flush does with a pending update, and whether the
+    /// library shows it over the server state.
+    enum QueuedFate: Equatable {
+        /// Goes out: the server has nothing further ahead.
+        case send
+        /// Leaves the queue unsent: the server is further ahead.
+        case drop
+        /// Stays queued unsent: the server has an entry whose position is
+        /// unknown. It ends when the server names a position or a newer write
+        /// of the title replaces the entry.
+        case hold
+    }
+
+    /// The server's position is its `currentTime`; only without one the
+    /// fraction over the queued duration. The fraction alone can be stale: a
+    /// write without a known duration sends no fraction, so the server keeps
+    /// the old one while its time moves on. A finished update is a status
+    /// decision and always goes out; without a server entry there is nothing
+    /// to overwrite.
+    static func queuedFate(
         queuedTime: Double,
         queuedIsFinished: Bool,
         duration: Double,
-        serverFraction: Double?,
+        server: BookProgress?,
         tolerance: Double = 5
-    ) -> Bool {
-        guard !queuedIsFinished, duration > 0, let fraction = serverFraction else { return false }
-        return fraction * duration > queuedTime + tolerance
+    ) -> QueuedFate {
+        guard !queuedIsFinished, let server else { return .send }
+        guard let serverTime = server.currentTime ?? (duration > 0 ? server.fraction * duration : nil)
+        else { return .hold }
+        return serverTime > queuedTime + tolerance ? .drop : .send
     }
 
     /// Crash safety: use the local tick backup instead of the server state?

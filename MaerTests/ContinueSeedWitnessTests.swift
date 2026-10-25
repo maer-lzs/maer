@@ -42,5 +42,43 @@ struct ContinueSeedWitnessTests {
         let ids = Set(output.continueListening.map(\.id))
         #expect(ids == ["seed-book-old", "seed-book-4", "seed-book-6"], "the rule counts \(ids.sorted())")
     }
+
+    @Test("ein wartendes 0, das der Abgleich verwirft, ueberdeckt den Serverstand nicht: das Buch bleibt in Weiterhoeren")
+    func aQueuedZeroTheFlushDropsCoversNothing() {
+        let now = Date().timeIntervalSince1970 * 1000
+        let progress = ["seed-book-old": BookProgress(fraction: 0.4, isFinished: false,
+                                                      lastUpdate: now - 86_400_000)]
+        let queued = ["seed-book-old": SyncQueue.PendingUpdate(currentTime: 0, duration: 3600,
+                                                               isFinished: false, queuedAt: now)]
+        let entry = LibraryViewModel.makeEntry(item: Self.book("seed-book-old", "Seed Book Old"),
+                                               progress: progress, queued: queued)
+        #expect(entry.progress?.fraction == 0.4)
+        let input = LibraryViewModel.RebuildInput(
+            items: [Self.book("seed-book-old", "Seed Book Old")], progress: progress, queued: queued,
+            localCache: [], seedContinue: [], seedRecent: [], sort: .titel, ascending: true, filter: .alle,
+            downloadedIds: [], hiddenMarkers: [:], continueExtras: [])
+        #expect(LibraryViewModel.computeRebuild(input).continueListening.map(\.id) == ["seed-book-old"])
+        // A queued state ahead of the server still shows over it.
+        let ahead = ["seed-book-old": SyncQueue.PendingUpdate(currentTime: 2000, duration: 3600,
+                                                              isFinished: false, queuedAt: now)]
+        let shown = LibraryViewModel.makeEntry(item: Self.book("seed-book-old", "Seed Book Old"),
+                                               progress: progress, queued: ahead)
+        #expect(shown.progress?.currentTime == 2000)
+    }
+
+    @Test("Abgleich und Anzeige fragen die eine Regel ueber wartende Staende", .needsTheSources)
+    func flushAndDisplayAskTheOneRule() throws {
+        let read = { (path: String) in
+            SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let queue = try read("Sources/Networking/SyncQueue.swift")
+        let library = try read("Sources/ViewModels/LibraryViewModel.swift")
+        #expect(queue.components(separatedBy: "SyncRules.queuedFate(").count - 1 == 1)
+        #expect(library.components(separatedBy: "SyncRules.queuedFate(").count - 1 == 1)
+        #expect(library.contains("if let q = queued[item.id],\n           SyncRules.queuedFate("))
+        let rules = try read("Sources/Models/SyncRules.swift")
+        #expect(!rules.contains("shouldDropQueuedUpdate"), "a second rule for queued states is back")
+    }
 }
 #endif

@@ -1099,8 +1099,11 @@ final class LibraryViewModel: ObservableObject {
         }
         // Layer not-yet-sent (queued) updates OVER the server state. Otherwise
         // the library shows the old state until the flush, which looks like
-        // progress loss.
-        if let q = queued[item.id] {
+        // progress loss. An update the flush drops because the server is
+        // further ahead is not shown (`SyncRules.queuedFate`).
+        if let q = queued[item.id],
+           SyncRules.queuedFate(queuedTime: q.currentTime, queuedIsFinished: q.isFinished,
+                                duration: q.duration, server: progress[item.id]) != .drop {
             let duration = q.duration > 0 ? q.duration : (item.media?.duration ?? 0)
             p = BookProgress(
                 fraction: duration > 0 ? min(max(q.currentTime / duration, 0), 1) : (p?.fraction ?? 0),
