@@ -122,10 +122,9 @@ struct PlayerView: View {
                         cover(maxSide: max(0, min(column.width - 32,
                                                   column.height - 32 - 2 * Self.topRoom)))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            // The column ends the frame's margin before the
-                            // fold; half of it moves the cover to the middle
-                            // of its half, equally far from edge and fold.
-                            .offset(x: FoldColumns<EmptyView, EmptyView>.foldMargin / 2)
+                            // Equally far from the outer edge and the
+                            // visible fold (`FoldSplit.shiftToFoldMiddle`).
+                            .offset(x: foldLine.fold.map(FoldSplit.shiftToFoldMiddle) ?? 0)
                     } trailing: { _ in
                         ScrollView {
                             controlsBlock

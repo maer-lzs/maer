@@ -34,6 +34,14 @@ nonisolated enum FoldSplit {
         let upper = min(max(band.upperBound, lower), maxX)
         return Columns(leading: lower - contentMinX, gap: upper - lower, trailing: maxX - upper)
     }
+
+    /// How far a centred view in the leading column moves toward the fold
+    /// to stand midway between the column's outer edge and the visible fold,
+    /// the middle of the system's band: the column ends the frame's margin
+    /// before the band, the band's inner half lies beyond it.
+    static func shiftToFoldMiddle(fold: ClosedRange<CGFloat>) -> CGFloat {
+        ((fold.upperBound - fold.lowerBound) / 2 + foldDistance - pageGutter) / 2
+    }
 }
 
 /// How large a detail page's cover is: as large as its column allows, and

@@ -210,6 +210,21 @@ struct DetailColumnsTests {
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
     }
 
+    @Test("das Cover des Players steht aufgeklappt gleich weit von Aussenrand und sichtbarem Falz")
+    func theCoverStandsMidwayToTheVisibleFold() {
+        // The open Duo: band 455.5 to 495.5, the visible fold in its middle.
+        let fold: ClosedRange<CGFloat> = 455.5...495.5
+        let margin = FoldSplit.foldDistance - FoldSplit.pageGutter
+        let column = fold.lowerBound - margin
+        let side = column - 32
+        let left = column / 2 + FoldSplit.shiftToFoldMiddle(fold: fold) - side / 2
+        let right = left + side
+        let visibleFold = (fold.lowerBound + fold.upperBound) / 2
+        #expect(left == visibleFold - right, "edge \(left), fold \(visibleFold - right)")
+        // The cover stays clear of the band.
+        #expect(right < fold.lowerBound)
+    }
+
     @Test("Buchseite und Player tragen die eine Form der Karte", .needsTheSources)
     func bookPageAndPlayerShareTheCard() throws {
         let page = SyncContractFenceTests.stripped(
