@@ -89,22 +89,8 @@ struct BookDetailScreen: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.isOnline) private var isOnline
-    @Environment(\.bottomBarInset) private var bottomBarInset
-    /// The bottoms of the cover and of the button row under the main button
-    /// in the page's own space: their distance is what stands under the cover
-    /// down to the last button, the same at every cover size, so at rest no
-    /// button lies under the playback bar (`DetailCoverSide`).
-    @State private var coverBottom: CGFloat = 0
-    @State private var blockBottom: CGFloat = 0
-    /// Their distance as the cover is sized by it, settled to whole points
-    /// (`DetailCoverSide.settled`), so the page comes to rest.
-    @State private var belowCover: CGFloat = 0
     /// The page stands on top of its stack (appeared, nothing pushed over it).
     @State private var isTopPage = false
-    private func noteBelowCover() {
-        belowCover = DetailCoverSide.settled(belowCover, measured: max(0, blockBottom - coverBottom))
-    }
-    private static let pageSpace = "bookDetailPage"
 
     private var buttonShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -346,21 +332,16 @@ struct BookDetailScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     DetailHeader(title: shownItem.title) { _ in
-                        // In its half and as large as leaves title and play
-                        // above the playback bar (`DetailCoverSide`).
+                        // In its half, sized once from the column's room
+                        // (`DetailCoverSide`).
                         BookCoverView(
                             url: router.coverURL(entry.id),
                             progress: currentProgress,
                             itemId: entry.id,
-                            size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60,
-                                                       below: belowCover, bottomReserve: bottomBarInset)
+                            size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60)
                         )
                         .coverCard()
                         .contextMenu { coverDownloadMenu }
-                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                            coverBottom = $0
-                            noteBelowCover()
-                        }
                     } lines: {
                         headLines(isHero: false)
                     } facts: {
@@ -369,15 +350,10 @@ struct BookDetailScreen: View {
                         VStack(spacing: 14) {
                             playArea(withPadding: false)
                             buttonRow(width: content)
-                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                    blockBottom = $0
-                                    noteBelowCover()
-                                }
                         }
                     }
                     trailingSections(isHero: false, showsChapterLink: false)
                 }
-                .coordinateSpace(.named(Self.pageSpace))
                 .padding(.top, 60)
                 .padding(.bottom, 20)
                 .bottomBarClearance()
@@ -608,20 +584,14 @@ struct BookDetailScreen: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         DetailHeader(title: shownItem.title, textInset: 16) { _ in
-                            // A card, as wide as the page leaves where the window
-                            // is tall enough, else as large as leaves title and
-                            // play above the playback bar (`DetailCoverCard`).
+                            // A card, sized once from the window's room
+                            // (`DetailCoverCard`).
                             let coverForm = DetailCoverCard.form(
                                 width: geo.size.width,
                                 height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom,
-                                safeTop: geo.safeAreaInsets.top, below: belowCover,
-                                bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom)
+                                safeTop: geo.safeAreaInsets.top)
                             heroCover(side: coverForm.side)
                                 .padding(.top, coverForm.top)
-                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                    coverBottom = $0
-                                    noteBelowCover()
-                                }
                         } lines: {
                             headLines(isHero: true)
                         } facts: {
@@ -631,16 +601,11 @@ struct BookDetailScreen: View {
                                 playArea(withPadding: true)
                                 buttonRow(width: min(geo.size.width, 600) - 32)
                                     .padding(.horizontal)
-                                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                        blockBottom = $0
-                                        noteBelowCover()
-                                    }
                             }
                         }
 
                         trailingSections(isHero: true)
                     }
-                    .coordinateSpace(.named(Self.pageSpace))
                     // Free space at the page end: mini-player + search button
                     // otherwise cover the last lines.
                     .padding(.bottom, 20)
@@ -666,9 +631,6 @@ struct BookDetailScreen: View {
                 .onDisappear { isTopPage = false }
             }
         }
-        // The kept height below the cover only grows; a new window starts
-        // it again (`DetailCoverSide.settled`).
-        .onChange(of: geo.size) { _, _ in belowCover = 0 }
         } // GeometryReader
         .untitledDetailPage()
         .alert("No Wi-Fi Detected", isPresented: $showWiFiWarning) {

@@ -25,10 +25,10 @@ extension EnvironmentValues {
 /// columns alike. The title stands only here, never in the top bar
 /// (`untitledDetailPage`).
 ///
-/// Where the page gives the room (`DetailHeaderRoom`), the cover is as wide
-/// as the head while everything below it down to the controls stays above
-/// the playback bar, else as large as the height leaves (`DetailCoverSide`);
-/// the cover closure receives that side. Only the leading column of a
+/// Where the page gives the room (`DetailHeaderRoom`), the cover is sized
+/// once from the head's width and the room's height (`DetailCoverSide`);
+/// what does not fit lies under the playback bar. The cover closure
+/// receives that side. Only the leading column of a
 /// two-column page gives the room; without it the closure receives nil and
 /// the page sizes the cover itself (one column, and the book page, which
 /// sizes its own).
@@ -44,32 +44,17 @@ struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View 
     @ViewBuilder var actions: () -> Actions
 
     @Environment(\.detailHeaderRoom) private var room
-    @Environment(\.bottomBarInset) private var bottomBarInset
     @State private var width: CGFloat = 0
-    /// The head's height without the cover, kept through
-    /// `DetailCoverSide.settled` so the page comes to rest.
-    @State private var below: CGFloat = 0
-    @State private var coverHeight: CGFloat = 0
-    @State private var headHeight: CGFloat = 0
 
     private var coverSide: CGFloat? {
         guard let room, width > 0 else { return nil }
-        return DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top,
-                                    below: below, bottomReserve: bottomBarInset)
-    }
-
-    private func noteBelow() {
-        below = DetailCoverSide.settled(below, measured: max(0, headHeight - coverHeight))
+        return DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top)
     }
 
     var body: some View {
         VStack(spacing: 14) {
             if Cover.self != EmptyView.self {
                 cover(coverSide)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                        coverHeight = $0
-                        noteBelow()
-                    }
                     .frame(maxWidth: .infinity)
             }
             VStack(spacing: 4) {
@@ -90,13 +75,9 @@ struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View 
                     .frame(maxWidth: .infinity)
             }
         }
-        .onGeometryChange(for: CGSize.self) { $0.size } action: {
-            width = $0.width
-            headHeight = $0.height
-            noteBelow()
-        }
-        // A new window starts the kept height again.
-        .onChange(of: room) { _, _ in below = 0 }
+        // The head's width is the column's room; nothing under the cover
+        // is measured.
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 }
 

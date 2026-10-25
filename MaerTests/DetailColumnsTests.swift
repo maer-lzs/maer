@@ -36,18 +36,18 @@ struct DetailColumnsTests {
         #expect(columns.leading == 0 && columns.gap == 0 && columns.trailing == 300)
     }
 
-    @Test("das Cover wird so klein, dass der Hauptknopf in Ruhe ueber der Leiste steht")
-    func theCoverLeavesTheMainButtonFree() {
-        // Folded Duo upright: 678 high, 466 wide; the block down to the main
-        // button 305, the bar's reserve 126.
-        let side = DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: 305, bottomReserve: 126)
-        #expect(side == 247)
-        // iPhone 17: the full width fits, nothing shrinks.
-        #expect(DetailCoverSide.side(columnWidth: 402, height: 874, top: 0, below: 305, bottomReserve: 126) == 402)
+    @Test("das Cover nimmt seine Groesse einmal aus dem Raum, nie aus dem, was darunter steht")
+    func theCoverTakesItsSizeFromTheRoom() {
+        // Folded Duo upright: 678 high, 412 for the column; a share of the
+        // height below the cover's top.
+        #expect(DetailCoverSide.side(columnWidth: 412, height: 678, top: 48) == 346)
+        // iPhone 17: the full width fits.
+        #expect(DetailCoverSide.side(columnWidth: 370, height: 874, top: 78) == 370)
         // Never under the minimum, never over the column.
-        #expect(DetailCoverSide.side(columnWidth: 407, height: 400, top: 60, below: 305, bottomReserve: 126)
-                == DetailCoverSide.minimum)
-        #expect(DetailCoverSide.side(columnWidth: 120, height: 400, top: 60, below: 305, bottomReserve: 126) == 120)
+        #expect(DetailCoverSide.side(columnWidth: 407, height: 300, top: 60) == DetailCoverSide.minimum)
+        #expect(DetailCoverSide.side(columnWidth: 120, height: 400, top: 60) == 120)
+        // Whole points: the side lands on the pixel it asks for.
+        #expect(DetailCoverSide.side(columnWidth: 500, height: 701, top: 0).truncatingRemainder(dividingBy: 1) == 0)
     }
 
     /// The pages that go two-column in a wide window, and the one way each
@@ -101,10 +101,16 @@ struct DetailColumnsTests {
         return 305 + (side - landed) * 3
     }
 
-    @Test("Cover und gemessene Hoehe darunter kommen nach endlich vielen Durchlaeufen zur Ruhe")
-    func theCoverSettlesAfterFinitelyManyPasses() {
-        // Unsettled, the model swings without end: the loop the page showed
-        // (100 % CPU, the setters of both measurements on the main thread).
+    /// The full player's measured layout in the model: the cover takes the
+    /// height the controls leave, in whole points.
+    private static func sideLeft(by kept: CGFloat) -> CGFloat {
+        min(412, 678 - kept - 126.5).rounded(.down)
+    }
+
+    @Test("ein gemessenes Mass kommt nach endlich vielen Durchlaeufen zur Ruhe")
+    func aMeasuredHeightSettlesAfterFinitelyManyPasses() {
+        // Unsettled, the model swings without end: the loop a measuring
+        // page showed (100 % CPU, the setters on the main thread).
         var raw: CGFloat = 0
         var rawSides: Set<CGFloat> = []
         for _ in 0..<20 {
@@ -118,16 +124,14 @@ struct DetailColumnsTests {
         var passes = 0
         var lastSide: CGFloat = -1
         while passes < 20 {
-            let side = DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126.5)
+            let side = Self.sideLeft(by: kept)
             let next = DetailCoverSide.settled(kept, measured: Self.measuredBelow(side: side))
             passes += 1
             if side == lastSide && next == kept { break }
             lastSide = side
             kept = next
         }
-        #expect(passes < 5, "the cover did not come to rest: \(passes) passes")
-        #expect(DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126.5)
-                    .truncatingRemainder(dividingBy: 1) == 0)
+        #expect(passes < 5, "the layout did not come to rest: \(passes) passes")
     }
 
     @Test("auch eine Schwingung ab einem Punkt endet: die gehaltene Hoehe kehrt zu keinem verlassenen Wert zurueck")
@@ -139,7 +143,7 @@ struct DetailColumnsTests {
         var kept: CGFloat = 0
         var seen: [CGFloat] = []
         for _ in 0..<20 {
-            let side = DetailCoverSide.side(columnWidth: 412, height: 678, top: 0, below: kept, bottomReserve: 126)
+            let side = min(412, 678 - kept - 126).rounded(.down)
             kept = DetailCoverSide.settled(kept, measured: measured(side: side))
             seen.append(kept)
         }
@@ -155,19 +159,17 @@ struct DetailColumnsTests {
         #expect(DetailCoverSide.settled(305, measured: 305 - DetailCoverSide.shrinkStep + 0.5) == 305)
     }
 
-    @Test("Buchseite und Player halten die gemessene Hoehe nur ueber die Regel des Stillstands", .needsTheSources)
-    func theMeasurementsGoThroughTheSettle() throws {
-        let page = SyncContractFenceTests.stripped(
-            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
-        #expect(page.contains("belowCover = DetailCoverSide.settled(belowCover, measured:"))
-        // Four measurements (cover and play button in both forms) and the definition.
-        #expect(page.components(separatedBy: "noteBelowCover()").count - 1 == 5, "a measurement sets the height by itself")
-        #expect(!page.contains("private var belowCover: CGFloat {"), "the height is read raw from the two measurements")
-        // The block above the playback bar ends with the button row, so at
-        // rest no button lies under the bar.
-        #expect(page.components(separatedBy: "blockBottom = $0").count - 1 == 2)
-        #expect(!page.contains("playArea(withPadding: true)\n                            .onGeometryChange"),
-                "the cover is sized to the main button again, the button row lies under the bar")
+    @Test("keine Detailseite misst, was unter dem Cover steht; der Player haelt sein Mass ueber den Stillstand", .needsTheSources)
+    func noDetailPageMeasuresBelowTheCover() throws {
+        // The cover's size comes from the room alone, so it does not change
+        // between the first frame and rest.
+        for file in ["Sources/Views/BookDetailScreen.swift", "Sources/Views/DetailHeader.swift"] {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
+            #expect(!text.contains("DetailCoverSide.settled("), "\(file) settles a measured height")
+            #expect(!text.contains("bottomBarInset"), "\(file) sizes the cover to the playback bar")
+            #expect(!text.contains("belowCover") && !text.contains("noteBelow"), "\(file) measures below the cover")
+        }
         let player = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
         #expect(player.contains("controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)"))
@@ -205,13 +207,13 @@ struct DetailColumnsTests {
     @Test("das Cover steht immer als Karte, auch wo die volle Breite passt")
     func theCoverIsACard() {
         // iPhone 17: the full width would fit; a card with the gap at its sides.
-        #expect(DetailCoverCard.form(width: 402, height: 874, safeTop: 62, below: 305, bottomReserve: 126)
+        #expect(DetailCoverCard.form(width: 402, height: 874, safeTop: 62)
                 == .init(side: 402 - 2 * DetailCoverCard.gap, top: 62 + DetailCoverCard.gap))
         // Folded Duo upright: smaller than the page, a card under the status bar.
-        let card = DetailCoverCard.form(width: 412, height: 678, safeTop: 32, below: 305, bottomReserve: 126)
+        let card = DetailCoverCard.form(width: 412, height: 678, safeTop: 32)
         #expect(card.top == 32 + DetailCoverCard.gap)
         #expect(card.side == DetailCoverSide.side(columnWidth: 412 - 2 * DetailCoverCard.gap, height: 678,
-                                                  top: card.top, below: 305, bottomReserve: 126))
+                                                  top: card.top))
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
     }
 
@@ -222,7 +224,7 @@ struct DetailColumnsTests {
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 400) == 302)
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 266.6) == 266)
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: -12) == 0)
-        #expect(DetailCoverSide.side(columnWidth: 402, height: 600, top: 80, below: 520, bottomReserve: 50) == 160)
+        #expect(DetailCoverSide.side(columnWidth: 402, height: 340, top: 80) == 160)
         // Across without a fold: the fixed side, smaller where the height is.
         #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 360, margin: 16) == 300)
         #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 250, margin: 16) == 218)

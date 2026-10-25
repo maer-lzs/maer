@@ -127,8 +127,7 @@ struct DetailHeaderTests {
         let head = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
                        encoding: .utf8))
-        #expect(head.contains("DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top,"))
-        #expect(head.contains("below = DetailCoverSide.settled(below, measured:"), "the kept height settles")
+        #expect(head.contains("DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top)"))
         // Only the leading column of the two frames gives the room: the list
         // frame (show, album, playlist) and the scroll frame (artist,
         // station), each once, through the one modifier.

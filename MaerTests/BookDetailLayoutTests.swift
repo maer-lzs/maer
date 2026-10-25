@@ -41,7 +41,9 @@ struct BookDetailLayoutTests {
         // The wide form divides at the fold, the cover follows the height in
         // both forms, the two buttons stand whole.
         #expect(page.contains("FoldColumns { column in"))
-        #expect(page.components(separatedBy: "DetailCoverSide.side(").count - 1 == 2)
+        // The two-column cover takes the rule itself, the hero through the card.
+        #expect(page.components(separatedBy: "DetailCoverSide.side(").count - 1 == 1)
+        #expect(page.components(separatedBy: "DetailCoverCard.form(").count - 1 == 1)
         // Three forms and the definition.
         #expect(page.components(separatedBy: "buttonRow(width:").count - 1 == 4)
         #expect(!page.contains("HStack(spacing: 12) {\n                                downloadSection"))

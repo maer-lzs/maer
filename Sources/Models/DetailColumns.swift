@@ -44,28 +44,28 @@ nonisolated enum FoldSplit {
     }
 }
 
-/// How large a detail page's cover is: as large as its column allows, and
-/// small enough that what stands under it down to the main button (title,
-/// facts, play) stays above the playback bar without scrolling. Never under
-/// `minimum`, where a cover stops being one.
+/// How large a detail page's cover is: as large as its column allows and at
+/// most `heightShare` of the page's height below the cover's top, never
+/// under `minimum`, where a cover stops being one. Taken once from the
+/// page's room (width and height), never from what stands under the cover,
+/// so it does not change between the first frame and rest; what does not
+/// fit lies under the playback bar and is reached by scrolling.
 nonisolated enum DetailCoverSide {
     static let minimum: CGFloat = 160
+    static let heightShare: CGFloat = 0.55
 
-    static func side(columnWidth: CGFloat, height: CGFloat, top: CGFloat, below: CGFloat,
-                     bottomReserve: CGFloat) -> CGFloat {
-        let fitsHeight = height - top - below - bottomReserve
-        // Whole points: a fraction lands on another pixel than asked, the
-        // measured distance below moves by it, and the side with it.
+    static func side(columnWidth: CGFloat, height: CGFloat, top: CGFloat) -> CGFloat {
+        let fitsHeight = (height - top) * heightShare
         return max(min(columnWidth, minimum), min(columnWidth, fitsHeight)).rounded(.down)
     }
 
-    /// What the page keeps as the height below the cover, from a new
-    /// measurement: the measurement depends on where the cover lands, and
-    /// pixel rounding moves it by a fraction each pass, which unsettled
-    /// re-renders the page without end. The kept height grows by a whole
-    /// point at least and falls only by `shrinkStep` or more, so a swing
-    /// smaller than that step comes to rest after finitely many passes; a
-    /// new window starts it again from zero.
+    /// What a layout keeps as a measured height (the full player's
+    /// controls), from a new measurement: the measurement depends on where
+    /// the cover lands, and pixel rounding moves it by a fraction each pass,
+    /// which unsettled re-renders the view without end. The kept height
+    /// grows by a whole point at least and falls only by `shrinkStep` or
+    /// more, so a swing smaller than that step comes to rest after finitely
+    /// many passes; a new window starts it again from zero.
     static func settled(_ kept: CGFloat, measured: CGFloat) -> CGFloat {
         if measured >= kept + 1 { return measured.rounded(.up) }
         // A first layout pass can measure the block taller than it settles;
@@ -162,11 +162,9 @@ nonisolated enum DetailCoverCard {
         var top: CGFloat
     }
 
-    static func form(width: CGFloat, height: CGFloat, safeTop: CGFloat, below: CGFloat,
-                     bottomReserve: CGFloat) -> Form {
+    static func form(width: CGFloat, height: CGFloat, safeTop: CGFloat) -> Form {
         let top = safeTop + gap
-        return Form(side: DetailCoverSide.side(columnWidth: max(0, width - 2 * gap), height: height, top: top,
-                                               below: below, bottomReserve: bottomReserve),
+        return Form(side: DetailCoverSide.side(columnWidth: max(0, width - 2 * gap), height: height, top: top),
                     top: top)
     }
 }
