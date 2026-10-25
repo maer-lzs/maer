@@ -54,6 +54,23 @@ struct SongCoverArtMemoTests {
         #expect(SongCoverArtMemo.load(server: "a", defaults: defaults).order.isEmpty, "an unreadable memory starts empty")
     }
 
+    @Test("Ein gehaltenes Gedaechtnis in anderer Form liest sich: fehlende Felder leer, die Folge ohne Luecke")
+    func aKeptMemoryOfAnotherFormReads() throws {
+        func read(_ json: String) throws -> SongCoverArtMemo {
+            try JSONDecoder().decode(SongCoverArtMemo.self, from: Data(json.utf8))
+        }
+        let bare = try read(#"{"server":"a"}"#)
+        #expect(bare.server == "a" && bare.order.isEmpty && bare.coverArt(of: "tr-1") == nil)
+        let noOrder = try read(#"{"server":"a","coverArt":{"tr-2":"al-2","tr-1":"al-1"}}"#)
+        #expect(noOrder.order == ["tr-1", "tr-2"], "songs the order lacks join at its end")
+        let messy = try read(#"{"server":"a","order":["tr-1","tr-9","tr-1"],"coverArt":{"tr-1":"al-1"},"later":1}"#)
+        #expect(messy.order == ["tr-1"], "each held song once, none without a cover id")
+        #expect(messy.coverArt(of: "tr-1") == "al-1")
+        var memo = SongCoverArtMemo(server: "a")
+        _ = memo.learn(songId: "tr-1", coverArt: "al-1")
+        #expect(try JSONDecoder().decode(SongCoverArtMemo.self, from: JSONEncoder().encode(memo)) == memo)
+    }
+
     /// The provider asks the memory for a song's cover, learns from every
     /// answer that carries songs, and moves a downloaded song's kept cover.
     @Test("Der Anbieter fragt fuer ein Lied das Cover-Feld und lernt aus jeder Antwort mit Liedern", .needsTheSources)

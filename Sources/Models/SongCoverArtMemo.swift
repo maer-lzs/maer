@@ -33,6 +33,21 @@ nonisolated struct SongCoverArtMemo: Codable, Equatable {
 
     init(server: String) { self.server = server }
 
+    enum CodingKeys: String, CodingKey { case server, order, coverArt }
+
+    /// Written by hand: a field missing from a kept memory reads as empty,
+    /// and the order names each held song once, the ones it lacks at its end.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        server = try c.decode(String.self, forKey: .server)
+        let art = try c.decodeIfPresent([String: String].self, forKey: .coverArt) ?? [:]
+        var seen: Set<String> = []
+        let kept = (try c.decodeIfPresent([String].self, forKey: .order) ?? [])
+            .filter { art[$0] != nil && seen.insert($0).inserted }
+        order = kept + art.keys.filter { !seen.contains($0) }.sorted()
+        coverArt = art
+    }
+
     func coverArt(of songId: String) -> String? { coverArt[songId] }
 
     mutating func learn(songId: String, coverArt art: String?,

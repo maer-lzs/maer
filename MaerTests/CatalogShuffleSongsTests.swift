@@ -21,19 +21,17 @@ struct CatalogShuffleSongsTests {
     func anAlbumBecomesItsSongs() async {
         var asked: [String] = []
         let counts = ["lva:a": 3, "lva:one": 1]
-        let count: CatalogShuffleSongs.TrackCount = { asked.append("count \($0)"); return counts[$0] }
-        let built: CatalogShuffleSongs.AlbumSongs = { album, n in asked.append("songs \(album)"); return self.songs(album, n) }
-        let album = await CatalogShuffleSongs.songs(of: item("lva:a"), trackCount: count, albumSongs: built)
+        let built: CatalogShuffleSongs.AlbumSongs = { album in
+            asked.append(album)
+            return self.songs(album, counts[album] ?? 0)
+        }
+        let album = await CatalogShuffleSongs.songs(of: item("lva:a"), albumSongs: built)
         #expect(album.map(\.id) == ["lva:a#0", "lva:a#1", "lva:a#2"])
-        #expect(asked == ["count lva:a", "songs lva:a"], "one answer for the album, none per song")
-        asked = []
-        let single = await CatalogShuffleSongs.songs(of: item("lva:one"), trackCount: count, albumSongs: built)
-        #expect(single.map(\.id) == ["lva:one"])
-        #expect(asked == ["count lva:one"])
-        let unanswered = await CatalogShuffleSongs.songs(of: item("lva:gone"), trackCount: count, albumSongs: built)
+        #expect(asked == ["lva:a"], "one question for the album, none per song")
+        let single = await CatalogShuffleSongs.songs(of: item("lva:one"), albumSongs: built)
+        #expect(single.map(\.id) == ["lva:one"], "a title of one track stays the title")
+        let unanswered = await CatalogShuffleSongs.songs(of: item("lva:gone"), albumSongs: built)
         #expect(unanswered.map(\.id) == ["lva:gone"], "without an answer the title stays itself")
-        let none = await CatalogShuffleSongs.songs(of: item("lva:a"), trackCount: count, albumSongs: { _, _ in [] })
-        #expect(none.map(\.id) == ["lva:a"], "no song resolved: the title stays")
     }
 
     @Test("Der Wurf startet die Lieder des ersten Albums, die uebrigen werden an ihrem Platz zu Liedern")
@@ -96,8 +94,8 @@ struct CatalogShuffleSongsTests {
                 "a Jamendo track is a song already")
         let songs = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/CatalogShuffleSongs.swift"),
                                encoding: .utf8)
-        #expect(songs.contains("await ArchiveMusicLoader.albumSongs(albumId: albumId, count: count).songs"),
-                "the songs come the album page's way")
+        #expect(songs.contains("await ArchiveMusicLoader.albumSongs(albumId: $0, router: .live)"),
+                "the songs come the one way of a catalogue album's songs")
     }
 }
 #endif

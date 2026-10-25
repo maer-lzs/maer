@@ -1375,8 +1375,11 @@ extension ProjectFileIntegrityTests {
         // many new types in unseen. The ninth is `Value` of `CarrierRows`:
         // the move reads a key per title in the form it had in the defaults
         // (the bookmarks as JSON), once, with its witness on that old form
-        // (`ItemRowsTests.theKeysPerTitleMove`).
-        let drift = StockDrift.total(found.count, stock: 9)
+        // (`ItemRowsTests.theKeysPerTitleMove`). The tenth is
+        // `SongCoverArtMemo`, the cover id each server song names, with its
+        // hand-written decoder and its witness on other forms
+        // (`SongCoverArtMemoTests.aKeptMemoryOfAnotherFormReads`).
+        let drift = StockDrift.total(found.count, stock: 10)
         #expect(drift == nil,
                 "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform, oder der Bestand liegt ueber der Zaehlung (\(drift ?? "")): \(found.sorted())")
     }

@@ -9,29 +9,26 @@ import OSLog
 /// The drawn titles of a music shuffle play as songs, as a start from an
 /// album's own page does: each release of more than one track becomes its
 /// songs (`CatalogSongID`), so the queue, "Up Next" and the skips step
-/// song by song. A release of one track stays the one song it is.
+/// song by song. A release of one track stays the one title it is.
 ///
-/// One answer per release, never one per song: the track count comes from
-/// the release's metadata answer, and the songs are built from that same
-/// kept answer (`FreeCatalogProvider.albumSongs`). Only the first title is
-/// asked before playback starts; the others wait in the context as
-/// themselves and become their songs one after the other, each only while
-/// it is still in the context.
+/// One answer per release, never one per song: the songs come the one way
+/// a catalogue album's songs come (`ArchiveMusicLoader.albumSongs`), which
+/// counts them from the release's metadata answer and builds them from that
+/// same kept answer. Only the first title is asked before playback starts;
+/// the others wait in the context as themselves and become their songs one
+/// after the other, each only while it is still in the context.
 @MainActor
 enum CatalogShuffleSongs {
-    /// The track count of a release, from its one answer; nil when none came.
-    typealias TrackCount = (String) async -> Int?
-    /// A release's songs, from the same answer.
-    typealias AlbumSongs = (String, Int) async -> [LibraryItem]
+    /// A release's songs from its one answer; empty when none came.
+    typealias AlbumSongs = (String) async -> [LibraryItem]
 
     /// What one title plays as: its songs in order when the release holds
     /// more than one track, else the title itself.
     static func songs(of title: LibraryItem,
-                      trackCount: TrackCount = liveTrackCount,
-                      albumSongs: AlbumSongs = liveAlbumSongs) async -> [LibraryItem] {
-        guard let count = await trackCount(title.id), count > 1 else { return [title] }
-        let songs = await albumSongs(title.id, count)
-        return songs.isEmpty ? [title] : songs
+                      albumSongs: AlbumSongs = { await ArchiveMusicLoader.albumSongs(albumId: $0, router: .live) })
+        async -> [LibraryItem] {
+        let songs = await albumSongs(title.id)
+        return songs.count > 1 ? songs : [title]
     }
 
     /// The first title's songs start; the rest of the draw follows in the
@@ -48,18 +45,5 @@ enum CatalogShuffleSongs {
             if context.expand(title.id, into: await songs(title).map(\.id)) { expanded += 1 }
         }
         Logger.library.notice("SHUFFLE songs: titles=\(titles.count) expanded=\(expanded) context=\(context.ids.count)")
-    }
-
-    static func liveTrackCount(_ itemId: String) async -> Int? {
-        do {
-            return try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId).media.tracks?.count
-        } catch {
-            Logger.library.notice("SHUFFLE songs: no track count for \(itemId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
-            return nil
-        }
-    }
-
-    static func liveAlbumSongs(_ albumId: String, _ count: Int) async -> [LibraryItem] {
-        await ArchiveMusicLoader.albumSongs(albumId: albumId, count: count).songs
     }
 }
