@@ -14,7 +14,8 @@ nonisolated enum PlaybackBarControls {
         /// a song for music (the full player's `stepTitle`).
         case titleBack, titleForward
         case skipBack, skipForward
-        case speed, sleepTimer, queue
+        case play
+        case speed, sleepTimer, queue, airPlay
     }
 
     /// A 600 pt window minus the bar's margins at both sides.
@@ -22,11 +23,24 @@ nonisolated enum PlaybackBarControls {
 
     static func isWide(barWidth: CGFloat) -> Bool { barWidth >= wideFromBarWidth }
 
-    /// The extra controls of a wide bar, in their order before AirPlay and
-    /// play. A live stream has nothing to step or skip into.
-    static func wide(isLive: Bool, isMusic: Bool) -> [Control] {
-        if isLive { return [] }
-        if isMusic { return [.titleBack, .titleForward, .queue] }
-        return [.titleBack, .skipBack, .skipForward, .titleForward, .speed, .sleepTimer]
+    /// The gap the wide bar sets between two groups.
+    static let groupGap: CGFloat = 16
+
+    /// The wide bar per medium, in its groups and in order, play always
+    /// last at the right edge: the title way and the skips, the tools, then
+    /// AirPlay and play. A live stream has nothing to step, skip or speed up.
+    static func wide(isLive: Bool, isMusic: Bool) -> [[Control]] {
+        if isLive { return [[.airPlay, .play]] }
+        if isMusic { return [[.titleBack, .titleForward], [.queue], [.airPlay, .play]] }
+        return [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer], [.airPlay, .play]]
+    }
+
+    /// How wide the title may be in a bar that spans a fold: up to the
+    /// fold, so every button stands right of it; nil without a fold inside
+    /// the bar.
+    static func titleWidth(barMinX: CGFloat, barWidth: CGFloat, fold: ClosedRange<CGFloat>?,
+                           leadingPadding: CGFloat) -> CGFloat? {
+        guard let fold, fold.lowerBound > barMinX, fold.upperBound < barMinX + barWidth else { return nil }
+        return max(0, fold.lowerBound - barMinX - leadingPadding)
     }
 }

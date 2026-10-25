@@ -1083,6 +1083,9 @@ struct LibraryView: View {
                 glassMorphID: "player", glassMorphNamespace: bottomGlassNS,
                 // Beside the side column at the search's height.
                 slim: tabBarPlacement.isSide)
+            // The bottom overlay lies outside the library's environment: the
+            // wide bar sets its buttons right of the fold.
+            .environment(\.foldLine, foldLine)
             // Up-Next entry from EVERY tab: long-press on the mini player (tap
             // keeps opening the full player). A context menu adds no glass
             // surface and no layout change. The fresh GlassEffectContainer/

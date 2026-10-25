@@ -13,12 +13,36 @@ import CoreGraphics
 /// and sleep menus exist once, for the full player and the bar alike.
 struct PlaybackBarControlsTests {
 
-    @Test("die breite Leiste je Medium: Buch und Folge, Musik, Radio")
+    @Test("die breite Leiste je Medium in Gruppen und in der Reihenfolge von heute, Play ganz rechts")
     func eachMediumGetsItsControls() {
         #expect(PlaybackBarControls.wide(isLive: false, isMusic: false)
-                == [.titleBack, .skipBack, .skipForward, .titleForward, .speed, .sleepTimer])
-        #expect(PlaybackBarControls.wide(isLive: false, isMusic: true) == [.titleBack, .titleForward, .queue])
-        #expect(PlaybackBarControls.wide(isLive: true, isMusic: false).isEmpty)
+                == [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer], [.airPlay, .play]])
+        #expect(PlaybackBarControls.wide(isLive: false, isMusic: true)
+                == [[.titleBack, .titleForward], [.queue], [.airPlay, .play]])
+        #expect(PlaybackBarControls.wide(isLive: true, isMusic: false) == [[.airPlay, .play]])
+        for groups in [PlaybackBarControls.wide(isLive: false, isMusic: false),
+                       PlaybackBarControls.wide(isLive: false, isMusic: true),
+                       PlaybackBarControls.wide(isLive: true, isMusic: false)] {
+            #expect(groups.last?.last == .play, "play leaves the right edge")
+        }
+    }
+
+    @Test("ueber einem Falz endet der Titel vor ihm, alle Knoepfe stehen rechts davon")
+    func overAFoldTheButtonsStandRightOfIt() {
+        // Open Duo across: fold 455.5 to 495.5, a bar from 8 to 859.
+        #expect(PlaybackBarControls.titleWidth(barMinX: 8, barWidth: 851, fold: 455.5...495.5, leadingPadding: 12)
+                == 435.5)
+        // No fold, or a fold outside the bar: no limit.
+        #expect(PlaybackBarControls.titleWidth(barMinX: 8, barWidth: 851, fold: nil, leadingPadding: 12) == nil)
+        #expect(PlaybackBarControls.titleWidth(barMinX: 500, barWidth: 300, fold: 455.5...495.5, leadingPadding: 12) == nil)
+    }
+
+    @Test("die Leiste setzt die Gruppen ab und legt den Titel vor den Falz", .needsTheSources)
+    func theBarSetsTheGroupsApart() throws {
+        let bar = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MiniPlayerBar.swift"), encoding: .utf8))
+        #expect(bar.contains("HStack(spacing: PlaybackBarControls.groupGap) {"))
+        #expect(bar.contains("PlaybackBarControls.titleWidth(barMinX: barMinX"))
     }
 
     @Test("breit ab einem Fenster von 600 pt")

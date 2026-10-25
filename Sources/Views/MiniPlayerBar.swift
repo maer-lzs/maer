@@ -48,6 +48,16 @@ struct MiniPlayerBar: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var measuredWidth: CGFloat = 0
+    /// The bar's left edge in the window, against the fold.
+    @State private var barMinX: CGFloat = 0
+    /// The display's fold, where there is one (the library hands it in).
+    @Environment(\.foldLine) private var foldLine
+    /// A wide bar over a fold: the title ends before it (`PlaybackBarControls.titleWidth`).
+    private var titleWidth: CGFloat? {
+        guard !compact, PlaybackBarControls.isWide(barWidth: measuredWidth) else { return nil }
+        return PlaybackBarControls.titleWidth(barMinX: barMinX, barWidth: measuredWidth,
+                                              fold: foldLine.fold, leadingPadding: 12)
+    }
 
     /// iPhone in portrait: space is tight, so the skip buttons are dropped in
     /// favor of more title text. Only AirPlay + play remain.
@@ -115,18 +125,32 @@ struct MiniPlayerBar: View {
             // Unusable as the thing a caller looks for when it does not know
             // in advance what will play.
             .accessibilityIdentifier("mini-player")
+            .frame(width: titleWidth)
 
-            MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
-                                showsSkip: showExtendedControls && !isCompactPortrait,
-                                showsAirPlay: !compact && (showExtendedControls || isCompactPortrait),
-                                buttonHeight: contentHeight,
-                                // A wide bar carries each medium's full controls.
-                                wideControls: !compact && PlaybackBarControls.isWide(barWidth: measuredWidth)
-                                    ? PlaybackBarControls.wide(isLive: viewModel.isLiveStream,
-                                                               isMusic: viewModel.isMusicItem)
-                                    : nil,
-                                onOpenQueue: onOpenQueue)
-            .takesInput(controlsLive)
+            // A wide bar carries each medium's full controls, in groups set
+            // apart, play last; over a fold every button stands right of it.
+            if !compact && PlaybackBarControls.isWide(barWidth: measuredWidth) {
+                HStack(spacing: PlaybackBarControls.groupGap) {
+                    let groups = PlaybackBarControls.wide(isLive: viewModel.isLiveStream,
+                                                          isMusic: viewModel.isMusicItem)
+                    ForEach(groups.indices, id: \.self) { index in
+                        HStack(spacing: 0) {
+                            MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
+                                                showsSkip: false, showsAirPlay: false, buttonHeight: contentHeight,
+                                                controls: groups[index], onOpenQueue: onOpenQueue)
+                        }
+                    }
+                }
+                .frame(maxWidth: titleWidth == nil ? nil : .infinity, alignment: .trailing)
+                .takesInput(controlsLive)
+            } else {
+                MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
+                                    showsSkip: showExtendedControls && !isCompactPortrait,
+                                    showsAirPlay: !compact && (showExtendedControls || isCompactPortrait),
+                                    buttonHeight: contentHeight,
+                                    onOpenQueue: onOpenQueue)
+                .takesInput(controlsLive)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, slim ? 1 : 6)
@@ -144,6 +168,7 @@ struct MiniPlayerBar: View {
                     }
             }
         )
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { barMinX = $0 }
     }
 
     /// Cover with the observing progress ring child around it.
@@ -371,18 +396,25 @@ private struct MiniPlayerTransport: View {
     /// 48, or the slim bar's content height beside a side column
     /// (`MiniPlayerBar.slim`).
     var buttonHeight: CGFloat = 48
-    /// The wide bar's controls (`PlaybackBarControls.wide`); nil keeps the
+    /// One group of the wide bar (`PlaybackBarControls.wide`); nil keeps the
     /// narrow set below.
-    var wideControls: [PlaybackBarControls.Control]? = nil
+    var controls: [PlaybackBarControls.Control]? = nil
     var onOpenQueue: (() -> Void)? = nil
     private var glyph: Font { buttonHeight < 48 ? .title3 : .title2 }
 
     var body: some View {
-        if let wideControls {
-            ForEach(wideControls, id: \.self) { control in
+        if let controls {
+            ForEach(controls, id: \.self) { control in
                 wideButton(control)
             }
-        } else if showsSkip && !viewModel.isLiveStream {
+        } else {
+            narrowControls
+        }
+    }
+
+    @ViewBuilder
+    private var narrowControls: some View {
+        if showsSkip && !viewModel.isLiveStream {
         // Skip buttons only when there is enough room AND not in iPhone
         // portrait. There more of the title should be visible. A live
         // stream has nothing to skip into. The bar gates like the
@@ -415,15 +447,22 @@ private struct MiniPlayerTransport: View {
         // Switch output route. Stays in iPhone portrait too, just a plain
         // white icon directly on the bar.
         if showsAirPlay {
-            AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
-                .frame(width: 26, height: 26)
-                .frame(width: 44, height: buttonHeight)
+            airPlayButton
         }
+        playButton
+    }
 
-        // Play/pause: plain white icon, no own background. Again the same
-        // size as the other transport buttons. While another device plays
-        // something else, the tap opens that episode (the coordinator
-        // decides, one rule).
+    private var airPlayButton: some View {
+        AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
+            .frame(width: 26, height: 26)
+            .frame(width: 44, height: buttonHeight)
+    }
+
+    /// Play/pause: plain white icon, no own background. Again the same
+    /// size as the other transport buttons. While another device plays
+    /// something else, the tap opens that episode (the coordinator
+    /// decides, one rule).
+    private var playButton: some View {
         Button {
             coordinator.miniPlayTapped(viewModel)
         } label: {
@@ -471,6 +510,10 @@ private struct MiniPlayerTransport: View {
             if let onOpenQueue {
                 barButton("text.line.first.and.arrowtriangle.forward", label: Text("Up Next"), action: onOpenQueue)
             }
+        case .play:
+            playButton
+        case .airPlay:
+            airPlayButton
         }
     }
 
