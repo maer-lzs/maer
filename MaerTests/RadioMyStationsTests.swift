@@ -188,6 +188,41 @@ import SwiftUI
         #expect(edge.luminance > 0.8)
     }
 
+    /// A square diamond on nothing (the Oe1 logo class) leaves its corners
+    /// empty: it keeps a ground and never runs to the card's edge. A square
+    /// painted to its corners still covers, and a wordmark never did.
+    @MainActor @Test func aMarkWithEmptyCornersKeepsItsGround() {
+        let diamond = image { _ in
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: 16, y: 0))
+            path.addLine(to: CGPoint(x: 32, y: 16))
+            path.addLine(to: CGPoint(x: 16, y: 32))
+            path.addLine(to: CGPoint(x: 0, y: 16))
+            path.close()
+            UIColor.red.setFill()
+            path.fill()
+        }
+        #expect(!RadioTileGround.cornersArePainted(in: diamond))
+        #expect(!RadioArtwork.coversItsSurface(diamond), "the diamond fills the card edge to edge")
+
+        let square = image { ctx in
+            UIColor.blue.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 8, y: 8, width: 16, height: 16))
+        }
+        #expect(RadioTileGround.cornersArePainted(in: square))
+        #expect(RadioArtwork.coversItsSurface(square), "a painted square keeps filling its surface")
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let wordmark = UIGraphicsImageRenderer(size: CGSize(width: 96, height: 24), format: format).image { ctx in
+            UIColor.black.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 96, height: 24))
+        }
+        #expect(!RadioArtwork.coversItsSurface(wordmark), "a wide wordmark keeps its ground, painted or not")
+    }
+
     /// A fully transparent image answers nil. The card keeps its fallback.
     @Test func emptyImageAnswersNil() {
         let img = image { _ in }

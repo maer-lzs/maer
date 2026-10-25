@@ -21,6 +21,11 @@ of an album keep the album's. A netlabel album names the song that
 plays and the performer each file states, as a music server does.
 Audiobooks and podcasts are unchanged.
 
+**Station logos with empty corners keep the card's shape.** A logo like
+Oe1's red diamond on a transparent ground ran to the edge of its card,
+so the card lost its rounded corners and the tile its frame. Such a
+logo now sits inside the card on its ground, like every other station.
+
 **Every station page lists its streams.** The page showed its streams
 only when a station had two or more, so a station with one stream left
 the right column of the open iPhone Duo empty. Now every station lists

@@ -41,14 +41,22 @@ struct RadioArtwork: View {
     var targetSide: CGFloat? = nil
 
     /// THE criterion: does this image cover its square surface?
-    /// Near-square art fills edge-to-edge. A wordmark cannot fill a square
-    /// honestly and keeps its ground. One criterion for card AND tile, so the
-    /// two can never disagree about the same logo.
+    /// Near-square art painted into its corners fills edge-to-edge. A
+    /// wordmark, or a mark with empty corners, cannot fill a square honestly
+    /// and keeps its ground. One criterion for card AND tile, so the two can
+    /// never disagree about the same logo.
     static func coversItsSurface(_ image: UIImage) -> Bool {
         guard image.size.height > 0 else { return false }
         let ratio = image.size.width / image.size.height
-        return (0.75...1.33).contains(ratio)
+        guard (0.75...1.33).contains(ratio) else { return false }
+        if let known = paintedCornersCache.object(forKey: image) { return known.boolValue }
+        let painted = RadioTileGround.cornersArePainted(in: image)
+        paintedCornersCache.setObject(NSNumber(value: painted), forKey: image)
+        return painted
     }
+
+    // Read on the render path; one sample per picture, never per redraw.
+    private static let paintedCornersCache = NSCache<UIImage, NSNumber>()
 
     /// The share of the card artwork the colour gradient covers at the
     /// bottom (RadioFeaturedCard). The wordmark centres in what is LEFT.

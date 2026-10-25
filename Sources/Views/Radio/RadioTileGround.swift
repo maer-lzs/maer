@@ -139,6 +139,22 @@ nonisolated enum RadioTileGround {
         return dark ? 0.8 : 0.25
     }
 
+    /// The alpha a corner needs to count as painted.
+    static let opaqueCornerAlpha = 0.5
+
+    /// Whether the picture is painted in all four corners. A logo with
+    /// empty corners (a diamond, a disc, a mark on nothing) cannot run to
+    /// the edge of a card or tile: the surface's own rounded corners would
+    /// vanish with them, and the mark would stand without a form.
+    static func cornersArePainted(in image: UIImage) -> Bool {
+        let side = 32
+        guard let pixels = samples(of: image, side: side) else { return false }
+        let corners = [(0, 0), (side - 1, 0), (0, side - 1), (side - 1, side - 1)]
+        return corners.allSatisfy { x, y in
+            Double(pixels[(y * side + x) * 4 + 3]) / 255 >= opaqueCornerAlpha
+        }
+    }
+
     private static func samples(of image: UIImage, side: Int) -> [UInt8]? {
         guard let cg = image.cgImage else { return nil }
         var pixels = [UInt8](repeating: 0, count: side * side * 4)
