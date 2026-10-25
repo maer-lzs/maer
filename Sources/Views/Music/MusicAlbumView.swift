@@ -65,6 +65,15 @@ struct MusicAlbumView: View {
         let duration = detail.media.duration ?? audio.compactMap(\.duration).reduce(0, +)
         return (ChapterModel.trackChapters(audio, duration: duration), "tracks")
     }
+    /// What the page says when the source answered with no track. A
+    /// playlist that holds none is empty, not broken: it says so, without a
+    /// retry. An album that names no audio track keeps the source's wording
+    /// and its retry.
+    nonisolated static func emptyWording(isPlaylist: Bool) -> (sentence: LocalizedStringResource, offersRetry: Bool) {
+        isPlaylist
+            ? ("This playlist has no tracks yet.", false)
+            : ("The source answered without any audio track for this item.", true)
+    }
     /// Bars per track index by play count (pure, tested); all zero hides
     /// every bar. Reads the provider's per-detail cache. Plain read.
     private var popularity: [Int] {
@@ -192,10 +201,13 @@ struct MusicAlbumView: View {
                     }
                 case .empty:
                     // The source answered, and named no track: an end
-                    // state of its own, never the loading state.
-                    EmptyStateView("No tracks", systemImage: "music.note",
-                                   description: Text("The source answered without any audio track for this item.")) {
-                        RetryPill { Task { await loadDetail() } }
+                    // state of its own, never the loading state, and never
+                    // the failure, which only a load that threw shows.
+                    let wording = Self.emptyWording(isPlaylist: isPlaylist)
+                    EmptyStateView("No tracks", systemImage: "music.note", description: Text(wording.sentence)) {
+                        if wording.offersRetry {
+                            RetryPill { Task { await loadDetail() } }
+                        }
                     }
                 }
             } else {

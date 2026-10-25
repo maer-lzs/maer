@@ -218,5 +218,26 @@ struct UserEdgeErrorTests {
             #expect(!source.contains("LoadFailedView(form: .line"), "\(path) still has a small centred line in a list")
         }
     }
+
+    /// A playlist the source answers with no song is empty, not broken: its
+    /// page says "No tracks" with a sentence of its own and offers no retry.
+    /// The failure stays for a load that threw: the page reaches it only
+    /// from the catch.
+    @Test("eine leere Playlist sagt Keine Titel ohne Fehlerton, der Fehler steht nur nach einem gescheiterten Laden", .needsTheSources)
+    func anEmptyPlaylistIsNotAFailure() throws {
+        let playlist = MusicAlbumView.emptyWording(isPlaylist: true)
+        #expect(playlist.sentence.key == "This playlist has no tracks yet.")
+        #expect(!playlist.offersRetry)
+        let album = MusicAlbumView.emptyWording(isPlaylist: false)
+        #expect(album.sentence.key == "The source answered without any audio track for this item.")
+        #expect(album.offersRetry)
+        let source = try code("Sources/Views/Music/MusicAlbumView.swift")
+        let body = try #require(source.range(of: "private func loadDetail() async {")).upperBound
+        let load = String(source[body...])
+        let catchAt = try #require(load.range(of: "} catch {")).lowerBound
+        let transportAt = try #require(load.range(of: ".transport(reason:")).lowerBound
+        #expect(transportAt > catchAt, "the failure is set outside the catch")
+        #expect(load.components(separatedBy: ".transport(reason:").count - 1 == 1)
+    }
 }
 #endif
