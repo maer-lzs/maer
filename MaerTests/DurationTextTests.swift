@@ -101,5 +101,29 @@ struct DurationTextTests {
         let drift = StockDrift.findings(counts: found, stock: allowed.mapValues(\.count))
         #expect(drift.isEmpty, "a duration written outside the rule, or a stale exception: \(drift)")
     }
+
+    @Test("die Zeile unter dem Titel nennt, was endet: Buch, Folge, Sammlung, Album; ein Lied nur seine Restzeit")
+    func theRemainingLineNamesWhatEnds() {
+        #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: false, chapterCount: 12) == .book)
+        #expect(RemainingLine.form(isMusic: false, isPodcast: true, hasParts: false, chapterCount: 4) == .episode)
+        #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: true, chapterCount: 30) == .collection)
+        #expect(RemainingLine.form(isMusic: true, isPodcast: false, hasParts: false, chapterCount: 9) == .album)
+        #expect(RemainingLine.form(isMusic: true, isPodcast: false, hasParts: false, chapterCount: 1) == .song)
+    }
+
+    @Test("der Katalog traegt jede Form der Zeile deutsch und englisch, die alte ohne Gegenstand nicht mehr", .needsTheSources)
+    func theCatalogCarriesEveryForm() throws {
+        let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"),
+                                 encoding: .utf8)
+        for (key, german) in [("%@ in chapter · book ends %@", "%@ im Kapitel · Buch endet %@"),
+                              ("%@ in chapter · episode ends %@", "%@ im Kapitel · Folge endet %@"),
+                              ("%@ in part · collection ends %@", "%@ im Teil · Sammlung endet %@"),
+                              ("%@ · album ends %@", "%@ · Album endet %@")] {
+            #expect(catalog.contains("\"\(key)\" : {"), "missing \(key)")
+            #expect(catalog.contains("\"value\" : \"\(german)\""), "missing \(german)")
+        }
+        #expect(!catalog.contains("\"%@ in chapter · ends %@\""), "the line still says ends without what")
+        #expect(!catalog.contains("\"%@ · ends %@\""), "the line still says ends without what")
+    }
 }
 #endif

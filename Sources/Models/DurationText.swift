@@ -47,3 +47,27 @@ nonisolated enum DurationText {
         return String(localized: "\(minutes) min left")
     }
 }
+
+/// The line under the full player's title: what is left of the chapter (the
+/// part, the song) and when the whole title ends at the current speed,
+/// named by what the whole is, so "ends" never reads as the chapter's end.
+nonisolated enum RemainingLine {
+    enum Form: Equatable, Sendable {
+        /// "… in chapter · book ends …"
+        case book
+        /// "… in chapter · episode ends …"
+        case episode
+        /// A bundle in parts (a radio-play collection): "… in part · collection ends …"
+        case collection
+        /// Several songs: "… · album ends …"
+        case album
+        /// One song: its remaining time alone; its end is the title's end.
+        case song
+    }
+
+    static func form(isMusic: Bool, isPodcast: Bool, hasParts: Bool, chapterCount: Int) -> Form {
+        if isMusic { return chapterCount > 1 ? .album : .song }
+        if isPodcast { return .episode }
+        return hasParts ? .collection : .book
+    }
+}

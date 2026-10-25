@@ -31,12 +31,12 @@
         }
       }
     },
-    "%@ · ends %@" : {
+    "%@ · album ends %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · endet %@"
+            "value" : "%@ · Album endet %@"
           }
         }
       }
@@ -81,12 +81,32 @@
         }
       }
     },
-    "%@ in chapter · ends %@" : {
+    "%@ in chapter · book ends %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ im Kapitel · endet %@"
+            "value" : "%@ im Kapitel · Buch endet %@"
+          }
+        }
+      }
+    },
+    "%@ in chapter · episode ends %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ im Kapitel · Folge endet %@"
+          }
+        }
+      }
+    },
+    "%@ in part · collection ends %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ im Teil · Sammlung endet %@"
           }
         }
       }

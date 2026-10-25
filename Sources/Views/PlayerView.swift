@@ -496,14 +496,13 @@ struct PlayerView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
             if let chapter = viewModel.currentChapter {
-                // Chapter remaining + estimated finish time at current speed.
-                // Music has no "chapters". Drop the "in chapter" phrasing.
+                // Chapter remaining + when the whole title ends at the current
+                // speed, named by what the whole is (`RemainingLine`).
                 // The one line here that moves with the time: its own leaf.
+                let form = remainingLineForm
                 PlaybackTimeReader(clock: viewModel.clock) { time in
-                    let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
-                    Text(viewModel.isMusicItem
-                         ? "\(left) · ends \(estimatedFinishTime(at: time))"
-                         : "\(left) in chapter · ends \(estimatedFinishTime(at: time))")
+                    remainingLine(form, left: DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time)),
+                                  end: estimatedFinishTime(at: time))
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.55))
                         .monospacedDigit()
@@ -647,6 +646,25 @@ struct PlayerView: View {
         if viewModel.isMusicItem { return viewModel.nowPlayingSubtitle }
         if viewModel.chaptersAreFallback { return viewModel.currentChapter?.title }
         return viewModel.nowPlayingSubtitle
+    }
+
+    /// What the playing title is, for the line under it.
+    private var remainingLineForm: RemainingLine.Form {
+        let id = viewModel.item?.id ?? ""
+        return RemainingLine.form(isMusic: viewModel.isMusicItem,
+                                  isPodcast: MediaFamily.of(id) == .podcast,
+                                  hasParts: catalogFacts.route(id) == .series(itemId: id),
+                                  chapterCount: viewModel.chapters.count)
+    }
+
+    private func remainingLine(_ form: RemainingLine.Form, left: String, end: String) -> Text {
+        switch form {
+        case .book: Text("\(left) in chapter · book ends \(end)")
+        case .episode: Text("\(left) in chapter · episode ends \(end)")
+        case .collection: Text("\(left) in part · collection ends \(end)")
+        case .album: Text("\(left) · album ends \(end)")
+        case .song: Text(verbatim: left)
+        }
     }
 
     private func chapterRemainingMinutes(_ chapter: ABSChapter, at time: Double) -> Int {
