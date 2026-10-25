@@ -34,6 +34,12 @@ when the card was drawn before your music server answered. Card and
 page now take the mosaic from the same place, and the card fills in as
 soon as the server answers.
 
+**Covers for songs from your music server on a playlist on your devices.**
+A playlist on your devices made of songs from a server such as gonic
+showed a plain colour on its card and no covers on its page, because
+such a server names a song's cover only when asked about the song.
+Card and page now ask for the covers they lack and show the mosaic.
+
 **Kind marks only where a row mixes kinds.** The Browse row of a tab
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.

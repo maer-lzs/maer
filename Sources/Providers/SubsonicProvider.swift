@@ -993,6 +993,42 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
     }
 
+    /// Songs a pass of `learnSongCovers` is asking right now, so a card and
+    /// a page showing the same list do not ask a song twice.
+    private var songCoversAsking: Set<String> = []
+    /// How many songs one pass asks at most. Chosen: a long list learns its
+    /// covers over several appearances instead of in one burst.
+    static let songCoverPassLimit = 60
+
+    /// Asks the server each song of `itemIds` whose cover it has not named
+    /// yet, one `getSong` per song, and learns the answers. For entries met
+    /// nowhere else, a device playlist's: their own id names no cover on
+    /// every server. True when the memory learned something.
+    func learnSongCovers(itemIds: [String]) async -> Bool {
+        guard let client else { return false }
+        let memo = songCoverMemo
+        var seen: Set<String> = []
+        let missing = itemIds
+            .compactMap { Self.id($0, kind: "song") }
+            .filter { memo.coverArt(of: $0) == nil && !songCoversAsking.contains($0) && seen.insert($0).inserted }
+            .prefix(Self.songCoverPassLimit)
+        guard !missing.isEmpty else { return false }
+        songCoversAsking.formUnion(missing)
+        defer { songCoversAsking.subtract(missing) }
+        var songs: [SubsonicSong] = []
+        for songId in missing {
+            // bearable, because a song that does not answer keeps its own id as the cover address and is asked again on the next pass
+            if let song = try? await client.song(id: songId) {
+                songs.append(song)
+            }
+        }
+        let before = songCoverMemo
+        learnCovers(songs)
+        let learned = songCoverMemo != before
+        Logger.music.notice("COVER song covers asked \(missing.count), answered \(songs.count), learned \(learned)")
+        return learned
+    }
+
     /// A downloaded song's cover address changed: the kept cover takes the
     /// new address and stays the last candidate until the server's picture
     /// under it arrives (`Artwork.invalidate`), so the song never stands

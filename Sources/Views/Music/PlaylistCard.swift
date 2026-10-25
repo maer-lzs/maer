@@ -38,11 +38,12 @@ struct PlaylistCardSource: Identifiable {
     /// Mosaic covers and the most frequent artists, fetched together because
     /// they come from the same source.
     let mosaic: () async -> (covers: [URL], artists: [String])
-    /// The mosaic covers where the world states them as the card is built:
-    /// a device list's, from the same question its page asks
+    /// The mosaic covers where the world states them, asked as the card
+    /// draws: a device list's, from the same question its page asks
     /// (`deviceCovers`), so they follow whatever this device can answer at
-    /// each render. nil = the covers come from `mosaic`.
-    var covers: [URL]? = nil
+    /// each render, also after `mosaic` taught the sources new covers.
+    /// nil = the covers come from `mosaic`.
+    var covers: (@MainActor () -> [URL])? = nil
     /// nil = this world cannot rename/delete here; the menu entry then stays
     /// away instead of offering something that fails. A server that does
     /// not take the change throws, and the card says so.
@@ -99,7 +100,7 @@ struct PlaylistCard: View {
     /// The covers the mosaic draws: the source's own where it states them,
     /// else what `mosaic` loaded.
     private var shownCovers: [URL] {
-        source.covers ?? coverURLs
+        source.covers?() ?? coverURLs
     }
 
     /// Deterministic per-id tint as the instant fallback; the extracted
@@ -351,13 +352,17 @@ extension PlaylistCardSource {
                 let artists = PlaylistPresentation.topArtists(
                     list.itemIds.compactMap { list.carried(for: $0)?.subtitle }
                     + items(of: list, in: store).compactMap(\.author))
-                // The covers come with the source (`covers`), not once here.
-                return ([], artists)
+                // An entry whose source has not named its cover yet (a music
+                // server song met nowhere else) is asked here; the covers
+                // this returns change the card's state, so it draws
+                // `covers` again with what was learned.
+                _ = await router.learnCovers(list.itemIds)
+                return (deviceCovers(list, router: router), artists)
             },
-            // Asked as the card is built, like the list's page asks it: a
-            // card first drawn before its music server answers draws the
-            // covers once the server does.
-            covers: deviceCovers(list, router: router),
+            // Asked as the card draws, like the list's page asks it: a card
+            // first drawn before its music server answers draws the covers
+            // once the server does.
+            covers: { deviceCovers(list, router: router) },
             rename: { newName in store.rename(playlistId: list.id, to: newName) },
             delete: { store.delete(playlistId: list.id) },
             // The capsule names the world, not a place: these lists travel

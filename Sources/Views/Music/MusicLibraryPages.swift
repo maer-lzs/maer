@@ -959,14 +959,19 @@ struct MaerPlaylistPage: View {
     @State private var newName = ""
     /// Reordering and deleting, switched from the page's menu.
     @State private var editMode: EditMode = .inactive
+    /// Counts the passes in which the sources named covers the page lacked;
+    /// the body reads it, so the page draws its covers again.
+    @State private var coverRound = 0
 
     private var playlist: MaerPlaylists.Playlist? { store.playlist(id: playlistId) }
 
     var body: some View {
         // In a wide window the head stands beside the titles, divided at the
-        // fold (`DetailListColumns`), as on a server playlist.
+        // fold (`DetailListColumns`), as on a server playlist. The round is
+        // read here, so a pass that learned covers draws head and rows anew.
+        let round = coverRound
         DetailListColumns {
-            if let playlist { header(playlist) }
+            if let playlist { header(playlist, round: round) }
         } rows: {
             if let playlist {
                 if playlist.isRescue, let reason = playlist.rescueReason, !reason.isEmpty {
@@ -1026,15 +1031,21 @@ struct MaerPlaylistPage: View {
         }
         // Entries added before the snapshots existed get theirs here, on the
         // device that can still resolve them.
-        .task { store.backfillTitles(playlistId: playlistId) }
+        // An entry whose source has not named its cover yet (a music server
+        // song met nowhere else) is asked once the page shows.
+        .task {
+            store.backfillTitles(playlistId: playlistId)
+            if let ids = playlist?.itemIds, await router.learnCovers(ids) { coverRound += 1 }
+        }
     }
 
     /// The one head of a detail page: the list's mosaic, its name and count,
     /// Play in order and Shuffle over what this device can play.
-    private func header(_ playlist: MaerPlaylists.Playlist) -> some View {
+    private func header(_ playlist: MaerPlaylists.Playlist, round: Int) -> some View {
         let playable = PlaylistCardSource.items(of: playlist, in: store)
         return DetailHeader(title: playlist.name) { side in
             PlaylistArtwork(playlistID: playlist.id, coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router))
+                .id(round)
                 .frame(maxWidth: side ?? 240)
                 .coverCard()
         } lines: {

@@ -212,6 +212,16 @@ final class AppSession: ObservableObject {
         return provider(for: itemId).coverURL(forItemId: itemId)
     }
 
+    /// Asks the sources of these ids for the cover addresses they have not
+    /// named yet. Only the music server's songs need it (`learnSongCovers`);
+    /// every other source derives a cover from the id. True when something
+    /// was learned, so a surface draws its covers again.
+    func learnCovers(forItemIds itemIds: [String]) async -> Bool {
+        let songs = itemIds.filter { $0.hasPrefix("sub:") }
+        guard !songs.isEmpty else { return false }
+        return await subsonicProvider.learnSongCovers(itemIds: songs)
+    }
+
     /// Finds the `LibraryItem` for an id across ALL sources. For the global
     /// Up-Next queue (render + cross-media auto-continue), resume/restore, the
     /// widget and CarPlay. Type-complete: podcast episodes from their

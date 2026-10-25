@@ -82,9 +82,13 @@ struct SongCoverArtMemoTests {
         #expect(flat.contains("let cover = Self.subParts(itemId)?.kind == \"song\" ? (songCoverMemo.coverArt(of: id) ?? id) : id"))
         #expect(flat.contains("return client.mediaURL(\"getCoverArt\", [\"id\": cover, \"size\": \"600\"])"))
         // Album, playlist and song detail; genre and top songs; the shuffle
-        // pools; the search. Each answer that hands songs to a surface.
+        // pools; the search. Each answer that hands songs to a surface; and
+        // the songs a device list holds that were met nowhere else.
         let learnSites = flat.components(separatedBy: "learnCovers(").count - 2
-        #expect(learnSites == 6, "learnCovers call sites: \(learnSites)")
+        #expect(learnSites == 7, "learnCovers call sites: \(learnSites)")
+        #expect(flat.contains("if let song = try? await client.song(id: songId) { songs.append(song) }"))
+        #expect(flat.contains(".filter { memo.coverArt(of: $0) == nil && !songCoversAsking.contains($0) && seen.insert($0).inserted } .prefix(Self.songCoverPassLimit)"),
+                "only songs without a named cover, each once, at most one pass's worth")
         #expect(flat.contains("learnCovers(songs) let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)"))
         #expect(flat.contains("learnCovers(hits.song ?? [])"))
         #expect(flat.contains("Artwork.rename(from: old, to: new) Artwork.invalidate(new) await Artwork.persist(new)"))
@@ -94,7 +98,7 @@ struct SongCoverArtMemoTests {
         #expect(flat.contains("played: song.played, playCount: song.playCount, coverArt: song.coverArt)"))
         #expect(flat.contains("playCount: entry.playCount, coverArt: entry.coverArt)"))
         #expect(flat.components(separatedBy: "learnCoverArt(").count - 1 == 3,
-                "one definition, the answers with songs, the song list page")
+                "one definition, the answers with songs and the device list's songs (through learnCovers), the song list page")
     }
 
     @Test("Eine gehaltene Liederliste ohne Cover-Feld liest sich weiter, mit Feld traegt sie es")

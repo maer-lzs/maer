@@ -47,6 +47,12 @@ struct ItemRouter: Sendable {
     var coverURL: @MainActor @Sendable (String) -> URL? = {
         liveSession.coverURL(forItemId: $0)
     }
+    /// Asks the sources for cover addresses they have not named yet for
+    /// these ids; true when something was learned and the covers are worth
+    /// asking again.
+    var learnCovers: @MainActor @Sendable ([String]) async -> Bool = {
+        await liveSession.learnCovers(forItemIds: $0)
+    }
     /// The item behind an id, from whichever source holds it. Nil for an id
     /// nobody has seen yet, which every caller already tolerates.
     var item: @MainActor @Sendable (String) -> LibraryItem? = {
@@ -83,6 +89,7 @@ struct ItemRouter: Sendable {
     /// this way, and that is worth seeing rather than hiding.
     static let empty = ItemRouter(
         coverURL: { _ in nil },
+        learnCovers: { _ in false },
         item: { _ in nil },
         playable: { _ in nil },
         resolve: { _, _ in .unavailable(.unknownSource) },

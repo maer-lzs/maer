@@ -85,11 +85,11 @@ struct PlaylistPresentationTests {
         let answers = Answers()
         var router = ItemRouter.empty
         router.coverURL = { id in answers.ready ? URL(string: "https://music.example/\(id)") : nil }
-        #expect(PlaylistCardSource.device(list, router: router).covers == [], "no server answer yet")
-        answers.ready = true
         let card = PlaylistCardSource.device(list, router: router)
-        #expect(card.covers == PlaylistCardSource.deviceCovers(list, router: router))
-        #expect(card.covers?.count == 2, "the next build carries the covers")
+        #expect(card.covers?() == [], "no server answer yet")
+        answers.ready = true
+        #expect(card.covers?() == PlaylistCardSource.deviceCovers(list, router: router))
+        #expect(card.covers?().count == 2, "the next draw carries the covers")
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let flat = { (path: String) throws -> String in
             try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
@@ -97,10 +97,44 @@ struct PlaylistPresentationTests {
         }
         let cardCode = try flat("Sources/Views/Music/PlaylistCard.swift")
         #expect(cardCode.contains("PlaylistArtwork(playlistID:source.id,coverURLs:shownCovers"))
-        #expect(cardCode.contains("source.covers??coverURLs"))
-        #expect(cardCode.contains("covers:deviceCovers(list,router:router)"))
+        #expect(cardCode.contains("source.covers?()??coverURLs"))
+        #expect(cardCode.contains("covers:{deviceCovers(list,router:router)}"))
         #expect(try flat("Sources/Views/Music/MusicLibraryPages.swift")
             .contains("PlaylistArtwork(playlistID:playlist.id,coverURLs:PlaylistCardSource.deviceCovers(playlist,router:router))"))
+    }
+
+    /// A device list of music server songs met nowhere else: the source has
+    /// not named their covers, so the card asks for them and draws what was
+    /// learned; the page asks the same question when it shows.
+    @Test("Geraete-Liste fragt die Cover, die ihre Quelle noch nicht nennt, und zeichnet das Gelernte", .needsTheSources)
+    @MainActor
+    func deviceListLearnsItsCovers() async throws {
+        let list = MaerPlaylists.Playlist(id: "l-learn", name: "Test", updatedAt: 1,
+                                          itemIds: ["sub:song:tr-1", "sub:song:tr-2", "sub:song:tr-1"])
+        final class Server: @unchecked Sendable {
+            var named: [String: String] = [:]
+            var asked: [[String]] = []
+        }
+        let server = Server()
+        var router = ItemRouter.empty
+        router.coverURL = { id in URL(string: "https://music.example/\(server.named[id] ?? id)") }
+        router.learnCovers = { ids in
+            server.asked.append(ids)
+            server.named = ["sub:song:tr-1": "al-1", "sub:song:tr-2": "al-1"]
+            return true
+        }
+        let card = PlaylistCardSource.device(list, router: router)
+        #expect(card.covers?().map(\.lastPathComponent) == ["sub:song:tr-1", "sub:song:tr-2"],
+                "before the answer each song asks its own id")
+        let loaded = await card.mosaic()
+        #expect(server.asked == [list.itemIds], "the card asks once, for the list's entries")
+        #expect(loaded.covers.map(\.lastPathComponent) == ["al-1"], "the learned cover, once")
+        #expect(card.covers?() == loaded.covers, "the card draws what was learned")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let page = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"),
+                              encoding: .utf8).components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(page.contains("ifletids=playlist?.itemIds,awaitrouter.learnCovers(ids){coverRound+=1}"))
+        #expect(page.contains("letround=coverRound"), "the page's body reads the round")
     }
 
     @Test("TF2: realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
