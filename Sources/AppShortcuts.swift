@@ -112,6 +112,8 @@ struct DriveModeIntent: AppIntent {
     static let title: LocalizedStringResource = "Drive Mode"
     static let description = IntentDescription("Opens the big-button drive layout.")
     static let openAppWhenRun = true
+    /// Not offered in Shortcuts while drive mode's gate is closed.
+    static var isDiscoverable: Bool { DriveModeGate.isOpen }
 
     @MainActor
     func perform() async throws -> some IntentResult {
@@ -121,19 +123,9 @@ struct DriveModeIntent: AppIntent {
 }
 
 struct MaerShortcuts: AppShortcutsProvider {
+    // Drive mode has no phrase here while its gate is closed
+    // (`DriveModeGate`); the builder takes no condition but `#available`.
     static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: DriveModeIntent(),
-            phrases: [
-                "\(.applicationName) drive mode",
-                "Drive mode in the \(.applicationName) app",
-                "\(.applicationName) Fahrmodus",
-                "Fahrmodus in der \(.applicationName)-App",
-                "Fahrmodus der App \(.applicationName)"
-            ],
-            shortTitle: "Drive Mode",
-            systemImageName: "car.fill"
-        )
         AppShortcut(
             intent: ContinueListeningIntent(),
             // Every intent carries a form with the word "app": Siri hears

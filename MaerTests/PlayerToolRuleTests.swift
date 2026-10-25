@@ -19,35 +19,70 @@ struct PlayerToolRuleTests {
               hasLyrics: lyrics, hasTranscript: transcript, isCatalogue: catalogue)
     }
 
+    /// The rule with drive mode's gate open, the form these cases describe.
+    private func open(_ input: PlayerToolRule.Input) -> Set<PlayerToolRule.Tool> {
+        PlayerToolRule.tools(for: input, driveModeOpen: true)
+    }
+
+    @Test("bei geschlossenem Tor gibt es den Fahrmodus in keiner Art, und das Tor ist zu")
+    func driveModeClosed() {
+        #expect(!DriveModeGate.isOpen)
+        for content in [PlayerToolRule.Content.spokenWord, .music, .liveStream] {
+            #expect(!PlayerToolRule.tools(for: input(content)).contains(.driveMode))
+        }
+    }
+
+    @Test("kein Eingang erreicht den Fahrmodus: Knopf, Siri, Selbststart und Einstellungen fragen das Tor", .needsTheSources)
+    func noEntryReachesDriveMode() throws {
+        let read = { (path: String) in
+            SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let controller = try read("Sources/Views/DriveMode.swift")
+        #expect(controller.contains("func enter() {\n        guard DriveModeGate.isOpen else {"))
+        let shortcuts = try read("Sources/AppShortcuts.swift")
+        #expect(!shortcuts.contains("intent: DriveModeIntent()"), "Siri offers drive mode again")
+        #expect(shortcuts.contains("static var isDiscoverable: Bool { DriveModeGate.isOpen }"))
+        let settings = try read("Sources/Views/SettingsView.swift")
+        #expect(settings.contains("if DriveModeGate.isOpen { driveModeSection }"))
+        // The mode is entered only through `enter()`.
+        var setters: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "DriveMode.swift" {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if text.contains("isActive = true") && text.contains("DriveMode") { setters.append(file.lastPathComponent) }
+        }
+        #expect(setters.isEmpty, "drive mode is switched on past its gate: \(setters)")
+    }
+
     @Test("ein Hoerbuch vom Server zeigt Schlange, Lesezeichen, Fahrmodus, Gehoert, Playlist")
     func serverBook() {
-        let tools = PlayerToolRule.tools(for: input(.spokenWord, bookmarks: true))
+        let tools = open(input(.spokenWord, bookmarks: true))
         #expect(tools == [.queue, .bookmarks, .driveMode, .markFinished, .playlist])
     }
 
     @Test("ein Katalog-Hoerbuch hat keine Lesezeichen, aber eine Quelle und die Gehoert-Marke")
     func catalogueBook() {
-        let tools = PlayerToolRule.tools(for: input(.spokenWord, catalogue: true))
+        let tools = open(input(.spokenWord, catalogue: true))
         #expect(tools == [.queue, .driveMode, .markFinished, .playlist, .source])
     }
 
     @Test("eine Folge mit Transkript zeigt es, ohne Lesezeichen")
     func episodeWithTranscript() {
-        let tools = PlayerToolRule.tools(for: input(.spokenWord, transcript: true))
+        let tools = open(input(.spokenWord, transcript: true))
         #expect(tools == [.queue, .driveMode, .transcript, .markFinished, .playlist])
     }
 
     /// Der Entscheid: bei Musik faellt die Gehoert-Marke weg.
     @Test("Musik hat keine Gehoert-Marke, wohl aber Playlist und gefundenen Liedtext")
     func music() {
-        let tools = PlayerToolRule.tools(for: input(.music, lyrics: true))
+        let tools = open(input(.music, lyrics: true))
         #expect(!tools.contains(.markFinished))
         #expect(tools == [.queue, .driveMode, .lyrics, .playlist])
     }
 
     @Test("Katalog-Musik traegt die Quelle, sonst wie Musik")
     func catalogueMusic() {
-        let tools = PlayerToolRule.tools(for: input(.music, catalogue: true))
+        let tools = open(input(.music, catalogue: true))
         #expect(tools == [.queue, .driveMode, .playlist, .source])
     }
 
@@ -55,7 +90,7 @@ struct PlayerToolRuleTests {
     /// zwei Werkzeuge, die keinem Titel gehoeren.
     @Test("Radio zeigt nur Schlange und Fahrmodus")
     func radio() {
-        #expect(PlayerToolRule.tools(for: input(.liveStream)) == [.queue, .driveMode])
+        #expect(open(input(.liveStream)) == [.queue, .driveMode])
     }
 
     /// Rot-Probe auf die FORM: die Regel ordnet positiv zu. Eine

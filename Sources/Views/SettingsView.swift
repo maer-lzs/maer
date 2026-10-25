@@ -172,7 +172,7 @@ struct SettingsView: View {
                     globalSyncSection
                     storageSection
                     notificationsSection
-                    driveModeSection
+                    if DriveModeGate.isOpen { driveModeSection }
                     appearanceSection
                     statsSection
                     #if DEBUG

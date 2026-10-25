@@ -29,7 +29,12 @@ final class DriveModeController: ObservableObject {
         get { AppStorageKeys.string(AppStorageKeys.driveModeCarRouteUID) }
     }
 
+    /// Every entry ends here, so the closed gate holds for all of them.
     func enter() {
+        guard DriveModeGate.isOpen else {
+            Logger.library.notice("drive mode closed, entry ignored")
+            return
+        }
         guard !isActive else { return }
         isActive = true
         applyIdleTimer(true)

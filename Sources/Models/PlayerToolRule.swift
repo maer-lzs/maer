@@ -47,8 +47,11 @@ nonisolated enum PlayerToolRule {
         var isCatalogue: Bool
     }
 
-    static func tools(for input: Input) -> Set<Tool> {
-        var set: Set<Tool> = [.queue, .driveMode]
+    /// `driveModeOpen`: drive mode's tool only while its gate is open
+    /// (`DriveModeGate`).
+    static func tools(for input: Input, driveModeOpen: Bool = DriveModeGate.isOpen) -> Set<Tool> {
+        var set: Set<Tool> = [.queue]
+        if driveModeOpen { set.insert(.driveMode) }
         if input.providerKeepsBookmarks { set.insert(.bookmarks) }
         if input.hasLyrics { set.insert(.lyrics) }
         if input.hasTranscript { set.insert(.transcript) }
