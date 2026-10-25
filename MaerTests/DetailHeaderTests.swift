@@ -111,14 +111,12 @@ struct DetailHeaderTests {
     }
 
     /// The titles the files of the headed pages still set in a top bar, on
-    /// their other pages: the book's chapter list, the artist and playlist
-    /// lists, the catalog's source, popular and shelf pages, the music
-    /// library's list pages.
-    static let otherTitles: [String: Int] = [
-        "Sources/Views/BookDetailScreen.swift": 1,
-        "Sources/Views/Music/MusicBrowseViews.swift": 2,
-        "Sources/Views/CatalogSourcePage.swift": 3,
-        "Sources/Views/Music/MusicLibraryPages.swift": 9,
+    /// their other pages, each with the pages that carry them.
+    static let otherTitles: [String: (count: Int, reason: String)] = [
+        "Sources/Views/BookDetailScreen.swift": (1, "the book's chapter list"),
+        "Sources/Views/Music/MusicBrowseViews.swift": (2, "the artist and playlist lists"),
+        "Sources/Views/CatalogSourcePage.swift": (3, "the catalog's source, popular and shelf pages"),
+        "Sources/Views/Music/MusicLibraryPages.swift": (9, "the music library's list pages"),
     ]
 
     @Test("eine Seite mit Kopf traegt oben keinen Titel", .needsTheSources)
@@ -128,7 +126,7 @@ struct DetailHeaderTests {
                 try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
             #expect(text.components(separatedBy: ".untitledDetailPage()").count - 1 == 1,
                     "\(page.file) names itself in the top bar")
-            #expect(text.components(separatedBy: ".navigationTitle(").count - 1 == Self.otherTitles[page.file, default: 0],
+            #expect(text.components(separatedBy: ".navigationTitle(").count - 1 == Self.otherTitles[page.file]?.count ?? 0,
                     "\(page.file) sets a title in the top bar")
         }
         #expect(!SyncContractFenceTests.stripped(
