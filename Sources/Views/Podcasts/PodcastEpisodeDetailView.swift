@@ -25,6 +25,8 @@ struct PodcastEpisodeDetailView: View {
     /// memory, they are read when the episode opens.
     @State private var notes: String?
     @State private var showSettings = false
+    /// The page stands on top of its stack (appeared, nothing pushed over it).
+    @State private var isTopPage = false
     /// Timestamp column ("1:23:45") scales with Dynamic Type.
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
@@ -127,8 +129,9 @@ struct PodcastEpisodeDetailView: View {
             )
             .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 18) {
+            // In a wide window the head stands beside notes and chapters,
+            // divided at the fold (`DetailScrollColumns`).
+            DetailScrollColumns(spacing: 18) {
                     DetailHeader(title: item.title, titleStyle: AnyShapeStyle(.white)) { side in
                         podcastArtwork(url: coverURL, size: side ?? 220, corner: DetailCoverCard.cornerRadius)
                             .coverCard()
@@ -156,7 +159,10 @@ struct PodcastEpisodeDetailView: View {
                             episodeLinks
                         }
                     }
-
+                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+            } content: {
+                VStack(spacing: 18) {
                     metadataSection
                     chaptersSection
 
@@ -172,14 +178,16 @@ struct PodcastEpisodeDetailView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 56)
-                .bottomBarClearance()
             }
-            .reportsBottomBarScroll()
             // The page stands on the cover gradient fading to black, so it is
             // dark in either system mode: the main button's glass and label
             // read light on it, as on the book page.
             .environment(\.colorScheme, .dark)
+            // While it is the top page, the side column takes the same
+            // brightness (`sideColumnScheme`).
+            .sideColumnScheme(isTopPage ? .dark : nil)
+            .onAppear { isTopPage = true }
+            .onDisappear { isTopPage = false }
         }
         .untitledDetailPage()
         // The show's settings from its episode too. The show comes

@@ -57,9 +57,23 @@ struct DetailColumnsTests {
         ("Sources/Views/Podcasts/PodcastShowView.swift", "DetailListColumns {"),
         ("Sources/Views/Music/MusicAlbumView.swift", "DetailListColumns {"),
         ("Sources/Views/Music/MusicBrowseViews.swift", "DetailScrollColumns(spacing:"),
+        ("Sources/Views/Music/MusicLibraryPages.swift", "DetailListColumns {"),
+        ("Sources/Views/Radio/RadioStationDetailView.swift", "DetailScrollColumns(spacing:"),
+        ("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", "DetailScrollColumns(spacing:"),
+        ("Sources/Views/CatalogSourcePage.swift", "DetailScrollColumns(spacing:"),
         // The full player, side by side on a display with a fold.
         ("Sources/Views/PlayerView.swift", "FoldColumns { column in"),
     ]
+
+    @Test("jede Seite mit Kopf und Inhalt nimmt den einen Rahmen", .needsTheSources)
+    func everyHeadedPageTakesTheFrame() throws {
+        // Every page with the head (`DetailHeaderTests.headedPages`) stands in
+        // one of the frames; pure lists without a head stay in one column.
+        let framed = Set(Self.framedPages.map(\.file))
+        for page in DetailHeaderTests.headedPages {
+            #expect(framed.contains(page.file), "\(page.file) has a head but no frame at the fold")
+        }
+    }
 
     @Test("Buchseite, Sendung, Album und Playlist, Kuenstler nehmen den einen Rahmen", .needsTheSources)
     func everyDetailPageTakesTheFrame() throws {

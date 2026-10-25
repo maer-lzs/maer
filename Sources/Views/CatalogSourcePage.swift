@@ -944,38 +944,38 @@ struct ArchiveSeriesPage: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                // The sheet does NOT wait for the parts list. Measured, the
-                // response time hangs on archive.org's queue rather than on
-                // the payload size (2 kB in 26 s, 1.3 MB in 11 s), so a
-                // smaller request does not help. Moving the wait out of the
-                // way does. Head, title and description come at once from the
-                // cheap sub-path; the list follows below it, with a NAMED
-                // loading state instead of an empty surface.
-                if let detail {
-                    header(detail)
-                    episodeList
-                } else if let quick {
-                    header(quick)
-                    if failed {
-                        listProblem
-                    } else {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("Loading parts…")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal)
-                    }
-                } else if failed {
+        // In a wide window the head stands beside the parts, divided at the
+        // fold (`DetailScrollColumns`).
+        DetailScrollColumns(spacing: 14) {
+            // The sheet does NOT wait for the parts list. Measured, the
+            // response time hangs on archive.org's queue rather than on
+            // the payload size (2 kB in 26 s, 1.3 MB in 11 s), so a
+            // smaller request does not help. Moving the wait out of the
+            // way does. Head, title and description come at once from the
+            // cheap sub-path; the list follows below it, with a NAMED
+            // loading state instead of an empty surface.
+            if let head = detail ?? quick {
+                header(head)
+            }
+        } content: {
+            if detail != nil {
+                episodeList
+            } else if quick != nil {
+                if failed {
                     listProblem
                 } else {
-                    ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading parts…")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
                 }
+            } else if failed {
+                listProblem
+            } else {
+                ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
             }
-            .padding(.top, 12)
-            .bottomBarClearance()
         }
         .untitledDetailPage()
         .toolbar {

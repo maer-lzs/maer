@@ -63,7 +63,8 @@ private extension View {
     }
 }
 
-/// A scrolling page (the artist, the station) in its two forms: narrow, the header above
+/// A scrolling page (the artist, the station, the episode, the catalog
+/// series) in its two forms: narrow, the header above
 /// the content in one scroll, as before; wide, the header in the leading
 /// column and the content in the trailing one, divided at the fold.
 struct DetailScrollColumns<Header: View, Content: View>: View {
@@ -82,6 +83,7 @@ struct DetailScrollColumns<Header: View, Content: View>: View {
                             .padding(.vertical, Self.headTop)
                             .bottomBarClearance()
                     }
+                    .reportsBottomBarScroll()
                     .leadingColumnRoom(height: geo.size.height, top: Self.headTop)
                 } trailing: { _ in
                     ScrollView {
@@ -89,6 +91,7 @@ struct DetailScrollColumns<Header: View, Content: View>: View {
                             .padding(.vertical)
                             .bottomBarClearance()
                     }
+                    .reportsBottomBarScroll()
                 }
             } else {
                 ScrollView {
@@ -99,6 +102,7 @@ struct DetailScrollColumns<Header: View, Content: View>: View {
                     .padding(.vertical)
                     .bottomBarClearance()
                 }
+                .reportsBottomBarScroll()
             }
         }
     }

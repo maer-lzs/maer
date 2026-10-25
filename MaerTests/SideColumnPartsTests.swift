@@ -66,6 +66,10 @@ struct SideColumnPartsTests {
         #expect(page.contains(".environment(\\.colorScheme, .dark)\n                .sideColumnScheme(isTopPage ? .dark : nil)"),
                 "the dark book page does not tell the column, or tells it while covered")
         #expect(page.contains(".onAppear { isTopPage = true }\n                .onDisappear { isTopPage = false }"))
+        // The episode stands on its dark gradient too and tells the column.
+        let episode = try source("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift")
+        #expect(episode.contains(".environment(\\.colorScheme, .dark)\n            .sideColumnScheme(isTopPage ? .dark : nil)"),
+                "the dark episode page does not tell the column")
     }
 
     @Test("die Kapsel klappt mit der unteren Leiste auf den aktiven Reiter ein, der Rand bleibt", .needsTheSources)
