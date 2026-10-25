@@ -445,10 +445,8 @@ struct PodcastShowView: View {
                     if let lang = s.language, !lang.isEmpty {
                         Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
                     }
-                    if s.explicit == true {
-                        Text("E").font(.caption2.weight(.bold))
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                    if PodcastExplicit.marks(show: s.explicit) {
+                        ExplicitMark()
                     }
                 }
                 if s.link != nil || s.funding?.isEmpty == false {

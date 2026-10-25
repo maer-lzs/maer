@@ -3933,6 +3933,16 @@
         }
       }
     },
+    "Explicit" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explizit"
+          }
+        }
+      }
+    },
     "Experimental" : {
       "localizations" : {
         "de" : {
@@ -4329,7 +4339,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freie Feeds übersprungen, als Premium abonniert"
+            "value" : "Kostenlose Feeds übersprungen, als Premium abonniert"
           }
         }
       }

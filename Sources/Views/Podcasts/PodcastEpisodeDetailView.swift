@@ -45,7 +45,9 @@ struct PodcastEpisodeDetailView: View {
 
     @ViewBuilder
     private func badges(_ ep: PodcastEpisode) -> some View {
-        let parts: [String] = [seasonEpisodeText(ep), typeText(ep), ep.explicit == true ? "E" : nil]
+        let explicit = PodcastExplicit.marks(
+            episode: ep.explicit, show: PodcastSubscriptions.shared.episode(guid: item.id)?.show.explicit)
+        let parts: [String] = [seasonEpisodeText(ep), typeText(ep), explicit ? PodcastExplicit.letter : nil]
             .compactMap { $0 }
         if !parts.isEmpty {
             HStack(spacing: 6) {

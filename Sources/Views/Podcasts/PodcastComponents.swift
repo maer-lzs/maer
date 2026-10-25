@@ -288,6 +288,18 @@ struct OriginCapsule: View {
     }
 }
 
+/// THE explicit mark (`PodcastExplicit`): the letter in a small box, read
+/// out as a word.
+struct ExplicitMark: View {
+    var body: some View {
+        Text(verbatim: PodcastExplicit.letter)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
+            .accessibilityLabel(Text("Explicit"))
+    }
+}
+
 struct PodcastEpisodeRow: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
@@ -462,6 +474,11 @@ struct PodcastEpisodeRow: View {
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".
     private func metaText(state: EpisodePlayState) -> String {
         var parts: [String] = []
+        // The explicit mark leads the line (`PodcastExplicit`); one indexed read.
+        if let found = PodcastSubscriptions.shared.episode(guid: item.id),
+           PodcastExplicit.marks(episode: found.episode.explicit, show: found.show.explicit) {
+            parts.append(PodcastExplicit.letter)
+        }
         let date = relativeDateText(item)
         if !date.isEmpty { parts.append(date) }
         // Mark the text-only row instead of showing play/duration meta.
