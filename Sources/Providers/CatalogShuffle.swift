@@ -51,6 +51,7 @@ enum CatalogShuffle {
             Logger.library.notice("SHUFFLE area=\(area.key, privacy: .public) page=\(page) got=\(items.count)")
             await start(items, coordinator: coordinator, sourceTitle: area.title, asSongs: true)
         } catch {
+            guard !error.isCancellation, !Task.isCancelled else { return }
             Logger.library.error("SHUFFLE area=\(area.key, privacy: .public) page=\(page) FAILED: \(FailureReason.of(error), privacy: .public)")
             sayFailure(ErrorSentence.of(error), coordinator: coordinator, title: area.title)
         }
@@ -66,6 +67,7 @@ enum CatalogShuffle {
             await start(items, coordinator: coordinator,
                         sourceTitle: String(localized: "Music (Jamendo)"))
         } catch {
+            guard !error.isCancellation, !Task.isCancelled else { return }
             Logger.library.error("SHUFFLE jamendo FAILED: \(FailureReason.of(error), privacy: .public)")
             sayFailure(ErrorSentence.of(error), coordinator: coordinator,
                        title: String(localized: "Music (Jamendo)"))
@@ -93,20 +95,45 @@ enum CatalogShuffle {
     /// reach (`maxPage`); Gutenberg, which has no random order, a random
     /// page of its audiobook list.
     static func playBook(source: CatalogSource, coordinator: PlayerCoordinator) async {
+        await playBook(source: source,
+                       draw: { try await drawBooks(source: source, languageCodes: SuggestionLanguages.current()) },
+                       open: { pick in await unbound { await coordinator.open(item: pick) } },
+                       fail: { sayFailure($0, coordinator: coordinator, title: source.title) })
+    }
+
+    /// The book draw with its ends handed in. A draw cancelled while it
+    /// waits (its page was left) opens nothing and says nothing, even when
+    /// the answer came in the same moment.
+    static func playBook(source: CatalogSource,
+                         draw: () async throws -> [LibraryItem],
+                         open: (LibraryItem) async -> Void,
+                         fail: (String) -> Void) async {
         do {
-            let items = try await drawBooks(source: source, languageCodes: SuggestionLanguages.current())
-            Logger.library.notice("SHUFFLE books source=\(source.rawValue, privacy: .public) got=\(items.count)")
-            guard let pick = items.randomElement() else {
-                sayFailure(String(localized: "Shuffle found nothing to play this time. Please try again."),
-                           coordinator: coordinator, title: source.title)
+            let items = try await draw()
+            guard !Task.isCancelled else {
+                Logger.library.notice("SHUFFLE books source=\(source.rawValue, privacy: .public) cancelled")
                 return
             }
-            await coordinator.open(item: pick)
+            Logger.library.notice("SHUFFLE books source=\(source.rawValue, privacy: .public) got=\(items.count)")
+            guard let pick = items.randomElement() else {
+                fail(String(localized: "Shuffle found nothing to play this time. Please try again."))
+                return
+            }
+            await open(pick)
         } catch {
-            guard !error.isCancellation else { return }
+            guard !error.isCancellation, !Task.isCancelled else {
+                Logger.library.notice("SHUFFLE books source=\(source.rawValue, privacy: .public) cancelled")
+                return
+            }
             Logger.library.error("SHUFFLE books source=\(source.rawValue, privacy: .public) FAILED: \(FailureReason.of(error), privacy: .public)")
-            sayFailure(ErrorSentence.of(error), coordinator: coordinator, title: source.title)
+            fail(ErrorSentence.of(error))
         }
+    }
+
+    /// A start that has begun runs to its end: leaving the page cancels the
+    /// waiting draw, never a start halfway through.
+    private static func unbound(_ start: @escaping @MainActor () async -> Void) async {
+        await Task { await start() }.value
     }
 
     /// The titles of one drawn page. A language that carries nothing falls
@@ -167,18 +194,25 @@ enum CatalogShuffle {
     /// path); hand-placed orders in the queue keep their right of way. A
     /// draw without a playable title says so instead of doing nothing.
     /// `asSongs`: an album plays as its songs (`CatalogShuffleSongs`).
+    /// A draw cancelled while it waited starts nothing (`unbound`).
     private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator,
                               sourceTitle: String, asSongs: Bool = false) async {
+        guard !Task.isCancelled else {
+            Logger.library.notice("SHUFFLE \(sourceTitle, privacy: .public) cancelled")
+            return
+        }
         guard !items.isEmpty else {
             sayFailure(String(localized: "Shuffle found nothing to play this time. Please try again."),
                        coordinator: coordinator, title: sourceTitle)
             return
         }
         guard asSongs else {
-            await coordinator.playInOrder(items: items, contextSource: sourceTitle)
+            await unbound { await coordinator.playInOrder(items: items, contextSource: sourceTitle) }
             return
         }
-        await CatalogShuffleSongs.start(items) { await coordinator.playInOrder(items: $0, contextSource: sourceTitle) }
+        await unbound {
+            await CatalogShuffleSongs.start(items) { await coordinator.playInOrder(items: $0, contextSource: sourceTitle) }
+        }
     }
 
     /// A shuffle that starts nothing says why in the notice channel, like

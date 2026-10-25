@@ -301,17 +301,49 @@ extension RowHeading {
 
 /// "Play something at random" in a catalogue area page's menu
 /// (`pageActions`): the one entry every area page carries, each with the
-/// draw of its catalogue (`CatalogShuffle`).
+/// draw of its catalogue (`CatalogShuffle`), through `catalogShuffleActions`.
 struct CatalogShuffleEntry: View {
-    let draw: @MainActor () async -> Void
+    /// A draw is running; a second one waits for it.
+    let busy: Bool
+    let start: () -> Void
 
     var body: some View {
-        Button {
-            Task { await draw() }
-        } label: {
+        Button(action: start) {
             Label("Play something at random", systemImage: "shuffle")
         }
+        .disabled(busy)
         .accessibilityIdentifier("catalog-shuffle")
+    }
+}
+
+extension View {
+    /// A catalogue area page's one menu with its draw. The draw runs as the
+    /// page's own task: leaving the page cancels it, and a cancelled draw
+    /// starts nothing (`CatalogShuffle`). While it waits, the menu shows a
+    /// spinner (`pageActions(busy:)`).
+    func catalogShuffleActions(shown: Bool = true, draw: @escaping @MainActor () async -> Void) -> some View {
+        modifier(CatalogShuffleActions(shown: shown, draw: draw))
+    }
+}
+
+private struct CatalogShuffleActions: ViewModifier {
+    let shown: Bool
+    let draw: @MainActor () async -> Void
+    /// The running draw; nil while none runs.
+    @State private var request: UUID?
+
+    func body(content: Content) -> some View {
+        content
+            .pageActions("catalog-actions", shown: shown, busy: request != nil) {
+                CatalogShuffleEntry(busy: request != nil) { request = UUID() }
+            }
+            .task(id: request) {
+                guard let running = request else { return }
+                await draw()
+                if request == running { request = nil }
+            }
+            // A page that comes back does not draw again on its own.
+            .onDisappear { request = nil }
     }
 }
 

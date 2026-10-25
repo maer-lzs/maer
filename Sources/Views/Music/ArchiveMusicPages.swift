@@ -124,8 +124,8 @@ struct ArchiveMusicPage: View {
         }
         .navigationTitle(Text(area.title))
         // Shuffle stands in the page's one menu.
-        .pageActions("catalog-actions") {
-            CatalogShuffleEntry { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) }
+        .catalogShuffleActions {
+            await CatalogShuffle.play(area: area, coordinator: playerCoordinator)
         }
         .task {
             async let stockTask: Void = CatalogStockService.shared.ensureStock(
@@ -499,10 +499,8 @@ struct ShellacShelvesPage: View {
         .navigationTitle(Text("Old Records"))
         .navigationBarTitleDisplayMode(.inline)
         // The draw reaches every shelf: the union the popular row stands on.
-        .pageActions("catalog-actions") {
-            CatalogShuffleEntry {
-                await CatalogShuffle.play(area: ArchiveMusicCatalog.shellacAll, coordinator: playerCoordinator)
-            }
+        .catalogShuffleActions {
+            await CatalogShuffle.play(area: ArchiveMusicCatalog.shellacAll, coordinator: playerCoordinator)
         }
         .task {
             async let stockTask: Void = CatalogStockService.shared.ensureStock(

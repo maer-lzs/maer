@@ -25,6 +25,58 @@ struct CatalogAreaShuffleTests {
         #expect(CatalogShuffle.bookQuery(for: .oerr, languageCodes: ["de"]) == nil)
     }
 
+    /// What the ends of a book draw were asked.
+    @MainActor private final class Ends {
+        var opened: [String] = []
+        var failures: [String] = []
+    }
+
+    /// A wait that does not end when its task is cancelled, like an answer
+    /// already on its way.
+    private static func deafWait(_ ms: Int) async {
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms)) { done.resume() }
+        }
+    }
+
+    @Test("ein Buch-Wurf, dessen Seite verlassen wurde, startet nichts und sagt nichts, auch wenn die Antwort noch kam")
+    @MainActor func aLeftDrawStartsNothing() async {
+        let ends = Ends()
+        let book = LibraryItem(id: "gut:1342", media: nil, addedAt: nil)
+        let draw = Task { @MainActor in
+            await CatalogShuffle.playBook(
+                source: .gutenberg,
+                draw: { await Self.deafWait(300); return [book] },
+                open: { ends.opened.append($0.id) },
+                fail: { ends.failures.append($0) })
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        draw.cancel()
+        await draw.value
+        #expect(ends.opened.isEmpty && ends.failures.isEmpty, "\(ends.opened) \(ends.failures)")
+
+        // Cancelled inside the request: the same silence.
+        let thrown = Task { @MainActor in
+            await CatalogShuffle.playBook(
+                source: .gutenberg,
+                draw: { try await Task.sleep(for: .seconds(5)); return [book] },
+                open: { ends.opened.append($0.id) },
+                fail: { ends.failures.append($0) })
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        thrown.cancel()
+        await thrown.value
+        #expect(ends.opened.isEmpty && ends.failures.isEmpty, "\(ends.opened) \(ends.failures)")
+
+        // A draw that keeps its page opens the title it drew.
+        await CatalogShuffle.playBook(source: .gutenberg, draw: { await Self.deafWait(20); return [book] },
+                                      open: { ends.opened.append($0.id) }, fail: { ends.failures.append($0) })
+        #expect(ends.opened == ["gut:1342"] && ends.failures.isEmpty)
+        await CatalogShuffle.playBook(source: .gutenberg, draw: { [] },
+                                      open: { ends.opened.append($0.id) }, fail: { ends.failures.append($0) })
+        #expect(ends.failures.count == 1, "an empty draw says nothing")
+    }
+
     @Test("jede Bereichsseite traegt den Wurf ihres Katalogs im Menue, keine Reihe einen neuen Knopf", .needsTheSources)
     func everyAreaPageCarriesItsDraw() throws {
         func text(_ path: String) throws -> String {
@@ -33,12 +85,22 @@ struct CatalogAreaShuffleTests {
                 .replacing(#/\s+/#, with: " ")
         }
         let music = try text("Sources/Views/Music/ArchiveMusicPages.swift")
-        #expect(music.contains(".pageActions(\"catalog-actions\") { CatalogShuffleEntry { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) } }"))
-        #expect(music.contains(".pageActions(\"catalog-actions\") { CatalogShuffleEntry { await CatalogShuffle.play(area: ArchiveMusicCatalog.shellacAll, coordinator: playerCoordinator) } }"))
+        #expect(music.contains(".catalogShuffleActions { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) }"))
+        #expect(music.contains(".catalogShuffleActions { await CatalogShuffle.play(area: ArchiveMusicCatalog.shellacAll, coordinator: playerCoordinator) }"))
         let jamendo = try text("Sources/Views/Music/MusicLibraryPages.swift")
-        #expect(jamendo.contains(".pageActions(\"catalog-actions\") { CatalogShuffleEntry { await CatalogShuffle.playJamendo(coordinator: playerCoordinator) } }"))
+        #expect(jamendo.contains(".catalogShuffleActions { await CatalogShuffle.playJamendo(coordinator: playerCoordinator) }"))
         let source = try text("Sources/Views/CatalogSourcePage.swift")
-        #expect(source.contains(".pageActions(\"catalog-actions\", shown: !source.isFeedBased) { CatalogShuffleEntry { await CatalogShuffle.playBook(source: source, coordinator: playerCoordinator) } }"))
+        #expect(source.contains(".catalogShuffleActions(shown: !source.isFeedBased) { await CatalogShuffle.playBook(source: source, coordinator: playerCoordinator) }"))
+        // The draw is the page's task, shown while it waits, gone when the page goes.
+        let layout = try text("Sources/Views/TabContentLayout.swift")
+        let actions = try #require(layout.components(separatedBy: "private struct CatalogShuffleActions: ViewModifier {").last)
+        #expect(actions.contains(".pageActions(\"catalog-actions\", shown: shown, busy: request != nil) { CatalogShuffleEntry(busy: request != nil) { request = UUID() } }"))
+        #expect(actions.contains(".task(id: request) { guard let running = request else { return } await draw() if request == running { request = nil } }"))
+        #expect(actions.contains(".onDisappear { request = nil }"), "a page that comes back draws again on its own")
+        #expect(!layout.contains("Task { await draw() }"), "the draw runs past its page")
+        let head = try text("Sources/Views/DetailHeader.swift")
+        #expect(head.contains("if busy { ProgressView() } else { Image(systemName: \"ellipsis.circle\") }"),
+                "the menu does not show the waiting draw")
         // The entry is built in one place.
         var labels: [String: Int] = [:]
         var rowButtons = 0

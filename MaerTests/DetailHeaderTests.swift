@@ -161,7 +161,9 @@ struct DetailHeaderTests {
         for file in Self.pagesWithActions.keys {
             let text = SyncContractFenceTests.stripped(
                 try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
+            // A catalogue area page builds its menu through its draw (`catalogShuffleActions`).
             found[file] = text.components(separatedBy: ".pageActions(").count - 1
+                + text.components(separatedBy: ".catalogShuffleActions").count - 1
             #expect(!text.contains("ToolbarItem(") && !text.contains("ToolbarItemGroup("),
                     "\(file) puts a control of its own in the top bar")
         }

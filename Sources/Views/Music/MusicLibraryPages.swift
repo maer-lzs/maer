@@ -615,8 +615,8 @@ struct FreeJamendoPage: View {
         }
         .navigationTitle(Text("Music (Jamendo)"))
         .navigationBarTitleDisplayMode(.inline)
-        .pageActions("catalog-actions") {
-            CatalogShuffleEntry { await CatalogShuffle.playJamendo(coordinator: playerCoordinator) }
+        .catalogShuffleActions {
+            await CatalogShuffle.playJamendo(coordinator: playerCoordinator)
         }
         .bottomBarClearance()
         .task {

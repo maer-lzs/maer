@@ -169,8 +169,8 @@ struct DisplayStateFenceTests {
         #expect(!components.contains("Image(systemName: \"wifi.slash\")"), "the show tile draws its own offline mark again")
         // The pages' one menu (`pageActions`).
         let head = try code("Sources/Views/DetailHeader.swift")
-        let menu = try #require(head.range(of: "label: { Image(systemName: \"ellipsis.circle\") }"), "the actions menu is gone")
-        #expect(head[menu.upperBound...].prefix(120).contains(".accessibilityLabel(Text(\"Actions\"))"), "the actions menu has no name")
+        let menu = try #require(head.range(of: "Image(systemName: \"ellipsis.circle\")"), "the actions menu is gone")
+        #expect(head[menu.upperBound...].prefix(160).contains(".accessibilityLabel(Text(\"Actions\"))"), "the actions menu has no name")
     }
 }
 #endif

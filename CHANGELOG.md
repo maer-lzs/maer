@@ -10,6 +10,11 @@ two columns, one on each side of the fold. The page asks all its
 catalogs at once, and each row appears as soon as its catalog answers,
 instead of waiting for the ones before it.
 
+**Play something at random shows that it is working.** On a catalog
+page, the menu shows a spinner while the random pick waits for its
+catalog, which for Project Gutenberg can take half a minute. Leaving
+the page cancels the pick, and nothing starts afterwards.
+
 **One menu for albums and playlists.** A long press on an album or a
 playlist, from your server or from an open catalog, offers Play, Play
 Next, Play Last, Shuffle, Add to Playlist and Details, in the same
