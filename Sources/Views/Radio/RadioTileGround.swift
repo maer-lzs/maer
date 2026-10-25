@@ -139,6 +139,36 @@ nonisolated enum RadioTileGround {
         return dark ? 0.8 : 0.25
     }
 
+    /// A logo fitted on its card whose edge is its own colour (Oe1: a red
+    /// diamond on nothing) vanishes on a ground of that colour. Its ground
+    /// takes the same hue darkened by this share, so the mark stands off it.
+    static let fittedDarkening = 0.35
+    /// An edge darker than this has no darker tone to stand off; its card
+    /// keeps the light pastel (`dampened`).
+    static let fittedDarkFloor = 0.12
+
+    /// What a card's resting surface is made of.
+    enum CardGround: Equatable {
+        /// The edge itself: a covering logo joins its card seamlessly.
+        case edge
+        /// The edge darkened, behind a fitted logo of that colour.
+        case darkened(Edge)
+        /// The calmed tone (`dampened`): an accent edge, or a mark too dark
+        /// to darken.
+        case dampened
+    }
+
+    /// The one answer what a card stands on, from the logo's edge, whether
+    /// the edge dominates the logo, and whether the logo covers its surface.
+    static func cardGround(edge: Edge, dominant: Bool, logoCovers: Bool) -> CardGround {
+        guard dominant else { return .dampened }
+        if logoCovers { return .edge }
+        guard edge.luminance >= fittedDarkFloor else { return .dampened }
+        let share = fittedDarkening
+        return .darkened(Edge(red: edge.red * share, green: edge.green * share, blue: edge.blue * share,
+                              luminance: edge.luminance * share))
+    }
+
     /// The alpha a corner needs to count as painted.
     static let opaqueCornerAlpha = 0.5
 

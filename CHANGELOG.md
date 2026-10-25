@@ -24,6 +24,11 @@ soon as the server answers.
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.
 
+**A station logo stands off its card.** A logo that sits inside its
+card, like Oe1's red diamond, stood on a ground of its own red and
+nearly vanished. The card now takes the logo's colour darkened, so the
+logo stands out.
+
 **Shuffle on a music area plays songs.** A drawn netlabel album started
 as one long title. Now each drawn album plays song by song, as from its
 own page: Up Next lists the songs, and next and previous step from song

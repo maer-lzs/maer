@@ -223,6 +223,43 @@ import SwiftUI
         #expect(!RadioArtwork.coversItsSurface(wordmark), "a wide wordmark keeps its ground, painted or not")
     }
 
+    /// A fitted logo whose edge is its own colour (Oe1: a red diamond on
+    /// nothing) stands on that colour darkened, so the mark stands off its
+    /// card. A covering logo keeps its seamless edge, an accent edge the
+    /// pastel, and an edge with no darker tone the pastel too.
+    @MainActor @Test func aFittedLogoStandsOnItsColourDarkened() throws {
+        let diamond = image { _ in
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: 16, y: 0))
+            path.addLine(to: CGPoint(x: 32, y: 16))
+            path.addLine(to: CGPoint(x: 16, y: 32))
+            path.addLine(to: CGPoint(x: 0, y: 16))
+            path.close()
+            UIColor(red: 0.85, green: 0.1, blue: 0.1, alpha: 1).setFill()
+            path.fill()
+        }
+        let edge = try #require(RadioTileGround.bottomEdgeColor(of: diamond))
+        let dominant = RadioTileGround.dominance(of: diamond, edge: edge) >= RadioTileGround.dominanceShare
+        #expect(dominant, "the diamond's edge is its one colour")
+        let ground = RadioTileGround.cardGround(edge: edge, dominant: dominant,
+                                                logoCovers: RadioArtwork.coversItsSurface(diamond))
+        guard case .darkened(let dark) = ground else {
+            Issue.record("a fitted mark of one colour must stand on that colour darkened, got \(ground)")
+            return
+        }
+        #expect(abs(dark.red / dark.green - edge.red / edge.green) < 0.01, "the hue stays the logo's")
+        #expect(dark.luminance < edge.luminance * 0.5, "darker than the mark by a clear step")
+        #expect(RadioTileGround.titleIsLight(groundLuminance: dark.luminance), "light ink on the dark ground")
+
+        #expect(RadioTileGround.cardGround(edge: edge, dominant: true, logoCovers: true) == .edge,
+                "a covering logo joins its card seamlessly, as before")
+        #expect(RadioTileGround.cardGround(edge: edge, dominant: false, logoCovers: false) == .dampened,
+                "an accent edge keeps the pastel, as before")
+        let black = RadioTileGround.Edge(red: 0.05, green: 0.05, blue: 0.08, luminance: 0.05)
+        #expect(RadioTileGround.cardGround(edge: black, dominant: true, logoCovers: false) == .dampened,
+                "a black mark has no darker ground and keeps the light pastel")
+    }
+
     /// A fully transparent image answers nil. The card keeps its fallback.
     @Test func emptyImageAnswersNil() {
         let img = image { _ in }

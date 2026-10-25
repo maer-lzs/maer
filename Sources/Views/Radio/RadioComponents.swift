@@ -322,19 +322,36 @@ struct RadioFeaturedCard: View {
     @State private var dominance: Double = 1
 
     private var edgeIsDominant: Bool { dominance >= RadioTileGround.dominanceShare }
+    /// Whether the logo runs to the card's edge (`coversItsSurface`); a
+    /// fitted logo of the edge's colour needs a darker ground.
+    @State private var logoCovers = true
 
-    /// The card's resting surface: the edge tone when it is dominant, else
-    /// the calmed variant of the same tone (the accent case).
+    private var ground: RadioTileGround.CardGround? {
+        edge.map { RadioTileGround.cardGround(edge: $0, dominant: edgeIsDominant, logoCovers: logoCovers) }
+    }
+
+    /// The card's resting surface (`RadioTileGround.cardGround`): the edge
+    /// tone behind a covering logo, its darkened tone behind a fitted one,
+    /// else the calmed variant of the same tone (the accent case).
     private var cardColor: Color {
-        guard let edge else { return colorLoader.hasAccent ? colorLoader.accent : tint }
-        return edgeIsDominant ? edge.color : RadioTileGround.dampened(edge)
+        guard let edge, let ground else { return colorLoader.hasAccent ? colorLoader.accent : tint }
+        switch ground {
+        case .edge: return edge.color
+        case .darkened(let dark): return dark.color
+        case .dampened: return RadioTileGround.dampened(edge)
+        }
     }
 
     /// White ink on dark grounds, dark ink on light. Measured at the SURFACE
-    /// the text sits on (the calmed area in the accent case).
+    /// the text sits on.
     private var inkIsLight: Bool {
-        guard let edge else { return true }
-        let surface = edgeIsDominant ? edge.luminance : RadioTileGround.dampenedLuminance(edge)
+        guard let edge, let ground else { return true }
+        let surface: Double
+        switch ground {
+        case .edge: surface = edge.luminance
+        case .darkened(let dark): surface = dark.luminance
+        case .dampened: surface = RadioTileGround.dampenedLuminance(edge)
+        }
         return RadioTileGround.titleIsLight(groundLuminance: surface)
     }
     private var titleColor: Color { inkIsLight ? .white : .black.opacity(0.85) }
@@ -431,6 +448,7 @@ struct RadioFeaturedCard: View {
             // Whether it may fill the surface depends on DOMINANCE.
             if let url, let loaded = await Artwork.loaded(for: url) {
                 let measured = RadioTileGround.bottomEdgeColor(of: loaded.image)
+                logoCovers = RadioArtwork.coversItsSurface(loaded.image)
                 edge = measured
                 if let measured {
                     dominance = RadioTileGround.dominance(of: loaded.image, edge: measured)
