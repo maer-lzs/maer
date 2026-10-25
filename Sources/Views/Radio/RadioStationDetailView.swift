@@ -22,7 +22,8 @@ struct RadioStationDetailView: View {
     /// country). Net-gated, empty hides the row.
     @State private var similar: [RadioStation] = []
 
-    private var variants: [RadioStation] { station.variantList }
+    /// The station's streams, at least its own.
+    private var variants: [RadioStation] { station.streamVariants }
 
     var body: some View {
         // In a wide window the head stands beside the station's facts,
@@ -49,7 +50,7 @@ struct RadioStationDetailView: View {
             }
         } content: {
             VStack(spacing: 20) {
-                if variants.count > 1 { variantPicker }
+                streamsSection
 
                 if let homepage = station.homepage.flatMap({ URL(string: $0) }) {
                     DetailLinkRow {
@@ -127,26 +128,24 @@ struct RadioStationDetailView: View {
         .padding(.horizontal)
     }
 
-    /// The station's facts. Bitrate/codec of the BEST variant, the
-    /// localized country, all tags. Rows appear only with real data.
+    /// The station's facts beside its streams: the localized country, the
+    /// languages, all tags. Rows appear only with real data.
     @ViewBuilder
     private var factsSection: some View {
-        let codec = station.codec ?? variants.first?.codec
-        let bitrate = station.bitrate ?? variants.first?.bitrate
         let country = station.countryCode.flatMap {
             Locale.current.localizedString(forRegionCode: $0)
         }
+        let languages = (station.languageCodes ?? [])
+            .map { Locale.current.localizedString(forLanguageCode: $0) ?? $0 }
+            .joined(separator: ", ")
         let tagLine = station.tags.filter { !$0.isEmpty }.joined(separator: ", ")
-        if codec != nil || bitrate != nil || country != nil || !tagLine.isEmpty {
+        if country != nil || !languages.isEmpty || !tagLine.isEmpty {
             VStack(spacing: 0) {
-                if let codec {
-                    factRow(String(localized: "Codec"), codec.uppercased())
-                }
-                if let bitrate, bitrate > 0 {
-                    factRow(String(localized: "Bitrate"), "\(bitrate) kbps")
-                }
                 if let country {
                     factRow(String(localized: "Country"), country)
+                }
+                if !languages.isEmpty {
+                    factRow(String(localized: "Language"), languages)
                 }
                 if !tagLine.isEmpty {
                     factRow(String(localized: "Tags"), tagLine)
@@ -168,43 +167,61 @@ struct RadioStationDetailView: View {
         .padding(.horizontal).padding(.vertical, 10)
     }
 
-    /// Codec/bitrate chooser. The default (best) is marked, the choice persists.
-    private var variantPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Quality").font(.headline).padding(.horizontal)
+    /// The station's streams, always at least one, each with format,
+    /// bitrate and serving host as far as known. With alternatives the rows
+    /// choose the stream the next play takes, the best is marked and the
+    /// choice persists; a single stream is listed, not chosen.
+    private var streamsSection: some View {
+        let choosable = variants.count > 1
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Streams").font(.headline).padding(.horizontal)
             VStack(spacing: 0) {
                 // Keyed by address, like the folding and the choice: two
                 // answers can give one id two addresses.
                 ForEach(Array(variants.enumerated()), id: \.element.streamURL) { index, variant in
-                    Button {
-                        selectedURL = variant.streamURL
-                        RadioStore.setSelectedVariant(variant.streamURL, for: station)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(variant.qualityLabel).foregroundStyle(.primary)
-                                if index == 0 {
-                                    Text("Best").font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            if variant.streamURL == selectedURL {
-                                Image(systemName: "checkmark").foregroundStyle(AppTheme.accent)
-                            }
+                    if choosable {
+                        Button {
+                            selectedURL = variant.streamURL
+                            RadioStore.setSelectedVariant(variant.streamURL, for: station)
+                        } label: {
+                            streamRow(variant, isBest: index == 0,
+                                      isSelected: variant.streamURL == selectedURL)
                         }
-                        .padding(.horizontal).padding(.vertical, 12)
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                    } else {
+                        streamRow(variant, isBest: false, isSelected: false)
                     }
-                    .buttonStyle(.plain)
                     if index < variants.count - 1 { Divider().padding(.leading) }
                 }
             }
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.primary.opacity(0.06)))
             .padding(.horizontal)
-            Text("Applies the next time you play this station.")
-                .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+            if choosable {
+                Text("Applies the next time you play this station.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+            }
         }
+    }
+
+    private func streamRow(_ stream: RadioStation, isBest: Bool, isSelected: Bool) -> some View {
+        let detail = [isBest ? String(localized: "Best") : nil, stream.streamHost]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+        return HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stream.qualityLabel).foregroundStyle(.primary)
+                if !detail.isEmpty {
+                    Text(detail).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark").foregroundStyle(AppTheme.accent)
+            }
+        }
+        .padding(.horizontal).padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 
     private var subtitle: String? {

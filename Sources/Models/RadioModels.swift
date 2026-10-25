@@ -43,6 +43,22 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// alternatives. The picker only appears for two or more.
     var variantList: [RadioStation] { variants ?? [] }
 
+    /// The streams the station page lists: the variants when there are
+    /// alternatives, else the station's own stream. Never empty, a station
+    /// is at least one stream.
+    var streamVariants: [RadioStation] {
+        if !variantList.isEmpty { return variantList }
+        var own = self
+        own.variants = nil
+        return [own]
+    }
+
+    /// The host that serves this stream, nil when the address names none.
+    var streamHost: String? {
+        guard let host = URL(string: streamURL)?.host(), !host.isEmpty else { return nil }
+        return host
+    }
+
     /// Teil 1: human label for the variant picker. "128 kbps · MP3", one part,
     /// or a generic fallback. Foundation-only (like the curated genre titles).
     var qualityLabel: String {

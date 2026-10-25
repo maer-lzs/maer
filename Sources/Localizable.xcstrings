@@ -2128,16 +2128,6 @@
         }
       }
     },
-    "Bitrate" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bitrate"
-          }
-        }
-      }
-    },
     "Blues" : {
       "localizations" : {
         "de" : {
@@ -2646,16 +2636,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mitgehört"
-          }
-        }
-      }
-    },
-    "Codec" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Codec"
           }
         }
       }
@@ -5418,6 +5398,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Korea"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache"
           }
         }
       }
@@ -8925,16 +8915,6 @@
         }
       }
     },
-    "Quality" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Qualität"
-          }
-        }
-      }
-    },
     "Queue is empty" : {
       "localizations" : {
         "de" : {
@@ -10809,6 +10789,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stream-URL"
+          }
+        }
+      }
+    },
+    "Streams" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streams"
           }
         }
       }

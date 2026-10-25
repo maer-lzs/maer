@@ -724,6 +724,42 @@ struct RadioStateQueryTests {
         #expect(drift.isEmpty, "a variant list is drawn by another key, or a held file has fewer: \(drift) \(byOtherKey)")
     }
 
+    /// The station page lists the streams of every station, a single one
+    /// too: a station is at least one stream.
+    @Test("Jeder Sender nennt mindestens einen Stream, mit Format, Bitrate und Wirt")
+    func everyStationListsAtLeastOneStream() {
+        let single = RadioStation(id: "radio:rb:one", name: "Single", streamURL: "http://live.example.at/one-q2a",
+                                  bitrate: 192, codec: "MP3")
+        #expect(single.variantList.isEmpty, "the precondition: no alternatives")
+        #expect(single.streamVariants.map(\.streamURL) == [single.streamURL])
+        #expect(single.streamVariants.first?.qualityLabel == "192 kbps · MP3")
+        #expect(single.streamHost == "live.example.at")
+        let folded = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:lo", name: "Two", streamURL: "https://b.example/lo", bitrate: 64),
+            RadioStation(id: "radio:rb:hi", name: "Two", streamURL: "https://a.example/hi", bitrate: 192),
+        ])
+        #expect(folded.count == 1, "the precondition: one station with two streams")
+        #expect(folded.first?.streamVariants.map(\.streamURL) == ["https://a.example/hi", "https://b.example/lo"])
+        #expect(folded.first?.streamVariants.allSatisfy { $0.variants == nil } == true, "streams never nest")
+        let manual = RadioStation(id: "radio:manual:own", name: "Own", streamURL: "file:///tmp/own.wav")
+        #expect(manual.streamVariants.count == 1 && manual.streamHost == nil)
+    }
+
+    /// The streams stand on the station page under no condition; a count
+    /// gate would leave the column empty for a station with one stream.
+    @Test("Die Senderseite zeichnet ihre Streams immer, nicht erst ab zweien", .needsTheSources)
+    func theStationPageAlwaysDrawsItsStreams() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Radio/RadioStationDetailView.swift"),
+            encoding: .utf8))
+        #expect(page.contains("station.streamVariants"), "the page lists the streams, its own included")
+        #expect(!page.contains("station.variantList"), "the page reads the alternatives only, which are empty for one stream")
+        let lines = page.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        let at = lines.firstIndex(of: "streamsSection")
+        #expect(at.map { lines[$0 - 1] } == "VStack(spacing: 20) {",
+                "the streams open the column, under no condition")
+    }
+
     /// The statements that draw a list of variants: a `ForEach` whose first
     /// argument names variants, or names a value this file bound to them.
     /// Read as statements, across lines, from `ForEach(` to the parenthesis
