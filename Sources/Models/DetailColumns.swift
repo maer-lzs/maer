@@ -98,10 +98,12 @@ nonisolated enum DetailButtonRow {
     }
 }
 
-/// Where the full player's drag handle stands: on the content's centre axis,
-/// not the display's. Beside a side column that is the middle of the free
-/// area; across on a display with a fold the middle of the cover's half,
-/// never on the fold. Given as the insets that centre the handle in its span.
+/// Where the full player's content and drag handle stand. Without a fold
+/// (the Duo folded) both sit on the display's middle, the axis of the home
+/// indicator: the side column's strip is kept free at both edges. With a
+/// fold upright they sit on the content's axis beside the column; across
+/// the handle stands over the middle of the cover's half, never on the fold.
+/// Given as the insets that centre each in its span.
 nonisolated enum PlayerHandle {
     struct Insets: Equatable {
         var leading: CGFloat
@@ -111,13 +113,19 @@ nonisolated enum PlayerHandle {
     /// The room between the handle and the content below it.
     static let clearance: CGFloat = 12
 
+    /// The room the content keeps free at its edges.
+    static func contentInsets(strip: CGFloat, stripLeading: Bool, hasFold: Bool) -> Insets {
+        guard hasFold else { return Insets(leading: strip, trailing: strip) }
+        return Insets(leading: stripLeading ? strip : 0, trailing: stripLeading ? 0 : strip)
+    }
+
     static func insets(windowWidth: CGFloat, strip: CGFloat, stripLeading: Bool,
                        fold: ClosedRange<CGFloat>?, sideBySide: Bool) -> Insets {
         let leading = stripLeading ? strip : 0
         if sideBySide, let fold, fold.lowerBound > leading, fold.upperBound < windowWidth {
             return Insets(leading: leading, trailing: max(0, windowWidth - fold.lowerBound))
         }
-        return Insets(leading: leading, trailing: stripLeading ? 0 : strip)
+        return contentInsets(strip: strip, stripLeading: stripLeading, hasFold: fold != nil)
     }
 }
 

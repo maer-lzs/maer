@@ -70,7 +70,17 @@ struct PlayerToolsAtSideTests {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
         #expect(player.contains(".opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))\n                .ignoresSafeArea()"))
-        #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
+        #expect(player.contains(".padding(.leading, contentInsets.leading)\n            .padding(.trailing, contentInsets.trailing)"))
+    }
+
+    @Test("die Transportreihe gibt in ihren Abstaenden nach und weitet die Spalte nie", .needsTheSources)
+    func theTransportRowGivesWayInItsGaps() throws {
+        let player = try source("Sources/Views/PlayerView.swift")
+        #expect(player.contains("let gap = Spacer(minLength: 12).frame(maxWidth: maxGap)\n        return HStack(spacing: 0) {"))
+        // Four gaps between the five controls.
+        #expect(player.components(separatedBy: "\n            gap\n").count - 1 == 4)
+        #expect(!player.contains("HStack(spacing: isAccessibilitySize ? 12 : 24)"),
+                "fixed gaps widen a narrow column")
     }
 }
 #endif

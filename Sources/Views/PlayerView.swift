@@ -56,6 +56,12 @@ struct PlayerView: View {
     @Environment(\.sideColumnPlacement) private var columnPlacement
     /// The display's fold, where there is one (`FullPlayerOverlay` hands it in).
     @Environment(\.foldLine) private var foldLine
+    /// The room the content keeps free at its edges (`PlayerHandle.contentInsets`).
+    private var contentInsets: PlayerHandle.Insets {
+        PlayerHandle.contentInsets(strip: columnPlacement?.strip ?? 0,
+                                   stripLeading: columnPlacement?.leading ?? false,
+                                   hasFold: foldLine.fold != nil)
+    }
     /// The controls column's height, measured; it does not change with the
     /// cover, so sizing the cover by it never loops.
     @State private var controlsHeight: CGFloat = 0
@@ -119,6 +125,11 @@ struct PlayerView: View {
                         cover(maxSide: max(0, min(column.width - 32,
                                                   column.height - 32 - 2 * PlayerHandle.clearance)))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            // The column ends the frame's margin before the
+                            // fold; half of it moves the cover to the middle
+                            // of its half, equally far from edge and fold,
+                            // under the handle (`PlayerHandle`).
+                            .offset(x: FoldColumns<EmptyView, EmptyView>.foldMargin / 2)
                     } trailing: { _ in
                         ScrollView {
                             controlsBlock
@@ -138,7 +149,8 @@ struct PlayerView: View {
                             cover(maxSide: !sideBySide
                                   ? DetailCoverSide.side(
                                       columnWidth: min(Self.portraitColumn,
-                                                       geo.size.width - (columnPlacement?.strip ?? 0) - 32),
+                                                       geo.size.width - contentInsets.leading
+                                                           - contentInsets.trailing - 32),
                                       height: geo.size.height,
                                       top: topInset + 24 + PlayerHandle.clearance, below: controlsHeight + 24,
                                       bottomReserve: bottomInset + 16)
@@ -163,8 +175,11 @@ struct PlayerView: View {
             // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
-            // Beside the side column the content keeps to the free area.
-            .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
+            // Beside the side column the content keeps to the free area;
+            // folded it keeps the strip free at both edges and stands on the
+            // display's middle (`PlayerHandle.contentInsets`).
+            .padding(.leading, contentInsets.leading)
+            .padding(.trailing, contentInsets.trailing)
         }
         .overlay {
             if toolsAtSide, let columnPlacement {
@@ -794,10 +809,15 @@ struct PlayerView: View {
 
     private var fullTransportControls: some View {
         let skip = Int(viewModel.skipInterval)
-        // `.title`-scaled icons at AX sizes pushed the row past the screen
+        // `.title`-scaled icons at AX sizes push the row past the screen
         // edge. Tighter spacing and a capped type size keep all five controls
         // on screen (375pt worst case); the play glyph is fixed-size anyway.
-        return HStack(spacing: isAccessibilitySize ? 12 : 24) {
+        // The gaps give way down to 12 where the column is narrower than the
+        // row (the folded Duo beside the side column), so the row never
+        // widens the column and moves it off its axis.
+        let maxGap: CGFloat = isAccessibilitySize ? 12 : 24
+        let gap = Spacer(minLength: 12).frame(maxWidth: maxGap)
+        return HStack(spacing: 0) {
             // Previous chapter, or for songs the title way (see stepTitle).
             Button { viewModel.stepTitle(forward: false) } label: {
                 Image(systemName: "backward.end.fill").font(.title3)
@@ -805,21 +825,23 @@ struct PlayerView: View {
             .disabled(viewModel.chapters.isEmpty)
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
             .accessibilityLabel(Text(RemoteCommandRule.keyLabels(for: viewModel.titleStep).back))
-
+            gap
             Button { viewModel.skip(by: -viewModel.skipInterval) } label: {
                 Image(systemName: "gobackward.\(skip)").font(.title)
             }
             .accessibilityLabel(Text("Skip back \(skip) seconds"))
+            gap
             Button { viewModel.togglePlayPause() } label: {
                 Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 68))
             }
             .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
+            gap
             Button { viewModel.skip(by: viewModel.skipInterval) } label: {
                 Image(systemName: "goforward.\(skip)").font(.title)
             }
             .accessibilityLabel(Text("Skip forward \(skip) seconds"))
-
+            gap
             // Next chapter, or for songs the title way (see stepTitle).
             Button { viewModel.stepTitle(forward: true) } label: {
                 Image(systemName: "forward.end.fill").font(.title3)

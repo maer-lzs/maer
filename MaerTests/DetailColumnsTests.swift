@@ -212,9 +212,22 @@ struct DetailColumnsTests {
 
     @Test("der Zieh-Strich steht auf der Achse des Inhalts, aufgeklappt ueber der Cover-Haelfte, nie auf dem Falz")
     func theHandleStandsOnTheContentsAxis() {
-        // Folded Duo with the column at the right: the middle of the free area.
+        // Folded Duo with the column at the right: content and handle on the
+        // display's middle, the strip kept free at both edges.
         #expect(PlayerHandle.insets(windowWidth: 466, strip: 54, stripLeading: false, fold: nil, sideBySide: false)
+                == .init(leading: 54, trailing: 54))
+        #expect(PlayerHandle.contentInsets(strip: 54, stripLeading: false, hasFold: false)
+                == .init(leading: 54, trailing: 54))
+        // Open upright: the content's axis beside the column.
+        #expect(PlayerHandle.contentInsets(strip: 54, stripLeading: false, hasFold: true)
                 == .init(leading: 0, trailing: 54))
+        // Open across: the cover's centre (its column ends the frame margin
+        // before the fold, shifted by half of it) meets the handle's centre.
+        let margin = FoldSplit.foldDistance - FoldSplit.pageGutter
+        let coverCentre = (455.5 - margin) / 2 + margin / 2
+        let handle = PlayerHandle.insets(windowWidth: 951, strip: 84, stripLeading: false,
+                                         fold: 455.5...495.5, sideBySide: true)
+        #expect((951 - handle.leading - handle.trailing) / 2 + handle.leading == coverCentre)
         // Open across: the middle of the leading half, the fold and the right half outside it.
         let open = PlayerHandle.insets(windowWidth: 951, strip: 84, stripLeading: false,
                                        fold: 455.5...495.5, sideBySide: true)
@@ -223,9 +236,9 @@ struct DetailColumnsTests {
         // No column, no fold (iPhone): the display's middle.
         #expect(PlayerHandle.insets(windowWidth: 402, strip: 0, stripLeading: false, fold: nil, sideBySide: false)
                 == .init(leading: 0, trailing: 0))
-        // A fold upright does not move the handle.
-        #expect(PlayerHandle.insets(windowWidth: 669, strip: 0, stripLeading: false, fold: 300...340, sideBySide: false)
-                == .init(leading: 0, trailing: 0))
+        // A fold upright keeps the handle on the content's axis.
+        #expect(PlayerHandle.insets(windowWidth: 669, strip: 54, stripLeading: false, fold: 300...340, sideBySide: false)
+                == .init(leading: 0, trailing: 54))
     }
 
     @Test("Buchseite und Player tragen die eine Form der Karte", .needsTheSources)
