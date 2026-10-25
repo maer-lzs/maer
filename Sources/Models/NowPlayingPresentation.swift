@@ -42,6 +42,27 @@ nonisolated enum NowPlayingPresentation {
         return nonEmpty(chapterTitle)
     }
 
+    /// What the playing song of a music entry carries to every surface
+    /// (mini player, full player, lock screen, CarPlay).
+    struct Song: Equatable {
+        /// The song's own artist, else the entry's; nil when neither names one.
+        var artist: String?
+        /// The cover-art id to show instead of the entry's cover; nil keeps
+        /// the entry's cover.
+        var coverArt: String?
+    }
+
+    /// The ONE answer which artist and which cover the playing song of a
+    /// music entry shows. The artist is the song's, else the entry's (an
+    /// album's artist; a playlist names none). The cover is the song's own
+    /// inside a playlist, whose own cover is not the song's; an album and a
+    /// single song keep the entry's cover, the one a download keeps.
+    static func song(kind: MusicItemKind?, songArtist: String?, songCoverArt: String?,
+                     entryArtist: String?) -> Song {
+        Song(artist: nonEmpty(songArtist) ?? nonEmpty(entryArtist),
+             coverArt: kind == .playlist ? nonEmpty(songCoverArt) : nil)
+    }
+
     private static func nonEmpty(_ s: String?) -> String? {
         guard let s, !s.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
         return s

@@ -271,7 +271,7 @@ private struct MiniPlayerLines: View {
                 // instead, or the remaining time stands alone.
                 if let lead = NowPlayingPresentation.miniLead(
                         isMusic: viewModel.isMusicItem, chapterTitle: chapter.title,
-                        artist: viewModel.item?.media.metadata?.authorName) {
+                        artist: viewModel.musicArtist) {
                     Text("\(lead) · \(remainingText)")
                         .lineLimit(1)
                 } else {
@@ -311,8 +311,10 @@ private struct MiniPlayerLines: View {
         return String(format: "%d:%02d", m, s)
     }
 
+    /// What is left of the span the full player's scrubber shows: the song
+    /// for music, the whole title otherwise.
     private var remainingText: String {
-        DurationText.remaining(seconds: max(viewModel.duration - clock.time, 0))
+        DurationText.remaining(seconds: viewModel.playbackSpan.remaining(absolute: clock.time))
     }
 
     private var timeText: String {
@@ -375,7 +377,10 @@ private struct MiniPlayerRing: View {
                                  name: viewModel.stationName,
                                  targetSide: coverSize)
                 } else {
-                    CachedAsyncImage(url: router.coverURL(itemId), useThumbnail: true) { image in
+                    // The playing song's cover where it has its own (a song
+                    // inside a playlist), as in the full player.
+                    CachedAsyncImage(url: viewModel.songCoverURL ?? router.coverURL(itemId),
+                                     useThumbnail: true) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
                     } placeholder: {
                         Circle()
@@ -395,9 +400,11 @@ private struct MiniPlayerRing: View {
         .frame(width: ringSize, height: ringSize)
     }
 
+    /// Through the same span as the remaining time beside it.
     private var fraction: Double {
         guard viewModel.duration > 0 else { return 0 }
-        return min(max(clock.time / viewModel.duration, 0), 1)
+        let span = viewModel.playbackSpan
+        return min(max(span.position(absolute: clock.time) / span.length, 0), 1)
     }
 }
 

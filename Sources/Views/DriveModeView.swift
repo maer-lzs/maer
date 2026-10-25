@@ -297,10 +297,12 @@ struct DriveModeView: View {
             .accessibilityIdentifier("drive-live-row")
         } else {
             PlaybackTimeReader(clock: vm.clock) { time in
+                // The span of the player's scrubber: the song for music.
+                let span = vm.playbackSpan
                 VStack(spacing: 6) {
-                    ProgressView(value: vm.duration > 0 ? min(max(time / vm.duration, 0), 1) : 0)
+                    ProgressView(value: vm.duration > 0 ? min(max(span.position(absolute: time) / span.length, 0), 1) : 0)
                         .tint(.white)
-                    Text(Self.remainingText(time: time, duration: vm.duration))
+                    Text(Self.remainingText(time: span.position(absolute: time), duration: span.length))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.7))
                 }

@@ -84,10 +84,10 @@ extension PlayerViewModel {
             }
             return nil
         }
-        let author = item?.media.metadata?.authorName
-        if isMusicItem { return author }
+        if isMusicItem { return musicArtist }
         return NowPlayingPresentation.subtitle(
-            chapterTitle: currentChapter?.title, author: author, isFallback: chaptersAreFallback)
+            chapterTitle: currentChapter?.title, author: item?.media.metadata?.authorName,
+            isFallback: chaptersAreFallback)
     }
 
     // MARK: - Lockscreen / Now Playing
@@ -222,8 +222,11 @@ extension PlayerViewModel {
             info[MPNowPlayingInfoPropertyIsLiveStream] = true
             info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0
         } else {
-            info[MPMediaItemPropertyPlaybackDuration] = duration
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+            // The span the full player's scrubber shows: the song for
+            // music, the whole title otherwise.
+            let span = playbackSpan
+            info[MPMediaItemPropertyPlaybackDuration] = span.length
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = span.elapsed(absolute: currentTime)
             info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0
         }
         // The artwork is built once per image: the info is written again
@@ -242,7 +245,8 @@ extension PlayerViewModel {
             info[MPMediaItemPropertyArtwork] = nowPlayingArtwork?.artwork
         }
         nowPlayingWrites += 1
-        lastNowPlaying = NowPlayingRefresh.Written(fields: nowPlayingFields, elapsed: currentTime,
+        lastNowPlaying = NowPlayingRefresh.Written(fields: nowPlayingFields,
+                                                   elapsed: playbackSpan.elapsed(absolute: currentTime),
                                                    at: Date().timeIntervalSince1970)
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         PerfSignpost.nowPlaying(newArtwork: builtArtwork)
@@ -250,7 +254,8 @@ extension PlayerViewModel {
 
     /// What the lock screen shows apart from the running time.
     var nowPlayingFields: NowPlayingRefresh.Fields {
-        NowPlayingRefresh.Fields(title: nowPlayingTitle, subtitle: nowPlayingSubtitle ?? "", duration: duration,
+        NowPlayingRefresh.Fields(title: nowPlayingTitle, subtitle: nowPlayingSubtitle ?? "",
+                                 duration: playbackSpan.length,
                                  rate: isPlaying ? Double(isLiveStream ? 1 : playbackRate) : 0,
                                  isLive: isLiveStream, artwork: artworkImage.map(ObjectIdentifier.init))
     }
@@ -259,9 +264,19 @@ extension PlayerViewModel {
     /// running time changed, or the time the system runs on drifted from the
     /// real one (`NowPlayingRefresh`).
     func refreshNowPlayingIfDue() {
-        guard NowPlayingRefresh.isDue(last: lastNowPlaying, fields: nowPlayingFields, elapsed: currentTime,
+        // A song inside a playlist brings its own cover.
+        if !isLiveStream, artworkKey != loadedArtworkKey { loadNowPlayingArtwork() }
+        guard NowPlayingRefresh.isDue(last: lastNowPlaying, fields: nowPlayingFields,
+                                      elapsed: playbackSpan.elapsed(absolute: currentTime),
                                       at: Date().timeIntervalSince1970) else { return }
         updateNowPlayingInfo()
+    }
+
+    /// The lock screen's cover for what plays: the playing song's where it
+    /// has its own (`songCoverURL`), else the entry's.
+    func loadNowPlayingArtwork() {
+        loadedArtworkKey = artworkKey
+        loadArtwork(coverURL: songCoverURL ?? item.flatMap { provider.coverURL(forItemId: $0.id) })
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter
@@ -297,9 +312,13 @@ extension PlayerViewModel {
             return
         }
         guard let coverURL else { return }
+        let key = loadedArtworkKey
         Task { [weak self] in
             guard let image = await Self.loadImage(for: coverURL) else { return }
             await MainActor.run {
+                // A cover that arrives after the next song asked for its own
+                // stays off the lock screen.
+                guard self?.loadedArtworkKey == key else { return }
                 self?.artworkImage = image
                 self?.updateNowPlayingInfo()
                 // Write the RELIABLY-loaded cover to the shared app-group

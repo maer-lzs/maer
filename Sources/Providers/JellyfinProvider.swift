@@ -943,7 +943,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         -> (tracks: [ABSAudioTrack], chapters: [ABSChapter], total: Double) {
         MusicTrackAssembly.build(songs.map {
             MusicTrackAssembly.Song(id: $0.id, title: $0.name,
-                                    duration: seconds(fromTicks: $0.runTimeTicks) ?? 0, size: nil)
+                                    duration: seconds(fromTicks: $0.runTimeTicks) ?? 0, size: nil,
+                                    artist: $0.artists?.first ?? $0.albumArtist, coverArt: $0.albumId)
         })
     }
 

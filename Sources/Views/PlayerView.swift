@@ -15,7 +15,11 @@ struct PlayerView: View {
     /// page only acts on it (queue, radio, mark finished) and pulls the up
     /// next preview in its own task.
     let coordinator: PlayerCoordinator
+    /// The entry's cover.
     let coverURL: URL?
+    /// The cover on screen: the playing song's where it has its own (a song
+    /// inside a playlist), else the entry's.
+    private var shownCoverURL: URL? { viewModel.songCoverURL ?? coverURL }
     /// Progress of the drag-down gesture (0…1) from the overlay presentation.
     /// Fades out the opaque background while dragging so the library shows
     /// through behind it. 0 = at rest (immersive, unchanged).
@@ -200,7 +204,7 @@ struct PlayerView: View {
         }
         .foregroundStyle(.white)
         .tint(.white)
-        .task(id: coverURL) { await colorLoader.load(from: coverURL) }
+        .task(id: shownCoverURL) { await colorLoader.load(from: shownCoverURL) }
         // Fetch lyrics per song change (cached; nil hides the button).
         // The task id carries the opt-out. A flip re-evaluates
         // IMMEDIATELY (off drops cached web lyrics, no app restart).
@@ -389,7 +393,7 @@ struct PlayerView: View {
                         .aspectRatio(1, contentMode: .fit)
                 }
             } else {
-                CachedAsyncImage(url: coverURL) { image, pixels in
+                CachedAsyncImage(url: shownCoverURL) { image, pixels in
                     CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12)
@@ -614,7 +618,7 @@ struct PlayerView: View {
                     openPlayerSource(.podcastEpisode(itemId: id))
                 } label: { Label("Go to Episode", systemImage: "doc.text") }
             }
-            if PlayerSourceTargets.isMusic(id), let artistName = viewModel.item?.media.metadata?.authorName {
+            if PlayerSourceTargets.isMusic(id), let artistName = viewModel.musicArtist {
                 Button {
                     Task {
                         // Best-effort name match. The playing detail carries no
@@ -743,13 +747,9 @@ struct PlayerView: View {
     }
 
     /// What the bar spans: the work for spoken word, the SONG for music
-    /// (the convention of every music player). One question, asked here.
-    private var scrubberSpan: ScrubberSpan {
-        ScrubberSpan.of(isMusic: viewModel.isMusicItem,
-                        chapterStart: viewModel.currentChapter?.start,
-                        chapterEnd: viewModel.currentChapter?.end,
-                        duration: viewModel.duration)
-    }
+    /// (the convention of every music player). The player's one answer,
+    /// which the mini player and the lock screen read too.
+    private var scrubberSpan: ScrubberSpan { viewModel.playbackSpan }
 
     /// The slider and its two times move every second: the leaf that
     /// observes the clock, so the player around it is not drawn again.

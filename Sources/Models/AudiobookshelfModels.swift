@@ -346,6 +346,11 @@ nonisolated struct ABSFileMetadata: Codable, Equatable {
     /// that may transcode states it; a download is held to `size` only
     /// when its answer carries this type (`TrackFileSize.Claim`).
     var contentType: String? = nil
+    /// The song's own artist and cover-art id inside a music entry of
+    /// several songs, where the server states them. A playlist has no
+    /// artist and no cover of its own; its songs do.
+    var artist: String? = nil
+    var coverArt: String? = nil
 }
 
 // MARK: - Progress

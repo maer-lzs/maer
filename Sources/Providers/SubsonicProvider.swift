@@ -393,7 +393,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         MusicTrackAssembly.build(songs.map {
             MusicTrackAssembly.Song(id: $0.id, title: $0.title,
                                     duration: Double($0.duration ?? 0), size: $0.size,
-                                    contentType: $0.contentType)
+                                    contentType: $0.contentType, artist: $0.artist,
+                                    coverArt: $0.coverArt)
         })
     }
 

@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A song from a playlist or an album shows itself in the player.** The
+mini player, the full player, the lock screen and CarPlay show the
+artist of the song that plays and the time left in that song, not in
+the whole playlist. A song from a playlist brings its own cover; songs
+of an album keep the album's. Audiobooks and podcasts are unchanged.
+
 **Shuffle on Netlabels plays.** Most taps found nothing or failed with
 "Something went wrong": the draw asked for pages archive.org does not
 hand out, and many netlabel releases carry only a 320 kbps MP3, which

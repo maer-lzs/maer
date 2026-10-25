@@ -202,6 +202,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Whether the session holds a song before this one.
     var hasSongBefore: (() -> Bool)?
     var artworkImage: UIImage?
+    /// The `artworkKey` the lock screen's cover was last asked for; the
+    /// tick loads the cover again when the playing song's key differs.
+    var loadedArtworkKey: String?
+    /// The address `songCoverURL` built last, with its cover-art id.
+    private var builtSongCover: (coverArt: String, url: URL?)?
     /// How often the lock screen's info was written and how often an artwork
     /// for it was built, counted for the witnesses of the per-second work.
     var nowPlayingWrites = 0
@@ -632,7 +637,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Load the cover for lock screen / Dynamic Island. The system shows both
         // automatically once MPNowPlayingInfoCenter has an artwork. No own Live
         // Activity needed.
-        loadArtwork(coverURL: provider.coverURL(forItemId: item.id))
+        loadNowPlayingArtwork()
     }
 
     /// Says a notice (e.g. "adopted server position"). The coordinator's
@@ -648,18 +653,61 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// individual durations itself.
     /// The music server song currently playing, of either server. Its
     /// server's song id, its absolute start within the album item, lookup
-    /// metadata for lyrics, and the item id that names its server.
+    /// metadata for lyrics, the item id that names its server, and the
+    /// cover-art id it shows in place of the entry's (`NowPlayingPresentation.song`).
     var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double,
-                           itemId: String)? {
+                           itemId: String, coverArt: String?)? {
         guard let id = item?.id, MusicSourceRule.isServerMusic(id),
               tracks.indices.contains(currentTrackIndex) else { return nil }
         let track = tracks[currentTrackIndex]
+        let song = NowPlayingPresentation.song(
+            kind: musicSource?.kind(of: id),
+            songArtist: track.metadata?.artist, songCoverArt: track.metadata?.coverArt,
+            entryArtist: item?.media.metadata?.authorName)
         return (track.contentUrl,
                 trackAbsoluteStart(currentTrackIndex),
                 currentChapter?.title,
-                item?.media.metadata?.authorName,
+                song.artist,
                 track.duration ?? 0,
-                id)
+                id,
+                song.coverArt)
+    }
+
+    /// The artist of what plays, for music: the playing song's, else the
+    /// entry's. The one answer the mini player, the full player and the
+    /// lock screen read.
+    var musicArtist: String? {
+        currentMusicSong?.artist ?? item?.media.metadata?.authorName
+    }
+
+    /// The cover of the playing song where it differs from the entry's
+    /// (a song inside a playlist); nil means the entry's cover. Built once
+    /// per cover-art id: a cover address carries a fresh signature on every
+    /// call, and a view keyed on the address would load again each render.
+    var songCoverURL: URL? {
+        guard let art = currentMusicSong?.coverArt else { return nil }
+        if let built = builtSongCover, built.coverArt == art { return built.url }
+        let url = musicSource?.coverURL(coverArtId: art, size: 600)
+        builtSongCover = (art, url)
+        return url
+    }
+
+    /// The music server this session plays from; nil for every other source.
+    private var musicSource: (any MusicProvider)? { provider as? any MusicProvider }
+
+    /// What the lock screen's cover was last loaded for: the song's cover-art
+    /// id, else the entry's id. Cover addresses carry a fresh signature on
+    /// every call, so the key, not the address, says whether it changed.
+    var artworkKey: String? {
+        currentMusicSong?.coverArt ?? item?.id
+    }
+
+    /// What the time of the bars spans (`ScrubberSpan`): the song for music,
+    /// the whole title otherwise. The full player's scrubber, the mini
+    /// player's remaining time and ring, and the lock screen read it.
+    var playbackSpan: ScrubberSpan {
+        ScrubberSpan.of(isMusic: isMusicItem, chapterStart: currentChapter?.start,
+                        chapterEnd: currentChapter?.end, duration: duration)
     }
 
     /// The song this hearing entered into the listening history already
