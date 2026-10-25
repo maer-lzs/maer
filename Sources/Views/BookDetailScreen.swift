@@ -110,34 +110,25 @@ struct BookDetailScreen: View {
     /// window gives this page, not the screen's, so a split window and an
     /// unfolded iPhone Duo get a cover that fits (`DetailCoverCard`).
     private func heroCover(side: CGFloat) -> some View {
-        coverImageContent
-            .frame(width: side, height: side)
-            .clipped()
-            .contextMenu { coverDownloadMenu }
-            // Progress bar sitting ON the cover's bottom edge, across its width.
-            .overlay(alignment: .bottom) {
-                if let p = currentProgress, p.isStarted, !isFinished {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Rectangle().fill(Color.black.opacity(0.35))
-                            Rectangle()
-                                .fill(AppTheme.accent)
-                                .frame(width: geo.size.width * p.fraction)
-                        }
-                    }
-                    .frame(height: 4)
+        VStack(spacing: CoverProgressBar.gap) {
+            coverImageContent
+                .frame(width: side, height: side)
+                .clipped()
+                .contextMenu { coverDownloadMenu }
+                .coverCard()
+                // The author portrait floats on the SEAM between cover and
+                // gradient (avatar-over-banner pattern), trailing side. Mostly
+                // above the edge, dipping slightly below it.
+                .overlay(alignment: .bottomTrailing) {
+                    authorPortrait
+                        .padding(.trailing, 20)
+                        .offset(y: Self.portraitSize / 2 - 16)
                 }
-            }
-            .coverCard()
-            // The author portrait floats on the SEAM between cover and
-            // gradient (avatar-over-banner pattern), trailing side. Mostly
-            // above the edge, dipping slightly below it.
-            .overlay(alignment: .bottomTrailing) {
-                authorPortrait
-                    .padding(.trailing, 20)
-                    .offset(y: Self.portraitSize / 2 - 16)
-            }
-            .frame(maxWidth: .infinity)
+            // The bar under the card, as under every book cover.
+            CoverProgressBar(fraction: currentProgress.flatMap { $0.isStarted && !isFinished ? $0.fraction : nil },
+                             width: side)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     /// LibriVox hi-res cover once resolved (thumb first, soft upgrade):
@@ -283,9 +274,9 @@ struct BookDetailScreen: View {
                             url: router.coverURL(entry.id),
                             progress: currentProgress,
                             itemId: entry.id,
-                            size: 320
+                            size: 320,
+                            asCard: true
                         )
-                        .coverCard()
                         .contextMenu { coverDownloadMenu }
                     }
                     .frame(width: 420, height: geo.size.height)
@@ -337,9 +328,9 @@ struct BookDetailScreen: View {
                             url: router.coverURL(entry.id),
                             progress: currentProgress,
                             itemId: entry.id,
-                            size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60)
+                            size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60),
+                            asCard: true
                         )
-                        .coverCard()
                         .contextMenu { coverDownloadMenu }
                     } lines: {
                         headLines(isHero: false)

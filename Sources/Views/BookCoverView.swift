@@ -22,11 +22,14 @@ struct BookCoverView: View {
     /// check the status for. Without itemId no indicator is shown.
     var itemId: String? = nil
     var size: CGFloat = 56
+    /// The cover alone as a detail page's card (`coverCard()`); the bar
+    /// below stays outside it.
+    var asCard = false
     /// The kind of this cover in a mixed row (`stackedKind`), nil elsewhere.
     @Environment(\.coverGlyphKind) private var kind
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: CoverProgressBar.gap) {
             // Offline, a title that is not on the device is not playable.
             // Dim it and mark it instead of filtering it out. Reactive on BOTH
             // sources (reconnect / finishing startup scan) via the scope leaf.
@@ -61,7 +64,7 @@ struct BookCoverView: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .coverShape(asCard: asCard)
         // Finished books are visually "ticked off" in addition to the
         // checkmark. Desaturated and slightly dimmed.
         .saturation(progress?.countsAsFinished == true ? 0 : 1)
@@ -84,20 +87,8 @@ struct BookCoverView: View {
 
     /// Thin bar below the cover. Width from the KNOWN cover size, no
     /// GeometryReader (the bar spans exactly `size`).
-    @ViewBuilder
     private var progressBar: some View {
-        if let progress, progress.isStarted {
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.secondary.opacity(0.25))
-                Capsule()
-                    .fill(AppTheme.accent)
-                    .frame(width: max(3, size * progress.fraction))
-            }
-            .frame(width: size, height: 3)
-        } else {
-            Color.clear.frame(width: size, height: 3)
-        }
+        CoverProgressBar(fraction: progress?.isStarted == true ? progress?.fraction : nil, width: size)
     }
 
     private var placeholder: some View {
@@ -107,6 +98,44 @@ struct BookCoverView: View {
                 Image(systemName: "book.closed")
                     .foregroundStyle(.secondary)
             )
+    }
+}
+
+/// THE progress bar under a book's cover, in the grids and on the book
+/// page alike: a thin track with round ends, `gap` below the cover and as
+/// wide as it; nil keeps the room empty, so a row of covers stays level.
+struct CoverProgressBar: View {
+    var fraction: Double?
+    var width: CGFloat
+
+    static let gap: CGFloat = 4
+    static let height: CGFloat = 3
+
+    var body: some View {
+        if let fraction {
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.25))
+                Capsule()
+                    .fill(AppTheme.accent)
+                    .frame(width: max(Self.height, width * min(max(fraction, 0), 1)))
+            }
+            .frame(width: width, height: Self.height)
+        } else {
+            Color.clear.frame(width: width, height: Self.height)
+        }
+    }
+}
+
+private extension View {
+    /// The cover's own shape: the card of a detail page, else the grid's
+    /// small rounding.
+    @ViewBuilder func coverShape(asCard: Bool) -> some View {
+        if asCard {
+            coverCard()
+        } else {
+            clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 }
 

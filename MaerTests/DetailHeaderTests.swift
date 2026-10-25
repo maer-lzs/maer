@@ -77,13 +77,19 @@ struct DetailHeaderTests {
 
     @Test("das Cover jeder Seite mit Kopf steht als Karte", .needsTheSources)
     func everyHeadCoverIsACard() throws {
-        // The book page draws its cover in each of its three layouts.
-        let cards = ["Sources/Views/BookDetailScreen.swift": 3]
+        // The book page draws its cover in each of its three layouts: the
+        // hero card itself, the other two through the book cover as a card,
+        // so the progress bar stays below it (`CoverProgressBar`).
+        let cards = ["Sources/Views/BookDetailScreen.swift": 1]
         for page in Self.headedPages {
             let text = SyncContractFenceTests.stripped(
                 try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
             #expect(text.components(separatedBy: ".coverCard()").count - 1 == cards[page.file, default: 1],
                     "\(page.file) draws its cover without the card")
+            if page.file.hasSuffix("BookDetailScreen.swift") {
+                #expect(text.components(separatedBy: "asCard: true").count - 1 == 2)
+                #expect(text.components(separatedBy: "CoverProgressBar(").count - 1 == 1, "the hero keeps a bar of its own")
+            }
             #expect(!text.contains("corner: 16)") && !text.contains("radius: 14, y: 6)"),
                     "\(page.file) keeps a corner or shadow of its own")
         }
