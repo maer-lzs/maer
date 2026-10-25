@@ -843,6 +843,40 @@ nonisolated enum FreeCatalog {
         return names.isEmpty ? nil : names.joined(separator: ", ")
     }
 
+    /// A Gutenberg author as the page names one: the record's catalogue form
+    /// "Last, First, 1667-1745" (dates, a bracketed full name) becomes
+    /// "First Last"; a title of address leads ("Sir Walter Scott"), a
+    /// generation follows ("… Jr."). A name that carries no comma stays as
+    /// it is.
+    static func gutenbergAuthor(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let withoutBrackets = raw.replacingOccurrences(of: #"\s*\([^)]*\)"#, with: "", options: .regularExpression)
+        let parts = withoutBrackets.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { part in
+                !part.isEmpty && part.range(of: #"^(\d|active|fl\.|ca\.|b\.|d\.)"#, options: .regularExpression) == nil
+            }
+        guard let last = parts.first else { return nil }
+        let rest = parts.dropFirst()
+        let titles = rest.filter { ["Sir", "Lord", "Lady", "Dame"].contains($0) }
+        let generations = rest.filter { ["Jr.", "Sr."].contains($0) }
+        let given = rest.filter { !titles.contains($0) && !generations.contains($0) }
+        let name = (titles + given + [last] + generations).joined(separator: " ")
+        return name.isEmpty ? nil : name
+    }
+
+    /// Gutenberg subjects as genres: the record's subject headings are chains
+    /// ("Voyages, Imaginary -- Fiction"); the page shows each chain's main
+    /// heading once, in the record's order.
+    static func gutenbergGenres(_ subjects: [String]?) -> [String]? {
+        var seen = Set<String>()
+        let heads = (subjects ?? []).compactMap { subject -> String? in
+            let head = subject.components(separatedBy: " -- ").first?.trimmingCharacters(in: .whitespaces) ?? ""
+            guard !head.isEmpty, seen.insert(head).inserted else { return nil }
+            return head
+        }
+        return heads.isEmpty ? nil : heads
+    }
+
     /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime). An archive
     /// file's length has its own reader, `fileLength`.
     static func seconds(_ raw: String?) -> Double? {

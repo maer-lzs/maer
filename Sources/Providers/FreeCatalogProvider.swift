@@ -153,9 +153,9 @@ final class FreeCatalogProvider: AudioProvider {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: book.title ?? String(localized: "Unknown Title"),
-                    authorName: book.authors?.compactMap(\.name).first,
+                    authorName: FreeCatalog.gutenbergAuthor(book.authors?.compactMap(\.name).first),
                     narratorName: nil, seriesName: nil,
-                    genres: book.subjects,
+                    genres: FreeCatalog.gutenbergGenres(book.subjects),
                     publishedYear: nil, description: nil),
                 duration: nil, chapters: nil, tracks: nil),
             addedAt: nil)
@@ -173,9 +173,9 @@ final class FreeCatalogProvider: AudioProvider {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: doc.title?.first ?? String(localized: "Unknown Title"),
-                    authorName: doc.creator?.first,
+                    authorName: FreeCatalog.gutenbergAuthor(doc.creator?.first),
                     narratorName: nil, seriesName: nil,
-                    genres: doc.subject?.values,
+                    genres: FreeCatalog.gutenbergGenres(doc.subject?.values),
                     publishedYear: nil, description: nil),
                 duration: nil, chapters: nil, tracks: nil),
             addedAt: nil)
@@ -571,7 +571,8 @@ final class FreeCatalogProvider: AudioProvider {
         let detail = LibraryItemDetail(
             id: itemId,
             media: LibraryItemMedia(
-                metadata: detailMetadata(itemId: itemId, title: work.title, authorName: work.author),
+                metadata: detailMetadata(itemId: itemId, title: work.title,
+                                         authorName: FreeCatalog.gutenbergAuthor(work.author)),
                 duration: work.totalSeconds, chapters: nil, tracks: tracks),
             userMediaProgress: nil)
         rememberResolved(detail)
