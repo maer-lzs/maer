@@ -44,6 +44,21 @@ nonisolated enum TabBarPlacement: Equatable, Sendable {
     var isSide: Bool { self != .bottom }
 }
 
+/// How the settings stand, from where the tab bar stands: beside the side
+/// column over the whole window, with the close button and the sections in
+/// a column of their own, in every posture that has the column (the Duo
+/// folded and open alike); with the tabs at the bottom as the system's sheet
+/// (phone, iPad). A sheet in a wide window floats in the middle, keeps no
+/// column free at the edge and so never got the column.
+nonisolated enum SettingsPresentation: Equatable, Sendable {
+    case sheet
+    case fullScreen
+
+    static func of(_ placement: TabBarPlacement) -> SettingsPresentation {
+        placement.isSide ? .fullScreen : .sheet
+    }
+}
+
 /// The axis of the glyphs in the system's upright status column (clock,
 /// Wi-Fi): the middle of the column without its margin at the window's
 /// edge. Measured on the iPhone Duo: column 84 pt, glyphs at its leading edge

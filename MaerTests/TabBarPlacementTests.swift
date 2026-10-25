@@ -33,6 +33,35 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(systemEdge: nil, freeColumn: 84) == nil)
     }
 
+    /// One form of the settings for both postures of the Duo: beside the
+    /// side column over the whole window with a column of their own; a
+    /// sheet in a wide window floated over the fold and kept no column free.
+    @Test("die Einstellungen stehen neben der Spalte vollflaechig, zugeklappt wie aufgeklappt, mit Leiste unten als Blatt")
+    func theSettingsTakeTheWindowBesideTheColumn() {
+        #expect(SettingsPresentation.of(.side(.trailing)) == .fullScreen)
+        #expect(SettingsPresentation.of(.side(.leading)) == .fullScreen)
+        #expect(SettingsPresentation.of(.bottom) == .sheet)
+    }
+
+    @Test("die Bibliothek zeigt die Einstellungen in der Form der Regel, breit stehen sie in zwei Spalten am Falz", .needsTheSources)
+    func theSettingsFollowTheRuleAndTheFold() throws {
+        let library = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(library.contains(".sheet(isPresented: settingsShown(as: .sheet)) { settingsPage }"))
+        #expect(library.contains(".fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage }"))
+        #expect(library.contains("showSettings && SettingsPresentation.of(tabBarPlacement) == form"),
+                "the form does not follow the rule")
+        #expect(!library.contains(".sheet(isPresented: $showSettings)"), "the settings open as a sheet everywhere again")
+        let page = try #require(library.components(separatedBy: "private var settingsPage: some View {").last?.prefix(500))
+        #expect(page.contains(".environment(\\.foldLine, foldLine)"), "the settings do not know where the fold lies")
+        // Two columns through the detail pages' frame and rule, one form each.
+        let settings = try FetchAnswerTests.squeezedSource("Sources/Views/SettingsView.swift")
+        #expect(settings.contains("if BookDetailLayout.of(width: geo.size.width, height: geo.size.height, compactHeight: verticalSizeClass == .compact) == .twoColumns { FoldColumns { _ in sectionForm(atFold: true) { firstSections } } trailing: { _ in sectionForm(atFold: true) { secondSections } }"))
+        #expect(settings.contains("sectionForm(atFold: false) { firstSections secondSections }"), "one column leaves out a half")
+        #expect(settings.components(separatedBy: "Form {").count - 1 == 1, "a second form of sections")
+        #expect(settings.contains(".contentMargins(.horizontal, atFold ? FoldSplit.pageGutter : nil, for: .scrollContent)"),
+                "the sections at the fold keep another gutter")
+    }
+
     @Test("eine Rechnung fuer Bibliothek und Blatt: die Spalte trifft die Achse auch, wo ihr Streifen vor dem Fensterrand endet")
     func oneReckoningForLibraryAndSheet() {
         var reading = ReservedStrip()

@@ -862,18 +862,11 @@ struct LibraryView: View {
         .onDisappear {
             playerCoordinator.viewModel?.stop(caller: "library view disappeared")
         }
-        // Settings modal. Its own NavigationStack, bottom zone set to 0 (no
-        // mini-player in the sheet → no free-space reservation needed).
-        .sheet(isPresented: $showSettings) {
-            NavigationStack {
-                SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
-            }
-            // The list rows of the settings keep their title's edge at an
-            // accessibility size (`RowLabelStyle`).
-            .labelStyle(RowLabelStyle())
-            .environment(\.bottomBarInset, 0)
-            .followsAppearanceChoice()
-        }
+        // Settings modal: a sheet with the tabs at the bottom, over the whole
+        // window beside the side column, folded and open alike
+        // (`SettingsPresentation`).
+        .sheet(isPresented: settingsShown(as: .sheet)) { settingsPage }
+        .fullScreenCover(isPresented: settingsShown(as: .fullScreen)) { settingsPage }
         // Up-Next home at the player: the queue sheet opened from the
         // mini-player long-press (the full player presents its own copy of the
         // same PlayQueueSheet). Root-level, so it works from every tab and
@@ -1839,6 +1832,28 @@ struct LibraryView: View {
     }
 
 
+
+    /// Whether the settings stand open in the given form: the one flag, the
+    /// form from where the tab bar stands.
+    private func settingsShown(as form: SettingsPresentation) -> Binding<Bool> {
+        Binding(get: { showSettings && SettingsPresentation.of(tabBarPlacement) == form },
+                set: { showSettings = $0 })
+    }
+
+    /// The settings in both forms: their own NavigationStack, bottom zone
+    /// set to 0 (no mini-player in them, so no free space reserved), and
+    /// where a two-column page divides, for their two columns.
+    private var settingsPage: some View {
+        NavigationStack {
+            SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
+        }
+        // The list rows of the settings keep their title's edge at an
+        // accessibility size (`RowLabelStyle`).
+        .labelStyle(RowLabelStyle())
+        .environment(\.bottomBarInset, 0)
+        .environment(\.foldLine, foldLine)
+        .followsAppearanceChoice()
+    }
 
     private var settingsLink: some View {
         Button {

@@ -63,6 +63,8 @@ struct DetailColumnsTests {
         ("Sources/Views/CatalogSourcePage.swift", "DetailScrollColumns(spacing:"),
         // The full player, side by side on a display with a fold.
         ("Sources/Views/PlayerView.swift", "FoldColumns { column in"),
+        // The settings, their sections in two halves.
+        ("Sources/Views/SettingsView.swift", "FoldColumns { _ in"),
     ]
 
     @Test("das erste Zeichen jeder Liste steht gleich weit vom Rand und vom Falz", .needsTheSources)

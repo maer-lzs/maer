@@ -25,6 +25,7 @@ struct SettingsView: View {
     @ScaledMetric(relativeTo: .subheadline) var pillGlyphSize: CGFloat = 17
     let onLogout: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     // nonisolated: `ChipRowCandidate.body` reads `label` during ViewThatFits
     // measurement on the AsyncRenderer. The enum is pure
@@ -102,8 +103,8 @@ struct SettingsView: View {
     /// the side column like the library's tabs (`TabBarPlacement`).
     @State private var verticalBarSide: VerticalBarSide?
     @State private var reservedSide = ReservedStrip()
-    /// The strip's trailing edge in window points: the sheet ends short of
-    /// the window's edge, and the axis is reckoned from that edge.
+    /// The strip's trailing edge in window points: the axis is reckoned from
+    /// the window's edge, wherever the strip ends.
     @State private var stripMaxX: CGFloat = 0
     private var sectionsAtSide: Bool { TabBarPlacement.of(verticalBarSide: verticalBarSide).isSide }
 
@@ -159,69 +160,24 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !sectionsAtSide { pillTabs }
-            Form {
-                // Variante b: General = everything cross-cutting, in the
-                // placement-rule order below (the sequence in this switch IS
-                // the rule. A new section takes its place in it instead of
-                // being appended); one pill per media type with its specifics.
-                switch tab {
-                case .general:
-                    sourcesSection
-                    librariesSection
-                    playbackSection
-                    globalSyncSection
-                    storageSection
-                    notificationsSection
-                    if DriveModeGate.isOpen { driveModeSection }
-                    appearanceSection
-                    statsSection
-                    #if DEBUG
-                    // Diagnostics only in builds from Xcode, never in a
-                    // release build (TestFlight, App Store).
-                    diagnosticsSection
-                    #endif
-                    networkServicesSection
-                    aboutSection
-                // The pill is the COMPLETE entry point of its media type:
-                // its behaviour AND the sources that feed it. Before, 90 %
-                // of the podcast settings lay under the sources, so one had
-                // to leave the place that is about podcasts to learn how
-                // podcasts behave. The sources appear as REFERENCES to the
-                // one account page, never as copies.
-                case .audiobooks:
-                    audiobooksSection
-                    MediaTypeSourcesSection(area: .audiobooks,
-                                            absDestination: absPage)
-                case .podcasts:
-                    // What every show follows unless it has its own, and
-                    // the shows that do.
-                    PodcastGeneralSection()
-                    // Where the mirror's and the premium shows stand.
-                    PodcastSubscriptionFoldSection()
-                    recommendationsSection
-                    // Premium management ALWAYS visible on the pill.
-                    PremiumFeedsSection()
-                    // What an ACCOUNT does for podcasts stands with the
-                    // podcasts, named after the account. The account page
-                    // keeps address, access and the MODES (which media types
-                    // it serves at all).
-                    PodcastAccountBehaviour()
-                    MediaTypeSourcesSection(area: .podcasts,
-                                            absDestination: absPage)
-                case .music:
-                    musicSection
-                    MediaTypeSourcesSection(area: .music,
-                                            absDestination: absPage)
-                case .radio:
-                    MediaTypeSourcesSection(area: .radio,
-                                            absDestination: absPage)
-                }
-                // Deleting a kind stands in its own pill, destructive last.
-                if let kind = tab.downloads {
-                    StorageKindSection(kind: kind)
+            // In a wide window the sections stand in two columns divided at
+            // the fold, as a detail page (`FoldColumns`); narrow in one form,
+            // the first half above the second.
+            GeometryReader { geo in
+                if BookDetailLayout.of(width: geo.size.width, height: geo.size.height,
+                                       compactHeight: verticalSizeClass == .compact) == .twoColumns {
+                    FoldColumns { _ in
+                        sectionForm(atFold: true) { firstSections }
+                    } trailing: { _ in
+                        sectionForm(atFold: true) { secondSections }
+                    }
+                } else {
+                    sectionForm(atFold: false) {
+                        firstSections
+                        secondSections
+                    }
                 }
             }
-            .bottomBarClearance()
         }
         .onChange(of: visibleTabs) {
             // The selected media pill can disappear (library toggled off).
@@ -230,7 +186,7 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // Beside the side column the sheet closes from the column's top.
+            // Beside the side column the settings close from the column's top.
             if !sectionsAtSide {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -270,6 +226,92 @@ struct SettingsView: View {
             }
         }
         .readsVerticalBarSide($verticalBarSide)
+    }
+
+    /// One form of sections. Beside the fold its sections keep the page's
+    /// gutter at both edges, so their content stands `FoldSplit.foldDistance`
+    /// from the fold with the frame's margin.
+    private func sectionForm<Sections: View>(atFold: Bool, @ViewBuilder _ sections: () -> Sections) -> some View {
+        Form { sections() }
+            .contentMargins(.horizontal, atFold ? FoldSplit.pageGutter : nil, for: .scrollContent)
+            .bottomBarClearance()
+    }
+
+    /// The first half of the chosen section, the leading column in two
+    /// columns. Variante b: General = everything cross-cutting, in the
+    /// placement-rule order (the sequence of the two halves IS the rule. A
+    /// new section takes its place in it instead of being appended); one
+    /// pill per media type with its specifics.
+    @ViewBuilder private var firstSections: some View {
+        switch tab {
+        case .general:
+            sourcesSection
+            librariesSection
+            playbackSection
+            globalSyncSection
+            storageSection
+            notificationsSection
+        // The pill is the COMPLETE entry point of its media type: its
+        // behaviour AND the sources that feed it. Before, 90 % of the
+        // podcast settings lay under the sources, so one had to leave the
+        // place that is about podcasts to learn how podcasts behave. The
+        // sources appear as REFERENCES to the one account page, never as
+        // copies. The behaviour comes first, the sources second.
+        case .audiobooks:
+            audiobooksSection
+        case .podcasts:
+            // What every show follows unless it has its own, and the shows
+            // that do.
+            PodcastGeneralSection()
+            // Where the mirror's and the premium shows stand.
+            PodcastSubscriptionFoldSection()
+            recommendationsSection
+        case .music:
+            musicSection
+        case .radio:
+            // Radio has no behaviour of its own; its sources lead.
+            MediaTypeSourcesSection(area: .radio,
+                                    absDestination: absPage)
+        }
+    }
+
+    /// The second half of the chosen section, the trailing column in two
+    /// columns.
+    @ViewBuilder private var secondSections: some View {
+        switch tab {
+        case .general:
+            if DriveModeGate.isOpen { driveModeSection }
+            appearanceSection
+            statsSection
+            #if DEBUG
+            // Diagnostics only in builds from Xcode, never in a
+            // release build (TestFlight, App Store).
+            diagnosticsSection
+            #endif
+            networkServicesSection
+            aboutSection
+        case .audiobooks:
+            MediaTypeSourcesSection(area: .audiobooks,
+                                    absDestination: absPage)
+        case .podcasts:
+            // Premium management ALWAYS visible on the pill.
+            PremiumFeedsSection()
+            // What an ACCOUNT does for podcasts stands with the podcasts,
+            // named after the account. The account page keeps address,
+            // access and the MODES (which media types it serves at all).
+            PodcastAccountBehaviour()
+            MediaTypeSourcesSection(area: .podcasts,
+                                    absDestination: absPage)
+        case .music:
+            MediaTypeSourcesSection(area: .music,
+                                    absDestination: absPage)
+        case .radio:
+            EmptyView()
+        }
+        // Deleting a kind stands in its own pill, destructive last.
+        if let kind = tab.downloads {
+            StorageKindSection(kind: kind)
+        }
     }
 
     /// The sections as the library's tab bar, upright: one cell per pill,
