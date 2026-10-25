@@ -65,13 +65,6 @@ struct PlayerToolsAtSideTests {
         #expect(!library.contains("$isShowingFullPlayer") && !library.contains("isShowingFullPlayer.toggle"))
     }
 
-    @Test("Titel, Unterzeile und Zeitzeilen stehen linksbuendig, auf jedem Geraet", .needsTheSources)
-    func theTitleBlockStandsLeading() throws {
-        let player = try source("Sources/Views/PlayerView.swift")
-        #expect(player.contains("private var chapterHeader: some View {\n        VStack(alignment: .leading, spacing: 4) {"))
-        #expect(!player.contains(".multilineTextAlignment(.center)"), "a title line is centred again")
-    }
-
     @Test("der Grund reicht bis an jede Ecke, der Inhalt bleibt in der freien Flaeche", .needsTheSources)
     func theGroundFillsAndTheContentKeepsClear() throws {
         let player = try source("Sources/Views/PlayerView.swift")

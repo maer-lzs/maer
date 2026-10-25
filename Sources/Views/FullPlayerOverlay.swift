@@ -34,6 +34,8 @@ struct FullPlayerOverlay: View {
     @State private var pillHasRoom = true
     private let dismissThreshold: CGFloat = 180
     @Environment(\.sideColumnPlacement) private var columnPlacement
+    /// The display's fold and the window's width (the library hands them in).
+    @Environment(\.foldLine) private var foldLine
 
     init(
         coordinator: PlayerCoordinator,
@@ -166,11 +168,20 @@ struct FullPlayerOverlay: View {
     }
 
     private var grabHandle: some View {
-        Capsule()
+        // On the content's centre axis (`PlayerHandle`); the tap area keeps
+        // the full width.
+        let insets = PlayerHandle.insets(
+            windowWidth: foldLine.windowWidth, strip: columnPlacement?.strip ?? 0,
+            stripLeading: columnPlacement?.leading ?? false, fold: foldLine.fold,
+            sideBySide: foldLine.windowWidth > presentHeight)
+        return Capsule()
             .fill(Color.white.opacity(0.5))
             .frame(width: 40, height: 5)
             .padding(.top, topInset + 10)
             .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .padding(.leading, insets.leading)
+            .padding(.trailing, insets.trailing)
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
             // A tap on the handle does what pulling it does. The handle

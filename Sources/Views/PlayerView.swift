@@ -114,8 +114,10 @@ struct PlayerView: View {
                 // column, the controls in the trailing one (`FoldColumns`).
                 if sideBySide, foldLine.fold != nil {
                     FoldColumns { column in
-                        // As large as its half allows, less the page margin.
-                        cover(maxSide: max(0, min(column.width, column.height) - 32))
+                        // As large as its half allows, less the page margin
+                        // and the drag handle's room above and below it.
+                        cover(maxSide: max(0, min(column.width - 32,
+                                                  column.height - 32 - 2 * PlayerHandle.clearance)))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } trailing: { _ in
                         ScrollView {
@@ -138,13 +140,14 @@ struct PlayerView: View {
                                       columnWidth: min(Self.portraitColumn,
                                                        geo.size.width - (columnPlacement?.strip ?? 0) - 32),
                                       height: geo.size.height,
-                                      top: topInset + 24, below: controlsHeight + 24,
+                                      top: topInset + 24 + PlayerHandle.clearance, below: controlsHeight + 24,
                                       bottomReserve: bottomInset + 16)
                                   : Self.coverSide)
                             controlsBlock
                         }
                         .padding()
-                        .padding(.top, 8)
+                        // The drag handle stands free above the content.
+                        .padding(.top, 8 + PlayerHandle.clearance)
                         // Readable column in portrait, wider side by side.
                         .frame(maxWidth: sideBySide ? 900 : 500)
                         // Side by side: center vertically in the viewport (iPad).
@@ -411,9 +414,7 @@ struct PlayerView: View {
     }
 
     private var chapterHeader: some View {
-        // Title, subtitle and the time lines stand at the leading edge, on
-        // the scrubber's edge; the controls below stay centred.
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 4) {
             if viewModel.isLiveStream {
                 // Radio shows the STATION as the big title, with the
                 // current ICY song underneath (in-app arrangement; the lock
@@ -426,14 +427,14 @@ struct PlayerView: View {
                     // Pipe-junk trimmed for display everywhere.
                     Text(RadioMapping.displayName(viewModel.stationName))
                         .font(.title3).bold()
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                         .lineLimit(2)
                 }
                 if let nowPlaying = viewModel.icyDisplayLine {
                     Text(nowPlaying)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                         .lineLimit(2)
                 }
             } else {
@@ -448,7 +449,7 @@ struct PlayerView: View {
             sourceTappable(target: titleTarget, a11yId: "player-source-title") {
                 Text(viewModel.nowPlayingTitle)
                     .font(.title3).bold()
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
             // Chapter / part line: a real chapter · author, the fallback
@@ -458,7 +459,7 @@ struct PlayerView: View {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                 }
             }
             // "N of M" only for REAL chapters. A fallback marker already carries
@@ -484,7 +485,7 @@ struct PlayerView: View {
             }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
     }
 
     /// The line under the work title in the full player. For music the

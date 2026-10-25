@@ -149,6 +149,10 @@ struct DetailColumnsTests {
         #expect(DetailCoverSide.settled(305, measured: 301) == 305)
         #expect(DetailCoverSide.settled(305, measured: 305.4) == 305)
         #expect(DetailCoverSide.settled(305, measured: 306.2) == 307)
+        // A first pass that measured the block taller than it settles is let
+        // go once the drop is clear: the player's controls, 330 then 301.
+        #expect(DetailCoverSide.settled(330, measured: 301.4) == 302)
+        #expect(DetailCoverSide.settled(305, measured: 305 - DetailCoverSide.shrinkStep + 0.5) == 305)
     }
 
     @Test("Buchseite und Player halten die gemessene Hoehe nur ueber die Regel des Stillstands", .needsTheSources)
@@ -204,6 +208,24 @@ struct DetailColumnsTests {
         #expect(card.side == DetailCoverSide.side(columnWidth: 412 - 2 * DetailCoverCard.gap, height: 678,
                                                   top: card.top, below: 305, bottomReserve: 126))
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
+    }
+
+    @Test("der Zieh-Strich steht auf der Achse des Inhalts, aufgeklappt ueber der Cover-Haelfte, nie auf dem Falz")
+    func theHandleStandsOnTheContentsAxis() {
+        // Folded Duo with the column at the right: the middle of the free area.
+        #expect(PlayerHandle.insets(windowWidth: 466, strip: 54, stripLeading: false, fold: nil, sideBySide: false)
+                == .init(leading: 0, trailing: 54))
+        // Open across: the middle of the leading half, the fold and the right half outside it.
+        let open = PlayerHandle.insets(windowWidth: 951, strip: 84, stripLeading: false,
+                                       fold: 455.5...495.5, sideBySide: true)
+        #expect(open == .init(leading: 0, trailing: 951 - 455.5))
+        #expect((951 - open.leading - open.trailing) / 2 + open.leading < 455.5)
+        // No column, no fold (iPhone): the display's middle.
+        #expect(PlayerHandle.insets(windowWidth: 402, strip: 0, stripLeading: false, fold: nil, sideBySide: false)
+                == .init(leading: 0, trailing: 0))
+        // A fold upright does not move the handle.
+        #expect(PlayerHandle.insets(windowWidth: 669, strip: 0, stripLeading: false, fold: 300...340, sideBySide: false)
+                == .init(leading: 0, trailing: 0))
     }
 
     @Test("Buchseite und Player tragen die eine Form der Karte", .needsTheSources)

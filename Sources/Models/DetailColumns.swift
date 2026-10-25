@@ -53,15 +53,22 @@ nonisolated enum DetailCoverSide {
 
     /// What the page keeps as the height below the cover, from a new
     /// measurement: the measurement depends on where the cover lands, and
-    /// pixel rounding moves it by a fraction each pass (measured: the page
-    /// re-rendered without end, 100 % CPU). The kept height only grows, by a
-    /// whole point at least, until the window changes (the page then starts
-    /// again from zero): it can never return to a value it left, and as the
-    /// content bounds it from above, the cover settles after finitely many
-    /// passes, whatever the swing.
+    /// pixel rounding moves it by a fraction each pass, which unsettled
+    /// re-renders the page without end. The kept height grows by a whole
+    /// point at least and falls only by `shrinkStep` or more, so a swing
+    /// smaller than that step comes to rest after finitely many passes; a
+    /// new window starts it again from zero.
     static func settled(_ kept: CGFloat, measured: CGFloat) -> CGFloat {
-        measured >= kept + 1 ? measured.rounded(.up) : kept
+        if measured >= kept + 1 { return measured.rounded(.up) }
+        // A first layout pass can measure the block taller than it settles;
+        // a clear drop is taken, a small swing not.
+        if measured <= kept - shrinkStep { return measured.rounded(.up) }
+        return kept
     }
+
+    /// How far a measurement must fall below the kept height to lower it:
+    /// above the swing of pixel rounding and wrapping, below a real change.
+    static let shrinkStep: CGFloat = 8
 }
 
 /// The two buttons under the main one (download, mark as heard) stand side
@@ -88,6 +95,29 @@ nonisolated enum DetailButtonRow {
     static func form(width: CGFloat, needs: CGFloat, compactNeeds: CGFloat) -> Form {
         if !stacked(width: width, needs: needs) { return .sideBySide }
         return stacked(width: width, needs: compactNeeds) ? .stacked : .compact
+    }
+}
+
+/// Where the full player's drag handle stands: on the content's centre axis,
+/// not the display's. Beside a side column that is the middle of the free
+/// area; across on a display with a fold the middle of the cover's half,
+/// never on the fold. Given as the insets that centre the handle in its span.
+nonisolated enum PlayerHandle {
+    struct Insets: Equatable {
+        var leading: CGFloat
+        var trailing: CGFloat
+    }
+
+    /// The room between the handle and the content below it.
+    static let clearance: CGFloat = 12
+
+    static func insets(windowWidth: CGFloat, strip: CGFloat, stripLeading: Bool,
+                       fold: ClosedRange<CGFloat>?, sideBySide: Bool) -> Insets {
+        let leading = stripLeading ? strip : 0
+        if sideBySide, let fold, fold.lowerBound > leading, fold.upperBound < windowWidth {
+            return Insets(leading: leading, trailing: max(0, windowWidth - fold.lowerBound))
+        }
+        return Insets(leading: leading, trailing: stripLeading ? 0 : strip)
     }
 }
 

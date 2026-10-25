@@ -115,14 +115,12 @@ nonisolated enum ArchiveMusicCatalog {
     /// The PARENT query of the shellac surface, with the popular row behind
     /// its chevron: the UNION of the shelves, never the whole collection.
     /// Its safety is theirs, so it asks exactly their subjects, built from
-    /// the shelf list, and a new shelf joins it by itself. Measured on
-    /// archive.org: 29,807 records (the shelves sum to 29,845, 38 stand on
-    /// two), the whole collection 187,034.
+    /// the shelf list, and a new shelf joins it by itself. A record on two
+    /// shelves counts once, so the total is the union's own count.
     ///
-    /// Rights: the collection carries no licence statement (measured 0 of
-    /// 187,034), so the row carries the note about the unclear rights
-    /// situation throughout. Showing yes, downloading no, and no
-    /// public-domain claim.
+    /// Rights: the collection carries no licence statement, so the row
+    /// carries the note about the unclear rights situation throughout.
+    /// Showing yes, downloading no, and no public-domain claim.
     static let shellacAll = ArchiveMusicArea(
         // Its own address: what a device keeps under `shellac-all` holds
         // the whole collection and is never read.
