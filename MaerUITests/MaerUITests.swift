@@ -357,9 +357,9 @@ nonisolated final class MaerUITests: XCTestCase {
 
     /// The full player's title line navigates to the source page —
     /// player minimizes (keeps playing, mini bar visible), detail is pushed.
-    /// A stopping notice stands (`-uitest-notice`): its pill lies over no
-    /// control of the full player, the title beside it still answers, and
-    /// back in the full player a tap on the pill opens the log.
+    /// A stopping notice stands (`-uitest-notice`): its pill goes after the
+    /// short time, then the full player says it on the line under the
+    /// controls, and the title beside it still answers.
     func testPlayerNavigatesToSource() {
         let app = launchSeeded(withActivePlayer: true, extra: ["-uitest-notice"])
         // The bar's STABLE handle; its label is the running title.
@@ -379,11 +379,9 @@ nonisolated final class MaerUITests: XCTestCase {
         mini.tap()
         XCTAssertTrue(title.waitForExistence(timeout: 15), "the full player must open again")
         let pill = app.buttons["notice-pill"].firstMatch
-        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the stopping notice must stand in the full player")
-        let covered = app.buttons.allElementsBoundByIndex.filter {
-            ($0.identifier.hasPrefix("player-") || $0.label == "AirPlay") && $0.frame.intersects(pill.frame)
-        }.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
-        XCTAssertEqual(covered, [], "controls of the full player lie under the pill")
+        XCTAssertTrue(pill.waitForNonExistence(timeout: 15), "the pill of a stopping notice must go after its time")
+        let line = app.staticTexts["Konnte nicht geladen werden. Zum erneuten Versuch Wiedergabe antippen."].firstMatch
+        XCTAssertTrue(line.waitForExistence(timeout: 10), "after its pill the stopping notice must stand under the controls")
         title.tap()
         // Player minimized: the mini bar is back …
         XCTAssertTrue(mini.waitForExistence(timeout: 10), "player must MINIMIZE, playback keeps running")
@@ -393,13 +391,6 @@ nonisolated final class MaerUITests: XCTestCase {
             || app.buttons["BackButton"].firstMatch.exists
         XCTAssertTrue(back, "a source page must be pushed onto the stack")
         snap(app, "player-to-source")
-        // Back in the full player, the pill takes its own tap: no dismiss
-        // zone lies over it.
-        mini.tap()
-        XCTAssertTrue(pill.waitForExistence(timeout: 10), "the stopping notice must stand in the full player again")
-        pill.tap()
-        XCTAssertTrue(app.navigationBars["Meldungen"].firstMatch.waitForExistence(timeout: 10),
-                      "a tap on the pill in the full player must open the log")
     }
 
     /// A foreign import shows its preview BEFORE anything is written, and

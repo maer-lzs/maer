@@ -50,15 +50,17 @@ struct PlaybackNoticesTests {
         #expect(notices.log.allSatisfy { $0.title == "Buch" })
     }
 
-    @Test("ein Fehler, der die Wiedergabe anhielt, bleibt ueber die kurze Frist hinaus und faellt erst bei Play")
+    @Test("ein Fehler, der die Wiedergabe anhielt: die Pille geht nach der kurzen Frist, der Fehler bleibt gehalten und faellt erst bei Play")
     func aStoppingErrorHoldsUntilPlay() async {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
         notices.show(.loadFailed(.network), title: nil)
+        #expect(notices.shown == .loadFailed(.network) && notices.held == .loadFailed(.network))
         await wait(0.5)
-        #expect(notices.shown == .loadFailed(.network), "the stopping error went with the short notices")
+        #expect(notices.shown == nil, "the pill of a stopping error stood past the short time")
+        #expect(notices.held == .loadFailed(.network), "the stopping error went with its pill")
         notices.played()
-        #expect(notices.shown == nil)
+        #expect(notices.shown == nil && notices.held == nil, "a start did not let the stopping error fall")
         notices.show(.serverAdopted, title: nil)
         #expect(notices.shown == .serverAdopted)
         await wait(0.5)
@@ -75,15 +77,16 @@ struct PlaybackNoticesTests {
         #expect(notices.log.map(\.kind) == [.conflict, .serverAdopted], "the info is not in the log")
     }
 
-    @Test("ein kurzer Fehler ueber einem Halt-Fehler laesst ihn nach seiner Frist wieder sehen")
-    func aHeldErrorReturnsAfterAShortOne() async {
+    @Test("ein kurzer Fehler ueber einem Halt-Fehler: nach seiner Frist ist die Pille leer, der Halt-Fehler bleibt gehalten")
+    func aHeldErrorOutlastsAShortOne() async {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
         notices.show(.loadFailed(.server), title: nil)
         notices.show(.conflict, title: nil)
         #expect(notices.shown == .conflict, "the precondition: the short error lies over the held one")
         await wait(0.5)
-        #expect(notices.shown == .loadFailed(.server), "the player still stands, but the pill forgot why")
+        #expect(notices.shown == nil, "a held error came back as the pill")
+        #expect(notices.held == .loadFailed(.server), "the player still stands, but the channel forgot why")
     }
 
     @Test("ein anderer Titel nimmt den Halt-Fehler des vorigen mit")
@@ -92,7 +95,94 @@ struct PlaybackNoticesTests {
         defer { try? FileManager.default.removeItem(at: folder) }
         notices.show(.trackFailed, title: nil)
         notices.titleChanged()
-        #expect(notices.shown == nil)
+        #expect(notices.shown == nil && notices.held == nil)
+    }
+
+    /// Every held error alike: its pill goes after the short time, then the
+    /// error stands outside the pill (the bar's second line, the line under
+    /// the full player's controls) until the next start or change of title.
+    /// Only the wait keeps its pill.
+    @Test("jeder Halt-Fehler: Pille kurz, danach steht er ausserhalb der Pille bis zum naechsten Start oder Titelwechsel; nur das Warten haelt die Pille")
+    func everyHeldErrorLeavesThePillAndStaysHeld() {
+        let held: [PlaybackNotice] = [.trackFailed, .streamFailed, .loadFailed(.network), .downloadUnreadableOffline,
+                                      .cannotPlay("Kein Titel")]
+        #expect(Set(held.map(\.kind)) == Set(PlaybackNotice.Kind.allCases.filter {
+            NoticeRule.answer($0).holdsUntilPlay && NoticeRule.answer($0).isError
+        }), "the list of held errors is not the rule's")
+        for notice in held {
+            let answer = NoticeRule.answer(notice.kind)
+            #expect(answer.pillExpires, "\(notice.kind) keeps its pill")
+            let shown = NoticeRule.next(NoticeRule.State(), .show(notice))
+            #expect(NoticePlacement.heldOutsidePill(shown: shown.shown, held: shown.held) == nil,
+                    "\(notice.kind) stands twice while its pill shows")
+            let after = NoticeRule.next(shown, .expired(notice))
+            #expect(after == NoticeRule.State(shown: nil, held: notice), "\(notice.kind) after its time: \(after)")
+            #expect(NoticePlacement.heldOutsidePill(shown: after.shown, held: after.held) == notice,
+                    "\(notice.kind) said nothing after its pill")
+            // An info and the wait push aside no held error, not even one
+            // whose pill is gone.
+            for info in [PlaybackNotice.serverAdopted, .waitingForNetwork] {
+                #expect(NoticeRule.next(after, .show(info)) == after, "\(info.kind) pushed \(notice.kind) aside")
+            }
+            #expect(NoticeRule.next(after, .streamResumed) == after, "the stream running again took \(notice.kind)")
+            for event in [NoticeRule.Event.played, .titleChanged] {
+                let gone = NoticeRule.next(after, event)
+                #expect(gone == NoticeRule.State(), "\(notice.kind) stayed over \(event)")
+                #expect(NoticePlacement.heldOutsidePill(shown: gone.shown, held: gone.held) == nil)
+            }
+            #expect(notice.barWords != nil, "\(notice.kind) has no words for the bar")
+        }
+        // Only held errors have words for the bar.
+        let others: [PlaybackNotice] = [.saved, .serverAdopted, .localUsed, .queued, .offline, .conflict,
+                                        .downloadUnreadable, .syncFailed, .openFailed("x", .network), .waitingForNetwork]
+        #expect(Set(others.map(\.kind)).union(held.map(\.kind)) == Set(PlaybackNotice.Kind.allCases))
+        for notice in others { #expect(notice.barWords == nil, "\(notice.kind) speaks on the bar") }
+        let wait = NoticeRule.answer(.waitingForNetwork)
+        #expect(!wait.pillExpires, "the wait lost its pill")
+        let waiting = NoticeRule.next(NoticeRule.State(), .show(.waitingForNetwork))
+        #expect(NoticeRule.next(waiting, .expired(.waitingForNetwork)) == waiting)
+        #expect(NoticePlacement.heldOutsidePill(shown: nil, held: .waitingForNetwork) == nil, "the wait stood on the bar")
+        // A short notice over the wait gives the pill back to it.
+        let over = NoticeRule.next(waiting, .show(.serverAdopted))
+        #expect(NoticeRule.next(over, .expired(.serverAdopted)).shown == .waitingForNetwork)
+    }
+
+    /// The bar says the held error from the channel alone: the one
+    /// placement, the channel's two values, no second rule beside it.
+    @Test("die Leiste sagt den Halt-Fehler aus dem Kanal, ueber die eine Platzierung, und nirgends sonst", .needsTheSources)
+    func theBarSaysTheHeldErrorFromTheChannel() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let bar = try code("Sources/Views/MiniPlayerBar.swift")
+        #expect(bar.contains("notices: coordinator.notices)"), "the bar's lines do not hear the channel")
+        #expect(bar.contains("NoticePlacement.heldOutsidePill(shown: notices.shown, held: notices.held)"),
+                "the bar decides the held error by a rule of its own")
+        #expect(bar.contains("held.barWords"), "the bar does not say the held error's words")
+        let files = ProjectFileIntegrityTests.sourceTexts(in: ["Sources"])
+        let speaking = files.filter { $0.text.contains(".barWords") }.map(\.name)
+        #expect(speaking == ["MiniPlayerBar.swift"], "the bar's words stand elsewhere: \(speaking)")
+        let channel = try code("Sources/ViewModels/PlaybackNotices.swift")
+        #expect(channel.contains("NoticeRule.answer(notice.kind).pillExpires"), "the channel times the pill by its own rule")
+        #expect(channel.contains("if held != next.held { held = next.held }"), "the channel does not publish the held error")
+    }
+
+    @Test("die Woerter der Leiste stehen deutsch im Katalog", .needsTheSources)
+    func theBarWordsStandInTheCatalog() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let strings = try #require(json?["strings"] as? [String: Any], "the catalog was not read")
+        func german(_ key: String) -> String? {
+            let entry = strings[key] as? [String: Any]
+            let unit = ((entry?["localizations"] as? [String: Any])?["de"] as? [String: Any])?["stringUnit"] as? [String: Any]
+            return unit?["value"] as? String
+        }
+        let words: [(String, String)] = [
+            ("track unavailable", "Titel nicht verfügbar"), ("not reachable", "nicht erreichbar"),
+            ("not loaded", "nicht geladen"), ("download unreadable", "Download nicht lesbar"),
+            ("cannot play", "kann nicht wiedergeben"),
+        ]
+        for (key, value) in words { #expect(german(key) == value, "\(key) says \(String(describing: german(key)))") }
     }
 
     /// The error forms measured at a host that answers 401, 403, 404, 500,
@@ -274,7 +364,7 @@ struct PlaybackNoticesTests {
         #expect(player.contains("ControlsNoticeLines(notices: coordinator.notices, error: viewModel.errorMessage)"),
                 "the full player shows no line under the controls")
         let lines = try code("Sources/Views/ResumeMessageBanner.swift")
-        #expect(lines.contains("NoticePlacement.linesUnderControls(shown: notices.shown, pillHasRoom: pillHasRoom, error: error)")
+        #expect(lines.contains("NoticePlacement.linesUnderControls(shown: notices.shown, held: notices.held, pillHasRoom: pillHasRoom, error: error)")
                     && lines.contains("ForEach(lines, id: \\.self)"),
                 "the lines under the controls leave the lasting failure out")
         let channel = try code("Sources/ViewModels/PlaybackNotices.swift") + (try code("Sources/Models/PlaybackNotice.swift"))

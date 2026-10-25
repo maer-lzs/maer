@@ -129,7 +129,7 @@ struct PlayerDismissZoneTests {
         func placed(_ controls: CGRect) -> (pill: Bool, line: String?) {
             let slot = PlayerDismissZones.noticeSlot(controlsFrame: controls, container: upright,
                                                      topInset: 62, bottomInset: 34, pillHeight: 38)
-            return (slot != nil, NoticePlacement.lineUnderControls(shown: notice, pillHasRoom: slot != nil))
+            return (slot != nil, NoticePlacement.lineUnderControls(shown: notice, held: notice, pillHasRoom: slot != nil))
         }
         let roomy = placed(CGRect(x: 16, y: 360, width: 370, height: 429))
         #expect(roomy.pill && roomy.line == nil, "with room: \(roomy)")
@@ -142,9 +142,19 @@ struct PlayerDismissZoneTests {
         }
         #expect(wrong.isEmpty, "both or neither while scrolling: \(wrong)")
         // An info or a short error never takes the line: it is no stopping error.
-        let info = NoticePlacement.lineUnderControls(shown: .serverAdopted, pillHasRoom: false)
-        let short = NoticePlacement.lineUnderControls(shown: .conflict, pillHasRoom: false)
+        let info = NoticePlacement.lineUnderControls(shown: .serverAdopted, held: nil, pillHasRoom: false)
+        let short = NoticePlacement.lineUnderControls(shown: .conflict, held: nil, pillHasRoom: false)
         #expect(info == nil && short == nil, "a notice that does not hold took the line: \(String(describing: info)) \(String(describing: short))")
+        // Once the pill's time is up, or a short notice lies over it, the
+        // held error takes the line, with room or without.
+        for room in [true, false] {
+            #expect(NoticePlacement.lineUnderControls(shown: nil, held: notice, pillHasRoom: room) == notice.label,
+                    "the held error said nothing after its pill, room \(room)")
+            #expect(NoticePlacement.lineUnderControls(shown: .conflict, held: notice, pillHasRoom: room) == notice.label,
+                    "the held error said nothing under a short notice, room \(room)")
+        }
+        #expect(NoticePlacement.lineUnderControls(shown: nil, held: .waitingForNetwork, pillHasRoom: false) == nil,
+                "the wait took the line")
     }
 
     /// The notice under the controls and the lasting failure can carry the
@@ -153,13 +163,13 @@ struct PlayerDismissZoneTests {
     @Test("traegt der Hinweis unter der Steuerung denselben Satz wie der bleibende Fehler, steht er einmal; zwei verschiedene stehen beide")
     func theSameSentenceStandsOnceUnderTheControls() {
         let notice = PlaybackNotice.cannotPlay("Kein Titel")
-        let same = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: false, error: notice.label)
+        let same = NoticePlacement.linesUnderControls(shown: notice, held: notice, pillHasRoom: false, error: notice.label)
         #expect(same == [notice.label], "the same sentence stood twice: \(same)")
-        let other = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: false, error: "Sync failed")
+        let other = NoticePlacement.linesUnderControls(shown: notice, held: notice, pillHasRoom: false, error: "Sync failed")
         #expect(other == [notice.label, "Sync failed"], "two sentences: \(other)")
-        let onlyError = NoticePlacement.linesUnderControls(shown: notice, pillHasRoom: true, error: notice.label)
+        let onlyError = NoticePlacement.linesUnderControls(shown: notice, held: notice, pillHasRoom: true, error: notice.label)
         #expect(onlyError == [notice.label], "with room the pill says the notice, the error stays: \(onlyError)")
-        #expect(NoticePlacement.linesUnderControls(shown: nil, pillHasRoom: false, error: nil).isEmpty)
+        #expect(NoticePlacement.linesUnderControls(shown: nil, held: nil, pillHasRoom: false, error: nil).isEmpty)
     }
 
     @Test("die Zeile unter der Steuerung fragt dieselbe Antwort wie die Pille", .needsTheSources)

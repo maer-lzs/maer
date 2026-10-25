@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**An error that stops playback no longer covers every page.** When a
+station could not be reached or a title could not play, its message
+stood as a pill over every page until something else played. Now the
+pill shows briefly like any other message; after that the mini player
+says it on its second line, for example "not reachable" in place of the
+time, until playback starts again or another title takes over. A tap on
+the pill and Settings still open all messages.
+
 **One button where there were two on the iPhone Duo.** With the tabs at
 the side, the settings button lay over the back button of every page
 you opened. The settings button now stands at the top of the side

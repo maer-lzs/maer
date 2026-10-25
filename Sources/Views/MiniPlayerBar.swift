@@ -109,7 +109,8 @@ struct MiniPlayerBar: View {
                         // "Wir sind der Westen", so the bar lost the one name
                         // that says WHERE the sound comes from. The full
                         // player always showed both.
-                        MiniPlayerLines(viewModel: viewModel, clock: viewModel.clock, coordinator: coordinator)
+                        MiniPlayerLines(viewModel: viewModel, clock: viewModel.clock, coordinator: coordinator,
+                                        notices: coordinator.notices)
                     }
                     Spacer(minLength: 0)
                 }
@@ -179,7 +180,8 @@ struct MiniPlayerBar: View {
 }
 
 /// The two text lines of the bar: the title, and the per-second second
-/// line (chapter or artist, remaining / time / sleep timer). The ONLY text
+/// line (chapter or artist, remaining / time / sleep timer, or a held
+/// error once its pill is gone). The ONLY text
 /// that changes every tick, isolated so the tick re-renders this tiny view
 /// instead of the whole glass bar. The title lives here too, because while
 /// another device plays and this one stands by, the hint REPLACES the
@@ -191,6 +193,9 @@ private struct MiniPlayerLines: View {
     @ObservedObject var clock: PlaybackClock
     /// For the one claim this device could not name after a play tap.
     @ObservedObject var coordinator: PlayerCoordinator
+    /// The held error once its pill is gone stands on the second line; the
+    /// channel is its one source.
+    @ObservedObject var notices: PlaybackNotices
     /// Takeover hint: observed HERE, in the small ticking leaf.
     /// The glass bar itself never observes the claim.
     @ObservedObject private var claims = PlaybackClaimSync.shared
@@ -243,6 +248,16 @@ private struct MiniPlayerLines: View {
             .lineLimit(1)
             .truncationMode(.tail)
             .accessibilityIdentifier("mini-foreign-playing")
+        } else if let held = NoticePlacement.heldOutsidePill(shown: notices.shown, held: notices.held),
+                  let words = held.barWords {
+            // A held error whose pill is gone says the state here, in place
+            // of the time, until the next start or change of title. The
+            // whole sentence stays in the log.
+            Label(words, systemImage: held.icon)
+                .labelStyle(.titleAndIcon)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         } else if let chapter = viewModel.currentChapter {
             HStack(spacing: 4) {
                 if let sleep = viewModel.sleepTimerRemaining {

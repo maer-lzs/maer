@@ -14,6 +14,9 @@ import OSLog
 @MainActor
 final class PlaybackNotices: ObservableObject {
     @Published private(set) var shown: PlaybackNotice?
+    /// The held notice, which outlasts its pill until the next start or
+    /// change of title; where it stands says `NoticePlacement`.
+    @Published private(set) var held: PlaybackNotice?
     @Published private(set) var log: [NoticeLogEntry]
 
     private var state = NoticeRule.State()
@@ -149,7 +152,7 @@ final class PlaybackNotices: ObservableObject {
     func show(_ notice: PlaybackNotice, title: String?) {
         append(notice, title: title)
         apply(.show(notice))
-        guard shown == notice, !NoticeRule.answer(notice.kind).holdsUntilPlay else { return }
+        guard shown == notice, NoticeRule.answer(notice.kind).pillExpires else { return }
         later(expirySeconds) { [weak self] in self?.apply(.expired(notice)) }
     }
 
@@ -196,6 +199,7 @@ final class PlaybackNotices: ObservableObject {
         let next = NoticeRule.next(state, event)
         state = next
         if shown != next.shown { shown = next.shown }
+        if held != next.held { held = next.held }
     }
 
     private func append(_ notice: PlaybackNotice, title: String?) {
