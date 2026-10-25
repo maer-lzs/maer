@@ -168,12 +168,13 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    /// Centred above the cover, free of it; the tap area keeps the full width.
+    /// Centred above the cover, free of it, just under the status bar
+    /// (`PlayerGrabHandle`); the tap area keeps the full width.
     private var grabHandle: some View {
         Capsule()
             .fill(Color.white.opacity(0.5))
-            .frame(width: 40, height: 5)
-            .padding(.top, topInset + 10)
+            .frame(width: 40, height: PlayerGrabHandle.height)
+            .padding(.top, PlayerGrabHandle.top(topInset: topInset))
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())

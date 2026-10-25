@@ -226,6 +226,24 @@ struct DetailColumnsTests {
         #expect(!PlayerFit.controlsOverflow(controls: 400, viewportHeight: 700, margin: 16))
     }
 
+    @Test("der Zieh-Strich steht knapp unter der Statuszeile, das Cover seinen Abstand darunter", .needsTheSources)
+    func theHandleStandsUnderTheStatusBar() throws {
+        // iPhone 17: reserved top edge 62 pt.
+        #expect(PlayerGrabHandle.top(topInset: 62) == 56)
+        #expect(PlayerGrabHandle.coverTop(topInset: 62) == 73)
+        // No reserved edge: never closer to the display's edge than 6 pt.
+        #expect(PlayerGrabHandle.top(topInset: 0) == 6)
+        #expect(PlayerGrabHandle.coverTop(topInset: 0) == 23)
+        let read = { (path: String) in
+            SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        #expect(try read("Sources/Views/FullPlayerOverlay.swift")
+            .contains(".padding(.top, PlayerGrabHandle.top(topInset: topInset))"))
+        #expect(try read("Sources/Views/PlayerView.swift")
+            .contains("? 16 : PlayerGrabHandle.coverTop(topInset: topInset) - topInset)"))
+    }
+
     @Test("das Cover des Players steht aufgeklappt gleich weit von Aussenrand und sichtbarem Falz")
     func theCoverStandsMidwayToTheVisibleFold() {
         // The open Duo: band 455.5 to 495.5, the visible fold in its middle.

@@ -79,6 +79,25 @@ nonisolated enum DetailCoverSide {
     static let shrinkStep: CGFloat = 8
 }
 
+/// The full player's drag handle, where it stands (without the side
+/// column): just under the status bar, as the system's own sheets, a little
+/// into the reserved top edge and never closer to the display's edge than
+/// `minimumTop`. The cover begins `clearance` below it. In window points.
+nonisolated enum PlayerGrabHandle {
+    static let height: CGFloat = 5
+    static let clearance: CGFloat = 12
+    static let intoReservedEdge: CGFloat = 6
+    static let minimumTop: CGFloat = 6
+
+    static func top(topInset: CGFloat) -> CGFloat {
+        max(minimumTop, topInset - intoReservedEdge)
+    }
+
+    static func coverTop(topInset: CGFloat) -> CGFloat {
+        top(topInset: topInset) + height + clearance
+    }
+}
+
 /// The full player fits one view in every posture and never scrolls: the
 /// controls keep their height, the cover and the spacing give way. Where
 /// the controls alone exceed the view (large type) that is reported, not

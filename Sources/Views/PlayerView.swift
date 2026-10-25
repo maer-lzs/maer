@@ -151,10 +151,12 @@ struct PlayerView: View {
                         }
                         controlsBlock
                     }
-                    .padding()
-                    // Room for the drag handle above the cover only where it
-                    // stands, without the side column (`FullPlayerOverlay`).
-                    .padding(.top, sideBySide || columnPlacement != nil ? 0 : 8 + Self.topRoom)
+                    .padding([.horizontal, .bottom])
+                    // Where the drag handle stands (upright, without the side
+                    // column) the cover begins its clearance below it, else
+                    // at the page margin (`PlayerGrabHandle`).
+                    .padding(.top, sideBySide || columnPlacement != nil
+                             ? 16 : PlayerGrabHandle.coverTop(topInset: topInset) - topInset)
                     // Readable column in portrait, wider side by side.
                     .frame(maxWidth: sideBySide ? 900 : 500)
                     // Upright from the top, side by side centred in the view.
