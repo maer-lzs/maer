@@ -32,6 +32,10 @@ struct PodcastsView: View {
     /// switching): the section recompute is skipped then and re-fires on
     /// becoming visible (isActive is part of the recompute token).
     var isActive: Bool = true
+    /// Whether Audiobookshelf is signed in, handed in by the host, which
+    /// observes the session: signing in and out switches the Browse form
+    /// of the tab (`hasPodcastServer`).
+    var absSignedIn: Bool = false
     @ObservedObject private var subs = PodcastSubscriptions.shared
     // The mixed catalog row renders from the calm-gated store
     // (sourceRows applies via runWhenCalm. No layout shift mid-scroll).
@@ -42,9 +46,6 @@ struct PodcastsView: View {
     // recompute through `taskOnPodcastChange`, which observes the
     // deduplicating scope; rows/tiles observe at leaf level.
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
-    /// Signing in and out switches the Browse form of the tab
-    /// (`hasPodcastServer`); the sign-in state changes rarely.
-    @ObservedObject private var auth = AppSession.shared.authViewModel
 
     /// Non-observing store handle (reads only). A changed ABS show list moves
     /// the scope's token, the task rewrites the section state, and that state
@@ -398,7 +399,7 @@ RowHeading(title: "Keep Listening", font: .title2,
     /// The server of the area (`TabBrowse.hasServer`): an Audiobookshelf
     /// podcast library.
     private var hasPodcastServer: Bool {
-        TabBrowse.hasServer(for: .podcasts, absSignedIn: auth.isLoggedIn,
+        TabBrowse.hasServer(for: .podcasts, absSignedIn: absSignedIn,
                             musicServer: false, absPodcasts: AppStorageKeys.absPodcastsActive)
     }
 

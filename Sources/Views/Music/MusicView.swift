@@ -210,6 +210,9 @@ struct MusicView: View {
         Group {
             if !tiles.isEmpty {
                 BrowseRow(tiles: tiles, reason: { _ in "" }, playerCoordinator: playerCoordinator, area: .music)
+            } else {
+                // Something to hang the load on while every lane is empty.
+                Color.clear.frame(height: 0)
             }
         }
         .task {

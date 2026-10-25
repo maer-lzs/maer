@@ -529,7 +529,8 @@ struct LibraryView: View {
             if isTabMounted(.podcasts) {
                 tabStack(.podcasts) {
                     PodcastsView(playerCoordinator: playerCoordinator,
-                                 isActive: selectedMediaType == .podcasts)
+                                 isActive: selectedMediaType == .podcasts,
+                                 absSignedIn: session.authViewModel.isLoggedIn)
                 }
             }
             if isTabMounted(.music) {
