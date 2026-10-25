@@ -43,6 +43,9 @@ struct UITestSeedTests {
         #expect(!arguments.isEmpty)
         for argument in arguments {
             if argument.hasPrefix("msAgo(") { continue }
+            // The detail a seeded book answers with copies the moment of its
+            // own seeded progress, which this loop checks where it is set.
+            if argument == "progress.lastUpdate" { continue }
             let literal = Double(argument.replacingOccurrences(of: "_", with: ""))
             #expect((literal ?? 0) >= Self.year2000Ms, "a seeded lastUpdate is not milliseconds: \(argument)")
         }

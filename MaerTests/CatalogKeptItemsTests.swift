@@ -71,7 +71,7 @@ struct CatalogKeptItemsTests {
                 try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         let provider = try read("Sources/Providers/FreeCatalogProvider.swift")
-        #expect(provider.contains("kept = Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? []"))
+        #expect(provider.contains("kept = (Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? [])\n            .map(FreeCatalog.gutenbergReadable)"))
         #expect(provider.contains("resolved: LibraryItem(id: detail.id, media: detail.media, addedAt: nil))\n        keep(item)\n        itemsById[detail.id] = item"))
         // Each resolve goes through `rememberResolved`: LibriVox, the archive
         // item, its song, Jamendo and Gutenberg, beside the declaration.

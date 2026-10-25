@@ -74,7 +74,7 @@ struct BookDetailEntryTests {
     /// geschlossen haelt. Das Markieren bleibt ihm.
     @Test("ein Katalog-Titel bekommt keinen Download-Knopf", .needsTheSources)
     func aCatalogTitleGetsNoDownloadButton() throws {
-        let rumpf = try #require(functionBody(of: "private var downloadSection: some View {",
+        let rumpf = try #require(functionBody(of: "private func downloadSection(compact: Bool) -> some View {",
                                               in: try seite()))
             .split(whereSeparator: \.isWhitespace).joined()
         #expect(rumpf.contains("ifisCatalogTitle{EmptyView()"),
