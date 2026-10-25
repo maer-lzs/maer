@@ -63,7 +63,7 @@ struct MusicAlbumView: View {
         let audio = detail.media.tracks ?? []
         guard !audio.isEmpty else { return ([], "none") }
         let duration = detail.media.duration ?? audio.compactMap(\.duration).reduce(0, +)
-        return (ChapterModel.trackChapters(audio, duration: duration), "tracks")
+        return (ChapterModel.trackChapters(audio, duration: duration, isMusic: true), "tracks")
     }
     /// What the page says when the source answered with no track. A
     /// playlist that holds none is empty, not broken: it says so, without a

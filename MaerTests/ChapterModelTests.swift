@@ -44,7 +44,12 @@ struct ChapterModelTests {
         #expect(empty.chapters.isEmpty && empty.source == "none")
         // A book's parts without names keep "Part N of M".
         let parts = ChapterModel.trackChapters([track(0, 100), track(1, 100)], duration: 200)
-        #expect(parts.map(\.title).allSatisfy { !$0.isEmpty && $0 != "Intro" })
+        #expect(parts.map(\.title) == [String(localized: "Part \(1) of \(2)"), String(localized: "Part \(2) of \(2)")])
+        // A song without a name is "Track N" on the music page, never
+        // "Part 1 of 1".
+        let single = MusicAlbumView.trackList(of: detail(chapters: nil, tracks: [track(0, 180)]))
+        #expect(single.chapters.map(\.title) == [String(localized: "Track \(1)")])
+        #expect(single.chapters.map(\.title) != [String(localized: "Part \(1) of \(1)")])
     }
 
     @Test("Valid contiguous chapters are all kept, in order")

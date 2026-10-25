@@ -105,8 +105,10 @@ nonisolated enum ChapterModel {
     /// One chapter per track, using the correct per-track offsets (TrackMath).
     /// Real coverage is often only a fraction (measured: Schattensaat 24 %,
     /// Kriegswirren 36 %), so these are NOT chapters. Name them "Part N of M"
-    /// so they don't masquerade as a book's real chapters.
-    static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double) -> [ABSChapter] {
+    /// so they don't masquerade as a book's real chapters. Music names an
+    /// unnamed song "Track N" instead (`isMusic`): a song is not a part of
+    /// anything, and a single one read "Part 1 of 1".
+    static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double, isMusic: Bool = false) -> [ABSChapter] {
         let count = tracks.count
         return tracks.indices.map { i in
             let start = TrackMath.trackStart(index: i, tracks: tracks, bookDuration: duration)
@@ -116,8 +118,8 @@ nonisolated enum ChapterModel {
             // A track that states its own name (a catalogue release names
             // its songs) keeps it; a book's parts have none.
             let named = tracks[i].metadata?.title.flatMap { $0.isEmpty ? nil : $0 }
-            return ABSChapter(id: i, start: start, end: max(end, start + 1),
-                              title: named ?? String(localized: "Part \(i + 1) of \(count)"))
+            let fallback = isMusic ? String(localized: "Track \(i + 1)") : String(localized: "Part \(i + 1) of \(count)")
+            return ABSChapter(id: i, start: start, end: max(end, start + 1), title: named ?? fallback)
         }
     }
 
