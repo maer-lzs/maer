@@ -9,9 +9,12 @@ import SwiftUI
 /// the content-unavailable form with a title, its glyph, an optional
 /// sentence and optional actions. Title and sentence wrap onto further
 /// lines in a narrow column (one column of the open fold) instead of ending
-/// in an ellipsis: their own line limit and height sit on the texts, inside
-/// the system view, so no limit the container sets reaches them. Every
-/// empty state in the views goes through here.
+/// in an ellipsis. The bare system view cuts its title two ways: in a list
+/// row on iOS 27 it draws the title in one line's height, whatever the line
+/// limit, and on iOS 18 a line limit of the container reaches the title. So
+/// the texts carry their own height (`fixedSize`, which answers the first)
+/// and their own line limit (which answers the second), inside the system
+/// view. Every empty state in the views goes through here.
 struct EmptyStateView<Actions: View>: View {
     let title: Text
     let systemImage: String
