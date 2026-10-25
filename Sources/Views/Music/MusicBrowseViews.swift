@@ -236,8 +236,6 @@ struct MusicArtistView: View {
         let headerImage = ArtistImagePolicy.rendered(serverImageURL: info?.imageURL,
                                                      webImageURL: nil, webEnabled: false)
         if headerImage != nil || bio != nil {
-            // The artist names itself in the navigation title, so the head
-            // carries no title of its own.
             DetailHeader(title: artist.name ?? String(localized: "Unknown Artist")) { _ in
                 if let url = headerImage {
                     // Sizing lives on the LOADED image: servers hand out image

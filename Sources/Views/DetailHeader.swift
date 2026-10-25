@@ -35,8 +35,8 @@ extension EnvironmentValues {
 struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View {
     var title: String
     var titleStyle: AnyShapeStyle = AnyShapeStyle(.primary)
-    /// The side inset of title and lines, for a page whose cover runs to
-    /// the edges.
+    /// The side inset of title and lines, for a page whose head keeps no
+    /// side margin of its own.
     var textInset: CGFloat = 0
     @ViewBuilder var cover: (CGFloat?) -> Cover
     @ViewBuilder var lines: () -> Lines
