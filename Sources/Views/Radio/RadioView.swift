@@ -622,12 +622,13 @@ struct RadioView: View {
             // counts as applied, else the re-choose fires on the next run.
             if chosenState != nil { seedRegionApplied = true }
             if chosenState == nil, !seedRegionApplied {
-                browseSelection.seedRegion("Seed Region")
+                browseSelection.seedRegion(UITestSeed.shown("Seed Region"))
                 seedRegionApplied = true
             }
+            let region = UITestSeed.shown("Seed Region"), regionTwo = UITestSeed.shown("Seed Region Two")
             availableStates = [
-                RadioBrowseCuration.Curated(display: "Seed Region", queryNames: ["Seed Region"], stationCount: 3),
-                RadioBrowseCuration.Curated(display: "Seed Region Two", queryNames: ["Seed Region Two"], stationCount: 2),
+                RadioBrowseCuration.Curated(display: region, queryNames: [region], stationCount: 3),
+                RadioBrowseCuration.Curated(display: regionTwo, queryNames: [regionTwo], stationCount: 2),
             ]   // picker testable
             discoveryLoaded = true
             return

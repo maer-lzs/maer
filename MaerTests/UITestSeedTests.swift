@@ -71,5 +71,109 @@ struct UITestSeedTests {
         #expect(seed.contains("userMediaProgress: entry.progress.map { progress in"))
         #expect(!seed.contains("userMediaProgress: nil)) }"), "the seeded detail knows no position again")
     }
+
+    @Test("without -uitest-store every fixture keeps the seed's own name")
+    func storeNamesStayOffWithoutTheirArgument() {
+        #expect(UITestSeed.seedsStorePictures == false)
+        let book = UITestSeed.shown("Seed Book One", by: "Ada Author")
+        #expect(book.title == "Seed Book One" && book.by == "Ada Author")
+        #expect(UITestSeed.shown("Seed Radio One") == "Seed Radio One")
+        #expect(UITestSeed.seedRadioStations.allSatisfy { $0.faviconURL == nil })
+    }
+
+    /// The fence of the store pictures: every name the seed's source hands
+    /// to a fixture, the filler rows expanded over their ranges, comes out
+    /// of the store table without a placeholder. A byline counts as covered
+    /// when its line names a work, which brings its own author.
+    @Test("under -uitest-store no fixture name shows a placeholder", .needsTheSources)
+    func storeNamesCoverEveryFixture() throws {
+        let full = try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/UITestSeed.swift"), encoding: .utf8)
+        let tables = try #require(full.range(of: "extension UITestSeed {"))
+        let source = String(full[..<tables.lowerBound])
+        let works = UITestSeed.StoreNames.works, names = UITestSeed.StoreNames.names
+        let markers = ["Seed", "seeded", "Filler", "Now Playing", "Author", "Host", "Catalog", "Orchestra",
+                       "Reader", "Sprout", "Bloom", "Petal", "Backing Band", "Teil ", "Chapter "]
+        func strings(_ pattern: String, in line: String) -> [String] {
+            let regex = try! NSRegularExpression(pattern: pattern)
+            return regex.matches(in: line, range: NSRange(line.startIndex..., in: line)).compactMap {
+                Range($0.range(at: 1), in: line).map { String(line[$0]) }
+            }
+        }
+        func ranges(_ pattern: String, in text: Substring) -> [ClosedRange<Int>] {
+            strings(pattern, in: String(text)).compactMap {
+                let ends = $0.components(separatedBy: "...").compactMap(Int.init)
+                return ends.count == 2 ? ends[0]...ends[1] : nil
+            }
+        }
+        // A line with `\($0)` takes the nearest range above it or on it,
+        // a line with `\(n)` the first range below it.
+        var lines: [String] = []
+        var offset = source.startIndex
+        for line in source.components(separatedBy: "\n") {
+            defer { offset = source.index(offset, offsetBy: line.count + 1, limitedBy: source.endIndex) ?? source.endIndex }
+            if line.trimmingCharacters(in: .whitespaces).hasPrefix("//") { continue }
+            if line.contains("\\($0)") {
+                let range = try #require(ranges(#"\((\d+\.\.\.\d+)\)\.map \{"#,
+                                                in: source[..<source.index(offset, offsetBy: line.count)]).last)
+                lines += range.map { line.replacingOccurrences(of: "\\($0)", with: "\($0)") }
+            } else if line.contains("\\(n)") {
+                let range = try #require(ranges(#"\((\d+\.\.\.\d+)\)\.map\("#, in: source[offset...]).first)
+                lines += range.map { line.replacingOccurrences(of: "\\(n)", with: "\($0)") }
+            } else {
+                lines.append(line)
+            }
+        }
+        var checked = 0
+        for line in lines {
+            let titles = strings(#"\b(?:title|name|series|description): (?:shown\()?"([^"]+)""#, in: line)
+                + strings(#"shown\("([^"]+)""#, in: line)
+                + strings(#"chapter\(\d+, \d+, \d+, "([^"]+)"\)"#, in: line)
+            let bylines = strings(#"\b(?:author|artist|by): "([^"]+)""#, in: line)
+            let lineNamesAWork = titles.contains { works[$0] != nil }
+            for title in titles {
+                let shown = works[title]?.title ?? names[title] ?? title
+                #expect(!markers.contains { shown.contains($0) }, "\(title) shows as \(shown)")
+                checked += 1
+            }
+            for byline in bylines where !lineNamesAWork {
+                let shown = names[byline] ?? byline
+                #expect(!markers.contains { shown.contains($0) }, "\(byline) shows as \(shown)")
+                checked += 1
+            }
+        }
+        // The scan itself: 16 filler books, 20 episodes, 20 albums, 12
+        // stations, 4 classics and the named fixtures. A scan that finds
+        // nothing proves nothing.
+        #expect(checked > 100, "the scan read \(checked) names")
+        // The table holds no placeholder of its own.
+        for shown in works.values.flatMap({ [$0.title, $0.by] }) + names.values
+            + UITestSeed.StoreNames.fullBookChapters {
+            #expect(!markers.contains { shown.contains($0) }, "the store table shows \(shown)")
+        }
+    }
+
+    /// A seed name outside the seed's own file (the radio regions) goes
+    /// through the same table, or the store pictures show it raw.
+    @Test("a seed name elsewhere in the sources goes through UITestSeed.shown", .needsTheSources)
+    func seedNamesElsewhereGoThroughTheTable() throws {
+        let sources = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && $0.lastPathComponent != "UITestSeed.swift" }
+        let literal = try NSRegularExpression(pattern: #"(UITestSeed\.shown\()?"((?:Seed|Filler) [^"]*)""#)
+        var found = 0
+        for file in files {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for match in literal.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+                let range = try #require(Range(match.range(at: 2), in: text))
+                let name = String(text[range])
+                found += 1
+                #expect(match.range(at: 1).location != NSNotFound,
+                        "\(file.lastPathComponent): \"\(name)\" is not read through UITestSeed.shown")
+                #expect(UITestSeed.StoreNames.names[name] != nil, "\(name) has no store name")
+            }
+        }
+        #expect(found >= 3, "the scan found \(found) seed names outside the seed")
+    }
 }
 #endif

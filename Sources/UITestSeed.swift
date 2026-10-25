@@ -34,13 +34,31 @@ enum UITestSeed {
     /// a journey's precondition becomes a coin toss. Seeded rather than
     /// empty, so the start page keeps its realistic geometry.
     static let recommendations: [PodcastSearchResult] = [
-        PodcastSearchResult(title: "Seed Recommendation One", author: "Seed Author",
-                            artworkURL: nil, feedURL: "https://seed.example/rec1.xml"),
-        PodcastSearchResult(title: "Seed Recommendation Two", author: "Seed Author",
-                            artworkURL: nil, feedURL: "https://seed.example/rec2.xml"),
-        PodcastSearchResult(title: "Seed Recommendation Three", author: "Seed Author",
-                            artworkURL: nil, feedURL: "https://seed.example/rec3.xml"),
-    ]
+        (shown("Seed Recommendation One", by: "Seed Author"), "https://seed.example/rec1.xml"),
+        (shown("Seed Recommendation Two", by: "Seed Author"), "https://seed.example/rec2.xml"),
+        (shown("Seed Recommendation Three", by: "Seed Author"), "https://seed.example/rec3.xml"),
+    ].map { display, feed in
+        PodcastSearchResult(title: display.title, author: display.by, artworkURL: nil, feedURL: feed)
+    }
+
+    /// The store pictures (`-uitest-store`, only beside `-uitest`): the same
+    /// fixtures, every name through `StoreNames`, covers with the title
+    /// instead of initials. Without it every name stays the seed's own, so
+    /// the journeys and their searches for "Seed" are untouched.
+    static var seedsStorePictures: Bool {
+        isActive && ProcessInfo.processInfo.arguments.contains("-uitest-store")
+    }
+
+    /// A fixture's title and byline as shown. A work in the store table
+    /// brings its own author, because one seed author stands under many titles.
+    static func shown(_ title: String, by: String) -> (title: String, by: String) {
+        guard seedsStorePictures else { return (title, by) }
+        return StoreNames.works[title] ?? (StoreNames.names[title] ?? title, StoreNames.names[by] ?? by)
+    }
+
+    static func shown(_ name: String) -> String {
+        seedsStorePictures ? StoreNames.names[name] ?? name : name
+    }
     /// Opt-in: also install a presentation-only active player (mini + full
     /// player). Off by default so multi-tab navigation journeys aren't disturbed
     /// by an ever-present, tappable mini player; only the full-player journey
@@ -123,14 +141,16 @@ enum UITestSeed {
             // `.catalogBook`, the podcast scope to `.catalogShow`, so the
             // journey proves the WIRING of each scope, not just that some
             // result arrives.
+            let show = shown("Seed Catalog Show", by: "Catalog Author")
+            let book = shown("Seed Catalog Book", by: "Seed Reader")
             return [SearchResult(id: "https://catalog.example/seed-feed",
                                  kind: .catalogShow,
-                                 title: "Seed Catalog Show",
-                                 subtitle: "Catalog Author"),
+                                 title: show.title,
+                                 subtitle: show.by),
                     SearchResult(id: "lv:seed-book",
                                  kind: .catalogBook,
-                                 title: "Seed Catalog Book",
-                                 subtitle: "Seed Reader",
+                                 title: book.title,
+                                 subtitle: book.by,
                                  sourceLabel: "LibriVox")]
         }
     }
@@ -229,9 +249,9 @@ enum UITestSeed {
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
         let show = PodcastShow(
-            id: "seed-show", title: "Seed Show", author: "Cara Host",
+            id: "seed-show", title: shown("Seed Show"), author: shown("Cara Host"),
             artworkURL: "https://seed.example/art/seed-show.png",
-            description: "A seeded podcast.", feedURL: "https://seed.example/feed",
+            description: shown("A seeded podcast."), feedURL: "https://seed.example/feed",
             episodes: [
                 episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
                 episode(guid: "rss:seed:ep-2", title: "Seed Episode Two"),
@@ -252,7 +272,7 @@ enum UITestSeed {
                         description: "Gespräche am Abend.", feedURL: "https://seed.example/feed-2",
                         episodes: (1...4).map { episode(guid: "rss:seed:s2-ep-\($0)", title: "Abendfunk \($0)") },
                         link: nil),
-            PodcastShow(id: "seed-show-3", title: "Werkstattgespräch", author: "Ida Werner",
+            PodcastShow(id: "seed-show-3", title: "Werkstattgespräch", author: shown("Ida Werner"),
                         artworkURL: "https://seed.example/art/seed-show-3.png",
                         description: "Über Handwerk.", feedURL: "https://seed.example/feed-3",
                         episodes: (1...3).map { episode(guid: "rss:seed:s3-ep-\($0)", title: "Werkstatt \($0)") },
@@ -283,11 +303,12 @@ enum UITestSeed {
         // Start stay without a tab switch.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            func classic(_ n: Int) -> LibraryItem {
-                LibraryItem(id: "lva:seed-classic-\(n)",
+            @MainActor func classic(_ n: Int) -> LibraryItem {
+                let display = shown("Seed Classical \(n)", by: "Seed Orchestra")
+                return LibraryItem(id: "lva:seed-classic-\(n)",
                             media: LibraryItemMedia(
                                 metadata: LibraryItemMetadata(
-                                    title: "Seed Classical \(n)", authorName: "Seed Orchestra",
+                                    title: display.title, authorName: display.by,
                                     narratorName: nil, seriesName: nil, genres: nil,
                                     publishedYear: nil, description: nil),
                                 duration: 600, chapters: nil, tracks: nil),
@@ -306,10 +327,15 @@ enum UITestSeed {
 
         // Every seeded book, album and show with a cover, before the first
         // tile asks: a tile that asked first would keep its miss.
-        let itemCovers = (books.map(\.item) + seedAlbums).map { ($0.id, $0.media?.metadata?.title ?? "") }
-            + [("seed-nowplaying", "Now Playing Book")]
+        // The store pictures also give the played playlist and every
+        // station a cover.
+        let storeItems = seedsStorePictures ? [seedContinuePlaylist] : []
+        let storeStations = seedsStorePictures ? seedRadioStations + seedRadioCatalog : []
+        let itemCovers = (books.map(\.item) + seedAlbums + storeItems).map { ($0.id, $0.media?.metadata?.title ?? "") }
+            + [("seed-nowplaying", shown("Now Playing Book", by: "Ada Author").title)]
         placeCovers(items: itemCovers,
-                    shows: ([show] + moreShows).compactMap { s in s.artworkURL.map { ($0, s.title) } })
+                    shows: ([show] + moreShows).compactMap { s in s.artworkURL.map { ($0, s.title) } }
+                        + storeStations.compactMap { s in s.faviconURL.map { ($0, s.name) } })
 
         // A presentation-only active player (no audio) so the harness can
         // open the full player. A book with FALLBACK chapters ("Teil N von M").
@@ -321,21 +347,23 @@ enum UITestSeed {
         // The same presentation-only player with an EPISODE as its title,
         // for the controls whose behaviour differs by media type. The id
         // decides the type; the media shape is shared with the book.
+        // In the store pictures the chapters are the work's own, no fallback.
         let npId = "seed-nowplaying"
-        let npTitle = "Now Playing Book"
+        let np = shown("Now Playing Book", by: "Ada Author")
+        let npTitle = np.title
         let npChapters = [
             chapter(0, 0, 600, "Teil 1 von 3"),
             chapter(1, 600, 1200, "Teil 2 von 3"),
             chapter(2, 1200, 1800, "Teil 3 von 3"),
         ]
         let npMedia = LibraryItemMedia(
-            metadata: LibraryItemMetadata(title: npTitle, authorName: "Ada Author", narratorName: nil,
+            metadata: LibraryItemMetadata(title: npTitle, authorName: np.by, narratorName: nil,
                                           seriesName: nil, genres: nil, publishedYear: nil, description: nil),
             duration: 1800, chapters: npChapters, tracks: nil)
         session.playerCoordinator._seedActivePlayerForUITest(
             item: LibraryItem(id: npId, media: npMedia, addedAt: 0),
             detail: LibraryItemDetail(id: npId, media: npMedia, userMediaProgress: nil),
-            chapters: npChapters, currentChapterIndex: 1, isFallback: true, openedHere: true)
+            chapters: npChapters, currentChapterIndex: 1, isFallback: !seedsStorePictures, openedHere: true)
         // A stopping notice, for the journey that reads it under the full
         // player's controls once its pill is gone. Opt-in (`-uitest-notice`).
         if ProcessInfo.processInfo.arguments.contains("-uitest-notice") {
@@ -384,12 +412,12 @@ enum UITestSeed {
     /// verify the tab bar can switch library from there.
     static let seedArtists: [MusicArtist] = [
         // No namespace in the seed ids: the door answers the device source.
-        MusicArtist(id: "seed-artist-1", itemId: "seed-artist-1", name: "Seed Artist", albumCount: 2),
+        MusicArtist(id: "seed-artist-1", itemId: "seed-artist-1", name: shown("Seed Artist"), albumCount: 2),
     ]
     static let seedPlaylists: [MusicPlaylist] = [
-        MusicPlaylist(id: "seed-playlist-1", itemId: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
+        MusicPlaylist(id: "seed-playlist-1", itemId: "seed-playlist-1", name: shown("Seed Playlist"), songCount: 3,
                       duration: 600, changedAt: 1_784_455_200_000),
-        MusicPlaylist(id: "seed-playlist-2", itemId: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
+        MusicPlaylist(id: "seed-playlist-2", itemId: "seed-playlist-2", name: shown("Seed Playlist Two"), songCount: 12,
                       duration: 4320, changedAt: 1_784_541_600_000),
     ]
 
@@ -416,6 +444,10 @@ enum UITestSeed {
             guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
                                             locations: [0, 1]) else { return }
             context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: side), options: [])
+            if seedsStorePictures {
+                drawTitle(label, side: side)
+                return
+            }
             let mark = String(label.split(separator: " ").prefix(2).compactMap(\.first)).uppercased()
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 180, weight: .bold),
@@ -425,6 +457,31 @@ enum UITestSeed {
                                     withAttributes: attributes)
         }
         return image.jpegData(compressionQuality: 0.85)
+    }
+
+    /// The store pictures' cover: the whole title in a serif face, centred,
+    /// smaller until its longest word fits on one line.
+    private static func drawTitle(_ title: String, side: CGFloat) {
+        let base = UIFont.systemFont(ofSize: 64, weight: .semibold)
+        let serif = base.fontDescriptor.withDesign(.serif) ?? base.fontDescriptor
+        let inset: CGFloat = 56
+        let width = side - 2 * inset
+        var size: CGFloat = 64
+        let words = title.split(separator: " ").map(String.init)
+        while size > 28, words.contains(where: {
+            ($0 as NSString).size(withAttributes: [.font: UIFont(descriptor: serif, size: size)]).width > width
+        }) { size -= 4 }
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(descriptor: serif, size: size),
+            .foregroundColor: UIColor.white.withAlphaComponent(0.95),
+            .paragraphStyle: style]
+        let text = title as NSString
+        let height = text.boundingRect(with: CGSize(width: width, height: side), options: .usesLineFragmentOrigin,
+                                       attributes: attributes, context: nil).height
+        text.draw(with: CGRect(x: inset, y: max(inset, (side - height) / 2), width: width, height: side - 2 * inset),
+                  options: .usesLineFragmentOrigin, attributes: attributes, context: nil)
     }
 
     /// The details the book page gets for the seeded books
@@ -445,9 +502,12 @@ enum UITestSeed {
     /// ONE book with everything a book page can show: author, narrator,
     /// series with its number, year, genres, a description of several
     /// paragraphs, fourteen chapters, a position. For the sight checks of
-    /// the book page in every width.
+    /// the book page in every width. The store pictures give it the work's
+    /// own chapters and a description in the interface language.
     private static func fullBook(progress: BookProgress) -> LibraryEntry {
-        let titles = ["Ankunft in Tromsø", "Das Haus am Fjord", "Die erste Nacht", "Briefe aus Bergen",
+        let store = seedsStorePictures
+        let titles = store ? StoreNames.fullBookChapters : [
+                      "Ankunft in Tromsø", "Das Haus am Fjord", "Die erste Nacht", "Briefe aus Bergen",
                       "Polarlicht über dem Hafen", "Die Karte des Großvaters", "Sturm auf der Hurtigrute",
                       "Was das Eis bewahrt", "Ein Fremder in Hammerfest", "Die Werft", "Stille Tage",
                       "Der Leuchtturm von Vardø", "Abschied im Schnee", "Heimkehr"]
@@ -465,24 +525,30 @@ enum UITestSeed {
             <p>Ein leiser Roman über Herkunft, Schweigen und die Frage, was wir denen schulden, \
             die vor uns da waren. Der erste Band der Nordlicht-Reihe.</p>
             """
+        let display = shown("Nordlicht", by: "Jonas Lind")
         return LibraryEntry(item: LibraryItem(
             id: "seed-book-4",
             media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(title: "Nordlicht", authorName: "Jonas Lind",
-                                              narratorName: "Greta Sund", seriesName: "Nordlicht #1",
-                                              genres: ["Roman", "Skandinavien"],
-                                              publishedYear: LenientString("2021"), description: description),
+                metadata: LibraryItemMetadata(title: display.title, authorName: display.by,
+                                              narratorName: store ? nil : "Greta Sund",
+                                              seriesName: store ? nil : "Nordlicht #1",
+                                              genres: store ? StoreNames.fullBookGenres : ["Roman", "Skandinavien"],
+                                              publishedYear: LenientString(store ? "1870" : "2021"),
+                                              description: store ? StoreNames.fullBookDescription : description),
                 duration: fullBookDuration, chapters: chapters, tracks: nil),
             addedAt: 0), progress: progress)
     }
 
+    /// In the store pictures a work carries no seed series.
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?,
                                   progress: BookProgress? = nil, series: String? = nil) -> LibraryEntry {
-        LibraryEntry(item: LibraryItem(
+        let display = shown(title, by: author)
+        return LibraryEntry(item: LibraryItem(
             id: id,
             media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(title: title, authorName: author, narratorName: nil,
-                                              seriesName: series, genres: nil, publishedYear: nil, description: nil),
+                metadata: LibraryItemMetadata(title: display.title, authorName: display.by, narratorName: nil,
+                                              seriesName: seedsStorePictures ? nil : series, genres: nil,
+                                              publishedYear: nil, description: nil),
                 duration: seedBookDuration, chapters: chapters,
                 tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: seedBookDuration,
                                        contentUrl: seedBookAudioURL, metadata: nil)]),
@@ -490,8 +556,9 @@ enum UITestSeed {
     }
 
     private static func musicAlbum(id: String, title: String, artist: String) -> LibraryItem {
-        LibraryItem(id: id, media: LibraryItemMedia(
-            metadata: LibraryItemMetadata(title: title, authorName: artist, narratorName: nil,
+        let display = shown(title, by: artist)
+        return LibraryItem(id: id, media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: display.title, authorName: display.by, narratorName: nil,
                                           seriesName: nil, genres: nil, publishedYear: nil, description: nil),
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
@@ -531,37 +598,194 @@ enum UITestSeed {
 
     /// Seeded stations (manual namespace. Resolvable without a catalog).
     static let seedRadioStations = [
-        RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
-                     streamURL: endlessAudioURL),
-        RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
-                     streamURL: endlessAudioURL),
+        RadioStation(id: "radio:manual:seed-1", name: shown("Seed Radio One"),
+                     streamURL: endlessAudioURL, faviconURL: storeLogo("seed-1")),
+        RadioStation(id: "radio:manual:seed-2", name: shown("Seed Radio Two"),
+                     streamURL: endlessAudioURL, faviconURL: storeLogo("seed-2")),
     ]
     // Scroll depth (hitch/threshold journeys). See the book fillers.
     + (3...14).map {
-        RadioStation(id: "radio:manual:seed-\($0)", name: "Filler Radio \($0)",
-                     streamURL: endlessAudioURL)
+        RadioStation(id: "radio:manual:seed-\($0)", name: shown("Filler Radio \($0)"),
+                     streamURL: endlessAudioURL, faviconURL: storeLogo("seed-\($0)"))
     }
 
     /// Stand-in catalog results. The browse sections and the
     /// genre drilldown use these under `-uitest` instead of hitting the real
     /// Radio Browser network, so the journey stays deterministic.
     static let seedRadioCatalog = [
-        RadioStation(id: "radio:rb:seed-pop-1", name: "Seed Popular Station",
-                     streamURL: endlessAudioURL, countryCode: "CH"),
-        RadioStation(id: "radio:rb:seed-pop-2", name: "Seed Catalog Two",
-                     streamURL: endlessAudioURL, countryCode: "CH"),
+        RadioStation(id: "radio:rb:seed-pop-1", name: shown("Seed Popular Station"),
+                     streamURL: endlessAudioURL, faviconURL: storeLogo("seed-pop-1"), countryCode: "CH"),
+        RadioStation(id: "radio:rb:seed-pop-2", name: shown("Seed Catalog Two"),
+                     streamURL: endlessAudioURL, faviconURL: storeLogo("seed-pop-2"), countryCode: "CH"),
     ]
 
+    /// A station's logo address in the store pictures, where the seed places
+    /// a cover; none otherwise, so the journeys keep the initials.
+    private static func storeLogo(_ name: String) -> String? {
+        seedsStorePictures ? "https://seed.example/logo/\(name).png" : nil
+    }
+
     private static func chapter(_ id: Int, _ start: Double, _ end: Double, _ title: String) -> ABSChapter {
-        ABSChapter(id: id, start: start, end: end, title: title)
+        ABSChapter(id: id, start: start, end: end, title: shown(title))
     }
 
     /// The seed episodes share one date, which keeps every journey's
-    /// order exactly as it was.
+    /// order exactly as it was. The store pictures date them two days back.
     private static func episode(guid: String, title: String) -> PodcastEpisode {
-        PodcastEpisode(guid: guid, title: title, audioURL: silentAudioURL,
-                       pubDate: 1_700_000_000_000, duration: 1800, description: nil,
+        PodcastEpisode(guid: guid, title: shown(title), audioURL: silentAudioURL,
+                       pubDate: seedsStorePictures ? msAgo(2 * 24 * 3600) : 1_700_000_000_000,
+                       duration: 1800, description: nil,
                        imageURL: nil, chaptersURL: nil)
+    }
+}
+
+extension UITestSeed {
+    /// The names of the store pictures. Books and music are public domain
+    /// works under their original titles with their authors; shows,
+    /// episodes, playlists and stations are invented names without a
+    /// brand. Pure tables, so the fence reads them without a launch; it
+    /// also holds that every name of the fixtures has its entry here.
+    enum StoreNames {
+        static let works: [String: (title: String, by: String)] = {
+            var table: [String: (title: String, by: String)] = [
+                "Seed Book One": ("Moby-Dick", "Herman Melville"),
+                "Seed Book Two": ("Effi Briest", "Theodor Fontane"),
+                "Seed Book Old": ("Der Schimmelreiter", "Theodor Storm"),
+                "Der Leuchtturmwärter": ("Die Verwandlung", "Franz Kafka"),
+                "Nordlicht": ("Vingt mille lieues sous les mers", "Jules Verne"),
+                "Polarnacht": ("Adventures of Huckleberry Finn", "Mark Twain"),
+                "Die stille Bibliothek": ("Pride and Prejudice", "Jane Austen"),
+                "Fernweh": ("Treasure Island", "Robert Louis Stevenson"),
+                "Das Uhrwerk": ("Frankenstein", "Mary Shelley"),
+                "Now Playing Book": ("Alice's Adventures in Wonderland", "Lewis Carroll"),
+                "Seed Catalog Book": ("Kinder- und Hausmärchen", "Brüder Grimm"),
+                "Seed Album": ("Goldberg-Variationen", "Johann Sebastian Bach"),
+                "Second Seed": ("Le quattro stagioni", "Antonio Vivaldi"),
+                "Third Seed": ("Nocturnes", "Frédéric Chopin"),
+                "Fourth Seed": ("Gymnopédies", "Erik Satie"),
+                "Seed Song": ("Air", "Johann Sebastian Bach"),
+                "Seed Playlist": ("Morgenklavier", "Johann Sebastian Bach"),
+                "Seed Catalog Show": ("Alte Radiostücke", "Archiv am Fluss"),
+                "Seed Recommendation One": ("Gartenfunk am Zaun", "Grünes Studio"),
+                "Seed Recommendation Two": ("Nachtgedanken am Fenster", "Studio Mondhof"),
+                "Seed Recommendation Three": ("Wörterwald", "Sprachwerkstatt Lindenhof"),
+            ]
+            let books: [(title: String, by: String)] = [
+                ("Faust", "Johann Wolfgang von Goethe"),
+                ("Die Leiden des jungen Werthers", "Johann Wolfgang von Goethe"),
+                ("Dracula", "Bram Stoker"),
+                ("Heidi", "Johanna Spyri"),
+                ("Peter Pan", "J. M. Barrie"),
+                ("Woyzeck", "Georg Büchner"),
+                ("Robinson Crusoe", "Daniel Defoe"),
+                ("Oliver Twist", "Charles Dickens"),
+                ("The Picture of Dorian Gray", "Oscar Wilde"),
+                ("Der Sandmann", "E. T. A. Hoffmann"),
+                ("Der Struwwelpeter", "Heinrich Hoffmann"),
+                ("Jane Eyre", "Charlotte Brontë"),
+                ("Wuthering Heights", "Emily Brontë"),
+                ("The Time Machine", "H. G. Wells"),
+                ("Aus dem Leben eines Taugenichts", "Joseph von Eichendorff"),
+                ("Emilia Galotti", "Gotthold Ephraim Lessing"),
+            ]
+            let albums: [(title: String, by: String)] = [
+                ("Klaviersonate Nr. 14", "Ludwig van Beethoven"),
+                ("Eine kleine Nachtmusik", "Wolfgang Amadeus Mozart"),
+                ("Water Music", "Georg Friedrich Händel"),
+                ("Má vlast", "Bedřich Smetana"),
+                ("Peer Gynt", "Edvard Grieg"),
+                ("Suite bergamasque", "Claude Debussy"),
+                ("Pathétique", "Pjotr Iljitsch Tschaikowsky"),
+                ("Ungarische Tänze", "Johannes Brahms"),
+                ("Kinderszenen", "Robert Schumann"),
+                ("Lieder ohne Worte", "Felix Mendelssohn Bartholdy"),
+                ("Die Schöpfung", "Joseph Haydn"),
+                ("Brandenburgische Konzerte", "Johann Sebastian Bach"),
+                ("Winterreise", "Franz Schubert"),
+                ("Carmen", "Georges Bizet"),
+                ("Le carnaval des animaux", "Camille Saint-Saëns"),
+                ("Aus der Neuen Welt", "Antonín Dvořák"),
+                ("Pavane", "Gabriel Fauré"),
+                ("Requiem", "Wolfgang Amadeus Mozart"),
+                ("Die Kunst der Fuge", "Johann Sebastian Bach"),
+                ("Die Zauberflöte", "Wolfgang Amadeus Mozart"),
+            ]
+            let classics: [(title: String, by: String)] = [
+                ("Kanon und Gigue", "Johann Pachelbel"),
+                ("Clair de lune", "Claude Debussy"),
+                ("Für Elise", "Ludwig van Beethoven"),
+                ("Träumerei", "Robert Schumann"),
+            ]
+            for (offset, work) in books.enumerated() { table["Filler Book \(offset + 9)"] = work }
+            for (offset, work) in albums.enumerated() { table["Filler Album \(offset + 5)"] = work }
+            for (offset, work) in classics.enumerated() { table["Seed Classical \(offset + 1)"] = work }
+            return table
+        }()
+
+        static let names: [String: String] = {
+            var table = [
+                "Chapter 1": "Loomings",
+                "Chapter 2": "The Carpet-Bag",
+                "Teil 1 von 3": "Down the Rabbit-Hole",
+                "Teil 2 von 3": "The Pool of Tears",
+                "Teil 3 von 3": "A Caucus-Race and a Long Tale",
+                "Seed Show": "Gelesene Klassiker",
+                "Cara Host": "Lesekreis am Fluss",
+                "A seeded podcast.": "Balladen und Gedichte, laut gelesen.",
+                "Ida Werner": "Studio Werkbank",
+                "Seed Episode One": "Der Erlkönig",
+                "Seed Episode Two": "Die Bürgschaft",
+                "Seed Artist": "Johann Sebastian Bach",
+                "Seed Playlist": "Morgenklavier",
+                "Seed Playlist Two": "Stille Stunde",
+                "Seed Radio One": "Hafenwelle",
+                "Seed Radio Two": "Kammerton",
+                "Seed Popular Station": "Seewind",
+                "Seed Catalog Two": "Alpenecho",
+                "Seed Region": "Hamburg",
+                "Seed Region Two": "Bremen",
+            ]
+            let poems = ["Der Zauberlehrling", "Das Lied von der Glocke", "Die Loreley", "Der Panther",
+                         "Der Taucher", "Belsazar", "Der Handschuh", "Mondnacht", "Das Göttliche",
+                         "Prometheus", "Der Fischer", "Heidenröslein", "Nis Randers", "John Maynard",
+                         "Herr von Ribbeck auf Ribbeck im Havelland", "Die Füße im Feuer",
+                         "Der Knabe im Moor", "Abendlied", "Septembermorgen", "Er ist's"]
+            let stations = ["Nachtfalter Jazz", "Dünenfunk", "Talwind", "Mondlicht Lounge",
+                            "Sternwarte Klassik", "Fjordwelle", "Gartenradio", "Uhrturm",
+                            "Kieselfunk", "Wolkenfunk", "Bergwelle", "Leuchtfeuer"]
+            for (offset, poem) in poems.enumerated() { table["Filler Episode \(offset + 3)"] = poem }
+            for (offset, station) in stations.enumerated() { table["Filler Radio \(offset + 3)"] = station }
+            return table
+        }()
+
+        /// The full book's chapters: the first part of the work, by its own titles.
+        static let fullBookChapters = [
+            "Un écueil fuyant", "Le pour et le contre", "Comme il plaira à monsieur", "Ned Land",
+            "À l'aventure !", "À toute vapeur", "Une baleine d'espèce inconnue", "Mobilis in mobili",
+            "Les colères de Ned Land", "L'homme des eaux", "Le Nautilus", "Tout par l'électricité",
+            "Quelques chiffres", "Le fleuve noir"]
+
+        private static var german: Bool { Locale.preferredLanguages.first?.hasPrefix("de") ?? false }
+
+        static var fullBookGenres: [String] { german ? ["Roman", "Abenteuer"] : ["Novel", "Adventure"] }
+
+        static var fullBookDescription: String {
+            german ? """
+                <p>Im Jahr 1866 versenkt ein rätselhaftes Wesen Schiffe auf allen Meeren. \
+                Professor Aronnax, sein Diener Conseil und der Harpunier Ned Land gehen auf die Jagd \
+                und finden sich als Gefangene an Bord der Nautilus wieder.</p>
+                <p>Mit Kapitän Nemo reisen sie unter den Ozeanen um die Welt, durch Wälder aus Korallen, \
+                vorbei an versunkenen Städten, bis unter das Eis des Südpols.</p>
+                <p>Der Roman erschien 1869 und 1870 in Fortsetzungen.</p>
+                """ : """
+                <p>In 1866 a mysterious creature sinks ships on every sea. Professor Aronnax, \
+                his servant Conseil and the harpooner Ned Land set out to hunt it \
+                and find themselves prisoners aboard the Nautilus.</p>
+                <p>With Captain Nemo they travel around the world beneath the oceans, through forests \
+                of coral, past sunken cities, to the ice of the South Pole.</p>
+                <p>The novel appeared in instalments in 1869 and 1870.</p>
+                """
+        }
     }
 }
 #endif
