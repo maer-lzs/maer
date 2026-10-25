@@ -141,16 +141,18 @@ struct DetailHeaderTests {
     }
 
     /// The pages whose actions stand in the top bar and how many menus each
-    /// file builds there (the music library file: the device playlist).
+    /// file builds there (the music library file: the device playlist and
+    /// the Jamendo page; the archive music file: an area and the shellac
+    /// page; the catalogue file: a source page and a release).
     /// BESTAND OHNE EINZELGRUENDE: an inventory compared for equality, one
     /// reason for every entry (the page's one menu).
     static let pagesWithActions: [String: Int] = [
         "Sources/Views/Music/MusicAlbumView.swift": 1,
         "Sources/Views/Podcasts/PodcastShowView.swift": 1,
         "Sources/Views/Podcasts/PodcastEpisodeDetailView.swift": 1,
-        "Sources/Views/Music/ArchiveMusicPages.swift": 1,
-        "Sources/Views/Music/MusicLibraryPages.swift": 1,
-        "Sources/Views/CatalogSourcePage.swift": 1,
+        "Sources/Views/Music/ArchiveMusicPages.swift": 2,
+        "Sources/Views/Music/MusicLibraryPages.swift": 2,
+        "Sources/Views/CatalogSourcePage.swift": 2,
     ]
 
     @Test("eine Seite hat einen Ort fuer ihre Handlungen: das Menue oben, kein Zeichen daneben", .needsTheSources)

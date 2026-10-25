@@ -299,6 +299,22 @@ extension RowHeading {
     }
 }
 
+/// "Play something at random" in a catalogue area page's menu
+/// (`pageActions`): the one entry every area page carries, each with the
+/// draw of its catalogue (`CatalogShuffle`).
+struct CatalogShuffleEntry: View {
+    let draw: @MainActor () async -> Void
+
+    var body: some View {
+        Button {
+            Task { await draw() }
+        } label: {
+            Label("Play something at random", systemImage: "shuffle")
+        }
+        .accessibilityIdentifier("catalog-shuffle")
+    }
+}
+
 
 /// "Play Next" / "Play Last" for catalogue titles.
 /// `PlayQueue` already stores arbitrary ids across sources. Only the entry

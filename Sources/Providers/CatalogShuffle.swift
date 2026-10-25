@@ -72,6 +72,97 @@ enum CatalogShuffle {
         }
     }
 
+    /// The stock behind each book query, learned from the first answer of
+    /// a session, so later draws need one request instead of two.
+    private static var bookTotals: [String: Int] = [:]
+
+    /// The archive.org query a book draw asks: the source's one base query,
+    /// in the listener's languages where the source is read in several
+    /// (LibriVox, the archive audiobooks). Old Time Radio is drawn whole,
+    /// like its rows. Nil for a source that is not on archive.org.
+    nonisolated static func bookQuery(for source: CatalogSource, languageCodes: [String]) -> String? {
+        guard let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { return nil }
+        guard source != .oldTimeRadio,
+              let clause = FreeCatalog.archiveLanguageClause(codes: languageCodes) else { return base }
+        return base + " AND " + clause
+    }
+
+    /// Draw ONE title from a book catalogue and start it as a book: a work
+    /// in parts is a long listen, so the draw hands no context of further
+    /// books along. Archive sources draw a random page within the search's
+    /// reach (`maxPage`); Gutenberg, which has no random order, a random
+    /// page of its audiobook list.
+    static func playBook(source: CatalogSource, coordinator: PlayerCoordinator) async {
+        do {
+            let items = try await drawBooks(source: source, languageCodes: SuggestionLanguages.current())
+            Logger.library.notice("SHUFFLE books source=\(source.rawValue, privacy: .public) got=\(items.count)")
+            guard let pick = items.randomElement() else {
+                sayFailure(String(localized: "Shuffle found nothing to play this time. Please try again."),
+                           coordinator: coordinator, title: source.title)
+                return
+            }
+            await coordinator.open(item: pick)
+        } catch {
+            guard !error.isCancellation else { return }
+            Logger.library.error("SHUFFLE books source=\(source.rawValue, privacy: .public) FAILED: \(FailureReason.of(error), privacy: .public)")
+            sayFailure(ErrorSentence.of(error), coordinator: coordinator, title: source.title)
+        }
+    }
+
+    /// The titles of one drawn page. A language that carries nothing falls
+    /// back to the whole source, as the rows do.
+    private static func drawBooks(source: CatalogSource, languageCodes: [String]) async throws -> [LibraryItem] {
+        if source == .gutenberg {
+            return try await drawGutenberg(languageCodes: languageCodes)
+        }
+        guard let filtered = bookQuery(for: source, languageCodes: languageCodes) else { return [] }
+        let items = try await drawArchive(query: filtered, source: source)
+        guard items.isEmpty, let whole = bookQuery(for: source, languageCodes: []), whole != filtered else { return items }
+        return try await drawArchive(query: whole, source: source)
+    }
+
+    private static func drawArchive(query: String, source: CatalogSource) async throws -> [LibraryItem] {
+        var total = bookTotals[query]
+        if total == nil {
+            let first = try await ArchiveOrgClient.popularWithTotal(query: query, rows: batch, page: 1, sort: "random")
+            total = first.total ?? 0
+            bookTotals[query] = total
+            if maxPage(total: total ?? 0, rows: batch) == 1 {
+                return CatalogShelfEntries.books(first.docs, source: source)
+            }
+        }
+        let page = Int.random(in: 1...maxPage(total: total ?? 0, rows: batch))
+        let docs = try await ArchiveOrgClient.popular(query: query, rows: batch, page: page, sort: "random")
+        return CatalogShelfEntries.books(docs, source: source)
+    }
+
+    /// gutendex answers 32 titles a page.
+    private static let gutenbergPageSize = 32
+
+    /// The language sets whose Gutenberg list was empty; their draw asks
+    /// the whole list.
+    private static var gutenbergWithoutLanguage: Set<String> = []
+
+    private static func drawGutenberg(languageCodes: [String]) async throws -> [LibraryItem] {
+        let key = "gutenberg:" + languageCodes.joined(separator: ",")
+        var codes = gutenbergWithoutLanguage.contains(key) ? [] : languageCodes
+        var total = bookTotals[key]
+        if total == nil {
+            var first = try await GutenbergClient.audiobooksWithTotal(languages: codes, page: 1)
+            if first.books.isEmpty, !codes.isEmpty {
+                codes = []
+                gutenbergWithoutLanguage.insert(key)
+                first = try await GutenbergClient.audiobooksWithTotal(languages: codes, page: 1)
+            }
+            total = first.total ?? first.books.count
+            bookTotals[key] = total
+            if (total ?? 0) <= gutenbergPageSize { return CatalogShelfEntries.books(first.books) }
+        }
+        let pages = max(1, ((total ?? 0) + gutenbergPageSize - 1) / gutenbergPageSize)
+        let books = try await GutenbergClient.audiobooks(languages: codes, page: Int.random(in: 1...pages))
+        return CatalogShelfEntries.books(books)
+    }
+
     /// First one plays, the rest become the CONTEXT (the collection-start
     /// path); hand-placed orders in the queue keep their right of way. A
     /// draw without a playable title says so instead of doing nothing.

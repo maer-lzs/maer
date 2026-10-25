@@ -139,6 +139,10 @@ struct CatalogSourcePage: View {
         }
         .navigationTitle(Text(verbatim: source.title))
         .navigationBarTitleDisplayMode(.inline)
+        // A catalogue draws a book; a page of curated feeds has no draw.
+        .pageActions("catalog-actions", shown: !source.isFeedBased) {
+            CatalogShuffleEntry { await CatalogShuffle.playBook(source: source, coordinator: playerCoordinator) }
+        }
         .bottomBarClearance()
         .task {
             // The first visit of THIS surface fetches THIS collection, and

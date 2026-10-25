@@ -41,6 +41,12 @@ from the Internet Archive.", Old Time Radio says a title's page names
 its licence where it has one. On the open iPhone Duo the introduction
 and the rights notice stay left of the fold.
 
+**Every catalog page can play something at random.** Like Netlabels,
+the pages of Old Records, Jamendo, Old Time Radio, LibriVox, the
+Internet Archive audiobooks and Project Gutenberg carry "Play something
+at random" in their actions menu. Music plays as tracks; an audiobook
+catalog starts one book.
+
 **Details opens the title's page.** "Details" on a catalog tile used to
 float a small sheet with "Done" and no cover. It now opens the same page
 as a tap on an album: a song its release, an album its album page, a
