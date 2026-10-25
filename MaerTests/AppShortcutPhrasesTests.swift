@@ -38,7 +38,8 @@ struct AppShortcutPhrasesTests {
     func everyIntentHasAPhraseNamingTheApp() throws {
         let source = try String(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.swift"), encoding: .utf8)
         let blocks = Self.phraseBlocks(in: source)
-        try #require(blocks.count >= 3, "the finder must still find the phrase blocks")
+        // Two shortcuts while drive mode's gate is closed (`DriveModeGate`).
+        try #require(blocks.count >= 2, "the finder must still find the phrase blocks")
         for (index, block) in blocks.enumerated() {
             #expect(block.contains(where: Self.namesTheApp), "intent \(index) has no phrase with the word app: \(block)")
         }
@@ -70,11 +71,14 @@ struct AppShortcutPhrasesTests {
                 == "Play ${book} in the ${applicationName} app")
         let source = try String(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.swift"), encoding: .utf8)
         let blocks = Self.phraseBlocks(in: source).map { $0.map(Self.catalogForm) }
-        try #require(blocks.count >= 3, "the finder must still find the phrase blocks")
+        try #require(blocks.count >= 2, "the finder must still find the phrase blocks")
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.xcstrings"))
         let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let strings = try #require(catalog?["strings"] as? [String: Any], "the catalog has no strings")
-        #expect(Set(strings.keys) == Set(blocks.compactMap(\.first)), "one key per shortcut, its first phrase: \(strings.keys.sorted())")
+        // A stale key is a shortcut the source does not offer now (drive
+        // mode behind its gate); its phrases wait in the catalog.
+        let live = strings.filter { ($0.value as? [String: Any])?["extractionState"] as? String != "stale" }
+        #expect(Set(live.keys) == Set(blocks.compactMap(\.first)), "one key per shortcut, its first phrase: \(live.keys.sorted())")
         for block in blocks {
             let key = try #require(block.first)
             let entry = strings[key] as? [String: Any]
