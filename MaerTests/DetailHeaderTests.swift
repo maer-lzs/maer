@@ -71,6 +71,23 @@ struct DetailHeaderTests {
         }
     }
 
+    @Test("das Cover jeder Seite mit Kopf steht als Karte", .needsTheSources)
+    func everyHeadCoverIsACard() throws {
+        // The book page draws its cover in each of its three layouts.
+        let cards = ["Sources/Views/BookDetailScreen.swift": 3]
+        for page in Self.headedPages {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
+            #expect(text.components(separatedBy: ".coverCard()").count - 1 == cards[page.file, default: 1],
+                    "\(page.file) draws its cover without the card")
+            #expect(!text.contains("corner: 16)") && !text.contains("radius: 14, y: 6)"),
+                    "\(page.file) keeps a corner or shadow of its own")
+        }
+        let look = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"), encoding: .utf8))
+        #expect(look.contains("func coverCard() -> some View"), "the card can be switched off")
+    }
+
     /// The titles the files of the headed pages still set in a top bar, on
     /// their other pages: the book's chapter list, the artist and playlist
     /// lists, the catalog's source, popular and shelf pages.

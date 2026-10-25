@@ -148,31 +148,25 @@ nonisolated enum DetailButtonRow {
     }
 }
 
-/// The cover of a detail page as a card: once the page's height makes it
-/// smaller than the page's full width, it stands with round corners and a
-/// shadow, `gap` under the status bar and at its sides, as in the wide
-/// page's leading column; at full width it stays edge to edge. The book
-/// page and the full player share the card's look (`coverCard()`).
+/// The cover of a detail page as a card: round corners and a shadow, `gap`
+/// under the status bar and at its sides, also where the page's full width
+/// would fit. Every page with a `DetailHeader` and the full player take the
+/// card's look (`coverCard()`).
 nonisolated enum DetailCoverCard {
     static let cornerRadius: CGFloat = 12
     static let gap: CGFloat = 16
 
     struct Form: Equatable {
         var side: CGFloat
-        var isCard: Bool
-        /// The room above the cover: none edge to edge, else the status
-        /// bar and the gap.
+        /// The room above the cover: the status bar and the gap.
         var top: CGFloat
     }
 
     static func form(width: CGFloat, height: CGFloat, safeTop: CGFloat, below: CGFloat,
                      bottomReserve: CGFloat) -> Form {
-        let full = DetailCoverSide.side(columnWidth: width, height: height, top: 0, below: below,
-                                        bottomReserve: bottomReserve)
-        guard full < width else { return Form(side: full, isCard: false, top: 0) }
         let top = safeTop + gap
         return Form(side: DetailCoverSide.side(columnWidth: max(0, width - 2 * gap), height: height, top: top,
                                                below: below, bottomReserve: bottomReserve),
-                    isCard: true, top: top)
+                    top: top)
     }
 }

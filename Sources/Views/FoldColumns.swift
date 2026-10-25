@@ -42,10 +42,11 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
 
 extension View {
     /// THE look of a detail page's cover as a card (`DetailCoverCard`):
-    /// round corners and a shadow. The book page and the full player take it.
-    func coverCard(_ isCard: Bool = true) -> some View {
-        clipShape(RoundedRectangle(cornerRadius: isCard ? DetailCoverCard.cornerRadius : 0))
-            .shadow(color: .black.opacity(isCard ? 0.35 : 0), radius: 12, y: 6)
+    /// round corners and a shadow. Every head's cover and the full player
+    /// take it.
+    func coverCard() -> some View {
+        clipShape(RoundedRectangle(cornerRadius: DetailCoverCard.cornerRadius))
+            .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
     }
 }
 

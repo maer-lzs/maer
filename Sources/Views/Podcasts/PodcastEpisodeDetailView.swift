@@ -125,8 +125,8 @@ struct PodcastEpisodeDetailView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     DetailHeader(title: item.title, titleStyle: AnyShapeStyle(.white)) { side in
-                        podcastArtwork(url: coverURL, size: side ?? 220, corner: 16)
-                            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        podcastArtwork(url: coverURL, size: side ?? 220, corner: DetailCoverCard.cornerRadius)
+                            .coverCard()
                             .opacity(isPlayed ? 0.6 : 1)
                             // Download and delete live here, on the cover's
                             // long press: the episode's own menu.

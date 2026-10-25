@@ -354,7 +354,7 @@ struct MusicAlbumView: View {
                 }
             }
             .frame(maxWidth: side ?? 240)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .coverCard()
             // The cover's long press downloads or deletes the album or the
             // server playlist, with the track rows' own entries.
             .contextMenu {

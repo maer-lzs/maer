@@ -202,14 +202,14 @@ struct DetailColumnsTests {
         #expect(DetailButtonRow.form(width: 342, needs: full * 1.35, compactNeeds: compact * 1.35) == .stacked)
     }
 
-    @Test("das Cover wird zur Karte, sobald es schmaler als die Seite ist, sonst bleibt es randlos")
-    func theCoverBecomesACard() {
-        // iPhone 17: the full width fits, edge to edge.
+    @Test("das Cover steht immer als Karte, auch wo die volle Breite passt")
+    func theCoverIsACard() {
+        // iPhone 17: the full width would fit; a card with the gap at its sides.
         #expect(DetailCoverCard.form(width: 402, height: 874, safeTop: 62, below: 305, bottomReserve: 126)
-                == .init(side: 402, isCard: false, top: 0))
+                == .init(side: 402 - 2 * DetailCoverCard.gap, top: 62 + DetailCoverCard.gap))
         // Folded Duo upright: smaller than the page, a card under the status bar.
         let card = DetailCoverCard.form(width: 412, height: 678, safeTop: 32, below: 305, bottomReserve: 126)
-        #expect(card.isCard && card.top == 32 + DetailCoverCard.gap)
+        #expect(card.top == 32 + DetailCoverCard.gap)
         #expect(card.side == DetailCoverSide.side(columnWidth: 412 - 2 * DetailCoverCard.gap, height: 678,
                                                   top: card.top, below: 305, bottomReserve: 126))
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
@@ -269,7 +269,7 @@ struct DetailColumnsTests {
         let page = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
         #expect(page.contains("let coverForm = DetailCoverCard.form("))
-        #expect(page.contains(".coverCard(card)"))
+        #expect(page.contains("heroCover(side: coverForm.side)"))
         let player = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
         #expect(player.contains(".frame(width: maxSide, height: maxSide)\n        .clipped()\n        .coverCard()"))

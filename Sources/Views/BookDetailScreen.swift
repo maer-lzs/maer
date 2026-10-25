@@ -121,16 +121,15 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// The cover across the page's own width, edge to edge: the width the
+    /// The cover as a card across the page's own width: the width the
     /// window gives this page, not the screen's, so a split window and an
-    /// unfolded iPhone Duo get a cover that fits. Smaller than that width it
-    /// stands as a card (`DetailCoverCard`).
-    private func heroCover(side: CGFloat, card: Bool) -> some View {
+    /// unfolded iPhone Duo get a cover that fits (`DetailCoverCard`).
+    private func heroCover(side: CGFloat) -> some View {
         coverImageContent
             .frame(width: side, height: side)
             .clipped()
             .contextMenu { coverDownloadMenu }
-            // Progress bar sitting ON the cover's bottom edge, edge to edge.
+            // Progress bar sitting ON the cover's bottom edge, across its width.
             .overlay(alignment: .bottom) {
                 if let p = currentProgress, p.isStarted, !isFinished {
                     GeometryReader { geo in
@@ -144,7 +143,7 @@ struct BookDetailScreen: View {
                     .frame(height: 4)
                 }
             }
-            .coverCard(card)
+            .coverCard()
             // The author portrait floats on the SEAM between cover and
             // gradient (avatar-over-banner pattern), trailing side. Mostly
             // above the edge, dipping slightly below it.
@@ -301,7 +300,7 @@ struct BookDetailScreen: View {
                             itemId: entry.id,
                             size: 320
                         )
-                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .coverCard()
                         .contextMenu { coverDownloadMenu }
                     }
                     .frame(width: 420, height: geo.size.height)
@@ -356,7 +355,7 @@ struct BookDetailScreen: View {
                             size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60,
                                                        below: belowCover, bottomReserve: bottomBarInset)
                         )
-                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .coverCard()
                         .contextMenu { coverDownloadMenu }
                         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                             coverBottom = $0
@@ -609,15 +608,15 @@ struct BookDetailScreen: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         DetailHeader(title: shownItem.title, textInset: 16) { _ in
-                            // The full width where the window is tall enough,
-                            // else as large as leaves title and play above the
-                            // playback bar, as a card (`DetailCoverCard`).
+                            // A card, as wide as the page leaves where the window
+                            // is tall enough, else as large as leaves title and
+                            // play above the playback bar (`DetailCoverCard`).
                             let coverForm = DetailCoverCard.form(
                                 width: geo.size.width,
                                 height: geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom,
                                 safeTop: geo.safeAreaInsets.top, below: belowCover,
                                 bottomReserve: bottomBarInset + geo.safeAreaInsets.bottom)
-                            heroCover(side: coverForm.side, card: coverForm.isCard)
+                            heroCover(side: coverForm.side)
                                 .padding(.top, coverForm.top)
                                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
                                     coverBottom = $0

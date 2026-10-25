@@ -477,7 +477,8 @@ struct PodcastShowView: View {
         DetailHeader(title: title) { side in
             podcastArtwork(
                 url: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },
-                size: side ?? 150, corner: 16)
+                size: side ?? 150, corner: DetailCoverCard.cornerRadius)
+                .coverCard()
                 .accessibilityIdentifier("show-cover")
         } lines: {
             if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {

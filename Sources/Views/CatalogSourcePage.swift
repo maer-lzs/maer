@@ -1044,7 +1044,8 @@ struct ArchiveSeriesPage: View {
     private func header(_ detail: LibraryItemDetail) -> some View {
         DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) { side in
             podcastArtwork(url: router.coverURL(itemId),
-                           size: side ?? 150, corner: 16)
+                           size: side ?? 150, corner: DetailCoverCard.cornerRadius)
+                .coverCard()
         } lines: {
             if let author = detail.media.metadata?.authorName {
                 Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)

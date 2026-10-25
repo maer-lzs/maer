@@ -36,7 +36,7 @@ struct RadioStationDetailView: View {
                                  isHero: true)
                         .frame(maxWidth: .infinity)
                         .frame(height: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .coverCard()
                         .padding(.horizontal)
                 } lines: {
                     if let sub = subtitle {

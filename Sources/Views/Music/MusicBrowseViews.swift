@@ -247,7 +247,7 @@ struct MusicArtistView: View {
                         image.resizable().aspectRatio(contentMode: .fill)
                             .frame(height: 180)
                             .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .coverCard()
                             .padding(.horizontal)
                     } placeholder: { EmptyView() }
                 }
