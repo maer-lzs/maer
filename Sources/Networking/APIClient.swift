@@ -419,6 +419,10 @@ final class APIClient {
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
+        #if DEBUG
+        // The seeded books play a silence file on the device.
+        if UITestSeed.isActive, contentPath.hasPrefix("file://") { return URL(string: contentPath) }
+        #endif
         // Some server configurations already return absolute URLs.
         if contentPath.hasPrefix("http://") || contentPath.hasPrefix("https://") {
             return URL(string: contentPath)

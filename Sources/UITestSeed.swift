@@ -483,7 +483,9 @@ enum UITestSeed {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(title: title, authorName: author, narratorName: nil,
                                               seriesName: series, genres: nil, publishedYear: nil, description: nil),
-                duration: seedBookDuration, chapters: chapters, tracks: nil),
+                duration: seedBookDuration, chapters: chapters,
+                tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: seedBookDuration,
+                                       contentUrl: seedBookAudioURL, metadata: nil)]),
             addedAt: 0), progress: progress)
     }
 
@@ -497,13 +499,20 @@ enum UITestSeed {
     /// The ONE writer of the harness fixtures. Two files, one write site:
     /// the fence past the storage seam counts writers, and a second one
     /// here would be a second reason to explain (it caught exactly this).
-    private static func silenceFixture(named name: String, seconds: Double) -> String {
+    private static func silenceFixture(named name: String, seconds: Double, sampleRate: Int = 8_000) -> String {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         if !FileManager.default.fileExists(atPath: url.path) {
-            try? SilentAudio.wav(seconds: seconds).write(to: url, options: .atomic)
+            try? SilentAudio.wav(seconds: seconds, sampleRate: sampleRate).write(to: url, options: .atomic)
         }
         return url.absoluteString
     }
+
+    /// The audio of every seeded book: silence as long as the book, so a
+    /// seeded position has somewhere to land and the player starts where
+    /// Continue says. Written on the device at the first seed, a low sample
+    /// rate keeps the hour small.
+    static let seedBookAudioURL = silenceFixture(named: "maer-uitest-book.wav",
+                                                 seconds: seedBookDuration, sampleRate: 2_000)
 
     /// The audio of every seed STATION: five minutes of silence, longer
     /// than any journey. A station must not end. The seeded stations

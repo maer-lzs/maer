@@ -62,6 +62,8 @@ struct UITestSeedTests {
         for call in calls {
             #expect(call.contains("currentTime:"), "a seeded progress without its time: \(call)")
         }
+        // Every seeded book has a track as long as itself, so a position lands.
+        #expect(seed.contains("contentUrl: seedBookAudioURL"))
         // The detail the player starts from carries the same progress.
         #expect(seed.contains("userMediaProgress: entry.progress.map { progress in"))
         #expect(!seed.contains("userMediaProgress: nil)) }"), "the seeded detail knows no position again")
