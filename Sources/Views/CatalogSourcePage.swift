@@ -1043,8 +1043,10 @@ struct ArchiveSeriesPage: View {
     @ViewBuilder
     private func header(_ detail: LibraryItemDetail) -> some View {
         DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) { side in
+            // An album takes the album page's measure, a series the show's.
             podcastArtwork(url: router.coverURL(itemId),
-                           size: side ?? 150, corner: DetailCoverCard.cornerRadius)
+                           size: side ?? (effectiveFlavor == .album ? 240 : 150),
+                           corner: DetailCoverCard.cornerRadius)
                 .coverCard()
         } lines: {
             if let author = detail.media.metadata?.authorName {
@@ -1073,8 +1075,36 @@ struct ArchiveSeriesPage: View {
                     .font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(6)
             }
+        } actions: {
+            // An album starts like one: its tracks in order, or shuffled.
+            if effectiveFlavor == .album {
+                HStack(spacing: 12) {
+                    DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
+                        Task {
+                            await playerCoordinator.playInOrder(items: await albumSongs(),
+                                                                contextSource: detail.media.metadata?.title)
+                        }
+                    }
+                    .disabled(tracks.isEmpty)
+                    ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { await albumSongs() }
+                        .font(.title3)
+                        .disabled(tracks.isEmpty)
+                }
+            }
         }
         .padding(.horizontal)
+    }
+
+    /// The album's tracks as the items they are (`CatalogSongID`), in order,
+    /// each resolved through the one door for ids.
+    private func albumSongs() async -> [LibraryItem] {
+        var songs: [LibraryItem] = []
+        for index in tracks.indices {
+            if let song = await AppSession.shared.resolveItem(forId: CatalogSongID.make(album: itemId, index: index)) {
+                songs.append(song)
+            }
+        }
+        return songs
     }
 
     /// "07.12.1948 · 29 Min.": date in the user's format, duration in

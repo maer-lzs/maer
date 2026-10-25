@@ -59,6 +59,8 @@ struct DetailHeaderTests {
         ("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", 1),
         ("Sources/Views/Radio/RadioStationDetailView.swift", 1),
         ("Sources/Views/Music/MusicLibraryPages.swift", 1),
+        // A catalog series that is an album (netlabels, 78 rpm).
+        ("Sources/Views/CatalogSourcePage.swift", 1),
     ]
 
     @Test("ein Hauptknopf in einer Form auf jeder Seite mit Kopf", .needsTheSources)
