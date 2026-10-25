@@ -63,7 +63,7 @@ private extension View {
     }
 }
 
-/// A scrolling page (the artist) in its two forms: narrow, the header above
+/// A scrolling page (the artist, the station) in its two forms: narrow, the header above
 /// the content in one scroll, as before; wide, the header in the leading
 /// column and the content in the trailing one, divided at the fold.
 struct DetailScrollColumns<Header: View, Content: View>: View {
@@ -79,9 +79,10 @@ struct DetailScrollColumns<Header: View, Content: View>: View {
                 FoldColumns { _ in
                     ScrollView {
                         header()
-                            .padding(.vertical)
+                            .padding(.vertical, Self.headTop)
                             .bottomBarClearance()
                     }
+                    .leadingColumnRoom(height: geo.size.height, top: Self.headTop)
                 } trailing: { _ in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: spacing) { content() }
@@ -130,9 +131,7 @@ struct DetailListColumns<Header: View, Rows: View>: View {
                 }
                 .scrollContentBackground(.hidden)
                 .reportsBottomBarScroll()
-                // The leading column is the room of the head's cover; in one
-                // column the head keeps the cover its page sizes.
-                .environment(\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height, top: Self.headTop))
+                .leadingColumnRoom(height: geo.size.height, top: Self.headTop)
             } trailing: { _ in
                 List { rows().rowsTakeTheFoldGutter() }
                     .listStyle(.plain)
@@ -158,4 +157,17 @@ private extension DetailListColumns {
     /// Where the head's cover begins in the leading column at rest: the
     /// head is the first thing in it, a little below the top.
     static var headTop: CGFloat { 8 }
+}
+
+private extension DetailScrollColumns {
+    /// Where the head's cover begins in the leading column at rest.
+    static var headTop: CGFloat { 16 }
+}
+
+private extension View {
+    /// The leading column of a two-column page as the room of its head's
+    /// cover; in one column the head keeps the cover its page sizes.
+    func leadingColumnRoom(height: CGFloat, top: CGFloat) -> some View {
+        environment(\.detailHeaderRoom, DetailHeaderRoom(height: height, top: top))
+    }
 }

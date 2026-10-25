@@ -25,27 +25,30 @@ struct RadioStationDetailView: View {
     private var variants: [RadioStation] { station.variantList }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // The station's picture is a wide banner across the page,
-                // not a square cover, so it keeps its own size.
-                DetailHeader(title: station.name, textInset: 16) { _ in
-                    RadioArtwork(stationID: station.id,
-                                 faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                                 name: station.name, homepage: station.homepage,
-                                 isHero: true)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 220)
-                        .coverCard()
-                        .padding(.horizontal)
-                } lines: {
-                    if let sub = subtitle {
-                        Text(sub).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                } actions: {
-                    stationControls
+        // In a wide window the head stands beside the station's facts,
+        // divided at the fold (`DetailScrollColumns`).
+        DetailScrollColumns(spacing: 20) {
+            // In one column the station's picture is a wide banner across
+            // the page; in the leading column a square as large as the room
+            // allows.
+            DetailHeader(title: station.name, textInset: 16) { side in
+                RadioArtwork(stationID: station.id,
+                             faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                             name: station.name, homepage: station.homepage,
+                             isHero: true)
+                    .frame(maxWidth: side ?? .infinity)
+                    .frame(height: side ?? 220)
+                    .coverCard()
+                    .padding(.horizontal, side == nil ? 16 : 0)
+            } lines: {
+                if let sub = subtitle {
+                    Text(sub).font(.subheadline).foregroundStyle(.secondary)
                 }
-
+            } actions: {
+                stationControls
+            }
+        } content: {
+            VStack(spacing: 20) {
                 if variants.count > 1 { variantPicker }
 
                 if let homepage = station.homepage.flatMap({ URL(string: $0) }) {
@@ -64,8 +67,7 @@ struct RadioStationDetailView: View {
                                  playerCoordinator: playerCoordinator)
                 }
             }
-            .padding(.vertical)
-            .bottomBarClearance()
+            .frame(maxWidth: .infinity)
         }
         .untitledDetailPage()
         .onAppear {

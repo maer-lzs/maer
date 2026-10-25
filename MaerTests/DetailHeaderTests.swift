@@ -119,15 +119,20 @@ struct DetailHeaderTests {
                        encoding: .utf8))
         #expect(head.contains("DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top,"))
         #expect(head.contains("below = DetailCoverSide.settled(below, measured:"), "the kept height settles")
-        // Only the leading column of the list frame (show, album, playlist)
-        // gives the room, once, on its scroll view.
+        // Only the leading column of the two frames gives the room: the list
+        // frame (show, album, playlist) and the scroll frame (artist,
+        // station), each once, through the one modifier.
         let frame = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"),
                        encoding: .utf8))
         #expect(frame.components(separatedBy: "detailHeaderRoom").count - 1 == 1)
+        #expect(frame.components(separatedBy: ".leadingColumnRoom(height: geo.size.height").count - 1 == 2)
         let wide = try #require(frame.components(separatedBy: "func columns(").last?
             .components(separatedBy: "} trailing:").first)
-        #expect(wide.contains("detailHeaderRoom"), "the room stands on the leading column")
+        #expect(wide.contains(".leadingColumnRoom("), "the room stands on the list frame's leading column")
+        let scroll = try #require(frame.components(separatedBy: "struct DetailScrollColumns").last?
+            .components(separatedBy: "} trailing:").first)
+        #expect(scroll.contains(".leadingColumnRoom("), "the room stands on the scroll frame's leading column")
         // A one-column page gives none.
         for file in ["Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", "Sources/Views/CatalogSourcePage.swift",
                      "Sources/Views/Podcasts/PodcastShowView.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
