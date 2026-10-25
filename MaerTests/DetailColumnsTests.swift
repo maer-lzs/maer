@@ -163,6 +163,11 @@ struct DetailColumnsTests {
         // Four measurements (cover and play button in both forms) and the definition.
         #expect(page.components(separatedBy: "noteBelowCover()").count - 1 == 5, "a measurement sets the height by itself")
         #expect(!page.contains("private var belowCover: CGFloat {"), "the height is read raw from the two measurements")
+        // The block above the playback bar ends with the button row, so at
+        // rest no button lies under the bar.
+        #expect(page.components(separatedBy: "blockBottom = $0").count - 1 == 2)
+        #expect(!page.contains("playArea(withPadding: true)\n                            .onGeometryChange"),
+                "the cover is sized to the main button again, the button row lies under the bar")
         let player = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
         #expect(player.contains("controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)"))

@@ -90,18 +90,19 @@ struct BookDetailScreen: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.isOnline) private var isOnline
     @Environment(\.bottomBarInset) private var bottomBarInset
-    /// The bottoms of the cover and of the play button in the page's own
-    /// space: their distance is what stands under the cover down to the main
-    /// button, the same at every cover size (`DetailCoverSide`).
+    /// The bottoms of the cover and of the button row under the main button
+    /// in the page's own space: their distance is what stands under the cover
+    /// down to the last button, the same at every cover size, so at rest no
+    /// button lies under the playback bar (`DetailCoverSide`).
     @State private var coverBottom: CGFloat = 0
-    @State private var playBottom: CGFloat = 0
+    @State private var blockBottom: CGFloat = 0
     /// Their distance as the cover is sized by it, settled to whole points
     /// (`DetailCoverSide.settled`), so the page comes to rest.
     @State private var belowCover: CGFloat = 0
     /// The page stands on top of its stack (appeared, nothing pushed over it).
     @State private var isTopPage = false
     private func noteBelowCover() {
-        belowCover = DetailCoverSide.settled(belowCover, measured: max(0, playBottom - coverBottom))
+        belowCover = DetailCoverSide.settled(belowCover, measured: max(0, blockBottom - coverBottom))
     }
     private static let pageSpace = "bookDetailPage"
 
@@ -366,11 +367,11 @@ struct BookDetailScreen: View {
                         titleBlock(alignment: .leading)
                         infoSection(withPadding: false)
                         playArea(withPadding: false)
+                        buttonRow(width: content)
                             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                playBottom = $0
+                                blockBottom = $0
                                 noteBelowCover()
                             }
-                        buttonRow(width: content)
                     }
                     trailingSections(isHero: false, showsChapterLink: false)
                 }
@@ -624,12 +625,12 @@ struct BookDetailScreen: View {
                         }
                         infoSection(withPadding: true)
                         playArea(withPadding: true)
-                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                playBottom = $0
-                                noteBelowCover()
-                            }
                         buttonRow(width: min(geo.size.width, 600) - 32)
                             .padding(.horizontal)
+                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                blockBottom = $0
+                                noteBelowCover()
+                            }
 
                         trailingSections(isHero: true)
                     }
