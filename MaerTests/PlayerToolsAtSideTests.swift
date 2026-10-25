@@ -42,6 +42,9 @@ struct PlayerToolsAtSideTests {
     func theToolsStandOnce() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("if toolsAtSide {\n                    if tools.contains(.source) { catalogSourceControl }\n                } else {\n                    MeasuredFits {"))
+        // The source block is a line under the row, never one of its cells.
+        #expect(player.contains(".labelStyle(.iconOnly)\n                    }\n                    .font(.footnote)\n                    if tools.contains(.source) { catalogSourceControl }"))
+        #expect(!player.contains("extrasItems"))
         // Without anything in it the row is absent, not an empty stack.
         #expect(player.contains("if !toolsAtSide || tools.contains(.source) {\n            VStack(spacing: 18) {"))
         #expect(player.components(separatedBy: "if !toolsAtSide { sleepControl }").count - 1 == 2)

@@ -969,15 +969,20 @@ struct PlayerView: View {
                     // the secondary row, same cure.
                     MeasuredFits {
                         HStack(spacing: 36) {
-                            extrasItems
+                            glyphTools
                         }
                     } compact: {
                         HStack(spacing: 28) {
-                            extrasItems
+                            glyphTools
                         }
                         .labelStyle(.iconOnly)
                     }
                     .font(.footnote)
+                    // The source block is text (licence and link): its own
+                    // line under the row, as beside the side column, never a
+                    // cell of the row, where icon-only its two labels would
+                    // stand as two glyphs.
+                    if tools.contains(.source) { catalogSourceControl }
                     airPlayControl
                 }
             }
@@ -1004,12 +1009,6 @@ struct PlayerView: View {
             hasLyrics: songLyrics != nil,
             hasTranscript: transcript != nil,
             isCatalogue: ItemNamespace.isCatalog(id)))
-    }
-
-    @ViewBuilder
-    private var extrasItems: some View {
-        glyphTools
-        if tools.contains(.source) { catalogSourceControl }
     }
 
     /// The tools that are one glyph each: the row's, or in the side
