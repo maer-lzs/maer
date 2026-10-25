@@ -13039,16 +13039,6 @@
         }
       }
     },
-    "View on Jamendo" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Jamendo ansehen"
-          }
-        }
-      }
-    },
     "View on LibriVox" : {
       "localizations" : {
         "de" : {

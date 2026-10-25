@@ -31,8 +31,8 @@ nonisolated struct BrowseRoute: Hashable {
 /// free audiobooks and radio plays, in a media tab the lanes of its area
 /// (`TabBrowse`), as ONE double row mixed rank by rank (`BrowseMix`). Two
 /// tiles per column, scrolled sideways. Every tile keeps its own tap (a
-/// show its preview, a catalog title its page, a music title its detail
-/// sheet) and carries its kind, because the row mixes kinds. The chevron
+/// show its preview, a catalog title its page, a music title its album
+/// page) and carries its kind, because the row mixes kinds. The chevron
 /// opens the Browse page, on Start with every source, in a tab with the
 /// tab's area.
 struct BrowseRow: View {
@@ -42,7 +42,8 @@ struct BrowseRow: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// The tab's area; nil on Start.
     var area: BrowseSection.Group? = nil
-    @State private var detailItem: LibraryItem?
+    @Environment(\.pushMusicRoute) private var pushMusicRoute
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -66,10 +67,6 @@ struct BrowseRow: View {
             }
             .rowReachesUnderSideColumn()
         }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
     @ViewBuilder
@@ -85,15 +82,17 @@ struct BrowseRow: View {
                 // A work not started yet has no form; this share is music.
                 placeholderSystemImage: MediaFamily.placeholderSymbol(
                     for: item.id, markedForm: ListeningStore.startedForm(item.id) ?? .album),
-                onTap: { detailItem = item })
+                onTap: {
+                    CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
+                                            pushMusicRoute: pushMusicRoute,
+                                            pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+                })
                 .stackedKind(.music)
                 .contextMenu {
                     Button {
                         Task { await playerCoordinator.open(item: item) }
                     } label: { Label("Play", systemImage: "play.fill") }
-                    Button {
-                        detailItem = item
-                    } label: { Label("Details", systemImage: "info.circle") }
+                    CatalogDetailsButton(itemId: item.id)
                 }
         case .catalog(let tile):
             CatalogMixTile(tile: tile, marksKind: true, playerCoordinator: playerCoordinator)

@@ -542,16 +542,15 @@ struct MusicShelfPage: View {
     }
 }
 
-/// Welle 3: the free-music (Jamendo) page behind Home's row. Tile grid,
-/// NACHSCHLAGEN tap (detail sheet carries the ToS-mandated attribution and
-/// the prominent Play).
+/// Welle 3: the free-music (Jamendo) page behind Home's row. Tile grid;
+/// a tap plays, "Details" opens the title's page, which carries the
+/// ToS-mandated attribution as the player does.
 struct FreeJamendoPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
     @State private var loadFailed = false
-    @State private var detailItem: LibraryItem?
     /// Server-loaded genre rows (shelf key → row items). Empty shelves
     /// hide themselves after the answer (an empty shelf would say there is
     /// nothing, which is not what the server answered).
@@ -605,9 +604,7 @@ struct FreeJamendoPage: View {
                             }
                         })
                             .contextMenu {
-                                Button {
-                                    detailItem = item
-                                } label: { Label("Details", systemImage: "info.circle") }
+                                CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                             }
                         }
@@ -622,10 +619,6 @@ struct FreeJamendoPage: View {
         .task {
             guard items.isEmpty else { return }
             await loadAll()
-        }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
         }
     }
 
@@ -682,7 +675,6 @@ struct JamendoShelfPage: View {
     let shelfKey: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
-    @State private var detailItem: LibraryItem?
     @State private var runs = PageRuns()
     @State private var reachedEnd = false
     @State private var loadFailed = false
@@ -714,9 +706,7 @@ struct JamendoShelfPage: View {
                             }
                         })
                     .contextMenu {
-                        Button {
-                            detailItem = item
-                        } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                     }
                 }
@@ -755,10 +745,6 @@ struct JamendoShelfPage: View {
         .navigationTitle(Text(verbatim: title))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
     /// Mood and tempo as FILTERS on a shelf's full page, instrumental as a
@@ -878,7 +864,6 @@ struct MusicCatalogAreaPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
-    @State private var detailItem: LibraryItem?
 
     var body: some View {
         ScrollView {
@@ -923,14 +908,10 @@ struct MusicCatalogAreaPage: View {
         }
         .navigationTitle(Text("Discover · Music"))
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
-    /// Same tile anatomy as the source rows (NACHSCHLAGEN, license capsule on
-    /// the detail sheet; long-press keeps the Play shortcut).
+    /// Same tile anatomy as the source rows (a tap plays, "Details" opens
+    /// the title's page).
     private func tileRow(_ items: [LibraryItem]) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 14) {
@@ -947,9 +928,7 @@ struct MusicCatalogAreaPage: View {
                         })
                     .cardRowSlot(spacing: 14)
                     .contextMenu {
-                        Button {
-                            detailItem = item
-                        } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                     }
                 }

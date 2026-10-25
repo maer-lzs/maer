@@ -954,8 +954,9 @@ nonisolated enum ArchiveOrgClient {
     /// answer is the file list, for one OTR bundle 3.966 entries with
     /// checksums plus 66 user reviews).
     ///
-    /// Only ONE caller needs this shape: the detail sheet, which wants the
-    /// description. Everything else needs the files, and for those the full
+    /// Only ONE caller needs this shape: the quick head of the catalogue
+    /// page, which wants title, creator and description. Everything else
+    /// needs the files, and for those the full
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
@@ -1153,7 +1154,7 @@ nonisolated enum JamendoClient {
     }
 
     /// Weekly popularity chart (CC music; ToS: attribution + backlink per
-    /// track. The detail sheet carries both).
+    /// track. The player and the title's page carry both).
     /// `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR.
     /// Better than filtering a local 200 pool); `offset` pages the shelf
     /// grid.

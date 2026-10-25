@@ -8,10 +8,10 @@ import OSLog
 
 /// THE page for every archive.org music area
 /// (classical · netlabels · the 78 rpm genre shelves). External free catalog,
-/// clearly marked as such (header line + licence capsule/detail sheet);
+/// clearly marked as such (header line and rights notice);
 /// NEVER mixed into the personal library surfaces. Popularity-sorted grid
-/// (archive.org downloads), paged; tiles play directly, context menu opens
-/// the licence sheet.
+/// (archive.org downloads), paged; tiles play directly, the context menu's
+/// "Details" opens the title's page.
 ///
 /// There is no second page of this shape. The area carries what differs
 /// (query, title, note, symbol).
@@ -24,7 +24,6 @@ struct ArchiveMusicPage: View {
     @State private var loadFailed = false
     @State private var page = 1
     @State private var reachedEnd = false
-    @State private var detailItem: LibraryItem?
     /// The stock per shelf. The same construction as `CatalogShelfSource`:
     /// a shelf appears because the SOURCE has it.
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
@@ -103,9 +102,7 @@ struct ArchiveMusicPage: View {
                                     }
                                 )
                                 .contextMenu {
-                                    Button {
-                                        detailItem = item
-                                    } label: { Label("Details", systemImage: "info.circle") }
+                                    CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                                 }
                                 .onAppear {
@@ -142,10 +139,6 @@ struct ArchiveMusicPage: View {
             await shelvesTask
             await stockTask
         }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
     /// The same shape as `CatalogSourcePage.popularRow`: a named row with a
@@ -169,9 +162,7 @@ struct ArchiveMusicPage: View {
                                 }
                             })
                         .contextMenu {
-                            Button { detailItem = item } label: {
-                                Label("Details", systemImage: "info.circle")
-                            }
+                            CatalogDetailsButton(itemId: item.id)
                             CatalogQueueButtons(itemId: item.id)
                         }
                         .cardRowSlot(spacing: 14)
@@ -230,9 +221,7 @@ struct ArchiveMusicPage: View {
                                 }
                             })
                         .contextMenu {
-                            Button { detailItem = item } label: {
-                                Label("Details", systemImage: "info.circle")
-                            }
+                            CatalogDetailsButton(itemId: item.id)
                             CatalogQueueButtons(itemId: item.id)
                         }
                         .cardRowSlot(spacing: 14)
@@ -350,7 +339,6 @@ struct ArchiveMusicShelfPage: View {
     let shelfKey: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
-    @State private var detailItem: LibraryItem?
     @State private var isLoading = false
     @State private var reachedEnd = false
     @State private var loadFailed = false
@@ -381,9 +369,7 @@ struct ArchiveMusicShelfPage: View {
                             }
                         })
                     .contextMenu {
-                        Button { detailItem = item } label: {
-                            Label("Details", systemImage: "info.circle")
-                        }
+                        CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                     }
                     .onAppear {
@@ -408,10 +394,6 @@ struct ArchiveMusicShelfPage: View {
         .navigationTitle(Text(verbatim: title))
         .navigationBarTitleDisplayMode(.inline)
         .task { if items.isEmpty { await load(reset: true) } }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
     private func load(reset: Bool = false) async {
@@ -444,7 +426,6 @@ struct ShellacShelvesPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var rows: [String: [LibraryItem]] = [:]
-    @State private var detailItem: LibraryItem?
     @State private var loadFailed = false
     @ObservedObject private var stockService = CatalogStockService.shared
 
@@ -527,10 +508,6 @@ struct ShellacShelvesPage: View {
             await loadShelves()
             await stockTask
         }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                .followsAppearanceChoice()
-        }
     }
 
     private func tileRow(_ items: [LibraryItem], shelf: ArchiveMusicArea) -> some View {
@@ -539,8 +516,7 @@ struct ShellacShelvesPage: View {
                 ForEach(RowPreview.cut(items)) { item in
                     // For MUSIC the tap plays. On a book it leads into the
                     // detail, on a three-minute track straight into
-                    // playback. The player carries the ToS attribution, not
-                    // only the sheet.
+                    // playback.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
@@ -552,9 +528,7 @@ struct ShellacShelvesPage: View {
                         })
                     .cardRowSlot(spacing: 14)
                     .contextMenu {
-                        Button {
-                            detailItem = item
-                        } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
                     }
                 }

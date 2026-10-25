@@ -1059,8 +1059,9 @@ struct ArchiveSeriesPage: View {
                 Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
             }
             // The honest second line. The episode count the tile
-            // could not carry without a second fetch.
-            Text(effectiveFlavor == .album
+            // could not carry without a second fetch. A Jamendo title is a
+            // track, whatever flavour plays it.
+            Text(effectiveFlavor == .album || isJamendo
                  ? "\(tracks.count) tracks"
                  : "\(tracks.count) episodes")
                 .font(.caption).foregroundStyle(.secondary)
@@ -1081,6 +1082,7 @@ struct ArchiveSeriesPage: View {
                     .font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(6)
             }
+            sourceLines
         } actions: {
             // An album starts like one: its tracks in order, or shuffled.
             if effectiveFlavor == .album {
@@ -1114,6 +1116,26 @@ struct ArchiveSeriesPage: View {
             }
         }
         .padding(.horizontal)
+    }
+
+    private var isJamendo: Bool { itemId.hasPrefix(FreeCatalog.jamendoPrefix) }
+
+    /// Where the title comes from, as the player names it: Jamendo's terms
+    /// ask for the provider and a backlink per track, and every other
+    /// catalogue title links its page at the source.
+    @ViewBuilder
+    private var sourceLines: some View {
+        if isJamendo {
+            Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        if let source = catalogFacts.sourceURL(itemId) {
+            Link(destination: source) {
+                Label("View source", systemImage: "arrow.up.right.square")
+                    .font(.caption)
+            }
+            .accessibilityIdentifier("catalog-page-source")
+        }
     }
 
     /// The album's tracks as the items they are (`CatalogSongID`), from the

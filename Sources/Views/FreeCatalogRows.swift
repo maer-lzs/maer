@@ -32,112 +32,50 @@ struct FreeCatalogImportBadge: View {
     }
 }
 
-/// License/details sheet: public-domain badge for LibriVox/archive items;
-/// Jamendo carries the ToS-mandated artist credit, "via Jamendo" and the
-/// DIRECT backlink to the track page.
-struct FreeCatalogDetailSheet: View {
-    @Environment(\.catalogFacts) private var catalogFacts
-    @Environment(\.itemRouter) private var router
-    let item: LibraryItem
-    @ObservedObject var playerCoordinator: PlayerCoordinator
-    @Environment(\.dismiss) private var dismiss
-    /// The metadata API's item description (archive items resolve it
-    /// lazily from the SAME metadata endpoint the detail path uses. No new
-    /// API); collapsed after a few lines like the book descriptions.
-    @State private var itemDescription: String?
-    @State private var descriptionExpanded = false
-
-    private var isJamendo: Bool { item.id.hasPrefix(FreeCatalog.jamendoPrefix) }
-    private var jamendoTrack: JamendoTrack? {
-        catalogFacts.jamendoTrack(item.id)
+/// THE page of a catalogue title, opened from a tile: the same choice the
+/// full player's source tap makes (`PlayerSourceTargets.catalogPage`). A
+/// song opens its release, an album its album page, a reading its book
+/// page. A title not started yet has no form; the surface names the one it
+/// shows (`unstartedForm`), so a music surface opens an album page.
+enum CatalogDetailsPage {
+    static func target(itemId: String, startedForm: ProgressMark.StartedForm?,
+                       unstartedForm: ProgressMark.StartedForm?) -> PlayerSourceTarget {
+        PlayerSourceTargets.catalogPage(itemId, markedForm: startedForm ?? unstartedForm)
     }
+
+    /// Pushes the page on the stack of the tab the tile stands in.
+    @MainActor
+    static func open(itemId: String, unstartedForm: ProgressMark.StartedForm?,
+                     pushMusicRoute: (MusicRoute) -> Void,
+                     pushFreeAudiobooksRoute: (FreeAudiobooksRoute) -> Void) {
+        let target = target(itemId: itemId, startedForm: ListeningStore.startedForm(itemId),
+                            unstartedForm: unstartedForm)
+        switch target {
+        case .catalogAlbum(let id): pushMusicRoute(.catalogAlbum(id))
+        case .catalogBook(let id): pushFreeAudiobooksRoute(.catalogBook(itemId: id))
+        default:
+            // `catalogPage` names only the two catalogue pages.
+            Logger.library.notice("CATALOG details without a page target=\(String(describing: target), privacy: .public)")
+        }
+    }
+}
+
+/// "Details" in a catalogue tile's context menu: the title's page
+/// (`CatalogDetailsPage`), pushed like a tap on a tile.
+struct CatalogDetailsButton: View {
+    @Environment(\.pushMusicRoute) private var pushMusicRoute
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    let itemId: String
+    /// Every tile that carries this button stands on a music surface.
+    var unstartedForm: ProgressMark.StartedForm? = .album
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                // Thumb first, hi-res swapped in once resolved
-                // (soft crossfade; ImageCache persists both).
-                CachedAsyncImage(url: router.coverURL(item.id)) { image in
-                    image.resizable().aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 12).fill(.quaternary)
-                        .overlay(Image(systemName: MediaFamily.placeholderSymbol(
-                            for: item.id, markedForm: ListeningStore.startedForm(item.id)))
-                            .font(.largeTitle).foregroundStyle(.secondary))
-                }
-                .frame(maxHeight: 220)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                VStack(spacing: 4) {
-                    Text(item.title).font(.headline).multilineTextAlignment(.center)
-                    if let author = item.author {
-                        Text(author).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                }
-
-                if isJamendo {
-                    // ToS: artist credit + provider credit + direct backlink.
-                    VStack(spacing: 6) {
-                        Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if let share = jamendoTrack?.shareurl.flatMap({ URL(string: $0) }) {
-                            Link(destination: share) {
-                                Label("View on Jamendo", systemImage: "arrow.up.right.square")
-                                    .font(.caption)
-                            }
-                        }
-                    }
-                } else {
-                    VStack(spacing: 6) {
-                        // Rights capsule + backlink: the ONE shared component
-                        // (the book detail page carries the same one).
-                        CatalogRightsSection(item: item, licence: catalogFacts.licence(item.id))
-                        // The item description, below the rights capsule.
-                        // HTML remnants cleaned by the ONE existing text
-                        // preparation (podcastPlainText); collapsed
-                        // after four lines, tap expands.
-                        if let itemDescription, !itemDescription.isEmpty {
-                            Text(podcastPlainText(itemDescription))
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(descriptionExpanded ? nil : 4)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .onTapGesture { descriptionExpanded.toggle() }
-                        }
-                    }
-                }
-
-                Button {
-                    dismiss()
-                    Task { await playerCoordinator.open(item: item) }
-                } label: {
-                    Label("Play", systemImage: "play.fill")
-                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-
-                Spacer(minLength: 0)
-            }
-            .padding()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .presentationDetents([.medium, .large])
-        }
-        .task {
-            // The description reaches the sheet. Known metadata first
-            // (LibriVox/Gutenberg rows carry it); archive items ask the ONE
-            // metadata endpoint (same call class as runtime/hi-res).
-            itemDescription = item.media?.metadata?.description
-            // The sub-path instead of the full fetch: the sheet wants the
-            // description, not the file list.
-            if itemDescription == nil,
-               case .found(let meta) = await ArchiveMetadataLoader.quickMetadata(forItemId: item.id) {
-                itemDescription = meta.description?.joined
-            }
+        Button {
+            CatalogDetailsPage.open(itemId: itemId, unstartedForm: unstartedForm,
+                                    pushMusicRoute: pushMusicRoute,
+                                    pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+        } label: {
+            Label("Details", systemImage: "info.circle")
         }
     }
-
 }

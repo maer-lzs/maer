@@ -21,10 +21,9 @@ enum ArchiveMetadataLoader {
         case cancelled
     }
 
-    /// Neither caller carries the page on this answer: the detail page loads
-    /// the full detail beside it, the detail sheet shows the item without a
-    /// description. So a failure is logged with its reason and not turned
-    /// into a sentence on the surface. `clients` are the live ones by
+    /// The caller does not carry its page on this answer: the detail page
+    /// loads the full detail beside it. So a failure is logged with its
+    /// reason and not turned into a sentence on the surface. `clients` are the live ones by
     /// default; a witness hands in its own.
     static func quickMetadata(forItemId itemId: String, using clients: CatalogClients = .live) async -> Answer {
         guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return .none }

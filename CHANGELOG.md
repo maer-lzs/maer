@@ -33,6 +33,12 @@ each stream with format, bitrate and the server it comes from, as far
 as known, beside its country, languages and tags; with several streams
 the rows still choose the one the next play takes.
 
+**Details opens the title's page.** "Details" on a catalog tile used to
+float a small sheet with "Done" and no cover. It now opens the same page
+as a tap on an album: a song its release, an album its album page, a
+reading its book page. Pages of Jamendo titles name the provider and
+link to the source.
+
 **Shuffle on Netlabels plays.** Most taps found nothing or failed with
 "Something went wrong": the draw asked for pages archive.org does not
 hand out, and many netlabel releases carry only a 320 kbps MP3, which

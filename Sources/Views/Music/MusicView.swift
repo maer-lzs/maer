@@ -36,7 +36,6 @@ struct MusicView: View {
     @AppStorage(AppStorageKeys.jamendoRowVisible) private var jamendoRowIsVisible = true
     /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
-    @State private var freeDetailItem: LibraryItem?
     /// The old-records lane of the Browse row (`ShellacSection.rowTitles`).
     @State private var shellacTitles: [LibraryItem] = []
 
@@ -88,10 +87,6 @@ struct MusicView: View {
             // the bar stayed expanded (heavy/opaque look) and never
             // collapsed. One binding, both symptoms.
             .reportsBottomBarScroll(active: isActive)
-            .sheet(item: $freeDetailItem) { item in
-                FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                    .followsAppearanceChoice()
-            }
         .task {
             guard serverConfigured else { return }   // no source, no fetch
             vm.sort = musicSort   // honour the persisted sort on the first load
