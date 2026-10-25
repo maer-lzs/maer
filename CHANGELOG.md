@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The medium Continue Listening widget keeps the title clear of the
+placeholder.** Without a cover the placeholder's mark stands at the
+right and the text beside it; real covers look as before.
+
 **Each tab browses its own kind.** Audiobooks, Music and Podcasts carry
 their part of the Browse page. Without a server for that kind, its
 catalog rows stand under your own titles, headed "From Open Catalogs";

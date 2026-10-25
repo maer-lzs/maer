@@ -125,25 +125,29 @@ private struct ContinueListeningView: View {
     /// Medium: title, author, remaining time and bar at the bottom, over
     /// the cover.
     private func medium(_ snapshot: WidgetSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        // The step of this entry's minute while playing.
+        let shown = snapshot.shown(at: entry.date)
+        return VStack(alignment: .leading, spacing: 3) {
             Spacer(minLength: 0)
-            Text(snapshot.title)
-                .font(.subheadline.bold())
-                .foregroundStyle(.white)
-                .lineLimit(2)
-            if let author = snapshot.author {
-                Text(author)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(snapshot.title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                if let author = snapshot.author {
+                    Text(author)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                }
+                if let remaining = shown.remainingText {
+                    Text(remaining)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
             }
-            // The step of this entry's minute while playing.
-            let shown = snapshot.shown(at: entry.date)
-            if let remaining = shown.remainingText {
-                Text(remaining)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.85))
-            }
+            // Beside the placeholder's mark, never over it.
+            .padding(.trailing, entry.cover == nil ? Self.placeholderRoom : 0)
             ProgressView(value: shown.fraction)
                 .tint(.orange)
         }
@@ -157,11 +161,24 @@ private struct ContinueListeningView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } else {
+            // The medium widget carries its text at the bottom left across
+            // the width; the placeholder's mark stands at the right so the
+            // title never lies on it.
             Rectangle()
                 .fill(.quaternary)
-                .overlay(Image(systemName: "book.closed").foregroundStyle(.secondary))
+                .overlay(alignment: family == .systemMedium ? .trailing : .center) {
+                    Image(systemName: "book.closed")
+                        .font(family == .systemMedium ? .largeTitle : .body)
+                        .foregroundStyle(.secondary)
+                        .padding(.trailing, family == .systemMedium ? Self.placeholderInset : 0)
+                }
         }
     }
+
+    /// The room the medium placeholder's mark keeps at the right: its
+    /// distance from the edge, and the text's margin beside it.
+    private static let placeholderInset: CGFloat = 24
+    private static let placeholderRoom: CGFloat = 72
 
     private var empty: some View {
         VStack(spacing: 6) {
