@@ -65,6 +65,19 @@ struct DetailColumnsTests {
         ("Sources/Views/PlayerView.swift", "FoldColumns { column in"),
     ]
 
+    @Test("das erste Zeichen jeder Liste steht gleich weit vom Rand und vom Falz", .needsTheSources)
+    func everyListsFirstMarkStandsAtTheGutter() throws {
+        // The album's track number leads its column; the episode row keeps
+        // the page's standard margin, not a smaller one of its own.
+        let bars = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PopularityBars.swift"), encoding: .utf8))
+        #expect(bars.contains(".frame(width: numberWidth, alignment: .leading)"))
+        let rows = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastComponents.swift"), encoding: .utf8))
+        #expect(rows.contains(".padding(.horizontal, FoldSplit.pageGutter)\n        .padding(.vertical, 10)"))
+        #expect(!rows.contains(".padding(.horizontal, 12)\n        .padding(.vertical, 10)"), "the episode row keeps a margin of its own")
+    }
+
     @Test("jede Seite mit Kopf und Inhalt nimmt den einen Rahmen", .needsTheSources)
     func everyHeadedPageTakesTheFrame() throws {
         // Every page with the head (`DetailHeaderTests.headedPages`) stands in

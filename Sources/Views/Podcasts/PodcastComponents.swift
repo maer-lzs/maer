@@ -368,7 +368,9 @@ struct PodcastEpisodeRow: View {
                 .opacity(textOnly ? 0 : 1)
                 .takesInput(!textOnly)
         }
-        .padding(.horizontal, 12)
+        // The page's standard margin, the one every list's first mark keeps
+        // (`FoldSplit.pageGutter`, beside the fold too).
+        .padding(.horizontal, FoldSplit.pageGutter)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)

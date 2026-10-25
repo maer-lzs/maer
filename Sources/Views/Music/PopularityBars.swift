@@ -71,11 +71,13 @@ struct AlbumTrackRowLabel: View {
         .contentShape(Rectangle())
     }
 
+    /// Leading in its column, so the number is the row's first mark and
+    /// stands where every list's first mark stands (beside the fold too).
     private var numberText: some View {
         Text("\(number)")
             .font(.subheadline.monospacedDigit())
             .foregroundStyle(.secondary)
-            .frame(width: numberWidth, alignment: .trailing)
+            .frame(width: numberWidth, alignment: .leading)
     }
 
     /// How often this track was played, beside it instead of a second list
