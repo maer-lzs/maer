@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The medium Up Next widget shows covers.** Each entry carries its
+cover small beside its title, like a list row in the app; the small
+widget stays text.
+
 **The medium Continue Listening widget keeps the title clear of the
 placeholder.** Without a cover the placeholder's mark stands at the
 right and the text beside it; real covers look as before.

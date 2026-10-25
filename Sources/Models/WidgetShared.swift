@@ -98,11 +98,51 @@ nonisolated struct PodcastQueueSnapshot: Codable {
     struct Item: Codable {
         var title: String
         var show: String?
+        /// The file of the entry's cover thumbnail in the app group
+        /// (`coverName(for:)`); the medium widget shows it when it is there.
+        var cover: String?
+        /// The app's placeholder symbol for the entry's kind, shown while
+        /// there is no cover.
+        var placeholder: String?
     }
     var items: [Item]
 
+    /// How many entries the medium widget lists with their covers; the app
+    /// leaves a thumbnail for each of them.
+    static let coveredCount = 4
+    /// The thumbnail's longest side in pixels: the cover stands 26 pt high
+    /// in the widget, at three pixels per point with room to spare.
+    static let coverPixel: CGFloat = 96
+    static let coverPrefix = "upnext-cover-"
+
     static var url: URL? {
         AppGroup.containerURL?.appendingPathComponent("podcast-queue-snapshot.json")
+    }
+
+    /// The thumbnail file of an entry: a stable name from its id (FNV-1a),
+    /// so a queue that only reorders keeps its files.
+    static func coverName(for id: String) -> String {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        for byte in id.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01B3
+        }
+        return coverPrefix + String(hash, radix: 16) + ".png"
+    }
+
+    static func coverURL(named name: String) -> URL? {
+        AppGroup.containerURL?.appendingPathComponent(name)
+    }
+
+    /// The cover files to remove: every thumbnail of the queue the
+    /// snapshot no longer names.
+    static func staleCovers(in names: [String], keeping kept: Set<String>) -> [String] {
+        names.filter { $0.hasPrefix(coverPrefix) && !kept.contains($0) }.sorted()
+    }
+
+    static func writeCover(_ data: Data, named name: String) -> Bool {
+        guard let url = coverURL(named: name) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
     }
 
     static func load() -> PodcastQueueSnapshot? {
