@@ -42,7 +42,7 @@ struct SyncHistoryView: View {
 
             Section {
                 if store.entries.isEmpty {
-                    ContentUnavailableView(
+                    EmptyStateView(
                         "No sync runs yet",
                         systemImage: "arrow.triangle.2.circlepath",
                         description: Text("Sync runs appear here as they happen.")

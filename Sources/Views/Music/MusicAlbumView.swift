@@ -161,11 +161,8 @@ struct MusicAlbumView: View {
                     // Measured (metadata answers error/404), not guessed: the
                     // source withdrew the item. The mark also keeps it out of
                     // the curated rows (the existing dead-items ladder).
-                    ContentUnavailableView {
-                        Label("No longer available at the source", systemImage: "music.note")
-                    } description: {
-                        Text("The source has withdrawn this item. Your listening mark stays until you remove it.")
-                    } actions: {
+                    EmptyStateView("No longer available at the source", systemImage: "music.note",
+                                   description: Text("The source has withdrawn this item. Your listening mark stays until you remove it.")) {
                         Button(role: .destructive) {
                             // The user's explicit click, never silent: the
                             // ONE legitimate removal (the item itself is
@@ -189,21 +186,15 @@ struct MusicAlbumView: View {
                     // No network and nothing downloaded: said as such, never
                     // as a transport error (flight mode otherwise reads as a
                     // broken connection).
-                    ContentUnavailableView {
-                        Label("Not available offline", systemImage: "icloud.slash")
-                    } description: {
-                        Text("Its tracks load once this device is online again. Download it to have it offline.")
-                    } actions: {
+                    EmptyStateView("Not available offline", systemImage: "icloud.slash",
+                                   description: Text("Its tracks load once this device is online again. Download it to have it offline.")) {
                         RetryPill { Task { await loadDetail() } }
                     }
                 case .empty:
                     // The source answered, and named no track: an end
                     // state of its own, never the loading state.
-                    ContentUnavailableView {
-                        Label("No tracks", systemImage: "music.note")
-                    } description: {
-                        Text("The source answered without any audio track for this item.")
-                    } actions: {
+                    EmptyStateView("No tracks", systemImage: "music.note",
+                                   description: Text("The source answered without any audio track for this item.")) {
                         RetryPill { Task { await loadDetail() } }
                     }
                 }

@@ -250,7 +250,7 @@ struct SearchScreen: View {
         let autoCatalog = emptyLine == .library
 
         if model.allSourcesFailed {
-            ContentUnavailableView(
+            EmptyStateView(
                 "Search unavailable",
                 systemImage: "wifi.exclamationmark",
                 description: Text("No source answered. Check your connection.")

@@ -283,11 +283,8 @@ struct MusicDownloadedPage: View {
     var body: some View {
         Group {
             if items.isEmpty {
-                ContentUnavailableView {
-                    Label("No downloaded music", systemImage: "arrow.down.circle")
-                } description: {
-                    Text("Albums and playlists you download appear here for offline listening.")
-                }
+                EmptyStateView("No downloaded music", systemImage: "arrow.down.circle",
+                               description: Text("Albums and playlists you download appear here for offline listening."))
             } else {
                 ScrollView {
                     CoverGrid(columns: columns) {
@@ -574,7 +571,7 @@ struct FreeJamendoPage: View {
                     Task { await loadAll() }
                 }
             } else if items.isEmpty {
-                ContentUnavailableView("Music (Jamendo)", systemImage: "music.note")
+                EmptyStateView("Music (Jamendo)", systemImage: "music.note")
             } else {
                 // Genre shelf rows FIRST (blueprint form. Row +
                 // entry chevron onto the server-paged shelf grid), the weekly
@@ -738,11 +735,8 @@ struct JamendoShelfPage: View {
                 // A filter that leads to zero hits SAYS so instead of
                 // showing an empty surface, and it can be taken back from
                 // here, so the row is not read as broken.
-                ContentUnavailableView {
-                    Label("No tracks with this filter", systemImage: "line.3.horizontal.decrease")
-                } description: {
-                    Text("The shelf has titles, this combination has none.")
-                } actions: {
+                EmptyStateView("No tracks with this filter", systemImage: "line.3.horizontal.decrease",
+                               description: Text("The shelf has titles, this combination has none.")) {
                     Button("Reset filter") { applyFilter(.none) }
                 }
                 .padding(.top, 40)
@@ -753,8 +747,7 @@ struct JamendoShelfPage: View {
                 }
                 .padding(.top, 40)
             } else if items.isEmpty && reachedEnd {
-                ContentUnavailableView("Nothing in this shelf right now.",
-                                       systemImage: "music.note")
+                EmptyStateView("Nothing in this shelf right now.", systemImage: "music.note")
                     .padding(.top, 40)
             }
             Color.clear.frame(height: 1).bottomBarClearance()

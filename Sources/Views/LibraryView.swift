@@ -375,7 +375,7 @@ struct LibraryView: View {
                                                       playing: playerCoordinator.activeItem) {
                     BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
                 } else {
-                    ContentUnavailableView("Audiobook could not be loaded.", systemImage: "book.closed")
+                    EmptyStateView("Audiobook could not be loaded.", systemImage: "book.closed")
                 }
             }
             // Podcast routes registered on the stack ROOT (not the podcast tab):
@@ -462,8 +462,7 @@ struct LibraryView: View {
                     } else {
                         // A cold start with a stale route: honest state, no
                         // spinner that never ends.
-                        ContentUnavailableView("This could not be loaded.",
-                                               systemImage: "book.closed")
+                        EmptyStateView("This could not be loaded.", systemImage: "book.closed")
                     }
                 }
             }
@@ -1456,13 +1455,10 @@ struct LibraryView: View {
             .padding()
         } else if viewModel.entries.isEmpty {
             // Connected, but the server has no books (yet).
-            ContentUnavailableView {
-                Label("No Audiobooks", systemImage: "books.vertical")
-            } description: {
-                Text(viewModel.isShowingOfflineCache
-                    ? String(localized: "Offline. No books are downloaded.")
-                    : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))
-            } actions: {
+            EmptyStateView("No Audiobooks", systemImage: "books.vertical",
+                           description: Text(viewModel.isShowingOfflineCache
+                               ? String(localized: "Offline. No books are downloaded.")
+                               : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))) {
                 Button("Refresh") {
                     Task { await viewModel.loadLibrary() }
                 }

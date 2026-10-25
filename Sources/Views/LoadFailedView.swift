@@ -45,11 +45,7 @@ struct LoadFailedView: View {
     var body: some View {
         switch form {
         case .page(let title, let systemImage):
-            ContentUnavailableView {
-                Label { title } icon: { Image(systemName: systemImage) }
-            } description: {
-                sentence
-            } actions: {
+            EmptyStateView(title: title, systemImage: systemImage, description: sentence) {
                 retryPill
             }
         case .line:

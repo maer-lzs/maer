@@ -703,11 +703,8 @@ struct MusicServerMissingHere: View {
     let retry: () -> Void
 
     var body: some View {
-        ContentUnavailableView {
-            Label("No music server on this device", systemImage: "music.note")
-        } description: {
-            Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")
-        } actions: {
+        EmptyStateView("No music server on this device", systemImage: "music.note",
+                       description: Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")) {
             RetryPill(action: retry)
         }
         .frame(maxWidth: .infinity)

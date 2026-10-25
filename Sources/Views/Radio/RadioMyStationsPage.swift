@@ -28,11 +28,8 @@ struct RadioMyStationsPage: View {
                     section(String(localized: "Most Played"), stations: withoutFavorites, starred: false)
                 }
                 if favorites.isEmpty, withoutFavorites.isEmpty {
-                    ContentUnavailableView {
-                        Label("No stations yet", systemImage: "star")
-                    } description: {
-                        Text("Star a station, or listen to one. It will show up here.")
-                    }
+                    EmptyStateView("No stations yet", systemImage: "star",
+                                   description: Text("Star a station, or listen to one. It will show up here."))
                     .padding(.top, 60)
                 }
             }

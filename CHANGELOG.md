@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Empty pages say their whole heading.** In a narrow column, such as one
+side of the open iPhone Duo, the heading of an empty or failed page
+(“Couldn't load tracks” on a playlist) ended in dots. It now wraps onto
+a second line, on every empty page of the app.
+
 **The medium Up Next widget shows covers.** Each entry carries its
 cover small beside its title, like a list row in the app; the small
 widget stays text.

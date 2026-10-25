@@ -452,11 +452,8 @@ struct RadioView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No stations yet", systemImage: "dot.radiowaves.left.and.right")
-        } description: {
-            Text("Search the catalog with the magnifier and star your stations, or add a stream URL under Settings → Areas → Radio.")
-        }
+        EmptyStateView("No stations yet", systemImage: "dot.radiowaves.left.and.right",
+                       description: Text("Search the catalog with the magnifier and star your stations, or add a stream URL under Settings → Areas → Radio."))
         .padding(.top, 60)
     }
 

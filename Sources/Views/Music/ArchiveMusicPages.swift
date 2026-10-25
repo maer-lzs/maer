@@ -47,7 +47,7 @@ struct ArchiveMusicPage: View {
                         Task { await loadMore(reset: true) }
                     }
                 } else {
-                    ContentUnavailableView(area.title, systemImage: area.placeholderSystemImage)
+                    EmptyStateView(title: Text(verbatim: area.title), systemImage: area.placeholderSystemImage)
                 }
             } else {
                 ScrollView {

@@ -32,11 +32,7 @@ struct MusicPageBody<Content: View>: View {
                            sentence: Text(sentence), retry: retry)
             .frame(maxWidth: .infinity)
         case .empty:
-            ContentUnavailableView {
-                Label(emptyTitle, systemImage: "music.note")
-            } description: {
-                if let emptyDetail { Text(emptyDetail) }
-            } actions: {
+            EmptyStateView(emptyTitle, systemImage: "music.note", description: emptyDetail.map { Text($0) }) {
                 RetryPill(action: retry)
             }
             .frame(maxWidth: .infinity)

@@ -121,7 +121,7 @@ struct PodcastEpisodeDestination: View {
         if let item = router.item(itemId) {
             PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
         } else {
-            ContentUnavailableView("Episode unavailable", systemImage: "mic")
+            EmptyStateView("Episode unavailable", systemImage: "mic")
         }
     }
 }

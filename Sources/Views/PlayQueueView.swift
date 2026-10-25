@@ -135,7 +135,7 @@ struct PlayQueueView: View {
         }
         .overlay {
             if queue.isEmpty && context.isEmpty {
-                ContentUnavailableView(
+                EmptyStateView(
                     "Nothing up next",
                     systemImage: "text.line.first.and.arrowtriangle.forward",
                     description: Text("Add episodes with Play Next or Play Last.")

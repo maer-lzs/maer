@@ -410,8 +410,7 @@ struct PodcastShowView: View {
     private var loadingOrFailureRow: some View {
         if mode == .browsed, fetchedShow == nil {
             if fetchFailed {
-                ContentUnavailableView("The feed could not be loaded.",
-                                       systemImage: "wifi.exclamationmark")
+                EmptyStateView("The feed could not be loaded.", systemImage: "wifi.exclamationmark")
                     .padding(.top, 24)
             } else {
                 ProgressView()

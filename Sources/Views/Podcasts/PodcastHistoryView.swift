@@ -17,11 +17,8 @@ struct PodcastHistoryView: View {
     var body: some View {
         Group {
             if entries.isEmpty {
-                ContentUnavailableView {
-                    Label("No listening history yet", systemImage: "checkmark.circle")
-                } description: {
-                    Text("Episodes you finish appear here, even after you unsubscribe from a show.")
-                }
+                EmptyStateView("No listening history yet", systemImage: "checkmark.circle",
+                               description: Text("Episodes you finish appear here, even after you unsubscribe from a show."))
             } else {
                 List(entries, id: \.guid) { entry in
                     row(entry)

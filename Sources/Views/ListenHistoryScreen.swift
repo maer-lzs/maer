@@ -21,14 +21,10 @@ struct ListenHistoryScreen: View {
     var body: some View {
         Group {
             if loaded, entries.isEmpty {
-                ContentUnavailableView {
-                    Label("No listening history yet", systemImage: "checkmark.circle")
-                } description: {
-                    switch family {
-                    case .book: Text("Books you finish appear here.")
-                    case .music: Text("Songs you listen to appear here.")
-                    }
-                }
+                EmptyStateView("No listening history yet", systemImage: "checkmark.circle",
+                               description: family == .book
+                                   ? Text("Books you finish appear here.")
+                                   : Text("Songs you listen to appear here."))
             } else {
                 // Every row opens its target: the book, or the song's album
                 // (`ListenHistoryOpen`); one that cannot says why.

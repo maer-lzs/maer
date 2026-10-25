@@ -552,7 +552,7 @@ RowHeading(title: "Rediscover",
     }
 
     private var emptyState: some View {
-        ContentUnavailableView(
+        EmptyStateView(
             "Nothing here yet",
             systemImage: "house",
             description: Text("Start listening. Your books, podcasts and music show up here.")

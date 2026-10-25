@@ -72,7 +72,7 @@ struct RadioGenreView: View {
                     }
                     .padding(.top, 40)
                 } else if stations.isEmpty {
-                    ContentUnavailableView("No stations found", systemImage: "dot.radiowaves.left.and.right")
+                    EmptyStateView("No stations found", systemImage: "dot.radiowaves.left.and.right")
                         .padding(.top, 40)
                     worldwideOffer
                 } else {
@@ -180,8 +180,8 @@ struct RadioGenreView: View {
     }
 
     private var offlineState: some View {
-        ContentUnavailableView("Offline", systemImage: "wifi.slash",
-                               description: Text("Browsing the radio catalog needs a connection."))
+        EmptyStateView("Offline", systemImage: "wifi.slash",
+                       description: Text("Browsing the radio catalog needs a connection."))
             .padding(.top, 40)
     }
 
