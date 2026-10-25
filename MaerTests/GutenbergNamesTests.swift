@@ -120,6 +120,33 @@ struct GutenbergNamesTests {
         #expect(FreeCatalog.gutenbergReadable(other) == other)
     }
 
+    @Test("ein Gutenberg-Hoerbuch ist nie ein Album: der Player fuehrt zur Buchseite, die Reihe zeigt ein Werk", .needsTheSources)
+    func aGutenbergBookIsNeverAnAlbum() throws {
+        // Even a title once marked as started in album form stays a reading.
+        for form in [ProgressMark.StartedForm?.none, .album] {
+            guard case .catalogBook(let id) = PlayerSourceTargets.catalogPage("gut:9272", markedForm: form) else {
+                Issue.record("a Gutenberg title leads to the album page"); continue
+            }
+            #expect(id == "gut:9272")
+        }
+        let song = CatalogSongID.make(album: "lva:MIXG032", index: 0)
+        guard case .catalogAlbum(let release) = PlayerSourceTargets.catalogPage(song, markedForm: nil) else {
+            Issue.record("a catalogue song does not lead to its release"); return
+        }
+        #expect(release == "lva:MIXG032")
+        guard case .catalogAlbum = PlayerSourceTargets.catalogPage("jam:991", markedForm: nil) else {
+            Issue.record("a Jamendo title does not lead to its album"); return
+        }
+        // The player asks the form; the series page lets only archive items be albums.
+        let player = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
+        #expect(player.contains("return PlayerSourceTargets.catalogPage(id, markedForm: ListeningStore.startedForm(id))"))
+        #expect(!player.contains("if PlayerSourceTargets.isCatalog(id) { return .catalogAlbum(itemId: id) }"))
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
+        #expect(page.contains("guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return .series }"))
+    }
+
     @Test("ein Katalogtitel im Weiterhoeren oeffnet seine Seite, keine Folgenseite")
     @MainActor
     func aCatalogTitleOpensItsOwnPage() {

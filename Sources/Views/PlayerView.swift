@@ -585,9 +585,10 @@ struct PlayerView: View {
                 return .musicAlbum(LibraryItem(id: detail.id, media: detail.media, addedAt: nil))
             }
         }
-        // A catalogue item has its own page; without this it fell into the
-        // book branch and opened an empty audiobook detail.
-        if PlayerSourceTargets.isCatalog(id) { return .catalogAlbum(itemId: id) }
+        // A catalogue item has its own page, chosen by its form.
+        if PlayerSourceTargets.isCatalog(id) {
+            return PlayerSourceTargets.catalogPage(id, markedForm: ListeningStore.startedForm(id))
+        }
         // No target means no menu entry. And the reason is logged rather
         // than swallowed, so an unknown namespace surfaces instead of hiding.
         if MediaFamily.of(id) == .unknown {

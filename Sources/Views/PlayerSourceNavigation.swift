@@ -83,4 +83,12 @@ nonisolated enum PlayerSourceTargets {
     static func isRadio(_ id: String) -> Bool { MediaFamily.of(id) == .radio }
     /// Free catalogues resolve to their catalogue page, not to a library tab.
     static func isCatalog(_ id: String) -> Bool { MediaFamily.of(id) == .catalog }
+
+    /// The page of a catalogue title by its form: a song opens its release,
+    /// an album its album page, any reading (Gutenberg, LibriVox, a work of
+    /// the archive) its book page. Never the album page for a reading.
+    static func catalogPage(_ id: String, markedForm: ProgressMark.StartedForm?) -> PlayerSourceTarget {
+        if CatalogSongID.isSong(id) { return .catalogAlbum(itemId: CatalogSongID.album(of: id)) }
+        return MediaFamily.isMusicByForm(id, markedForm: markedForm) ? .catalogAlbum(itemId: id) : .catalogBook(itemId: id)
+    }
 }

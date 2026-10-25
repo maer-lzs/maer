@@ -907,6 +907,9 @@ struct ArchiveSeriesPage: View {
     /// once it was opened through the album route. And the work's position,
     /// the one place that knew where the listener was, no longer applied.
     private var effectiveFlavor: Flavor {
+        // Only an archive item can be an album; a reading of another source
+        // (Gutenberg, LibriVox) is a work whatever the route said.
+        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return .series }
         switch catalogFacts.archiveForm(itemId) {
         case .album: return .album
         case .work:  return .series
