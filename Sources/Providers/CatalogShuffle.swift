@@ -49,7 +49,7 @@ enum CatalogShuffle {
             let items = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
                 .compactMap { FreeCatalogProvider.shared.remember(popular: $0) }
             Logger.library.notice("SHUFFLE area=\(area.key, privacy: .public) page=\(page) got=\(items.count)")
-            await start(items, coordinator: coordinator, sourceTitle: area.title)
+            await start(items, coordinator: coordinator, sourceTitle: area.title, asSongs: true)
         } catch {
             Logger.library.error("SHUFFLE area=\(area.key, privacy: .public) page=\(page) FAILED: \(FailureReason.of(error), privacy: .public)")
             sayFailure(ErrorSentence.of(error), coordinator: coordinator, title: area.title)
@@ -166,15 +166,19 @@ enum CatalogShuffle {
     /// First one plays, the rest become the CONTEXT (the collection-start
     /// path); hand-placed orders in the queue keep their right of way. A
     /// draw without a playable title says so instead of doing nothing.
+    /// `asSongs`: an album plays as its songs (`CatalogShuffleSongs`).
     private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator,
-                              sourceTitle: String) async {
+                              sourceTitle: String, asSongs: Bool = false) async {
         guard !items.isEmpty else {
             sayFailure(String(localized: "Shuffle found nothing to play this time. Please try again."),
                        coordinator: coordinator, title: sourceTitle)
             return
         }
-        await coordinator.playInOrder(items: items,
-                                      contextSource: sourceTitle)
+        guard asSongs else {
+            await coordinator.playInOrder(items: items, contextSource: sourceTitle)
+            return
+        }
+        await CatalogShuffleSongs.start(items) { await coordinator.playInOrder(items: $0, contextSource: sourceTitle) }
     }
 
     /// A shuffle that starts nothing says why in the notice channel, like

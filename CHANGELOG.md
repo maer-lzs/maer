@@ -24,6 +24,11 @@ soon as the server answers.
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.
 
+**Shuffle on a music area plays songs.** A drawn netlabel album started
+as one long title. Now each drawn album plays song by song, as from its
+own page: Up Next lists the songs, and next and previous step from song
+to song. A title of one song stays that song.
+
 **A song played on its own shows its cover.** On a gonic server a single
 song, a song in the queue and a song in a device playlist showed no
 cover, because the server knows no cover under the song's own id. The

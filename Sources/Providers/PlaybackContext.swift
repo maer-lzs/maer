@@ -109,6 +109,21 @@ final class PlaybackContext: ObservableObject {
         save()
     }
 
+    /// An entry becomes the entries it holds, at its place (a drawn album
+    /// becomes its songs once its answer is in). An entry that left
+    /// already (started, or a new start replaced the context) stays gone,
+    /// and an entry without parts stays itself; returns whether it was
+    /// there.
+    @discardableResult
+    func expand(_ id: String, into parts: [String]) -> Bool {
+        guard let at = ids.firstIndex(of: id) else { return false }
+        let fresh = parts.filter { PlayQueue.canEnqueue($0) }
+        guard !fresh.isEmpty, fresh != [id] else { return true }
+        ids.replaceSubrange(at...at, with: fresh)
+        save()
+        return true
+    }
+
     /// Waits for every queued write of the row (tests, teardown).
     func awaitPendingWrites() async {
         await keeper?.awaitPendingWrites()
