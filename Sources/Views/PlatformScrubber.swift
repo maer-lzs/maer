@@ -6,82 +6,56 @@
 import SwiftUI
 import UIKit
 
-/// Where the app runs, as far as the SLIDER question is concerned.
-///
-/// The iOS app on an Apple-silicon Mac crashes the moment SwiftUI's
-/// `Slider` builds its fluid-slider haptics: six crash reports, two app
-/// versions, byte-identical in Apple's own
-/// `_UIFluidSliderFeedbackConfiguration defaultConfiguration`, with no
-/// app frame in the stack. It is an OS defect, and macOS 27 goes final
-/// in September, so waiting is not a plan.
-///
-/// Pure and injectable, because a runtime idiom is otherwise untestable
-/// and the red probe has to show that the branch is Mac-only.
+/// Where the app runs: the iOS app on a Mac or not. One place asks the
+/// runtime (`DeviceIdentity` names the device by it).
 nonisolated enum PlatformIdiom {
-    /// True only for the iOS app running on macOS. iPad idiom on real
-    /// iPads stays false; that path must keep the system slider.
     static var isAppOnMac: Bool {
         ProcessInfo.processInfo.isiOSAppOnMac
             || ProcessInfo.processInfo.isMacCatalystApp
     }
-
-    /// The decision as a pure rule: only the Mac case avoids the system
-    /// slider, everything else keeps it.
-    static func avoidsSystemSlider(isAppOnMac: Bool) -> Bool { isAppOnMac }
 }
 
-/// The scrubber the player shows. On iOS/iPadOS it IS the system
-/// `Slider` (unchanged behaviour, unchanged look). On the Mac it is a
-/// track the app draws itself and drags with a plain gesture, so the
-/// crashing haptics configuration is never built.
-///
-/// The Mac form deliberately keeps the same geometry (track height,
-/// thumb size, tap-anywhere-to-seek) rather than inventing a second
-/// visual language: what differs is who owns the gesture, not what the
-/// player looks like.
+/// The player's progress bar, one form on every device and in every
+/// posture: a bar with round ends and no thumb, the played part bright,
+/// the rest muted; it grows while a finger holds it. A drag or a tap
+/// anywhere on it seeks. It never builds the system `Slider`, whose
+/// haptics configuration crashes the iOS app on a Mac.
 struct PlatformScrubber: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     /// Same contract as `Slider(onEditingChanged:)`: true when a drag
     /// begins, false when it ends (the caller seeks on false).
     let onEditingChanged: (Bool) -> Void
-    /// Injectable for the red probe; production reads the runtime.
-    var isAppOnMac: Bool = PlatformIdiom.isAppOnMac
+
+    /// The bar's thickness at rest and while held.
+    static let restHeight: CGFloat = 7
+    static let heldHeight: CGFloat = 12
+    /// The area that takes the finger, taller than the bar and as tall as
+    /// the system slider's.
+    static let hitHeight: CGFloat = 32
 
     @State private var dragging = false
-
-    var body: some View {
-        if PlatformIdiom.avoidsSystemSlider(isAppOnMac: isAppOnMac) {
-            macTrack
-        } else {
-            Slider(value: $value, in: range, onEditingChanged: onEditingChanged)
-        }
-    }
 
     /// The arithmetic lives in `ScrubberMath`, pure, so its edges have
     /// witnesses: an empty range, a track of no width, a step at the ceiling.
     private var fraction: Double { ScrubberMath.fraction(of: value, in: range) }
 
-    private var macTrack: some View {
+    var body: some View {
         GeometryReader { geo in
             let width = max(geo.size.width, 1)
+            let height = dragging ? Self.heldHeight : Self.restHeight
             ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.25)).frame(height: 4)
-                Capsule().fill(.white.opacity(0.85))
-                    .frame(width: width * fraction, height: 4)
-                Circle().fill(.white)
-                    .frame(width: dragging ? 18 : 14, height: dragging ? 18 : 14)
-                    .offset(x: width * fraction - (dragging ? 9 : 7))
+                Capsule().fill(.white.opacity(0.25))
+                Capsule().fill(.white.opacity(dragging ? 1 : 0.85))
+                    .frame(width: width * fraction)
             }
-            .frame(height: 28)
+            .frame(height: height)
+            .clipShape(Capsule())
+            .frame(maxHeight: .infinity)
+            .animation(.easeOut(duration: 0.15), value: dragging)
             .contentShape(Rectangle())
-            // The system slider carries the adjustable trait, VoiceOver
-            // and keyboard control for free; a ZStack with a gesture
-            // carries none of it, and on the Mac this IS the app's
-            // central control. Built by hand rather than with
-            // `accessibilityRepresentation { Slider }`, because that
-            // would instantiate the very control whose haptics crash
-            // here (the defect through the back door).
+            // A drawn bar carries no adjustable trait, VoiceOver or keyboard
+            // control of its own; they are built here by hand.
             .accessibilityElement()
             .accessibilityLabel(Text("Playback position"))
             .accessibilityValue(Text(accessibilityValueText))
@@ -104,7 +78,7 @@ struct PlatformScrubber: View {
                     }
             )
         }
-        .frame(height: 28)
+        .frame(height: Self.hitHeight)
     }
 
     /// Spoken position: minutes and seconds, never a raw number.

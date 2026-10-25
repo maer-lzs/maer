@@ -8,18 +8,24 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The Mac branch is NOTWEHR against an OS defect (Apple's fluid-slider
-/// haptics assert on the iOS app running on macOS; six byte-identical
-/// reports across two app versions, no app frame). The fence that
-/// matters is the RED PROBE: the branch may only ever fire in the Mac
-/// case, because everywhere else the system slider is the better
-/// control and stays untouched.
+/// The player's progress bar is one drawn form on every device: no
+/// thumb, no chapter ticks, it grows while held, and its arithmetic
+/// lives in `ScrubberMath`.
 struct PlatformScrubberTests {
-    @Test("die Weiche greift NUR im Mac-Fall")
-    func onlyMacAvoidsTheSystemSlider() {
-        #expect(PlatformIdiom.avoidsSystemSlider(isAppOnMac: true))
-        // Rot-Probe: iPhone und iPad behalten den System-Regler.
-        #expect(!PlatformIdiom.avoidsSystemSlider(isAppOnMac: false))
+    @Test("der Balken ist eine Form ohne Griff und ohne Teilstriche, er waechst beim Halten", .needsTheSources)
+    func theBarHasNoThumbAndNoTicks() throws {
+        let read = { (path: String) in
+            SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let bar = try read("Sources/Views/PlatformScrubber.swift")
+        #expect(!bar.contains("Circle()"), "the bar carries a thumb again")
+        #expect(!bar.contains("Slider("), "the system slider is back")
+        #expect(bar.contains("let height = dragging ? Self.heldHeight : Self.restHeight"))
+        #expect(PlatformScrubber.heldHeight > PlatformScrubber.restHeight)
+        #expect(bar.contains(".accessibilityAdjustableAction"))
+        let player = try read("Sources/Views/PlayerView.swift")
+        #expect(!player.contains("chapter.start / viewModel.duration"), "chapter ticks are back on the bar")
     }
 
     // The case that used to stand here asked `PlatformIdiom.isAppOnMac` and

@@ -2251,10 +2251,10 @@ extension ProjectFileIntegrityTests {
         #expect("String(id.dropFirst(FreeCatalog.archivePrefix.count))".contains("dropFirst(FreeCatalog.archivePrefix.count)"))
     }
 
-    @Test("Slider steht in Sources nur im PlatformScrubber", .needsTheSources)
+    @Test("kein System-Slider in Sources, der Balken ist der PlatformScrubber", .needsTheSources)
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []
-        for file in Self.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {
+        for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -2265,7 +2265,7 @@ extension ProjectFileIntegrityTests {
             }
         }
         #expect(offenders.isEmpty,
-                "ein Slider ausserhalb der Notwehr-Weiche: \(offenders)")
+                "ein System-Slider statt des einen Balkens: \(offenders)")
         // Rot-Probe: der Zaun saehe genau diese Zeile.
         #expect("        Slider(value: $x, in: 0...1)".contains("Slider("))
     }

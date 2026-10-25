@@ -732,10 +732,8 @@ struct PlayerView: View {
 
     private func scrubber(at time: Double) -> some View {
         VStack(spacing: 8) {
-            // The ONE slider of the app, and on the Mac the system one
-            // crashes inside Apple's fluid-slider haptics (six reports,
-            // two app versions, no app frame). PlatformScrubber keeps
-            // the system Slider everywhere except there.
+            // The ONE progress bar of the app, the same on every device
+            // (`PlatformScrubber`); the parts stand behind "Parts" only.
             PlatformScrubber(
                 value: Binding(
                     get: { isScrubbing ? scrubValue : scrubberSpan.position(absolute: time) },
@@ -752,30 +750,9 @@ struct PlayerView: View {
                     }
                 }
             )
-            // Recreate the slider when the item changes: Slider does not
-            // reliably adopt a changed bounds range in place, which left the
-            // thumb mapped against the previous episode's duration after an
-            // auto-continue switch.
+            // A new item starts the bar afresh, its range with it, so no
+            // drag carries the previous title's duration into the next.
             .id(viewModel.item?.id)
-            .background(alignment: .leading) {
-                // Chapter marks: small ticks at the chapter boundaries. Purely
-                // visual, sit behind the slider track.
-                // Only where the bar spans the whole work: with music the
-                // bar IS one song, so a mark at every other song would sit
-                // outside what it spans.
-                if viewModel.duration > 0, viewModel.chapters.count > 1, !viewModel.isMusicItem {
-                    GeometryReader { geo in
-                        ForEach(viewModel.chapters) { chapter in
-                            let x = geo.size.width * (chapter.start / viewModel.duration)
-                            Rectangle()
-                                .fill(.white.opacity(0.4))
-                                .frame(width: 1.5, height: 10)
-                                .position(x: x, y: geo.size.height / 2)
-                        }
-                    }
-                    .allowsHitTesting(false)
-                }
-            }
             HStack {
                 Text(format(scrubberSpan.elapsed(absolute: time)))
                 Spacer()
