@@ -15,11 +15,11 @@ extension PlayerViewModel {
 
     // MARK: - Shared now-playing title/subtitle (one source, three surfaces)
 
-    /// True for a Subsonic music item (`sub:`). Its playing "work" is the song,
-    /// not the album.
-    /// Bound to the ONE family mapping. The prefix comparison it replaces
-    /// knew only `sub:` and left Jellyfin items reading as books here.
-    var isMusicItem: Bool { item.map { MediaFamily.of($0.id) == .music } == true }
+    /// True for a music item: its playing "work" is the song, not the album,
+    /// and the line under the title is the artist. Music by form, the ONE
+    /// question the player's tools ask (`MediaFamily.isMusicByForm`): the
+    /// music family and a catalogue song or album, never a reading.
+    var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id) } == true }
 
     /// Live radio (`radio:`). No duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the

@@ -73,5 +73,18 @@ struct MediaFamilyKindTests {
         // The music of the same server stays music.
         #expect(MediaFamily.isMusicByForm("jf:album:1") && MusicSourceRule.isServerMusic("jf:album:1"))
     }
+
+    @Test("ein Katalog-Lied ist im Player Musik: unter dem Titel steht der Kuenstler", .needsTheSources)
+    func aCatalogSongIsMusicInThePlayer() throws {
+        let song = CatalogSongID.make(album: FreeCatalog.archivePrefix + "MIXG032", index: 0)
+        #expect(MediaFamily.isMusicByForm(song))
+        // A release unmarked stays a reading: its one position is kept.
+        #expect(!MediaFamily.isMusicByForm(FreeCatalog.archivePrefix + "MIXG032"))
+        // The player asks the one form question, not the family alone.
+        let player = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+NowPlaying.swift"),
+            encoding: .utf8))
+        #expect(player.contains("var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id) } == true }"))
+    }
 }
 #endif
