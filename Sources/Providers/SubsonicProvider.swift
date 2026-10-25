@@ -631,7 +631,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             sorted = SongOrder.sorted(catalog.entries.map(Self.topSong(from:)), by: sort)
             sortedSongs[sort] = sorted
         }
-        return Array(sorted.dropFirst(offset).prefix(size))
+        let page = Array(sorted.dropFirst(offset).prefix(size))
+        // Only the page shown learns its covers: the memory stays capped
+        // however many songs the list holds.
+        learnCoverArt(Self.pageCoverArt(page))
+        return page
+    }
+
+    /// Each song of a page with the cover id the kept list names for it.
+    nonisolated static func pageCoverArt(_ page: [MusicTopSong]) -> [(songId: String, coverArt: String?)] {
+        page.compactMap { song in subParts(song.id).map { ($0.raw, song.coverArt) } }
     }
 
     /// When the kept song list was last loaded whole; the page says it.
@@ -821,7 +830,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     nonisolated static func catalogEntry(from song: SubsonicSong) -> SongCatalog.Entry {
         SongCatalog.Entry(id: song.id, title: song.title, artist: song.artist, album: song.album,
                           albumId: song.albumId, duration: song.duration, created: song.created,
-                          played: song.played, playCount: song.playCount)
+                          played: song.played, playCount: song.playCount, coverArt: song.coverArt)
     }
 
     nonisolated static func topSong(from entry: SongCatalog.Entry) -> MusicTopSong {
@@ -836,7 +845,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return MusicTopSong(item: item, albumName: entry.album,
                             addedAt: SongOrder.seconds(entry.created),
                             lastPlayedAt: SongOrder.seconds(entry.played),
-                            playCount: entry.playCount)
+                            playCount: entry.playCount, coverArt: entry.coverArt)
     }
 
     /// One Subsonic song → a playable single-track `sub:song:` library item.
@@ -954,14 +963,19 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// per answer. A song a download holds as its own entry takes its kept
     /// cover to the new address (`moveKeptCover`).
     private func learnCovers(_ songs: [SubsonicSong]) {
+        learnCoverArt(songs.map { ($0.id, $0.coverArt) })
+    }
+
+    /// The same for song ids and the cover ids named for them.
+    private func learnCoverArt(_ songs: [(songId: String, coverArt: String?)]) {
         guard client != nil, !songs.isEmpty else { return }
         var memo = songCoverMemo
         var changed: [(itemId: String, old: URL?, new: URL?)] = []
         let downloads = DownloadManager.shared
         for song in songs {
-            let itemId = Self.itemId(songId: song.id)
+            let itemId = Self.itemId(songId: song.songId)
             let old = coverURL(forItemId: itemId)
-            guard case .learned = memo.learn(songId: song.id, coverArt: song.coverArt,
+            guard case .learned = memo.learn(songId: song.songId, coverArt: song.coverArt,
                                              keeps: { downloads.downloadedItemIds.contains(Self.itemId(songId: $0)) })
             else { continue }
             songCoverStore = memo

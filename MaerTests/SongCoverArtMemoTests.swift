@@ -89,6 +89,45 @@ struct SongCoverArtMemoTests {
         #expect(flat.contains("learnCovers(hits.song ?? [])"))
         #expect(flat.contains("Artwork.rename(from: old, to: new) Artwork.invalidate(new) await Artwork.persist(new)"))
         #expect(flat.contains("songCoverStore = nil"), "a new server starts its own memory")
+        // The song list: the page shown learns the cover each kept entry names.
+        #expect(flat.contains("let page = Array(sorted.dropFirst(offset).prefix(size)) learnCoverArt(Self.pageCoverArt(page)) return page"))
+        #expect(flat.contains("played: song.played, playCount: song.playCount, coverArt: song.coverArt)"))
+        #expect(flat.contains("playCount: entry.playCount, coverArt: entry.coverArt)"))
+        #expect(flat.components(separatedBy: "learnCoverArt(").count - 1 == 3,
+                "one definition, the answers with songs, the song list page")
+    }
+
+    @Test("Eine gehaltene Liederliste ohne Cover-Feld liest sich weiter, mit Feld traegt sie es")
+    func aKeptSongListWithoutTheCoverFieldReads() throws {
+        let old = #"{"entries":[{"id":"tr-146","title":"Lied","albumId":"al-40","duration":200,"playCount":3}],"wholeAt":1000,"serverCount":1}"#
+        let kept = try JSONDecoder().decode(SongCatalog.self, from: Data(old.utf8))
+        #expect(kept.entries.map(\.id) == ["tr-146"])
+        #expect(kept.entries.first?.coverArt == nil, "an old list shows without a cover until it is loaded again")
+        #expect(kept.entries.first?.playCount == 3)
+        var entry = try #require(kept.entries.first)
+        entry.coverArt = "al-40"
+        let next = SongCatalog(entries: [entry], wholeAt: 2000, serverCount: 1, serverLastScan: nil)
+        let read = try JSONDecoder().decode(SongCatalog.self, from: JSONEncoder().encode(next))
+        #expect(read == next)
+        #expect(read.entries.first?.coverArt == "al-40")
+    }
+
+    @Test("Ein Eintrag der Liederliste mit Cover-Feld zeigt dieses Cover, ohne Feld bleibt das Bekannte")
+    func aSongListEntryWithTheFieldShowsItsCover() throws {
+        let entry = SongCatalog.Entry(id: "tr-146", title: "Lied", artist: nil, album: nil, albumId: "al-40",
+                                      duration: nil, created: nil, played: nil, playCount: nil, coverArt: "al-40")
+        let bare = SongCatalog.Entry(id: "tr-7", title: "Alt", artist: nil, album: nil, albumId: nil,
+                                     duration: nil, created: nil, played: nil, playCount: nil)
+        let page = [entry, bare].map(SubsonicProvider.topSong(from:))
+        #expect(page.map(\.id) == ["sub:song:tr-146", "sub:song:tr-7"])
+        let named = SubsonicProvider.pageCoverArt(page)
+        #expect(named.map(\.songId) == ["tr-146", "tr-7"])
+        var memo = SongCoverArtMemo(server: "https://gonic.example|sim")
+        _ = memo.learn(songId: "tr-7", coverArt: "al-9")
+        for song in named { _ = memo.learn(songId: song.songId, coverArt: song.coverArt) }
+        #expect(memo.coverArt(of: "tr-146") == "al-40", "the cover the server named, not the song id")
+        #expect(memo.coverArt(of: "tr-7") == "al-9", "an entry kept without the field keeps what is known")
+        #expect(memo.order == ["tr-7", "tr-146"])
     }
 }
 #endif

@@ -40,6 +40,12 @@ cover, because the server knows no cover under the song's own id. The
 app now asks the cover the server names for the song. A downloaded
 song keeps its old cover until the new one has arrived.
 
+**The list of all songs shows each song's cover on gonic.** The Songs
+page in the Music tab showed no covers on a gonic server. The kept list
+now holds the cover the server names for each song. A list kept before
+this update shows its songs without covers until it is loaded whole
+again, at the latest after seven days.
+
 **Album rows name a song's artist where it differs.** On a sampler or a
 "Various Artists" album each row names the artist of its song below
 the title; an album of one artist shows only number and title, as

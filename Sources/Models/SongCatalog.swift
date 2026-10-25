@@ -20,6 +20,9 @@ nonisolated struct SongCatalog: Codable, Equatable, Sendable {
         let created: String?
         let played: String?
         let playCount: Int?
+        /// The cover id the server names for the song (`coverArt`); nil in
+        /// a list kept without it, until the list is loaded again.
+        var coverArt: String? = nil
     }
 
     var entries: [Entry]

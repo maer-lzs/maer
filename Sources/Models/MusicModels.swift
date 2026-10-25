@@ -97,6 +97,9 @@ nonisolated struct MusicTopSong: Identifiable {
     var addedAt: Double? = nil
     var lastPlayedAt: Double? = nil
     var playCount: Int? = nil
+    /// The cover id the server names for the song, where it names one of
+    /// its own (Subsonic `coverArt`); nil elsewhere.
+    var coverArt: String? = nil
 }
 
 /// The song list's order, one rule for every sort the album grid offers and
