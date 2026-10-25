@@ -330,7 +330,7 @@ struct MusicAlbumView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 12) {
+        DetailHeader(title: item.title) {
             Group {
                 // A playlist shows the 2×2 mosaic. The same component as the
                 // cards/rows, not the server's single playlist cover.
@@ -364,23 +364,20 @@ struct MusicAlbumView: View {
                                        provider: detail.map { router.provider($0.id) },
                                        isOnline: isOnline)
             }
-
-            VStack(spacing: 2) {
-                Text(item.title).font(.title3.bold()).multilineTextAlignment(.center)
-                if let artist = item.author {
-                    Text(artist).foregroundStyle(.secondary)
-                }
-                // Year · genre where the server provides them, and the
-                // server's name while two music servers are active.
-                let meta = [detail?.media.metadata?.publishedYear?.value,
-                            detail?.media.metadata?.genres?.first,
-                            router.sourceLabel(item.id)]
-                    .compactMap { $0 }.joined(separator: " · ")
-                if !meta.isEmpty {
-                    Text(meta).font(.caption).foregroundStyle(.secondary)
-                }
+        } lines: {
+            if let artist = item.author {
+                Text(artist).foregroundStyle(.secondary)
             }
-
+            // Year · genre where the server provides them, and the
+            // server's name while two music servers are active.
+            let meta = [detail?.media.metadata?.publishedYear?.value,
+                        detail?.media.metadata?.genres?.first,
+                        router.sourceLabel(item.id)]
+                .compactMap { $0 }.joined(separator: " · ")
+            if !meta.isEmpty {
+                Text(meta).font(.caption).foregroundStyle(.secondary)
+            }
+        } actions: {
             HStack(spacing: 12) {
                 playButton
                 // Shuffle this album/playlist. Same button/component as the

@@ -422,80 +422,90 @@ struct PodcastShowView: View {
         }
     }
 
-    /// Rich show metadata (categories, episode count, language, website and
-    /// funding).
+    /// Rich show metadata: the episode count, language and explicit mark
+    /// under the title; the categories with the facts; website and funding
+    /// with the controls.
     @ViewBuilder
-    private var showMetaSection: some View {
+    private var showCountLine: some View {
         if let s = liveShow {
-            VStack(spacing: 8) {
-                if let cats = s.categories, !cats.isEmpty {
-                    ScrollView(.horizontal) {
-                        HStack(spacing: 6) {
-                            ForEach(cats, id: \.self) { c in
-                                Text(c)
-                                    .font(.caption)
-                                    .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .background(.quaternary, in: Capsule())
-                            }
-                        }
-                    }
+            HStack(spacing: 12) {
+                Text("\(s.episodes.count) episodes").font(.caption).foregroundStyle(.secondary)
+                if let lang = s.language, !lang.isEmpty {
+                    Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
                 }
-                HStack(spacing: 12) {
-                    Text("\(s.episodes.count) episodes").font(.caption).foregroundStyle(.secondary)
-                    if let lang = s.language, !lang.isEmpty {
-                        Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
-                    }
-                    if PodcastExplicit.marks(show: s.explicit) {
-                        ExplicitMark()
-                    }
-                }
-                if s.link != nil || s.funding?.isEmpty == false {
-                    HStack(spacing: 18) {
-                        if let l = s.link, let url = URL(string: l) {
-                            Link(destination: url) { Label("Website", systemImage: "safari") }
-                                .accessibilityIdentifier("show-website")
-                        }
-                        if let f = s.funding?.first, let url = URL(string: f.url) {
-                            Link(destination: url) {
-                                Label(f.label ?? String(localized: "Support"), systemImage: "heart")
-                            }
-                        }
-                    }
-                    .font(.caption)
+                if PodcastExplicit.marks(show: s.explicit) {
+                    ExplicitMark()
                 }
             }
         }
     }
 
+    @ViewBuilder
+    private var showCategories: some View {
+        if let cats = liveShow?.categories, !cats.isEmpty {
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(cats, id: \.self) { c in
+                        Text(c)
+                            .font(.caption)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(.quaternary, in: Capsule())
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var showLinks: some View {
+        if let s = liveShow, s.link != nil || s.funding?.isEmpty == false {
+            HStack(spacing: 18) {
+                if let l = s.link, let url = URL(string: l) {
+                    Link(destination: url) { Label("Website", systemImage: "safari") }
+                        .accessibilityIdentifier("show-website")
+                }
+                if let f = s.funding?.first, let url = URL(string: f.url) {
+                    Link(destination: url) {
+                        Label(f.label ?? String(localized: "Support"), systemImage: "heart")
+                    }
+                }
+            }
+            .font(.caption)
+        }
+    }
+
     private var header: some View {
-        VStack(spacing: 12) {
+        DetailHeader(title: title) {
             podcastArtwork(
                 url: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },
                 size: 150, corner: 16)
                 .accessibilityIdentifier("show-cover")
-            VStack(spacing: 4) {
-                Text(title).font(.headline).multilineTextAlignment(.center)
-                if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {
-                    Text(author).font(.subheadline).foregroundStyle(.secondary)
+        } lines: {
+            if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {
+                Text(author).font(.subheadline).foregroundStyle(.secondary)
+            }
+            // Provenance on the show page (origin-carried).
+            if liveShow?.origin != nil { OriginCapsule() }
+            showCountLine
+        } facts: {
+            VStack(alignment: .leading, spacing: 8) {
+                if let description = liveShow?.description, !description.isEmpty {
+                    Text(podcastPlainText(description))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(descriptionExpanded ? nil : 3)
+                        .multilineTextAlignment(.leading)
+                        .onTapGesture { withAnimation { descriptionExpanded.toggle() } }
                 }
-                // Provenance on the show page (origin-carried).
-                if liveShow?.origin != nil { OriginCapsule() }
+                showCategories
             }
-            if let description = liveShow?.description, !description.isEmpty {
-                Text(podcastPlainText(description))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(descriptionExpanded ? nil : 3)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture { withAnimation { descriptionExpanded.toggle() } }
+        } actions: {
+            VStack(spacing: 12) {
+                showLinks
+                subscriptionControl
+                    .font(.subheadline)
             }
-            showMetaSection
-            subscriptionControl
-                .font(.subheadline)
-                .padding(.top, 4)
         }
-        .frame(maxWidth: .infinity)
         .padding(.horizontal)
         .confirmationDialog("Delete on server?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete on server", role: .destructive) {

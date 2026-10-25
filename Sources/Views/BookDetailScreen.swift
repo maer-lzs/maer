@@ -178,50 +178,43 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Title/author/progress. Centered and white for the hero view (it sits on
-    /// the colored gradient background, where `.primary` is not enough, that
-    /// would be black and unreadable in light system mode), left-aligned with
-    /// normal adaptive colors for the side-by-side layout (there the background
-    /// is the normal system background).
-    private func titleBlock(alignment: HorizontalAlignment) -> some View {
-        let isHero = alignment == .center
-        return VStack(alignment: alignment, spacing: 6) {
-            Text(shownItem.title)
-                .font(.title2).bold()
-                .multilineTextAlignment(isHero ? .center : .leading)
-                .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-            if let author = shownItem.author {
-                // Round author portrait next to the author line. ONLY when
-                // the server ships an image (no placeholder, no initials; the
-                // row looks like before otherwise, same rule as music artists
-                // without a picture). Tapping filters the library to this
-                // author (the image is function, not decoration) and is only
-                // active when the author has MORE than one work here.
-                // In the hero the portrait FLOATS on the cover edge (see
-                // heroCover overlay). The author line stays pure text. The
-                // left-aligned side-by-side layout keeps the inline row.
-                if isHero {
+    /// Author and progress under the title (`DetailHeader`). White for the
+    /// hero view (it sits on the colored gradient background, where
+    /// `.secondary` would not read), normal adaptive colors for the wide
+    /// layouts (there the background is the normal system background).
+    @ViewBuilder
+    private func headLines(isHero: Bool) -> some View {
+        if let author = shownItem.author {
+            // Round author portrait next to the author line. ONLY when
+            // the server ships an image (no placeholder, no initials; the
+            // row looks like before otherwise, same rule as music artists
+            // without a picture). Tapping filters the library to this
+            // author (the image is function, not decoration) and is only
+            // active when the author has MORE than one work here.
+            // In the hero the portrait FLOATS on the cover edge (see
+            // heroCover overlay). The author line stays pure text. The
+            // wide layouts keep the inline row.
+            if isHero {
+                Text(author)
+                    .font(.subheadline)
+                    .foregroundStyle(AnyShapeStyle(.white.opacity(0.75)))
+            } else {
+                HStack(spacing: 12) {
+                    authorPortrait
                     Text(author)
                         .font(.subheadline)
-                        .foregroundStyle(AnyShapeStyle(.white.opacity(0.75)))
-                } else {
-                    HStack(spacing: 12) {
-                        authorPortrait
-                        Text(author)
-                            .font(.subheadline)
-                            .foregroundStyle(AnyShapeStyle(.secondary))
-                    }
+                        .foregroundStyle(AnyShapeStyle(.secondary))
                 }
             }
-            if let p = currentProgress, p.isStarted, !isFinished {
-                Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
-                    .font(.caption)
-                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
-            } else if isFinished {
-                Text("Completed")
-                    .font(.caption)
-                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
-            }
+        }
+        if let p = currentProgress, p.isStarted, !isFinished {
+            Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
+                .font(.caption)
+                .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+        } else if isFinished {
+            Text("Completed")
+                .font(.caption)
+                .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
         }
     }
 
@@ -317,11 +310,17 @@ struct BookDetailScreen: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        VStack(alignment: .leading, spacing: 14) {
-                            titleBlock(alignment: .leading)
+                        DetailHeader(title: shownItem.title) {
+                            EmptyView()
+                        } lines: {
+                            headLines(isHero: false)
+                        } facts: {
                             infoSection(withPadding: false)
-                            playArea(withPadding: false)
-                            buttonRow(width: geo.size.width - 420 - 48)
+                        } actions: {
+                            VStack(spacing: 14) {
+                                playArea(withPadding: false)
+                                buttonRow(width: geo.size.width - 420 - 48)
+                            }
                         }
                         trailingSections(isHero: false)
                     }
@@ -347,31 +346,35 @@ struct BookDetailScreen: View {
             let content = column.width - 24 - FoldSplit.pageGutter
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // In its half and as large as leaves title and play
-                    // above the playback bar (`DetailCoverSide`).
-                    BookCoverView(
-                        url: router.coverURL(entry.id),
-                        progress: currentProgress,
-                        itemId: entry.id,
-                        size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60,
-                                                   below: belowCover, bottomReserve: bottomBarInset)
-                    )
-                    .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-                    .contextMenu { coverDownloadMenu }
-                    .frame(maxWidth: .infinity)
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                        coverBottom = $0
-                        noteBelowCover()
-                    }
-                    VStack(alignment: .leading, spacing: 14) {
-                        titleBlock(alignment: .leading)
+                    DetailHeader(title: shownItem.title) {
+                        // In its half and as large as leaves title and play
+                        // above the playback bar (`DetailCoverSide`).
+                        BookCoverView(
+                            url: router.coverURL(entry.id),
+                            progress: currentProgress,
+                            itemId: entry.id,
+                            size: DetailCoverSide.side(columnWidth: content, height: column.height, top: 60,
+                                                       below: belowCover, bottomReserve: bottomBarInset)
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .contextMenu { coverDownloadMenu }
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                            coverBottom = $0
+                            noteBelowCover()
+                        }
+                    } lines: {
+                        headLines(isHero: false)
+                    } facts: {
                         infoSection(withPadding: false)
-                        playArea(withPadding: false)
-                        buttonRow(width: content)
-                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                blockBottom = $0
-                                noteBelowCover()
-                            }
+                    } actions: {
+                        VStack(spacing: 14) {
+                            playArea(withPadding: false)
+                            buttonRow(width: content)
+                                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                    blockBottom = $0
+                                    noteBelowCover()
+                                }
+                        }
                     }
                     trailingSections(isHero: false, showsChapterLink: false)
                 }
@@ -397,7 +400,7 @@ struct BookDetailScreen: View {
     private func buttonRow(width: CGFloat) -> some View {
         let form = DetailButtonRow.form(width: width, needs: buttonPairWidth, compactNeeds: compactPairWidth)
         let layout = form == .stacked
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            ? AnyLayout(VStackLayout(spacing: 12))
             : AnyLayout(HStackLayout(spacing: 12))
         return layout {
             downloadSection(compact: form == .compact)
@@ -605,7 +608,7 @@ struct BookDetailScreen: View {
             } else {
                 ScrollView {
                     VStack(spacing: 20) {
-                        VStack(spacing: 8) {
+                        DetailHeader(title: shownItem.title, textInset: 16) {
                             // The full width where the window is tall enough,
                             // else as large as leaves title and play above the
                             // playback bar, as a card (`DetailCoverCard`).
@@ -620,17 +623,21 @@ struct BookDetailScreen: View {
                                     coverBottom = $0
                                     noteBelowCover()
                                 }
-                            titleBlock(alignment: .center)
-                                .padding(.horizontal)
-                        }
-                        infoSection(withPadding: true)
-                        playArea(withPadding: true)
-                        buttonRow(width: min(geo.size.width, 600) - 32)
-                            .padding(.horizontal)
-                            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
-                                blockBottom = $0
-                                noteBelowCover()
+                        } lines: {
+                            headLines(isHero: true)
+                        } facts: {
+                            infoSection(withPadding: true)
+                        } actions: {
+                            VStack(spacing: 14) {
+                                playArea(withPadding: true)
+                                buttonRow(width: min(geo.size.width, 600) - 32)
+                                    .padding(.horizontal)
+                                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.pageSpace)).maxY } action: {
+                                        blockBottom = $0
+                                        noteBelowCover()
+                                    }
                             }
+                        }
 
                         trailingSections(isHero: true)
                     }

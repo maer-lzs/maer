@@ -27,44 +27,22 @@ struct RadioStationDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                RadioArtwork(stationID: station.id,
-                             faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                             name: station.name, homepage: station.homepage,
-                             isHero: true)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .padding(.horizontal)
-
-                VStack(spacing: 6) {
-                    Text(station.name).font(.title2).bold().multilineTextAlignment(.center)
+                DetailHeader(title: station.name, textInset: 16) {
+                    RadioArtwork(stationID: station.id,
+                                 faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                                 name: station.name, homepage: station.homepage,
+                                 isHero: true)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .padding(.horizontal)
+                } lines: {
                     if let sub = subtitle {
                         Text(sub).font(.subheadline).foregroundStyle(.secondary)
                     }
+                } actions: {
+                    stationControls
                 }
-                .padding(.horizontal)
-
-                HStack(spacing: 14) {
-                    Button {
-                        RadioPlay.play(station, playerCoordinator: playerCoordinator)
-                    } label: {
-                        Label("Play", systemImage: "play.fill")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!isOnline)
-
-                    Button {
-                        RadioStore.toggleFavorite(station)
-                        isFavorite.toggle()
-                    } label: {
-                        Image(systemName: isFavorite ? "star.fill" : "star")
-                            .font(.headline).frame(width: 48, height: 48)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(isFavorite ? Text("Remove Favorite") : Text("Add Favorite"))
-                }
-                .padding(.horizontal)
 
                 if variants.count > 1 { variantPicker }
 
@@ -122,6 +100,31 @@ struct RadioStationDetailView: View {
             RadioProvider.shared.remember(cleaned)
             similar = cleaned
         }
+    }
+
+    /// Play and the favourite star, under the station's name.
+    private var stationControls: some View {
+        HStack(spacing: 14) {
+            Button {
+                RadioPlay.play(station, playerCoordinator: playerCoordinator)
+            } label: {
+                Label("Play", systemImage: "play.fill")
+                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!isOnline)
+
+            Button {
+                RadioStore.toggleFavorite(station)
+                isFavorite.toggle()
+            } label: {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .font(.headline).frame(width: 48, height: 48)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(isFavorite ? Text("Remove Favorite") : Text("Add Favorite"))
+        }
+        .padding(.horizontal)
     }
 
     /// The station's facts. Bitrate/codec of the BEST variant, the

@@ -1044,33 +1044,27 @@ struct ArchiveSeriesPage: View {
 
     @ViewBuilder
     private func header(_ detail: LibraryItemDetail) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 14) {
-                podcastArtwork(url: router.coverURL(itemId),
-                               size: 110, corner: 12)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: FreeCatalog.normalizedCollectionTitle(
-                        detail.media.metadata?.title ?? ""))
-                        .font(.headline)
-                    if let author = detail.media.metadata?.authorName {
-                        Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
-                    }
-                    // The honest second line. The episode count the tile
-                    // could not carry without a second fetch.
-                    Text(effectiveFlavor == .album
-                         ? "\(tracks.count) tracks"
-                         : "\(tracks.count) episodes")
-                        .font(.caption).foregroundStyle(.secondary)
-                    // Rights capsule: the existing graded truth, never guessed.
-                    if let licence = catalogFacts.licence(itemId) {
-                        Text(verbatim: licence)
-                            .font(.caption2.weight(.medium))
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.quaternary, in: Capsule())
-                    }
-                }
+        DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) {
+            podcastArtwork(url: router.coverURL(itemId),
+                           size: 150, corner: 16)
+        } lines: {
+            if let author = detail.media.metadata?.authorName {
+                Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
             }
-            .padding(.horizontal)
+            // The honest second line. The episode count the tile
+            // could not carry without a second fetch.
+            Text(effectiveFlavor == .album
+                 ? "\(tracks.count) tracks"
+                 : "\(tracks.count) episodes")
+                .font(.caption).foregroundStyle(.secondary)
+            // Rights capsule: the existing graded truth, never guessed.
+            if let licence = catalogFacts.licence(itemId) {
+                Text(verbatim: licence)
+                    .font(.caption2.weight(.medium))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.quaternary, in: Capsule())
+            }
+        } facts: {
             if let description = detail.media.metadata?.description, !description.isEmpty {
                 // The leading heading repeats the title and leaves a
                 // hole underneath. Both go (measured, see tidiedDescription).
@@ -1079,9 +1073,9 @@ struct ArchiveSeriesPage: View {
                     title: detail.media.metadata?.title ?? ""))
                     .font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(6)
-                    .padding(.horizontal)
             }
         }
+        .padding(.horizontal)
     }
 
     /// "07.12.1948 · 29 Min.": date in the user's format, duration in

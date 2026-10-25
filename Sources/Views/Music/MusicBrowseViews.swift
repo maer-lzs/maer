@@ -237,7 +237,9 @@ struct MusicArtistView: View {
         let headerImage = ArtistImagePolicy.rendered(serverImageURL: info?.imageURL,
                                                      webImageURL: nil, webEnabled: false)
         if headerImage != nil || bio != nil {
-            VStack(alignment: .leading, spacing: 10) {
+            // The artist names itself in the navigation title, so the head
+            // carries no title of its own.
+            DetailHeader(title: nil) {
                 if let url = headerImage {
                     // Sizing lives on the LOADED image: servers hand out image
                     // URLs even for artists without pictures. An outer frame
@@ -250,6 +252,9 @@ struct MusicArtistView: View {
                             .padding(.horizontal)
                     } placeholder: { EmptyView() }
                 }
+            } lines: {
+                EmptyView()
+            } facts: {
                 if let bio {
                     Text(bio)
                         .font(.subheadline)

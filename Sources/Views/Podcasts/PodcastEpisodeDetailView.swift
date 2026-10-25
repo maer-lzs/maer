@@ -124,32 +124,28 @@ struct PodcastEpisodeDetailView: View {
 
             ScrollView {
                 VStack(spacing: 18) {
-                    podcastArtwork(url: coverURL, size: 220, corner: 16)
-                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-                        .opacity(isPlayed ? 0.6 : 1)
-                        // Download and delete live here, on the cover's
-                        // long press: the episode's own menu.
-                        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
-
-                    VStack(spacing: 8) {
-                        Text(item.title)
-                            .font(.title3.bold())
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.white)
+                    DetailHeader(title: item.title, titleStyle: AnyShapeStyle(.white)) {
+                        podcastArtwork(url: coverURL, size: 220, corner: 16)
+                            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                            .opacity(isPlayed ? 0.6 : 1)
+                            // Download and delete live here, on the cover's
+                            // long press: the episode's own menu.
+                            .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+                    } lines: {
                         showLink
                         Text(metaText)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.8))
                         if let ep = podcastEpisode { badges(ep) }
-                    }
-
-                    // Text-only episodes show the notes without play/
-                    // download/played affordances (nothing to hear).
-                    if !isTextOnly {
-                        HStack(spacing: 14) {
-                            playButton
-                            PodcastDownloadButton(item: item)
-                            markPlayedButton
+                    } actions: {
+                        // Text-only episodes show the notes without play/
+                        // download/played affordances (nothing to hear).
+                        if !isTextOnly {
+                            HStack(spacing: 14) {
+                                playButton
+                                PodcastDownloadButton(item: item)
+                                markPlayedButton
+                            }
                         }
                     }
 
