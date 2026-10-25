@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A netlabel album from shuffle plays as music.** It played like a
+book, with parts, thirty second skips and "book ends". Now its songs
+play in order with the music controls, as on its own page, and that
+page shows Pause while its album plays.
+
 **Playlist rows show the song.** Every row of a playlist, on the server
 and on the device, shows the song's small cover, its title and its
 artist below. The song that plays is marked in album and playlist rows

@@ -18,8 +18,20 @@ extension PlayerViewModel {
     /// True for a music item: its playing "work" is the song, not the album,
     /// and the line under the title is the artist. Music by form, the ONE
     /// question the player's tools ask (`MediaFamily.isMusicByForm`): the
-    /// music family and a catalogue song or album, never a reading.
-    var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id) } == true }
+    /// music family and a catalogue song or album, never a reading. The
+    /// form comes from the one place, `playingForm`.
+    var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id, markedForm: playingForm) } == true }
+
+    /// The form of the playing title, the ONE place the player's form
+    /// questions read (music or not, skip habit, remote commands): the
+    /// mark its start noted, else the form its source gives while the
+    /// title is loaded (a catalogue album started by shuffle, before the
+    /// mark is written). Never guessed: nil when neither says.
+    var playingForm: ProgressMark.StartedForm? { item.flatMap { startedForm(of: $0.id) } }
+
+    func startedForm(of id: String) -> ProgressMark.StartedForm? {
+        ListeningStore.startedForm(id) ?? (provider as? FreeCatalogProvider)?.startedForm(itemId: id)
+    }
 
     /// Live radio (`radio:`). No duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
@@ -176,7 +188,7 @@ extension PlayerViewModel {
     func handleTitleButton(forward: Bool) -> Bool {
         noteRemoteCommand(forward ? "nextTrack" : "previousTrack")
         guard let id = item?.id else { return false }
-        switch RemoteCommandRule.kind(forItem: id) {
+        switch RemoteCommandRule.kind(forItem: id, markedForm: playingForm) {
         case .live:
             return false
         case .songs:
@@ -205,7 +217,7 @@ extension PlayerViewModel {
         // skip-by-seconds, so a headphone double press is the next song and
         // the lock screen shows next and previous, as in the system's music
         // app; a live stream has neither.
-        let enabled = RemoteCommandRule.enabled(for: RemoteCommandRule.kind(forItem: item?.id))
+        let enabled = RemoteCommandRule.enabled(for: RemoteCommandRule.kind(forItem: item?.id, markedForm: playingForm))
         commandCenter.skipForwardCommand.isEnabled = enabled.skip
         commandCenter.skipBackwardCommand.isEnabled = enabled.skip
         commandCenter.nextTrackCommand.isEnabled = enabled.track

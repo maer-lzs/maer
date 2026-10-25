@@ -1007,7 +1007,7 @@ struct PlayerView: View {
         let content: PlayerToolRule.Content
         if viewModel.isLiveStream {
             content = .liveStream
-        } else if MediaFamily.isMusicByForm(id) {
+        } else if viewModel.isMusicItem {
             content = .music
         } else {
             content = .spokenWord

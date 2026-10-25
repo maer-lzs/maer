@@ -1230,7 +1230,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// What the title keys of the app do for what is loaded; their action and
     /// their VoiceOver names both read it.
     var titleStep: RemoteCommandRule.AppStep {
-        RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: item?.id))
+        RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: item?.id, markedForm: playingForm))
     }
 
     /// The one entry for the title keys and the cover swipe in the app. The
@@ -1302,13 +1302,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// The habit of the loaded item: a song skips shorter than a book.
     var skipContent: PlaybackSkip.Content {
-        PlaybackSkip.content(forItemId: item?.id ?? "")
+        PlaybackSkip.content(forItemId: item?.id ?? "", markedForm: playingForm)
     }
 
     /// The remembered width of the item's habit, applied on every load so a
     /// song after a book jumps ten seconds, and the book after it thirty.
     func applySkipInterval(forItemId id: String) {
-        let seconds = PlaybackSkip.content(forItemId: id) == .music
+        let seconds = PlaybackSkip.content(forItemId: id, markedForm: startedForm(of: id)) == .music
             ? AppStorageKeys.musicSkipIntervalValue
             : AppStorageKeys.skipIntervalValue
         skipInterval = seconds

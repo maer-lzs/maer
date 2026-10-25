@@ -189,7 +189,7 @@ struct RemoteCommandRuleTests {
         #expect(remember.lowerBound < open.lowerBound && open.lowerBound < hand.lowerBound)
         let press = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+NowPlaying.swift"), encoding: .utf8))
-        #expect(press.contains("switch RemoteCommandRule.kind(forItem: id)"), "die Taste fragt dieselbe Regel wie der Sperrbildschirm")
+        #expect(press.contains("switch RemoteCommandRule.kind(forItem: id, markedForm: playingForm)"),"die Taste fragt dieselbe Regel wie der Sperrbildschirm")
     }
 
     @Test("Die Titeltasten der App: Songs gehen den Titelweg, alles andere blaettert Kapitel")
@@ -242,7 +242,7 @@ struct RemoteCommandRuleTests {
         #expect(body.contains("switchtitleStep{"))
         #expect(body.contains("jumpToAdjacentTrack(forward:forward)"))
         let flat = player.components(separatedBy: .whitespacesAndNewlines).joined()
-        #expect(flat.contains("vartitleStep:RemoteCommandRule.AppStep{RemoteCommandRule.appStep(for:RemoteCommandRule.kind(forItem:item?.id))}"))
+        #expect(flat.contains("vartitleStep:RemoteCommandRule.AppStep{RemoteCommandRule.appStep(for:RemoteCommandRule.kind(forItem:item?.id,markedForm:playingForm))}"))
         let view = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
             .components(separatedBy: .whitespacesAndNewlines).joined()

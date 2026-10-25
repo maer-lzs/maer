@@ -16,8 +16,10 @@ nonisolated enum PlaybackSkip {
 
     /// The habit an item belongs to: music by family, and a catalogue item
     /// that is music by form (an album, a song), everything else spoken word.
-    static func content(forItemId id: String) -> Content {
-        MediaFamily.isMusicByForm(id) ? .music : .spokenWord
+    /// `markedForm` is the form the player knows for the title
+    /// (`PlayerViewModel.playingForm`); a catalogue album needs it.
+    static func content(forItemId id: String, markedForm: ProgressMark.StartedForm? = nil) -> Content {
+        MediaFamily.isMusicByForm(id, markedForm: markedForm) ? .music : .spokenWord
     }
 
     static func standardInterval(for content: Content) -> Double {

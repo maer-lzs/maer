@@ -26,11 +26,13 @@ nonisolated enum RemoteCommandRule {
     }
 
     /// The kind of what is playing; nothing loaded keeps both commands.
-    static func kind(forItem id: String?) -> Kind {
+    /// `markedForm` is the form the player knows for the title
+    /// (`PlayerViewModel.playingForm`); a catalogue album needs it.
+    static func kind(forItem id: String?, markedForm: ProgressMark.StartedForm? = nil) -> Kind {
         guard let id else { return .spoken }
         switch MediaFamily.of(id) {
         case .radio: return .live
-        case .music, .catalog: return MediaFamily.isMusicByForm(id) ? .songs : .spoken
+        case .music, .catalog: return MediaFamily.isMusicByForm(id, markedForm: markedForm) ? .songs : .spoken
         case .book, .podcast, .unknown: return .spoken
         }
     }

@@ -576,9 +576,10 @@ private struct AlbumDownloadMenuItems: View {
     }
 }
 
-/// Header play control while THIS album is the active session. Observes the
-/// view model directly so it flips Play↔Pause reactively.
-private struct ActiveAlbumPlayButton: View {
+/// Header play control while THIS album is the active session, on a
+/// server's album page and on a catalogue release. Observes the view model
+/// directly so it flips Play↔Pause reactively.
+struct ActiveAlbumPlayButton: View {
     @ObservedObject var viewModel: PlayerViewModel
 
     var body: some View {

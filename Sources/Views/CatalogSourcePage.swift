@@ -1086,13 +1086,21 @@ struct ArchiveSeriesPage: View {
             if effectiveFlavor == .album {
                 VStack(spacing: 8) {
                     HStack(spacing: 12) {
-                        DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
-                            Task {
-                                await playerCoordinator.playInOrder(items: await albumSongs(),
-                                                                    contextSource: detail.media.metadata?.title)
+                        // While the release or one of its songs plays, the
+                        // button pauses it, as on a server's album page.
+                        if let vm = playerCoordinator.viewModel,
+                           playerCoordinator.activeItem.map({ CatalogSongID.album(of: $0.id) }) == itemId {
+                            ActiveAlbumPlayButton(viewModel: vm)
+                                .disabled(tracks.isEmpty)
+                        } else {
+                            DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
+                                Task {
+                                    await playerCoordinator.playInOrder(items: await albumSongs(),
+                                                                        contextSource: detail.media.metadata?.title)
+                                }
                             }
+                            .disabled(tracks.isEmpty)
                         }
-                        .disabled(tracks.isEmpty)
                         ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { await albumSongs() }
                             .font(.title3)
                             .disabled(tracks.isEmpty)

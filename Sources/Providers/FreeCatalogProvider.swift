@@ -45,10 +45,15 @@ final class FreeCatalogProvider: AudioProvider {
     /// Guessing here would put a reading into the music row, and that is the
     /// one mistake this switch exists to prevent.
     func notePlaybackStarted(itemId: String) {
-        guard let form = archiveForm(itemId: itemId) else { return }
-        ListeningStore.noteStartedForm(
-            itemId, form: form == .album ? .album : .work,
-            atMs: Date().timeIntervalSince1970 * 1000)
+        guard let form = startedForm(itemId: itemId) else { return }
+        ListeningStore.noteStartedForm(itemId, form: form, atMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// The form the collections give an item while they are warm, in the
+    /// vocabulary of the mark; nil when they say nothing. The player asks
+    /// it before the start notes the mark.
+    func startedForm(itemId: String) -> ProgressMark.StartedForm? {
+        archiveForm(itemId: itemId).map { $0 == .album ? .album : .work }
     }
 
     /// Session caches the rows fill (id → source object).

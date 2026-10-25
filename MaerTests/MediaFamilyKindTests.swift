@@ -80,11 +80,12 @@ struct MediaFamilyKindTests {
         #expect(MediaFamily.isMusicByForm(song))
         // A release unmarked stays a reading: its one position is kept.
         #expect(!MediaFamily.isMusicByForm(FreeCatalog.archivePrefix + "MIXG032"))
-        // The player asks the one form question, not the family alone.
+        // The player asks the one form question, not the family alone,
+        // with the form of its one place (`PlayingFormTests`).
         let player = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+NowPlaying.swift"),
             encoding: .utf8))
-        #expect(player.contains("var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id) } == true }"))
+        #expect(player.contains("var isMusicItem: Bool { item.map { MediaFamily.isMusicByForm($0.id, markedForm: playingForm) } == true }"))
     }
 }
 #endif
