@@ -951,21 +951,43 @@ nonisolated enum FreeCatalog {
     /// Format PREFERENCE chain per item instead of the hard 64kb
     /// filter. Georgeblood classical items carry ONLY "VBR MP3" (+ 24bit
     /// FLAC), so the 64kb-derived URL pointed nowhere (NSURLError -1008).
-    /// Chain: 64kb MP3 → 128kb MP3 → VBR MP3 → M4A/AAC. Ogg is NOT in the
+    /// Chain: 64kb MP3 → 128kb MP3 → VBR MP3 → any other fixed-rate MP3,
+    /// lowest rate first (a netlabel release can carry only "320Kbps MP3")
+    /// → M4A/AAC. Ogg is NOT in the
     /// chain (AVPlayer cannot play Vorbis); FLAC deliberately left out
     /// (AVPlayer capability unconfirmed here, and 24-bit 78rpm FLACs are
     /// huge. Named in the report, not silently). Empty result falls under
     /// the existing plausibility gate at the call site.
-    static let formatPreference: [String] = ["64kbps mp3", "128kbps mp3", "vbr mp3", "aac", "m4a"]
+    static let mp3Preference: [String] = ["64kbps mp3", "128kbps mp3", "vbr mp3"]
+    static let aacPreference: [String] = ["aac", "m4a"]
 
     static func preferredAudioFiles(_ files: [ArchiveFile]) -> [ArchiveFile] {
-        for wanted in formatPreference {
-            let group = files.filter { ($0.format ?? "").lowercased() == wanted }
-            if !group.isEmpty { return group }
-        }
+        if let group = firstNamedGroup(mp3Preference, in: files) { return group }
+        if let group = lowestFixedRateMP3(files) { return group }
+        if let group = firstNamedGroup(aacPreference, in: files) { return group }
         // format field missing entirely (older items): the legacy 64kb
         // filename suffix keeps those playable.
         return files.filter { ($0.name ?? "").hasSuffix("64kb.mp3") }
+    }
+
+    private static func firstNamedGroup(_ names: [String], in files: [ArchiveFile]) -> [ArchiveFile]? {
+        for wanted in names {
+            let group = files.filter { ($0.format ?? "").lowercased() == wanted }
+            if !group.isEmpty { return group }
+        }
+        return nil
+    }
+
+    /// The fixed-rate MP3 rendition with the lowest rate ("<n>Kbps MP3"),
+    /// nil when the item carries none.
+    private static func lowestFixedRateMP3(_ files: [ArchiveFile]) -> [ArchiveFile]? {
+        let byRate = Dictionary(grouping: files.compactMap { file -> (Int, ArchiveFile)? in
+            let format = (file.format ?? "").lowercased()
+            guard format.hasSuffix("kbps mp3"), let rate = Int(format.dropLast("kbps mp3".count)) else { return nil }
+            return (rate, file)
+        }, by: \.0)
+        guard let lowest = byRate.keys.min() else { return nil }
+        return byRate[lowest]?.map(\.1)
     }
 
     /// Hard path-segment encoding. Archive.org filenames carry

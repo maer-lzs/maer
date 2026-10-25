@@ -30,12 +30,14 @@ enum CatalogShuffle {
     /// How many titles one shuffle pulls (the first plays, the rest queue).
     static let batch = 12
 
-    /// Deepest page the draw may reach. The whole stock, not a window: this
-    /// is the "anything at all" gesture, in deliberate contrast to the row's
-    /// daily rotation inside the top tenth.
-    static func maxPage(total: Int, rows: Int) -> Int {
-        guard total > rows, rows > 0 else { return 1 }
-        return max(1, total / rows)
+    /// Deepest page the draw may reach: the whole stock as far as the
+    /// search hands it out, not a window. This is the "anything at all"
+    /// gesture, in deliberate contrast to the row's daily rotation inside
+    /// the top tenth.
+    static func maxPage(total: Int, rows: Int, reach: Int = ArchiveDecoder.deepPagingLimit) -> Int {
+        let reachable = min(total, reach)
+        guard reachable > rows, rows > 0 else { return 1 }
+        return max(1, reachable / rows)
     }
 
     /// Draw from an archive.org area and start playing.
@@ -49,7 +51,8 @@ enum CatalogShuffle {
             Logger.library.notice("SHUFFLE area=\(area.key, privacy: .public) page=\(page) got=\(items.count)")
             await start(items, coordinator: coordinator, sourceTitle: area.title)
         } catch {
-            Logger.library.error("SHUFFLE area=\(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            Logger.library.error("SHUFFLE area=\(area.key, privacy: .public) page=\(page) FAILED: \(FailureReason.of(error), privacy: .public)")
+            sayFailure(ErrorSentence.of(error), coordinator: coordinator, title: area.title)
         }
     }
 
@@ -63,17 +66,30 @@ enum CatalogShuffle {
             await start(items, coordinator: coordinator,
                         sourceTitle: String(localized: "Music (Jamendo)"))
         } catch {
-            Logger.library.error("SHUFFLE jamendo FAILED: \(String(describing: error), privacy: .public)")
+            Logger.library.error("SHUFFLE jamendo FAILED: \(FailureReason.of(error), privacy: .public)")
+            sayFailure(ErrorSentence.of(error), coordinator: coordinator,
+                       title: String(localized: "Music (Jamendo)"))
         }
     }
 
     /// First one plays, the rest become the CONTEXT (the collection-start
-    /// path); hand-placed orders in the queue keep their right of way.
+    /// path); hand-placed orders in the queue keep their right of way. A
+    /// draw without a playable title says so instead of doing nothing.
     private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator,
                               sourceTitle: String) async {
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty else {
+            sayFailure(String(localized: "Shuffle found nothing to play this time. Please try again."),
+                       coordinator: coordinator, title: sourceTitle)
+            return
+        }
         await coordinator.playInOrder(items: items,
                                       contextSource: sourceTitle)
+    }
+
+    /// A shuffle that starts nothing says why in the notice channel, like
+    /// any tap that opens nothing.
+    private static func sayFailure(_ sentence: String, coordinator: PlayerCoordinator, title: String) {
+        coordinator.sayOpenFailure(sentence, cause: .server, title: title)
     }
 }
 

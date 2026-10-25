@@ -1622,6 +1622,16 @@
         }
       }
     },
+    "archive.org refused the search." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "archive.org hat die Suche abgelehnt."
+          }
+        }
+      }
+    },
     "Archived" : {
       "localizations" : {
         "de" : {
@@ -10137,6 +10147,16 @@
         }
       }
     },
+    "Shuffle found nothing to play this time. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Zufall hat diesmal nichts zum Wiedergeben gefunden. Bitte noch einmal versuchen."
+          }
+        }
+      }
+    },
     "Sign in" : {
       "localizations" : {
         "de" : {
@@ -12336,6 +12356,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle ist an, aber keiner der Bereiche, die sie beliefert, ist eingeschaltet."
+          }
+        }
+      }
+    },
+    "This title has no file that can be played." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Titel hat keine Datei, die sich wiedergeben lässt."
           }
         }
       }

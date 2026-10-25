@@ -177,6 +177,52 @@ struct FreeCatalogTests {
         #expect(FreeCatalog.preferredAudioFiles(none).isEmpty)
     }
 
+    @Test("The shuffle draws only pages the archive search hands out, and a refusal is not an empty page")
+    func shuffleStaysInReach() throws {
+        // Netlabels: 61,112 measured, 12 a page. Beyond result 10,000 the
+        // search refuses, so the draw ends at page 833 (9,996 results).
+        #expect(CatalogShuffle.maxPage(total: 61_112, rows: 12) == 833)
+        #expect(CatalogShuffle.maxPage(total: 500, rows: 12) == 41)
+        #expect(CatalogShuffle.maxPage(total: 5, rows: 12) == 1)
+        // The answer archive.org gives past the limit: status 200, an error,
+        // no response block.
+        let refused = Data(#"{"error":"[DEEP_PAGING] Requested results would exceed the deep paging limit for this service, 10000 results"}"#.utf8)
+        #expect(throws: ArchiveDecoder.SearchRefusal.self) { try ArchiveDecoder.decodePopular(refused) }
+        let empty = Data(#"{"response":{"numFound":0,"docs":[]}}"#.utf8)
+        #expect(try ArchiveDecoder.decodePopular(empty).isEmpty)
+    }
+
+    @Test("A shuffle that starts nothing says why", .needsTheSources)
+    func shuffleSaysWhy() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Providers/CatalogShuffle.swift") })
+        let source = try String(contentsOf: file, encoding: .utf8)
+        // Both catch blocks and the empty draw reach the notice channel.
+        #expect(source.components(separatedBy: "sayFailure(").count - 1 == 4, "three calls and the definition")
+        #expect(source.contains("guard !items.isEmpty else {\n            sayFailure("))
+    }
+
+    @Test("A release with only a high fixed-rate MP3 still has tracks; the lowest rate wins")
+    func fixedRateMP3() {
+        // The shape of a netlabel release on archive.org: the MP3 original
+        // at 320 kbps beside Ogg and pictures, no 64/128/VBR rendition.
+        let netlabel = [
+            ArchiveFile(name: "01-A.mp3", length: "100", title: nil, format: "320Kbps MP3"),
+            ArchiveFile(name: "01-A.ogg", length: "100", title: nil, format: "Ogg Vorbis"),
+            ArchiveFile(name: "01-A.png", length: nil, title: nil, format: "PNG"),
+            ArchiveFile(name: "02-B.mp3", length: "100", title: nil, format: "320Kbps MP3"),
+        ]
+        #expect(FreeCatalog.preferredAudioFiles(netlabel).map(\.name) == ["01-A.mp3", "02-B.mp3"])
+        let twoRates = [
+            ArchiveFile(name: "a_320.mp3", length: "10", title: nil, format: "320Kbps MP3"),
+            ArchiveFile(name: "a_192.mp3", length: "10", title: nil, format: "192Kbps MP3"),
+        ]
+        #expect(FreeCatalog.preferredAudioFiles(twoRates).map(\.name) == ["a_192.mp3"])
+        // The named renditions keep their rank above any other rate.
+        let withVBR = twoRates + [ArchiveFile(name: "a_vbr.mp3", length: "10", title: nil, format: "VBR MP3")]
+        #expect(FreeCatalog.preferredAudioFiles(withVBR).map(\.name) == ["a_vbr.mp3"])
+    }
+
     @Test("37e4a23: path-segment encoding — umlauts, apostrophes, brackets, spaces")
     func pathEncoding() {
         #expect(FreeCatalog.encodedPathSegment("Grieg - Solveig's Lied (Solvejgs sang).mp3")

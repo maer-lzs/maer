@@ -25,6 +25,11 @@ struct ErrorSentenceTests {
                 == String(localized: "No internet connection. Please check your network and try again."))
         let decoding = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "x"))
         #expect(ErrorSentence.of(decoding) == String(localized: "The server response could not be read."))
+        // A source throws this code itself when a title has no playable file.
+        #expect(ErrorSentence.of(URLError(.resourceUnavailable))
+                == String(localized: "This title has no file that can be played."))
+        #expect(ErrorSentence.of(ArchiveDecoder.SearchRefusal(message: "[DEEP_PAGING] x"))
+                == String(localized: "archive.org refused the search."))
         let platform = NSError(domain: "AVFoundationErrorDomain", code: -11800,
                                userInfo: [NSLocalizedDescriptionKey: "The operation could not be completed"])
         #expect(ErrorSentence.of(platform) == "The operation could not be completed", "the platform's own sentence")

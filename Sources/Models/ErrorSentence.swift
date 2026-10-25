@@ -26,6 +26,11 @@ nonisolated enum ErrorSentence {
             if NetworkReach.isOffline(ns) {
                 return String(localized: "No internet connection. Please check your network and try again.")
             }
+            // A source that finds no playable file in a title says so with
+            // this code, built without a sentence of its own.
+            if ns.code == NSURLErrorResourceUnavailable {
+                return String(localized: "This title has no file that can be played.")
+            }
         }
         // A platform error (network, AVFoundation, the file system) carries
         // the sentence its framework wrote; a Swift error without one does

@@ -937,6 +937,8 @@ nonisolated enum ArchiveOrgClient {
                 !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
             }
             return (docs, try? decodeTotal(data))
+        } catch let refusal as ArchiveDecoder.SearchRefusal {
+            throw refusal
         } catch {
             // A decode failure stays TELLABLE from transport: archive.org
             // can answer 200 with an HTML challenge. Status and the first

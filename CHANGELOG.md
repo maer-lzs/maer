@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Shuffle on Netlabels plays.** Most taps found nothing or failed with
+"Something went wrong": the draw asked for pages archive.org does not
+hand out, and many netlabel releases carry only a 320 kbps MP3, which
+the app did not take. The draw now stays in reach, those releases
+play, and a shuffle that starts nothing says why.
+
 **Empty pages say their whole heading.** In a narrow column, such as one
 side of the open iPhone Duo, the heading of an empty or failed page
 (“Couldn't load tracks” on a playlist) ended in dots. It now wraps onto

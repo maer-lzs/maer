@@ -66,7 +66,21 @@ nonisolated enum ArchiveDecoder {
             let numFound: Int?
         }
         let response: Body?
+        /// archive.org's own refusal, answered with status 200 and no
+        /// `response` (the deep paging limit, for one).
+        let error: String?
     }
+
+    /// A search archive.org refused in words of its own. Read as an empty
+    /// page it would hide why a draw found nothing.
+    nonisolated struct SearchRefusal: LocalizedError, Equatable {
+        let message: String
+        var errorDescription: String? { String(localized: "archive.org refused the search.") }
+    }
+
+    /// The deepest result archive.org's search hands out; a page beyond it
+    /// is refused.
+    static let deepPagingLimit = 10_000
     nonisolated struct MetadataResponse: Decodable {
         struct Meta: Decodable {
             // Same list-capable fields on the metadata endpoint.
@@ -84,7 +98,9 @@ nonisolated enum ArchiveDecoder {
     }
 
     static func decodePopular(_ data: Data) throws -> [ArchivePopularDoc] {
-        try JSONDecoder().decode(SearchResponse.self, from: data).response?.docs ?? []
+        let answer = try JSONDecoder().decode(SearchResponse.self, from: data)
+        if answer.response == nil, let message = answer.error { throw SearchRefusal(message: message) }
+        return answer.response?.docs ?? []
     }
 
     /// How many items the query has IN TOTAL. The number a shelf heading
