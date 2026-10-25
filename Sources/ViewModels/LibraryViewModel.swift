@@ -1332,7 +1332,7 @@ final class LibraryViewModel: ObservableObject {
     private var namingInFlight: Set<String> = []
     private func nameUnnamedCatalogTitles(_ extras: [LibraryEntry]) {
         let ids = extras.map(\.item)
-            .filter { item in FreeCatalog.allPrefixes.contains(where: item.id.hasPrefix) }
+            .filter { item in ItemNamespace.isCatalog(item.id) }
             .filter { !BookPageItem.namesItself($0) && !namingInFlight.contains($0.id) }
             .map(\.id)
         guard !ids.isEmpty else { return }
@@ -1341,7 +1341,7 @@ final class LibraryViewModel: ObservableObject {
             var named = false
             for id in ids {
                 do {
-                    let detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: id)
+                    let detail = try await AppSession.shared.provider(for: id).fetchItemDetail(itemId: id)
                     named = named || !(detail.media.metadata?.title ?? "").isEmpty
                 } catch {
                     // The next rebuild asks again.
