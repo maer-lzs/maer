@@ -192,8 +192,12 @@ final class PlayQueue: ObservableObject {
                 placeholder: MediaFamily.placeholderSymbol(for: id, markedForm: ListeningStore.startedForm(id)))
         }
         PodcastQueueSnapshot(items: items).save()
-        WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext")
+        Self.reloadUpNextWidget()
         Task { await Self.writeWidgetCovers(covered) }
+    }
+
+    private static func reloadUpNextWidget() {
+        WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext")
     }
 
     /// The thumbnails of the covered entries, written where missing; the
@@ -211,12 +215,15 @@ final class PlayQueue: ObservableObject {
             else { continue }
             wrote = PodcastQueueSnapshot.writeCover(data, named: entry.name) || wrote
         }
+        // bearable, because an unread folder only leaves old thumbnails for the next pass
         let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
         let named = Set(PodcastQueueSnapshot.load()?.items.compactMap(\.cover) ?? [])
         for name in PodcastQueueSnapshot.staleCovers(in: present, keeping: named) {
-            if let url = PodcastQueueSnapshot.coverURL(named: name) { try? FileManager.default.removeItem(at: url) }
+            guard let url = PodcastQueueSnapshot.coverURL(named: name) else { continue }
+            // bearable, because a thumbnail left behind is removed on the next pass
+            try? FileManager.default.removeItem(at: url)
         }
-        if wrote { WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext") }
+        if wrote { reloadUpNextWidget() }
     }
 }
 
