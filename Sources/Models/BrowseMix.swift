@@ -57,11 +57,14 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// The area a section belongs to. The feeds of public broadcasters and
+    /// independent studios are shows to subscribe to, so they stand with
+    /// the podcasts.
     var group: Group {
         switch self {
-        case .recommendations, .charts: .podcasts
+        case .recommendations, .charts, .publicFeeds, .independentFeeds: .podcasts
         case .classical, .netlabels, .oldRecords, .jamendo: .music
-        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio, .publicFeeds, .independentFeeds: .books
+        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio: .books
         }
     }
 
@@ -83,5 +86,49 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
     /// the same question the pages themselves ask.
     static func shown(isAllowed: (String) -> Bool) -> [BrowseSection] {
         allCases.filter { $0.sourceKeys.isEmpty || $0.sourceKeys.contains(where: isAllowed) }
+    }
+
+    /// The sections of one area, or every section without one (Start).
+    static func shown(in area: Group?, isAllowed: (String) -> Bool) -> [BrowseSection] {
+        shown(isAllowed: isAllowed).filter { area == nil || $0.group == area }
+    }
+}
+
+/// The Browse offer of a media tab: which area of the Browse page it
+/// carries, and in which form. Without a server of the area the tab shows
+/// the area's sections under "From open catalogs"; with one they fold into
+/// the one Browse row under the own library. Radio has its own catalog,
+/// Start mixes every area.
+nonisolated enum TabBrowse {
+    enum Form: Equatable, Sendable {
+        /// The area's sections, each with its tiles.
+        case sections
+        /// The one Browse row, its lanes interleaved.
+        case row
+    }
+
+    static func area(for tab: MediaType) -> BrowseSection.Group? {
+        switch tab {
+        case .audiobooks: .books
+        case .music: .music
+        case .podcasts: .podcasts
+        case .home, .radio: nil
+        }
+    }
+
+    /// The server of the area: Audiobookshelf for books, a music server for
+    /// music, an Audiobookshelf podcast library for podcasts.
+    static func hasServer(for tab: MediaType, absSignedIn: Bool,
+                          musicServer: Bool, absPodcasts: Bool) -> Bool {
+        switch tab {
+        case .audiobooks: absSignedIn
+        case .music: musicServer
+        case .podcasts: absSignedIn && absPodcasts
+        case .home, .radio: false
+        }
+    }
+
+    static func form(hasServer: Bool) -> Form {
+        hasServer ? .row : .sections
     }
 }

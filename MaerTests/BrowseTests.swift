@@ -55,6 +55,67 @@ struct BrowseTests {
         #expect(AppRows.all.filter { $0.group != nil }.allSatisfy { AppRows.groupTitle($0.group!) != nil })
     }
 
+    @Test("jeder Reiter hat seinen Bereich der Seite, Radio und Start keinen")
+    func eachTabHasItsArea() {
+        #expect(TabBrowse.area(for: .audiobooks) == .books)
+        #expect(TabBrowse.area(for: .music) == .music)
+        #expect(TabBrowse.area(for: .podcasts) == .podcasts)
+        #expect(TabBrowse.area(for: .radio) == nil)
+        #expect(TabBrowse.area(for: .home) == nil)
+        let all: (String) -> Bool = { _ in true }
+        #expect(BrowseSection.shown(in: .books, isAllowed: all) == [.librivox, .gutenberg, .archiveBooks, .oldTimeRadio])
+        #expect(BrowseSection.shown(in: .music, isAllowed: all) == [.classical, .netlabels, .oldRecords, .jamendo])
+        #expect(BrowseSection.shown(in: .podcasts, isAllowed: all)
+                == [.recommendations, .charts, .publicFeeds, .independentFeeds],
+                "the feeds of broadcasters and studios are shows to subscribe to")
+        #expect(BrowseSection.shown(in: nil, isAllowed: all) == BrowseSection.allCases)
+        #expect(BrowseSection.shown(in: .books, isAllowed: { _ in false }).isEmpty)
+    }
+
+    @Test("ohne Server die Abschnitte des Bereichs, mit Server die eine Reihe, je Reiter mit seinem Server")
+    func sectionsWithoutServerRowWithServer() {
+        #expect(TabBrowse.form(hasServer: false) == .sections)
+        #expect(TabBrowse.form(hasServer: true) == .row)
+        func form(_ tab: MediaType, abs: Bool = false, music: Bool = false, podcasts: Bool = false) -> TabBrowse.Form {
+            TabBrowse.form(hasServer: TabBrowse.hasServer(for: tab, absSignedIn: abs, musicServer: music, absPodcasts: podcasts))
+        }
+        #expect(form(.audiobooks) == .sections)
+        #expect(form(.audiobooks, abs: true) == .row)
+        #expect(form(.audiobooks, music: true, podcasts: true) == .sections, "another area's server does not count")
+        #expect(form(.music) == .sections)
+        #expect(form(.music, music: true) == .row)
+        #expect(form(.music, abs: true) == .sections)
+        #expect(form(.podcasts) == .sections)
+        #expect(form(.podcasts, abs: true) == .sections, "an Audiobookshelf without a podcast library")
+        #expect(form(.podcasts, podcasts: true) == .sections, "a podcast library without a session")
+        #expect(form(.podcasts, abs: true, podcasts: true) == .row)
+    }
+
+    @Test("jeder Reiter fragt die Regel und zieht seine Reihe aus den Abschnitten der Seite", .needsTheSources)
+    func everyTabTakesTheRule() throws {
+        func flat(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+        }
+        let tabs = [("Sources/Views/LibraryView.swift", "books"),
+                    ("Sources/Views/Music/MusicView.swift", "music"),
+                    ("Sources/Views/PodcastsView.swift", "podcasts")]
+        for (path, area) in tabs {
+            let code = try flat(path)
+            #expect(code.contains("switchTabBrowse.form(hasServer:"), "\(path) decides its form elsewhere")
+            #expect(code.contains("BrowsePage.rowTiles(in:.\(area))"), "\(path) builds its row past the page's sections")
+            #expect(code.contains("area:.\(area))"), "\(path) draws no Browse row of its area")
+            #expect(code.contains("OpenCatalogsHeading()"), "\(path) shows its sections without the heading")
+        }
+        let library = try flat("Sources/Views/LibraryView.swift")
+        #expect(library.contains("navigationDestination(for:BrowseRoute.self)"))
+        #expect(library.contains("BrowsePage(freeCatalogStore:freeCatalogStore,area:route.area)"))
+        let page = try flat("Sources/Views/BrowseRow.swift")
+        #expect(page.contains("BrowseSection.shown(in:area,isAllowed:Self.isAllowed)"))
+        #expect(page.contains("BrowseMix.interleave(BrowseSection.shown(in:area,isAllowed:isAllowed).map(lane)"))
+    }
+
     @Test("der Start zeichnet Stoebern aus den drei Anteilen und sagt, warum einer fehlt", .needsTheSources)
     func startDrawsBrowse() throws {
         let home = SyncContractFenceTests.stripped(try String(

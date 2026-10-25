@@ -21,23 +21,38 @@ enum BrowseTile: Identifiable {
     }
 }
 
-/// Start's Browse row: the recommendations, the free music and the free
-/// audiobooks and radio plays as ONE double row, mixed rank by rank
-/// (`BrowseMix`). Two tiles per column, scrolled sideways. Every tile
-/// keeps its own tap (a show its preview, a catalog title its page, a
-/// music title its detail sheet) and carries its kind, because the row
-/// mixes kinds. The chevron opens the Browse page with every source.
+/// The Browse page of one area, pushed from a tab's Browse row. Registered
+/// on every tab stack (`LibraryView.librarySurface`).
+nonisolated struct BrowseRoute: Hashable {
+    let area: BrowseSection.Group
+}
+
+/// The Browse row: on Start the recommendations, the free music and the
+/// free audiobooks and radio plays, in a media tab the lanes of its area
+/// (`TabBrowse`), as ONE double row mixed rank by rank (`BrowseMix`). Two
+/// tiles per column, scrolled sideways. Every tile keeps its own tap (a
+/// show its preview, a catalog title its page, a music title its detail
+/// sheet) and carries its kind, because the row mixes kinds. The chevron
+/// opens the Browse page, on Start with every source, in a tab with the
+/// tab's area.
 struct BrowseRow: View {
     let tiles: [BrowseTile]
     /// The recommendation's reason line, the one the row always had.
     let reason: (PodcastSearchResult) -> String
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// The tab's area; nil on Start.
+    var area: BrowseSection.Group? = nil
     @State private var detailItem: LibraryItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RowHeading.entry("Browse", destination: MixedRowRoute.browse)
-                .accessibilityIdentifier("home-browse")
+            if let area {
+                RowHeading.entry("Browse", destination: BrowseRoute(area: area))
+                    .accessibilityIdentifier("browse-\(area.rawValue)")
+            } else {
+                RowHeading.entry("Browse", destination: MixedRowRoute.browse)
+                    .accessibilityIdentifier("home-browse")
+            }
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(BrowseMix.columns(tiles), id: \.first?.id) { column in
@@ -86,20 +101,47 @@ struct BrowseRow: View {
     }
 }
 
+/// The heading over the Browse sections a tab without a server of its
+/// area carries under its own stock (`TabBrowse.Form.sections`). It heads
+/// a group of rows, not a row.
+struct OpenCatalogsHeading: View {
+    var body: some View {
+        Text("From Open Catalogs")
+            .font(.title2.bold())
+            .accessibilityAddTraits(.isHeader)
+            .padding(.horizontal)
+    }
+}
+
 /// The Browse page behind the row: every foreign catalog and directory as
-/// a section pointing at its existing page. No logic of its own; which
-/// sections stand is `BrowseSection.shown`, the question the pages ask.
+/// a section pointing at its existing page, or the sections of one area
+/// behind a tab's row. No logic of its own; which sections stand is
+/// `BrowseSection.shown`, the question the pages ask.
 struct BrowsePage: View {
-    /// Handed in by Start, which observes the store already.
+    /// Handed in by the host, which observes the store already.
     @ObservedObject var freeCatalogStore: FreeCatalogStore
+    /// The tab's area; nil shows every area (Start).
+    var area: BrowseSection.Group? = nil
 
     private var sections: [BrowseSection] {
-        BrowseSection.shown { key in
-            // PodcastIndex counts only with a key, as everywhere.
-            key == "podcastIndex"
-                ? AppStorageKeys.podcastIndexActive
-                : ExternalSources.source(key: key).map { ExternalSources.isAllowed($0) } ?? false
-        }
+        BrowseSection.shown(in: area, isAllowed: Self.isAllowed)
+    }
+
+    /// Whether a source of a section may be asked. PodcastIndex counts
+    /// only with a key, as everywhere.
+    static func isAllowed(_ key: String) -> Bool {
+        key == "podcastIndex"
+            ? AppStorageKeys.podcastIndexActive
+            : ExternalSources.source(key: key).map { ExternalSources.isAllowed($0) } ?? false
+    }
+
+    /// A tab's Browse row: one lane per section of its area that the page
+    /// shows, in the page's order, mixed rank by rank. A lane whose row
+    /// switch is off is handed in empty.
+    static func rowTiles(in area: BrowseSection.Group,
+                         lane: (BrowseSection) -> [BrowseTile]) -> [BrowseTile] {
+        BrowseMix.interleave(BrowseSection.shown(in: area, isAllowed: isAllowed).map(lane),
+                             limit: RowPreview.limit * 2)
     }
 
     var body: some View {

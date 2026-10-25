@@ -467,6 +467,10 @@ struct LibraryView: View {
                     }
                 }
             }
+            // The Browse page of a media tab's area, behind its Browse row.
+            .navigationDestination(for: BrowseRoute.self) { route in
+                BrowsePage(freeCatalogStore: freeCatalogStore, area: route.area)
+            }
     }
 
     private func isTabMounted(_ type: MediaType) -> Bool {
@@ -1338,47 +1342,60 @@ struct LibraryView: View {
                 || AppStorageKeys.archiveBooksActive)
     }
 
-    /// The tile ROW above "All Books". Linked title into the area
-    /// page, "New at LibriVox" tiles (MediaTile format, tap plays, context
-    /// menu opens the license sheet), catalog≠library marking kept. The row
-    /// hides entirely while the store is empty (service/toggle off, offline).
-    /// This row shows the CATALOGUES. LibriVox,
-    /// Project Gutenberg, Internet Archive and Old Time Radio, mixed. No feed
-    /// tile: a feed lands in the podcast tab as a subscription.
+    /// The offer from outside in the form the tab's server decides
+    /// (`TabBrowse`): without Audiobookshelf the books sections of the
+    /// catalog page under "From open catalogs", with it the one Browse row.
+    /// The catalog row's switch holds in both forms.
+    @ViewBuilder
+    private var browseOffer: some View {
+        switch TabBrowse.form(hasServer: TabBrowse.hasServer(
+            for: .audiobooks, absSignedIn: session.authViewModel.isLoggedIn,
+            musicServer: false, absPodcasts: false)) {
+        case .row:
+            if freeAudiobooksArea { freeAudiobooksSection }
+        case .sections:
+            if catalogRowVisible {
+                OpenCatalogsHeading()
+                // The page's sections are embedded: one parameterised
+                // version, no drifting copy.
+                FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
+            }
+        }
+    }
+
+    /// The Browse row of the tab: the catalogues LibriVox, Project
+    /// Gutenberg, Internet Archive and Old Time Radio as lanes, one per
+    /// section the Browse page shows for books, mixed rank by rank. No
+    /// feed tile: a feed lands in the podcast tab as a subscription. Each
+    /// lane keeps the tab's own order (`CatalogMix.ordered`). The row hides
+    /// entirely while the catalogues are empty (service off, offline,
+    /// still loading).
     ///
-    /// Old Time Radio moved here on the measurement, not on taste: the most
+    /// Old Time Radio stands here on the measurement, not on taste: the most
     /// downloaded bundles are played SERIES with a beginning, an end and a
-    /// listening position (`MediaFamily.booksTabMember` files them here
-    /// already). The browsing door now follows the filing that existed.
-    ///
-    /// It also ends four surfaces drawing from two pots: the row used to draw
-    /// `rows.tabBooks`, which comes from the same query as the popular lane
-    /// and from the same `docs` array as Start's `discoverBooks`.
+    /// listening position (`MediaFamily.booksTabMember` files them here).
     @ViewBuilder
     private var freeAudiobooksSection: some View {
-        let tiles = CatalogMix.tiles(for: .books, rows: freeCatalogStore.sourceRows)
-        // No heading without content. The row hides entirely while the
-        // catalogues are empty (service off, offline, still loading).
-        if !tiles.isEmpty {
-        VStack(alignment: .leading, spacing: 10) {
-            // Hand-built copy of RowHeading's chevron
-            // branch → the shared entry variant.
-            RowHeading.entry("Audiobooks and Radio Plays", destination: FreeAudiobooksRoute.area)
-                .accessibilityIdentifier("free-audiobooks-entry")
-            // The word "free" is gone from these headings: it is a legal
-            // claim, and the per-title capsule is where the rights situation
-            // belongs. Naming the ORIGIN says as much without claiming.
-            Text("From open catalogs: LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)
+        let rows = freeCatalogStore.sourceRows
+        let tiles = BrowsePage.rowTiles(in: .books) { section in
+            let items: [LibraryItem]
+            switch section {
+            case .librivox: items = rows.librivoxPopular
+            case .gutenberg: items = rows.gutenberg
+            case .archiveBooks: items = rows.archiveBooks
+            case .oldTimeRadio: items = rows.oldTimeRadio
+            default: items = []
+            }
+            return CatalogMix.ordered(items, for: .books).map { BrowseTile.catalog(.item($0)) }
+        }
+        Group {
+            if !tiles.isEmpty {
+                BrowseRow(tiles: tiles, reason: { _ in "" }, playerCoordinator: playerCoordinator, area: .books)
+            } else {
+                Color.clear.frame(height: 0)
+            }
         }
         .task { await freeCatalogStore.ensureSourcesLoaded() }
-        } else {
-            Color.clear.frame(height: 0)
-                .task { await freeCatalogStore.ensureSourcesLoaded() }
-        }
     }
 
     /// Audiobook tab. The library states used to be decided for the WHOLE
@@ -1498,9 +1515,7 @@ struct LibraryView: View {
                     if !viewModel.entries.isEmpty {
                         allBooksSection
                     }
-                    if catalogRowVisible {
-                        FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
-                    }
+                    browseOffer
                     historySection
                 } else {
                     stockSections
@@ -1520,13 +1535,11 @@ struct LibraryView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                     }
-                    // The free-catalog row is the offer from outside and
-                    // stands under the library. Its FILL comes from the one
-                    // central compute() pass (shared store), so standing
-                    // below the fold in the lazy stack costs it nothing.
-                    if freeAudiobooksArea {
-                        freeAudiobooksSection
-                    }
+                    // The offer from outside stands under the library. Its
+                    // FILL comes from the one central compute() pass (shared
+                    // store), so standing below the fold in the lazy stack
+                    // costs it nothing.
+                    browseOffer
                     // The entries into the own library, then the history
                     // at the end of the tab.
                     bookTabDeck

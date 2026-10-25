@@ -86,25 +86,31 @@ struct ShellacSection: View {
         isLoading = true
         failed = false
         defer { isLoading = false }
-        let area = area
+        guard let loaded = await Self.rowTitles() else { return }
+        titles = loaded
+        failed = titles.isEmpty
+    }
+
+    /// The row's titles, also the old-records lane of the music tab's
+    /// Browse row. Empty on failure (logged), nil when cancelled.
+    static func rowTitles() async -> [LibraryItem]? {
+        let area = ArchiveMusicCatalog.shellacAll
         // Same daily rotation as the other popularity rows: the all-time
         // ranking would otherwise never change.
         let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12,
-                                        on: Date(), salt: Self.rowSalt)
+                                        on: Date(), salt: rowSalt)
         do {
             let docs = try await CatalogShelfSource.areaPopular(
-                area: area, rows: 12, page: page, slot: Self.rowSlot,
+                area: area, rows: 12, page: page, slot: rowSlot,
                 storedDay: CatalogShelfSource.storedDay(surface: area.key))
             // A shown preview goes through the ONE probed entry point. This
             // row was a sibling surface that kept showing withdrawn items.
-            titles = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,
+            return await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,
                                                  provider: FreeCatalogProvider.shared)
-            failed = titles.isEmpty
         } catch {
-            guard !error.isCancellation else { return }
-            failed = true
-            titles = []
+            guard !error.isCancellation else { return nil }
             Logger.library.error("SHELLAC row \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            return []
         }
     }
 }

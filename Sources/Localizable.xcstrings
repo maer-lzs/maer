@@ -4414,16 +4414,6 @@
         }
       }
     },
-    "From open catalogs: LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus offenen Katalogen: LibriVox, Project Gutenberg, Internet Archive und Old Time Radio. Getrennt von deiner Bibliothek."
-          }
-        }
-      }
-    },
     "From public broadcasters, independent studios and open catalogs. Separate from your own library." : {
       "localizations" : {
         "de" : {

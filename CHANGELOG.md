@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Each tab browses its own kind.** Audiobooks, Music and Podcasts carry
+their part of the Browse page. Without a server for that kind, its
+catalog rows stand under your own titles, headed "From Open Catalogs";
+with a server they fold into one Browse row below your library, whose
+arrow opens the Browse page for that kind only. The feeds of public
+broadcasters and independent studios now stand with the podcasts.
+
 **The hint above a tab says why it shows the last known state.**
 Without a network it still says "Offline"; with a network and a server
 that does not answer it now says "Server unreachable".

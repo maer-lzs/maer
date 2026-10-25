@@ -37,6 +37,8 @@ struct MusicView: View {
     /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
+    /// The old-records lane of the Browse row (`ShellacSection.rowTitles`).
+    @State private var shellacTitles: [LibraryItem] = []
 
     /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
     /// at the "Free Catalogs" area of the source map > archive.org service
@@ -174,52 +176,95 @@ struct MusicView: View {
             // (the row source loads 20, shows 12; a 20-album library shows
             // no chevron on the page-sized cut, which is the rule working).
             if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
-            // The free-music areas are REACHABLE from the music
-            // tab again (tab parity). Same store rows as Home, no second
-            // fetch. Future free sources join THIS block.
-            if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
-                            .catalogShuffle(area: ArchiveMusicCatalog.netlabels,
-                                            coordinator: playerCoordinator)
-                        freeTileRow(freeCatalogStore.rows.netlabels)
-                    }
-            }
-            // An ordinary catalogue row like the two around it: heading with
-            // a chevron, tiles below. The nine shelves stand on the surface
-            // behind the chevron, under its own popular row.
-            if shellacArea {
-                ShellacSection(playerCoordinator: playerCoordinator)
-            }
-            // THE free-music row. The chevron goes
-            // straight to the Jamendo page (path and target share the name),
-            // it carries the shuffle, and it now asks the AREA switch as well.
-            // That switch is a privacy switch: off means no Jamendo request,
-            // so a row that ignored it kept fetching what the user had turned
-            // off. Reading `rows` starts the load, so the row no longer
-            // depends on a visit to Home; enabled-but-empty says why.
-            if jamendoArea && jamendoRowIsVisible {
-                let rows = freeCatalogStore.rows
-                VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
-                        .jamendoShuffle(coordinator: playerCoordinator)
-                    if !rows.freeMusic.isEmpty {
-                        // Its own seed per surface: the same set, but not
-                        // the same order as on the start surface, where
-                        // classical mixes in while the full list stands
-                        // here.
-                        freeTileRow(CatalogMix.ordered(rows.freeMusic, for: .musicTab))
-                    } else if let problem = rows.freeMusicProblem {
-                        Text(problem).font(.caption).foregroundStyle(.secondary)
-                            .padding(.horizontal)
-                    }
-                }
+            // The offer from outside: with a server its rows fold into the
+            // one Browse row under the library, without one they stand
+            // under the own stock as the music sections of the Browse page.
+            switch TabBrowse.form(hasServer: serverConfigured) {
+            case .row: browseRow
+            case .sections: catalogSections
             }
             // The songs heard on this device, as the last row of the tab
             // like in the podcast and audiobook tabs.
             ListeningHistoryRow(route: MusicRoute.history, accessibilityId: MusicRoute.history.accessibilityId)
         }
         .padding(.top, TabContentLayout.topInset)
+    }
+
+    /// The music lanes of the Browse page as one row. Same store rows as
+    /// the sections; the old records come from the row's own query.
+    @ViewBuilder
+    private var browseRow: some View {
+        let rows = freeCatalogStore.rows
+        let tiles = BrowsePage.rowTiles(in: .music) { section in
+            switch section {
+            case .classical:
+                AppStorageKeys.freeClassicalActive ? CatalogMix.ordered(rows.classical, for: .musicTab).map(BrowseTile.music) : []
+            case .netlabels: netlabelsArea ? rows.netlabels.map(BrowseTile.music) : []
+            case .oldRecords: shellacArea ? shellacTitles.map(BrowseTile.music) : []
+            case .jamendo:
+                jamendoArea && jamendoRowIsVisible
+                    ? CatalogMix.ordered(rows.freeMusic, for: .musicTab).map(BrowseTile.music) : []
+            default: []
+            }
+        }
+        Group {
+            if !tiles.isEmpty {
+                BrowseRow(tiles: tiles, reason: { _ in "" }, playerCoordinator: playerCoordinator, area: .music)
+            }
+        }
+        .task {
+            guard shellacArea, shellacTitles.isEmpty, let titles = await ShellacSection.rowTitles() else { return }
+            shellacTitles = titles
+        }
+    }
+
+    /// The music sections of the Browse page, each with its tiles.
+    @ViewBuilder
+    private var catalogSections: some View {
+        if netlabelsArea || shellacArea || (jamendoArea && jamendoRowIsVisible) {
+            OpenCatalogsHeading()
+        }
+        // The free-music areas are REACHABLE from the music
+        // tab again (tab parity). Same store rows as Home, no second
+        // fetch. Future free sources join THIS block.
+        if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
+                    .catalogShuffle(area: ArchiveMusicCatalog.netlabels,
+                                    coordinator: playerCoordinator)
+                freeTileRow(freeCatalogStore.rows.netlabels)
+            }
+        }
+        // An ordinary catalogue row like the two around it: heading with
+        // a chevron, tiles below. The nine shelves stand on the surface
+        // behind the chevron, under its own popular row.
+        if shellacArea {
+            ShellacSection(playerCoordinator: playerCoordinator)
+        }
+        // THE free-music row. The chevron goes
+        // straight to the Jamendo page (path and target share the name),
+        // it carries the shuffle, and it now asks the AREA switch as well.
+        // That switch is a privacy switch: off means no Jamendo request,
+        // so a row that ignored it kept fetching what the user had turned
+        // off. Reading `rows` starts the load, so the row no longer
+        // depends on a visit to Home; enabled-but-empty says why.
+        if jamendoArea && jamendoRowIsVisible {
+            let rows = freeCatalogStore.rows
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                    .jamendoShuffle(coordinator: playerCoordinator)
+                if !rows.freeMusic.isEmpty {
+                    // Its own seed per surface: the same set, but not
+                    // the same order as on the start surface, where
+                    // classical mixes in while the full list stands
+                    // here.
+                    freeTileRow(CatalogMix.ordered(rows.freeMusic, for: .musicTab))
+                } else if let problem = rows.freeMusicProblem {
+                    Text(problem).font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                }
+            }
+        }
     }
 
     /// The library entries as the SAME deck of tiles the search page shows

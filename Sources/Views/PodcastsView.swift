@@ -42,6 +42,9 @@ struct PodcastsView: View {
     // recompute through `taskOnPodcastChange`, which observes the
     // deduplicating scope; rows/tiles observe at leaf level.
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+    /// Signing in and out switches the Browse form of the tab
+    /// (`hasPodcastServer`); the sign-in state changes rarely.
+    @ObservedObject private var auth = AppSession.shared.authViewModel
 
     /// Non-observing store handle (reads only). A changed ABS show list moves
     /// the scope's token, the task rewrites the section state, and that state
@@ -152,9 +155,14 @@ struct PodcastsView: View {
                     downloadedShelf
                     coListenedSection
                     // Own stock before the shop window: the curation of
-                    // feeds stands under everything the person holds.
-                    if recommendedRowVisible { recommendationsSection }
-                    hoerspieleSection
+                    // feeds stands under everything the person holds. With
+                    // a server of the area its rows fold into the one
+                    // Browse row, without one they stand as the podcast
+                    // sections of the Browse page.
+                    switch TabBrowse.form(hasServer: hasPodcastServer) {
+                    case .row: browseRow
+                    case .sections: catalogSections
+                    }
                     historyRow
                 }
                 .padding(.top, TabContentLayout.topInset)
@@ -385,6 +393,49 @@ RowHeading(title: "Keep Listening", font: .title2,
     /// a listening position and live in the audiobooks tab.
     private var hoerspieleMixTiles: [CatalogMix.Tile] {
         CatalogMix.tiles(for: .podcasts, rows: freeCatalogStore.sourceRows)
+    }
+
+    /// The server of the area (`TabBrowse.hasServer`): an Audiobookshelf
+    /// podcast library.
+    private var hasPodcastServer: Bool {
+        TabBrowse.hasServer(for: .podcasts, absSignedIn: auth.isLoggedIn,
+                            musicServer: false, absPodcasts: AppStorageKeys.absPodcastsActive)
+    }
+
+    /// The podcast sections of the Browse page under one heading.
+    @ViewBuilder
+    private var catalogSections: some View {
+        if (recommendedRowVisible && !recommendationItems.isEmpty) || (radioPlaysRowVisible && isActive) {
+            OpenCatalogsHeading()
+        }
+        if recommendedRowVisible { recommendationsSection }
+        hoerspieleSection
+    }
+
+    /// The podcast lanes of the Browse page as one row: the recommendations
+    /// and the feeds of public broadcasters and independent studios. The
+    /// charts load on their page only and stay off the row.
+    @ViewBuilder
+    private var browseRow: some View {
+        let languages = SuggestionLanguages.current()
+        let tiles = BrowsePage.rowTiles(in: .podcasts) { section in
+            switch section {
+            case .recommendations:
+                recommendedRowVisible ? recommendationItems.map(BrowseTile.recommendation) : []
+            case .publicFeeds:
+                radioPlaysRowVisible
+                    ? OERRLiveStore.feeds(for: .oerr, languages: languages).map { BrowseTile.catalog(.feed($0)) } : []
+            case .independentFeeds:
+                radioPlaysRowVisible
+                    ? OERRLiveStore.feeds(for: .independents, languages: languages).map { BrowseTile.catalog(.feed($0)) } : []
+            default: []
+            }
+        }
+        if isActive, !tiles.isEmpty {
+            BrowseRow(tiles: tiles,
+                      reason: { PodcastRecommendationsStore.reasonLine(recommendations.reason(for: $0)) },
+                      playerCoordinator: playerCoordinator, area: .podcasts)
+        }
     }
 
 

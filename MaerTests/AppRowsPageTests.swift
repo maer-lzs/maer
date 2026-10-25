@@ -106,7 +106,7 @@ struct AppRowsPageTests {
         let code = Self.squeezed(SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)))
         #expect(code.components(separatedBy: "embedded:true").count == 2, "a second embedded catalog page")
-        #expect(code.contains("ifcatalogRowVisible{FreeAudiobooksPage(playerCoordinator:playerCoordinator,embedded:true)"),
+        #expect(code.contains("ifcatalogRowVisible{OpenCatalogsHeading()FreeAudiobooksPage(playerCoordinator:playerCoordinator,embedded:true)"),
                 "the page without sign in stands past the row switch")
         #expect(code.contains("@AppStorage(AppStorageKeys.freeAudiobooksEnabled)privatevarcatalogRowVisible"))
     }
