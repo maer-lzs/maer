@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Playlist rows show the song.** Every row of a playlist, on the server
+and on the device, shows the song's small cover, its title and its
+artist below. The song that plays is marked in album and playlist rows
+by small moving bars in place of its number or cover; they stand still
+while paused.
+
 **A song from a playlist or an album shows itself in the player.** The
 mini player, the full player, the lock screen and CarPlay show the
 artist of the song that plays and the time left in that song, not in

@@ -1089,30 +1089,25 @@ struct MaerPlaylistPage: View {
         Button {
             if let item { Task { await playerCoordinator.open(item: item) } }
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: title)
-                    .task(id: id) {
-                        guard needsName else { return }
-                        await store.fetchMissingTitles([id], playlistId: playlistId)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(item == nil ? .secondary : .primary)
-                if let reason = resolution.reason {
-                    // Visibly kept instead of silently removed, WITH the
-                    // reason. Resolvability is a property of the DEVICE,
-                    // never of the entry.
-                    Text(Self.reasonText(reason))
-                        .font(.caption).foregroundStyle(.secondary)
-                } else if let author = carried?.subtitle ?? item?.author {
-                    HStack(spacing: 6) {
-                        // A Mär list mixes both servers.
-                        if let source = router.sourceLabel(id) {
-                            OriginCapsule(compact: true, text: source, systemImage: nil)
-                        }
-                        Text(verbatim: author).font(.caption).foregroundStyle(.secondary)
-                    }
+            // The one row of every playlist: cover, title, artist. An entry
+            // this device cannot play is visibly kept instead of silently
+            // removed, WITH the reason; resolvability is a property of the
+            // DEVICE, never of the entry. A Mär list mixes both servers, so
+            // the artist carries its source.
+            let artist = carried?.subtitle ?? item?.author
+            TrackRowLabel(lead: .cover(playlist.flatMap { PlaylistCardSource.deviceCover(of: id, in: $0, router: router) },
+                                       placeholder: MediaFamily.placeholderSymbol(for: id)),
+                          title: title,
+                          artist: artist,
+                          origin: artist == nil ? nil : router.sourceLabel(id),
+                          unavailable: resolution.reason.map(Self.reasonText),
+                          playing: TrackPlaying.Row(ownId: id),
+                          coordinator: playerCoordinator)
+                .foregroundStyle(item == nil ? .secondary : .primary)
+                .task(id: id) {
+                    guard needsName else { return }
+                    await store.fetchMissingTitles([id], playlistId: playlistId)
                 }
-            }
         }
         .buttonStyle(.plain)
         .disabled(item == nil)

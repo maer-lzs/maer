@@ -80,6 +80,23 @@ struct MusicAlbumView: View {
         guard detail != nil else { return [] }
         return MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))
     }
+    /// The audio track of a row: a music entry has one per song, in the
+    /// order of the rows.
+    private func audioTrack(_ index: Int) -> ABSAudioTrack? {
+        guard let audio = detail?.media.tracks, audio.indices.contains(index) else { return nil }
+        return audio[index]
+    }
+    /// The song's own cover in a playlist row, from the cover-art id the
+    /// server states for it; without one the row shows the music symbol.
+    private func songCoverURL(_ index: Int) -> URL? {
+        audioTrack(index)?.metadata?.coverArt.flatMap { music.coverURL(coverArtId: $0) }
+    }
+    /// The song's own item id, for the playing mark of a song started on
+    /// its own; nil off a music server, where the track is no song id.
+    private func songItemId(_ index: Int) -> String? {
+        guard MusicSourceRule.isServerMusic(item.id), let song = audioTrack(index)?.contentUrl else { return nil }
+        return music.itemId(songId: song)
+    }
     // Playlist basics: rename/delete with confirmation; server truth = reload.
     @State private var showRename = false
     @State private var renameText = ""
@@ -105,9 +122,17 @@ struct MusicAlbumView: View {
                         Button {
                             Task { await play(fromTrackAt: track.start) }
                         } label: {
-                            AlbumTrackRowLabel(number: index + 1, title: track.title,
-                                               duration: Self.duration(track.end - track.start),
-                                               bars: popularity.indices.contains(index) ? popularity[index] : 0)
+                            // A playlist row shows the song's cover and
+                            // artist; an album row its number.
+                            TrackRowLabel(lead: isPlaylist ? .cover(songCoverURL(index), placeholder: "music.note")
+                                                           : .number(index + 1),
+                                          title: track.title,
+                                          artist: isPlaylist ? audioTrack(index)?.metadata?.artist : nil,
+                                          duration: Self.duration(track.end - track.start),
+                                          playing: TrackPlaying.Row(entryId: item.id, start: track.start,
+                                                                    ownId: songItemId(index)),
+                                          coordinator: playerCoordinator,
+                                          bars: popularity.indices.contains(index) ? popularity[index] : 0)
                         }
                         .buttonStyle(.plain)
                         // Playlist basics: remove THIS row (index-precise.

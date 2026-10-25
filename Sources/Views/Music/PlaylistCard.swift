@@ -351,11 +351,15 @@ extension PlaylistCardSource {
     @MainActor
     static func deviceCovers(_ list: MaerPlaylists.Playlist, router: ItemRouter = .live) -> [URL] {
         list.itemIds
-            .compactMap { id in
-                router.coverURL(id)
-                    ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
-            }
+            .compactMap { deviceCover(of: $0, in: list, router: router) }
             .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
+    }
+
+    /// One entry's cover on a device playlist: its source's, else the
+    /// public address its snapshot carries. The mosaic and the row ask this.
+    @MainActor
+    static func deviceCover(of id: String, in list: MaerPlaylists.Playlist, router: ItemRouter = .live) -> URL? {
+        router.coverURL(id) ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
     }
 
     /// What this device can actually play of the list, in list order: the
