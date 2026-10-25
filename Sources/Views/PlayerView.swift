@@ -134,14 +134,15 @@ struct PlayerView: View {
                     // One view, never scrolled (`PlayerFit`): the cover takes
                     // what the controls leave, down to nothing.
                     layout {
-                        // Upright the cover is as wide as the column the
-                        // text stands in, never after the title's length,
-                        // and narrower, still centred, where the height
-                        // must leave the controls in sight (`DetailCoverSide`).
+                        // Upright the cover is as wide as the progress bar
+                        // under it, never after the title's length, and
+                        // narrower, still centred, where the height must
+                        // leave the controls in sight (`DetailCoverSide`).
                         cover(maxSide: !sideBySide
                               ? DetailCoverSide.side(
                                   columnWidth: min(Self.portraitColumn,
-                                                   geo.size.width - (columnPlacement?.strip ?? 0) - 32),
+                                                   geo.size.width - (columnPlacement?.strip ?? 0) - 32)
+                                      - 2 * PlayerDismissZones.scrubberInset,
                                   height: geo.size.height,
                                   top: topInset + 24 + Self.topRoom, below: controlsHeight + 24,
                                   bottomReserve: bottomInset + 16, minimum: 0)
@@ -944,31 +945,36 @@ struct PlayerView: View {
     /// row first; when it cannot fit, the SAME buttons render icon-only
     /// (a11y labels intact). Never the jagged two-column grid again. With
     /// gated entries missing (no lyrics/transcript), labels usually fit.
+    /// Absent when the column carries every tool: an empty stack would still
+    /// take its spacing in the controls and leave the cover smaller.
+    @ViewBuilder
     private var tertiaryControls: some View {
-        VStack(spacing: 18) {
-            // With the tabs at the side the glyph tools and AirPlay stand
-            // in the player's own column (`sideColumn`); the source line
-            // stays here, it is text.
-            if toolsAtSide {
-                if tools.contains(.source) { catalogSourceControl }
-            } else {
-                // MeasuredFits, not ViewThatFits. Same bomb as
-                // the secondary row, same cure.
-                MeasuredFits {
-                    HStack(spacing: 36) {
-                        extrasItems
+        if !toolsAtSide || tools.contains(.source) {
+            VStack(spacing: 18) {
+                // With the tabs at the side the glyph tools and AirPlay stand
+                // in the player's own column (`sideColumn`); the source line
+                // stays here, it is text.
+                if toolsAtSide {
+                    if tools.contains(.source) { catalogSourceControl }
+                } else {
+                    // MeasuredFits, not ViewThatFits. Same bomb as
+                    // the secondary row, same cure.
+                    MeasuredFits {
+                        HStack(spacing: 36) {
+                            extrasItems
+                        }
+                    } compact: {
+                        HStack(spacing: 28) {
+                            extrasItems
+                        }
+                        .labelStyle(.iconOnly)
                     }
-                } compact: {
-                    HStack(spacing: 28) {
-                        extrasItems
-                    }
-                    .labelStyle(.iconOnly)
+                    .font(.footnote)
+                    airPlayControl
                 }
-                .font(.footnote)
-                airPlayControl
             }
+            .padding(.top, 4)
         }
-        .padding(.top, 4)
     }
 
     /// ONE decision for the whole row: every tool appears because the

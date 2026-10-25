@@ -41,7 +41,9 @@ struct PlayerToolsAtSideTests {
     @Test("die Werkzeuge stehen einmal: in der Reihe oder in der Spalte, der Timer ebenso", .needsTheSources)
     func theToolsStandOnce() throws {
         let player = try source("Sources/Views/PlayerView.swift")
-        #expect(player.contains("if toolsAtSide {\n                if tools.contains(.source) { catalogSourceControl }\n            } else {\n                MeasuredFits {"))
+        #expect(player.contains("if toolsAtSide {\n                    if tools.contains(.source) { catalogSourceControl }\n                } else {\n                    MeasuredFits {"))
+        // Without anything in it the row is absent, not an empty stack.
+        #expect(player.contains("if !toolsAtSide || tools.contains(.source) {\n            VStack(spacing: 18) {"))
         #expect(player.components(separatedBy: "if !toolsAtSide { sleepControl }").count - 1 == 2)
         // The tools carry no type size of their own; the row and the cell give it.
         #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))

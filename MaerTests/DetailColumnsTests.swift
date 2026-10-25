@@ -254,6 +254,8 @@ struct DetailColumnsTests {
         // A picture of any aspect ratio fits inside the square, as on the book page.
         #expect(player.contains("CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)"))
         #expect(!player.contains("ScrollView"), "the full player scrolls again")
+        // Upright the cover is as wide as the progress bar under it.
+        #expect(player.contains("geo.size.width - (columnPlacement?.strip ?? 0) - 32)\n                                      - 2 * PlayerDismissZones.scrubberInset,"))
         // Beside the side column and at the fold the cover takes the room it has, not the fixed side.
         #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 2)
         #expect(player.contains("private static let coverSide: CGFloat = 300"))
