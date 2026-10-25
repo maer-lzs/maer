@@ -15,7 +15,9 @@ import OSLog
 final class FreeCatalogProvider: AudioProvider {
     static let shared = FreeCatalogProvider()
     private init() {
-        kept = Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? []
+        // A Gutenberg title kept before its rules existed reads readable too.
+        kept = (Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? [])
+            .map(FreeCatalog.gutenbergReadable)
         for item in kept where itemsById[item.id] == nil { itemsById[item.id] = item }
     }
 

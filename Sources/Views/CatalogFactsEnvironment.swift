@@ -61,6 +61,16 @@ struct CatalogFacts: Sendable {
     nonisolated static func route(itemId: String, hasParts: Bool) -> FreeAudiobooksRoute {
         hasParts ? .series(itemId: itemId) : .catalogBook(itemId: itemId)
     }
+
+    /// The page of a catalogue title on a card or tile that is built for
+    /// podcast episodes (the continue row holds both): a song opens its
+    /// release, any other title `route`. Nil for a title that is no
+    /// catalogue title; it keeps its episode page.
+    @MainActor func page(of itemId: String) -> FreeAudiobooksRoute? {
+        guard MediaFamily.of(itemId) == .catalog else { return nil }
+        if CatalogSongID.isSong(itemId) { return .series(itemId: CatalogSongID.album(of: itemId)) }
+        return route(itemId)
+    }
 }
 
 private struct CatalogFactsKey: EnvironmentKey {

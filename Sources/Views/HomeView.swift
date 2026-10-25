@@ -911,6 +911,8 @@ struct RediscoverTile: View {
     let libraryViewModel: LibraryViewModel
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
 
     var body: some View {
         // The shared scope is the ONE observer of download/network state;
@@ -956,7 +958,14 @@ struct RediscoverTile: View {
                         return nil
                     }(),
                     unavailable: unavailable,
-                    onTap: { pushRoute(.episode(itemId: item.id)) }
+                    // A catalogue title opens its own page, an episode its.
+                    onTap: {
+                        if let page = catalogFacts.page(of: item.id) {
+                            pushFreeAudiobooksRoute(page)
+                        } else {
+                            pushRoute(.episode(itemId: item.id))
+                        }
+                    }
                 ) {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
                 }

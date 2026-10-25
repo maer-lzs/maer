@@ -52,6 +52,38 @@ struct GutenbergNamesTests {
                        encoding: .utf8))
         #expect(provider.components(separatedBy: "FreeCatalog.gutenbergAuthor(").count - 1 == 3)
         #expect(provider.components(separatedBy: "FreeCatalog.gutenbergGenres(").count - 1 == 2)
+        // The kept stock is read through the rules too.
+        #expect(provider.contains(".map(FreeCatalog.gutenbergReadable)"))
+    }
+
+    @Test("ein vor den Regeln gespeicherter Gutenberg-Titel liest sich lesbar", .needsTheSources)
+    func aTitleKeptBeforeTheRulesReadsReadable() throws {
+        // The record as the kept stock held it before the rules existed.
+        let stored = """
+        {"id":"gut:9272","media":{"metadata":{"title":"Gulliver's Travels","authorName":"Swift, Jonathan, 1667-1745",
+        "genres":["Fantasy fiction","Satire","Travelers -- Fiction","Gulliver, Lemuel (Fictitious character) -- Fiction"]},
+        "duration":40000},"addedAt":null}
+        """
+        let item = try JSONDecoder().decode(LibraryItem.self, from: Data(stored.utf8))
+        let read = FreeCatalog.gutenbergReadable(item)
+        #expect(read.media?.metadata?.authorName == "Jonathan Swift")
+        #expect(read.media?.metadata?.genres == ["Fantasy fiction", "Satire", "Travelers"])
+        #expect(read.media?.duration == 40000 && read.media?.metadata?.title == "Gulliver's Travels")
+        // Read again, it stays as it is; any other title passes unchanged.
+        #expect(FreeCatalog.gutenbergReadable(read) == read)
+        let other = LibraryItem(id: "lva:x", media: item.media, addedAt: nil)
+        #expect(FreeCatalog.gutenbergReadable(other) == other)
+    }
+
+    @Test("ein Katalogtitel im Weiterhoeren oeffnet seine Seite, keine Folgenseite")
+    @MainActor
+    func aCatalogTitleOpensItsOwnPage() {
+        let facts = CatalogFacts.empty
+        #expect(facts.page(of: "gut:9272") == .catalogBook(itemId: "gut:9272"))
+        let song = CatalogSongID.make(album: "lva:MIXG032", index: 0)
+        #expect(facts.page(of: song) == .series(itemId: "lva:MIXG032"))
+        // An episode keeps its episode page.
+        #expect(facts.page(of: "rss:episode-1") == nil)
     }
 }
 #endif

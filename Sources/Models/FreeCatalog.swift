@@ -883,6 +883,25 @@ nonisolated enum FreeCatalog {
         return named.isEmpty ? nil : named
     }
 
+    /// A Gutenberg title as it is read back from the device: a title stored
+    /// before the two rules existed still carries the record's raw author
+    /// and subject chains, so they apply on reading too. Both rules leave a
+    /// readable name and readable genres as they are; any other title
+    /// passes unchanged.
+    static func gutenbergReadable(_ item: LibraryItem) -> LibraryItem {
+        guard item.id.hasPrefix(gutenbergPrefix), let media = item.media, let meta = media.metadata else { return item }
+        let readable = LibraryItemMetadata(
+            title: meta.title, authorName: gutenbergAuthor(meta.authorName), authors: meta.authors,
+            narratorName: meta.narratorName, seriesName: meta.seriesName,
+            genres: gutenbergGenres(meta.genres), publishedYear: meta.publishedYear,
+            description: meta.description, feedUrl: meta.feedUrl)
+        return LibraryItem(id: item.id,
+                           media: LibraryItemMedia(metadata: readable, duration: media.duration,
+                                                   chapters: media.chapters, tracks: media.tracks,
+                                                   episodes: media.episodes),
+                           addedAt: item.addedAt)
+    }
+
     /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime). An archive
     /// file's length has its own reader, `fileLength`.
     static func seconds(_ raw: String?) -> Double? {

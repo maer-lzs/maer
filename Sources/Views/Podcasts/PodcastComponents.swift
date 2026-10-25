@@ -14,6 +14,7 @@ import OSLog
 /// Both as overlays so they don't trigger the card tap.
 struct PodcastFeaturedCard: View {
     @Environment(\.itemRouter) private var router
+    @Environment(\.catalogFacts) private var catalogFacts
     let item: LibraryItem
     /// Cell-cost sweep: the CARD carries no global observers. Every cell
     /// creation used to set up 5 subscriptions (the per-cell bump). State is
@@ -131,10 +132,16 @@ struct PodcastFeaturedCard: View {
     }
 
     /// The card itself is tap-to-play; the pill therefore does NOT play again but
-    /// opens the episode detail page (info).
+    /// opens the title's page: the episode page, or for a catalogue title in
+    /// the continue row its own page (`CatalogFacts.page`).
+    @ViewBuilder
     private var infoPill: some View {
         // Shared anatomy (5219a7). One Details pill for every card family.
-        CardDetailPill(value: PodcastRoute.episode(itemId: item.id))
+        if let page = catalogFacts.page(of: item.id) {
+            CardDetailPill(value: page)
+        } else {
+            CardDetailPill(value: PodcastRoute.episode(itemId: item.id))
+        }
     }
 }
 
