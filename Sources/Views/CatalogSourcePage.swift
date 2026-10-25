@@ -896,8 +896,17 @@ struct ArchiveSeriesPage: View {
     @State private var failed = false
     @State private var failedReason = ""
     @State private var visibleCount = 100
+    /// How many of the album's songs did not resolve when it was last
+    /// started; the line under the buttons says it.
+    @State private var missingSongs = 0
 
     private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
+
+    /// "1 track not available": the line under an album's buttons when
+    /// songs did not resolve; none when all did.
+    nonisolated static func missingSongsLine(count: Int) -> String? {
+        count > 0 ? String(localized: "\(count) tracks not available") : nil
+    }
 
     /// What the item IS, read from its collections.
     ///
@@ -1081,17 +1090,24 @@ struct ArchiveSeriesPage: View {
         } actions: {
             // An album starts like one: its tracks in order, or shuffled.
             if effectiveFlavor == .album {
-                HStack(spacing: 12) {
-                    DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
-                        Task {
-                            await playerCoordinator.playInOrder(items: await albumSongs(),
-                                                                contextSource: detail.media.metadata?.title)
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
+                            Task {
+                                await playerCoordinator.playInOrder(items: await albumSongs(),
+                                                                    contextSource: detail.media.metadata?.title)
+                            }
                         }
-                    }
-                    .disabled(tracks.isEmpty)
-                    ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { await albumSongs() }
-                        .font(.title3)
                         .disabled(tracks.isEmpty)
+                        ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { await albumSongs() }
+                            .font(.title3)
+                            .disabled(tracks.isEmpty)
+                    }
+                    if let line = Self.missingSongsLine(count: missingSongs) {
+                        Text(verbatim: line)
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("album-songs-missing")
+                    }
                 }
             }
         }
@@ -1100,9 +1116,11 @@ struct ArchiveSeriesPage: View {
 
     /// The album's tracks as the items they are (`CatalogSongID`), in order,
     /// from the catalogue's one list of a release's songs. A song that does
-    /// not resolve is named in the log with its count; the rest plays.
+    /// not resolve is counted under the buttons and named in the log; the
+    /// rest plays.
     private func albumSongs() async -> [LibraryItem] {
         let answer = await FreeCatalogProvider.shared.albumSongs(albumId: itemId, count: tracks.count)
+        missingSongs = answer.missing.count
         if !answer.missing.isEmpty {
             Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(tracks.count) first=\(answer.missing[0]) ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
         }

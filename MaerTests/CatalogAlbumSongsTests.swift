@@ -60,6 +60,24 @@ struct CatalogAlbumSongsTests {
         #expect(page.contains("FreeCatalogProvider.shared.albumSongs(albumId: itemId, count: tracks.count)"))
         #expect(page.contains("CATALOG album songs missing=\\(answer.missing.count)"))
         #expect(!page.contains("resolveItem(forId: CatalogSongID.make"), "the page resolves the songs one by one again")
+        // The count reaches the line under the buttons.
+        #expect(page.contains("missingSongs = answer.missing.count"))
+        #expect(page.contains("Self.missingSongsLine(count: missingSongs)"))
+    }
+
+    @Test("eine sichtbare Zeile nennt die Zahl fehlender Lieder, deutsch und englisch in Einzahl und Mehrzahl")
+    func theLineCountsTheMissingSongs() throws {
+        #expect(ArchiveSeriesPage.missingSongsLine(count: 0) == nil)
+        #expect(ArchiveSeriesPage.missingSongsLine(count: 1) == String(localized: "\(1) tracks not available"))
+        func line(_ count: Int, _ language: String) throws -> String {
+            let bundle = try #require(Bundle.main.path(forResource: language, ofType: "lproj").flatMap(Bundle.init(path:)))
+            return String(format: bundle.localizedString(forKey: "%lld tracks not available", value: nil, table: nil),
+                          locale: Locale(identifier: language), count)
+        }
+        #expect(try line(1, "de") == "1 Titel nicht verfügbar")
+        #expect(try line(3, "de") == "3 Titel nicht verfügbar")
+        #expect(try line(1, "en") == "1 track not available")
+        #expect(try line(3, "en") == "3 tracks not available")
     }
 }
 #endif
