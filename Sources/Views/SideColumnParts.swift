@@ -8,7 +8,8 @@ import SwiftUI
 /// The side column is built from two parts and nothing else: the capsule
 /// (`SideCapsule`: the tabs, the search's scopes, the settings' sections)
 /// and the round button (`SideRoundButton`: the search, the cog, the search's
-/// close button). Measure, spacing and material stand here once.
+/// close button, the close button of the full player and of the settings).
+/// Measure, spacing and material stand here once.
 nonisolated enum SideColumnStyle {
     /// The column's one measure (`TabBarPlacement.sideMeasure`): the width
     /// of the capsule and of every round button.

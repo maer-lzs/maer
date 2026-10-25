@@ -230,10 +230,13 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-                    // Locale-independent handle for the UI-test harness.
-                    .accessibilityIdentifier("settings-done")
+            // Beside the side column the sheet closes from the column's top.
+            if !sectionsAtSide {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        // Locale-independent handle for the UI-test harness.
+                        .accessibilityIdentifier("settings-done")
+                }
             }
         }
         .task {
@@ -246,6 +249,10 @@ struct SettingsView: View {
                 GeometryReader { proxy in
                     let strip = verticalBarSide == .leading ? proxy.safeAreaInsets.leading : proxy.safeAreaInsets.trailing
                     VStack {
+                        // Where the system stands a page's back button, as
+                        // the full player closes (`SideRoundButton`).
+                        SideRoundButton(systemImage: "xmark", label: "Close") { dismiss() }
+                            .accessibilityIdentifier("settings-close")
                         Spacer(minLength: 0)
                         sectionColumn
                     }

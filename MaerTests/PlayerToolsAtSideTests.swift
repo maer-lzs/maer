@@ -81,6 +81,13 @@ struct PlayerToolsAtSideTests {
         #expect(overlay.contains(".environment(\\.closePlayer) { slideOutAndDismiss() }"))
     }
 
+    @Test("die Einstellungen schliessen neben der Spalte ueber denselben Knopf, ohne Spalte ueber Fertig", .needsTheSources)
+    func theSettingsCloseFromTheColumn() throws {
+        let settings = try source("Sources/Views/SettingsView.swift")
+        #expect(settings.contains("VStack {\n                        SideRoundButton(systemImage: \"xmark\", label: \"Close\") { dismiss() }"))
+        #expect(settings.contains("if !sectionsAtSide {\n                ToolbarItem(placement: .confirmationAction) {\n                    Button(\"Done\") { dismiss() }"))
+    }
+
     @Test("die Transportreihe gibt in ihren Abstaenden nach und weitet die Spalte nie", .needsTheSources)
     func theTransportRowGivesWayInItsGaps() throws {
         let player = try source("Sources/Views/PlayerView.swift")
