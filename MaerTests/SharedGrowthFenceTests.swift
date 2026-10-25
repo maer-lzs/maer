@@ -43,16 +43,20 @@ import Foundation
 /// paragraph had lost its own sentence halfway through. A fence against stale
 /// numbers whose head goes stale is the proof of its own rule.
 struct SharedGrowthFenceTests {
-    /// Grips on singletons in `Sources/Views`, measured 373 (the lock on
+    /// Grips on singletons in `Sources/Views`, measured 372 (the lock on
     /// every feed surface: Rediscover show and episode, recommendation tile,
     /// an episode on the mixed page, the Continue page ask the one question;
-    /// the book page stopped asking the application for its screen).
+    /// the book page stopped asking the application for its screen; the
+    /// episode row and page read the subscriptions through one property, and
+    /// the catalogue page asks the stock service it observes, which pays for
+    /// the explicit mark, the album's songs, the tap that expands the bar and
+    /// the progress report beside the diagnostics).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 373
+    nonisolated static let stock = 372
 
     /// The same count over all of `Sources`, measured 734 (the listening
     /// history, the refusal on the Continue card, then the lock on every

@@ -335,9 +335,12 @@ struct PodcastEpisodeRow: View {
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.isOnline) private var isOnline
 
+    /// The subscriptions, read plainly: the row observes nothing (above).
+    private var subscriptions: PodcastSubscriptions { PodcastSubscriptions.shared }
+
     /// Text-only episode (kept, no enclosure). Plain read, one per render.
     private var isTextOnly: Bool {
-        !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
+        !subscriptions.isPlayableEpisode(itemId: item.id)
     }
 
     var body: some View {
@@ -486,7 +489,7 @@ struct PodcastEpisodeRow: View {
     private func metaText(state: EpisodePlayState) -> String {
         var parts: [String] = []
         // The explicit mark leads the line (`PodcastExplicit`); one indexed read.
-        if let found = PodcastSubscriptions.shared.episode(guid: item.id),
+        if let found = subscriptions.episode(guid: item.id),
            PodcastExplicit.marks(episode: found.episode.explicit, show: found.show.explicit) {
             parts.append(PodcastExplicit.letter)
         }

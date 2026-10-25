@@ -143,7 +143,7 @@ struct CatalogSourcePage: View {
         .task {
             // The first visit of THIS surface fetches THIS collection, and
             // says so. Not a block behind surfaces nobody opens.
-            await CatalogStockService.shared.ensureStock(
+            await stockService.ensureStock(
                 surface: source.rawValue,
                 archiveQuery: ArchiveOrgClient.archiveBaseQuery(for: source))
             knownShelfKeys = CatalogShelfSource.knownShelfKeys(for: source)
@@ -411,10 +411,10 @@ struct CatalogSourcePage: View {
         let storedDay = CatalogShelfSource.storedDay(source: source)
         // The kept stock, read ONCE per pass. Where it answers, no shelf
         // asks the network at all.
-        let keptStock = CatalogStockService.shared.stock(source.rawValue)
+        let keptStock = stockService.stock(source.rawValue)
         // And its subject index, built once per session: eighteen shelves
         // are eighteen bucket lookups, not eighteen scans of 75.000 entries.
-        let keptIndex = CatalogStockService.shared.index(source.rawValue)
+        let keptIndex = stockService.index(source.rawValue)
         // The FIRST fetch has right of way. While the stock run is on the
         // wire, eighteen shelf service queries would join the very burst
         // that had archive.org refuse connections (-1004, measured on the
@@ -423,7 +423,7 @@ struct CatalogSourcePage: View {
         // network at all. Only a RUNNING fetch defers; a cellular question
         // or a failed state must not park the shelves forever.
         if keptStock == nil,
-           case .loading = CatalogStockService.shared.state(source.rawValue) {
+           case .loading = stockService.state(source.rawValue) {
             shelvesLoading = false
             return
         }

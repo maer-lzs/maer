@@ -19,6 +19,8 @@ struct PodcastEpisodeDetailView: View {
     /// ABS episode is read from it (through `PodcastShowSources`) without
     /// observing there.
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    /// The subscriptions, read plainly for the episode's own facts.
+    private var subscriptions: PodcastSubscriptions { PodcastSubscriptions.shared }
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
     /// The shownotes from the detail: a subscribed episode carries none in
@@ -48,7 +50,7 @@ struct PodcastEpisodeDetailView: View {
     @ViewBuilder
     private func badges(_ ep: PodcastEpisode) -> some View {
         let explicit = PodcastExplicit.marks(
-            episode: ep.explicit, show: PodcastSubscriptions.shared.episode(guid: item.id)?.show.explicit)
+            episode: ep.explicit, show: subscriptions.episode(guid: item.id)?.show.explicit)
         let parts: [String] = [seasonEpisodeText(ep), typeText(ep), explicit ? PodcastExplicit.letter : nil]
             .compactMap { $0 }
         if !parts.isEmpty {
@@ -283,7 +285,7 @@ struct PodcastEpisodeDetailView: View {
     /// A text-only episode has nothing to play. The page shows the
     /// notes without the play affordance.
     private var isTextOnly: Bool {
-        !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
+        !subscriptions.isPlayableEpisode(itemId: item.id)
     }
 
     private var playButton: some View {
