@@ -13,6 +13,11 @@ import SwiftUI
 struct CatalogRightsSection: View {
     @Environment(\.catalogFacts) private var catalogFacts
     let item: LibraryItem
+    /// The licence the source states, read by the page that shows it: the
+    /// register learns a Gutenberg title's rights only when its detail
+    /// loads, and the page draws again then; read inside the section, it
+    /// would keep the first, empty answer.
+    let licence: String?
 
     private var librivoxURL: URL? {
         catalogFacts.librivoxBook(item.id)?.url_librivox
@@ -24,7 +29,7 @@ struct CatalogRightsSection: View {
             // A seal only on a statement: "Rights not stated" is none, and a
             // checkmark beside it would be a claim of its own. Without one
             // the year speaks (`FreeCatalog.rightsNote`).
-            if let licence = catalogFacts.licence(item.id), licence != FreeCatalog.unstatedRights {
+            if let licence, licence != FreeCatalog.unstatedRights {
                 Label(licence, systemImage: "checkmark.seal")
                     .font(.caption).foregroundStyle(.secondary)
             } else {

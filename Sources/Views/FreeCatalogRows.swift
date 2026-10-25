@@ -91,7 +91,7 @@ struct FreeCatalogDetailSheet: View {
                     VStack(spacing: 6) {
                         // Rights capsule + backlink: the ONE shared component
                         // (the book detail page carries the same one).
-                        CatalogRightsSection(item: item)
+                        CatalogRightsSection(item: item, licence: catalogFacts.licence(item.id))
                         // The item description, below the rights capsule.
                         // HTML remnants cleaned by the ONE existing text
                         // preparation (podcastPlainText); collapsed

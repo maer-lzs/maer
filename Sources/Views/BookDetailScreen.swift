@@ -17,6 +17,7 @@ import UIKit
 ///   right (the extra width used sensibly instead of just scaling down)
 struct BookDetailScreen: View {
     @Environment(\.itemRouter) private var router
+    @Environment(\.catalogFacts) private var catalogFacts
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
     /// Absent on the catalog entry path: a catalog title has no library
@@ -441,7 +442,9 @@ struct BookDetailScreen: View {
         // source backlink, and for LibriVox books the take-into-library
         // menu. Server titles never show these.
         if isCatalogTitle {
-            CatalogRightsSection(item: entry.item)
+            // Read here, where the page draws again once its detail (and
+            // with it the source's rights) has loaded.
+            CatalogRightsSection(item: entry.item, licence: catalogFacts.licence(entry.id))
                 .padding(.horizontal)
             if entry.id.hasPrefix(FreeCatalog.librivoxPrefix) {
                 LibriVoxTakeoverSection(item: entry.item)

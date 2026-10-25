@@ -46,7 +46,12 @@ struct CatalogRightsWordingFenceTests {
     @Test("keine Rechte-Angabe ohne Aussage traegt ein Siegel, der Hinweis des Archivs hat einen Wortlaut", .needsTheSources)
     func noSealWithoutAStatement() throws {
         let detail = try source("Sources/Views/CatalogDetailExtras.swift")
-        #expect(detail.contains("if let licence = catalogFacts.licence(item.id), licence != FreeCatalog.unstatedRights {"))
+        #expect(detail.contains("if let licence, licence != FreeCatalog.unstatedRights {"))
+        // The page that shows the section reads the licence, so it follows
+        // the register once the detail has loaded (book page and player agree).
+        let page = try source("Sources/Views/BookDetailScreen.swift")
+        #expect(page.contains("CatalogRightsSection(item: entry.item, licence: catalogFacts.licence(entry.id))"))
+        #expect(!detail.contains("catalogFacts.licence("), "the section reads the register itself again")
         #expect(ExternalSources.internetArchive.rightsNotice == FreeCatalog.archiveRightsNotice)
         let note = try source("Sources/Views/TabContentLayout.swift")
         #expect(note.contains("Text(verbatim: FreeCatalog.archiveRightsNotice)"))
