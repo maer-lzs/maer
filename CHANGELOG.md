@@ -6,7 +6,9 @@
 arrow, on Start and in every tab, each catalog now stands as a row of
 covers with its arrow onto its own page, instead of a plain list of
 links. On a wide screen such as the open iPhone Duo the rows stand in
-two columns, one on each side of the fold.
+two columns, one on each side of the fold. The page asks all its
+catalogs at once, and each row appears as soon as its catalog answers,
+instead of waiting for the ones before it.
 
 **One menu for albums and playlists.** A long press on an album or a
 playlist, from your server or from an open catalog, offers Play, Play

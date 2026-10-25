@@ -278,28 +278,34 @@ struct BrowsePage: View {
 
     /// What the stores do not hold yet: the catalogs' sources, the
     /// recommendations, the old records and the charts' first genre, each
-    /// only while its section stands.
+    /// only while its section stands. They load side by side
+    /// (`BrowseLoad.together`); each lane fills when its own answer comes.
     private func load() async {
         #if DEBUG
         if UITestSeed.isActive { return }
         #endif
+        var steps: [BrowseLoad.Step] = []
         if sections.contains(where: { $0.group == .books }) {
-            await freeCatalogStore.ensureSourcesLoaded()
+            steps.append { await freeCatalogStore.ensureSourcesLoaded() }
         }
         if sections.contains(.recommendations) {
-            await recommendations.refreshIfNeeded()
+            steps.append { await recommendations.refreshIfNeeded() }
         }
-        if sections.contains(.oldRecords), AppStorageKeys.shellacActive, oldRecords.isEmpty,
-           let titles = await ShellacSection.rowTitles() {
-            oldRecords = titles
+        if sections.contains(.oldRecords), AppStorageKeys.shellacActive, oldRecords.isEmpty {
+            steps.append {
+                if let titles = await ShellacSection.rowTitles() { oldRecords = titles }
+            }
         }
         if sections.contains(.charts), charts.isEmpty, let chip = CatalogGenreAxis.hoerspielChips.first,
            let genreId = chip.genreIds.first {
-            let answer = await FetchAnswer.of("browse charts genre=\(genreId)", logger: .rss) {
-                try await ITunesDirectory().topPodcasts(genreId: genreId)
+            steps.append {
+                let answer = await FetchAnswer.of("browse charts genre=\(genreId)", logger: .rss) {
+                    try await ITunesDirectory().topPodcasts(genreId: genreId)
+                }
+                if let pool = answer.value { charts = PodcastShowSources.excludingOwned(pool) }
             }
-            if let pool = answer.value { charts = PodcastShowSources.excludingOwned(pool) }
         }
+        await BrowseLoad.together(steps)
     }
 
     private static func title(_ group: BrowseSection.Group) -> LocalizedStringKey {
@@ -337,6 +343,21 @@ struct BrowsePage: View {
             RowHeading.entry(verbatim: CatalogSource.oerr.title, destination: FreeAudiobooksRoute.oerrCountries)
         case .independentFeeds:
             RowHeading.entry(verbatim: CatalogSource.independents.title, destination: FreeAudiobooksRoute.source(.independents))
+        }
+    }
+}
+
+/// The Browse page's loads side by side: every step starts at once, and
+/// the whole lasts as long as the slowest, not as long as all of them.
+/// Each step publishes its own lane; none waits for another.
+enum BrowseLoad {
+    typealias Step = @MainActor @Sendable () async -> Void
+
+    static func together(_ steps: [Step]) async {
+        await withTaskGroup(of: Void.self) { group in
+            for step in steps {
+                group.addTask { await step() }
+            }
         }
     }
 }

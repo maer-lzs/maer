@@ -70,6 +70,46 @@ struct BrowseTests {
         #expect(!page.contains("default:return[]"))
     }
 
+    /// Records the order in which the steps finish.
+    @MainActor private final class Finished {
+        var names: [String] = []
+    }
+
+    @Test("die Seite laedt ihre Bereiche gleichzeitig: die Dauer ist die des laengsten, jeder kommt mit seiner Antwort")
+    @MainActor func theLoadsRunSideBySide() async {
+        let finished = Finished()
+        func step(_ name: String, _ ms: Int) -> BrowseLoad.Step {
+            {
+                try? await Task.sleep(for: .milliseconds(ms))
+                finished.names.append(name)
+            }
+        }
+        let clock = ContinuousClock()
+        let start = clock.now
+        await BrowseLoad.together([step("catalogs", 900), step("recommendations", 300), step("charts", 600)])
+        let elapsed = clock.now - start
+        // One after the other would take 1.8 s; side by side the slowest decides.
+        #expect(elapsed < .milliseconds(1500), "\(elapsed)")
+        #expect(finished.names == ["recommendations", "charts", "catalogs"], "a lane waited for another")
+        await BrowseLoad.together([])
+    }
+
+    @Test("die Seite Stoebern gibt jeden Bereich an das gleichzeitige Laden, keiner wartet auf einen anderen", .needsTheSources)
+    func thePageLoadsItsSectionsTogether() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
+        let load = try #require(page.components(separatedBy: "private func load() async {").last?
+            .components(separatedBy: "private static func title(").first)
+        #expect(load.contains("await BrowseLoad.together(steps)"))
+        #expect(load.components(separatedBy: "steps.append {").count - 1 == 4, "a section left the side-by-side load")
+        // Every await of a load stands inside its step.
+        for line in load.components(separatedBy: "\n") where line.contains("await ") {
+            #expect(line.contains("steps.append { await ") || line.hasPrefix(String(repeating: " ", count: 16))
+                    || line.contains("await BrowseLoad.together(steps)"),
+                    "a load runs before the others: \(line)")
+        }
+    }
+
     @Test("ein eingeschalteter, leerer Anteil nennt seinen Grund, ein ausgeschalteter nicht")
     func aDroppedShareSaysWhy() {
         #expect(BrowseMix.dropReason(.music, enabled: true, isEmpty: true, failure: "Jamendo: 429") == "music: Jamendo: 429")
