@@ -138,12 +138,32 @@ struct MarkGestureAtTrueEndTests {
     static let readsTheDisplay = ["podcastSetPlayed(item, !", "= !isFinished", "!(entry.progress?.isFinished"]
 
     /// Per label site in a text: whether its line reads `.marksPlayed`.
-    /// Comment lines do not count.
+    /// Comment lines do not count. A `switch` whose head reads
+    /// `.marksPlayed` is one asked site, however many of its `case` lines
+    /// carry a label (the long and the short word of one button).
     static func labelSites(in text: String) -> (asked: Int, unasked: Int) {
         var asked = 0, unasked = 0
+        var inAskingSwitch = false
+        var switchCounted = false
         for line in text.components(separatedBy: "\n") {
             let code = line.trimmingCharacters(in: .whitespaces)
-            guard !code.hasPrefix("//"), unmarkLabels.contains(where: code.contains) else { continue }
+            guard !code.hasPrefix("//") else { continue }
+            if code.contains("switch"), code.contains(".marksPlayed") {
+                inAskingSwitch = true
+                switchCounted = false
+                continue
+            }
+            if inAskingSwitch {
+                if code.hasPrefix("case ") || code.hasPrefix("default") {
+                    if !switchCounted, unmarkLabels.contains(where: code.contains) {
+                        asked += 1
+                        switchCounted = true
+                    }
+                    continue
+                }
+                inAskingSwitch = false
+            }
+            guard unmarkLabels.contains(where: code.contains) else { continue }
             if code.contains(".marksPlayed") { asked += 1 } else { unasked += 1 }
         }
         return (asked, unasked)
@@ -169,6 +189,21 @@ struct MarkGestureAtTrueEndTests {
         #expect(Self.displayReads(in: new) == 0)
         #expect(Self.labelSites(in: comment).asked + Self.labelSites(in: comment).unasked == 0)
         #expect(Self.displayReads(in: comment) == 0)
+        // One button, two words, chosen by the rule: one asked site.
+        let switched = """
+        let title = switch (gesture.marksPlayed, compact) {
+        case (true, false): String(localized: "Mark as Finished")
+        case (false, false): String(localized: "Mark as Unfinished")
+        case (true, true): String(localized: "Mark Finished")
+        case (false, true): String(localized: "Mark Unfinished")
+        }
+        """
+        #expect(Self.labelSites(in: switched).asked == 1)
+        #expect(Self.labelSites(in: switched).unasked == 0)
+        // The same switch on the shown state asks nothing.
+        let shown = switched.replacingOccurrences(of: "gesture.marksPlayed", with: "!isFinished")
+        #expect(Self.labelSites(in: shown).asked == 0)
+        #expect(Self.labelSites(in: shown).unasked == 2)
     }
 
     @Test("jede Umschalt-Geste in einer Ansicht fragt die Regel", .needsTheSources)
