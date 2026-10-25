@@ -372,6 +372,8 @@ struct MusicAlbumView: View {
             if !meta.isEmpty {
                 Text(meta).font(.caption).foregroundStyle(.secondary)
             }
+            // What the menu changes, seen in the head (`DetailStates`).
+            AlbumHeadStates(itemId: item.id, favorite: isAlbum && starred)
         } actions: {
             HStack(spacing: 12) {
                 playButton
@@ -479,6 +481,33 @@ struct MusicAlbumView: View {
 /// The downloader, as this page and its two download controls reach it:
 /// one grip for the file instead of one per view.
 @MainActor private var albumDownloads: DownloadManager { DownloadManager.shared }
+
+/// The album's states in its head: favorite, and the download stored or
+/// loading. Its own observer of the stock and of this album's phase, so a
+/// progress publish re-runs these glyphs, never the track list.
+private struct AlbumHeadStates: View {
+    private let downloadManager = albumDownloads
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
+    let itemId: String
+    let favorite: Bool
+
+    init(itemId: String, favorite: Bool) {
+        self.itemId = itemId
+        self.favorite = favorite
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
+
+    private var download: DetailDownloadState {
+        if downloadManager.isDeletableDownload(itemId: itemId) { return .stored }
+        if case .downloading(let fraction) = downloadProgress.phase { return .loading(fraction) }
+        return .none
+    }
+
+    var body: some View {
+        DetailStates(favorite: favorite, download: download)
+    }
+}
 
 /// The album's download entries, in the page's menu, the cover's long press
 /// and every track's context menu: delete when the album is stored, cancel

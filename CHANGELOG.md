@@ -44,6 +44,16 @@ says it on its second line, for example "not reachable" in place of the
 time, until playback starts again or another title takes over. A tap on
 the pill and Settings still open all messages.
 
+**One menu for a page's actions, its states in view.** Album, playlist,
+show and episode keep their actions in the menu at the top right:
+download, favorite, rename, the show's settings. What they change stays
+visible under the title without a button of its own: a filled heart for
+a favorite, a grey arrow once downloaded, the progress while it loads.
+
+**The settings on the iPhone Duo.** Beside the side column the settings
+fill the window, folded and open alike; where the page is wide enough
+their sections stand in two columns.
+
 **One button where there were two on the iPhone Duo.** With the tabs at
 the side, the settings button lay over the back button of every page
 you opened. The settings button now stands at the top of the side

@@ -152,7 +152,7 @@ struct CategoryDeckTests {
             #expect(!code.contains("\"Downloaded\""), "\(path) still titles a list Downloaded")
             #expect(code.contains("\"Downloads list\""), "\(path) lost its list title")
         }
-        for path in ["Sources/Views/CoverBadge.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
+        for path in ["Sources/Views/CoverBadge.swift", "Sources/Views/DetailHeader.swift"] {
             #expect(try sourceText(path).contains("Text(\"Downloaded\")"), "\(path) no longer says the cover state")
         }
         // The filter of the books tab names a state, like Finished.

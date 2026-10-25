@@ -180,6 +180,37 @@ struct DetailHeaderTests {
         #expect(place.contains(".accessibilityLabel(Text(\"Actions\"))"), "the menu has no name")
     }
 
+    /// What the menu changes stands in the head as a state without an action
+    /// of its own (favorite, stored, loading), in one place: `DetailStates`,
+    /// the last of the head's lines.
+    @Test("ein Zustand an einer Stelle im Kopf: Herz, Pfeil, Fortschritt, ohne eigene Handlung", .needsTheSources)
+    func aStateStandsInOnePlaceOfTheHead() throws {
+        var builders: [String: Int] = [:]
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
+            let count = SyncContractFenceTests.stripped(text).components(separatedBy: "DetailStates(").count - 1
+            if count > 0 { builders[name] = count }
+        }
+        #expect(builders == ["MusicAlbumView.swift": 1], "the states are drawn somewhere else too: \(builders)")
+        let head = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
+                       encoding: .utf8))
+        let states = try #require(head.components(separatedBy: "struct DetailStates: View {").last)
+        #expect(!states.contains("Button") && !states.contains("onTapGesture"), "a state took an action")
+        #expect(states.contains("Image(systemName: \"heart.fill\")"), "the favorite is not the filled heart")
+        #expect(states.contains("Image(systemName: DownloadedMark.symbol)\n                        .foregroundStyle(.secondary)"),
+                "stored is not the grey arrow")
+        #expect(states.contains("DownloadRing(fraction: fraction)"), "loading shows no progress")
+        // The album page puts them under its title, observed on their own,
+        // and draws no state glyph of its own.
+        let album = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),
+                       encoding: .utf8))
+        let lines = try #require(album.components(separatedBy: "} lines: {").last?.components(separatedBy: "} actions: {").first)
+        #expect(lines.contains("AlbumHeadStates(itemId: item.id, favorite: isAlbum && starred)"),
+                "the album's states left its head")
+        #expect(!album.contains("\"heart.fill\"") && !album.contains("DownloadRing("), "the album draws a state of its own")
+    }
+
     @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)
     func theCoverGrowsOnlyInTwoColumns() throws {
         let head = SyncContractFenceTests.stripped(

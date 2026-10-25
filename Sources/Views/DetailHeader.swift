@@ -167,3 +167,51 @@ struct DetailMainButton: View {
         .modifier(AdaptiveGlassBackground(shape: Self.shape))
     }
 }
+
+/// Where a page's download stands, as its head shows it.
+nonisolated enum DetailDownloadState: Equatable, Sendable {
+    case none
+    /// Running; the fraction, or below 0 when the size is unknown.
+    case loading(Double)
+    case stored
+}
+
+/// THE one place of a page's states in its head: what the page's menu
+/// changes, seen without opening it, with no action of its own (the actions
+/// stay in the ⋯ menu, `pageActions`). A filled heart while a favorite, the
+/// grey arrow while stored, the progress while it loads. Nothing when no
+/// state holds. It stands as the last of the head's lines, under the title.
+struct DetailStates: View {
+    var favorite = false
+    var download: DetailDownloadState = .none
+
+    var body: some View {
+        if favorite || download != .none {
+            HStack(spacing: 12) {
+                if favorite {
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(.red)
+                        .accessibilityLabel(Text("Favorite"))
+                }
+                switch download {
+                case .none:
+                    EmptyView()
+                case .loading(let fraction):
+                    DownloadRing(fraction: fraction)
+                        .accessibilityElement()
+                        .accessibilityLabel(Text("Downloading"))
+                        .accessibilityValue(fraction >= 0
+                            ? Text(fraction.formatted(.percent.precision(.fractionLength(0))))
+                            : Text(verbatim: ""))
+                case .stored:
+                    Image(systemName: DownloadedMark.symbol)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Text("Downloaded"))
+                }
+            }
+            .font(.body)
+            .padding(.top, 4)
+            .accessibilityIdentifier("detail-states")
+        }
+    }
+}
