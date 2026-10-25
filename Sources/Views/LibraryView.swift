@@ -256,7 +256,7 @@ struct LibraryView: View {
         // 26.5 and 27 (the top edge became a hard-edged milky band reaching
         // far under the status bar, measured at the pixel on both SDKs), and
         // named here it holds for the tab root and every page pushed on it.
-        .topScrollEdge(hard: tabBarPlacement.isSide)
+        .softTopScrollEdge()
         // Only the visible tab's page tells the side column its brightness.
         .transformPreference(SideColumnSchemeKey.self) { if selectedMediaType != type { $0 = nil } }
         // Every hook pushes into the path of EXACTLY THIS tab, so a push on
@@ -1907,13 +1907,13 @@ extension View {
 
 private extension View {
     /// The declared top edge of every tab stack, its root and its pushed
-    /// pages: soft, and hard beside the side column, where the soft edge let
-    /// the first row read through the title. Scroll edge effects exist from
-    /// iOS 26; below it there is none to declare.
+    /// pages: soft in every posture. The hard edge stays on at the top once
+    /// content has been under the bar, a band over a page at rest. Scroll
+    /// edge effects exist from iOS 26; below it there is none to declare.
     @ViewBuilder
-    func topScrollEdge(hard: Bool) -> some View {
+    func softTopScrollEdge() -> some View {
         if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(hard ? .hard : .soft, for: .top)
+            scrollEdgeEffectStyle(.soft, for: .top)
         } else {
             self
         }

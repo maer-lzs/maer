@@ -141,5 +141,19 @@ struct TabBarPlacementTests {
             #expect(!text.contains("frame(width: 46)") && !text.contains("slim ? 44"))
         }
     }
+
+    @Test("die obere Kante ist weich in jeder Haltung, keine Seite setzt eine harte", .needsTheSources)
+    func theTopEdgeIsSoft() throws {
+        let library = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
+        #expect(library.components(separatedBy: ".softTopScrollEdge()").count - 1 == 1)
+        #expect(library.contains("scrollEdgeEffectStyle(.soft, for: .top)"))
+        // The one declaration is the soft one; no other place declares an edge.
+        var declared = 0
+        for (_, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            declared += SyncContractFenceTests.stripped(text).components(separatedBy: "scrollEdgeEffectStyle(").count - 1
+        }
+        #expect(declared == 1, "another scroll edge is declared")
+    }
 }
 #endif
