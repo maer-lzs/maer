@@ -4,7 +4,6 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
-import OSLog
 
 /// THE two columns of a detail page in a wide window (`FoldSplit`): the
 /// leading column ends before the fold, the trailing one begins after it,
@@ -36,13 +35,6 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
                 trailing(CGSize(width: max(0, columns.trailing - margin), height: geo.size.height))
                     .frame(width: max(0, columns.trailing - margin))
                     .padding(.leading, margin)
-            }
-            // Every new division in one line, so the distances to the fold
-            // can be read off the device: the band the system named, the
-            // window, where the page begins and how wide it is, the columns.
-            .onChange(of: columns, initial: true) { _, columns in
-                let fold = foldLine.fold.map { "\($0.lowerBound)...\($0.upperBound)" } ?? "none"
-                Logger.library.notice("FOLD split band=\(fold, privacy: .public) window=\(foldLine.windowWidth) pageMinX=\(geo.frame(in: .global).minX) pageWidth=\(geo.size.width) leading=\(columns.leading) gap=\(columns.gap) trailing=\(columns.trailing)")
             }
         }
     }
