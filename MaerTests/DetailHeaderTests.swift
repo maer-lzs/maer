@@ -22,6 +22,7 @@ struct DetailHeaderTests {
         ("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", 1),
         ("Sources/Views/Radio/RadioStationDetailView.swift", 1),
         ("Sources/Views/CatalogSourcePage.swift", 1),
+        ("Sources/Views/Music/MusicLibraryPages.swift", 1),
     ]
 
     @Test("jede Seite mit Cover-Kopf baut ihn ueber das eine Bauteil", .needsTheSources)
@@ -57,6 +58,7 @@ struct DetailHeaderTests {
         ("Sources/Views/Music/MusicAlbumView.swift", 2),
         ("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", 1),
         ("Sources/Views/Radio/RadioStationDetailView.swift", 1),
+        ("Sources/Views/Music/MusicLibraryPages.swift", 1),
     ]
 
     @Test("ein Hauptknopf in einer Form auf jeder Seite mit Kopf", .needsTheSources)
@@ -90,11 +92,13 @@ struct DetailHeaderTests {
 
     /// The titles the files of the headed pages still set in a top bar, on
     /// their other pages: the book's chapter list, the artist and playlist
-    /// lists, the catalog's source, popular and shelf pages.
+    /// lists, the catalog's source, popular and shelf pages, the music
+    /// library's list pages.
     static let otherTitles: [String: Int] = [
         "Sources/Views/BookDetailScreen.swift": 1,
         "Sources/Views/Music/MusicBrowseViews.swift": 2,
         "Sources/Views/CatalogSourcePage.swift": 3,
+        "Sources/Views/Music/MusicLibraryPages.swift": 9,
     ]
 
     @Test("eine Seite mit Kopf traegt oben keinen Titel", .needsTheSources)
@@ -110,6 +114,12 @@ struct DetailHeaderTests {
         #expect(!SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicBrowseViews.swift"),
                        encoding: .utf8)).contains("DetailHeader(title: nil"), "the artist goes unnamed")
+        // A headed page's actions stand in its menu, editing too.
+        for page in Self.headedPages {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
+            #expect(!text.contains("EditButton()"), "\(page.file) puts editing in the top bar")
+        }
     }
 
     @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)

@@ -982,11 +982,17 @@ struct MaerPlaylistPage: View {
     @ObservedObject private var store = MaerPlaylists.shared
     @State private var renaming = false
     @State private var newName = ""
+    /// Reordering and deleting, switched from the page's menu.
+    @State private var editMode: EditMode = .inactive
 
     private var playlist: MaerPlaylists.Playlist? { store.playlist(id: playlistId) }
 
     var body: some View {
-        List {
+        // In a wide window the head stands beside the titles, divided at the
+        // fold (`DetailListColumns`), as on a server playlist.
+        DetailListColumns {
+            if let playlist { header(playlist) }
+        } rows: {
             if let playlist {
                 if playlist.isRescue, let reason = playlist.rescueReason, !reason.isEmpty {
                     // A rescue copy says what it is, right where it is.
@@ -1008,16 +1014,30 @@ struct MaerPlaylistPage: View {
                     }
                 } footer: {
                     // Explained once, calmly, not on every add.
+                    // The plain list of the frame gives a footer no style of
+                    // its own; the note reads small and quiet, as before.
                     Text(MaerPlaylistFooter.text(anyMusicServer: !PlaylistPresenter.servers(for: []).isEmpty))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .navigationTitle(Text(verbatim: playlist?.name ?? ""))
-        .navigationBarTitleDisplayMode(.inline)
+        .environment(\.editMode, $editMode)
+        .untitledDetailPage()
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+            // The page's actions stand in one place, its menu; editing too.
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                    } label: {
+                        if editMode.isEditing {
+                            Label("Done", systemImage: "checkmark")
+                        } else {
+                            Label("Edit", systemImage: "arrow.up.arrow.down")
+                        }
+                    }
+                    .accessibilityIdentifier("playlist-edit")
                     Button {
                         newName = playlist?.name ?? ""
                         renaming = true
@@ -1036,6 +1056,31 @@ struct MaerPlaylistPage: View {
         // Entries added before the snapshots existed get theirs here, on the
         // device that can still resolve them.
         .task { store.backfillTitles(playlistId: playlistId) }
+    }
+
+    /// The one head of a detail page: the list's mosaic, its name and count,
+    /// Play in order and Shuffle over what this device can play.
+    private func header(_ playlist: MaerPlaylists.Playlist) -> some View {
+        let playable = PlaylistCardSource.items(of: playlist, in: store)
+        return DetailHeader(title: playlist.name) { side in
+            PlaylistArtwork(playlistID: playlist.id, coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router))
+                .frame(maxWidth: side ?? 240)
+                .coverCard()
+        } lines: {
+            Text("\(playlist.itemIds.count) tracks").font(.caption).foregroundStyle(.secondary)
+        } actions: {
+            HStack(spacing: 12) {
+                DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
+                    Task { await playerCoordinator.playInOrder(items: playable, contextSource: playlist.name) }
+                }
+                .disabled(playable.isEmpty)
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { playable }
+                    .font(.title3)
+                    .disabled(playable.isEmpty)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder

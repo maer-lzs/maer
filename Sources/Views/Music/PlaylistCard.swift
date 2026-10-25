@@ -326,14 +326,7 @@ extension PlaylistCardSource {
                 // from: fill them now, on the device that can resolve the
                 // entries (saves only when something was learned).
                 store.backfillTitles(playlistId: list.id)
-                // A cover this device cannot derive comes from the entry's
-                // snapshot (a public catalogue address that travelled).
-                let covers = list.itemIds
-                    .compactMap { id in
-                        router.coverURL(id)
-                            ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
-                    }
-                    .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
+                let covers = deviceCovers(list, router: router)
                 let artists = PlaylistPresentation.topArtists(
                     list.itemIds.compactMap { list.carried(for: $0)?.subtitle }
                     + items(of: list, in: store).compactMap(\.author))
@@ -351,11 +344,25 @@ extension PlaylistCardSource {
             downloadIds: list.itemIds)
     }
 
+    /// The covers of a device list's mosaic, in list order and each once,
+    /// for the card and the list's page. A cover this device cannot derive
+    /// comes from the entry's snapshot (a public catalogue address that
+    /// travelled).
+    @MainActor
+    static func deviceCovers(_ list: MaerPlaylists.Playlist, router: ItemRouter = .live) -> [URL] {
+        list.itemIds
+            .compactMap { id in
+                router.coverURL(id)
+                    ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
+            }
+            .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
+    }
+
     /// What this device can actually play of the list, in list order: the
     /// seam's answer per entry, with the entry's snapshot. The store is
     /// the factory's; the helper takes it rather than reaching for it.
     @MainActor
-    private static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
+    static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
         list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
     }
 }
