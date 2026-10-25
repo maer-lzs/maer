@@ -22,7 +22,8 @@ enum BookProgressReport {
         return Array(ordered.prefix(limit))
     }
 
-    static func text(for entry: LibraryEntry, downloadManager: DownloadManager = .shared) -> String {
+    static func text(for entry: LibraryEntry) -> String {
+        let downloadManager = DownloadManager.shared
         let saved = ListeningStore.backup(entry.id)
         let cached = downloadManager.loadCachedDetail(forItemId: entry.id)
         let flushed = ListeningStore.flushed(entry.id)
