@@ -51,8 +51,8 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
 nonisolated enum ArchiveMusicCatalog {
     /// Netlabel releases under Creative Commons. Measured: 76.950
     /// audio items, 61.111 WITH a stated licence. The query keeps only
-    /// those, so every tile SHOWS its licence instead of the app guessing
-    /// (mostly NC/ND variants, which is exactly why the capsule matters).
+    /// those, so every release carries its licence (mostly NC/ND variants)
+    /// and its page names it instead of the app guessing.
     /// Measured over the 1,000 most downloaded titles: 93.5 % carry a
     /// subject field, the best data of all archive sources (OTR 40 %,
     /// LibriVox and Gutenberg around 41 %). The shelves hang on the subjects,
@@ -61,7 +61,7 @@ nonisolated enum ArchiveMusicCatalog {
         key: "netlabels",
         query: "collection:netlabels AND mediatype:(audio)",
         title: String(localized: "Netlabels"),
-        headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release."),
+        headerNote: String(localized: "Netlabel releases under Creative Commons licences, from the Internet Archive."),
         placeholderSystemImage: "opticaldisc",
         hasGenreShelves: true,
         measuredTotal: 61_112)

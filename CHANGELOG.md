@@ -33,6 +33,14 @@ each stream with format, bitrate and the server it comes from, as far
 as known, beside its country, languages and tags; with several streams
 the rows still choose the one the next play takes.
 
+**Catalog introductions say only what is true.** The Netlabels page
+claimed each tile shows its licence, and Old Time Radio that tiles show
+deviations; tiles carry no rights since the notice moved to the top.
+Netlabels now reads "Netlabel releases under Creative Commons licences,
+from the Internet Archive.", Old Time Radio says a title's page names
+its licence where it has one. On the open iPhone Duo the introduction
+and the rights notice stay left of the fold.
+
 **Details opens the title's page.** "Details" on a catalog tile used to
 float a small sheet with "Done" and no cover. It now opens the same page
 as a tap on an album: a song its release, an album its album page, a

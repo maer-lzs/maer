@@ -3121,16 +3121,6 @@
         }
       }
     },
-    "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Creative-Commons-Veröffentlichungen von Netlabels aus dem Internet Archive, getrennt von deiner eigenen Bibliothek. Jede Kachel zeigt die Lizenz ihrer Veröffentlichung."
-          }
-        }
-      }
-    },
     "Crime" : {
       "localizations" : {
         "de" : {
@@ -6221,12 +6211,12 @@
         }
       }
     },
-    "Most of these recordings state no rights information; tiles only show deviations (licences, computed public domain)." : {
+    "Most of these recordings state no rights information; where one does, its page names the licence." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die meisten dieser Aufnahmen tragen keine Rechte-Angabe; Kacheln nennen nur Abweichungen (Lizenzen, errechnete Gemeinfreiheit)."
+            "value" : "Die meisten dieser Aufnahmen tragen keine Rechte-Angabe; wo eine es tut, nennt ihre Seite die Lizenz."
           }
         }
       }
@@ -6453,6 +6443,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Niederlande"
+          }
+        }
+      }
+    },
+    "Netlabel releases under Creative Commons licences, from the Internet Archive." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veröffentlichungen von Netlabels unter Creative-Commons-Lizenz, aus dem Internet Archive."
           }
         }
       }

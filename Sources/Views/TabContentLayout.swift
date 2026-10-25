@@ -443,5 +443,6 @@ struct ArchiveRightsNote: View {
         .foregroundStyle(.secondary)
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
+        .foldLeadingHalf()
     }
 }

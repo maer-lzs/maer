@@ -205,6 +205,7 @@ struct CatalogSourcePage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
+                    .foldLeadingHalf()
             }
             // The first fetch of this collection says that it runs and how
             // far it is. It blocks nothing: the rows below come from the day

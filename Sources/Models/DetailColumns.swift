@@ -35,6 +35,18 @@ nonisolated enum FoldSplit {
         return Columns(leading: lower - contentMinX, gap: upper - lower, trailing: maxX - upper)
     }
 
+    /// How wide a block at the start of a page may run so it ends where a
+    /// divided page's leading column ends (`FoldColumns`): the frame's
+    /// margin before the fold, the block keeping its own gutter. Nil
+    /// without a fold: the block takes the page.
+    static func leadingHalf(contentMinX: CGFloat, contentWidth: CGFloat, fold: ClosedRange<CGFloat>?,
+                            windowWidth: CGFloat) -> CGFloat? {
+        guard let fold, contentWidth > 0 else { return nil }
+        let leading = columns(contentMinX: contentMinX, contentWidth: contentWidth,
+                              fold: fold, windowWidth: windowWidth).leading
+        return max(0, leading - (foldDistance - pageGutter))
+    }
+
     /// How far a centred view in the leading column moves toward the fold
     /// to stand midway between the column's outer edge and the visible fold,
     /// the middle of the system's band: the column ends the frame's margin

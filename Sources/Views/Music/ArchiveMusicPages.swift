@@ -56,6 +56,7 @@ struct ArchiveMusicPage: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
+                            .foldLeadingHalf()
                         ArchiveRightsNote()
                         // First visit of THIS collection fetches it and says
                         // so. The rows below come from the day store
@@ -447,6 +448,7 @@ struct ShellacShelvesPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
+                    .foldLeadingHalf()
                 ArchiveRightsNote()
                 CatalogStockNotice(
                     state: stockService.state(ArchiveMusicCatalog.shellacAll.key),

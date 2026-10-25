@@ -40,7 +40,31 @@ struct FoldColumns<Leading: View, Trailing: View>: View {
     }
 }
 
+/// A block at the start of a page (a catalogue page's introduction) that
+/// stays left of the fold: as wide as the leading column of a divided page
+/// (`FoldSplit.leadingHalf`), the whole page where there is no fold. It
+/// measures the room it stands in, never itself.
+private struct FoldLeadingHalf: ViewModifier {
+    @Environment(\.foldLine) private var foldLine
+    @State private var room: CGRect = .zero
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: FoldSplit.leadingHalf(contentMinX: room.minX, contentWidth: room.width,
+                                                   fold: foldLine.fold,
+                                                   windowWidth: foldLine.windowWidth) ?? .infinity,
+                   alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { room = $0 }
+    }
+}
+
 extension View {
+    /// THE width of a page's introduction beside an open fold (`FoldLeadingHalf`).
+    func foldLeadingHalf() -> some View {
+        modifier(FoldLeadingHalf())
+    }
+
     /// THE look of a detail page's cover as a card (`DetailCoverCard`):
     /// round corners and a shadow. Every head's cover and the full player
     /// take it.
