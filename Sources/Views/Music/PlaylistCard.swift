@@ -38,6 +38,11 @@ struct PlaylistCardSource: Identifiable {
     /// Mosaic covers and the most frequent artists, fetched together because
     /// they come from the same source.
     let mosaic: () async -> (covers: [URL], artists: [String])
+    /// The mosaic covers where the world states them as the card is built:
+    /// a device list's, from the same question its page asks
+    /// (`deviceCovers`), so they follow whatever this device can answer at
+    /// each render. nil = the covers come from `mosaic`.
+    var covers: [URL]? = nil
     /// nil = this world cannot rename/delete here; the menu entry then stays
     /// away instead of offering something that fails. A server that does
     /// not take the change throws, and the card says so.
@@ -90,6 +95,12 @@ struct PlaylistCard: View {
         PlaylistPresentation.offersShuffle(trackCount: source.songCount)
     }
 
+    /// The covers the mosaic draws: the source's own where it states them,
+    /// else what `mosaic` loaded.
+    private var shownCovers: [URL] {
+        source.covers ?? coverURLs
+    }
+
     /// Deterministic per-id tint as the instant fallback; the extracted
     /// bottom-cover color takes over once loaded.
     private var tint: Color {
@@ -109,7 +120,7 @@ struct PlaylistCard: View {
                 // dim when nothing of the list is here, the downloaded mark
                 // when all of it is, both in the one stack at the top right.
                 MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in
-                    PlaylistArtwork(playlistID: source.id, coverURLs: coverURLs, cornerRadius: 0)
+                    PlaylistArtwork(playlistID: source.id, coverURLs: shownCovers, cornerRadius: 0)
                         .overlay(alignment: .bottom) {
                             LinearGradient(colors: [.clear, tint],
                                            startPoint: .top, endPoint: .bottom)
@@ -184,7 +195,7 @@ struct PlaylistCard: View {
             }
         }
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
+        .task(id: shownCovers.first) { await colorLoader.load(from: shownCovers.first) }
         .contextMenu {
             if offersShuffle {
                 ShufflePlayButton(playerCoordinator: playerCoordinator,
@@ -326,12 +337,16 @@ extension PlaylistCardSource {
                 // from: fill them now, on the device that can resolve the
                 // entries (saves only when something was learned).
                 store.backfillTitles(playlistId: list.id)
-                let covers = deviceCovers(list, router: router)
                 let artists = PlaylistPresentation.topArtists(
                     list.itemIds.compactMap { list.carried(for: $0)?.subtitle }
                     + items(of: list, in: store).compactMap(\.author))
-                return (Array(covers.prefix(4)), artists)
+                // The covers come with the source (`covers`), not once here.
+                return ([], artists)
             },
+            // Asked as the card is built, like the list's page asks it: a
+            // card first drawn before its music server answers draws the
+            // covers once the server does.
+            covers: deviceCovers(list, router: router),
             rename: { newName in store.rename(playlistId: list.id, to: newName) },
             delete: { store.delete(playlistId: list.id) },
             // The capsule names the world, not a place: these lists travel

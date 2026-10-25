@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**The card of a playlist on your devices shows its covers.** The card
+could stay a plain colour while the playlist's page showed the mosaic,
+when the card was drawn before your music server answered. Card and
+page now take the mosaic from the same place, and the card fills in as
+soon as the server answers.
+
 **Kind marks only where a row mixes kinds.** The Browse row of a tab
 holds one kind (music, books or shows) and no longer marks each tile
 with it; on Start the marks stay while the row mixes kinds.

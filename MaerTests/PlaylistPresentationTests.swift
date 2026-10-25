@@ -74,6 +74,35 @@ struct PlaylistPresentationTests {
         #expect(PlaylistCard.identifier(for: serverWithCapsule) == "server-playlist-l1")
     }
 
+    /// The card of a device list and its page draw the mosaic from the
+    /// same question, asked as each is drawn: a card built while the
+    /// music server cannot answer yet shows the covers on its next build.
+    @Test("Karte und Seite einer Geraete-Liste nehmen das Mosaik aus derselben Quelle, bei jedem Bau", .needsTheSources)
+    @MainActor
+    func deviceCardAndPageShareTheMosaic() throws {
+        let list = MaerPlaylists.Playlist(id: "l1", name: "Test", updatedAt: 1, itemIds: ["sub:song:1", "sub:song:2"])
+        final class Answers: @unchecked Sendable { var ready = false }
+        let answers = Answers()
+        var router = ItemRouter.empty
+        router.coverURL = { id in answers.ready ? URL(string: "https://music.example/\(id)") : nil }
+        #expect(PlaylistCardSource.device(list, router: router).covers == [], "no server answer yet")
+        answers.ready = true
+        let card = PlaylistCardSource.device(list, router: router)
+        #expect(card.covers == PlaylistCardSource.deviceCovers(list, router: router))
+        #expect(card.covers?.count == 2, "the next build carries the covers")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let flat = { (path: String) throws -> String in
+            try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+        }
+        let cardCode = try flat("Sources/Views/Music/PlaylistCard.swift")
+        #expect(cardCode.contains("PlaylistArtwork(playlistID:source.id,coverURLs:shownCovers"))
+        #expect(cardCode.contains("source.covers??coverURLs"))
+        #expect(cardCode.contains("covers:deviceCovers(list,router:router)"))
+        #expect(try flat("Sources/Views/Music/MusicLibraryPages.swift")
+            .contains("PlaylistArtwork(playlistID:playlist.id,coverURLs:PlaylistCardSource.deviceCovers(playlist,router:router))"))
+    }
+
     @Test("TF2: realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
     func realPlaylistsFilter() {
         func pl(_ id: String, _ name: String?, songs: Int? = 0) -> MusicPlaylist {
