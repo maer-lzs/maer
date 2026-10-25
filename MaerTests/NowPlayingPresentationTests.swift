@@ -133,6 +133,33 @@ struct NowPlayingPresentationTests {
         #expect(decoded?.metadata?.size == 10 && decoded?.metadata?.artist == nil)
     }
 
+    /// A netlabel release states title and performer per file; the track
+    /// carries both (archive.org `eg0_234`, measured: `title` "track
+    /// 00_soundboards_intro", `creator` "Ayato").
+    @Test("Ein Netlabel-Album traegt Titel und Kuenstler jeder Datei bis in die Spur")
+    func archiveTracksCarryTitleAndPerformer() {
+        let tracks = FreeCatalog.archiveTracks(identifier: "eg0_234", files: [
+            ArchiveFile(name: "track 00_soundboards_intro.mp3", length: "60", title: "track 00_soundboards_intro",
+                        creator: "Ayato", track: "01", album: nil, format: "VBR MP3"),
+            ArchiveFile(name: "track 01_clips_gallerie.mp3", length: "60", title: nil,
+                        creator: nil, track: "02", album: nil, format: "VBR MP3"),
+        ])
+        #expect(tracks.map { $0.metadata?.title } == ["track 00_soundboards_intro", "track 01 clips gallerie"])
+        #expect(tracks.map { $0.metadata?.artist } == ["Ayato", nil])
+    }
+
+    /// Music from a catalogue names the playing song and its artist like
+    /// a music server: the song from its chapter, the artist by the rule.
+    @Test("Musik aus einem Katalog nennt das laufende Lied und seinen Kuenstler wie ein Musikserver", .needsTheSources)
+    func catalogueMusicNamesItsSong() throws {
+        let lock = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel+NowPlaying.swift"), encoding: .utf8))
+        #expect(lock.contains("songTitle: currentMusicSong?.title ?? (chapters.count > 1 ? currentChapter?.title : nil)"))
+        let model = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
+        #expect(model.contains("songArtist: track?.metadata?.artist"), "the artist skips the playing track")
+    }
+
     /// The surfaces read the one answer: the artist from `musicArtist`, the
     /// time from `playbackSpan`, the cover from `songCoverURL`.
     @Test("Leiste, grosser Player und Sperrbildschirm lesen Kuenstler, Spanne und Cover an einer Stelle", .needsTheSources)

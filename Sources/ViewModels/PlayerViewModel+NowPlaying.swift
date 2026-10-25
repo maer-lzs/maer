@@ -66,7 +66,9 @@ extension PlayerViewModel {
         }
         return NowPlayingPresentation.title(
             isMusic: isMusicItem,
-            songTitle: currentMusicSong?.title,
+            // A catalogue album names its songs in its chapters too; a
+            // single track keeps the title of its entry.
+            songTitle: currentMusicSong?.title ?? (chapters.count > 1 ? currentChapter?.title : nil),
             workTitle: item?.media.metadata?.title,
             fallback: String(localized: "Audiobook"))
     }

@@ -1180,7 +1180,7 @@ nonisolated enum FreeCatalog {
             out.append(ABSAudioTrack(
                 index: out.count, startOffset: start, duration: duration,
                 contentUrl: "https://archive.org/download/\(encodedId)/\(encoded)",
-                metadata: ABSFileMetadata(size: nil, title: trackTitle(file))))
+                metadata: ABSFileMetadata(size: nil, title: trackTitle(file), artist: file.creator)))
             start += duration ?? 0
         }
         return out

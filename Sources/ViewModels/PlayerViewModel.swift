@@ -674,10 +674,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// The artist of what plays, for music: the playing song's, else the
-    /// entry's. The one answer the mini player, the full player and the
-    /// lock screen read.
+    /// entry's, by the one rule, for a music server and a catalogue release
+    /// alike. The one answer the mini player, the full player and the lock
+    /// screen read.
     var musicArtist: String? {
-        currentMusicSong?.artist ?? item?.media.metadata?.authorName
+        let track = tracks.indices.contains(currentTrackIndex) ? tracks[currentTrackIndex] : nil
+        return NowPlayingPresentation.song(kind: nil, songArtist: track?.metadata?.artist, songCoverArt: nil,
+                                           entryArtist: item?.media.metadata?.authorName).artist
     }
 
     /// The cover of the playing song where it differs from the entry's

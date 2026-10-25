@@ -6,7 +6,9 @@
 mini player, the full player, the lock screen and CarPlay show the
 artist of the song that plays and the time left in that song, not in
 the whole playlist. A song from a playlist brings its own cover; songs
-of an album keep the album's. Audiobooks and podcasts are unchanged.
+of an album keep the album's. A netlabel album names the song that
+plays and the performer each file states, as a music server does.
+Audiobooks and podcasts are unchanged.
 
 **Shuffle on Netlabels plays.** Most taps found nothing or failed with
 "Something went wrong": the draw asked for pages archive.org does not
