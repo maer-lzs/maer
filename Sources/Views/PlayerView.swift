@@ -126,43 +126,36 @@ struct PlayerView: View {
                             // visible fold (`FoldSplit.shiftToFoldMiddle`).
                             .offset(x: foldLine.fold.map(FoldSplit.shiftToFoldMiddle) ?? 0)
                     } trailing: { _ in
-                        ScrollView {
-                            controlsBlock
-                                .padding(.vertical)
-                                .frame(maxWidth: .infinity, minHeight: viewportHeight)
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
+                        controlsBlock
+                            .padding(.vertical)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 } else {
-                    ScrollView {
-                        layout {
-                            // Upright the cover is as wide as the column the
-                            // text stands in, never after the title's length,
-                            // and narrower, still centred, where the height
-                            // must leave the controls in sight at rest
-                            // (`DetailCoverSide`).
-                            cover(maxSide: !sideBySide
-                                  ? DetailCoverSide.side(
-                                      columnWidth: min(Self.portraitColumn,
-                                                       geo.size.width - (columnPlacement?.strip ?? 0) - 32),
-                                      height: geo.size.height,
-                                      top: topInset + 24 + Self.topRoom, below: controlsHeight + 24,
-                                      bottomReserve: bottomInset + 16)
-                                  : Self.coverSide)
-                            controlsBlock
-                        }
-                        .padding()
-                        .padding(.top, 8 + Self.topRoom)
-                        // Readable column in portrait, wider side by side.
-                        .frame(maxWidth: sideBySide ? 900 : 500)
-                        // Side by side: center vertically in the viewport (iPad).
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: sideBySide ? viewportHeight : 0
-                        )
+                    // One view, never scrolled (`PlayerFit`): the cover takes
+                    // what the controls leave, down to nothing.
+                    layout {
+                        // Upright the cover is as wide as the column the
+                        // text stands in, never after the title's length,
+                        // and narrower, still centred, where the height
+                        // must leave the controls in sight (`DetailCoverSide`).
+                        cover(maxSide: !sideBySide
+                              ? DetailCoverSide.side(
+                                  columnWidth: min(Self.portraitColumn,
+                                                   geo.size.width - (columnPlacement?.strip ?? 0) - 32),
+                                  height: geo.size.height,
+                                  top: topInset + 24 + Self.topRoom, below: controlsHeight + 24,
+                                  bottomReserve: bottomInset + 16, minimum: 0)
+                              : PlayerFit.sideBySideCover(fixed: Self.coverSide, viewportHeight: viewportHeight,
+                                                          margin: 16))
+                        controlsBlock
                     }
-                    // No bounce when the content fits → no scroll snap at drag start.
-                    .scrollBounceBehavior(.basedOnSize)
+                    .padding()
+                    .padding(.top, sideBySide ? 0 : 8 + Self.topRoom)
+                    // Readable column in portrait, wider side by side.
+                    .frame(maxWidth: sideBySide ? 900 : 500)
+                    // Upright from the top, side by side centred in the view.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity,
+                           alignment: sideBySide ? .center : .top)
                 }
             }
             // Explicit insets (root ignores safe areas) → layout as before.
@@ -180,6 +173,14 @@ struct PlayerView: View {
         // The kept controls height only grows; a new window starts it again
         // (`DetailCoverSide.settled`).
         .onChange(of: geo.size) { _, _ in controlsHeight = 0 }
+        // Controls that alone exceed the view (large type) are reported; the
+        // player never scrolls (`PlayerFit`).
+        .onChange(of: controlsHeight) { _, height in
+            let viewport = max(0, geo.size.height - topInset - bottomInset)
+            if PlayerFit.controlsOverflow(controls: height, viewportHeight: viewport, margin: 16) {
+                Logger.player.notice("PLAYER controls exceed the view controls=\(Int(height)) view=\(Int(viewport))")
+            }
+        }
         .foregroundStyle(.white)
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
@@ -347,8 +348,10 @@ struct PlayerView: View {
     /// (iPhone and iPad across).
     private static let coverSide: CGFloat = 300
 
-    /// The cover at most `maxSide` wide: beside the side column and at the
-    /// fold the caller gives the room it has.
+    /// The cover as a square of `maxSide`: beside the side column and at the
+    /// fold the caller gives the room it has. A picture of any aspect ratio
+    /// fits inside on its blurred self (`CoverFitting`, as on the book page),
+    /// so the square's height is the one the controls below are sized by.
     private func cover(maxSide: CGFloat) -> some View {
         Group {
             if viewModel.isLiveStream {
@@ -369,8 +372,8 @@ struct PlayerView: View {
                         .aspectRatio(1, contentMode: .fit)
                 }
             } else {
-                CachedAsyncImage(url: coverURL) { image in
-                    image.resizable().aspectRatio(contentMode: .fit)
+                CachedAsyncImage(url: coverURL) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(.white.opacity(0.1))
@@ -383,7 +386,8 @@ struct PlayerView: View {
                 }
             }
         }
-        .frame(maxWidth: maxSide)
+        .frame(width: maxSide, height: maxSide)
+        .clipped()
         .coverCard()
         // Horizontal swipe on the cover = previous/next chapter. For music
         // each song is a chapter, so this is prev/next track. `simultaneous` so
@@ -1117,8 +1121,10 @@ struct PlayerView: View {
     /// The controls under or beside the cover, measured: their height sizes
     /// the cover beside the side column, their frame caps the overlay's
     /// dismiss zones so the chapter buttons and the scrubber stay tappable.
+    /// They keep their own height; the cover gives way (`PlayerFit`).
     private var controlsBlock: some View {
         VStack(spacing: 20) { controlsColumn }
+            .fixedSize(horizontal: false, vertical: true)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                 controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)
             }

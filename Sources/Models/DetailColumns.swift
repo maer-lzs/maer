@@ -51,12 +51,14 @@ nonisolated enum FoldSplit {
 nonisolated enum DetailCoverSide {
     static let minimum: CGFloat = 160
 
+    /// `minimum`: where the cover stops shrinking; the full player passes 0,
+    /// it never scrolls and its controls never give way (`PlayerFit`).
     static func side(columnWidth: CGFloat, height: CGFloat, top: CGFloat, below: CGFloat,
-                     bottomReserve: CGFloat) -> CGFloat {
+                     bottomReserve: CGFloat, minimum: CGFloat = minimum) -> CGFloat {
         let fitsHeight = height - top - below - bottomReserve
         // Whole points: a fraction lands on another pixel than asked, the
         // measured distance below moves by it, and the side with it.
-        return max(min(columnWidth, minimum), min(columnWidth, fitsHeight)).rounded(.down)
+        return max(0, max(min(columnWidth, minimum), min(columnWidth, fitsHeight))).rounded(.down)
     }
 
     /// What the page keeps as the height below the cover, from a new
@@ -77,6 +79,22 @@ nonisolated enum DetailCoverSide {
     /// How far a measurement must fall below the kept height to lower it:
     /// above the swing of pixel rounding and wrapping, below a real change.
     static let shrinkStep: CGFloat = 8
+}
+
+/// The full player fits one view in every posture and never scrolls: the
+/// controls keep their height, the cover and the spacing give way. Where
+/// the controls alone exceed the view (large type) that is reported, not
+/// scrolled.
+nonisolated enum PlayerFit {
+    /// The cover beside the controls (across, without a fold): its fixed
+    /// side, smaller where the view's height leaves less.
+    static func sideBySideCover(fixed: CGFloat, viewportHeight: CGFloat, margin: CGFloat) -> CGFloat {
+        max(0, min(fixed, viewportHeight - 2 * margin)).rounded(.down)
+    }
+
+    static func controlsOverflow(controls: CGFloat, viewportHeight: CGFloat, margin: CGFloat) -> Bool {
+        controls > viewportHeight - 2 * margin
+    }
 }
 
 /// The two buttons under the main one (download, mark as heard) stand side

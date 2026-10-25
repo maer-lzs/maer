@@ -210,6 +210,23 @@ struct DetailColumnsTests {
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
     }
 
+    @Test("der grosse Player passt auf eine Ansicht: das Cover gibt nach bis auf null, die Bedienung nie")
+    func thePlayerFitsOneView() {
+        // Upright, controls taller than the room: the player's cover goes
+        // down to nothing, the book page keeps its minimum.
+        #expect(DetailCoverSide.side(columnWidth: 402, height: 600, top: 80, below: 520, bottomReserve: 50,
+                                     minimum: 0) == 0)
+        #expect(DetailCoverSide.side(columnWidth: 402, height: 600, top: 80, below: 520, bottomReserve: 50) == 160)
+        #expect(DetailCoverSide.side(columnWidth: 402, height: 874, top: 80, below: 420, bottomReserve: 50,
+                                     minimum: 0) == 324)
+        // Across without a fold: the fixed side, smaller where the height is.
+        #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 360, margin: 16) == 300)
+        #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 250, margin: 16) == 218)
+        // Controls that alone exceed the view are reported.
+        #expect(PlayerFit.controlsOverflow(controls: 700, viewportHeight: 700, margin: 16))
+        #expect(!PlayerFit.controlsOverflow(controls: 400, viewportHeight: 700, margin: 16))
+    }
+
     @Test("das Cover des Players steht aufgeklappt gleich weit von Aussenrand und sichtbarem Falz")
     func theCoverStandsMidwayToTheVisibleFold() {
         // The open Duo: band 455.5 to 495.5, the visible fold in its middle.
@@ -233,7 +250,10 @@ struct DetailColumnsTests {
         #expect(page.contains(".coverCard(card)"))
         let player = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
-        #expect(player.contains(".frame(maxWidth: maxSide)\n        .coverCard()"))
+        #expect(player.contains(".frame(width: maxSide, height: maxSide)\n        .clipped()\n        .coverCard()"))
+        // A picture of any aspect ratio fits inside the square, as on the book page.
+        #expect(player.contains("CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)"))
+        #expect(!player.contains("ScrollView"), "the full player scrolls again")
         // Beside the side column and at the fold the cover takes the room it has, not the fixed side.
         #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 2)
         #expect(player.contains("private static let coverSide: CGFloat = 300"))
