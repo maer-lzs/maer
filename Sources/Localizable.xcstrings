@@ -9766,6 +9766,16 @@
         }
       }
     },
+    "Server unreachable: last known state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server nicht erreichbar: zuletzt bekannter Stand"
+          }
+        }
+      }
+    },
     "Server unreachable. Is Audiobookshelf running, and is the server reachable from this network?" : {
       "localizations" : {
         "de" : {

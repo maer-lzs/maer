@@ -1307,9 +1307,10 @@ struct LibraryView: View {
     // MARK: - Suchleiste
 
     private var offlineBanner: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "wifi.slash")
-            Text("Offline: last known state")
+        let hint = StaleStateHint.of(isOnline: isOnline)
+        return HStack(spacing: 6) {
+            Image(systemName: hint.symbol)
+            Text(hint.text)
         }
         .font(.caption)
         .foregroundStyle(.secondary)

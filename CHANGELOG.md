@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The hint above a tab says why it shows the last known state.**
+Without a network it still says "Offline"; with a network and a server
+that does not answer it now says "Server unreachable".
+
 **An error that stops playback no longer covers every page.** When a
 station could not be reached or a title could not play, its message
 stood as a pill over every page until something else played. Now the
