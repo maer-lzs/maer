@@ -432,12 +432,13 @@ final class FreeCatalogProvider: AudioProvider {
     /// What a detail fetch resolved goes into the session cache. "not in
     /// memory" must not stay true one fetch after the answer arrived. This is
     /// what lets a queue or playlist row fill itself in on demand.
-    /// It is also kept on the device (`CatalogKeptItems`); an entry that
-    /// names no title gives way to the detail that does.
+    /// It is also kept on the device (`CatalogKeptItems`). A remembered entry
+    /// that names its title keeps its metadata (the intake normalizes it) and
+    /// takes the detail's duration where it has none (`CatalogKeptItems.merged`).
     private func rememberResolved(_ detail: LibraryItemDetail) {
-        let item = LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
+        let item = CatalogKeptItems.merged(known: itemsById[detail.id],
+                                           resolved: LibraryItem(id: detail.id, media: detail.media, addedAt: nil))
         keep(item)
-        if let known = itemsById[detail.id], BookPageItem.namesItself(known) { return }
         itemsById[detail.id] = item
     }
 

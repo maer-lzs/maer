@@ -46,6 +46,24 @@ struct CatalogKeptItemsTests {
         #expect(full.map(\.id) == ["lva:4", "lva:3", "lva:2"])
     }
 
+    @Test("ein Eintrag aus der Reihe behaelt seinen Titel und nimmt die Dauer des aufgeloesten Titels, wo er keine hat")
+    func aRowEntryKeepsItsTitleAndTakesTheDuration() {
+        let row = LibraryItem(id: "lva:bbc", media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: "BBC Sci-Fi Radio Plays", authorName: nil, narratorName: nil,
+                                          seriesName: nil, genres: ["Radio"], publishedYear: nil, description: nil),
+            duration: nil, chapters: nil, tracks: nil), addedAt: 7)
+        let resolved = item("lva:bbc", title: "BBC Sci-Fi Radio Plays - Part Four")
+        let merged = CatalogKeptItems.merged(known: row, resolved: resolved)
+        #expect(merged.media?.metadata?.title == "BBC Sci-Fi Radio Plays")
+        #expect(merged.media?.metadata?.genres == ["Radio"])
+        #expect(merged.media?.duration == 25046)
+        #expect(merged.media?.tracks?.count == 1)
+        #expect(merged.addedAt == 7)
+        // Without a titled entry the resolved item stands.
+        #expect(CatalogKeptItems.merged(known: nil, resolved: resolved) == resolved)
+        #expect(CatalogKeptItems.merged(known: item("lva:bbc", title: nil), resolved: resolved) == resolved)
+    }
+
     @Test("der Anbieter laedt die behaltenen Titel beim Start und behaelt, was er aufloest; Weiterhoeren benennt die unbenannten", .needsTheSources)
     func theProviderKeepsAndContinueNames() throws {
         let read = { (path: String) in
@@ -54,7 +72,7 @@ struct CatalogKeptItemsTests {
         }
         let provider = try read("Sources/Providers/FreeCatalogProvider.swift")
         #expect(provider.contains("kept = Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? []"))
-        #expect(provider.contains("let item = LibraryItem(id: detail.id, media: detail.media, addedAt: nil)\n        keep(item)"))
+        #expect(provider.contains("resolved: LibraryItem(id: detail.id, media: detail.media, addedAt: nil))\n        keep(item)\n        itemsById[detail.id] = item"))
         // Each resolve goes through `rememberResolved`: LibriVox, the archive
         // item, its song, Jamendo and Gutenberg, beside the declaration.
         #expect(provider.components(separatedBy: "rememberResolved(").count - 1 == 6)

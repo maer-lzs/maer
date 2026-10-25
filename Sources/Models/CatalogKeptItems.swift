@@ -23,4 +23,18 @@ nonisolated enum CatalogKeptItems {
                                addedAt: item.addedAt)
         return Array(([slim] + kept.filter { $0.id != item.id }).prefix(cap))
     }
+
+    /// What the provider holds after resolving a title: the resolved item,
+    /// unless the remembered one names its title; then the remembered
+    /// metadata stays and only a missing duration comes from the resolved
+    /// item. The tracks are the resolved ones.
+    static func merged(known: LibraryItem?, resolved: LibraryItem) -> LibraryItem {
+        guard let known, let media = known.media, !(media.metadata?.title ?? "").isEmpty else { return resolved }
+        return LibraryItem(id: resolved.id,
+                           media: LibraryItemMedia(metadata: media.metadata,
+                                                   duration: media.duration ?? resolved.media?.duration,
+                                                   chapters: media.chapters ?? resolved.media?.chapters,
+                                                   tracks: resolved.media?.tracks ?? media.tracks),
+                           addedAt: known.addedAt)
+    }
 }
