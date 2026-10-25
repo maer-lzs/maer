@@ -202,7 +202,8 @@ struct MaerApp: App {
         // bodies of a killed import). No invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
         // A stock nothing reads any more leaves the device (`retiredSurfaces`).
-        Task.detached(priority: .utility) { CatalogStockStore.shared.removeRetired() }
+        // Off the main actor: the sweep reads a directory and removes files.
+        Task(priority: .utility) { @concurrent in CatalogStockStore.shared.removeRetired() }
         // Row switches that one key used to share start from the old
         // choice, before the first render reads them.
         AppRows.carryOldChoices()

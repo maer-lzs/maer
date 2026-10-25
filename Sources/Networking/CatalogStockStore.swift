@@ -130,6 +130,7 @@ nonisolated struct CatalogStockStore: Sendable {
     @discardableResult
     func removeRetired(_ surfaces: [String] = CatalogStockStore.retiredSurfaces,
                        in directory: URL = CatalogStockStore.directory) -> Int {
+        // bearable, because a directory that is missing holds no stock to remove
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil)) ?? []
         var gone = 0
@@ -137,7 +138,12 @@ nonisolated struct CatalogStockStore: Sendable {
             let safe = surface.replacingOccurrences(of: "/", with: "_")
             for file in files where file.lastPathComponent == "\(safe).json"
                 || file.lastPathComponent.hasPrefix(safe + CatalogStockFetch.partialSuffix) {
-                if (try? FileManager.default.removeItem(at: file)) != nil { gone += 1 }
+                do {
+                    try FileManager.default.removeItem(at: file)
+                    gone += 1
+                } catch {
+                    Logger.library.error("CATALOG stock retired file not removed name=\(file.lastPathComponent, privacy: .public) reason=\(String(describing: error), privacy: .public)")
+                }
             }
         }
         if gone > 0 {
