@@ -5,10 +5,18 @@
 
 import Foundation
 
-/// Whether a pull on the full player ends with the player closed: past the
-/// threshold, or flung beyond twice it.
+/// Whether a touch on the full player ends with the player closed: a pull
+/// past the threshold or flung beyond twice it, and on the grab handle also
+/// a tap. The handle's pull takes every touch first, so a tap on it is a
+/// pull that did not move; it closes the same way.
 nonisolated enum PlayerDismiss {
-    static func closes(translation: CGSize, predictedHeight: CGFloat, threshold: CGFloat) -> Bool {
-        max(0, translation.height) > threshold || predictedHeight > threshold * 2
+    /// A touch that moved less than this is a tap.
+    static let tapSlop: CGFloat = 10
+
+    static func closes(translation: CGSize, predictedHeight: CGFloat, threshold: CGFloat,
+                       onHandle: Bool) -> Bool {
+        let down = max(0, translation.height)
+        if down > threshold || predictedHeight > threshold * 2 { return true }
+        return onHandle && abs(translation.width) < tapSlop && abs(translation.height) < tapSlop
     }
 }

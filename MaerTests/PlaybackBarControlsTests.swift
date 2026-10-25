@@ -55,26 +55,32 @@ struct PlaybackBarControlsTests {
         #expect(!PlaybackBarControls.isWide(barWidth: 314))
     }
 
-    @Test("ein Ziehen schliesst ab der Schwelle oder geschleudert, ein Tippen nie")
-    func aPullClosesATapNever() {
-        #expect(!PlayerDismiss.closes(translation: .zero, predictedHeight: 0, threshold: 180))
+    @Test("der Griff schliesst auf Tippen wie auf Ziehen, ein Ziehen ueber dem Bild nur ab der Schwelle")
+    func theHandleClosesOnATap() {
+        // A tap on the handle: a pull that did not move.
+        #expect(PlayerDismiss.closes(translation: .zero, predictedHeight: 0, threshold: 180, onHandle: true))
+        #expect(PlayerDismiss.closes(translation: CGSize(width: 3, height: 4), predictedHeight: 4,
+                                     threshold: 180, onHandle: true))
+        // The same touch elsewhere does nothing; a small pull on the handle neither.
+        #expect(!PlayerDismiss.closes(translation: .zero, predictedHeight: 0, threshold: 180, onHandle: false))
         #expect(!PlayerDismiss.closes(translation: CGSize(width: 0, height: 40), predictedHeight: 60,
-                                      threshold: 180))
-        // A pull past the threshold or flung beyond twice it closes.
+                                      threshold: 180, onHandle: true))
+        // A pull past the threshold or flung beyond twice it closes anywhere.
         #expect(PlayerDismiss.closes(translation: CGSize(width: 0, height: 200), predictedHeight: 220,
-                                     threshold: 180))
+                                     threshold: 180, onHandle: false))
         #expect(PlayerDismiss.closes(translation: CGSize(width: 0, height: 90), predictedHeight: 400,
-                                     threshold: 180))
+                                     threshold: 180, onHandle: false))
     }
 
-    @Test("der grosse Player traegt keinen Zieh-Strich, Schliessen per Ziehen und fuer VoiceOver bleibt", .needsTheSources)
-    func thePlayerHasNoHandleAndStillCloses() throws {
+    @Test("der Zieh-Strich steht nur ohne Seitenspalte, mit ihr schliesst der Knopf der Spalte", .needsTheSources)
+    func theHandleStandsOnlyWithoutTheColumn() throws {
         let overlay = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FullPlayerOverlay.swift"),
                        encoding: .utf8))
-        #expect(!overlay.contains("Capsule()"), "a drag handle is back")
+        #expect(overlay.contains("if columnPlacement == nil { grabHandle }"))
+        #expect(overlay.components(separatedBy: "grabHandle").count - 1 == 2)
         #expect(overlay.contains(".accessibilityAction(.escape) { slideOutAndDismiss() }"))
-        #expect(overlay.contains(".onEnded { value in handleDismissEnd(value) }"))
+        #expect(overlay.contains(".highPriorityGesture(dismissGesture(minimumDistance: 0, onHandle: true))"))
     }
 
     @Test("Tempo und Schlaftimer gibt es einmal: der Wahlpunkt steht nur in PlaybackMenus", .needsTheSources)

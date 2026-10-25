@@ -81,6 +81,9 @@ struct FullPlayerOverlay: View {
                 // lie over the player and would take their taps.
                 .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
                 noticePill
+                // Without the side column the handle closes the player; with
+                // it the column's close button does (`PlayerView.sideColumn`).
+                if columnPlacement == nil { grabHandle }
             }
             // Anchor for the controls-frame preference reported by PlayerView:
             // local frames stay stable while the whole sheet moves (offset).
@@ -165,6 +168,25 @@ struct FullPlayerOverlay: View {
         }
     }
 
+    /// Centred above the cover, free of it; the tap area keeps the full width.
+    private var grabHandle: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.5))
+            .frame(width: 40, height: 5)
+            .padding(.top, topInset + 10)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
+            // A tap on the handle does what pulling it does: the pull takes
+            // every touch first, so the tap is a pull that did not move
+            // (`PlayerDismiss`). ONE closing function for the pull, the tap
+            // and VoiceOver.
+            .highPriorityGesture(dismissGesture(minimumDistance: 0, onHandle: true))
+            .accessibilityLabel(Text("Close"))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { slideOutAndDismiss() }
+    }
+
     /// Slides the player out, then tears it down. The one way this player
     /// closes; no caller animates on its own.
     private func slideOutAndDismiss() {
@@ -243,12 +265,12 @@ struct FullPlayerOverlay: View {
     }
 
     /// Measured globally (offset container).
-    private func dismissGesture(minimumDistance: CGFloat) -> some Gesture {
+    private func dismissGesture(minimumDistance: CGFloat, onHandle: Bool = false) -> some Gesture {
         DragGesture(minimumDistance: minimumDistance, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
                 state = max(0, value.translation.height)
             }
-            .onEnded { value in handleDismissEnd(value) }
+            .onEnded { value in handleDismissEnd(value, onHandle: onHandle) }
     }
 
     /// The top strip lies OVER the cover, so with `minimumDistance 0` its
@@ -276,11 +298,11 @@ struct FullPlayerOverlay: View {
             }
     }
 
-    private func handleDismissEnd(_ value: DragGesture.Value) {
+    private func handleDismissEnd(_ value: DragGesture.Value, onHandle: Bool = false) {
         let end = max(0, value.translation.height)
         let shouldDismiss = PlayerDismiss.closes(translation: value.translation,
                                                  predictedHeight: value.predictedEndTranslation.height,
-                                                 threshold: dismissThreshold)
+                                                 threshold: dismissThreshold, onHandle: onHandle)
         // Take over the offset seamlessly (GestureState resets instantly).
         releaseOffset = end
         if shouldDismiss {
