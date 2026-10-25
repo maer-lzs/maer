@@ -50,6 +50,20 @@ struct DownloadRing: View {
     }
 }
 
+/// The running download as a state, no control: the ring with its name and,
+/// when the size is known, its progress for VoiceOver. A page's head shows
+/// it (`DetailStates`); cancelling stays an entry of the page's menu.
+struct DownloadingRing: View {
+    let fraction: Double
+
+    var body: some View {
+        DownloadRing(fraction: fraction)
+            .accessibilityElement()
+            .accessibilityLabel(Text("Downloading"))
+            .accessibilityValue(fraction >= 0 ? Text(fraction.formatted(.percent.precision(.fractionLength(0)))) : Text(verbatim: ""))
+    }
+}
+
 /// The running download as a ring that cancels when tapped: one control for
 /// the album and the episode. The ring alone is a shape, so the control
 /// carries its name and, when the size is known, its progress for VoiceOver.

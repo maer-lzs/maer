@@ -179,7 +179,8 @@ nonisolated enum DetailDownloadState: Equatable, Sendable {
 /// THE one place of a page's states in its head: what the page's menu
 /// changes, seen without opening it, with no action of its own (the actions
 /// stay in the ⋯ menu, `pageActions`). A filled heart while a favorite, the
-/// grey arrow while stored, the progress while it loads. Nothing when no
+/// grey arrow while stored, the progress while it loads (`DownloadingRing`).
+/// Nothing when no
 /// state holds. It stands as the last of the head's lines, under the title.
 struct DetailStates: View {
     var favorite = false
@@ -197,12 +198,7 @@ struct DetailStates: View {
                 case .none:
                     EmptyView()
                 case .loading(let fraction):
-                    DownloadRing(fraction: fraction)
-                        .accessibilityElement()
-                        .accessibilityLabel(Text("Downloading"))
-                        .accessibilityValue(fraction >= 0
-                            ? Text(fraction.formatted(.percent.precision(.fractionLength(0))))
-                            : Text(verbatim: ""))
+                    DownloadingRing(fraction: fraction)
                 case .stored:
                     Image(systemName: DownloadedMark.symbol)
                         .foregroundStyle(.secondary)

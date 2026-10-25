@@ -199,7 +199,7 @@ struct DetailHeaderTests {
         #expect(states.contains("Image(systemName: \"heart.fill\")"), "the favorite is not the filled heart")
         #expect(states.contains("Image(systemName: DownloadedMark.symbol)\n                        .foregroundStyle(.secondary)"),
                 "stored is not the grey arrow")
-        #expect(states.contains("DownloadRing(fraction: fraction)"), "loading shows no progress")
+        #expect(states.contains("DownloadingRing(fraction: fraction)"), "loading shows no progress")
         // The album page puts them under its title, observed on their own,
         // and draws no state glyph of its own.
         let album = SyncContractFenceTests.stripped(

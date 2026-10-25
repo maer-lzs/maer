@@ -212,7 +212,8 @@ struct DownloadNotifyCountTests {
             let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             if code.contains(where: { $0.contains("downloadSize(forItemId") }) { diskReads.append(url.lastPathComponent) }
         }
-        #expect(observers.count == 7, "sieben Fortschritts-Beobachter: \(observers.map(\.type))")
+        // The eighth: the album's head states (`AlbumHeadStates`), 25.10.2026.
+        #expect(observers.count == 8, "acht Fortschritts-Beobachter: \(observers.map(\.type))")
         let idleObservers = observers.filter { !$0.reads }.map(\.type)
         #expect(idleObservers.isEmpty, "beobachtet den Fortschritt, liest ihn nicht: \(idleObservers)")
         #expect(diskReads.isEmpty, "eine Ansicht liest Groessen von der Platte: \(diskReads)")

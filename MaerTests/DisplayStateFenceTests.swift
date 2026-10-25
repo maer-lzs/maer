@@ -138,6 +138,12 @@ struct DisplayStateFenceTests {
         let ring = try code("Sources/Views/DownloadRing.swift")
         #expect(ring.contains(".accessibilityLabel(Text(\"Cancel Download\"))") && ring.contains(".accessibilityValue("),
                 "the ring control has no name or no progress")
+        // The ring as a state (a page's head) carries its name and progress too.
+        let state = try #require(ring.components(separatedBy: "struct DownloadingRing: View {").last?
+            .components(separatedBy: "struct CancelDownloadRing").first)
+        #expect(state.contains(".accessibilityLabel(Text(\"Downloading\"))") && state.contains(".accessibilityValue("),
+                "the ring as a state has no name or no progress")
+        #expect(!state.contains("Button"), "the ring as a state took an action")
     }
 
     /// A state a glyph alone carries is named: the offline mark wherever it
