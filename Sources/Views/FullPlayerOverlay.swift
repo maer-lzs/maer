@@ -34,8 +34,6 @@ struct FullPlayerOverlay: View {
     @State private var pillHasRoom = true
     private let dismissThreshold: CGFloat = 180
     @Environment(\.sideColumnPlacement) private var columnPlacement
-    /// The display's fold and the window's width (the library hands them in).
-    @Environment(\.foldLine) private var foldLine
 
     init(
         coordinator: PlayerCoordinator,
@@ -82,7 +80,6 @@ struct FullPlayerOverlay: View {
                 // lie over the player and would take their taps.
                 .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
                 noticePill
-                grabHandle
             }
             // Anchor for the controls-frame preference reported by PlayerView:
             // local frames stay stable while the whole sheet moves (offset).
@@ -167,35 +164,6 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    private var grabHandle: some View {
-        // On the content's centre axis (`PlayerHandle`); the tap area keeps
-        // the full width.
-        let insets = PlayerHandle.insets(
-            windowWidth: foldLine.windowWidth, strip: columnPlacement?.strip ?? 0,
-            stripLeading: columnPlacement?.leading ?? false, fold: foldLine.fold,
-            sideBySide: foldLine.windowWidth > presentHeight)
-        return Capsule()
-            .fill(Color.white.opacity(0.5))
-            .frame(width: 40, height: 5)
-            .padding(.top, topInset + 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity)
-            .padding(.leading, insets.leading)
-            .padding(.trailing, insets.trailing)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .contentShape(Rectangle())
-            // A tap on the handle does what pulling it does. The handle
-            // reads as a control, and a control that only answers a drag
-            // is a control that looks broken. ONE closing function, called
-            // by the pull, the tap and VoiceOver's escape. The pull takes
-            // every touch first, so the tap is a pull that did not move
-            // (`PlayerDismiss`); a separate tap gesture never fired.
-            .highPriorityGesture(dismissGesture(minimumDistance: 0, onHandle: true))
-            .accessibilityLabel(Text("Close player"))
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { slideOutAndDismiss() }
-    }
-
     /// Slides the player out, then tears it down. The one way this player
     /// closes; no caller animates on its own.
     private func slideOutAndDismiss() {
@@ -274,12 +242,12 @@ struct FullPlayerOverlay: View {
     }
 
     /// Measured globally (offset container).
-    private func dismissGesture(minimumDistance: CGFloat, onHandle: Bool = false) -> some Gesture {
+    private func dismissGesture(minimumDistance: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: minimumDistance, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
                 state = max(0, value.translation.height)
             }
-            .onEnded { value in handleDismissEnd(value, onHandle: onHandle) }
+            .onEnded { value in handleDismissEnd(value) }
     }
 
     /// The top strip lies OVER the cover, so with `minimumDistance 0` its
@@ -307,11 +275,11 @@ struct FullPlayerOverlay: View {
             }
     }
 
-    private func handleDismissEnd(_ value: DragGesture.Value, onHandle: Bool = false) {
+    private func handleDismissEnd(_ value: DragGesture.Value) {
         let end = max(0, value.translation.height)
         let shouldDismiss = PlayerDismiss.closes(translation: value.translation,
                                                  predictedHeight: value.predictedEndTranslation.height,
-                                                 threshold: dismissThreshold, onHandle: onHandle)
+                                                 threshold: dismissThreshold)
         // Take over the offset seamlessly (GestureState resets instantly).
         releaseOffset = end
         if shouldDismiss {

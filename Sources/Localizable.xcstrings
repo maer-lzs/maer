@@ -2530,16 +2530,6 @@
         }
       }
     },
-    "Close player" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Player schließen"
-          }
-        }
-      }
-    },
     "Close search" : {
       "localizations" : {
         "de" : {

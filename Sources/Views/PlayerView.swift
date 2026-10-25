@@ -56,12 +56,8 @@ struct PlayerView: View {
     @Environment(\.sideColumnPlacement) private var columnPlacement
     /// The display's fold, where there is one (`FullPlayerOverlay` hands it in).
     @Environment(\.foldLine) private var foldLine
-    /// The room the content keeps free at its edges (`PlayerHandle.contentInsets`).
-    private var contentInsets: PlayerHandle.Insets {
-        PlayerHandle.contentInsets(strip: columnPlacement?.strip ?? 0,
-                                   stripLeading: columnPlacement?.leading ?? false,
-                                   hasFold: foldLine.fold != nil)
-    }
+    /// The room between the sheet's top and the cover.
+    static let topRoom: CGFloat = 12
     /// The controls column's height, measured; it does not change with the
     /// cover, so sizing the cover by it never loops.
     @State private var controlsHeight: CGFloat = 0
@@ -121,14 +117,13 @@ struct PlayerView: View {
                 if sideBySide, foldLine.fold != nil {
                     FoldColumns { column in
                         // As large as its half allows, less the page margin
-                        // and the drag handle's room above and below it.
+                        // and the top room above and below it.
                         cover(maxSide: max(0, min(column.width - 32,
-                                                  column.height - 32 - 2 * PlayerHandle.clearance)))
+                                                  column.height - 32 - 2 * Self.topRoom)))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             // The column ends the frame's margin before the
                             // fold; half of it moves the cover to the middle
-                            // of its half, equally far from edge and fold,
-                            // under the handle (`PlayerHandle`).
+                            // of its half, equally far from edge and fold.
                             .offset(x: FoldColumns<EmptyView, EmptyView>.foldMargin / 2)
                     } trailing: { _ in
                         ScrollView {
@@ -149,17 +144,15 @@ struct PlayerView: View {
                             cover(maxSide: !sideBySide
                                   ? DetailCoverSide.side(
                                       columnWidth: min(Self.portraitColumn,
-                                                       geo.size.width - contentInsets.leading
-                                                           - contentInsets.trailing - 32),
+                                                       geo.size.width - (columnPlacement?.strip ?? 0) - 32),
                                       height: geo.size.height,
-                                      top: topInset + 24 + PlayerHandle.clearance, below: controlsHeight + 24,
+                                      top: topInset + 24 + Self.topRoom, below: controlsHeight + 24,
                                       bottomReserve: bottomInset + 16)
                                   : Self.coverSide)
                             controlsBlock
                         }
                         .padding()
-                        // The drag handle stands free above the content.
-                        .padding(.top, 8 + PlayerHandle.clearance)
+                        .padding(.top, 8 + Self.topRoom)
                         // Readable column in portrait, wider side by side.
                         .frame(maxWidth: sideBySide ? 900 : 500)
                         // Side by side: center vertically in the viewport (iPad).
@@ -175,11 +168,8 @@ struct PlayerView: View {
             // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
-            // Beside the side column the content keeps to the free area;
-            // folded it keeps the strip free at both edges and stands on the
-            // display's middle (`PlayerHandle.contentInsets`).
-            .padding(.leading, contentInsets.leading)
-            .padding(.trailing, contentInsets.trailing)
+            // Beside the side column the content keeps to the free area.
+            .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
         }
         .overlay {
             if toolsAtSide, let columnPlacement {

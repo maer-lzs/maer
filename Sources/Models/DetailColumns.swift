@@ -98,37 +98,6 @@ nonisolated enum DetailButtonRow {
     }
 }
 
-/// Where the full player's content and drag handle stand. Without a fold
-/// (the Duo folded) both sit on the display's middle, the axis of the home
-/// indicator: the side column's strip is kept free at both edges. With a
-/// fold upright they sit on the content's axis beside the column; across
-/// the handle stands over the middle of the cover's half, never on the fold.
-/// Given as the insets that centre each in its span.
-nonisolated enum PlayerHandle {
-    struct Insets: Equatable {
-        var leading: CGFloat
-        var trailing: CGFloat
-    }
-
-    /// The room between the handle and the content below it.
-    static let clearance: CGFloat = 12
-
-    /// The room the content keeps free at its edges.
-    static func contentInsets(strip: CGFloat, stripLeading: Bool, hasFold: Bool) -> Insets {
-        guard hasFold else { return Insets(leading: strip, trailing: strip) }
-        return Insets(leading: stripLeading ? strip : 0, trailing: stripLeading ? 0 : strip)
-    }
-
-    static func insets(windowWidth: CGFloat, strip: CGFloat, stripLeading: Bool,
-                       fold: ClosedRange<CGFloat>?, sideBySide: Bool) -> Insets {
-        let leading = stripLeading ? strip : 0
-        if sideBySide, let fold, fold.lowerBound > leading, fold.upperBound < windowWidth {
-            return Insets(leading: leading, trailing: max(0, windowWidth - fold.lowerBound))
-        }
-        return contentInsets(strip: strip, stripLeading: stripLeading, hasFold: fold != nil)
-    }
-}
-
 /// The cover of a detail page as a card: once the page's height makes it
 /// smaller than the page's full width, it stands with round corners and a
 /// shadow, `gap` under the status bar and at its sides, as in the wide

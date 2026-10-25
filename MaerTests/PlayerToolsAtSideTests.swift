@@ -70,7 +70,7 @@ struct PlayerToolsAtSideTests {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
         #expect(player.contains(".opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))\n                .ignoresSafeArea()"))
-        #expect(player.contains(".padding(.leading, contentInsets.leading)\n            .padding(.trailing, contentInsets.trailing)"))
+        #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 
     @Test("die Transportreihe gibt in ihren Abstaenden nach und weitet die Spalte nie", .needsTheSources)
