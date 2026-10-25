@@ -59,8 +59,8 @@ struct PlayerView: View {
     @Environment(\.closePlayer) private var closePlayer
     /// The room between the sheet's top and the cover.
     static let topRoom: CGFloat = 12
-    /// The controls column's height, measured; it does not change with the
-    /// cover, so sizing the cover by it never loops.
+    /// The controls column's height, measured, for the line that reports
+    /// controls taller than the view (`PlayerFit.controlsOverflow`).
     @State private var controlsHeight: CGFloat = 0
     /// The readable column in portrait, less its padding.
     private static let portraitColumn: CGFloat = 500 - 32
@@ -109,7 +109,7 @@ struct PlayerView: View {
                 || (geo.size.height > 0 && geo.size.width > geo.size.height)
             let layout = sideBySide
                 ? AnyLayout(HStackLayout(alignment: .center, spacing: 32))
-                : AnyLayout(VStackLayout(spacing: 24))
+                : AnyLayout(VStackLayout(spacing: 16))
             let viewportHeight = max(0, geo.size.height - topInset - bottomInset)
             Group {
                 // Side by side on a display with a fold (the Duo open or
@@ -134,24 +134,27 @@ struct PlayerView: View {
                     // One view, never scrolled (`PlayerFit`): the cover takes
                     // what the controls leave, down to nothing.
                     layout {
-                        // Upright the cover is as wide as the progress bar
-                        // under it, never after the title's length, and
-                        // narrower, still centred, where the height must
-                        // leave the controls in sight (`DetailCoverSide`).
-                        cover(maxSide: !sideBySide
-                              ? DetailCoverSide.side(
-                                  columnWidth: min(Self.portraitColumn,
-                                                   geo.size.width - (columnPlacement?.strip ?? 0) - 32)
-                                      - 2 * PlayerDismissZones.scrubberInset,
-                                  height: geo.size.height,
-                                  top: topInset + 24 + Self.topRoom, below: controlsHeight + 24,
-                                  bottomReserve: bottomInset + 16, minimum: 0)
-                              : PlayerFit.sideBySideCover(fixed: Self.coverSide, viewportHeight: viewportHeight,
-                                                          margin: 16))
+                        if sideBySide {
+                            cover(maxSide: PlayerFit.sideBySideCover(fixed: Self.coverSide,
+                                                                     viewportHeight: viewportHeight, margin: 16))
+                        } else {
+                            // Upright the controls take their height first and
+                            // the cover the area left above them: as wide as
+                            // the progress bar under it, never taller than the
+                            // area (`PlayerFit.uprightCover`).
+                            GeometryReader { area in
+                                cover(maxSide: PlayerFit.uprightCover(
+                                    barWidth: area.size.width - 2 * PlayerDismissZones.scrubberInset,
+                                    areaHeight: area.size.height))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
+                        }
                         controlsBlock
                     }
                     .padding()
-                    .padding(.top, sideBySide ? 0 : 8 + Self.topRoom)
+                    // Room for the drag handle above the cover only where it
+                    // stands, without the side column (`FullPlayerOverlay`).
+                    .padding(.top, sideBySide || columnPlacement != nil ? 0 : 8 + Self.topRoom)
                     // Readable column in portrait, wider side by side.
                     .frame(maxWidth: sideBySide ? 900 : 500)
                     // Upright from the top, side by side centred in the view.
@@ -164,6 +167,9 @@ struct PlayerView: View {
             .padding(.bottom, bottomInset)
             // Beside the side column the content keeps to the free area.
             .padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)
+            // Never larger than the window: content that does not fit cannot
+            // grow the stack and move the side column off its place.
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .overlay {
             if toolsAtSide, let columnPlacement {
@@ -1124,10 +1130,9 @@ struct PlayerView: View {
         .accessibilityIdentifier("player-queue")
     }
 
-    /// The controls under or beside the cover, measured: their height sizes
-    /// the cover beside the side column, their frame caps the overlay's
-    /// dismiss zones so the chapter buttons and the scrubber stay tappable.
-    /// They keep their own height; the cover gives way (`PlayerFit`).
+    /// The controls under or beside the cover, measured: their frame caps the
+    /// overlay's dismiss zones so the chapter buttons and the scrubber stay
+    /// tappable. They keep their own height; the cover gives way (`PlayerFit`).
     private var controlsBlock: some View {
         VStack(spacing: 20) { controlsColumn }
             .fixedSize(horizontal: false, vertical: true)

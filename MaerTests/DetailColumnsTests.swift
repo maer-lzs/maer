@@ -212,13 +212,12 @@ struct DetailColumnsTests {
 
     @Test("der grosse Player passt auf eine Ansicht: das Cover gibt nach bis auf null, die Bedienung nie")
     func thePlayerFitsOneView() {
-        // Upright, controls taller than the room: the player's cover goes
-        // down to nothing, the book page keeps its minimum.
-        #expect(DetailCoverSide.side(columnWidth: 402, height: 600, top: 80, below: 520, bottomReserve: 50,
-                                     minimum: 0) == 0)
+        // Upright: as wide as the bar, never taller than the area the
+        // controls leave, down to nothing; the book page keeps its minimum.
+        #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 400) == 302)
+        #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 266.6) == 266)
+        #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: -12) == 0)
         #expect(DetailCoverSide.side(columnWidth: 402, height: 600, top: 80, below: 520, bottomReserve: 50) == 160)
-        #expect(DetailCoverSide.side(columnWidth: 402, height: 874, top: 80, below: 420, bottomReserve: 50,
-                                     minimum: 0) == 324)
         // Across without a fold: the fixed side, smaller where the height is.
         #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 360, margin: 16) == 300)
         #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 250, margin: 16) == 218)
@@ -254,8 +253,11 @@ struct DetailColumnsTests {
         // A picture of any aspect ratio fits inside the square, as on the book page.
         #expect(player.contains("CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)"))
         #expect(!player.contains("ScrollView"), "the full player scrolls again")
-        // Upright the cover is as wide as the progress bar under it.
-        #expect(player.contains("geo.size.width - (columnPlacement?.strip ?? 0) - 32)\n                                      - 2 * PlayerDismissZones.scrubberInset,"))
+        // Upright the cover is as wide as the progress bar under it and takes
+        // the area the controls leave, laid out, not measured.
+        #expect(player.contains("GeometryReader { area in\n                                cover(maxSide: PlayerFit.uprightCover(\n                                    barWidth: area.size.width - 2 * PlayerDismissZones.scrubberInset,"))
+        // The content never grows past the window and moves the side column.
+        #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)\n            .frame(width: geo.size.width, height: geo.size.height)"))
         // Beside the side column and at the fold the cover takes the room it has, not the fixed side.
         #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 2)
         #expect(player.contains("private static let coverSide: CGFloat = 300"))

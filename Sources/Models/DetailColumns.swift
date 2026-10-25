@@ -51,14 +51,12 @@ nonisolated enum FoldSplit {
 nonisolated enum DetailCoverSide {
     static let minimum: CGFloat = 160
 
-    /// `minimum`: where the cover stops shrinking; the full player passes 0,
-    /// it never scrolls and its controls never give way (`PlayerFit`).
     static func side(columnWidth: CGFloat, height: CGFloat, top: CGFloat, below: CGFloat,
-                     bottomReserve: CGFloat, minimum: CGFloat = minimum) -> CGFloat {
+                     bottomReserve: CGFloat) -> CGFloat {
         let fitsHeight = height - top - below - bottomReserve
         // Whole points: a fraction lands on another pixel than asked, the
         // measured distance below moves by it, and the side with it.
-        return max(0, max(min(columnWidth, minimum), min(columnWidth, fitsHeight))).rounded(.down)
+        return max(min(columnWidth, minimum), min(columnWidth, fitsHeight)).rounded(.down)
     }
 
     /// What the page keeps as the height below the cover, from a new
@@ -86,6 +84,13 @@ nonisolated enum DetailCoverSide {
 /// the controls alone exceed the view (large type) that is reported, not
 /// scrolled.
 nonisolated enum PlayerFit {
+    /// The cover upright: in the area the controls leave above them, as
+    /// wide as the progress bar (`barWidth`) and never taller than the area,
+    /// down to nothing.
+    static func uprightCover(barWidth: CGFloat, areaHeight: CGFloat) -> CGFloat {
+        max(0, min(barWidth, areaHeight)).rounded(.down)
+    }
+
     /// The cover beside the controls (across, without a fold): its fixed
     /// side, smaller where the view's height leaves less.
     static func sideBySideCover(fixed: CGFloat, viewportHeight: CGFloat, margin: CGFloat) -> CGFloat {
