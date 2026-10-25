@@ -62,6 +62,11 @@ struct PlayerView: View {
     /// The controls column's height, measured, for the line that reports
     /// controls taller than the view (`PlayerFit.controlsOverflow`).
     @State private var controlsHeight: CGFloat = 0
+    /// The upright cover's side, which the progress bar takes too
+    /// (`PlayerFit.uprightBar`): where the height leaves the cover narrower
+    /// than the bar's room, the bar is as narrow as the cover. Nil in every
+    /// other form.
+    @State private var uprightCoverSide: CGFloat?
     /// The readable column in portrait, less its padding.
     private static let portraitColumn: CGFloat = 500 - 32
 
@@ -143,10 +148,13 @@ struct PlayerView: View {
                             // the progress bar under it, never taller than the
                             // area (`PlayerFit.uprightCover`).
                             GeometryReader { area in
-                                cover(maxSide: PlayerFit.uprightCover(
+                                let side = PlayerFit.uprightCover(
                                     barWidth: area.size.width - 2 * PlayerDismissZones.scrubberInset,
-                                    areaHeight: area.size.height))
+                                    areaHeight: area.size.height)
+                                cover(maxSide: side)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .onChange(of: side, initial: true) { _, side in uprightCoverSide = side }
+                                    .onDisappear { uprightCoverSide = nil }
                             }
                         }
                         controlsBlock
@@ -766,6 +774,9 @@ struct PlayerView: View {
             .minimumScaleFactor(0.5)
             .foregroundStyle(.white.opacity(0.8))
         }
+        // Upright as wide as the cover above it, one width for both
+        // (`PlayerFit.uprightBar`).
+        .frame(maxWidth: uprightCoverSide.flatMap(PlayerFit.uprightBar) ?? .infinity)
         // Extra horizontal inset (16 → 24, on top of the content's 16) so
         // the slider track, and the thumb at position 0/1, sits clear of the
         // 20pt full-height edge dismiss strips. The transport/chapter buttons are

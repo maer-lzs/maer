@@ -110,6 +110,15 @@ nonisolated enum PlayerFit {
         max(0, min(barWidth, areaHeight)).rounded(.down)
     }
 
+    /// The progress bar upright: as wide as the cover above it, one width
+    /// for both; under `barMinimum` the cover has given way so far that the
+    /// bar keeps its own room (nil).
+    static func uprightBar(coverSide: CGFloat) -> CGFloat? {
+        coverSide >= barMinimum ? coverSide : nil
+    }
+
+    static let barMinimum: CGFloat = 200
+
     /// The cover beside the controls (across, without a fold): its fixed
     /// side, smaller where the view's height leaves less.
     static func sideBySideCover(fixed: CGFloat, viewportHeight: CGFloat, margin: CGFloat) -> CGFloat {

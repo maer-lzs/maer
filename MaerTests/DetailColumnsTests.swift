@@ -224,6 +224,11 @@ struct DetailColumnsTests {
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 400) == 302)
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: 266.6) == 266)
         #expect(PlayerFit.uprightCover(barWidth: 302, areaHeight: -12) == 0)
+        // The bar takes the cover's width, one width for both; a cover that
+        // gave way below the minimum leaves the bar its own room.
+        #expect(PlayerFit.uprightBar(coverSide: 266) == 266)
+        #expect(PlayerFit.uprightBar(coverSide: PlayerFit.barMinimum) == PlayerFit.barMinimum)
+        #expect(PlayerFit.uprightBar(coverSide: 120) == nil)
         #expect(DetailCoverSide.side(columnWidth: 402, height: 340, top: 80) == 160)
         // Across without a fold: the fixed side, smaller where the height is.
         #expect(PlayerFit.sideBySideCover(fixed: 300, viewportHeight: 360, margin: 16) == 300)
@@ -280,11 +285,15 @@ struct DetailColumnsTests {
         #expect(!player.contains("ScrollView"), "the full player scrolls again")
         // Upright the cover is as wide as the progress bar under it and takes
         // the area the controls leave, laid out, not measured.
-        #expect(player.contains("GeometryReader { area in\n                                cover(maxSide: PlayerFit.uprightCover(\n                                    barWidth: area.size.width - 2 * PlayerDismissZones.scrubberInset,"))
+        #expect(player.contains("GeometryReader { area in\n                                let side = PlayerFit.uprightCover(\n                                    barWidth: area.size.width - 2 * PlayerDismissZones.scrubberInset,"))
+        // The bar under it takes the same width (`PlayerFit.uprightBar`).
+        #expect(player.contains(".onChange(of: side, initial: true) { _, side in uprightCoverSide = side }"))
+        #expect(player.contains(".frame(maxWidth: uprightCoverSide.flatMap(PlayerFit.uprightBar) ?? .infinity)"))
         // The content never grows past the window and moves the side column.
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)\n            .frame(width: geo.size.width, height: geo.size.height)"))
         // Beside the side column and at the fold the cover takes the room it has, not the fixed side.
-        #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 2)
+        // At the fold, side by side, upright, and the definition.
+        #expect(player.components(separatedBy: "cover(maxSide:").count - 1 == 4)
         #expect(player.contains("private static let coverSide: CGFloat = 300"))
         #expect(!player.contains("RoundedRectangle(cornerRadius: 12))\n        .shadow("), "the player keeps a card of its own")
     }
