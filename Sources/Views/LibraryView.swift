@@ -468,7 +468,7 @@ struct LibraryView: View {
             }
             // The Browse page of a media tab's area, behind its Browse row.
             .navigationDestination(for: BrowseRoute.self) { route in
-                BrowsePage(freeCatalogStore: freeCatalogStore, area: route.area)
+                BrowsePage(freeCatalogStore: freeCatalogStore, playerCoordinator: playerCoordinator, area: route.area)
             }
     }
 

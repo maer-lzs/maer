@@ -200,7 +200,7 @@ struct HomeView: View {
                                    playerCoordinator: playerCoordinator,
                                    libraryViewModel: libraryViewModel)
             } else if route == .browse {
-                BrowsePage(freeCatalogStore: freeCatalogStore)
+                BrowsePage(freeCatalogStore: freeCatalogStore, playerCoordinator: playerCoordinator)
             } else {
                 MixedMediaPage(route: route,
                                continueIds: continueIdsAll, addedItems: recentlyAddedAll,

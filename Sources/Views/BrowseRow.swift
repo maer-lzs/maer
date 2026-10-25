@@ -53,9 +53,6 @@ struct BrowseRow: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// The tab's area; nil on Start.
     var area: BrowseSection.Group? = nil
-    @Environment(\.pushMusicRoute) private var pushMusicRoute
-    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    @Environment(\.itemRouter) private var router
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -70,7 +67,10 @@ struct BrowseRow: View {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(BrowseMix.columns(tiles), id: \.first?.id) { column in
                         VStack(alignment: .leading, spacing: 16) {
-                            ForEach(column) { tile in tileView(tile) }
+                            ForEach(column) { tile in
+                                BrowseTileView(tile: tile, marksKinds: marksKinds, reason: reason,
+                                               playerCoordinator: playerCoordinator)
+                            }
                         }
                         .cardRowSlot()
                     }
@@ -85,9 +85,30 @@ struct BrowseRow: View {
     private var marksKinds: Bool {
         BrowseMix.marksKinds(tiles.map(\.kind))
     }
+}
 
-    @ViewBuilder
-    private func tileView(_ tile: BrowseTile) -> some View {
+/// One Browse tile in its own form: a show its preview, a catalog title
+/// its page, a music title its album page (`CatalogDetailsPage`), on the
+/// stack of the tab it stands in. Shared by the Browse row and the lanes
+/// of its page.
+struct BrowseTileView: View {
+    let tile: BrowseTile
+    /// Whether the tile carries its kind; only a row that mixes kinds asks.
+    let marksKinds: Bool
+    let reason: (PodcastSearchResult) -> String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.itemRouter) private var router
+    @Environment(\.pushMusicRoute) private var pushMusicRoute
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+
+    /// The title's page, as a tap on a tile opens it.
+    private func showDetail(_ item: LibraryItem) {
+        CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
+                                pushMusicRoute: pushMusicRoute,
+                                pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+    }
+
+    var body: some View {
         switch tile {
         case .recommendation(let result):
             RecommendationTile(result: result, subtitle: reason(result))
@@ -99,17 +120,11 @@ struct BrowseRow: View {
                 // A work not started yet has no form; this share is music.
                 placeholderSystemImage: MediaFamily.placeholderSymbol(
                     for: item.id, markedForm: ListeningStore.startedForm(item.id) ?? .album),
-                onTap: {
-                    CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
-                                            pushMusicRoute: pushMusicRoute,
-                                            pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
-                })
+                onTap: { showDetail(item) })
                 .stackedKind(marksKinds ? .music : nil)
                 .contextMenu {
                     CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router) {
-                        CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
-                                                pushMusicRoute: pushMusicRoute,
-                                                pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+                        showDetail(item)
                     }
                 }
         case .catalog(let tile):
@@ -131,14 +146,24 @@ struct OpenCatalogsHeading: View {
 }
 
 /// The Browse page behind the row: every foreign catalog and directory as
-/// a section pointing at its existing page, or the sections of one area
-/// behind a tab's row. No logic of its own; which sections stand is
-/// `BrowseSection.shown`, the question the pages ask.
+/// a lane, or the lanes of one area behind a tab's row. A lane is the
+/// section's heading with the chevron onto its existing page and its
+/// tiles in one row below (`BrowseLane`), from the same stores the rows
+/// read. Which sections stand is `BrowseSection.shown`, the question the
+/// pages ask. In a wide window the lanes stand in two columns divided at
+/// the fold (`FoldColumns`, `BrowseSection.columns`), nothing over it.
 struct BrowsePage: View {
     /// Handed in by the host, which observes the store already.
     @ObservedObject var freeCatalogStore: FreeCatalogStore
+    @ObservedObject var playerCoordinator: PlayerCoordinator
     /// The tab's area; nil shows every area (Start).
     var area: BrowseSection.Group? = nil
+    @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// The old-records lane, from the row's own query (`ShellacSection.rowTitles`).
+    @State private var oldRecords: [LibraryItem] = []
+    /// The charts lane: the first genre of the charts page.
+    @State private var charts: [PodcastSearchResult] = []
 
     private var sections: [BrowseSection] {
         BrowseSection.shown(in: area, isAllowed: Self.isAllowed)
@@ -162,17 +187,43 @@ struct BrowsePage: View {
     }
 
     var body: some View {
+        GeometryReader { geo in
+            if BookDetailLayout.of(width: geo.size.width, height: geo.size.height,
+                                   compactHeight: verticalSizeClass == .compact) == .twoColumns {
+                let halves = BrowseSection.columns(sections)
+                FoldColumns { _ in
+                    // The leading column ends before the fold: its rows do
+                    // not reach past it toward the side column.
+                    lanes(halves.leading)
+                        .environment(\.sideColumnReach, 0)
+                } trailing: { _ in
+                    lanes(halves.trailing)
+                }
+            } else {
+                lanes(sections)
+            }
+        }
+        .navigationTitle(Text("Browse"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: sections) { await load() }
+    }
+
+    /// The lanes of some sections under their area's title, in one scroll.
+    private func lanes(_ shown: [BrowseSection]) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 ForEach(BrowseSection.Group.allCases) { group in
-                    let inGroup = sections.filter { $0.group == group }
+                    let inGroup = shown.filter { $0.group == group }
                     if !inGroup.isEmpty {
                         VStack(alignment: .leading, spacing: 14) {
                             Text(Self.title(group))
                                 .font(.headline).foregroundStyle(.secondary)
                                 .padding(.horizontal)
                             ForEach(inGroup) { section in
-                                entry(section)
+                                BrowseLane(tiles: tiles(section), problem: problem(section),
+                                           reason: reason(section), playerCoordinator: playerCoordinator) {
+                                    entry(section)
+                                }
                             }
                         }
                     }
@@ -181,8 +232,79 @@ struct BrowsePage: View {
             .padding(.top, TabContentLayout.topInset)
             .bottomBarClearance()
         }
-        .navigationTitle(Text("Browse"))
-        .navigationBarTitleDisplayMode(.inline)
+        .reportsBottomBarScroll()
+    }
+
+    /// A lane's tiles, from the stores the tabs' rows read. An area whose
+    /// switch is off asks nothing and its lane keeps the heading alone.
+    private func tiles(_ section: BrowseSection) -> [BrowseTile] {
+        let languages = SuggestionLanguages.current()
+        switch section {
+        case .recommendations:
+            return PodcastShowSources.excludingOwned(recommendations.results).map(BrowseTile.recommendation)
+        case .charts:
+            return charts.map(BrowseTile.recommendation)
+        case .classical:
+            return AppStorageKeys.freeClassicalActive ? freeCatalogStore.rows.classical.map(BrowseTile.music) : []
+        case .netlabels:
+            return AppStorageKeys.netlabelsActive ? freeCatalogStore.rows.netlabels.map(BrowseTile.music) : []
+        case .oldRecords:
+            return AppStorageKeys.shellacActive ? oldRecords.map(BrowseTile.music) : []
+        case .jamendo:
+            return AppStorageKeys.jamendoActive ? freeCatalogStore.rows.freeMusic.map(BrowseTile.music) : []
+        case .librivox:
+            return freeCatalogStore.sourceRows.librivoxPopular.map { .catalog(.item($0)) }
+        case .gutenberg:
+            return freeCatalogStore.sourceRows.gutenberg.map { .catalog(.item($0)) }
+        case .archiveBooks:
+            return freeCatalogStore.sourceRows.archiveBooks.map { .catalog(.item($0)) }
+        case .oldTimeRadio:
+            return freeCatalogStore.sourceRows.oldTimeRadio.map { .catalog(.item($0)) }
+        case .publicFeeds:
+            return OERRLiveStore.feeds(for: .oerr, languages: languages).map { .catalog(.feed($0)) }
+        case .independentFeeds:
+            return OERRLiveStore.feeds(for: .independents, languages: languages).map { .catalog(.feed($0)) }
+        }
+    }
+
+    /// Why a lane stands empty, where its store says so. Start drops the
+    /// free music silently (with a log line); the page says why.
+    private func problem(_ section: BrowseSection) -> String? {
+        section == .jamendo && AppStorageKeys.jamendoActive ? freeCatalogStore.rows.freeMusicProblem : nil
+    }
+
+    /// The line under a show: the recommendation's reason, none for the
+    /// charts.
+    private func reason(_ section: BrowseSection) -> (PodcastSearchResult) -> String {
+        section == .recommendations
+            ? { PodcastRecommendationsStore.reasonLine(recommendations.reason(for: $0)) }
+            : { _ in "" }
+    }
+
+    /// What the stores do not hold yet: the catalogs' sources, the
+    /// recommendations, the old records and the charts' first genre, each
+    /// only while its section stands.
+    private func load() async {
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        if sections.contains(where: { $0.group == .books }) {
+            await freeCatalogStore.ensureSourcesLoaded()
+        }
+        if sections.contains(.recommendations) {
+            await recommendations.refreshIfNeeded()
+        }
+        if sections.contains(.oldRecords), AppStorageKeys.shellacActive, oldRecords.isEmpty,
+           let titles = await ShellacSection.rowTitles() {
+            oldRecords = titles
+        }
+        if sections.contains(.charts), charts.isEmpty, let chip = CatalogGenreAxis.hoerspielChips.first,
+           let genreId = chip.genreIds.first {
+            let answer = await FetchAnswer.of("browse charts genre=\(genreId)", logger: .rss) {
+                try await ITunesDirectory().topPodcasts(genreId: genreId)
+            }
+            if let pool = answer.value { charts = PodcastShowSources.excludingOwned(pool) }
+        }
     }
 
     private static func title(_ group: BrowseSection.Group) -> LocalizedStringKey {
@@ -207,15 +329,7 @@ struct BrowsePage: View {
         case .oldRecords:
             RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
         case .jamendo:
-            VStack(alignment: .leading, spacing: 4) {
-                RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
-                // The free music's reason when it stays empty. Start drops
-                // the share silently (with a log line); here it says why.
-                if freeCatalogStore.rows.freeMusic.isEmpty, let problem = freeCatalogStore.rows.freeMusicProblem {
-                    Text(problem).font(.caption).foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                }
-            }
+            RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
         case .librivox:
             RowHeading.entry(verbatim: CatalogSource.librivox.title, destination: FreeAudiobooksRoute.source(.librivox))
         case .gutenberg:
@@ -228,6 +342,40 @@ struct BrowsePage: View {
             RowHeading.entry(verbatim: CatalogSource.oerr.title, destination: FreeAudiobooksRoute.oerrCountries)
         case .independentFeeds:
             RowHeading.entry(verbatim: CatalogSource.independents.title, destination: FreeAudiobooksRoute.source(.independents))
+        }
+    }
+}
+
+/// One lane of the Browse page: the section's heading, its tiles in one
+/// row below (cut like every row, the page behind the chevron holds the
+/// rest), or the reason it stands empty. The tiles hold one kind and carry
+/// no kind mark.
+struct BrowseLane<Heading: View>: View {
+    let tiles: [BrowseTile]
+    var problem: String?
+    let reason: (PodcastSearchResult) -> String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ViewBuilder var heading: () -> Heading
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            heading()
+            if !tiles.isEmpty {
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(RowPreview.cut(tiles)) { tile in
+                            BrowseTileView(tile: tile, marksKinds: false, reason: reason,
+                                           playerCoordinator: playerCoordinator)
+                                .cardRowSlot()
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .rowReachesUnderSideColumn()
+            } else if let problem {
+                Text(problem).font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
         }
     }
 }

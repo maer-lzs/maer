@@ -100,6 +100,13 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
     static func shown(in area: Group?, isAllowed: (String) -> Bool) -> [BrowseSection] {
         shown(isAllowed: isAllowed).filter { area == nil || $0.group == area }
     }
+
+    /// The page's two columns in a wide window: the first half (the odd
+    /// one with it) before the fold, the rest after it, in page order.
+    static func columns(_ sections: [BrowseSection]) -> (leading: [BrowseSection], trailing: [BrowseSection]) {
+        let cut = (sections.count + 1) / 2
+        return (Array(sections.prefix(cut)), Array(sections.dropFirst(cut)))
+    }
 }
 
 /// The Browse offer of a media tab: which area of the Browse page it

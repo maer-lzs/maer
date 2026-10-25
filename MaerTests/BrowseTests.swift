@@ -43,6 +43,33 @@ struct BrowseTests {
                 && !row.contains("marksKind: true"), "a pure row marks its tiles")
     }
 
+    @Test("die Seite teilt ihre Abschnitte am Falz: die erste Haelfte davor, der Rest danach, in Folge")
+    func thePageSplitsAtTheFold() {
+        let all: (String) -> Bool = { _ in true }
+        let music = BrowseSection.columns(BrowseSection.shown(in: .music, isAllowed: all))
+        #expect(music.leading == [.classical, .netlabels] && music.trailing == [.oldRecords, .jamendo])
+        let three = BrowseSection.columns([.librivox, .gutenberg, .archiveBooks])
+        #expect(three.leading == [.librivox, .gutenberg] && three.trailing == [.archiveBooks])
+        let start = BrowseSection.columns(BrowseSection.allCases)
+        #expect(start.leading + start.trailing == BrowseSection.allCases, "nothing lost, nothing twice")
+        #expect(BrowseSection.columns([]).leading.isEmpty && BrowseSection.columns([]).trailing.isEmpty)
+    }
+
+    @Test("jeder Abschnitt der Seite ist eine Reihe mit Kacheln, zweispaltig am Falz", .needsTheSources)
+    func everySectionIsALane() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
+            .components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(page.contains("BrowseLane(tiles:tiles(section),problem:problem(section)"), "a section is a link again")
+        #expect(page.contains("lethalves=BrowseSection.columns(sections)FoldColumns{"), "the page lies over the fold")
+        #expect(page.contains("lanes(halves.leading).environment(\\.sideColumnReach,0)"),
+                "the leading column's rows reach over the fold")
+        #expect(page.contains("BrowseTileView(tile:tile,marksKinds:false"), "a lane of one kind marks its tiles")
+        // Every section names its tiles: a new section without a lane does not compile
+        // past `tiles(_:)`, and none answers with a fixed empty list.
+        #expect(!page.contains("default:return[]"))
+    }
+
     @Test("ein eingeschalteter, leerer Anteil nennt seinen Grund, ein ausgeschalteter nicht")
     func aDroppedShareSaysWhy() {
         #expect(BrowseMix.dropReason(.music, enabled: true, isEmpty: true, failure: "Jamendo: 429") == "music: Jamendo: 429")
@@ -131,7 +158,7 @@ struct BrowseTests {
         }
         let library = try flat("Sources/Views/LibraryView.swift")
         #expect(library.contains("navigationDestination(for:BrowseRoute.self)"))
-        #expect(library.contains("BrowsePage(freeCatalogStore:freeCatalogStore,area:route.area)"))
+        #expect(library.contains("BrowsePage(freeCatalogStore:freeCatalogStore,playerCoordinator:playerCoordinator,area:route.area)"))
         let page = try flat("Sources/Views/BrowseRow.swift")
         #expect(page.contains("BrowseSection.shown(in:area,isAllowed:Self.isAllowed)"))
         #expect(page.contains("BrowseMix.interleave(BrowseSection.shown(in:area,isAllowed:isAllowed).map(lane)"))

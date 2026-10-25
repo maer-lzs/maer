@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**The Browse page shows what each catalog holds.** Behind the Browse
+arrow, on Start and in every tab, each catalog now stands as a row of
+covers with its arrow onto its own page, instead of a plain list of
+links. On a wide screen such as the open iPhone Duo the rows stand in
+two columns, one on each side of the fold.
+
 **One menu for albums and playlists.** A long press on an album or a
 playlist, from your server or from an open catalog, offers Play, Play
 Next, Play Last, Shuffle, Add to Playlist and Details, in the same
