@@ -105,6 +105,9 @@ struct DurationTextTests {
     @Test("die Zeile unter dem Titel nennt, was endet: Buch, Folge, Sammlung, Album; ein Lied nur seine Restzeit")
     func theRemainingLineNamesWhatEnds() {
         #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: false, chapterCount: 12) == .book)
+        // A book in parts the app names itself ("Part 2 of 40").
+        #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: false, chapterCount: 40,
+                                   partsAreFallback: true) == .bookInParts)
         #expect(RemainingLine.form(isMusic: false, isPodcast: true, hasParts: false, chapterCount: 4) == .episode)
         #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: true, chapterCount: 30) == .collection)
         #expect(RemainingLine.form(isMusic: true, isPodcast: false, hasParts: false, chapterCount: 9) == .album)
@@ -116,6 +119,7 @@ struct DurationTextTests {
         let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"),
                                  encoding: .utf8)
         for (key, german) in [("%@ in chapter · book ends %@", "%@ im Kapitel · Buch endet %@"),
+                              ("%@ in part · book ends %@", "%@ im Teil · Buch endet %@"),
                               ("%@ in chapter · episode ends %@", "%@ im Kapitel · Folge endet %@"),
                               ("%@ in part · collection ends %@", "%@ im Teil · Sammlung endet %@"),
                               ("%@ · album ends %@", "%@ · Album endet %@")] {

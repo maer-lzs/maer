@@ -55,6 +55,9 @@ nonisolated enum RemainingLine {
     enum Form: Equatable, Sendable {
         /// "… in chapter · book ends …"
         case book
+        /// A book without chapters of its own, in parts the app names
+        /// ("Part 2 of 40"): "… in part · book ends …"
+        case bookInParts
         /// "… in chapter · episode ends …"
         case episode
         /// A bundle in parts (a radio-play collection): "… in part · collection ends …"
@@ -65,9 +68,13 @@ nonisolated enum RemainingLine {
         case song
     }
 
-    static func form(isMusic: Bool, isPodcast: Bool, hasParts: Bool, chapterCount: Int) -> Form {
+    /// `partsAreFallback`: the chapters are the parts the app names itself
+    /// (`ChapterModel.resolved`), not chapters the title carries.
+    static func form(isMusic: Bool, isPodcast: Bool, hasParts: Bool, chapterCount: Int,
+                     partsAreFallback: Bool = false) -> Form {
         if isMusic { return chapterCount > 1 ? .album : .song }
         if isPodcast { return .episode }
-        return hasParts ? .collection : .book
+        if hasParts { return .collection }
+        return partsAreFallback ? .bookInParts : .book
     }
 }

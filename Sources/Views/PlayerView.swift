@@ -654,12 +654,14 @@ struct PlayerView: View {
         return RemainingLine.form(isMusic: viewModel.isMusicItem,
                                   isPodcast: MediaFamily.of(id) == .podcast,
                                   hasParts: catalogFacts.route(id) == .series(itemId: id),
-                                  chapterCount: viewModel.chapters.count)
+                                  chapterCount: viewModel.chapters.count,
+                                  partsAreFallback: viewModel.chaptersAreFallback)
     }
 
     private func remainingLine(_ form: RemainingLine.Form, left: String, end: String) -> Text {
         switch form {
         case .book: Text("\(left) in chapter · book ends \(end)")
+        case .bookInParts: Text("\(left) in part · book ends \(end)")
         case .episode: Text("\(left) in chapter · episode ends \(end)")
         case .collection: Text("\(left) in part · collection ends \(end)")
         case .album: Text("\(left) · album ends \(end)")

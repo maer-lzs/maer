@@ -101,6 +101,16 @@
         }
       }
     },
+    "%@ in part · book ends %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ im Teil · Buch endet %@"
+          }
+        }
+      }
+    },
     "%@ in part · collection ends %@" : {
       "localizations" : {
         "de" : {
