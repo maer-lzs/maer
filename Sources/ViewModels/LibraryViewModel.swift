@@ -638,15 +638,16 @@ final class LibraryViewModel: ObservableObject {
     /// All downloaded books, alphabetically. Its own section for a quick
     /// overview of "what can I listen to offline right now".
     var downloadedEntries: [LibraryEntry] {
+        let downloads = DownloadManager.shared
         let key = DownloadedKey(stamp: entriesStamp,
-                                downloadsHash: DownloadManager.shared.downloadedItemIds.hashValue)
+                                downloadsHash: downloads.downloadedItemIds.hashValue)
         if key == downloadedCacheKey { return downloadedCache }
         // Signpost the (now rare) recompute so its cost + frequency are
         // visible in Instruments. This is the main-thread work that used to run
         // on every section mount/render.
         let signpost = PerfSignpost.downloadedRecompute()
         let value = entries
-            .filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
+            .filter { downloads.isDownloaded(itemId: $0.id) }
             .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
         signpost.end()
         downloadedCacheKey = key
@@ -1310,7 +1311,9 @@ final class LibraryViewModel: ObservableObject {
     /// Everything a rebuild reads beside the server copy, gathered once so
     /// the harness door below builds from exactly the same input.
     private func rebuildInput(items: [LibraryItem], progress: [String: BookProgress]) -> RebuildInput {
-        RebuildInput(
+        let extras = Self.continueExtras()
+        nameUnnamedCatalogTitles(extras)
+        return RebuildInput(
             items: items, progress: progress,
             queued: SyncQueue.shared.allPending(),
             localCache: localCache,
@@ -1319,8 +1322,35 @@ final class LibraryViewModel: ObservableObject {
             sort: sortOption, ascending: sortAscending, filter: filterOption,
             downloadedIds: DownloadManager.shared.downloadedItemIds,
             hiddenMarkers: ContinueHiddenStore.markers(),
-            continueExtras: Self.continueExtras()
+            continueExtras: extras
         )
+    }
+
+    /// Catalog titles in Continue that name no title on this device yet are
+    /// resolved once in the background; the provider keeps what it resolves
+    /// (`CatalogKeptItems`), and the rebuild after it names them.
+    private var namingInFlight: Set<String> = []
+    private func nameUnnamedCatalogTitles(_ extras: [LibraryEntry]) {
+        let ids = extras.map(\.item)
+            .filter { item in FreeCatalog.allPrefixes.contains(where: item.id.hasPrefix) }
+            .filter { !BookPageItem.namesItself($0) && !namingInFlight.contains($0.id) }
+            .map(\.id)
+        guard !ids.isEmpty else { return }
+        namingInFlight.formUnion(ids)
+        Task { [weak self] in
+            var named = false
+            for id in ids {
+                do {
+                    let detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: id)
+                    named = named || !(detail.media.metadata?.title ?? "").isEmpty
+                } catch {
+                    // The next rebuild asks again.
+                    self?.namingInFlight.remove(id)
+                    Logger.library.notice("CONTINUE catalog title unnamed, detail failed: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+            if named { await self?.refreshContinueRows() }
+        }
     }
 
     private func apply(_ output: RebuildOutput) {

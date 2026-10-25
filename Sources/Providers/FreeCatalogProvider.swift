@@ -14,7 +14,16 @@ import OSLog
 @MainActor
 final class FreeCatalogProvider: AudioProvider {
     static let shared = FreeCatalogProvider()
-    private init() {}
+    private init() {
+        kept = Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? []
+        for item in kept where itemsById[item.id] == nil { itemsById[item.id] = item }
+    }
+
+    /// The titles resolved for playback, with their metadata
+    /// (`CatalogKeptItems`): every surface that names a catalog title by its
+    /// id finds it from the first display on.
+    nonisolated static let keptDocument = "catalog-kept-items.json"
+    private var kept: [LibraryItem] = []
 
     var providerId: String { "freecatalog" }
     var mediaTypes: Set<MediaType> { [.audiobooks] }
@@ -423,9 +432,26 @@ final class FreeCatalogProvider: AudioProvider {
     /// What a detail fetch resolved goes into the session cache. "not in
     /// memory" must not stay true one fetch after the answer arrived. This is
     /// what lets a queue or playlist row fill itself in on demand.
+    /// It is also kept on the device (`CatalogKeptItems`); an entry that
+    /// names no title gives way to the detail that does.
     private func rememberResolved(_ detail: LibraryItemDetail) {
-        guard itemsById[detail.id] == nil else { return }
-        itemsById[detail.id] = LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
+        let item = LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
+        keep(item)
+        if let known = itemsById[detail.id], BookPageItem.namesItself(known) { return }
+        itemsById[detail.id] = item
+    }
+
+    private func keep(_ item: LibraryItem) {
+        let next = CatalogKeptItems.adding(item, to: kept)
+        guard next != kept else { return }
+        kept = next
+        Task {
+            do {
+                try await Ablage.documents.save(next, name: Self.keptDocument)
+            } catch {
+                Logger.library.error("CATALOG kept items not saved: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -444,7 +470,7 @@ final class FreeCatalogProvider: AudioProvider {
             }
             let tracks = FreeCatalog.tracks(from: book.sections)
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
-            return LibraryItemDetail(
+            let detail = LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
                     metadata: detailMetadata(itemId: itemId, title: book.title,
@@ -452,6 +478,8 @@ final class FreeCatalogProvider: AudioProvider {
                     duration: book.totaltimesecs.map(Double.init), chapters: nil,
                     tracks: tracks),
                 userMediaProgress: nil)
+            rememberResolved(detail)
+            return detail
         }
         if itemId.hasPrefix(FreeCatalog.archivePrefix) {
             // A song address resolves to a SINGLE-track item: its own title,
@@ -506,7 +534,7 @@ final class FreeCatalogProvider: AudioProvider {
             guard let track = jamendoTracks[itemId], let audio = track.audio, !audio.isEmpty else {
                 throw URLError(.resourceUnavailable)
             }
-            return LibraryItemDetail(
+            let detail = LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
                     metadata: detailMetadata(itemId: itemId, title: track.name,
@@ -516,6 +544,8 @@ final class FreeCatalogProvider: AudioProvider {
                                            duration: track.duration.map(Double.init),
                                            contentUrl: audio, metadata: nil)]),
                 userMediaProgress: nil)
+            rememberResolved(detail)
+            return detail
         }
         if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
             return try await gutenbergDetail(itemId: itemId)
