@@ -16,15 +16,6 @@ extension EnvironmentValues {
     @Entry var detailHeaderRoom: DetailHeaderRoom? = nil
 }
 
-extension View {
-    /// The page's view as the room of its head's cover (`DetailHeaderRoom`).
-    func givesDetailHeaderRoom(top: CGFloat) -> some View {
-        GeometryReader { geo in
-            environment(\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height, top: top))
-        }
-    }
-}
-
 /// THE head of every detail page with a cover (book, album, playlist,
 /// artist, show, episode, station, catalog series): the cover, under it the
 /// title and its lines, the facts, then the page's controls. Cover, title,
@@ -36,8 +27,10 @@ extension View {
 /// Where the page gives the room (`DetailHeaderRoom`), the cover is as wide
 /// as the head while everything below it down to the controls stays above
 /// the playback bar, else as large as the height leaves (`DetailCoverSide`);
-/// the cover closure receives that side. Without the room it receives nil
-/// and the page sizes the cover itself (the book page, which sizes its own).
+/// the cover closure receives that side. Only the leading column of a
+/// two-column page gives the room; without it the closure receives nil and
+/// the page sizes the cover itself (one column, and the book page, which
+/// sizes its own).
 struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View {
     /// Absent where the page names itself elsewhere (the artist, by the
     /// navigation title).

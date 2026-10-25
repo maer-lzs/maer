@@ -977,7 +977,6 @@ struct ArchiveSeriesPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
-        .givesDetailHeaderRoom(top: 12)
         .navigationTitle(Text(verbatim: FreeCatalog.normalizedCollectionTitle(
             detail?.media.metadata?.title ?? "")))
         .toolbar {

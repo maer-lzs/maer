@@ -71,23 +71,28 @@ struct DetailHeaderTests {
         }
     }
 
-    @Test("das Cover jedes Kopfs ist so gross, wie die Hoehe erlaubt", .needsTheSources)
-    func theCoverIsAsLargeAsTheRoomAllows() throws {
+    @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)
+    func theCoverGrowsOnlyInTwoColumns() throws {
         let head = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
                        encoding: .utf8))
         #expect(head.contains("DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top,"))
         #expect(head.contains("below = DetailCoverSide.settled(below, measured:"), "the kept height settles")
-        // The pages that give the room: the list frame (show, album,
-        // playlist), the episode and the catalog series.
+        // Only the leading column of the list frame (show, album, playlist)
+        // gives the room, once, on its scroll view.
         let frame = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"),
                        encoding: .utf8))
-        #expect(frame.contains(".environment(\\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height"))
-        for file in ["Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", "Sources/Views/CatalogSourcePage.swift"] {
+        #expect(frame.components(separatedBy: "detailHeaderRoom").count - 1 == 1)
+        let wide = try #require(frame.components(separatedBy: "func columns(").last?
+            .components(separatedBy: "} trailing:").first)
+        #expect(wide.contains("detailHeaderRoom"), "the room stands on the leading column")
+        // A one-column page gives none.
+        for file in ["Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", "Sources/Views/CatalogSourcePage.swift",
+                     "Sources/Views/Podcasts/PodcastShowView.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
             let text = SyncContractFenceTests.stripped(
                 try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
-            #expect(text.components(separatedBy: ".givesDetailHeaderRoom(top:").count - 1 == 1, "\(file) gives no room")
+            #expect(!text.contains("detailHeaderRoom"), "\(file) gives the room in one column")
         }
     }
 }

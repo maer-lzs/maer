@@ -172,7 +172,6 @@ struct PodcastEpisodeDetailView: View {
             // dark in either system mode: the main button's glass and label
             // read light on it, as on the book page.
             .environment(\.colorScheme, .dark)
-            .givesDetailHeaderRoom(top: 56)
         }
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)

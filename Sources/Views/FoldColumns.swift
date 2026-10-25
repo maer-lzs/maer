@@ -114,8 +114,6 @@ struct DetailListColumns<Header: View, Rows: View>: View {
     var body: some View {
         GeometryReader { geo in
             columns(geo)
-                // The page's view is the room of the head's cover.
-                .environment(\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height, top: Self.headTop))
         }
     }
 
@@ -131,6 +129,9 @@ struct DetailListColumns<Header: View, Rows: View>: View {
                 }
                 .scrollContentBackground(.hidden)
                 .reportsBottomBarScroll()
+                // The leading column is the room of the head's cover; in one
+                // column the head keeps the cover its page sizes.
+                .environment(\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height, top: Self.headTop))
             } trailing: { _ in
                 List { rows().rowsTakeTheFoldGutter() }
                     .listStyle(.plain)
@@ -153,7 +154,7 @@ struct DetailListColumns<Header: View, Rows: View>: View {
 }
 
 private extension DetailListColumns {
-    /// Where the head's cover begins in the page's view at rest: the head
-    /// is the first thing in both forms, a little below the top.
+    /// Where the head's cover begins in the leading column at rest: the
+    /// head is the first thing in it, a little below the top.
     static var headTop: CGFloat { 8 }
 }
