@@ -32,6 +32,19 @@ struct GutenbergNamesTests {
         #expect(FreeCatalog.gutenbergGenres(nil) == nil)
     }
 
+    /// The subjects of Gulliver's Travels as the kept Gutenberg stock carries
+    /// them (`gut:9272`).
+    @Test("die echte Gulliver-Kette ergibt hoechstens drei Genres, die Figur faellt")
+    func theGulliverChainGivesThreeGenresWithoutTheCharacter() {
+        let gulliver = ["Fantasy fiction", "Satire", "Travelers -- Fiction",
+                        "Gulliver, Lemuel (Fictitious character) -- Fiction",
+                        "Voyages, Imaginary -- Early works to 1800"]
+        #expect(FreeCatalog.gutenbergGenres(gulliver) == ["Fantasy fiction", "Satire", "Travelers"])
+        // The character drops even where it would stand within the limit.
+        #expect(FreeCatalog.gutenbergGenres(["Gulliver, Lemuel (Fictitious character) -- Fiction", "Satire"]) == ["Satire"])
+        #expect(FreeCatalog.gutenbergGenreLimit == 3)
+    }
+
     @Test("jeder Weg eines Gutenberg-Titels nimmt die beiden Regeln", .needsTheSources)
     func everyWayInTakesTheRules() throws {
         let provider = SyncContractFenceTests.stripped(

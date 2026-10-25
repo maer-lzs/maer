@@ -864,17 +864,23 @@ nonisolated enum FreeCatalog {
         return name.isEmpty ? nil : name
     }
 
+    /// How many genres a Gutenberg title names at most.
+    static let gutenbergGenreLimit = 3
+
     /// Gutenberg subjects as genres: the record's subject headings are chains
     /// ("Voyages, Imaginary -- Fiction"); the page shows each chain's main
-    /// heading once, in the record's order.
+    /// heading once, in the record's order, at most `gutenbergGenreLimit`. A
+    /// heading with a bracketed addition names a person or a character
+    /// ("Gulliver, Lemuel (Fictitious character)"), not a genre, and drops.
     static func gutenbergGenres(_ subjects: [String]?) -> [String]? {
         var seen = Set<String>()
         let heads = (subjects ?? []).compactMap { subject -> String? in
             let head = subject.components(separatedBy: " -- ").first?.trimmingCharacters(in: .whitespaces) ?? ""
-            guard !head.isEmpty, seen.insert(head).inserted else { return nil }
+            guard !head.isEmpty, !head.contains("("), seen.insert(head).inserted else { return nil }
             return head
         }
-        return heads.isEmpty ? nil : heads
+        let named = Array(heads.prefix(gutenbergGenreLimit))
+        return named.isEmpty ? nil : named
     }
 
     /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime). An archive
