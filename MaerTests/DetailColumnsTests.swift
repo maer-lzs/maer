@@ -112,6 +112,8 @@ struct DetailColumnsTests {
         #expect(frame.components(separatedBy: ".padding(.trailing, margin)").count - 1 == 1)
         #expect(frame.components(separatedBy: ".padding(.leading, margin)").count - 1 == 1)
         #expect(frame.contains("List { rows().rowsTakeTheFoldGutter() }"))
+        // Every division writes its numbers, so the distances can be read off the device.
+        #expect(frame.contains("Logger.library.notice(\"FOLD split band="))
         // The book page keeps the gutter at the fold: its left column, the chapter heading and rows.
         let page = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
