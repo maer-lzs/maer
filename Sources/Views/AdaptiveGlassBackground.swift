@@ -9,24 +9,10 @@ import SwiftUI
 /// buttons). Uses Apple's real `.glassEffect()` (iOS 26) where available,
 /// falling back to a material on older versions.
 ///
-/// Adapts to the color scheme: dark mode darkens the glass so light text
-/// stays readable over busy backgrounds; light mode brightens it for dark
-/// text. `forceDark` pins the dark look for elements living INSIDE the
-/// always-dark player/hero areas (cover gradient), independent of the
-/// system scheme.
-/// Cover accent shared through the environment so ALL nearby glass
-/// elements (mini player, search button, pill, detail buttons) get the
-/// same pastel wash without threading a parameter everywhere.
-private struct GlassAccentKey: EnvironmentKey {
-    static let defaultValue: Color? = nil
-}
-
-extension EnvironmentValues {
-    var glassAccent: Color? {
-        get { self[GlassAccentKey.self] }
-        set { self[GlassAccentKey.self] = newValue }
-    }
-}
+/// The glass carries no tint of its own: how clear or tinted it is follows
+/// the system's Liquid Glass setting, the same on every glass surface.
+/// `forceDark` pins the dark look of the material fallback for elements
+/// living INSIDE the always-dark player/hero areas (cover gradient).
 
 /// Glass tiering: which look a glass surface renders.
 /// `.material` (DEFAULT) = the cheap translucent look, never `glassEffect`, no
@@ -34,8 +20,8 @@ extension EnvironmentValues {
 /// few hero/control surfaces (bottom bar, sort, settings) opt into `.glass`, so
 /// the expensive glass runs on a handful of surfaces instead of ~20 (Apple's
 /// "use glass sparingly"; glass everywhere caused the bottom-bar morph hitch).
-/// `.sideColumn`: the system's glass without a cover tint, for the buttons of
-/// the side column and the playback bar beside it, as the system's own
+/// `.sideColumn`: the same glass without shadow and morph, for the buttons
+/// of the side column and the playback bar beside it, as the system's own
 /// controls stand in that strip. Below iOS 26 the bar material.
 nonisolated enum GlassTier { case material, glass, sideColumn }
 
@@ -62,10 +48,6 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     /// (default) = the cheap look. Callers opt INTO glass, never out.
     var tier: GlassTier = .material
     var forceDark: Bool = false
-    /// Optional cover accent: washed into the LIGHT glass so the element
-    /// stays distinguishable on white backgrounds. Near-white accents
-    /// (mostly white covers) are clamped to a neutral gray via luminance.
-    var lightAccent: Color? = nil
     /// Native glass-morph identity (24.07). When a `.glass` surface lives inside
     /// a `GlassEffectContainer` and carries a `morphID` + `morphNamespace`, iOS 26
     /// morphs the GLASS SHAPE itself between two surfaces sharing the id (e.g. the
@@ -77,30 +59,8 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     var morphNamespace: Namespace.ID? = nil
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.glassAccent) private var environmentAccent
 
     private var isDark: Bool { forceDark || colorScheme == .dark }
-
-    private var lightTint: Color {
-        guard let accent = lightAccent ?? environmentAccent else { return Color.white.opacity(0.3) }
-        return Self.lightGlassTint(from: accent)
-    }
-
-    /// Pastel wash of the accent for light glass; luminance guard: accents
-    /// close to white would vanish on white. Fall back to neutral gray.
-    static func lightGlassTint(from accent: Color) -> Color {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        UIColor(accent).getRed(&r, green: &g, blue: &b, alpha: &a)
-        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        if luminance > 0.72 {
-            return Color(white: 0.82).opacity(0.48)
-        }
-        // 35% accent over white → pastel, dark text stays readable.
-        // Opacity 0.3: the same value as the dark-mode tint (and the
-        // accentless white above).
-        func mix(_ v: CGFloat) -> CGFloat { v * 0.35 + 0.65 }
-        return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.3)
-    }
 
     func body(content: Content) -> some View {
         Group {
@@ -125,13 +85,6 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         // passes (a shadow is an offscreen pass, and there are ~20 material
         // callers) while its visual purpose only ever was the glass bar.
         .shadow(color: .black.opacity(tier == .glass && !isDark ? 0.12 : 0), radius: 10, y: 4)
-        // Hitch fix lever 3 (trace-backed): the tint cross-fade animated a GLASS
-        // PARAMETER per frame (`AnimatableAttribute<…UnwrappedMaterial>` 374×
-        // in a 9 s trace → per-frame backdrop re-render). Glass tint now changes
-        // WITHOUT animation; on a title change the mini player stays where it
-        // stands and takes the new tint at once. The cheap material fallback
-        // keeps the cross-fade.
-        .animation(tier == .glass ? nil : .easeInOut(duration: 0.4), value: lightTint)
     }
 
     /// Real Liquid Glass. When a morph id + namespace are given (bottom-bar
@@ -148,12 +101,12 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         if let morphID, let morphNamespace {
             content
                 .compositingGroup()
-                .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
+                .glassEffect(.regular, in: shape)
                 .glassEffectID(morphID, in: morphNamespace)
         } else {
             content
                 .compositingGroup()
-                .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
+                .glassEffect(.regular, in: shape)
         }
     }
 

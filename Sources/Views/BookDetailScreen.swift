@@ -659,13 +659,6 @@ struct BookDetailScreen: View {
                 .onDisappear { isTopPage = false }
             }
         }
-        // All glass buttons on this page share the book's cover accent.
-        // Deliberately a PAGE-LOCAL loader (this book's cover), separate
-        // from the bar's persistent loader (active item's cover). Both read
-        // the same CoverColorLoader.colorCache, so the same cover always
-        // yields the same accent. The bar itself lives outside this page and
-        // keeps its own accent + the system appearance.
-        .environment(\.glassAccent, colorLoader.accent)
         // The kept height below the cover only grows; a new window starts
         // it again (`DetailCoverSide.settled`).
         .onChange(of: geo.size) { _, _ in belowCover = 0 }

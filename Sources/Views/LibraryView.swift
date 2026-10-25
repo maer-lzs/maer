@@ -143,11 +143,6 @@ struct LibraryView: View {
     /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var systemColorScheme
-    /// Cover accent of the ACTIVE book. Shared with every glass element in
-    /// the bottom bar (mini player, search button, pill) via environment.
-    // The bar accent persists across sessions. It only ever changes
-    // cover-to-cover (see the environment wiring below).
-    @StateObject private var bottomColorLoader = CoverColorLoader(persistenceKey: AppStorageKeys.bottomBarAccent)
     /// The session the mini player showed last. The coordinator drops its
     /// model while a title change loads; the bar keeps this one in place,
     /// taking no input, until the new one is ready (`PlayerScreenContent`,
@@ -713,14 +708,6 @@ struct LibraryView: View {
                 // into the middle of the screen; ignoring the zone there means
                 // a stuck inset has nothing to lift.
                 .ignoresSafeArea(.keyboard, edges: isShowingSearch ? [] : .bottom)
-                // A title change keeps the bar in place: the accent follows
-                // the new cover where it stands. The bar used to dip below
-                // the screen for the swap; between two titles no part of it
-                // may leave.
-                .task(id: playerCoordinator.activeItem?.id) {
-                    guard let item = playerCoordinator.activeItem else { return }
-                    await bottomColorLoader.load(from: router.coverURL(item.id))
-                }
             }
         }
         // The bar's held session follows the coordinator also while the bar
@@ -736,16 +723,6 @@ struct LibraryView: View {
         .onChange(of: playerCoordinator.viewModel.map(ObjectIdentifier.init)) {
             if miniContent == .player { miniShown = runningSession }
         }
-        // Hoisted OUTSIDE the bottom row so the toolbar buttons (sort,
-        // settings) inherit the same cover accent as the glass elements in
-        // the bottom row. The detail page overrides it with its own loader.
-        // The accent only ever changes COVER TO COVER. On an item
-        // switch the old accent stands until the new one finished loading;
-        // session end / pause / restore never reset it (hasAccent stays true,
-        // and persists across restarts); neutral is only the first-run state
-        // before anything ever played. The bar follows the SYSTEM appearance,
-        // never the page (bar = app chrome; no page-driven forceDark).
-        .environment(\.glassAccent, bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil)
         // Pass the free-space height to ALL contents (also pushed screens); 0 on
         // the full player (it covers everything).
         // Constant reserve per composition (full player covers everything → 0;
@@ -1855,14 +1832,13 @@ struct LibraryView: View {
     }
 
     /// Toolbar icon on our OWN adaptive glass circle, treated EXACTLY like
-    /// every other glass element (mini player, search button): shared cover
-    /// accent in light mode, dark glass in dark mode.
+    /// every other glass element (mini player, search button).
     ///
     /// Toolbar content runs in its OWN environment that does not reliably
     /// carry our values (color scheme reported dark in light mode → black
-    /// glass with white icon; `\.glassAccent` absent; menu labels tinted
-    /// with the app accent → orange symbol). Everything the glass and icon
-    /// need is therefore pinned/passed EXPLICITLY here.
+    /// glass with white icon; menu labels tinted with the app accent →
+    /// orange symbol). Everything the glass and icon need is therefore
+    /// pinned EXPLICITLY here.
     private func toolbarGlassIcon(_ systemName: String) -> some View {
         // The icon is the OTHER render site of `collapsed`. It observes via
         // its own reader leaf, so the flip never touches the tab container.
@@ -1870,11 +1846,7 @@ struct LibraryView: View {
         Image(systemName: systemName)
             .foregroundStyle(.primary)
             .frame(width: 40, height: 40)
-            .modifier(AdaptiveGlassBackground(
-                shape: Circle(),
-                tier: .glass,
-                lightAccent: bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil
-            ))
+            .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
             .environment(\.colorScheme, systemColorScheme)
             // Menu renders its label via tint (ignoring foregroundStyle).
             .tint(.primary)
