@@ -66,6 +66,7 @@ struct PlaylistCardSource: Identifiable {
 struct PlaylistCard: View {
     let source: PlaylistCardSource
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.pushMusicRoute) private var pushMusicRoute
     @State private var showRename = false
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
@@ -197,10 +198,20 @@ struct PlaylistCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: shownCovers.first) { await colorLoader.load(from: shownCovers.first) }
         .contextMenu {
-            if offersShuffle {
-                ShufflePlayButton(playerCoordinator: playerCoordinator,
-                                  style: .menuItem, pool: source.shufflePool)
-            }
+            // The entries every album and playlist tile offers; the queue
+            // and the playlist take the list's songs. A list without a
+            // track offers nothing to play, the same gate as the corner.
+            CollectionMenuItems(
+                playerCoordinator: playerCoordinator, itemId: source.id,
+                isPlayable: offersShuffle,
+                play: { await source.open(playerCoordinator) },
+                queueIds: { await source.shufflePool().map(\.id) },
+                songs: source.shufflePool,
+                addEntries: {
+                    let songs = await source.shufflePool()
+                    return (songs.map(\.id), Dictionary(songs.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first }))
+                },
+                details: { pushMusicRoute(source.detailRoute) })
             // A server playlist downloads as one, like an album.
             // A Mär list holds single songs and has no download of its own.
             if !source.isDeviceList {

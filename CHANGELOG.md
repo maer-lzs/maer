@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**One menu for albums and playlists.** A long press on an album or a
+playlist, from your server or from an open catalog, offers Play, Play
+Next, Play Last, Shuffle, Add to Playlist and Details, in the same
+order everywhere. Before, each kind of tile offered a different part
+of these.
+
 **The card of a playlist on your devices shows its covers.** The card
 could stay a plain colour while the playlist's page showed the mosaic,
 when the card was drawn before your music server answered. Card and

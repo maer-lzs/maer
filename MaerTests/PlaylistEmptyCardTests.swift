@@ -38,8 +38,10 @@ struct PlaylistEmptyCardTests {
         // Beide Zufalls-Wege haengen am selben Tor: die Ecke der Karte und
         // der Eintrag im Kontextmenue. Zwei Tore waeren zwei Wahrheiten.
         #expect(code.contains("PlaylistPresentation.offersShuffle(trackCount:"))
-        #expect(code.components(separatedBy: "if offersShuffle {").count - 1 == 2,
-                "die zwei Zufalls-Wege haengen nicht am selben Tor")
+        #expect(code.components(separatedBy: "if offersShuffle {").count - 1 == 1,
+                "die Ecke haengt nicht am Tor")
+        #expect(code.components(separatedBy: "isPlayable: offersShuffle,").count - 1 == 1,
+                "das Menue (Abspielen, Als Naechstes, Zufaellig) haengt nicht am selben Tor wie die Ecke")
         // Der Weg HINEIN bleibt: eine leere Liste ist keine Sackgasse.
         #expect(code.contains("CardDetailPill(value: source.detailRoute)"))
     }

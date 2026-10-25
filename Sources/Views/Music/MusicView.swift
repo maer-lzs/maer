@@ -15,6 +15,7 @@ import Combine
 struct MusicView: View {
     @Environment(\.itemRouter) private var router
     @Environment(\.pushMusicRoute) private var pushRoute
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
@@ -322,9 +323,11 @@ struct MusicView: View {
                         })
                     .cardRowSlot(spacing: 14)
                     .contextMenu {
-                        Button {
-                            Task { await playerCoordinator.open(item: item) }
-                        } label: { Label("Play", systemImage: "play.fill") }
+                        CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router) {
+                            CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
+                                                    pushMusicRoute: { pushRoute($0) },
+                                                    pushFreeAudiobooksRoute: { pushFreeAudiobooksRoute($0) })
+                        }
                     }
                 }
             }
@@ -584,7 +587,7 @@ struct AlbumCell: View {
             .frame(width: width, alignment: .leading)
         }
         .buttonStyle(.plain)
-        .musicItemMenu(item: item, playerCoordinator: playerCoordinator)
+        .musicItemMenu(item: item, playerCoordinator: playerCoordinator, isAlbum: true)
     }
 }
 
@@ -605,9 +608,88 @@ private struct MusicLibraryDeck: View {
 extension View {
     /// Context menu for a music album/song. Mirrors the podcast/book
     /// menus. Play + Play Next/Last (global Up-Next queue) +
-    /// Add to Playlist + download/delete.
-    func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
-        modifier(MusicItemMenu(item: item, playerCoordinator: playerCoordinator))
+    /// Add to Playlist + download/delete. An album (`isAlbum`) takes the
+    /// collection entries (`CollectionMenuItems`).
+    func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
+                       isAlbum: Bool = false) -> some View {
+        modifier(MusicItemMenu(item: item, playerCoordinator: playerCoordinator, isAlbum: isAlbum))
+    }
+}
+
+/// THE long-press entries of an album or a playlist tile: Play, Play Next,
+/// Play Last, Shuffle, Add to Playlist and Details, in this order wherever
+/// such a tile stands (the album cell, the playlist card). The tile hands
+/// in what each entry does in its world; the entries live here once.
+struct CollectionMenuItems: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// The collection's id: the gate of the queue and playlist entries.
+    let itemId: String
+    /// Whether it can play now; adding and the details stay either way.
+    var isPlayable = true
+    let play: () async -> Void
+    /// What the queue takes: an album as its one entry, a playlist as its
+    /// songs.
+    let queueIds: () async -> [String]
+    /// The songs Shuffle draws from.
+    let songs: () async -> [LibraryItem]
+    /// The entries Add to Playlist adds; nil adds the collection itself
+    /// under `knownTitles`.
+    var addEntries: (() async -> (ids: [String], titles: [String: String]))? = nil
+    var knownTitles: [String: String] = [:]
+    /// A single song has nothing to shuffle.
+    var offersShuffle = true
+    /// Opens the collection's page or detail sheet, as its tile's tap does.
+    let details: @MainActor () -> Void
+
+    var body: some View {
+        if isPlayable {
+            Button {
+                Task { await play() }
+            } label: { Label("Play", systemImage: "play.fill") }
+            if PlayQueue.canEnqueue(itemId) {
+                Button {
+                    Task { for id in await queueIds().reversed() { PlayQueue.shared.playNext(id) } }
+                } label: { Label("Play Next", systemImage: "text.insert") }
+                Button {
+                    Task { for id in await queueIds() { PlayQueue.shared.playLast(id) } }
+                } label: { Label("Play Last", systemImage: "text.append") }
+            }
+            if offersShuffle {
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .menuItem, pool: songs)
+            }
+        }
+        AddToPlaylistButton(itemId: itemId, knownTitles: knownTitles, resolve: addEntries)
+        Button {
+            details()
+        } label: { Label("Details", systemImage: "info.circle") }
+    }
+}
+
+extension CollectionMenuItems {
+    /// The entries of a catalogue music tile: an archive album shuffles
+    /// its songs, which its detail counts; anything else (an archive track,
+    /// a Jamendo title) offers no shuffle. The queue and the playlist take
+    /// the title as its one entry, as for a server album.
+    static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator, router: ItemRouter,
+                        details: @escaping @MainActor () -> Void) -> CollectionMenuItems {
+        CollectionMenuItems(
+            playerCoordinator: playerCoordinator, itemId: item.id,
+            play: { await playerCoordinator.open(item: item) },
+            queueIds: { [item.id] },
+            songs: {
+                // A missing detail is bearable, because an empty pool starts nothing.
+                let detail = try? await router.provider(item.id).fetchItemDetail(itemId: item.id)
+                return await FreeCatalogProvider.shared.albumSongs(
+                    albumId: item.id, count: detail?.media.tracks?.count ?? 0).songs
+            },
+            knownTitles: [item.id: item.title],
+            offersShuffle: shuffles(catalog: item.id),
+            details: details)
+    }
+
+    /// Whether a catalogue title has songs to shuffle: an archive album.
+    nonisolated static func shuffles(catalog id: String) -> Bool {
+        id.hasPrefix(FreeCatalog.archivePrefix) && !CatalogSongID.isSong(id)
     }
 }
 
@@ -617,10 +699,12 @@ extension View {
 private struct MusicItemMenu: ViewModifier {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    let isAlbum: Bool
     private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     @Environment(\.isOnline) private var isOnline
     @Environment(\.itemRouter) private var router
+    @Environment(\.pushMusicRoute) private var pushRoute
 
     func body(content: Content) -> some View {
         content
@@ -628,27 +712,38 @@ private struct MusicItemMenu: ViewModifier {
                 let isPlayable = MediaAvailability.canPlayNow(
                     isConnected: isOnline,
                     isDownloaded: downloads.isDownloaded(itemId: item.id))
-                if isPlayable {
-                    Button {
-                        Task { await playerCoordinator.open(item: item) }
-                    } label: { Label("Play", systemImage: "play.fill") }
-                    // Global Up-Next queue. An album is one multi-track item, so
-                    // queuing it enqueues the whole album as a single entry that
-                    // plays its songs as a group (same actions as book/podcast).
-                    Button {
-                        PlayQueue.shared.playNext(item.id)
-                    } label: { Label("Play Next", systemImage: "text.insert") }
-                    Button {
-                        PlayQueue.shared.playLast(item.id)
-                    } label: { Label("Play Last", systemImage: "text.append") }
+                if isAlbum {
+                    // An album is one multi-track item: the queue takes it
+                    // as one entry that plays its songs as a group, Shuffle
+                    // draws from its songs.
+                    CollectionMenuItems(
+                        playerCoordinator: playerCoordinator, itemId: item.id,
+                        isPlayable: isPlayable,
+                        play: { await playerCoordinator.open(item: item) },
+                        queueIds: { [item.id] },
+                        songs: { await AppSession.shared.musicProvider(for: item.id).songItems(forItemId: item.id) },
+                        knownTitles: [item.id: item.title],
+                        details: { pushRoute(.album(item)) })
+                } else {
+                    if isPlayable {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                        // Global Up-Next queue (same actions as book/podcast).
+                        Button {
+                            PlayQueue.shared.playNext(item.id)
+                        } label: { Label("Play Next", systemImage: "text.insert") }
+                        Button {
+                            PlayQueue.shared.playLast(item.id)
+                        } label: { Label("Play Last", systemImage: "text.append") }
+                    }
+                    // ONE action, both worlds. The two targets used to sit here
+                    // as two entries, and which one you got depended on the
+                    // surface you long-pressed. The sheet states the choice
+                    // instead, and leaves out what the entry cannot reach.
+                    AddToPlaylistButton(itemId: item.id,
+                                        knownTitles: [item.id: item.title])
                 }
-
-                // ONE action, both worlds. The two targets used to sit here
-                // as two entries, and which one you got depended on the
-                // surface you long-pressed. The sheet states the choice
-                // instead, and leaves out what the entry cannot reach.
-                AddToPlaylistButton(itemId: item.id,
-                                    knownTitles: [item.id: item.title])
                 // The "Listen Again" grip for a catalogue title: the marker
                 // hides it until newer progress arrives, the position stays
                 // (the same marker family the Continue cards use, travels).

@@ -55,6 +55,7 @@ struct BrowseRow: View {
     var area: BrowseSection.Group? = nil
     @Environment(\.pushMusicRoute) private var pushMusicRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.itemRouter) private var router
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -105,10 +106,11 @@ struct BrowseRow: View {
                 })
                 .stackedKind(marksKinds ? .music : nil)
                 .contextMenu {
-                    Button {
-                        Task { await playerCoordinator.open(item: item) }
-                    } label: { Label("Play", systemImage: "play.fill") }
-                    CatalogDetailsButton(itemId: item.id)
+                    CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router) {
+                        CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
+                                                pushMusicRoute: pushMusicRoute,
+                                                pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+                    }
                 }
         case .catalog(let tile):
             CatalogMixTile(tile: tile, marksKind: marksKinds, playerCoordinator: playerCoordinator)
