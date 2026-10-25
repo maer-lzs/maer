@@ -1099,15 +1099,14 @@ struct ArchiveSeriesPage: View {
     }
 
     /// The album's tracks as the items they are (`CatalogSongID`), in order,
-    /// each resolved through the one door for ids.
+    /// from the catalogue's one list of a release's songs. A song that does
+    /// not resolve is named in the log with its count; the rest plays.
     private func albumSongs() async -> [LibraryItem] {
-        var songs: [LibraryItem] = []
-        for index in tracks.indices {
-            if let song = await AppSession.shared.resolveItem(forId: CatalogSongID.make(album: itemId, index: index)) {
-                songs.append(song)
-            }
+        let answer = await FreeCatalogProvider.shared.albumSongs(albumId: itemId, count: tracks.count)
+        if !answer.missing.isEmpty {
+            Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(tracks.count) first=\(answer.missing[0]) ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
         }
-        return songs
+        return answer.songs
     }
 
     /// "07.12.1948 · 29 Min.": date in the user's format, duration in

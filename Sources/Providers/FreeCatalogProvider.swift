@@ -407,11 +407,58 @@ final class FreeCatalogProvider: AudioProvider {
                             index: Int) async throws -> LibraryItemDetail {
         let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+        guard let detail = songDetail(songId: songId, identifier: identifier, meta: meta, index: index) else {
+            throw URLError(.resourceUnavailable)
+        }
+        return detail
+    }
+
+    /// Every track of a release as the song item it is (`CatalogSongID`), in
+    /// order: a song the session already holds as it is, the others built
+    /// from ONE metadata answer for the whole release. `missing` names the
+    /// indices that built nothing (past the release's files, or no answer);
+    /// the caller says them, a song never drops out silently. `metadata`:
+    /// the answer, a witness hands in its own.
+    func albumSongs(albumId: String, count: Int,
+                    metadata: ((String) async throws -> ArchiveDecoder.MetadataResponse)? = nil)
+        async -> (songs: [LibraryItem], missing: [Int]) {
+        let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
+        var meta: ArchiveDecoder.MetadataResponse?
+        var asked = false
+        var songs: [LibraryItem] = []
+        var missing: [Int] = []
+        for index in 0..<max(count, 0) {
+            let songId = CatalogSongID.make(album: albumId, index: index)
+            if let held = itemsById[songId], !(held.media?.tracks ?? []).isEmpty {
+                songs.append(held)
+                continue
+            }
+            if !asked {
+                asked = true
+                do {
+                    meta = try await (metadata ?? { try await ArchiveOrgClient.metadata(identifier: $0) })(identifier)
+                } catch {
+                    Logger.library.error("CATALOG album songs, release answer failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+            if let meta, let detail = songDetail(songId: songId, identifier: identifier, meta: meta, index: index) {
+                songs.append(LibraryItem(id: songId, media: detail.media, addedAt: nil))
+            } else {
+                missing.append(index)
+            }
+        }
+        return (songs, missing)
+    }
+
+    /// One song built from its release's metadata answer; nil past the end
+    /// of the release's playable files.
+    private func songDetail(songId: String, identifier: String,
+                            meta: ArchiveDecoder.MetadataResponse, index: Int) -> LibraryItemDetail? {
         let files = FreeCatalog.preferredAudioFiles(meta.files ?? [])
             .sorted { FreeCatalog.orderKey($0) < FreeCatalog.orderKey($1) }
-        guard index < files.count else { throw URLError(.resourceUnavailable) }
+        guard index < files.count else { return nil }
         let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: files)
-        guard index < tracks.count else { throw URLError(.resourceUnavailable) }
+        guard index < tracks.count else { return nil }
         let file = files[index]
         let track = tracks[index]
         // The song starts at zero. It is the whole item now, not a section.
