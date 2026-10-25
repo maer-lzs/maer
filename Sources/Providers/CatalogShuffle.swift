@@ -58,7 +58,13 @@ enum CatalogShuffle {
     }
 
     /// Draw from Jamendo (no random order there. Random offset instead).
+    /// Without a client_id the draw asks nothing and names that cause.
     static func playJamendo(tags: [String] = [], coordinator: PlayerCoordinator) async {
+        if let missing = jamendoMissing(clientId: JamendoClient.clientId()) {
+            Logger.library.notice("SHUFFLE jamendo: no client_id")
+            sayFailure(missing, coordinator: coordinator, title: String(localized: "Music (Jamendo)"))
+            return
+        }
         let offset = Int.random(in: 0..<600)
         do {
             let tracks = try await JamendoClient.popularTracks(limit: batch, tags: tags, offset: offset)
@@ -72,6 +78,14 @@ enum CatalogShuffle {
             sayFailure(ErrorSentence.of(error), coordinator: coordinator,
                        title: String(localized: "Music (Jamendo)"))
         }
+    }
+
+    /// The sentence a Jamendo draw says when the build and the listener
+    /// carry no client_id; nil when one is there.
+    nonisolated static func jamendoMissing(clientId: String?) -> String? {
+        clientId == nil
+            ? String(localized: "Jamendo is not set up in this build. You can enter your own client_id under External Sources.")
+            : nil
     }
 
     /// The stock behind each book query, learned from the first answer of

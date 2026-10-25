@@ -13,7 +13,9 @@ instead of waiting for the ones before it.
 **Play something at random shows that it is working.** On a catalog
 page, the menu shows a spinner while the random pick waits for its
 catalog, which for Project Gutenberg can take half a minute. Leaving
-the page cancels the pick, and nothing starts afterwards.
+the page cancels the pick, and nothing starts afterwards. Where the
+app has no Jamendo key, a random pick from Jamendo now says so and
+where to enter your own, instead of saying it found nothing.
 
 **One menu for albums and playlists.** A long press on an album or a
 playlist, from your server or from an open catalog, offers Play, Play

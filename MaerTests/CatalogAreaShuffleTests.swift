@@ -25,6 +25,24 @@ struct CatalogAreaShuffleTests {
         #expect(CatalogShuffle.bookQuery(for: .oerr, languageCodes: ["de"]) == nil)
     }
 
+    @Test("ohne Jamendo-Schluessel nennt der Wurf die Ursache, im Menue und am Reihenknopf", .needsTheSources)
+    func aJamendoDrawWithoutKeyNamesTheCause() throws {
+        let sentence = try #require(CatalogShuffle.jamendoMissing(clientId: nil))
+        #expect(sentence.contains("Jamendo"))
+        #expect(sentence != String(localized: "Shuffle found nothing to play this time. Please try again."))
+        #expect(CatalogShuffle.jamendoMissing(clientId: "key") == nil)
+        let shuffle = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/CatalogShuffle.swift"), encoding: .utf8))
+        let jamendo = try #require(shuffle.components(separatedBy: "static func playJamendo(").last?
+            .components(separatedBy: "JamendoClient.popularTracks").first)
+        #expect(jamendo.contains("if let missing = jamendoMissing(clientId: JamendoClient.clientId())"),
+                "the draw asks Jamendo without a key and says it found nothing")
+        // The menu and the row button run the one draw.
+        let layout = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TabContentLayout.swift"), encoding: .utf8))
+        #expect(layout.contains("Task { await CatalogShuffle.playJamendo(tags: tags, coordinator: coordinator) }"))
+    }
+
     /// What the ends of a book draw were asked.
     @MainActor private final class Ends {
         var opened: [String] = []

@@ -5239,6 +5239,16 @@
         }
       }
     },
+    "Jamendo is not set up in this build. You can enter your own client_id under External Sources." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamendo ist in diesem Bau nicht eingerichtet. Eine eigene client_id lässt sich unter Externe Quellen eintragen."
+          }
+        }
+      }
+    },
     "Japan" : {
       "localizations" : {
         "de" : {

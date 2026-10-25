@@ -197,10 +197,11 @@ struct FreeCatalogTests {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Providers/CatalogShuffle.swift") })
         let source = try String(contentsOf: file, encoding: .utf8)
-        // The three catch blocks and both empty draws reach the notice channel;
-        // the book draw through its handed-in end, which the live draw ties to it.
-        #expect(source.components(separatedBy: "sayFailure(").count - 1 == 5,
-                "two music catch blocks, the empty music draw, the book draw's end and the definition")
+        // The three catch blocks, both empty draws and a Jamendo draw without
+        // a key reach the notice channel; the book draw through its handed-in
+        // end, which the live draw ties to it.
+        #expect(source.components(separatedBy: "sayFailure(").count - 1 == 6,
+                "two music catch blocks, the missing key, the empty music draw, the book draw's end and the definition")
         #expect(source.contains("guard !items.isEmpty else {\n            sayFailure("))
         #expect(source.contains("fail: { sayFailure($0, coordinator: coordinator, title: source.title) }"))
         #expect(source.contains("guard let pick = items.randomElement() else {\n                fail("))
