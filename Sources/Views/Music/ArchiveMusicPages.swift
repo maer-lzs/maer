@@ -125,16 +125,14 @@ struct ArchiveMusicPage: View {
             }
         }
         .navigationTitle(Text(area.title))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) }
-                } label: {
-                    Image(systemName: "shuffle")
-                }
-                .accessibilityLabel(Text("Play something at random"))
-                .accessibilityIdentifier("catalog-shuffle")
+        // Shuffle stands in the page's one menu.
+        .pageActions("catalog-actions") {
+            Button {
+                Task { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) }
+            } label: {
+                Label("Play something at random", systemImage: "shuffle")
             }
+            .accessibilityIdentifier("catalog-shuffle")
         }
         .task {
             async let stockTask: Void = CatalogStockService.shared.ensureStock(

@@ -226,50 +226,44 @@ struct MusicAlbumView: View {
             }
         }
         .untitledDetailPage()
-        .toolbar {
-            // Page actions inboard, the settings cog OUTERMOST. Declared
-            // last so it sits at the trailing edge and never vanishes behind
-            // download/favorite (the root cog doesn't propagate to pushed pages).
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                AlbumDownloadButton(itemId: item.id, detail: detail,
-                                    provider: detail.map { router.provider($0.id) })
-                if isAlbum {
-                    Button {
-                        // The heart turns at the tap; a server that does not
-                        // take it turns it back and says so.
-                        let target = !starred
-                        starred = target
-                        Task {
-                            let done = await FetchAnswer.of("favorite", logger: .music) {
-                                try await music.setStar(itemId: item.id, starred: target)
-                            }
-                            if done.failed {
-                                starred = !target
-                                actionFailed = true
-                            }
+        // Download, favorite and the playlist's own actions stand in the
+        // page's one menu.
+        .pageActions(isPlaylist ? "playlist-actions" : "album-actions",
+                     shown: isAlbum || isPlaylist || detail != nil) {
+            AlbumDownloadMenuItems(itemId: item.id, detail: detail,
+                                   provider: detail.map { router.provider($0.id) },
+                                   isOnline: isOnline)
+            if isAlbum {
+                Button {
+                    // The entry names the state it changes; a server that
+                    // does not take the change turns it back and says so.
+                    let target = !starred
+                    starred = target
+                    Task {
+                        let done = await FetchAnswer.of("favorite", logger: .music) {
+                            try await music.setStar(itemId: item.id, starred: target)
                         }
-                    } label: {
-                        Image(systemName: starred ? "heart.fill" : "heart")
+                        if done.failed {
+                            starred = !target
+                            actionFailed = true
+                        }
                     }
-                    .tint(starred ? .red : nil)
-                    // The state rides on the picture alone otherwise:
-                    // VoiceOver says the name and whether it is on.
-                    .accessibilityLabel(Text("Favorite"))
-                    .accessibilityAddTraits(starred ? .isSelected : [])
+                } label: {
+                    if starred {
+                        Label("Remove Favorite", systemImage: "heart.slash")
+                    } else {
+                        Label("Add Favorite", systemImage: "heart")
+                    }
                 }
-                if isPlaylist {
-                    Menu {
-                        Button {
-                            renameText = item.title
-                            showRename = true
-                        } label: { Label("Rename Playlist", systemImage: "pencil") }
-                        Button(role: .destructive) {
-                            showDeleteConfirm = true
-                        } label: { Label("Delete Playlist", systemImage: "trash") }
-                    } label: { Image(systemName: "ellipsis.circle") }
-                    .accessibilityLabel(Text("Actions"))
-                    .accessibilityIdentifier("playlist-actions")
-                }
+            }
+            if isPlaylist {
+                Button {
+                    renameText = item.title
+                    showRename = true
+                } label: { Label("Rename Playlist", systemImage: "pencil") }
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: { Label("Delete Playlist", systemImage: "trash") }
             }
         }
         .alert("Rename Playlist", isPresented: $showRename) {
@@ -486,14 +480,13 @@ struct MusicAlbumView: View {
 /// one grip for the file instead of one per view.
 @MainActor private var albumDownloads: DownloadManager { DownloadManager.shared }
 
-/// The album's download control in the toolbar: done (a state, not a
-/// control), running (the shared ring, tap cancels), or the offer to
-/// download. Done behaves like the finished episode control: it shows that
-/// the album is here and does nothing when tapped; the album is deleted from
-/// the long press menu of its tracks (`AlbumDownloadMenuItems`). It observes
-/// the manager so a progress publish re-runs this button, never the track
-/// list.
-private struct AlbumDownloadButton: View {
+/// The album's download entries, in the page's menu, the cover's long press
+/// and every track's context menu: delete when the album is stored, cancel
+/// while it loads, otherwise the offer while online. Its own observer of the
+/// stock and of this album's phase, so the entries show the current state
+/// whenever they are built, and a progress publish re-runs these entries
+/// instead of the whole list.
+private struct AlbumDownloadMenuItems: View {
     private let downloadManager = albumDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
@@ -501,58 +494,25 @@ private struct AlbumDownloadButton: View {
     let detail: LibraryItemDetail?
     /// The source that produced `detail`, resolved by the page.
     let provider: (any AudioProvider)?
+    let isOnline: Bool
 
-    init(itemId: String, detail: LibraryItemDetail?, provider: (any AudioProvider)?) {
+    init(itemId: String, detail: LibraryItemDetail?, provider: (any AudioProvider)?, isOnline: Bool) {
         self.itemId = itemId
         self.detail = detail
         self.provider = provider
+        self.isOnline = isOnline
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
     }
-
-    var body: some View {
-        if downloadManager.isDeletableDownload(itemId: itemId) {
-            // The app's one downloaded mark. A tap does nothing; a long
-            // press offers the track rows' own delete entry.
-            DownloadedMark(size: .large)
-                .contextMenu {
-                    // Stored, so the entries show delete whatever the network.
-                    AlbumDownloadMenuItems(itemId: itemId, detail: detail,
-                                           provider: provider, isOnline: false)
-                }
-                .accessibilityLabel(Text("Downloaded"))
-                .accessibilityAction(named: Text("Delete Download")) {
-                    downloadManager.deleteDownload(itemId: itemId)
-                }
-        } else if case .downloading(let fraction) = downloadManager.phase[itemId] {
-            // Show the actual progress (ring) instead of a bare stop icon;
-            // tapping still cancels.
-            CancelDownloadRing(fraction: fraction) {
-                downloadManager.cancelDownload(itemId: itemId)
-            }
-        }
-        // Not downloaded: nothing here. The outline arrow beside the stored
-        // mark read as "download"; downloading is an entry of the cover's
-        // long press and of every track row's menu.
-    }
-}
-
-/// The download entries of a track's context menu: delete when the album is
-/// stored, otherwise the offer while online. Its own observer, so the menu
-/// shows the current state whenever it is built, and a progress publish
-/// re-runs these entries instead of the whole list.
-private struct AlbumDownloadMenuItems: View {
-    private let downloadManager = albumDownloads
-    @ObservedObject private var downloadStock = DownloadManager.stock
-    let itemId: String
-    let detail: LibraryItemDetail?
-    let provider: (any AudioProvider)?
-    let isOnline: Bool
 
     var body: some View {
         if downloadManager.isDeletableDownload(itemId: itemId) {
             Button(role: .destructive) {
                 downloadManager.deleteDownload(itemId: itemId)
             } label: { Label("Delete Download", systemImage: "trash") }
+        } else if case .downloading = downloadProgress.phase {
+            Button {
+                downloadManager.cancelDownload(itemId: itemId)
+            } label: { Label("Cancel Download", systemImage: "xmark.circle") }
         } else if let detail, let provider, isOnline,
                   MediaDownloadOffer.isPossible(provider.capabilities) {
             Button {

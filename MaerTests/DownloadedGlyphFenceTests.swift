@@ -101,9 +101,9 @@ struct DownloadedGlyphFenceTests {
         #expect(literal == ["CoverBadge.swift: static let symbol = \"arrow.down.circle.fill\""],
                 "the symbol is written once, as the mark's constant: \(literal)")
         // The tiles and cards draw it through their one view of marks; the
-        // row cover, the episode control and the album page draw it there.
+        // row cover and the episode control draw it there.
         #expect(marks == ["CoverGlyphStack.swift": 1, "MediaRowContent.swift": 1,
-                          "PodcastComponents.swift": 1, "MusicAlbumView.swift": 1],
+                          "PodcastComponents.swift": 1],
                 "the places draw the one mark: \(marks)")
         let badge = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "CoverBadge.swift" })
         let mark = try #require(functionBody(of: "struct DownloadedMark: View {",

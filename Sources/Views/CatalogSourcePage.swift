@@ -990,16 +990,10 @@ struct ArchiveSeriesPage: View {
             }
         }
         .untitledDetailPage()
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    // Queueing the whole release belongs here; a single track
-                    // carries its own buttons in its row.
-                    CatalogQueueButtons(itemId: itemId)
-                } label: { Image(systemName: "ellipsis.circle") }
-                .accessibilityLabel(Text("Actions"))
-                .accessibilityIdentifier("album-actions")
-            }
+        // Queueing the whole release belongs in the page's menu; a single
+        // track carries its own buttons in its row.
+        .pageActions("album-actions") {
+            CatalogQueueButtons(itemId: itemId)
         }
         .task {
             async let kopf: Void = loadQuickHeader()

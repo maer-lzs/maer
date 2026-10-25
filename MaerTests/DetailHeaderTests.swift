@@ -142,6 +142,41 @@ struct DetailHeaderTests {
         }
     }
 
+    /// The pages whose actions stand in the top bar and how many menus each
+    /// file builds there (the music library file: the device playlist).
+    static let pagesWithActions: [String: Int] = [
+        "Sources/Views/Music/MusicAlbumView.swift": 1,
+        "Sources/Views/Podcasts/PodcastShowView.swift": 1,
+        "Sources/Views/Podcasts/PodcastEpisodeDetailView.swift": 1,
+        "Sources/Views/Music/ArchiveMusicPages.swift": 1,
+        "Sources/Views/Music/MusicLibraryPages.swift": 1,
+        "Sources/Views/CatalogSourcePage.swift": 1,
+    ]
+
+    @Test("eine Seite hat einen Ort fuer ihre Handlungen: das Menue oben, kein Zeichen daneben", .needsTheSources)
+    func aPageHasOnePlaceForItsActions() throws {
+        for (file, menus) in Self.pagesWithActions {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
+            #expect(text.components(separatedBy: ".pageActions(").count - 1 == menus,
+                    "\(file) builds its menu another way")
+            #expect(!text.contains("ToolbarItem(") && !text.contains("ToolbarItemGroup("),
+                    "\(file) puts a control of its own in the top bar")
+        }
+        // The menu is built in one place, with its name for VoiceOver.
+        var menus: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
+            if SyncContractFenceTests.stripped(text).contains("Image(systemName: \"ellipsis.circle\")") { menus.append(name) }
+        }
+        #expect(menus == ["DetailHeader.swift"], "a page builds its own actions menu: \(menus)")
+        let head = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
+                       encoding: .utf8))
+        let place = try #require(head.components(separatedBy: "func pageActions<").last)
+        #expect(place.contains("ToolbarItem(placement: .topBarTrailing) {"), "the menu left the system's place")
+        #expect(place.contains(".accessibilityLabel(Text(\"Actions\"))"), "the menu has no name")
+    }
+
     @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)
     func theCoverGrowsOnlyInTwoColumns() throws {
         let head = SyncContractFenceTests.stripped(

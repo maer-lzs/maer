@@ -1017,29 +1017,25 @@ struct MaerPlaylistPage: View {
         }
         .environment(\.editMode, $editMode)
         .untitledDetailPage()
-        .toolbar {
-            // The page's actions stand in one place, its menu; editing too.
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        withAnimation { editMode = editMode.isEditing ? .inactive : .active }
-                    } label: {
-                        if editMode.isEditing {
-                            Label("Done", systemImage: "checkmark")
-                        } else {
-                            Label("Edit", systemImage: "arrow.up.arrow.down")
-                        }
-                    }
-                    .accessibilityIdentifier("playlist-edit")
-                    Button {
-                        newName = playlist?.name ?? ""
-                        renaming = true
-                    } label: { Label("Rename", systemImage: "pencil") }
-                    Button(role: .destructive) {
-                        store.delete(playlistId: playlistId)
-                    } label: { Label("Delete", systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis.circle") }
+        // The page's actions stand in one place, its menu; editing too.
+        .pageActions("maer-playlist-actions") {
+            Button {
+                withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+            } label: {
+                if editMode.isEditing {
+                    Label("Done", systemImage: "checkmark")
+                } else {
+                    Label("Edit", systemImage: "arrow.up.arrow.down")
+                }
             }
+            .accessibilityIdentifier("playlist-edit")
+            Button {
+                newName = playlist?.name ?? ""
+                renaming = true
+            } label: { Label("Rename", systemImage: "pencil") }
+            Button(role: .destructive) {
+                store.delete(playlistId: playlistId)
+            } label: { Label("Delete", systemImage: "trash") }
         }
         .alert("Rename", isPresented: $renaming) {
             TextField("Name", text: $newName)

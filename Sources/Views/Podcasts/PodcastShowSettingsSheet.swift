@@ -7,14 +7,13 @@ import SwiftUI
 import Combine
 import UIKit
 
-/// The slider that opens a show's settings. One button for the show page and
-/// the episode page, so both carry the same sign and VoiceOver hears a word.
+/// The entry that opens a show's settings, in the page's menu. One entry for
+/// the show page and the episode page, so both carry the same word and sign.
 struct PodcastShowSettingsButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { Image(systemName: "slider.horizontal.3") }
-            .accessibilityLabel(Text("Settings"))
+        Button(action: action) { Label("Settings", systemImage: "slider.horizontal.3") }
     }
 }
 

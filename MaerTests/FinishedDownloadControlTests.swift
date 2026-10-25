@@ -9,10 +9,9 @@ import Foundation
 @testable import Maer
 
 /// A finished download control shows a state and deletes nothing when
-/// tapped, for the album and the episode alike. The album's control deleted
-/// the whole album on a tap; deleting now lives in the long press menu, on
-/// the track rows and on the bar glyph itself, and in the glyph's named
-/// VoiceOver action.
+/// tapped. The album has no control of its own: its download entries stand
+/// in the page's menu, the cover's long press and every track's menu, and
+/// deleting is a named entry there.
 struct FinishedDownloadControlTests {
     /// The delete calls of a body that no VoiceOver action carries: the
     /// line before each call must open `.accessibilityAction(named:`.
@@ -41,33 +40,29 @@ struct FinishedDownloadControlTests {
         return try String(contentsOf: file, encoding: .utf8)
     }
 
-    @Test("ein fertiger Download-Knopf loescht nichts, Album wie Folge", .needsTheSources)
+    @Test("ein fertiger Download-Knopf loescht nichts", .needsTheSources)
     func aFinishedControlDeletesNothing() throws {
-        let controls = [("Views/Music/MusicAlbumView.swift", "AlbumDownloadButton"),
-                        ("Views/Podcasts/PodcastComponents.swift", "PodcastDownloadButton")]
-        for (path, type) in controls {
-            let body = try #require(Self.body(of: type, in: try Self.source(path)), "\(type) nicht gefunden")
-            #expect(Self.unnamedDeletes(in: body) == 0, "\(type) loescht wieder beim Tippen")
-        }
+        let body = try #require(Self.body(of: "PodcastDownloadButton",
+                                          in: try Self.source("Views/Podcasts/PodcastComponents.swift")),
+                                "PodcastDownloadButton nicht gefunden")
+        #expect(Self.unnamedDeletes(in: body) == 0, "PodcastDownloadButton loescht wieder beim Tippen")
     }
 
-    @Test("Langes Druecken auf das geladene Album-Symbol bietet die Loesch-Eintraege der Titelzeile, auch fuer VoiceOver", .needsTheSources)
-    func theStoredAlbumGlyphOffersDelete() throws {
-        let body = try #require(Self.body(of: "AlbumDownloadButton",
-                                          in: try Self.source("Views/Music/MusicAlbumView.swift")))
-        let open = try #require(body.range(of: "isDeletableDownload(itemId: itemId)"))
-        let close = try #require(body.range(of: "} else if case .downloading", range: open.upperBound..<body.endIndex))
-        let stored = String(body[open.upperBound..<close.lowerBound])
-        // The app's one downloaded mark, readable, never a grey glyph.
-        #expect(stored.contains("DownloadedMark(size: .large)"))
-        #expect(!stored.contains(".foregroundStyle(.secondary)"))
-        #expect(!stored.contains(".green"))
-        // The track rows' own entries, not a second delete.
-        #expect(stored.contains(".contextMenu {"))
-        #expect(stored.contains("AlbumDownloadMenuItems("))
-        #expect(stored.contains(".accessibilityAction(named: Text(\"Delete Download\"))"))
-        // A tap does nothing: the stored glyph is no button.
-        #expect(!stored.contains("Button"))
+    @Test("der Download des Albums steht im Menue der Seite, mit denselben Eintraegen wie eine Titelzeile", .needsTheSources)
+    func theAlbumDownloadStandsInThePageMenu() throws {
+        let page = try Self.source("Views/Music/MusicAlbumView.swift")
+        // No control of its own in the top bar.
+        #expect(!page.contains("AlbumDownloadButton"), "the album has a download control of its own again")
+        let menu = try #require(page.components(separatedBy: ".pageActions(").dropFirst().first,
+                                "the album page has no menu")
+        #expect(menu.prefix(400).contains("AlbumDownloadMenuItems(itemId: item.id"), "the menu leaves out the download")
+        // Delete when stored, cancel while loading, the offer otherwise.
+        let entries = try #require(Self.body(of: "AlbumDownloadMenuItems", in: page))
+        let stored = try #require(entries.range(of: "isDeletableDownload(itemId: itemId)"))
+        let loading = try #require(entries.range(of: "} else if case .downloading = downloadProgress.phase",
+                                                 range: stored.upperBound..<entries.endIndex))
+        #expect(entries[loading.upperBound...].prefix(200).contains("cancelDownload(itemId: itemId)"))
+        #expect(entries[loading.upperBound...].contains("Download Album"))
     }
 
     @Test("Eichzeilen: nur ein Loeschen unter einer benannten VoiceOver-Handlung ist erlaubt")

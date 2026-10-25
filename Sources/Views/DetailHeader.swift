@@ -88,6 +88,24 @@ extension View {
         navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
     }
+
+    /// THE one place of a page's actions: a ⋯ menu at the trailing end of
+    /// its top bar, where the system puts it with the tabs at the bottom and
+    /// beside the side column alike. No other control of the page stands in
+    /// its top bar. `shown` false leaves the bar empty on a page that has no
+    /// action at the moment.
+    func pageActions<Entries: View>(_ id: String, shown: Bool = true,
+                                    @ViewBuilder entries: @escaping () -> Entries) -> some View {
+        toolbar {
+            if shown {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu { entries() } label: { Image(systemName: "ellipsis.circle") }
+                        .accessibilityLabel(Text("Actions"))
+                        .accessibilityIdentifier(id)
+                }
+            }
+        }
+    }
 }
 
 extension DetailHeader where Facts == EmptyView {

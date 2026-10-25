@@ -190,14 +190,11 @@ struct PodcastEpisodeDetailView: View {
             .onDisappear { isTopPage = false }
         }
         .untitledDetailPage()
-        // The show's settings from its episode too. The show comes
-        // only from a store, so there is one whenever there are settings.
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if show != nil {
-                    PodcastShowSettingsButton { showSettings = true }
-                }
-            }
+        // The show's settings from its episode too, in the page's one menu.
+        // The show comes only from a store, so there is one whenever there
+        // are settings.
+        .pageActions("episode-actions", shown: show != nil) {
+            PodcastShowSettingsButton { showSettings = true }
         }
         .sheet(isPresented: $showSettings) {
             Group {

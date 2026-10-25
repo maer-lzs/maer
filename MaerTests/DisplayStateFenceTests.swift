@@ -10,7 +10,8 @@ import Foundation
 
 /// What a surface shows says what is true: an unknown running time stays
 /// unknown, a lasting refusal shows on every lock, and a state a picture
-/// carries (the heart, the running ring) is named for VoiceOver too.
+/// carries (the running ring) is named for VoiceOver too, and the favorite
+/// entry says its state in words.
 struct DisplayStateFenceTests {
     private func code(_ path: String) throws -> String {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -114,16 +115,16 @@ struct DisplayStateFenceTests {
         #expect(Self.handWrittenNoLocks("lock:locks[item.id]??.none") == 0, "the fallback of the one answer counts")
     }
 
-    /// The heart and the running ring carry their state for VoiceOver, and
-    /// the ring is one control.
-    @Test("das Herz sagt Namen und Zustand, der laufende Ring ist ein Bauteil mit Namen und Fortschritt", .needsTheSources)
+    /// The favorite entry says in words which state it changes, and the
+    /// running ring is one control with its name and progress.
+    @Test("der Favoriten-Eintrag nennt den Zustand im Wort, der laufende Ring ist ein Bauteil mit Namen und Fortschritt", .needsTheSources)
     func picturedStatesAreNamed() throws {
         let album = try code("Sources/Views/Music/MusicAlbumView.swift")
-        let heart = try #require(album.range(of: "Image(systemName: starred ? \"heart.fill\" : \"heart\")"),
-                                 "the heart is gone or spelled another way")
-        let after = album[heart.upperBound...].prefix(400)
-        #expect(after.contains(".accessibilityLabel(Text(\"Favorite\"))"), "the heart has no name")
-        #expect(after.contains(".accessibilityAddTraits(starred ? .isSelected : [])"), "the heart does not say whether it is on")
+        let entry = try #require(album.range(of: "if starred {\n                        Label(\"Remove Favorite\", systemImage: \"heart.slash\")"),
+                                 "the favorite entry is gone or spelled another way")
+        #expect(album[entry.upperBound...].prefix(200).contains("Label(\"Add Favorite\", systemImage: \"heart\")"),
+                "the favorite entry does not name the other state")
+        #expect(!album.contains("heart.fill"), "the heart stands as a picture alone again")
         var rings: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) where name != "DownloadRing.swift" {
             // A bare ring, not the control that wraps it nor the shape beneath.
@@ -140,8 +141,8 @@ struct DisplayStateFenceTests {
     }
 
     /// A state a glyph alone carries is named: the offline mark wherever it
-    /// stands without a text beside it, the subscribed check, the actions
-    /// menu of a playlist.
+    /// stands without a text beside it, the subscribed check, the pages'
+    /// actions menu.
     @Test("ein Zustand, den nur ein Zeichen traegt, hat einen Namen: Offline-Zeichen, Abo-Haken, Aktionen-Menue", .needsTheSources)
     func glyphStatesAreNamed() throws {
         var unnamed: [String] = []
@@ -160,9 +161,10 @@ struct DisplayStateFenceTests {
         #expect(tight[check.upperBound...].prefix(200).contains(".accessibilityLabel(Text(\"Subscribed\"))"),
                 "the subscribed check has no name")
         #expect(!components.contains("Image(systemName: \"wifi.slash\")"), "the show tile draws its own offline mark again")
-        let album = try code("Sources/Views/Music/MusicAlbumView.swift")
-        let menu = try #require(album.range(of: "label: { Image(systemName: \"ellipsis.circle\") }"), "the actions menu is gone")
-        #expect(album[menu.upperBound...].prefix(120).contains(".accessibilityLabel(Text(\"Actions\"))"), "the actions menu has no name")
+        // The pages' one menu (`pageActions`).
+        let head = try code("Sources/Views/DetailHeader.swift")
+        let menu = try #require(head.range(of: "label: { Image(systemName: \"ellipsis.circle\") }"), "the actions menu is gone")
+        #expect(head[menu.upperBound...].prefix(120).contains(".accessibilityLabel(Text(\"Actions\"))"), "the actions menu has no name")
     }
 }
 #endif

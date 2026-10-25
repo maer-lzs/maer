@@ -261,17 +261,10 @@ struct PodcastShowView: View {
             }
         }
         .untitledDetailPage()
-        .toolbar {
-            // The per-show settings slider inboard, the global settings cog
-            // not: a pushed page carries its OWN actions and no app settings cog.
-            // The toolbar holds three elements on a phone, and a destination
-            // needed once a day must not crowd out the tools needed
-            // constantly; the cog lives on every tab root instead.
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if caps.showsSettingsSheet {
-                    PodcastShowSettingsButton { showSettings = true }
-                }
-            }
+        // The show's settings stand in the page's one menu; a pushed page
+        // carries its own actions and no app settings cog.
+        .pageActions("show-actions", shown: caps.showsSettingsSheet) {
+            PodcastShowSettingsButton { showSettings = true }
         }
         .sheet(isPresented: $showSettings) {
             Group {
