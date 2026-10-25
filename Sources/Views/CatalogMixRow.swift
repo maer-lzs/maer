@@ -35,9 +35,9 @@ struct CatalogMixRow: View {
 
 /// One tile of the catalog mix: a feed tile pushes the show preview, a
 /// catalog tile its page (OTR bundles their show page). Shared by the
-/// tabs' rows and Start's Browse row, which mixes kinds and alone marks
-/// them; the tabs' rows hold one kind each (`CatalogMix`: books no feeds,
-/// podcasts no catalogs).
+/// tabs' rows and the Browse row, which alone marks kinds and only where
+/// it mixes them (`BrowseMix.marksKinds`); the tabs' rows hold one kind
+/// each (`CatalogMix`: books no feeds, podcasts no catalogs).
 struct CatalogMixTile: View {
     let tile: CatalogMix.Tile
     let marksKind: Bool

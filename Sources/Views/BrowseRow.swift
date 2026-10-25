@@ -19,6 +19,17 @@ enum BrowseTile: Identifiable {
         case .catalog(let tile): "cat:\(tile.id)"
         }
     }
+
+    /// The kind the tile shows as, the one its mark would name.
+    var kind: MediaType? {
+        switch self {
+        case .recommendation: .podcasts
+        case .music: .music
+        case .catalog(.feed): .podcasts
+        case .catalog(.item(let item)):
+            MediaFamily.kind(for: item.id, markedForm: ListeningStore.startedForm(item.id))
+        }
+    }
 }
 
 /// The Browse page of one area, pushed from a tab's Browse row. Registered
@@ -32,7 +43,7 @@ nonisolated struct BrowseRoute: Hashable {
 /// (`TabBrowse`), as ONE double row mixed rank by rank (`BrowseMix`). Two
 /// tiles per column, scrolled sideways. Every tile keeps its own tap (a
 /// show its preview, a catalog title its page, a music title its album
-/// page) and carries its kind, because the row mixes kinds. The chevron
+/// page) and carries its kind where the row mixes kinds. The chevron
 /// opens the Browse page, on Start with every source, in a tab with the
 /// tab's area.
 struct BrowseRow: View {
@@ -69,12 +80,17 @@ struct BrowseRow: View {
         }
     }
 
+    /// Marks only where the row mixes kinds (`BrowseMix.marksKinds`).
+    private var marksKinds: Bool {
+        BrowseMix.marksKinds(tiles.map(\.kind))
+    }
+
     @ViewBuilder
     private func tileView(_ tile: BrowseTile) -> some View {
         switch tile {
         case .recommendation(let result):
             RecommendationTile(result: result, subtitle: reason(result))
-                .stackedKind(.podcasts)
+                .stackedKind(marksKinds ? .podcasts : nil)
                 .recommendationHideMenu(result)
         case .music(let item):
             FreeCatalogBookTile(
@@ -87,7 +103,7 @@ struct BrowseRow: View {
                                             pushMusicRoute: pushMusicRoute,
                                             pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
                 })
-                .stackedKind(.music)
+                .stackedKind(marksKinds ? .music : nil)
                 .contextMenu {
                     Button {
                         Task { await playerCoordinator.open(item: item) }
@@ -95,7 +111,7 @@ struct BrowseRow: View {
                     CatalogDetailsButton(itemId: item.id)
                 }
         case .catalog(let tile):
-            CatalogMixTile(tile: tile, marksKind: true, playerCoordinator: playerCoordinator)
+            CatalogMixTile(tile: tile, marksKind: marksKinds, playerCoordinator: playerCoordinator)
         }
     }
 }

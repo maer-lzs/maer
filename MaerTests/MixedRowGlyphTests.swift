@@ -33,7 +33,7 @@ struct MixedRowGlyphTests {
         "Sources/Views/MixedMediaPage.swift": (9, "Continue card 2, Recently Added tile 2, Listen Again page 3, the continue page's tile 2"),
         "Sources/Views/HomeView.swift": (6, "Listen Again row 3, Rediscover tile 3"),
         "Sources/Views/CatalogMixRow.swift": (2, "feed and catalog tile, marked in the Browse row only"),
-        "Sources/Views/BrowseRow.swift": (2, "recommended show and free-music title; the catalog share marks through its tile"),
+        "Sources/Views/BrowseRow.swift": (2, "recommended show and free-music title, where the row mixes kinds; the catalog share marks through its tile"),
     ]
 
     static let mixers: [String: (callers: [String: Int], reason: String)] = [
@@ -45,7 +45,8 @@ struct MixedRowGlyphTests {
                                   "the Browse row's three shares on Start; a tab's lanes of its area, drawn by the same row"),
         "computeRediscover(": (["Sources/Views/HomeView.swift": 1], "Rediscover, row and pool"),
         "CatalogMix.tiles(for: .home": (["Sources/Views/HomeView.swift": 1], "feeds and catalogs on Start"),
-        "marksKind: true": (["Sources/Views/BrowseRow.swift": 1], "the catalog tile marks its kind in the Browse row only"),
+        "marksKind: marksKinds": (["Sources/Views/BrowseRow.swift": 1],
+                                  "the catalog tile marks its kind in the Browse row only, and only where the row mixes kinds"),
     ]
 
     static func code(_ path: String) throws -> String {

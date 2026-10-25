@@ -34,6 +34,14 @@ nonisolated enum BrowseMix {
         stride(from: 0, to: tiles.count, by: 2).map { Array(tiles[$0..<min($0 + 2, tiles.count)]) }
     }
 
+    /// Whether the row marks each tile with its kind: only where it holds
+    /// more than one kind. A row of one kind (a tab's lanes, a Start row
+    /// with one share left) says nothing a glyph would add. A tile of no
+    /// known kind does not count.
+    static func marksKinds<Kind: Hashable>(_ kinds: [Kind?]) -> Bool {
+        Set(kinds.compactMap { $0 }).count > 1
+    }
+
     /// Why a share that is switched on stands empty on Start, for the log
     /// line. nil while it is off or has tiles.
     static func dropReason(_ share: Share, enabled: Bool, isEmpty: Bool, failure: String?) -> String? {

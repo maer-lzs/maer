@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**Kind marks only where a row mixes kinds.** The Browse row of a tab
+holds one kind (music, books or shows) and no longer marks each tile
+with it; on Start the marks stay while the row mixes kinds.
+
 **A netlabel album from shuffle plays as music.** It played like a
 book, with parts, thirty second skips and "book ends". Now its songs
 play in order with the music controls, as on its own page, and that

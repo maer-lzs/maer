@@ -22,6 +22,27 @@ struct BrowseTests {
         #expect(BrowseMix.columns(["a", "b", "c"]) == [["a", "b"], ["c"]])
     }
 
+    @Test("nur eine Reihe mit mehr als einer Art zeichnet die Art je Kachel")
+    func onlyAMixedRowMarksKinds() {
+        #expect(!BrowseMix.marksKinds([MediaType.music, .music, .music]), "a music row")
+        #expect(!BrowseMix.marksKinds([MediaType.audiobooks, .audiobooks]), "a books row")
+        #expect(!BrowseMix.marksKinds([MediaType.podcasts, nil, .podcasts]), "a tile of no known kind does not mix")
+        #expect(!BrowseMix.marksKinds([MediaType?]()))
+        #expect(BrowseMix.marksKinds([MediaType.podcasts, .music, .audiobooks]), "Start")
+        #expect(BrowseMix.marksKinds([MediaType.music, .audiobooks]))
+    }
+
+    @Test("jede Kachel der Reihe nennt ihre Art, die Zeichen der Reihe fragen die Regel", .needsTheSources)
+    func theRowAsksTheRule() throws {
+        #expect(BrowseTile.music(LibraryItem(id: "jam:7", media: nil, addedAt: nil)).kind == .music)
+        #expect(BrowseTile.catalog(.item(LibraryItem(id: "lv:123", media: nil, addedAt: nil))).kind == .audiobooks)
+        let row = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
+        #expect(row.contains("BrowseMix.marksKinds(tiles.map(\\.kind))"))
+        #expect(!row.contains(".stackedKind(.podcasts)") && !row.contains(".stackedKind(.music)")
+                && !row.contains("marksKind: true"), "a pure row marks its tiles")
+    }
+
     @Test("ein eingeschalteter, leerer Anteil nennt seinen Grund, ein ausgeschalteter nicht")
     func aDroppedShareSaysWhy() {
         #expect(BrowseMix.dropReason(.music, enabled: true, isEmpty: true, failure: "Jamendo: 429") == "music: Jamendo: 429")
