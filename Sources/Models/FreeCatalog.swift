@@ -317,6 +317,32 @@ nonisolated enum FreeCatalog {
         return total > 0 ? total : nil
     }
 
+    /// The title a catalogue title shows: the source's own, or "Untitled"
+    /// where the source states none or only its identifier, never the
+    /// identifier itself. Applied at every intake of the catalogue provider,
+    /// so player, bar, tile and page show the same name.
+    static func shownTitle(_ stated: String?, itemId: String) -> String {
+        let title = stated?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !title.isEmpty, !isIdentifierTitle(title, itemId: itemId) else {
+            return String(localized: "Untitled")
+        }
+        return title
+    }
+
+    /// Whether a stated title is the item's identifier: the whole of it
+    /// (without the namespace), or the code an archive.org identifier ends
+    /// in after a dash or underscore (`truyenmp3-HeiadV6YHLI` titled
+    /// `HeiadV6YHLI`). A code has no space and mixes letters and digits, so
+    /// a word title such as "Hamlet" in `hamlet_1603` stays.
+    static func isIdentifierTitle(_ title: String, itemId: String) -> Bool {
+        let album = CatalogSongID.album(of: itemId)
+        let identifier = album.firstIndex(of: ":").map { String(album[album.index(after: $0)...]) } ?? album
+        if title == identifier { return true }
+        guard !title.contains(where: \.isWhitespace),
+              title.contains(where: \.isNumber), title.contains(where: \.isLetter) else { return false }
+        return identifier.hasSuffix("-" + title) || identifier.hasSuffix("_" + title)
+    }
+
     /// LibriVox catalog titles arrive as
     /// "Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894), version 2".
     /// Normalize for EVERY display surface (rows, pages, search):

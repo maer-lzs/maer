@@ -77,7 +77,8 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: normalized?.title, authorName: FreeCatalog.authorLine(book.authors),
+                    title: FreeCatalog.shownTitle(normalized?.title, itemId: id),
+                    authorName: FreeCatalog.authorLine(book.authors),
                     // Pass the genres THROUGH. They were
                     // decoded away for months while the axis waited for them.
                     narratorName: nil, seriesName: nil,
@@ -159,7 +160,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: book.title ?? String(localized: "Unknown Title"),
+                    title: FreeCatalog.shownTitle(book.title, itemId: id),
                     authorName: FreeCatalog.gutenbergAuthor(book.authors?.compactMap(\.name).first),
                     narratorName: nil, seriesName: nil,
                     genres: FreeCatalog.gutenbergGenres(book.subjects),
@@ -179,7 +180,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: doc.title?.first ?? String(localized: "Unknown Title"),
+                    title: FreeCatalog.shownTitle(doc.title?.first, itemId: id),
                     authorName: FreeCatalog.gutenbergAuthor(doc.creator?.first),
                     narratorName: nil, seriesName: nil,
                     genres: FreeCatalog.gutenbergGenres(doc.subject?.values),
@@ -240,7 +241,7 @@ final class FreeCatalogProvider: AudioProvider {
                 metadata: LibraryItemMetadata(
                     // First entry leads (composer first); the
                     // detail sheet names everyone via the joined form.
-                    title: normalized?.title,
+                    title: FreeCatalog.shownTitle(normalized?.title, itemId: id),
                     // Same stored mojibake as the title, and more of it
                     // (30 titles against 514 creators, measured).
                     authorName: doc.creator?.first.map(FreeCatalog.repairedMojibake),
@@ -268,7 +269,7 @@ final class FreeCatalogProvider: AudioProvider {
                     // Jamendo delivers names HTML-encoded. Decode at the
                     // ONE intake through the existing text preparation, not
                     // in a second decoder. Title AND artist.
-                    title: track.name.map(podcastPlainText),
+                    title: FreeCatalog.shownTitle(track.name.map(podcastPlainText), itemId: id),
                     authorName: track.artist_name.map(podcastPlainText),
                     narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
@@ -323,7 +324,7 @@ final class FreeCatalogProvider: AudioProvider {
                                 description: String? = nil) -> LibraryItemMetadata {
         let known = itemsById[itemId]?.media?.metadata
         return LibraryItemMetadata(
-            title: title ?? known?.title,
+            title: FreeCatalog.shownTitle(title ?? known?.title, itemId: itemId),
             authorName: authorName ?? known?.authorName,
             narratorName: known?.narratorName,
             seriesName: known?.seriesName,

@@ -12889,6 +12889,16 @@
         }
       }
     },
+    "Untitled" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Titel"
+          }
+        }
+      }
+    },
     "Untitled Episode" : {
       "localizations" : {
         "de" : {

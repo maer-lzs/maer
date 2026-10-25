@@ -1029,7 +1029,8 @@ struct ArchiveSeriesPage: View {
             id: itemId,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: meta.title?.joined, authorName: meta.creator?.joined,
+                    title: FreeCatalog.shownTitle(meta.title?.joined, itemId: itemId),
+                    authorName: meta.creator?.joined,
                     narratorName: nil, seriesName: nil, genres: nil,
                     publishedYear: nil, description: meta.description?.joined),
                 duration: nil, chapters: nil, tracks: nil),

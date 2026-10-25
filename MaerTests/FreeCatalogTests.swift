@@ -471,6 +471,56 @@ struct FreeCatalogTests {
             #expect(throws: (any Error).self) { _ = try JamendoDecoder.decodeTracks(data) }
         }
     }
+
+    @Test("ein Katalogtitel ohne Titel der Quelle heisst Ohne Titel, nie seine Kennung")
+    func anUntitledTitleIsNeverItsIdentifier() {
+        let untitled = String(localized: "Untitled")
+        #expect(FreeCatalog.shownTitle(nil, itemId: "lva:x") == untitled)
+        #expect(FreeCatalog.shownTitle("  ", itemId: "jam:1") == untitled)
+        // Measured at archive.org: the item titled with the code its identifier ends in.
+        #expect(FreeCatalog.shownTitle("HeiadV6YHLI", itemId: "lva:truyenmp3-HeiadV6YHLI") == untitled)
+        #expect(FreeCatalog.shownTitle("truyenmp3-HeiadV6YHLI", itemId: "lva:truyenmp3-HeiadV6YHLI") == untitled)
+        #expect(FreeCatalog.shownTitle("HeiadV6YHLI", itemId: "lva:truyenmp3-HeiadV6YHLI#2") == untitled, "a song of it")
+        #expect(FreeCatalog.shownTitle("1342", itemId: "gut:1342") == untitled)
+        // Titles that only resemble their identifier stay.
+        #expect(FreeCatalog.shownTitle("Hamlet", itemId: "lva:hamlet_1603") == "Hamlet")
+        #expect(FreeCatalog.shownTitle("1984", itemId: "lva:orwell-1984") == "1984")
+        #expect(FreeCatalog.shownTitle("Side A2", itemId: "lva:record-A2") == "Side A2")
+        #expect(FreeCatalog.shownTitle(" Struwwelpeter ", itemId: "lv:42") == "Struwwelpeter")
+    }
+
+    @Test("jeder Weg in den Katalog gibt einem Titel ohne Titel denselben Ersatz, und er reist nicht mit")
+    @MainActor func everyIntakeNamesTheUntitled() {
+        let untitled = String(localized: "Untitled")
+        let provider = FreeCatalogProvider.shared
+        func doc(_ identifier: String, _ title: String?) -> ArchivePopularDoc {
+            ArchivePopularDoc(identifier: identifier, title: title.map { ArchiveStringList([$0]) }, creator: nil,
+                              downloads: nil, runtime: nil, licenseurl: nil, year: nil, subject: nil)
+        }
+        #expect(provider.remember(popular: doc("truyenmp3-HeiadV6YHLI", "HeiadV6YHLI"))?.title == untitled)
+        #expect(provider.remember(popular: doc("witness-untitled-archive", nil))?.title == untitled)
+        #expect(provider.remember(popular: doc("gut:777002", nil))?.title == untitled, "a stock title")
+        #expect(provider.remember(popular: doc("witness-titled", "Der Zauberlehrling"))?.title == "Der Zauberlehrling")
+        let book = LibriVoxBook(id: "witness-untitled", title: nil, language: nil, totaltimesecs: nil,
+                                url_iarchive: nil, url_librivox: nil, url_rss: nil,
+                                authors: nil, sections: nil, genres: nil)
+        #expect(provider.remember(book: book).title == untitled)
+        // Each device names it in its own language; the snapshot carries no name.
+        #expect(SyncCarried.usableTitle(untitled, for: "lva:truyenmp3-HeiadV6YHLI") == nil)
+        #expect(SyncCarried.usableTitle("Untitled", for: "lva:truyenmp3-HeiadV6YHLI") == nil)
+    }
+
+    @Test("der Katalog-Anbieter nimmt den Ersatz an jedem Einlass", .needsTheSources)
+    func theProviderTakesTheNameAtEveryIntake() throws {
+        let provider = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/FreeCatalogProvider.swift"), encoding: .utf8))
+        #expect(provider.components(separatedBy: "title: FreeCatalog.shownTitle(").count - 1 == 6,
+                "an intake shows the source's title unchecked")
+        #expect(!provider.contains("String(localized: \"Unknown Title\")"))
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
+        #expect(page.contains("title: FreeCatalog.shownTitle(meta.title?.joined, itemId: itemId)"), "the quick head of a series page")
+    }
 }
 
 /// The free-audiobook row's SELECTION (per-language

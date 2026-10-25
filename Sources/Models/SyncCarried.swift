@@ -99,11 +99,13 @@ nonisolated enum SyncCarried {
     }
 
     /// A title is only worth carrying when it NAMES the entry: never the
-    /// raw id, never the unknown placeholder in any language.
+    /// raw id, never the unknown or untitled placeholder in any language
+    /// (each device names an untitled catalogue title in its own).
     static func usableTitle(_ candidate: String?, for itemId: String) -> String? {
         guard let text = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
               !text.isEmpty, text != itemId else { return nil }
-        let placeholders: Set<String> = ["Unknown Title", String(localized: "Unknown Title")]
+        let placeholders: Set<String> = ["Unknown Title", String(localized: "Unknown Title"),
+                                         "Untitled", String(localized: "Untitled")]
         guard !placeholders.contains(text) else { return nil }
         return text
     }

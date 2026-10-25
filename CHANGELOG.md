@@ -17,6 +17,11 @@ the page cancels the pick, and nothing starts afterwards. Where the
 app has no Jamendo key, a random pick from Jamendo now says so and
 where to enter your own, instead of saying it found nothing.
 
+**A catalog title without a name says Untitled.** Some recordings in
+the open catalogs carry no title of their own, or only their internal
+code, which then showed as the title in the player, the bar, on the
+tile and on the page. They now show as Untitled.
+
 **One menu for albums and playlists.** A long press on an album or a
 playlist, from your server or from an open catalog, offers Play, Play
 Next, Play Last, Shuffle, Add to Playlist and Details, in the same
