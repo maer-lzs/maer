@@ -47,5 +47,24 @@ struct UITestSeedTests {
             #expect((literal ?? 0) >= Self.year2000Ms, "a seeded lastUpdate is not milliseconds: \(argument)")
         }
     }
+
+    /// A server sends a progress with its time; a seeded one without it
+    /// starts the player at 0 while Continue shows the fraction.
+    @Test("jeder geseedete Stand traegt seine Zeit wie ein Server", .needsTheSources)
+    func everySeededProgressCarriesItsTime() throws {
+        let seed = try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/UITestSeed.swift"), encoding: .utf8)
+        // Each call ends with `))` (its own and the entry's); a single `)`
+        // closes `msAgo(…)` inside it.
+        let calls = seed.components(separatedBy: "BookProgress(").dropFirst()
+            .map { $0.components(separatedBy: "))").first ?? "" }
+        #expect(calls.count == 4, "the fence read the seeded progresses: \(calls.count)")
+        for call in calls {
+            #expect(call.contains("currentTime:"), "a seeded progress without its time: \(call)")
+        }
+        // The detail the player starts from carries the same progress.
+        #expect(seed.contains("userMediaProgress: entry.progress.map { progress in"))
+        #expect(!seed.contains("userMediaProgress: nil)) }"), "the seeded detail knows no position again")
+    }
 }
 #endif

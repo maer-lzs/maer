@@ -172,7 +172,8 @@ enum UITestSeed {
             bookEntry(id: "seed-book-old", title: "Seed Book Old", author: "Cora Author", chapters: nil,
                       progress: BookProgress(
                           fraction: 0.4, isFinished: false,
-                          lastUpdate: msAgo(35 * 24 * 3600))),
+                          lastUpdate: msAgo(35 * 24 * 3600),
+                          currentTime: 0.4 * seedBookDuration)),
         ]
         // Scroll depth for collapse-threshold journeys (the two-book grid never
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
@@ -183,7 +184,8 @@ enum UITestSeed {
         + [
             bookEntry(id: "seed-book-3", title: "Der Leuchtturmwärter", author: "Hanna Berg", chapters: nil,
                       progress: BookProgress(fraction: 1, isFinished: true,
-                                             lastUpdate: msAgo(2 * 24 * 3600))),
+                                             lastUpdate: msAgo(2 * 24 * 3600),
+                                             currentTime: seedBookDuration)),
             fullBook(progress: BookProgress(fraction: 0.6, isFinished: false,
                                             lastUpdate: msAgo(3600),
                                             currentTime: 0.6 * fullBookDuration)),
@@ -191,7 +193,8 @@ enum UITestSeed {
                       series: "Nordlicht #2"),
             bookEntry(id: "seed-book-6", title: "Die stille Bibliothek", author: "Mira Holm", chapters: nil,
                       progress: BookProgress(fraction: 0.15, isFinished: false,
-                                             lastUpdate: msAgo(26 * 3600))),
+                                             lastUpdate: msAgo(26 * 3600),
+                                             currentTime: 0.15 * seedBookDuration)),
             bookEntry(id: "seed-book-7", title: "Fernweh", author: "Paul Sander", chapters: nil),
             bookEntry(id: "seed-book-8", title: "Das Uhrwerk", author: "Lea Kranz", chapters: nil),
         ]
@@ -209,11 +212,19 @@ enum UITestSeed {
         // load, so that is the harness's gap, not the app's.
         session.libraryViewModel._seedForUITest(books)
         session.libraryViewModel._testPersistCache()
-        // The book page asks the server for the detail; the seed answers
-        // with each book's own entry, so no page waits on a host that never
-        // resolves.
+        // The book page and the player ask the server for the detail; the
+        // seed answers with each book's own entry and its progress, as the
+        // server sends it (`include=progress`), so no page waits on a host
+        // that never resolves and the reconcile sees the seeded position.
         seededDetails = Dictionary(books.compactMap { entry in
-            entry.item.media.map { (entry.item.id, LibraryItemDetail(id: entry.item.id, media: $0, userMediaProgress: nil)) }
+            entry.item.media.map { media in
+                (entry.item.id, LibraryItemDetail(id: entry.item.id, media: media,
+                                                  userMediaProgress: entry.progress.map { progress in
+                    MediaProgress(currentTime: progress.currentTime, duration: media.duration,
+                                  progress: progress.fraction, isFinished: progress.isFinished,
+                                  lastUpdate: progress.lastUpdate)
+                }))
+            }
         }, uniquingKeysWith: { first, _ in first })
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
@@ -421,6 +432,9 @@ enum UITestSeed {
     private(set) static var seededDetails: [String: LibraryItemDetail] = [:]
 
     static let fullBookDuration: Double = 9 * 3600
+    /// The length of every other seeded book; a seeded progress carries its
+    /// time as a server does (`currentTime`), not only the fraction.
+    static let seedBookDuration: Double = 3600
 
     /// A moment `seconds` before now in milliseconds since 1970, the unit
     /// the server gives `lastUpdate` in. Every seeded progress takes it.
@@ -469,7 +483,7 @@ enum UITestSeed {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(title: title, authorName: author, narratorName: nil,
                                               seriesName: series, genres: nil, publishedYear: nil, description: nil),
-                duration: 3600, chapters: chapters, tracks: nil),
+                duration: seedBookDuration, chapters: chapters, tracks: nil),
             addedAt: 0), progress: progress)
     }
 
