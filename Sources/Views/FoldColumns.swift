@@ -113,34 +113,47 @@ struct DetailListColumns<Header: View, Rows: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            if BookDetailLayout.of(width: geo.size.width, height: geo.size.height,
-                                   compactHeight: verticalSizeClass == .compact) == .twoColumns {
-                FoldColumns { _ in
-                    ScrollView {
-                        header()
-                            .padding(.top, 8)
-                            .bottomBarClearance()
-                    }
-                    .scrollContentBackground(.hidden)
-                    .reportsBottomBarScroll()
-                } trailing: { _ in
-                    List { rows().rowsTakeTheFoldGutter() }
-                        .listStyle(.plain)
-                        .barAwareList()
-                        .reportsBottomBarScroll()
-                }
-            } else {
-                List {
-                    header()
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                    rows()
-                }
-                .listStyle(.plain)
-                .barAwareList()
-                .reportsBottomBarScroll()
-            }
+            columns(geo)
+                // The page's view is the room of the head's cover.
+                .environment(\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height, top: Self.headTop))
         }
     }
+
+    @ViewBuilder
+    private func columns(_ geo: GeometryProxy) -> some View {
+        if BookDetailLayout.of(width: geo.size.width, height: geo.size.height,
+                               compactHeight: verticalSizeClass == .compact) == .twoColumns {
+            FoldColumns { _ in
+                ScrollView {
+                    header()
+                        .padding(.top, Self.headTop)
+                        .bottomBarClearance()
+                }
+                .scrollContentBackground(.hidden)
+                .reportsBottomBarScroll()
+            } trailing: { _ in
+                List { rows().rowsTakeTheFoldGutter() }
+                    .listStyle(.plain)
+                    .barAwareList()
+                    .reportsBottomBarScroll()
+            }
+        } else {
+            List {
+                header()
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                rows()
+            }
+            .listStyle(.plain)
+            .barAwareList()
+            .reportsBottomBarScroll()
+        }
+    }
+}
+
+private extension DetailListColumns {
+    /// Where the head's cover begins in the page's view at rest: the head
+    /// is the first thing in both forms, a little below the top.
+    static var headTop: CGFloat { 8 }
 }

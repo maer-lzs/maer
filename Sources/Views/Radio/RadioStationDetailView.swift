@@ -27,7 +27,9 @@ struct RadioStationDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                DetailHeader(title: station.name, textInset: 16) {
+                // The station's picture is a wide banner across the page,
+                // not a square cover, so it keeps its own size.
+                DetailHeader(title: station.name, textInset: 16) { _ in
                     RadioArtwork(stationID: station.id,
                                  faviconURL: station.faviconURL.flatMap { URL(string: $0) },
                                  name: station.name, homepage: station.homepage,
@@ -105,13 +107,9 @@ struct RadioStationDetailView: View {
     /// Play and the favourite star, under the station's name.
     private var stationControls: some View {
         HStack(spacing: 14) {
-            Button {
+            DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
                 RadioPlay.play(station, playerCoordinator: playerCoordinator)
-            } label: {
-                Label("Play", systemImage: "play.fill")
-                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
             }
-            .buttonStyle(.borderedProminent)
             .disabled(!isOnline)
 
             Button {

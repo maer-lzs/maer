@@ -977,6 +977,7 @@ struct ArchiveSeriesPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
+        .givesDetailHeaderRoom(top: 12)
         .navigationTitle(Text(verbatim: FreeCatalog.normalizedCollectionTitle(
             detail?.media.metadata?.title ?? "")))
         .toolbar {
@@ -1044,9 +1045,9 @@ struct ArchiveSeriesPage: View {
 
     @ViewBuilder
     private func header(_ detail: LibraryItemDetail) -> some View {
-        DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) {
+        DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) { side in
             podcastArtwork(url: router.coverURL(itemId),
-                           size: 150, corner: 16)
+                           size: side ?? 150, corner: 16)
         } lines: {
             if let author = detail.media.metadata?.authorName {
                 Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)

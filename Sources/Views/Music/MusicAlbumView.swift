@@ -330,14 +330,13 @@ struct MusicAlbumView: View {
     }
 
     private var header: some View {
-        DetailHeader(title: item.title) {
+        DetailHeader(title: item.title) { side in
             Group {
-                // A playlist shows the 2×2 mosaic. The same component as the
-                // cards/rows, not the server's single playlist cover.
+                // A playlist shows the mosaic. The same component as the
+                // cards/rows, not the server's single playlist cover; it is
+                // square by itself.
                 if isPlaylist {
                     PlaylistArtwork(playlistID: item.id, coverURLs: mosaicCoverURLs)
-                        // Own 2:3 ratio. No square override.
-
                 } else if let highResCover {
                     // Prefer the high-res Cover Art Archive front when loaded.
                     Image(uiImage: highResCover)
@@ -355,7 +354,7 @@ struct MusicAlbumView: View {
                     }
                 }
             }
-            .frame(maxWidth: 240)
+            .frame(maxWidth: side ?? 240)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             // The cover's long press downloads or deletes the album or the
             // server playlist, with the track rows' own entries.
@@ -389,41 +388,26 @@ struct MusicAlbumView: View {
                 .disabled(tracks.isEmpty)
             }
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
         .padding(.vertical, 8)
     }
 
-    /// Matches the primary-play family. A WHITE control glyph on the
-    /// accent capsule (not `.borderedProminent`, whose tint reads gray now), and
-    /// it flips Play↔Pause while THIS album is the active session. Like the book
-    /// detail button (see `ActivePlayButton`) the active case lives in a subview
-    /// that observes the view model directly, since the coordinator only
-    /// republishes when `viewModel` is re-set, not on play/pause within it.
+    /// The head's main button (`DetailMainButton`); it flips Play↔Pause while
+    /// THIS album is the active session. Like the book detail button (see
+    /// `ActivePlayButton`) the active case lives in a subview that observes
+    /// the view model directly, since the coordinator only republishes when
+    /// `viewModel` is re-set, not on play/pause within it.
     @ViewBuilder
     private var playButton: some View {
         if let vm = playerCoordinator.viewModel, playerCoordinator.activeItem?.id == item.id {
             ActiveAlbumPlayButton(viewModel: vm)
                 .disabled(tracks.isEmpty)
         } else {
-            Button {
+            DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
                 Task { await playerCoordinator.open(item: item) }
-            } label: {
-                Self.playCapsule(title: String(localized: "Play"), systemImage: "play.fill")
             }
-            .buttonStyle(.plain)
             .disabled(tracks.isEmpty)
         }
-    }
-
-    /// The shared capsule look for the album header's play control. White glyph
-    /// and label on the accent fill.
-    static func playCapsule(title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline)
-            .foregroundStyle(.white)
-            .frame(maxWidth: 240)
-            .padding(.vertical, 12)
-            .background(AppTheme.accent, in: Capsule())
     }
 
     private func loadDetail() async {
@@ -582,13 +566,9 @@ private struct ActiveAlbumPlayButton: View {
     @ObservedObject var viewModel: PlayerViewModel
 
     var body: some View {
-        Button {
+        DetailMainButton(title: viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
+                         systemImage: viewModel.isPlaying ? "pause.fill" : "play.fill") {
             viewModel.togglePlayPause()
-        } label: {
-            MusicAlbumView.playCapsule(
-                title: viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
-                systemImage: viewModel.isPlaying ? "pause.fill" : "play.fill")
         }
-        .buttonStyle(.plain)
     }
 }

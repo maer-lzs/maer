@@ -124,8 +124,8 @@ struct PodcastEpisodeDetailView: View {
 
             ScrollView {
                 VStack(spacing: 18) {
-                    DetailHeader(title: item.title, titleStyle: AnyShapeStyle(.white)) {
-                        podcastArtwork(url: coverURL, size: 220, corner: 16)
+                    DetailHeader(title: item.title, titleStyle: AnyShapeStyle(.white)) { side in
+                        podcastArtwork(url: coverURL, size: side ?? 220, corner: 16)
                             .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
                             .opacity(isPlayed ? 0.6 : 1)
                             // Download and delete live here, on the cover's
@@ -168,6 +168,11 @@ struct PodcastEpisodeDetailView: View {
                 .bottomBarClearance()
             }
             .reportsBottomBarScroll()
+            // The page stands on the cover gradient fading to black, so it is
+            // dark in either system mode: the main button's glass and label
+            // read light on it, as on the book page.
+            .environment(\.colorScheme, .dark)
+            .givesDetailHeaderRoom(top: 56)
         }
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
@@ -271,7 +276,8 @@ struct PodcastEpisodeDetailView: View {
     }
 
     private var playButton: some View {
-        Button {
+        DetailMainButton(title: isInProgress ? String(localized: "Resume") : String(localized: "Play"),
+                         systemImage: "play.fill") {
             Task {
                 if podcastRestartsOnPlay(item) {
                     // Replay a finished episode from the beginning + mark unplayed.
@@ -281,15 +287,7 @@ struct PodcastEpisodeDetailView: View {
                     await playerCoordinator.open(item: item)
                 }
             }
-        } label: {
-            Label(isInProgress ? String(localized: "Resume") : String(localized: "Play"),
-                  systemImage: "play.fill")
-                .font(.headline)
-                .padding(.horizontal, 22).padding(.vertical, 12)
-                .foregroundStyle(.white)
-                .background(.ultraThinMaterial, in: Capsule())
         }
-        .buttonStyle(.plain)
     }
 
     private var markPlayedButton: some View {

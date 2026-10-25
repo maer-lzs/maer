@@ -310,7 +310,7 @@ struct BookDetailScreen: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        DetailHeader(title: shownItem.title) {
+                        DetailHeader(title: shownItem.title) { _ in
                             EmptyView()
                         } lines: {
                             headLines(isHero: false)
@@ -346,7 +346,7 @@ struct BookDetailScreen: View {
             let content = column.width - 24 - FoldSplit.pageGutter
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    DetailHeader(title: shownItem.title) {
+                    DetailHeader(title: shownItem.title) { _ in
                         // In its half and as large as leaves title and play
                         // above the playback bar (`DetailCoverSide`).
                         BookCoverView(
@@ -608,7 +608,7 @@ struct BookDetailScreen: View {
             } else {
                 ScrollView {
                     VStack(spacing: 20) {
-                        DetailHeader(title: shownItem.title, textInset: 16) {
+                        DetailHeader(title: shownItem.title, textInset: 16) { _ in
                             // The full width where the window is tall enough,
                             // else as large as leaves title and play above the
                             // playback bar, as a card (`DetailCoverCard`).
@@ -775,25 +775,12 @@ struct BookDetailScreen: View {
     private func playButton(withPadding: Bool) -> some View {
         Group {
             if let vm = coordinator.viewModel, coordinator.activeItem?.id == entry.id {
-                ActivePlayButton(viewModel: vm, shape: buttonShape)
+                ActivePlayButton(viewModel: vm)
             } else {
-                Button {
+                DetailMainButton(title: isThisBookLoading ? String(localized: "Starting…") : playButtonLabel,
+                                 systemImage: "play.fill", isBusy: isThisBookLoading) {
                     Task { await coordinator.open(item: entry.item) }
-                } label: {
-                    HStack {
-                        if isThisBookLoading {
-                            ProgressView()
-                            Text("Starting…")
-                        } else {
-                            Image(systemName: "play.fill")
-                            Text(playButtonLabel)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .foregroundStyle(.primary)
                 }
-                .modifier(AdaptiveGlassBackground(shape: buttonShape))
                 .disabled(isThisBookLoading)
                 .accessibilityIdentifier("book-play")
             }
@@ -1268,23 +1255,14 @@ private struct DetailChapterList: View {
 /// Its own view so `viewModel` is truly observed as @ObservedObject. Otherwise
 /// the button does not reliably react to play/pause changes (see the explanation
 /// in `BookDetailScreen.playButton`).
-private struct ActivePlayButton<S: Shape>: View {
+private struct ActivePlayButton: View {
     @ObservedObject var viewModel: PlayerViewModel
-    let shape: S
 
     var body: some View {
-        Button {
+        DetailMainButton(title: viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Resume"),
+                         systemImage: viewModel.isPlaying ? "pause.fill" : "play.fill") {
             viewModel.togglePlayPause()
-        } label: {
-            HStack {
-                Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                Text(viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Resume"))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .foregroundStyle(.primary)
         }
-        .modifier(AdaptiveGlassBackground(shape: shape))
         // The active button is a SECOND control at the same place. Without
         // its own handle nothing can tell "this book is running" from "this
         // book offers to start".

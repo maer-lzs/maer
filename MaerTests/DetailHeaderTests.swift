@@ -49,5 +49,46 @@ struct DetailHeaderTests {
                 "title and lines lead")
         #expect(!head.contains("VStack(alignment: .leading, spacing: 14)"), "the head leads")
     }
+
+    /// The pages whose head starts playback and how many main buttons each
+    /// draws (idle and active).
+    static let playingPages: [(file: String, buttons: Int)] = [
+        ("Sources/Views/BookDetailScreen.swift", 2),
+        ("Sources/Views/Music/MusicAlbumView.swift", 2),
+        ("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", 1),
+        ("Sources/Views/Radio/RadioStationDetailView.swift", 1),
+    ]
+
+    @Test("ein Hauptknopf in einer Form auf jeder Seite mit Kopf", .needsTheSources)
+    func oneMainButtonInOneForm() throws {
+        for page in Self.playingPages {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
+            #expect(text.components(separatedBy: "DetailMainButton(").count - 1 == page.buttons,
+                    "\(page.file) draws its own main button")
+            #expect(!text.contains(".borderedProminent"), "\(page.file) keeps a second form")
+            #expect(!text.contains("playCapsule"), "\(page.file) keeps the capsule")
+        }
+    }
+
+    @Test("das Cover jedes Kopfs ist so gross, wie die Hoehe erlaubt", .needsTheSources)
+    func theCoverIsAsLargeAsTheRoomAllows() throws {
+        let head = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
+                       encoding: .utf8))
+        #expect(head.contains("DetailCoverSide.side(columnWidth: width, height: room.height, top: room.top,"))
+        #expect(head.contains("below = DetailCoverSide.settled(below, measured:"), "the kept height settles")
+        // The pages that give the room: the list frame (show, album,
+        // playlist), the episode and the catalog series.
+        let frame = SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FoldColumns.swift"),
+                       encoding: .utf8))
+        #expect(frame.contains(".environment(\\.detailHeaderRoom, DetailHeaderRoom(height: geo.size.height"))
+        for file in ["Sources/Views/Podcasts/PodcastEpisodeDetailView.swift", "Sources/Views/CatalogSourcePage.swift"] {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
+            #expect(text.components(separatedBy: ".givesDetailHeaderRoom(top:").count - 1 == 1, "\(file) gives no room")
+        }
+    }
 }
 #endif

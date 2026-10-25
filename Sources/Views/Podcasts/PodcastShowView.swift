@@ -475,10 +475,10 @@ struct PodcastShowView: View {
     }
 
     private var header: some View {
-        DetailHeader(title: title) {
+        DetailHeader(title: title) { side in
             podcastArtwork(
                 url: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },
-                size: 150, corner: 16)
+                size: side ?? 150, corner: 16)
                 .accessibilityIdentifier("show-cover")
         } lines: {
             if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {
