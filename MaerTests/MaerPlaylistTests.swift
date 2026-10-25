@@ -278,8 +278,12 @@ struct PlaylistSongSemanticsTests {
     func withoutAMusicServerTheFooterNamesNone() throws {
         #expect(MaerPlaylistFooter.text(anyMusicServer: false)
                 == String(localized: "Playlists on your devices can mix everything: open catalogs, local files and music from a server you add."))
-        #expect(MaerPlaylistFooter.text(anyMusicServer: true)
-                == String(localized: "Playlists on your devices can mix everything: your server's music, open catalogs and local files. They stay on your devices, because a server cannot reference a catalog address."))
+        let withServer = "Playlists on your devices mix music from your server, from open catalogs and your own files. They stay on your devices."
+        #expect(MaerPlaylistFooter.text(anyMusicServer: true) == String(localized: String.LocalizationValue(withServer)))
+        // The German sentence, read from the built catalogue.
+        let german = try #require(Bundle.main.path(forResource: "de", ofType: "lproj").flatMap(Bundle.init(path:)))
+        #expect(german.localizedString(forKey: withServer, value: nil, table: nil)
+                == "Playlists auf deinen Geräten mischen Musik von deinem Server, aus offenen Katalogen und eigene Dateien. Sie bleiben auf deinen Geräten.")
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
         #expect(page.contains("MaerPlaylistFooter.text(anyMusicServer:"), "the page writes its own footer again")
