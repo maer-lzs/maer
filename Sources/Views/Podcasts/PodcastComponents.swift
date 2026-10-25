@@ -103,14 +103,16 @@ struct PodcastFeaturedCard: View {
                 // Remaining · last played (formerly in the play pill). For
                 // played episodes just "Played".
                 CardStatusLine(text: CardStatusLine.episodeText(item), played: isPlayed)
-                // Fixed heights for the variable lines (title 2 lines, show).
-                // Otherwise a card with more text gets taller than its neighbours.
-                Text(item.title)
-                    .font(.headline).foregroundStyle(.white).lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
-                Text(item.media?.metadata?.authorName ?? " ")
-                    .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                    .frame(maxWidth: .infinity, minHeight: showMinHeight, alignment: .topLeading)
+                // Title and show one under the other without a gap; the room
+                // for a second title line stands below both, so a card with
+                // more text is no taller than its neighbours.
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.title)
+                        .font(.headline).foregroundStyle(.white).lineLimit(2)
+                    Text(item.media?.metadata?.authorName ?? " ")
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: titleMinHeight + 5 + showMinHeight, alignment: .topLeading)
             }
             .padding(14)
             .padding(.bottom, pillReserve)   // room for the overlay pill/download
