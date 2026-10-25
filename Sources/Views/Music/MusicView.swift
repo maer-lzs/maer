@@ -596,12 +596,11 @@ struct AlbumCell: View {
 /// why it observes the download manager, so a progress publish re-runs this
 /// deck and not the whole music tab. The page builds the entries.
 private struct MusicLibraryDeck: View {
-    private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     let entries: (_ downloaded: Int) -> [CategoryDeckEntry]
 
     var body: some View {
-        CategoryDeckGrid(entries: entries(MediaFamily.musicCount(in: downloads.downloadedItemIds)))
+        CategoryDeckGrid(entries: entries(MediaFamily.musicCount(in: downloadStock.downloadedItemIds)))
     }
 }
 
@@ -640,6 +639,8 @@ struct CollectionMenuItems: View {
     var offersShuffle = true
     /// Opens the collection's page or detail sheet, as its tile's tap does.
     let details: @MainActor () -> Void
+    /// The global Up-Next queue both queue entries write to.
+    private let queue = PlayQueue.shared
 
     var body: some View {
         if isPlayable {
@@ -648,10 +649,10 @@ struct CollectionMenuItems: View {
             } label: { Label("Play", systemImage: "play.fill") }
             if PlayQueue.canEnqueue(itemId) {
                 Button {
-                    Task { for id in await queueIds().reversed() { PlayQueue.shared.playNext(id) } }
+                    Task { for id in await queueIds().reversed() { queue.playNext(id) } }
                 } label: { Label("Play Next", systemImage: "text.insert") }
                 Button {
-                    Task { for id in await queueIds() { PlayQueue.shared.playLast(id) } }
+                    Task { for id in await queueIds() { queue.playLast(id) } }
                 } label: { Label("Play Last", systemImage: "text.append") }
             }
             if offersShuffle {
@@ -676,12 +677,7 @@ extension CollectionMenuItems {
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: {
-                // A missing detail is bearable, because an empty pool starts nothing.
-                let detail = try? await router.provider(item.id).fetchItemDetail(itemId: item.id)
-                return await FreeCatalogProvider.shared.albumSongs(
-                    albumId: item.id, count: detail?.media.tracks?.count ?? 0).songs
-            },
+            songs: { await CollectionSongs.catalog(item.id, router: router) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
             details: details)
@@ -701,6 +697,8 @@ private struct MusicItemMenu: ViewModifier {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let isAlbum: Bool
     private let downloads = DownloadManager.shared
+    /// The global Up-Next queue both queue entries of a song write to.
+    private let queue = PlayQueue.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     @Environment(\.isOnline) private var isOnline
     @Environment(\.itemRouter) private var router
@@ -721,7 +719,7 @@ private struct MusicItemMenu: ViewModifier {
                         isPlayable: isPlayable,
                         play: { await playerCoordinator.open(item: item) },
                         queueIds: { [item.id] },
-                        songs: { await AppSession.shared.musicProvider(for: item.id).songItems(forItemId: item.id) },
+                        songs: { await CollectionSongs.server(item.id) },
                         knownTitles: [item.id: item.title],
                         details: { pushRoute(.album(item)) })
                 } else {
@@ -731,10 +729,10 @@ private struct MusicItemMenu: ViewModifier {
                         } label: { Label("Play", systemImage: "play.fill") }
                         // Global Up-Next queue (same actions as book/podcast).
                         Button {
-                            PlayQueue.shared.playNext(item.id)
+                            queue.playNext(item.id)
                         } label: { Label("Play Next", systemImage: "text.insert") }
                         Button {
-                            PlayQueue.shared.playLast(item.id)
+                            queue.playLast(item.id)
                         } label: { Label("Play Last", systemImage: "text.append") }
                     }
                     // ONE action, both worlds. The two targets used to sit here

@@ -51,7 +51,12 @@ struct SharedGrowthFenceTests {
     /// the catalogue page asks the stock service it observes, which pays for
     /// the explicit mark, the album's songs, the tap that expands the bar and
     /// the progress report beside the diagnostics; the album's songs moved
-    /// on into the music loader, a move, so the total stays).
+    /// on into the music loader, a move, so the total stays; the album and
+    /// playlist menu and the Browse page's lanes brought five and paid them:
+    /// the songs an album shuffles moved into `CollectionSongs`, a move, the
+    /// two queue entries of the collection menu and of the song menu read
+    /// the queue through one property each, and the music deck counts the
+    /// download stock it already observes).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
@@ -59,7 +64,9 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 371
 
-    /// The same count over all of `Sources`, measured 734 (the listening
+    /// The same count over all of `Sources`, measured 736 (the recommendations
+    /// the Browse page's lane observes and the two moved songs questions
+    /// of `CollectionSongs` stay, three folds fell; before that 734: the listening
     /// history, the refusal on the Continue card, then the lock on every
     /// feed surface, the search door asking it for the deck, then the player
     /// asking the books shelf whether a title is a book, then the stores of
@@ -71,7 +78,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 734
+    nonisolated static let sourcesStock = 736
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
