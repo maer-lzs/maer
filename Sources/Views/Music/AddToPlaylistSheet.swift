@@ -395,9 +395,9 @@ struct AddToPlaylistSheet: View {
 
     private var mixSentence: String {
         if let name = namedServer {
-            return String(localized: "Mär playlists stay on your devices and can mix everything: music from \(name), free catalogs and local files.")
+            return String(localized: "Mär playlists stay on your devices and can mix everything: music from \(name), open catalogs and local files.")
         }
-        return String(localized: "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files.")
+        return String(localized: "Mär playlists stay on your devices and can mix everything: music from your music server, open catalogs and local files.")
     }
 
     private var onlyMaerSentence: String {
@@ -664,7 +664,7 @@ struct PlaylistCreateForm: View {
         case .server:
             return "Holds your server's music only, and every client of that server sees it."
         case .device:
-            return "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it."
+            return "Mixes everything (server music, open catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it."
         }
     }
 }

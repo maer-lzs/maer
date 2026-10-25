@@ -171,7 +171,7 @@ nonisolated enum AppRows {
                sourceKeys: ["internetArchive"],
                storageKey: AppStorageKeys.shellacRowsEnabled),
         AppRow(key: "music.jamendo", tab: .music,
-               title: String(localized: "Free Music (Jamendo)"),
+               title: String(localized: "Music (Jamendo)"),
                sourceKeys: ["jamendo"],
                storageKey: AppStorageKeys.jamendoRowVisible),
 

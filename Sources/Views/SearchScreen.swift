@@ -333,7 +333,7 @@ struct SearchScreen: View {
             // catalog readings, not shows. The kind title already carries
             // the right wording.
             (scope == .audiobooks
-             ? Text("From the Free Catalogs")
+             ? Text("From Open Catalogs")
              : Text("New Shows, from the catalog"))
                 .font(.headline)
             Text("Not in your library yet")
@@ -903,7 +903,7 @@ struct SearchScreen: View {
         case .playlist: return String(localized: "Playlists")
         case .catalogShow: return String(localized: "New Shows")
         // The card names the CONTENT and its family of senders.
-        case .catalogBook: return String(localized: "From the Free Catalogs")
+        case .catalogBook: return String(localized: "From Open Catalogs")
         case .radioStation: return String(localized: "Radio Stations")
         }
     }

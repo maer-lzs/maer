@@ -376,6 +376,13 @@ nonisolated enum FreeCatalog {
     /// is explicitly NOT a claim about the rights situation.
     static let unstatedRights = String(localized: "Rights not stated")
 
+    /// THE notice of the Internet Archive: once at the top of every
+    /// archive.org surface (`ArchiveRightsNote`) and at its source in the
+    /// settings, in these words.
+    static var archiveRightsNotice: String {
+        String(localized: "These recordings come from the Internet Archive, which does not guarantee their rights status.")
+    }
+
     /// Whether a sound recording's US term has run out, COMPUTED from the
     /// current year and never hard-wired. The steps belong to the law, the
     /// boundary belongs to the calendar: recordings published through 1946

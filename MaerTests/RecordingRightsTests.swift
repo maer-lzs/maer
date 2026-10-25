@@ -51,20 +51,27 @@ struct RecordingRightsTests {
         #expect(!FreeCatalog.recordingIsPublicDomain(year: 19, currentYear: 2026))
     }
 
-    /// Auf einer Flaeche mit EINER einheitlichen Rechte-Antwort steht der
-    /// Standard einmal oben; die Kachel wiederholt ihn nicht. Abweichungen
-    /// zeigen weiter. Als Aufzaehlung am Bereich, nicht als Heuristik.
-    @Test("die Schellack-Bereiche tragen das Einheits-Flag, Netlabels nicht")
-    func theUniformFlagIsAnEnumeration() {
-        #expect(ArchiveMusicCatalog.shellacAll.statesUniformRights)
-        for shelf in ArchiveMusicCatalog.shellacShelves {
-            #expect(shelf.statesUniformRights,
-                    "\(shelf.key) wiederholt den Flaechen-Standard je Kachel")
+    /// Keine Kachel traegt eine Rechte-Kapsel, auch nicht bei Netlabels:
+    /// der Hinweis des Archivs steht einmal oben auf jeder archive.org-Flaeche,
+    /// die Angabe je Titel auf der Detailseite.
+    @Test("keine Kachel traegt eine Rechte-Kapsel, jede archive.org-Flaeche den einen Hinweis", .needsTheSources)
+    func noTileCarriesARightsCapsule() throws {
+        func source(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
-        // Rot-Probe: die gemischte Flaeche behaelt ihre Kapseln — dort
-        // traegt sie Unterschiede, und ein Flag, das ueberall gilt,
-        // unterdrueckte auch die.
-        #expect(!ArchiveMusicCatalog.netlabels.statesUniformRights,
-                "die gemischte Flaeche verliert ihre Kapseln")
+        let tile = try source("Sources/Views/FeedArtwork.swift")
+        #expect(!tile.contains("badgeText"), "the catalog tile carries a capsule again")
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            let code = SyncContractFenceTests.stripped(text)
+            #expect(!code.contains("badgeText: entry.ccLicense") && !code.contains("hidesUnstatedRights"),
+                    "\(name) puts a rights capsule on a tile")
+        }
+        // The notice tops every archive.org surface: the area page (netlabels
+        // and shellac), the shellac surface, Old Time Radio and the archive books.
+        #expect(try source("Sources/Views/Music/ArchiveMusicPages.swift")
+            .components(separatedBy: "ArchiveRightsNote()").count - 1 == 2)
+        #expect(try source("Sources/Views/CatalogSourcePage.swift")
+            .contains("if source == .oldTimeRadio || source == .archiveBooks {\n                ArchiveRightsNote()"))
     }
 }

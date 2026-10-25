@@ -570,11 +570,11 @@ struct FreeJamendoPage: View {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if items.isEmpty && loadFailed {
                 // Same rule as the shelves: a failed load is not "no music".
-                LoadFailedView(form: .page(title: Text("Free Music (Jamendo)"), systemImage: "music.note")) {
+                LoadFailedView(form: .page(title: Text("Music (Jamendo)"), systemImage: "music.note")) {
                     Task { await loadAll() }
                 }
             } else if items.isEmpty {
-                ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")
+                ContentUnavailableView("Music (Jamendo)", systemImage: "music.note")
             } else {
                 // Genre shelf rows FIRST (blueprint form. Row +
                 // entry chevron onto the server-paged shelf grid), the weekly
@@ -619,7 +619,7 @@ struct FreeJamendoPage: View {
                 }
             }
         }
-        .navigationTitle(Text("Free Music (Jamendo)"))
+        .navigationTitle(Text("Music (Jamendo)"))
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
@@ -904,7 +904,7 @@ struct MusicCatalogAreaPage: View {
                 // reads as broken.
                 if AppStorageKeys.jamendoActive {
                     VStack(alignment: .leading, spacing: 10) {
-                        RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                        RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
                             .jamendoShuffle(coordinator: playerCoordinator)
                         if !store.rows.freeMusic.isEmpty {
                             tileRow(store.rows.freeMusic)

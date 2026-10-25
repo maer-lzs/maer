@@ -60,7 +60,7 @@ struct AppRowsCompletenessFenceTests {
 
         "music.netlabels": [Site(owner: "MusicView", name: "content", anchor: "\"Netlabels\"")],
         "music.oldRecords": [Site(owner: "MusicView", name: "content", anchor: "ShellacSection(")],
-        "music.jamendo": [Site(owner: "MusicView", name: "content", anchor: "\"Free Music (Jamendo)\"")],
+        "music.jamendo": [Site(owner: "MusicView", name: "content", anchor: "\"Music (Jamendo)\"")],
         "music.playlists": [Site(owner: "MusicView", name: "playlistRow")],
         "music.recentlyPlayed": [Site(owner: "MusicView", name: "recentlyPlayedRow")],
         // The shelf function draws only this row now; its call is counted below.
@@ -238,7 +238,7 @@ struct AppRowsCompletenessFenceTests {
               steps: [("playlistRow", "music.playlists"), ("vm.errorText", nil),
                       ("recentlyPlayedRow", "music.recentlyPlayed"), ("libraryList", nil),
                       ("shelf(\"Recently Added\"", "music.recentlyAdded"), ("\"Netlabels\"", "music.netlabels"),
-                      ("ShellacSection(", "music.oldRecords"), ("\"Free Music (Jamendo)\"", "music.jamendo"),
+                      ("ShellacSection(", "music.oldRecords"), ("\"Music (Jamendo)\"", "music.jamendo"),
                       ("ListeningHistoryRow(route: MusicRoute.history", nil)]),
         Order(file: "Sources/Views/PodcastsView.swift",
               from: "VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",

@@ -87,11 +87,6 @@ struct FreeCatalogBookTile: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"
-    /// On a surface whose WHOLE collection carries one uniform rights
-    /// answer, the standard stands once at the top and the tile stays
-    /// quiet about it. Deviations (a stated licence, a computed public
-    /// domain) still show; only the repetition falls.
-    var hidesUnstatedRights: Bool = false
     let onTap: () -> Void
     @State private var resolvedDuration: Double?
 
@@ -115,15 +110,9 @@ struct FreeCatalogBookTile: View {
                 runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces),
                 // The reading marker as a quiet meta part.
                 readingVersion: catalogFacts.readingVersion(item.id)),
+            // No rights capsule on a tile: the rights stand once at the top
+            // of an archive.org surface and on the detail page.
             titleLineLimit: 1,
-            // The LICENCE at a glance. The source follows from the
-            // section a tile stands in, the rights situation from nothing.
-            // Unknown ⇒ no capsule (never guess).
-            badgeText: {
-                let licence = catalogFacts.licence(item.id)
-                return (hidesUnstatedRights && licence == FreeCatalog.unstatedRights)
-                    ? nil : licence
-            }(),
             onTap: onTap,
             corner: { FreeCatalogImportBadge(itemId: item.id) }
         )

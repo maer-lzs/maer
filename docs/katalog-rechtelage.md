@@ -1,8 +1,20 @@
 # Was wir je Katalog-Quelle über die Rechtelage WISSEN
 
-Grundlage für jede Lizenz-Kapsel in der App. Regel: **Was hier nicht belegt ist, wird in
-der App nicht behauptet.** Eine Kapsel ist eine Aussage über fremde Rechte — sie darf nur
+Grundlage für jede Rechte-Angabe in der App. Regel: **Was hier nicht belegt ist, wird in
+der App nicht behauptet.** Eine Angabe ist eine Aussage über fremde Rechte — sie darf nur
 stehen, wo eine Quelle sie trägt.
+
+**Wo die App etwas sagt (seit 25.10.2026):**
+- **Keine Kachel trägt eine Rechte-Kapsel**, auf keiner Fläche, auch nicht bei Netlabels
+  oder den Hörspielen mit CC-Lizenz.
+- **Der Hinweis des Internet Archive** steht einmal oben auf jeder archive.org-Fläche
+  (Hörbücher, Old Time Radio, Netlabels, Alte Schallplatten) und bei der Quelle in den
+  Einstellungen, eine Stelle (`FreeCatalog.archiveRightsNotice`): „Diese Aufnahmen stammen
+  aus dem Internet Archive. Ihre Rechtelage garantiert das Archiv nicht.“
+- **Die Detailseite eines Titels** nennt seine Angabe; ein Siegel nur bei einer Aussage
+  der Quelle, nie bei „Rechtelage nicht angegeben“.
+- **„frei“ ist keine Rechtsaussage der App:** die Bereiche heißen „Offene Kataloge“ und
+  „Aus offenen Katalogen“, die Jamendo-Reihe „Musik (Jamendo)“.
 
 Angelegt nach `50aefa8` (05.08.2026): Der Fallback der Detail-Kapsel behauptete
 „Public Domain" für **jeden** Titel ohne Lizenzfeld. Für die Klassik-Reihe traf das alle
@@ -13,14 +25,14 @@ mangels Jahresangabe nirgends etwas. Die frühere Rahmung „782 nach US-Recht f
 aus US-Sicht richtig, greift aber zu kurz: Genau diese Titel sind in der Schweiz und in
 der EU frei.
 
-| Quelle | Namensraum | Was die Quelle liefert | Was die App sagt |
+| Quelle | Namensraum | Was die Quelle liefert | Was die Detailseite sagt |
 |---|---|---|---|
-| **LibriVox** | `lv:` | Projekt-Prinzip: Aufnahmen sind gemeinfrei (Grundlage des Projekts, gilt für den gesamten Bestand) | „Gemeinfrei" — belegt |
+| **LibriVox** | `lv:` | Projekt-Prinzip: Aufnahmen sind gemeinfrei in den USA, „but not necessarily in other countries“ (LibriVox selbst) | „Gemeinfrei (USA)“ — belegt |
 | **Project Gutenberg** | `gut:` | Die Pruefung vom 05.08. galt den TEXTEN (Permissions-Seite: gemeinfrei in den USA). Fuer Hoerbuecher gemessen 28.09.: die RDF je Werk nennt `dcterms:rights`, und nicht alle sagen „Public domain in the USA.“; 5884 und 3002 sagen „Copyrighted. Read the copyright notice inside this book for details.“ | **Keine pauschale Kapsel mehr.** Kacheln ohne Kapsel; die Titelseite zeigt nach dem Oeffnen, was die RDF sagt: „Gemeinfrei (USA)“, „Urheberrechtlich geschuetzt, von Project Gutenberg frei verteilt“ oder „Rechtelage nicht angegeben“ (`FreeCatalog.gutenbergRightsLabel`). Die **Marke** „Project Gutenberg" darf nicht für eigene Werke verwendet werden; Quellennennung ist erlaubt und erfolgt an der Reihe |
-| **archive.org — Hörbücher / Old Time Radio** | `lva:` | `licenseurl` **je Item vorhanden** (CC-Varianten, teils PD) | Die Lizenz aus dem Feld, wörtlich. Kein Feld ⇒ **keine** Kapsel |
-| **archive.org — georgeblood / Klassik** | `lva:` | **Kein Lizenzfeld** (0 von 200 in der Stichprobe, 4.271 Titel gesamt). Jahr bei 1.429 davon | Nach Erscheinungsjahr gestaffelt (siehe unten): ≤ 1925 „Gemeinfrei" (408) · später die Fristen (1.021) · ohne Jahr „nicht angegeben" + Link (2.842). **Nie** eine Lizenz behaupten |
+| **archive.org — Hörbücher / Old Time Radio** | `lva:` | `licenseurl` **je Item vorhanden** (CC-Varianten, teils PD) | Die Lizenz aus dem Feld, wörtlich. Kein Feld ⇒ nach Erscheinungsjahr (siehe unten), ohne Siegel; eine abgelaufene US-Frist heißt „Gemeinfrei (USA)“ |
+| **archive.org — georgeblood / Alte Schallplatten** | `lva:` | **Kein Lizenzfeld** (0 von 187.034). Die Fläche besteht nur aus Themen-Fächern, „Beliebt“ ist ihre Vereinigung (29.807, gemessen 25.10.2026), nie die ganze Sammlung | Nach Erscheinungsjahr gestaffelt (siehe unten): ≤ 1925 „Gemeinfrei" · später die Fristen · ohne Jahr „nicht angegeben" + Link. **Nie** eine Lizenz behaupten |
 | **Jamendo** | `jam:` | CC-Lizenz je Titel, ausdrücklich ausgewiesen | Die Lizenz je Titel + Pflicht-Attribution (Künstler, „via Jamendo", Backlink). Freie API nur **nicht-kommerziell** |
-| **archive.org — Netlabels** | `lva:` | CC je Item | Wie Hörbücher: Feld wörtlich, kein Feld ⇒ keine Kapsel |
+| **archive.org — Netlabels** | `lva:` | CC je Item | Wie Hörbücher: Feld wörtlich, kein Feld ⇒ nach Jahr, ohne Siegel |
 
 ## Schutzfristen sind ortsabhängig — deshalb Fristen statt Urteil
 
@@ -60,24 +72,30 @@ frei, offen ist die Einspielung. Die Fristzeile spricht deshalb von *Tonaufnahme
 
 Die Kapsel trug bei unbekannter Rechtelage ein `checkmark.seal`. **Ein Häkchen ist selbst
 eine Behauptung** — es liest sich als Bestätigung. Unbekanntes trägt daher ein
-Fragezeichen und den Link zur Quelle, damit man selbst nachsehen kann.
+Fragezeichen und den Link zur Quelle, damit man selbst nachsehen kann. Der Anbieter legt
+für archive.org immer eine Zeichenkette ab, auch „Rechtelage nicht angegeben“; die
+Detailseite zählt sie als keine Aussage und fällt auf das Erscheinungsjahr zurück
+(`CatalogDetailExtras`, seit 25.10.2026).
 
 ## Grenzen, die nicht das Urheberrecht betreffen
 
-- **78rpm / „Alte Schallplatten" (gestoppt, `8888bdb`):** Lizenz- und Metadatenfelder sind
-  disjunkt, der Bestand reicht bis weit nach 1929, und im Bestand liegt NS-Material
-  (u. a. das Horst-Wessel-Lied). Eine breite Reihe über diese Sammlung braucht **zusätzlich
-  zum Rechte-Ausweis einen inhaltlichen Ausschlussfilter**. Für die kuratierte
-  Klassik-Teilmenge stellt sich die Frage nicht — beim nächsten Ausbau aber sofort wieder.
+- **78rpm / „Alte Schallplatten“:** im Gesamtbestand liegt NS-Material (u. a. das
+  Horst-Wessel-Lied) und rassistisches Material der Zeit. Die Fläche besteht deshalb
+  **nur aus Themen-Fächern** (Jazz, Oper, Klassik, Folk, Blues, Country, Tango, Swing,
+  Gospel; Gegenmessung 0 von 46 Problemtreffern darin); „Beliebt“, die Reihe im
+  Musik-Reiter, Start „Entdecken · Musik“ und der Bestand nehmen genau ihre Vereinigung
+  (`shellacUnionQuery`), nie die ganze Sammlung (Vertragszeuge
+  `ArchiveMusicContractTests`). Ein neues Fach braucht vorher seine Gegenmessung.
 - **Position des Internet Archive ≠ unsere Position:** Deren Bewahrungszweck als
   US-Bibliothek trägt Argumente, die ein Client, der Endnutzern streamt, nicht hat. Aus
   „das Archiv hat es" folgt für uns nichts über die Rechtelage eines Titels.
 
 ## Verfahren bei einer neuen Quelle
 
-1. Liefert sie ein Lizenzfeld **je Titel**? → Feld wörtlich zeigen, sonst keine Kapsel.
+1. Liefert sie ein Lizenzfeld **je Titel**? → Feld wörtlich auf der Detailseite zeigen.
 2. Trägt das Projekt-Prinzip die Aussage für den **gesamten** Bestand (LibriVox)?
-   → dann und nur dann eine pauschale Kapsel. Gutenberg traegt sie fuer seine
-   Hoerbuecher NICHT (gemessen 28.09.): dort gilt Punkt 1 je Werk.
+   → dann und nur dann eine pauschale Angabe, mit ihrem Geltungsraum („(USA)“).
+   Gutenberg traegt sie fuer seine Hoerbuecher NICHT (gemessen 28.09.): dort gilt
+   Punkt 1 je Werk.
 3. Weder noch? → „Rechtelage von der Quelle nicht angegeben" plus Link. Nie raten.
 4. Zeile in dieser Tabelle ergänzen, **bevor** die Reihe gebaut wird.

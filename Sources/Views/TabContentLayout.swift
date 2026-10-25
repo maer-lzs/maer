@@ -435,7 +435,7 @@ extension SwitchableTileRow where Selector == EmptyView {
 struct ArchiveRightsNote: View {
     var body: some View {
         Label {
-            Text("The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you.")
+            Text(verbatim: FreeCatalog.archiveRightsNotice)
         } icon: {
             Image(systemName: "info.circle")
         }

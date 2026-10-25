@@ -61,7 +61,7 @@ enum CatalogShuffle {
             let items = tracks.compactMap { FreeCatalogProvider.shared.remember(track: $0) }
             Logger.library.notice("SHUFFLE jamendo offset=\(offset) got=\(items.count)")
             await start(items, coordinator: coordinator,
-                        sourceTitle: String(localized: "Free Music (Jamendo)"))
+                        sourceTitle: String(localized: "Music (Jamendo)"))
         } catch {
             Logger.library.error("SHUFFLE jamendo FAILED: \(String(describing: error), privacy: .public)")
         }

@@ -149,7 +149,7 @@ struct BrowsePage: View {
             RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
         case .jamendo:
             VStack(alignment: .leading, spacing: 4) {
-                RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
                 // The free music's reason when it stays empty. Start drops
                 // the share silently (with a log line); here it says why.
                 if freeCatalogStore.rows.freeMusic.isEmpty, let problem = freeCatalogStore.rows.freeMusicProblem {

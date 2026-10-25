@@ -21,7 +21,10 @@ struct CatalogRightsSection: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            if let licence = catalogFacts.licence(item.id) {
+            // A seal only on a statement: "Rights not stated" is none, and a
+            // checkmark beside it would be a claim of its own. Without one
+            // the year speaks (`FreeCatalog.rightsNote`).
+            if let licence = catalogFacts.licence(item.id), licence != FreeCatalog.unstatedRights {
                 Label(licence, systemImage: "checkmark.seal")
                     .font(.caption).foregroundStyle(.secondary)
             } else {

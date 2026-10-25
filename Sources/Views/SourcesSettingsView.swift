@@ -146,6 +146,10 @@ private struct SourceToggleRow: View {
                         Text(verbatim: source.title)
                         Text(verbatim: source.effectLine)
                             .font(.caption).foregroundStyle(.secondary)
+                        if let notice = source.rightsNotice {
+                            Text(verbatim: notice)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         if let fedLine {
                             Text(verbatim: fedLine)
                                 .font(.caption2).foregroundStyle(.tertiary)

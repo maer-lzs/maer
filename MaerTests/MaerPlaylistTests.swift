@@ -245,9 +245,9 @@ struct PlaylistSongSemanticsTests {
             ((strings[key]?["localizations"] as? [String: Any])?["de"] as? [String: Any])
                 .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String
         }
-        #expect(german("Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files.")
-                == "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien.")
-        #expect(german("Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files.")?
+        #expect(german("Mär playlists stay on your devices and can mix everything: music from %@, open catalogs and local files.")
+                == "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, offene Kataloge und lokale Dateien.")
+        #expect(german("Mär playlists stay on your devices and can mix everything: music from your music server, open catalogs and local files.")?
                     .contains("deinem Musikserver") == true)
         #expect(german("These entries can only go into a Mär playlist: %@ cannot reference a catalog or local address.")?
                     .hasPrefix("Diese Einträge passen nur in eine Mär-Playlist: %@") == true)
@@ -277,9 +277,9 @@ struct PlaylistSongSemanticsTests {
     @Test("ohne Musikserver nennt der Fusssatz einer Mär-Playlist keine Musik eines Servers", .needsTheSources)
     func withoutAMusicServerTheFooterNamesNone() throws {
         #expect(MaerPlaylistFooter.text(anyMusicServer: false)
-                == String(localized: "Playlists on your devices can mix everything: free catalogs, local files and music from a server you add."))
+                == String(localized: "Playlists on your devices can mix everything: open catalogs, local files and music from a server you add."))
         #expect(MaerPlaylistFooter.text(anyMusicServer: true)
-                == String(localized: "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address."))
+                == String(localized: "Playlists on your devices can mix everything: your server's music, open catalogs and local files. They stay on your devices, because a server cannot reference a catalog address."))
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
         #expect(page.contains("MaerPlaylistFooter.text(anyMusicServer:"), "the page writes its own footer again")

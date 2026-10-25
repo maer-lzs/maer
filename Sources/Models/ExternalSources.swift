@@ -43,6 +43,9 @@ nonisolated struct ExternalSource: Identifiable, Sendable {
     /// choice is reset by a rename. Sources that never had a switch get a
     /// new key.
     let storageKey: String
+    /// What the source itself says about the rights of what it hands out,
+    /// stated under its switch; nil where it says nothing.
+    var rightsNotice: String? = nil
 
     var id: String { key }
 
@@ -93,7 +96,8 @@ nonisolated enum ExternalSources {
         effectLine: String(localized: "Audiobooks, old-time radio, netlabels and 78s then load nothing new; anything you started stays and keeps playing."),
         staysLine: String(localized: "anything you started stays and keeps playing"),
         hosts: ["archive.org"],
-        storageKey: "archivePopularEnabled")
+        storageKey: "archivePopularEnabled",
+        rightsNotice: FreeCatalog.archiveRightsNotice)
 
     static let jamendo = ExternalSource(
         key: "jamendo", group: .catalogs,

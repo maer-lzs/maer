@@ -51,9 +51,9 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let id = FreeCatalog.librivoxPrefix + book.id
         librivoxBooks[id] = book
-        // LibriVox recordings are public domain. The capsule says so
-        // instead of leaving the class blank where we DO know it.
-        licences[id] = String(localized: "Public domain")
+        // LibriVox recordings are public domain in the USA, "not necessarily
+        // in other countries" (LibriVox's own words), so the label says where.
+        licences[id] = String(localized: "Public domain in the USA")
         // ONE normalization at the intake. Every surface shows it.
         let normalized = book.title.map(FreeCatalog.normalizedTitle)
         readingVersions[id] = normalized?.version
@@ -204,7 +204,8 @@ final class FreeCatalogProvider: AudioProvider {
            let yearText = doc.year?.first, let year = Int(yearText.prefix(4)),
            FreeCatalog.recordingIsPublicDomain(
                year: year, currentYear: Calendar.current.component(.year, from: Date())) {
-            licences[id] = String(localized: "Public domain")
+            // The US term, so public domain there.
+            licences[id] = String(localized: "Public domain in the USA")
         }
         rememberCollections(doc.collection?.values, forItemId: id)
         // Archive rows carry the same LibriVox title pattern (the

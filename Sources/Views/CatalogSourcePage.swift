@@ -178,8 +178,7 @@ struct CatalogSourcePage: View {
                 RecommendationTile(result: PodcastSearchResult(
                     title: entry.title, author: entry.author,
                     artworkURL: entry.artworkURL, feedURL: entry.feedURL),
-                    subtitle: entry.form?.label,
-                    badgeText: entry.ccLicense)
+                    subtitle: entry.form?.label)
             }
         }
         .padding(.horizontal)
@@ -199,10 +198,8 @@ struct CatalogSourcePage: View {
             if source == .oldTimeRadio || source == .archiveBooks {
                 ArchiveRightsNote()
             }
-            // A MIXED source states its majority standard ONCE up here;
-            // the tiles below then carry only deviations (a stated
-            // licence, computed public domain). Repeating the majority on
-            // every tile said nothing and drowned the deviations.
+            // A MIXED source states its majority standard once up here; the
+            // tiles carry no rights, the detail page names each title's.
             if let note = source.majorityRightsNote {
                 Text(note)
                     .font(.caption)
@@ -599,7 +596,6 @@ struct CatalogSourcePage: View {
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
-            hidesUnstatedRights: source.majorityRightsNote != nil,
             onTap: {
                 pushFreeAudiobooksRoute(catalogFacts.route(item.id))
             }
@@ -677,7 +673,6 @@ struct CatalogPopularPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
-                        hidesUnstatedRights: source.majorityRightsNote != nil,
                         onTap: {
                             pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                         })
@@ -772,7 +767,6 @@ struct CatalogShelfPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
-                        hidesUnstatedRights: source.majorityRightsNote != nil,
                         // OTR bundles in shelf grids push their show
                         // page too. Same tap class everywhere.
                         onTap: {

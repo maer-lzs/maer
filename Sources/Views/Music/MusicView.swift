@@ -201,7 +201,7 @@ struct MusicView: View {
             if jamendoArea && jamendoRowIsVisible {
                 let rows = freeCatalogStore.rows
                 VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                    RowHeading.entry("Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         .jamendoShuffle(coordinator: playerCoordinator)
                     if !rows.freeMusic.isEmpty {
                         // Its own seed per surface: the same set, but not

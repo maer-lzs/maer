@@ -51,8 +51,7 @@ struct CatalogMixTile: View {
             RecommendationTile(result: PodcastSearchResult(
                 title: entry.title, author: entry.author,
                 artworkURL: entry.artworkURL, feedURL: entry.feedURL),
-                subtitle: entry.form?.label,
-                badgeText: entry.ccLicense)
+                subtitle: entry.form?.label)
                 .stackedKind(marksKind ? .podcasts : nil)
         case .item(let item):
             FreeCatalogBookTile(

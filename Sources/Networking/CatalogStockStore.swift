@@ -118,4 +118,31 @@ nonisolated struct CatalogStockStore: Sendable {
         }
         return gone
     }
+
+    /// Surfaces whose stock nothing reads any more and no device keeps:
+    /// `shellac-all` holds the whole 78 rpm collection, past the shelves
+    /// whose subjects make that area safe (`ArchiveMusicCatalog.shellacAll`).
+    static let retiredSurfaces = ["shellac-all"]
+
+    /// Removes the stock files of retired surfaces, the finished one and an
+    /// unfinished dump with its counters. Runs at every start and costs one
+    /// directory read once they are gone; says what it removed.
+    @discardableResult
+    func removeRetired(_ surfaces: [String] = CatalogStockStore.retiredSurfaces,
+                       in directory: URL = CatalogStockStore.directory) -> Int {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil)) ?? []
+        var gone = 0
+        for surface in surfaces {
+            let safe = surface.replacingOccurrences(of: "/", with: "_")
+            for file in files where file.lastPathComponent == "\(safe).json"
+                || file.lastPathComponent.hasPrefix(safe + CatalogStockFetch.partialSuffix) {
+                if (try? FileManager.default.removeItem(at: file)) != nil { gone += 1 }
+            }
+        }
+        if gone > 0 {
+            Logger.library.notice("CATALOG stock retired surfaces=\(surfaces.joined(separator: ","), privacy: .public) files=\(gone)")
+        }
+        return gone
+    }
 }

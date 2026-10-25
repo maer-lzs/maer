@@ -4314,12 +4314,12 @@
         }
       }
     },
-    "Free Catalogs" : {
+    "Open Catalogs" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freie Kataloge"
+            "value" : "Offene Kataloge"
           }
         }
       }
@@ -4334,12 +4334,12 @@
         }
       }
     },
-    "Free Music (Jamendo)" : {
+    "Music (Jamendo)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freie Musik (Jamendo)"
+            "value" : "Musik (Jamendo)"
           }
         }
       }
@@ -4374,12 +4374,12 @@
         }
       }
     },
-    "From the Free Catalogs" : {
+    "From Open Catalogs" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus den freien Katalogen"
+            "value" : "Aus offenen Katalogen"
           }
         }
       }
@@ -5770,12 +5770,12 @@
         }
       }
     },
-    "Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app." : {
+    "Mär is a home for audiobooks, music, podcasts, radio and open catalogs: your own servers and the open net in one app." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mär ist ein Zuhause für Hörbücher, Musik, Podcasts, Radio und freie Kataloge: deine eigenen Server und das offene Netz in einer App."
+            "value" : "Mär ist ein Zuhause für Hörbücher, Musik, Podcasts, Radio und offene Kataloge: deine eigenen Server und das offene Netz in einer App."
           }
         }
       }
@@ -5810,22 +5810,22 @@
         }
       }
     },
-    "Mär playlists stay on your devices and can mix everything: music from %@, free catalogs and local files." : {
+    "Mär playlists stay on your devices and can mix everything: music from %@, open catalogs and local files." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, freie Kataloge und lokale Dateien."
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von %@, offene Kataloge und lokale Dateien."
           }
         }
       }
     },
-    "Mär playlists stay on your devices and can mix everything: music from your music server, free catalogs and local files." : {
+    "Mär playlists stay on your devices and can mix everything: music from your music server, open catalogs and local files." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von deinem Musikserver, freie Kataloge und lokale Dateien."
+            "value" : "Mär-Playlists bleiben auf deinen Geräten und dürfen alles mischen: Musik von deinem Musikserver, offene Kataloge und lokale Dateien."
           }
         }
       }
@@ -6091,12 +6091,12 @@
         }
       }
     },
-    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it." : {
+    "Mixes everything (server music, open catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und reist über iCloud zwischen deinen Geräten. Ein anderer Client deines Servers sieht sie nicht."
+            "value" : "Mischt alles (Servermusik, offene Kataloge und lokale Dateien) und reist über iCloud zwischen deinen Geräten. Ein anderer Client deines Servers sieht sie nicht."
           }
         }
       }
@@ -8248,22 +8248,22 @@
         }
       }
     },
-    "Playlists on your devices can mix everything: free catalogs, local files and music from a server you add." : {
+    "Playlists on your devices can mix everything: open catalogs, local files and music from a server you add." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Playlists auf deinen Geräten dürfen alles mischen: freie Kataloge, lokale Dateien und Musik von einem Server, den du hinzufügst."
+            "value" : "Playlists auf deinen Geräten dürfen alles mischen: offene Kataloge, lokale Dateien und Musik von einem Server, den du hinzufügst."
           }
         }
       }
     },
-    "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
+    "Playlists on your devices can mix everything: your server's music, open catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Playlists auf deinen Geräten dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien. Sie bleiben auf deinen Geräten, weil ein Server keine Katalog-Adresse referenzieren kann."
+            "value" : "Playlists auf deinen Geräten dürfen alles mischen: die Musik deines Servers, offene Kataloge und lokale Dateien. Sie bleiben auf deinen Geräten, weil ein Server keine Katalog-Adresse referenzieren kann."
           }
         }
       }
@@ -8785,12 +8785,12 @@
         }
       }
     },
-    "Public-domain readings, radio plays, free labels and historic recordings, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: %@." : {
+    "Readings, radio plays, labels and historic recordings from open catalogs, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: %@." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gemeinfreie Lesungen, Hörspiele, freie Labels und historische Aufnahmen, klar getrennt von deiner eigenen Bibliothek. Welche Reihen erscheinen und welche Dienste gefragt werden dürfen, hat je eine eigene Seite. Quellen: %@."
+            "value" : "Lesungen, Hörspiele, Labels und historische Aufnahmen aus offenen Katalogen, klar getrennt von deiner eigenen Bibliothek. Welche Reihen erscheinen und welche Dienste gefragt werden dürfen, hat je eine eigene Seite. Quellen: %@."
           }
         }
       }
@@ -8895,12 +8895,12 @@
         }
       }
     },
-    "Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
+    "Radio, podcasts and the open catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Radio, Podcasts und die freien Kataloge sind sofort da, ganz ohne Konto. Audiobookshelf, ein Musikserver oder der Podcast-Abgleich kommen jederzeit in den Einstellungen dazu. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
+            "value" : "Radio, Podcasts und die offenen Kataloge sind sofort da, ganz ohne Konto. Audiobookshelf, ein Musikserver oder der Podcast-Abgleich kommen jederzeit in den Einstellungen dazu. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
           }
         }
       }
@@ -11306,12 +11306,12 @@
         }
       }
     },
-    "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
+    "These recordings come from the Internet Archive, which does not guarantee their rights status." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
+            "value" : "Diese Aufnahmen stammen aus dem Internet Archive. Ihre Rechtelage garantiert das Archiv nicht."
           }
         }
       }

@@ -49,9 +49,9 @@ What leaves the device, where it goes, and what stays. Every statement below can
 - Sign in with username/password or an API token, compatible with both the old and new Audiobookshelf authentication systems
 - Library as an adaptive cover grid for iPhone and iPad, self-sizing to always fit the actual screen width without overlap, even across rotation
 - **Global search across every source**: one search reaches audiobooks, podcasts, music, and radio at once. A standing scope bar narrows it to Library / Audiobooks / Podcasts / Music / Radio; an empty field shows a browse deck (recent searches, and entry tiles for authors/series/genres, artists, shows, albums); typing yields ranked results per type. The podcast and radio scopes fold in a catalog section (“New Shows” from PodcastIndex/iTunes, stations from Radio Browser), so you can subscribe to or play something you don't have yet. Offline-capable: each source searches its cached content, and results that can't play right now are dimmed and marked. An author, a series or the authors, series or genres of the library opened from the search open their page in the Audiobooks tab, and going back returns to the search with its query and results
-- **Start without a server**: the first screen shows the map of areas; radio, podcasts (RSS), the free catalogs and local files work right away, and servers (Audiobookshelf, a music server, gpodder sync, a Mär sync service) are added one at a time later under Settings, where the same map stands. The setup screen and Next Steps list every server Mär is tested with, each with a short page: what it does, what it needs, what you enter in Mär, and links to its documentation and source code
+- **Start without a server**: the first screen shows the map of areas; radio, podcasts (RSS), the open catalogs and local files work right away, and servers (Audiobookshelf, a music server, gpodder sync, a Mär sync service) are added one at a time later under Settings, where the same map stands. The setup screen and Next Steps list every server Mär is tested with, each with a short page: what it does, what it needs, what you enter in Mär, and links to its documentation and source code
 - **Home tab**: a cross-media start screen with Keep Listening, Up Next, Listen Again (the music you started: albums, playlists, songs), Latest Episodes, Recently Added, Rediscover (paused for a while / next unfinished book in a series), Recommended, and Discover rows for music and for audiobooks and radio plays; each row can be switched off under Settings → Rows
-- **Free catalogs** (on from the start, each row can be switched off): browse rows from the open audio commons: LibriVox and Internet Archive audiobooks, Project Gutenberg, old-time radio plays, netlabel music, digitised 78 rpm records, Jamendo (with a key), with genre shelves, day-rotating popular rows, and an honest per-title rights capsule that never guesses
+- **Open catalogs** (on from the start, each row can be switched off): browse rows from the open audio commons: LibriVox and Internet Archive audiobooks, Project Gutenberg, old-time radio plays, netlabel music, digitised 78 rpm records (only along curated subject shelves), Jamendo (with a key), with genre shelves, day-rotating popular rows, the Internet Archive's notice once at the top of its surfaces, and each title's rights on its own page, never guessed
 - Sorting by title, author, recently added, or recently listened, with an ascending/descending toggle; sort and filter choices are remembered across app launches
 - Filters for all/unfinished/finished/downloaded books
 - “Keep Listening”, “Downloads”, “Recently Added” and “All Books” sections; with a server, a row of tiles for Series, Authors, Local Files and Listening History (Series and Authors open a page of every group with its count, a group opens its books); without a server, Local Files and Listening History stand as rows
@@ -161,7 +161,7 @@ Multi-user support, metadata editing, and server/library administration. Also no
 - Xcode with an iOS 26 SDK or newer (needed to build the app, which uses Apple's Liquid Glass API where the system has it)
 - Deployment target **iOS/iPadOS 18.0** (minimum runtime version); on iOS 18 to 25 the glass surfaces fall back to the system material
 - A source of audio, but **no server is required to start**:
-  - you can **begin without any server** and use radio, podcasts (RSS), the free catalogs and imported local files right away
+  - you can **begin without any server** and use radio, podcasts (RSS), the open catalogs and imported local files right away
   - **Audiobookshelf** for audiobooks and podcasts, with your account credentials or an API token
   - and/or a **Subsonic/OpenSubsonic**-compatible music server (Navidrome, gonic, Airsonic) for the Music tab
   - **internet radio** needs no server: the public Radio Browser catalog, plus any of your own stream URLs
@@ -272,7 +272,7 @@ Sources/
 │   ├── LocalLibrary.swift          Local file index (rows) + AVAsset metadata extraction
 │   ├── SubsonicProvider.swift      Subsonic/OpenSubsonic music (Navidrome, gonic, Airsonic)
 │   ├── JellyfinProvider.swift      Jellyfin music and audiobooks (jf: namespace; a folder folds to one book)
-│   ├── FreeCatalogProvider.swift   Playback for the free catalogs (LibriVox, archive.org, Jamendo)
+│   ├── FreeCatalogProvider.swift   Playback for the open catalogs (LibriVox, archive.org, Jamendo)
 │   ├── RadioProvider.swift         Internet radio (radio: namespace), Radio Browser + own URLs
 │   ├── RSSProvider.swift           Podcasts: RSS episodes mapped to library items
 │   ├── MaerPlaylists.swift         Mär playlists (rows): the SECOND playlist type, mixing every id
@@ -292,7 +292,7 @@ Sources/
 │   ├── SubsonicModels.swift        Codable structs for the Subsonic/OpenSubsonic API
 │   ├── JellyfinModels.swift, JellyfinBookFold.swift   Jellyfin structs; pure folding of a folder into one book
 │   ├── RadioModels.swift           Foundation-only radio core (mapping, ICY parse, store)
-│   ├── FreeCatalog*.swift          The free catalogs: sources, decoders, rights capsule
+│   ├── FreeCatalog*.swift          The open catalogs: sources, decoders, rights labels
 │   ├── MediaType.swift             The four media types (audiobooks/podcasts/music/radio)
 │   ├── SyncRules.swift             Pure, unit-tested sync decision rules + multi-track time math
 │   ├── SyncHistory.swift           Pure sync-history entries + ring buffer
@@ -393,7 +393,7 @@ Sources/
     ├── SubsonicSourceView.swift    Music source page (server, credentials, sync)
     ├── JellyfinSourceView.swift    Jellyfin source page
     ├── RadioSourceView.swift       Radio source page (enable, own stream URLs)
-    ├── FreeAudiobooksPage.swift, CatalogSourcePage.swift   The free catalogs' pages
+    ├── FreeAudiobooksPage.swift, CatalogSourcePage.swift   The open catalogs' pages
     ├── PodcastsView.swift          Podcast home (continue, recommendations, queue, shelves)
     ├── PodcastSourceView.swift     Add/import podcasts and pick subscription sources
     ├── Podcasts/                   Show, episode, queue, discover, per-show settings, cards

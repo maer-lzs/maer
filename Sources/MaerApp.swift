@@ -201,6 +201,8 @@ struct MaerApp: App {
         // Clear orphaned import temp (partial downloads/upload
         // bodies of a killed import). No invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
+        // A stock nothing reads any more leaves the device (`retiredSurfaces`).
+        Task.detached(priority: .utility) { CatalogStockStore.shared.removeRetired() }
         // Row switches that one key used to share start from the old
         // choice, before the first render reads them.
         AppRows.carryOldChoices()

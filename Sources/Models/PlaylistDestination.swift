@@ -115,8 +115,8 @@ nonisolated enum PlaylistOnlyMaerSentence {
 nonisolated enum MaerPlaylistFooter {
     static func text(anyMusicServer: Bool) -> String {
         guard anyMusicServer else {
-            return String(localized: "Playlists on your devices can mix everything: free catalogs, local files and music from a server you add.")
+            return String(localized: "Playlists on your devices can mix everything: open catalogs, local files and music from a server you add.")
         }
-        return String(localized: "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
+        return String(localized: "Playlists on your devices can mix everything: your server's music, open catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
     }
 }

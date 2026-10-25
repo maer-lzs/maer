@@ -20,7 +20,7 @@ struct SetupView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app.")
+                    Text("Mär is a home for audiobooks, music, podcasts, radio and open catalogs: your own servers and the open net in one app.")
                         .font(.callout)
                 }
 
@@ -34,7 +34,7 @@ struct SetupView: View {
 
                 // What the pinned button gets, named in full: not podcasts alone.
                 Section {} footer: {
-                    Text("Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
+                    Text("Radio, podcasts and the open catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
                 }
             }
             // The FIRST screen must not be branded as an ABS login. Mär does

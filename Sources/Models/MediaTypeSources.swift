@@ -67,7 +67,7 @@ nonisolated enum MediaTypeSources {
             ]
         case .freeCatalogs:
             return [
-                MediaTypeSource(id: "free-catalogs", title: "Free Catalogs",
+                MediaTypeSource(id: "free-catalogs", title: "Open Catalogs",
                                 symbol: "books.vertical", needsAccount: false),
             ]
         }

@@ -78,7 +78,7 @@ struct SourceMapCard: View {
         case .music: return "Music"
         case .podcasts: return "Podcasts"
         case .radio: return "Radio"
-        case .freeCatalogs: return "Free Catalogs"
+        case .freeCatalogs: return "Open Catalogs"
         }
     }
 
@@ -314,7 +314,7 @@ struct SourceAreaPage: View {
             }
             .accessibilityIdentifier("free-catalogs-services")
         } footer: {
-            Text("Public-domain readings, radio plays, free labels and historic recordings, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: \(NetworkServiceNames.freeCatalogs).")
+            Text("Readings, radio plays, labels and historic recordings from open catalogs, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
     }
 }
