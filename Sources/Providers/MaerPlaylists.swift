@@ -94,9 +94,11 @@ final class MaerPlaylists: ObservableObject {
         }
 
         /// What an entry carries: the snapshot, or the first-generation
-        /// title alone when only that travelled.
+        /// title alone when only that travelled. A Gutenberg snapshot written
+        /// before its rules reads readable (`FreeCatalog.gutenbergReadable`).
         func carried(for itemId: String) -> CarriedItem? {
-            snapshots[itemId] ?? titles[itemId].map { CarriedItem(id: itemId, title: $0) }
+            (snapshots[itemId] ?? titles[itemId].map { CarriedItem(id: itemId, title: $0) })
+                .map(FreeCatalog.gutenbergReadable)
         }
     }
 

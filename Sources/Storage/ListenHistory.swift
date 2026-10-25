@@ -77,12 +77,23 @@ final class ListenHistory {
         // tombstone yields only to a newer hearing (`merged`).
         keeper.adopt = { [weak self] read in
             guard let self else { return }
-            self.entries = Self.adopted(read: read, run: self.entries)
+            self.entries = Self.adopted(read: read.mapValues(Self.readable), run: self.entries)
         }
         keeper.mark = { [weak follower] in follower?.mark() }
     }
 
     // MARK: - The rules (pure)
+
+    /// An entry as it is read back: a Gutenberg author written before the
+    /// rules reads readable (`FreeCatalog.gutenbergAuthor`, which leaves a
+    /// readable name as it is).
+    nonisolated static func readable(_ entry: Entry) -> Entry {
+        guard entry.id.hasPrefix(FreeCatalog.gutenbergPrefix),
+              let author = FreeCatalog.gutenbergAuthor(entry.subtitle) else { return entry }
+        var read = entry
+        read.subtitle = author
+        return read
+    }
 
     /// Which page a playing title belongs to, nil for none (a podcast, a
     /// radio station). A book of the books tab, or a title the books shelf
@@ -395,7 +406,7 @@ final class ListenHistory {
         startRead = .main
         let started = Date()
         guard let rows = keeper.startNow() else { return }
-        entries = rows
+        entries = rows.mapValues(Self.readable)
         let ms = Int(Date().timeIntervalSince(started) * 1000)
         Logger.library.notice("HISTORY start: entries=\(rows.count) ms=\(ms)")
     }

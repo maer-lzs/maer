@@ -211,7 +211,7 @@ nonisolated struct PersonalizedShelf: Decodable {
 
 nonisolated struct LibraryItem: Codable, Identifiable, Equatable {
     let id: String
-    let media: LibraryItemMedia?
+    var media: LibraryItemMedia?
     let addedAt: Double?
 
     var title: String {
@@ -227,12 +227,12 @@ nonisolated struct LibraryItem: Codable, Identifiable, Equatable {
 
 nonisolated struct LibraryItemDetail: Codable, Identifiable, Equatable, Sendable {
     let id: String
-    let media: LibraryItemMedia
+    var media: LibraryItemMedia
     let userMediaProgress: MediaProgress?
 }
 
 nonisolated struct LibraryItemMedia: Codable, Equatable {
-    let metadata: LibraryItemMetadata?
+    var metadata: LibraryItemMetadata?
     let duration: Double?
     let chapters: [ABSChapter]?
     let tracks: [ABSAudioTrack]?
@@ -250,13 +250,13 @@ nonisolated struct ABSAuthorRef: Codable, Identifiable, Equatable {
 
 nonisolated struct LibraryItemMetadata: Codable, Equatable {
     let title: String?
-    let authorName: String?
+    var authorName: String?
     /// Authors with server ids (expanded payload only). Default nil keeps
     /// existing memberwise-init callers valid.
     var authors: [ABSAuthorRef]? = nil
     let narratorName: String?
     let seriesName: String?
-    let genres: [String]?
+    var genres: [String]?
     let publishedYear: LenientString?
     let description: String?
     /// Podcasts only: feed URL (for cross-source dedup with RSS).

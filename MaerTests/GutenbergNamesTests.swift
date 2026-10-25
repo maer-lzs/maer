@@ -56,6 +56,51 @@ struct GutenbergNamesTests {
         #expect(provider.contains(".map(FreeCatalog.gutenbergReadable)"))
     }
 
+    /// Every way a stored Gutenberg title comes back into the app, and the
+    /// read that takes it through the rules there.
+    static let storedWays: [(file: String, read: String)] = [
+        ("Sources/Providers/FreeCatalogProvider.swift", ".map(FreeCatalog.gutenbergReadable)"),
+        ("Sources/Networking/DownloadManager.swift", "(keeper.startNow() ?? [:]).mapValues(FreeCatalog.gutenbergReadable)"),
+        ("Sources/Networking/DownloadManager.swift", "read: read.mapValues(FreeCatalog.gutenbergReadable)"),
+        ("Sources/Storage/ListenHistory.swift", "entries = rows.mapValues(Self.readable)"),
+        ("Sources/Storage/ListenHistory.swift", "read: read.mapValues(Self.readable)"),
+        ("Sources/Providers/MaerPlaylists.swift", ".map(FreeCatalog.gutenbergReadable)"),
+        ("Sources/Models/SyncCarried.swift", "carried.map(FreeCatalog.gutenbergReadable)"),
+    ]
+
+    @Test("jeder gespeicherte Weg eines Gutenberg-Titels liest durch die Regeln", .needsTheSources)
+    func everyStoredWayReadsThroughTheRules() throws {
+        for way in Self.storedWays {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(way.file), encoding: .utf8))
+            #expect(text.contains(way.read), "\(way.file) reads a stored Gutenberg title raw")
+        }
+    }
+
+    @Test("Download, Verlauf und mitgetragener Titel lesen sich lesbar")
+    func theOtherStoredFormsReadReadable() throws {
+        let stored = """
+        {"id":"gut:9272","media":{"metadata":{"title":"Gulliver's Travels","authorName":"Swift, Jonathan, 1667-1745",
+        "genres":["Satire","Gulliver, Lemuel (Fictitious character) -- Fiction"]},"duration":40000},
+        "userMediaProgress":null}
+        """
+        let detail = FreeCatalog.gutenbergReadable(try JSONDecoder().decode(LibraryItemDetail.self, from: Data(stored.utf8)))
+        #expect(detail.media.metadata?.authorName == "Jonathan Swift" && detail.media.metadata?.genres == ["Satire"])
+        #expect(detail.media.duration == 40000)
+        let carried = FreeCatalog.gutenbergReadable(CarriedItem(id: "gut:9272", title: "Gulliver's Travels",
+                                                                subtitle: "Swift, Jonathan, 1667-1745"))
+        #expect(carried.subtitle == "Jonathan Swift" && carried.title == "Gulliver's Travels")
+        #expect(SyncCarried.stub(itemId: "gut:9272", carried: CarriedItem(id: "gut:9272", title: "G",
+                                                                           subtitle: "Swift, Jonathan, 1667-1745"))
+                    .media?.metadata?.authorName == "Jonathan Swift")
+        let entry = ListenHistory.readable(ListenHistory.Entry(id: "gut:9272", family: .book, title: "G",
+                                                              subtitle: "Swift, Jonathan, 1667-1745", heardAt: 1))
+        #expect(entry.subtitle == "Jonathan Swift")
+        // Another title keeps its words.
+        let other = ListenHistory.Entry(id: "lva:x", family: .book, title: "G", subtitle: "Swift, Jonathan", heardAt: 1)
+        #expect(ListenHistory.readable(other) == other)
+    }
+
     @Test("ein vor den Regeln gespeicherter Gutenberg-Titel liest sich lesbar", .needsTheSources)
     func aTitleKeptBeforeTheRulesReadsReadable() throws {
         // The record as the kept stock held it before the rules existed.

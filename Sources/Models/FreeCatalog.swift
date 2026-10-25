@@ -885,21 +885,38 @@ nonisolated enum FreeCatalog {
 
     /// A Gutenberg title as it is read back from the device: a title stored
     /// before the two rules existed still carries the record's raw author
-    /// and subject chains, so they apply on reading too. Both rules leave a
-    /// readable name and readable genres as they are; any other title
-    /// passes unchanged.
+    /// and subject chains, so they apply on reading too, to every stored
+    /// form (an item, a downloaded detail, a carried snapshot). Both rules
+    /// leave a readable name and readable genres as they are; only these two
+    /// fields change, and any other title passes unchanged.
     static func gutenbergReadable(_ item: LibraryItem) -> LibraryItem {
-        guard item.id.hasPrefix(gutenbergPrefix), let media = item.media, let meta = media.metadata else { return item }
-        let readable = LibraryItemMetadata(
-            title: meta.title, authorName: gutenbergAuthor(meta.authorName), authors: meta.authors,
-            narratorName: meta.narratorName, seriesName: meta.seriesName,
-            genres: gutenbergGenres(meta.genres), publishedYear: meta.publishedYear,
-            description: meta.description, feedUrl: meta.feedUrl)
-        return LibraryItem(id: item.id,
-                           media: LibraryItemMedia(metadata: readable, duration: media.duration,
-                                                   chapters: media.chapters, tracks: media.tracks,
-                                                   episodes: media.episodes),
-                           addedAt: item.addedAt)
+        guard item.id.hasPrefix(gutenbergPrefix), let media = item.media else { return item }
+        var read = item
+        read.media = gutenbergReadable(media)
+        return read
+    }
+
+    static func gutenbergReadable(_ detail: LibraryItemDetail) -> LibraryItemDetail {
+        guard detail.id.hasPrefix(gutenbergPrefix) else { return detail }
+        var read = detail
+        read.media = gutenbergReadable(detail.media)
+        return read
+    }
+
+    static func gutenbergReadable(_ carried: CarriedItem) -> CarriedItem {
+        guard carried.id.hasPrefix(gutenbergPrefix) else { return carried }
+        var read = carried
+        read.subtitle = gutenbergAuthor(carried.subtitle)
+        return read
+    }
+
+    private static func gutenbergReadable(_ media: LibraryItemMedia) -> LibraryItemMedia {
+        guard var meta = media.metadata else { return media }
+        meta.authorName = gutenbergAuthor(meta.authorName)
+        meta.genres = gutenbergGenres(meta.genres)
+        var read = media
+        read.metadata = meta
+        return read
     }
 
     /// "SS" / "MM:SS" / "H:MM:SS" → seconds (LibriVox playtime). An archive

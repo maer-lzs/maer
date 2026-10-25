@@ -152,7 +152,10 @@ nonisolated enum SyncCarried {
     /// The item an on-demand id becomes without local stock: named by its
     /// snapshot, resolved on demand when played.
     static func stub(itemId: String, carried: CarriedItem?) -> LibraryItem {
-        guard let carried else { return LibraryItem(id: itemId, media: nil, addedAt: nil) }
+        // A snapshot written before the Gutenberg rules reads readable too.
+        guard let carried = carried.map(FreeCatalog.gutenbergReadable) else {
+            return LibraryItem(id: itemId, media: nil, addedAt: nil)
+        }
         return LibraryItem(
             id: itemId,
             media: LibraryItemMedia(
