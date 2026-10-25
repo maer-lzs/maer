@@ -69,9 +69,16 @@ struct ObserverPlaceFenceTests {
     /// whole of `Sources` as well: `TabView`, `Table`, `NavigationSplitView`.
     /// `ScrollViewReader` stands in three files and always around a
     /// `ScrollView`, so it would only count what is already counted.
+    ///
+    /// **The two frames of the detail pages count as what they hold**:
+    /// `DetailScrollColumns` lays its content into a `ScrollView`,
+    /// `DetailListColumns` its rows into a `List` (`FoldColumns.swift`). A
+    /// page that hands its content to one of them carries scroll content
+    /// although its own text names neither.
     static let scrollMarkers = ["ScrollView", "List(", "List {", "LazyVGrid", "LazyHGrid",
                                 "LazyVStack", "LazyHStack", "Form(", "Form {",
-                                "PageTabViewStyle", ".tabViewStyle(.page"]
+                                "PageTabViewStyle", ".tabViewStyle(.page",
+                                "DetailScrollColumns", "DetailListColumns"]
 
     /// One view declaration with its extent. `ViewModifier` counts as a view:
     /// it owns a body and re-runs with it, and one of the observations in
