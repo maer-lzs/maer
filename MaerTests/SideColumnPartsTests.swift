@@ -83,6 +83,8 @@ struct SideColumnPartsTests {
         let bar = try source("Sources/Views/MediaTabBar.swift")
         #expect(bar.contains("collapsed ? cells.filter { $0.id == selected } : cells"), "collapsed keeps the selected tab")
         #expect(bar.components(separatedBy: "var collapsed").count - 1 == 1, "a second collapse state")
+        // A tap on the one tab left only opens the column; the page stays.
+        #expect(library.contains("if collapsed, newValue == selectedMediaType {\n                        BottomBarState.shared.expand()\n                        return\n                    }"))
         // The reserved strip is the system's, never the capsule's height.
         #expect(library.contains(".readsReservedStrip(ofWidth: strip, $reservedSide)"))
     }

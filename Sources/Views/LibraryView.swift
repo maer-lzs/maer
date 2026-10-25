@@ -1092,6 +1092,12 @@ struct LibraryView: View {
             MediaTabBar(
                 types: availableMediaTypes, selected: selectedMediaType,
                 onSelect: { newValue in
+                    // The collapsed column shows only the tab one stands on;
+                    // a tap on it opens the column and stays on the page.
+                    if collapsed, newValue == selectedMediaType {
+                        BottomBarState.shared.expand()
+                        return
+                    }
                     // A tab tap leads back to the root of THIS tab, just as
                     // a tap used to leave the pushed page. What the other
                     // tabs hold stays theirs.
