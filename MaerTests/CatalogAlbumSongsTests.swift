@@ -53,15 +53,18 @@ struct CatalogAlbumSongsTests {
         #expect(asked == 1)
     }
 
-    @Test("die Katalogseite nimmt die Liste des Anbieters und nennt fehlende Lieder mit Zahl", .needsTheSources)
+    @Test("die Katalogseite nimmt die Liste des Anbieters ueber den Lader und nennt fehlende Lieder mit Zahl", .needsTheSources)
     func thePageTakesTheProvidersList() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
-        #expect(page.contains("FreeCatalogProvider.shared.albumSongs(albumId: itemId, count: tracks.count)"))
-        #expect(page.contains("CATALOG album songs missing=\\(answer.missing.count)"))
+        let loader = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/ArchiveMusicLoader.swift"), encoding: .utf8))
+        #expect(page.contains("ArchiveMusicLoader.albumSongs(albumId: itemId, count: tracks.count)"))
+        #expect(loader.contains("FreeCatalogProvider.shared.albumSongs(albumId: albumId, count: count)"))
+        #expect(loader.contains("CATALOG album songs missing=\\(answer.missing.count)"))
         #expect(!page.contains("resolveItem(forId: CatalogSongID.make"), "the page resolves the songs one by one again")
         // The count reaches the line under the buttons.
-        #expect(page.contains("missingSongs = answer.missing.count"))
+        #expect(page.contains("missingSongs = answer.missing"))
         #expect(page.contains("Self.missingSongsLine(count: missingSongs)"))
     }
 

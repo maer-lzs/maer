@@ -45,6 +45,17 @@ enum ArchiveMusicLoader {
         }
     }
 
+    /// A release's songs as the items they are (`CatalogSongID`), in order,
+    /// from the catalogue's one list of them. The songs that did not resolve
+    /// are counted for the page and named in the log.
+    static func albumSongs(albumId: String, count: Int) async -> (songs: [LibraryItem], missing: Int) {
+        let answer = await FreeCatalogProvider.shared.albumSongs(albumId: albumId, count: count)
+        if let first = answer.missing.first {
+            Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(count) first=\(first) ns=\(ItemNamespace.of(albumId) ?? "-", privacy: .public)")
+        }
+        return (answer.songs, answer.missing.count)
+    }
+
     private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
         let provider = FreeCatalogProvider.shared
         return docs.compactMap { provider.remember(popular: $0) }

@@ -1116,16 +1116,12 @@ struct ArchiveSeriesPage: View {
         .padding(.horizontal)
     }
 
-    /// The album's tracks as the items they are (`CatalogSongID`), in order,
-    /// from the catalogue's one list of a release's songs. A song that does
-    /// not resolve is counted under the buttons and named in the log; the
-    /// rest plays.
+    /// The album's tracks as the items they are (`CatalogSongID`), from the
+    /// loader. A song that does not resolve is counted under the buttons;
+    /// the rest plays.
     private func albumSongs() async -> [LibraryItem] {
-        let answer = await FreeCatalogProvider.shared.albumSongs(albumId: itemId, count: tracks.count)
-        missingSongs = answer.missing.count
-        if !answer.missing.isEmpty {
-            Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(tracks.count) first=\(answer.missing[0]) ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
-        }
+        let answer = await ArchiveMusicLoader.albumSongs(albumId: itemId, count: tracks.count)
+        missingSongs = answer.missing
         return answer.songs
     }
 
