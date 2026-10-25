@@ -15,7 +15,6 @@ import Combine
 struct MusicView: View {
     @Environment(\.itemRouter) private var router
     @Environment(\.pushMusicRoute) private var pushRoute
-    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
@@ -323,11 +322,7 @@ struct MusicView: View {
                         })
                     .cardRowSlot(spacing: 14)
                     .contextMenu {
-                        CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router) {
-                            CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
-                                                    pushMusicRoute: { pushRoute($0) },
-                                                    pushFreeAudiobooksRoute: { pushFreeAudiobooksRoute($0) })
-                        }
+                        CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router)
                     }
                 }
             }
@@ -637,8 +632,11 @@ struct CollectionMenuItems: View {
     var knownTitles: [String: String] = [:]
     /// A single song has nothing to shuffle.
     var offersShuffle = true
-    /// Opens the collection's page or detail sheet, as its tile's tap does.
-    let details: @MainActor () -> Void
+    /// Opens the collection's page, as its tile's tap does.
+    var details: (@MainActor () -> Void)? = nil
+    /// A catalogue title's id: Details is the one catalogue button
+    /// (`CatalogDetailsButton`), which opens the title's page.
+    var catalogDetails: String? = nil
     /// The global Up-Next queue both queue entries write to.
     private let queue = PlayQueue.shared
 
@@ -660,9 +658,13 @@ struct CollectionMenuItems: View {
             }
         }
         AddToPlaylistButton(itemId: itemId, knownTitles: knownTitles, resolve: addEntries)
-        Button {
-            details()
-        } label: { Label("Details", systemImage: "info.circle") }
+        if let catalogDetails {
+            CatalogDetailsButton(itemId: catalogDetails)
+        } else if let details {
+            Button {
+                details()
+            } label: { Label("Details", systemImage: "info.circle") }
+        }
     }
 }
 
@@ -670,17 +672,18 @@ extension CollectionMenuItems {
     /// The entries of a catalogue music tile: an archive album shuffles
     /// its songs, which its detail counts; anything else (an archive track,
     /// a Jamendo title) offers no shuffle. The queue and the playlist take
-    /// the title as its one entry, as for a server album.
-    static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator, router: ItemRouter,
-                        details: @escaping @MainActor () -> Void) -> CollectionMenuItems {
+    /// the title as its one entry, as for a server album; Details opens the
+    /// title's page.
+    static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator,
+                        router: ItemRouter) -> CollectionMenuItems {
         CollectionMenuItems(
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: { await CollectionSongs.catalog(item.id, router: router) },
+            songs: { await ArchiveMusicLoader.albumSongs(albumId: item.id, router: router) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
-            details: details)
+            catalogDetails: item.id)
     }
 
     /// Whether a catalogue title has songs to shuffle: an archive album.

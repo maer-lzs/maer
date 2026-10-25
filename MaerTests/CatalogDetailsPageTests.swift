@@ -55,7 +55,8 @@ struct CatalogDetailsPageTests {
                     "\(name) keeps a sheet item for catalogue details")
             buttons += text.components(separatedBy: "CatalogDetailsButton(itemId:").count - 1
         }
-        // BrowseRow, the area, popular row, genre rows and shelf of an archive
+        // The album and playlist menu (`CollectionMenuItems`, for the music
+        // tiles of BrowseRow and the music tab), the area, popular row, genre rows and shelf of an archive
         // music area, the shellac rows, the Jamendo page and shelf, the music
         // catalogue area.
         #expect(buttons == 9)

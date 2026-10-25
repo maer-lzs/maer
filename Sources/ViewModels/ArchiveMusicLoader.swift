@@ -56,6 +56,15 @@ enum ArchiveMusicLoader {
         return (answer.songs, answer.missing.count)
     }
 
+    /// The same songs where the caller does not know how many there are (a
+    /// tile's long-press Shuffle): the release's detail counts them, `router`
+    /// answers its source.
+    static func albumSongs(albumId: String, router: ItemRouter) async -> [LibraryItem] {
+        // A missing detail is bearable, because an empty pool starts nothing.
+        let detail = try? await router.provider(albumId).fetchItemDetail(itemId: albumId)
+        return await albumSongs(albumId: albumId, count: detail?.media.tracks?.count ?? 0).songs
+    }
+
     private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
         let provider = FreeCatalogProvider.shared
         return docs.compactMap { provider.remember(popular: $0) }

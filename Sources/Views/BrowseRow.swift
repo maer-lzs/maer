@@ -101,13 +101,6 @@ struct BrowseTileView: View {
     @Environment(\.pushMusicRoute) private var pushMusicRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
 
-    /// The title's page, as a tap on a tile opens it.
-    private func showDetail(_ item: LibraryItem) {
-        CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
-                                pushMusicRoute: pushMusicRoute,
-                                pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
-    }
-
     var body: some View {
         switch tile {
         case .recommendation(let result):
@@ -120,12 +113,14 @@ struct BrowseTileView: View {
                 // A work not started yet has no form; this share is music.
                 placeholderSystemImage: MediaFamily.placeholderSymbol(
                     for: item.id, markedForm: ListeningStore.startedForm(item.id) ?? .album),
-                onTap: { showDetail(item) })
+                onTap: {
+                    CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,
+                                            pushMusicRoute: pushMusicRoute,
+                                            pushFreeAudiobooksRoute: pushFreeAudiobooksRoute)
+                })
                 .stackedKind(marksKinds ? .music : nil)
                 .contextMenu {
-                    CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router) {
-                        showDetail(item)
-                    }
+                    CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router)
                 }
         case .catalog(let tile):
             CatalogMixTile(tile: tile, marksKind: marksKinds, playerCoordinator: playerCoordinator)

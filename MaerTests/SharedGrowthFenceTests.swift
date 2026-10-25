@@ -64,9 +64,12 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 371
 
-    /// The same count over all of `Sources`, measured 736 (the recommendations
-    /// the Browse page's lane observes and the two moved songs questions
-    /// of `CollectionSongs` stay, three folds fell; before that 734: the listening
+    /// The same count over all of `Sources`, measured 735 (a catalogue
+    /// album's songs for the tile menu take the music loader's one way, so
+    /// the second grip on the catalogue in `CollectionSongs` fell; before
+    /// that 736: the recommendations the Browse page's lane observes and the
+    /// two moved songs questions of `CollectionSongs` stayed, three folds
+    /// fell; before that 734: the listening
     /// history, the refusal on the Continue card, then the lock on every
     /// feed surface, the search door asking it for the deck, then the player
     /// asking the books shelf whether a title is a book, then the stores of
@@ -78,7 +81,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 736
+    nonisolated static let sourcesStock = 735
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
