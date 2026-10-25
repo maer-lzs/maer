@@ -90,6 +90,18 @@ struct DetailHeaderTests {
         #expect(look.contains("func coverCard() -> some View"), "the card can be switched off")
     }
 
+    @Test("die Verweise eines Kopfs stehen in einer Zeile, mittig, in einer Groesse", .needsTheSources)
+    func theLinksStandInOneRow() throws {
+        for file in ["Sources/Views/Podcasts/PodcastShowView.swift",
+                     "Sources/Views/Podcasts/PodcastEpisodeDetailView.swift",
+                     "Sources/Views/Radio/RadioStationDetailView.swift"] {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
+            #expect(text.components(separatedBy: "DetailLinkRow {").count - 1 == 1, "\(file) builds its own link row")
+            #expect(!text.contains("HStack(spacing: 18)"), "\(file) keeps a link row of its own")
+        }
+    }
+
     /// The titles the files of the headed pages still set in a top bar, on
     /// their other pages: the book's chapter list, the artist and playlist
     /// lists, the catalog's source, popular and shelf pages, the music

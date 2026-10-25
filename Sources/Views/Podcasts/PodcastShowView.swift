@@ -458,7 +458,7 @@ struct PodcastShowView: View {
     @ViewBuilder
     private var showLinks: some View {
         if let s = liveShow, s.link != nil || s.funding?.isEmpty == false {
-            HStack(spacing: 18) {
+            DetailLinkRow {
                 if let l = s.link, let url = URL(string: l) {
                     Link(destination: url) { Label("Website", systemImage: "safari") }
                         .accessibilityIdentifier("show-website")
@@ -469,7 +469,6 @@ struct PodcastShowView: View {
                     }
                 }
             }
-            .font(.caption)
         }
     }
 

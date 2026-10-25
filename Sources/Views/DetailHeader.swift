@@ -108,6 +108,18 @@ extension DetailHeader where Actions == EmptyView {
     }
 }
 
+/// THE row of a detail head's links (website, transcript, support): among
+/// the head's controls, on its centre axis, in one size.
+struct DetailLinkRow<Links: View>: View {
+    @ViewBuilder var links: () -> Links
+
+    var body: some View {
+        HStack(spacing: 18) { links() }
+            .font(.subheadline)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 /// THE main button of a detail head: glyph and word on light glass in a
 /// rounded rectangle, the head's full width. Every head that starts and
 /// pauses playback takes this one form; a disabled button keeps it.

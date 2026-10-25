@@ -78,9 +78,24 @@ struct PodcastEpisodeDetailView: View {
     }
 
     @ViewBuilder
+    private var episodeLinks: some View {
+        if let ep = podcastEpisode, ep.transcriptURL != nil || ep.link != nil {
+            // Among the head's controls, as on the show.
+            DetailLinkRow {
+                if let t = ep.transcriptURL, let url = URL(string: t) {
+                    Link(destination: url) { Label("Transcript", systemImage: "doc.text") }
+                }
+                if let l = ep.link, let url = URL(string: l) {
+                    Link(destination: url) { Label("Website", systemImage: "safari") }
+                }
+            }
+            .tint(.white)
+        }
+    }
+
+    @ViewBuilder
     private var metadataSection: some View {
-        if let ep = podcastEpisode,
-           (ep.persons?.isEmpty == false) || ep.transcriptURL != nil || ep.link != nil {
+        if let ep = podcastEpisode, ep.persons?.isEmpty == false {
             VStack(alignment: .leading, spacing: 10) {
                 if let persons = ep.persons, !persons.isEmpty {
                     Text("People").font(.headline).foregroundStyle(.white)
@@ -94,16 +109,6 @@ struct PodcastEpisodeDetailView: View {
                         .font(.subheadline)
                     }
                 }
-                HStack(spacing: 18) {
-                    if let t = ep.transcriptURL, let url = URL(string: t) {
-                        Link(destination: url) { Label("Transcript", systemImage: "doc.text") }
-                    }
-                    if let l = ep.link, let url = URL(string: l) {
-                        Link(destination: url) { Label("Website", systemImage: "safari") }
-                    }
-                }
-                .font(.subheadline)
-                .tint(.white)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
@@ -140,12 +145,15 @@ struct PodcastEpisodeDetailView: View {
                     } actions: {
                         // Text-only episodes show the notes without play/
                         // download/played affordances (nothing to hear).
-                        if !isTextOnly {
-                            HStack(spacing: 14) {
-                                playButton
-                                PodcastDownloadButton(item: item)
-                                markPlayedButton
+                        VStack(spacing: 12) {
+                            if !isTextOnly {
+                                HStack(spacing: 14) {
+                                    playButton
+                                    PodcastDownloadButton(item: item)
+                                    markPlayedButton
+                                }
                             }
+                            episodeLinks
                         }
                     }
 

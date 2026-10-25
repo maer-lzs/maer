@@ -52,10 +52,11 @@ struct RadioStationDetailView: View {
                 if variants.count > 1 { variantPicker }
 
                 if let homepage = station.homepage.flatMap({ URL(string: $0) }) {
-                    Link(destination: homepage) {
-                        Label("Website", systemImage: "safari")
+                    DetailLinkRow {
+                        Link(destination: homepage) {
+                            Label("Website", systemImage: "safari")
+                        }
                     }
-                    .font(.subheadline)
                 }
 
                 factsSection
