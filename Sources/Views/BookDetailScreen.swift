@@ -73,7 +73,6 @@ struct BookDetailScreen: View {
     /// retry, instead of an empty description and a silent download button.
     @State private var detailFailed = false
     @State private var showWiFiWarning = false
-    @State private var copiedReport = false
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
     @StateObject private var colorLoader = CoverColorLoader()
@@ -462,78 +461,6 @@ struct BookDetailScreen: View {
         // How close to the end this book counts as finished (credits).
         PlayedTailBookRow(itemId: entry.id)
             .padding(.horizontal)
-
-        // The book's progress diagnosis. The same instrument the
-        // podcast sheet carries, in its book view. It exists because a
-        // a position jumping backwards could not be PROVEN: it puts server
-        // state, local second backup and the cached detail side by side, each
-        // with its
-        // timestamp, and names the start the app would pick right now.
-        // Only in builds from Xcode, never in a release build.
-        #if DEBUG
-        diagnosisSection
-        #endif
-    }
-
-    @ViewBuilder
-    private var diagnosisSection: some View {
-        // Diagnostic UI stays verbatim (project convention).
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                UIPasteboard.general.string = progressReport()
-                copiedReport = true
-            } label: {
-                Label {
-                    Text(verbatim: "Fortschritts-Diagnose kopieren")
-                } icon: {
-                    Image(systemName: "doc.on.clipboard")
-                }
-                .font(.footnote)
-            }
-            .accessibilityIdentifier("book-progress-diagnosis-copy")
-            if copiedReport {
-                Text(verbatim: "In die Zwischenablage gelegt.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
-    }
-
-    /// Read-only: where this book's position could come from, and which one
-    /// the start would take.
-    private func progressReport() -> String {
-        let saved = ListeningStore.backup(entry.id)
-        let cached = downloadManager.loadCachedDetail(forItemId: entry.id)
-        let flushed = ListeningStore.flushed(entry.id)
-        let sources = ProgressDiagnosis.BookSources(
-            serverPosition: entry.progress?.currentTime,
-            serverUpdatedAtMs: entry.progress?.lastUpdate,
-            localPosition: (saved?.count ?? 0) >= 2 ? saved?[0] : nil,
-            localSavedAtMs: (saved?.count ?? 0) >= 2 ? saved?[1] : nil,
-            cachedPosition: cached?.userMediaProgress?.currentTime,
-            cachedUpdatedAtMs: cached?.userMediaProgress?.lastUpdate,
-            flushedPosition: (flushed?.count ?? 0) >= 2 ? flushed?[0] : nil,
-            flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
-            serverIsFinished: entry.progress?.isFinished,
-            progressFraction: entry.progress?.fraction,
-            jumpRing: JumpRingRows.matching(AppStorageKeys.store).entry(CarrierRowsSpec.entryOwner, entry.id) ?? [],
-            duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
-            isDownloaded: downloadManager.isDownloaded(itemId: entry.id),
-            // There is no separate progress QUEUE (positions push directly);
-            // what exists is the bookmark queue and the sync history. The
-            // honest stand-in for "what does this device still owe".
-            pendingSyncOperations: BookmarkQueue.shared.pendingOps()
-                .filter { $0.itemId == entry.id }.count)
-        return ProgressDiagnosis.bookReport(
-            title: shownItem.title,
-            sources: sources,
-            now: Date().timeIntervalSince1970,
-            format: { Date(timeIntervalSince1970: $0).formatted(date: .abbreviated, time: .standard) },
-            formatTime: { seconds in
-                let total = Int(seconds.rounded())
-                return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
-            })
     }
 
     var body: some View {

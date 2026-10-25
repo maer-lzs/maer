@@ -7645,16 +7645,6 @@
         }
       }
     },
-    "On every book detail page" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf jeder Buch-Detailseite"
-          }
-        }
-      }
-    },
     "On your Mac, open the Finder and choose Go, then Go to Folder." : {
       "extractionState" : "manual",
       "localizations" : {

@@ -795,7 +795,7 @@ struct SettingsView: View {
     private var diagnosticsSection: some View {
         Section {
             NavigationLink {
-                DiagnosticsView()
+                DiagnosticsView(libraryViewModel: libraryViewModel, playingID: coordinator.activeItem?.id)
             } label: {
                 Label("Diagnostics", systemImage: "stethoscope")
             }

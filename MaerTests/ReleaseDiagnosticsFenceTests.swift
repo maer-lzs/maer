@@ -16,9 +16,9 @@ struct ReleaseDiagnosticsFenceTests {
 
     /// The ways into a diagnostics surface, as their call reads, and why.
     static let entries: [(call: String, reason: String)] = [
-        ("DiagnosticsView()", "the developer diagnostics page in the settings"),
+        ("DiagnosticsView(", "the developer diagnostics page in the settings, with the books' progress diagnosis"),
         ("SyncHistoryView()", "the sync runs and counters"),
-        ("diagnosisSection", "the progress diagnosis of a book page and of a show's settings"),
+        ("diagnosisSection", "the progress diagnosis of a show's settings"),
         ("MetricReceiver.startIfAllowed()", "MetricKit, read only by the diagnostics page"),
         ("RadioLogoReport.text(", "the station logo and listening report of the radio tab"),
         ("BookmarkMeasure.Page()", "the bookmark measurement of linked folders"),
@@ -73,6 +73,15 @@ struct ReleaseDiagnosticsFenceTests {
         let storage = try #require(settings.range(of: "private var storageSection: some View {"))
         #expect(settings[storage.upperBound...].prefix(1_400).contains("ReloadCatalogDataRow()"),
                 "the derived-store lever left the storage section")
+        // The book progress diagnosis stands on the diagnostics page, not on
+        // the book page.
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
+        #expect(!page.contains("ProgressDiagnosis") && !page.contains("BookProgressReport"),
+                "the book page carries the progress diagnosis again")
+        let diagnostics = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DiagnosticsView.swift"), encoding: .utf8))
+        #expect(diagnostics.contains("BookProgressReport.text(for: entry)"))
     }
 
     @Test("der Zaehler der Bedingungen: DEBUG zaehlt, #else nicht, Kommentar nicht")
