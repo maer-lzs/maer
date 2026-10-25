@@ -38,7 +38,10 @@ enum UITestSeed {
         (shown("Seed Recommendation Two", by: "Seed Author"), "https://seed.example/rec2.xml"),
         (shown("Seed Recommendation Three", by: "Seed Author"), "https://seed.example/rec3.xml"),
     ].map { display, feed in
-        PodcastSearchResult(title: display.title, author: display.by, artworkURL: nil, feedURL: feed)
+        // The store pictures give each a cover under its own address.
+        PodcastSearchResult(title: display.title, author: display.by,
+                            artworkURL: seedsStorePictures ? feed.replacingOccurrences(of: ".xml", with: ".png") : nil,
+                            feedURL: feed)
     }
 
     /// The store pictures (`-uitest-store`, only beside `-uitest`): the same
@@ -327,15 +330,16 @@ enum UITestSeed {
 
         // Every seeded book, album and show with a cover, before the first
         // tile asks: a tile that asked first would keep its miss.
-        // The store pictures also give the played playlist and every
-        // station a cover.
+        // The store pictures also give the played playlist, every station
+        // and every recommendation a cover.
         let storeItems = seedsStorePictures ? [seedContinuePlaylist] : []
         let storeStations = seedsStorePictures ? seedRadioStations + seedRadioCatalog : []
+        let storeShows = recommendations.compactMap { r in r.artworkURL.map { ($0, r.title) } }
         let itemCovers = (books.map(\.item) + seedAlbums + storeItems).map { ($0.id, $0.media?.metadata?.title ?? "") }
             + [("seed-nowplaying", shown("Now Playing Book", by: "Ada Author").title)]
         placeCovers(items: itemCovers,
                     shows: ([show] + moreShows).compactMap { s in s.artworkURL.map { ($0, s.title) } }
-                        + storeStations.compactMap { s in s.faviconURL.map { ($0, s.name) } })
+                        + storeStations.compactMap { s in s.faviconURL.map { ($0, s.name) } } + storeShows)
 
         // A presentation-only active player (no audio) so the harness can
         // open the full player. A book with FALLBACK chapters ("Teil N von M").
