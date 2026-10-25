@@ -3933,6 +3933,16 @@
         }
       }
     },
+    "Mär shows catalogues as their operators publish them openly on the internet and gives no access that does not already exist there. Mär does not check or guarantee the rights status of any recording. Whether you may listen to, download, or otherwise use a recording is your responsibility." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär zeigt Kataloge so, wie ihre Betreiber sie offen im Netz anbieten, und schafft keinen Zugang, den es dort nicht schon gibt. Mär prüft und garantiert die Rechtelage der Aufnahmen nicht. Ob du eine Aufnahme hören, laden oder anders nutzen darfst, liegt in deiner Verantwortung."
+          }
+        }
+      }
+    },
     "Explicit" : {
       "localizations" : {
         "de" : {

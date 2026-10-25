@@ -53,5 +53,16 @@ struct CatalogRightsWordingFenceTests {
         let settings = try source("Sources/Views/SourcesSettingsView.swift")
         #expect(settings.contains("if let notice = source.rightsNotice {"))
     }
+
+    @Test("der Satz zur Verantwortung steht einmal, im Abschnitt Ueber Maer", .needsTheSources)
+    func theResponsibilityStandsOnce() throws {
+        var users: [String] = []
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            if SyncContractFenceTests.stripped(text).contains("UserResponsibility.sentence") { users.append(name) }
+        }
+        #expect(users == ["SettingsView.swift"], "the sentence stands elsewhere: \(users)")
+        #expect(try source("Sources/Views/SettingsView.swift").contains("Text(verbatim: UserResponsibility.sentence)"))
+        #expect(UserResponsibility.sentence.contains("Mär"))
+    }
 }
 #endif

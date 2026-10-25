@@ -670,6 +670,11 @@ struct SettingsView: View {
             } label: {
                 Label("Version", systemImage: "info.circle")
             }
+            // The listener's own responsibility, once (`UserResponsibility`).
+            Text(verbatim: UserResponsibility.sentence)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("about-responsibility")
         } header: {
             Text("About")
         } footer: {
