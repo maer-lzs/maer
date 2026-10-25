@@ -977,8 +977,7 @@ struct ArchiveSeriesPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
-        .navigationTitle(Text(verbatim: FreeCatalog.normalizedCollectionTitle(
-            detail?.media.metadata?.title ?? "")))
+        .untitledDetailPage()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -990,7 +989,6 @@ struct ArchiveSeriesPage: View {
                 .accessibilityIdentifier("album-actions")
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .task {
             async let kopf: Void = loadQuickHeader()
             await load()

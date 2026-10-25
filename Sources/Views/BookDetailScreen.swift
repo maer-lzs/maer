@@ -671,8 +671,7 @@ struct BookDetailScreen: View {
         // it again (`DetailCoverSide.settled`).
         .onChange(of: geo.size) { _, _ in belowCover = 0 }
         } // GeometryReader
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         .alert("No Wi-Fi Detected", isPresented: $showWiFiWarning) {
             Button("Download Anyway") {
                 Task { await reallyStartDownload() }

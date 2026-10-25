@@ -188,8 +188,7 @@ struct MusicArtistView: View {
                 topSongsSection
                 similarSection
         }
-        .navigationTitle(artist.name ?? String(localized: "Unknown Artist"))
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         .task(id: artist.id) {
             // The artist's own server answers, whichever the device uses.
             let music = AppSession.shared.musicProvider(for: artist.itemId)
@@ -239,7 +238,7 @@ struct MusicArtistView: View {
         if headerImage != nil || bio != nil {
             // The artist names itself in the navigation title, so the head
             // carries no title of its own.
-            DetailHeader(title: nil) { _ in
+            DetailHeader(title: artist.name ?? String(localized: "Unknown Artist")) { _ in
                 if let url = headerImage {
                     // Sizing lives on the LOADED image: servers hand out image
                     // URLs even for artists without pictures. An outer frame

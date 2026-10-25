@@ -71,6 +71,30 @@ struct DetailHeaderTests {
         }
     }
 
+    /// The titles the files of the headed pages still set in a top bar, on
+    /// their other pages: the book's chapter list, the artist and playlist
+    /// lists, the catalog's source, popular and shelf pages.
+    static let otherTitles: [String: Int] = [
+        "Sources/Views/BookDetailScreen.swift": 1,
+        "Sources/Views/Music/MusicBrowseViews.swift": 2,
+        "Sources/Views/CatalogSourcePage.swift": 3,
+    ]
+
+    @Test("eine Seite mit Kopf traegt oben keinen Titel", .needsTheSources)
+    func aHeadedPageHasNoTitleAbove() throws {
+        for page in Self.headedPages {
+            let text = SyncContractFenceTests.stripped(
+                try String(contentsOf: SourceTree.root.appendingPathComponent(page.file), encoding: .utf8))
+            #expect(text.components(separatedBy: ".untitledDetailPage()").count - 1 == 1,
+                    "\(page.file) names itself in the top bar")
+            #expect(text.components(separatedBy: ".navigationTitle(").count - 1 == Self.otherTitles[page.file, default: 0],
+                    "\(page.file) sets a title in the top bar")
+        }
+        #expect(!SyncContractFenceTests.stripped(
+            try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicBrowseViews.swift"),
+                       encoding: .utf8)).contains("DetailHeader(title: nil"), "the artist goes unnamed")
+    }
+
     @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)
     func theCoverGrowsOnlyInTwoColumns() throws {
         let head = SyncContractFenceTests.stripped(

@@ -22,7 +22,8 @@ extension EnvironmentValues {
 /// lines and controls stand on one centre axis, the cover's, in every
 /// posture and on every device; the facts (a table, a description) read
 /// from the leading edge. A page hands in only its contents, in one and two
-/// columns alike.
+/// columns alike. The title stands only here, never in the top bar
+/// (`untitledDetailPage`).
 ///
 /// Where the page gives the room (`DetailHeaderRoom`), the cover is as wide
 /// as the head while everything below it down to the controls stays above
@@ -32,9 +33,7 @@ extension EnvironmentValues {
 /// the page sizes the cover itself (one column, and the book page, which
 /// sizes its own).
 struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View {
-    /// Absent where the page names itself elsewhere (the artist, by the
-    /// navigation title).
-    var title: String?
+    var title: String
     var titleStyle: AnyShapeStyle = AnyShapeStyle(.primary)
     /// The side inset of title and lines, for a page whose cover runs to
     /// the edges.
@@ -73,19 +72,15 @@ struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View 
                     }
                     .frame(maxWidth: .infinity)
             }
-            if title != nil || Lines.self != EmptyView.self {
-                VStack(spacing: 4) {
-                    if let title {
-                        Text(verbatim: title)
-                            .font(.title2.bold())
-                            .foregroundStyle(titleStyle)
-                    }
-                    lines()
-                }
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, textInset)
+            VStack(spacing: 4) {
+                Text(verbatim: title)
+                    .font(.title2.bold())
+                    .foregroundStyle(titleStyle)
+                lines()
             }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, textInset)
             if Facts.self != EmptyView.self {
                 facts()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -105,8 +100,17 @@ struct DetailHeader<Cover: View, Lines: View, Facts: View, Actions: View>: View 
     }
 }
 
+extension View {
+    /// A page with a `DetailHeader` names itself under its cover: its top
+    /// bar carries no title, at rest and scrolled.
+    func untitledDetailPage() -> some View {
+        navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 extension DetailHeader where Facts == EmptyView {
-    init(title: String?, titleStyle: AnyShapeStyle = AnyShapeStyle(.primary), textInset: CGFloat = 0,
+    init(title: String, titleStyle: AnyShapeStyle = AnyShapeStyle(.primary), textInset: CGFloat = 0,
          @ViewBuilder cover: @escaping (CGFloat?) -> Cover, @ViewBuilder lines: @escaping () -> Lines,
          @ViewBuilder actions: @escaping () -> Actions) {
         self.init(title: title, titleStyle: titleStyle, textInset: textInset,
@@ -115,7 +119,7 @@ extension DetailHeader where Facts == EmptyView {
 }
 
 extension DetailHeader where Actions == EmptyView {
-    init(title: String?, titleStyle: AnyShapeStyle = AnyShapeStyle(.primary), textInset: CGFloat = 0,
+    init(title: String, titleStyle: AnyShapeStyle = AnyShapeStyle(.primary), textInset: CGFloat = 0,
          @ViewBuilder cover: @escaping (CGFloat?) -> Cover, @ViewBuilder lines: @escaping () -> Lines,
          @ViewBuilder facts: @escaping () -> Facts) {
         self.init(title: title, titleStyle: titleStyle, textInset: textInset,

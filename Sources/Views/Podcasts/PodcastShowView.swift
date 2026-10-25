@@ -260,8 +260,7 @@ struct PodcastShowView: View {
                     .listRowSeparator(.hidden)
             }
         }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         .toolbar {
             // The per-show settings slider inboard, the global settings cog
             // not: a pushed page carries its OWN actions and no app settings cog.

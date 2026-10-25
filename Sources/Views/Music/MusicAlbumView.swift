@@ -222,8 +222,7 @@ struct MusicAlbumView: View {
                 }
             }
         }
-        .navigationTitle(item.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         .toolbar {
             // Page actions inboard, the settings cog OUTERMOST. Declared
             // last so it sits at the trailing edge and never vanishes behind

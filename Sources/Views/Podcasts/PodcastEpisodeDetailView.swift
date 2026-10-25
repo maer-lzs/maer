@@ -173,8 +173,7 @@ struct PodcastEpisodeDetailView: View {
             // read light on it, as on the book page.
             .environment(\.colorScheme, .dark)
         }
-        .navigationTitle(show?.title ?? "")
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         // The show's settings from its episode too. The show comes
         // only from a store, so there is one whenever there are settings.
         .toolbar {

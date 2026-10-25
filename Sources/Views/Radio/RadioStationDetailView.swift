@@ -67,8 +67,7 @@ struct RadioStationDetailView: View {
             .padding(.vertical)
             .bottomBarClearance()
         }
-        .navigationTitle(station.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .untitledDetailPage()
         .onAppear {
             selectedURL = RadioStore.selectedVariantURL(for: station) ?? station.streamURL
             isFavorite = RadioStore.isFavorite(station.id)
