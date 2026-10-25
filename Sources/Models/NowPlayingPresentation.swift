@@ -57,10 +57,10 @@ nonisolated enum NowPlayingPresentation {
     /// album's artist; a playlist names none). The cover is the song's own
     /// inside a playlist, whose own cover is not the song's; an album and a
     /// single song keep the entry's cover, the one a download keeps.
-    static func song(kind: MusicItemKind?, songArtist: String?, songCoverArt: String?,
+    static func song(inPlaylist: Bool, songArtist: String?, songCoverArt: String?,
                      entryArtist: String?) -> Song {
         Song(artist: nonEmpty(songArtist) ?? nonEmpty(entryArtist),
-             coverArt: kind == .playlist ? nonEmpty(songCoverArt) : nil)
+             coverArt: inPlaylist ? nonEmpty(songCoverArt) : nil)
     }
 
     private static func nonEmpty(_ s: String?) -> String? {

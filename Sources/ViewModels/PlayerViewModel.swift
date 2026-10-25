@@ -661,7 +661,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
               tracks.indices.contains(currentTrackIndex) else { return nil }
         let track = tracks[currentTrackIndex]
         let song = NowPlayingPresentation.song(
-            kind: musicSource?.kind(of: id),
+            inPlaylist: musicSource?.kind(of: id) == .playlist,
             songArtist: track.metadata?.artist, songCoverArt: track.metadata?.coverArt,
             entryArtist: item?.media.metadata?.authorName)
         return (track.contentUrl,
@@ -679,7 +679,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// screen read.
     var musicArtist: String? {
         let track = tracks.indices.contains(currentTrackIndex) ? tracks[currentTrackIndex] : nil
-        return NowPlayingPresentation.song(kind: nil, songArtist: track?.metadata?.artist, songCoverArt: nil,
+        return NowPlayingPresentation.song(inPlaylist: false, songArtist: track?.metadata?.artist, songCoverArt: nil,
                                            entryArtist: item?.media.metadata?.authorName).artist
     }
 

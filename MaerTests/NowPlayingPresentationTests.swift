@@ -96,25 +96,23 @@ struct NowPlayingPresentationTests {
 
     @Test("Lied in einer Playlist: Kuenstler und Cover des Liedes, die Playlist hat keine")
     func songInAPlaylistCarriesItsOwnArtistAndCover() {
-        let song = NowPlayingPresentation.song(kind: .playlist, songArtist: "Nicolas Falcon",
+        let song = NowPlayingPresentation.song(inPlaylist: true, songArtist: "Nicolas Falcon",
                                                songCoverArt: "al-51", entryArtist: nil)
         #expect(song == .init(artist: "Nicolas Falcon", coverArt: "al-51"))
-        let bare = NowPlayingPresentation.song(kind: .playlist, songArtist: " ", songCoverArt: "",
+        let bare = NowPlayingPresentation.song(inPlaylist: true, songArtist: " ", songCoverArt: "",
                                                entryArtist: nil)
         #expect(bare == .init(artist: nil, coverArt: nil), "without facts the entry's cover stays, no artist")
     }
 
     @Test("Lied in einem Album: Kuenstler des Liedes, sonst des Albums; das Cover bleibt das des Albums")
     func songInAnAlbum() {
-        #expect(NowPlayingPresentation.song(kind: .album, songArtist: "Gast", songCoverArt: "mf-1",
+        #expect(NowPlayingPresentation.song(inPlaylist: false, songArtist: "Gast", songCoverArt: "mf-1",
                                             entryArtist: "Band") == .init(artist: "Gast", coverArt: nil))
-        #expect(NowPlayingPresentation.song(kind: .album, songArtist: nil, songCoverArt: "mf-1",
+        #expect(NowPlayingPresentation.song(inPlaylist: false, songArtist: nil, songCoverArt: "mf-1",
                                             entryArtist: "Band") == .init(artist: "Band", coverArt: nil))
-        #expect(NowPlayingPresentation.song(kind: .song, songArtist: "Zero V", songCoverArt: "al-2",
+        #expect(NowPlayingPresentation.song(inPlaylist: false, songArtist: "Zero V", songCoverArt: "al-2",
                                             entryArtist: "Zero V") == .init(artist: "Zero V", coverArt: nil),
                 "a single song keeps its entry's cover")
-        #expect(NowPlayingPresentation.song(kind: nil, songArtist: nil, songCoverArt: "al-2",
-                                            entryArtist: "X").coverArt == nil)
     }
 
     @Test("Die Zusammensetzung traegt Kuenstler und Cover jedes Liedes bis in seine Spur")
