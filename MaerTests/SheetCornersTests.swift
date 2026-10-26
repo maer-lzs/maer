@@ -53,7 +53,7 @@ struct SheetCornersTests {
 
     /// The fence: the player's ground draws the corners, and the overlay's
     /// rest reveal is the one value the corners fade from, not a second literal.
-    @Test("the player ground draws the corners and the overlay rests on the shared reveal")
+    @Test("the player ground draws the corners and the overlay rests on the shared reveal", .needsTheSources)
     func playerUsesTheCorners() throws {
         let views = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Views")

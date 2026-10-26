@@ -30,7 +30,7 @@ struct BookDetailLayoutTests {
 
     /// The fence: the page decides its form through the one rule, and the
     /// wide form shows the chapter list in place, not the link to it.
-    @Test("the book page asks the rule and embeds the chapters in the wide form")
+    @Test("the book page asks the rule and embeds the chapters in the wide form", .needsTheSources)
     func thePageUsesTheRule() throws {
         let page = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8)

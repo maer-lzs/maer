@@ -38,7 +38,7 @@ struct BookRouteEntryTests {
         #expect(BookRouteEntry.resolve("x", shelved: nil, known: nil, playing: nil) == nil)
     }
 
-    @Test("a title only on a shelf brings its progress, for the route and the page alike")
+    @Test("a title only on a shelf brings its progress, for the route and the page alike", .needsTheSources)
     @MainActor
     func shelfOnlyTitleBringsItsProgress() throws {
         let library = LibraryViewModel(provider: MockProvider())
@@ -87,7 +87,7 @@ struct BookRouteEntryTests {
                 "the page names the entry past the rule")
     }
 
-    @Test("the route asks the rule and draws an empty state, never nothing")
+    @Test("the route asks the rule and draws an empty state, never nothing", .needsTheSources)
     func routeNeverDrawsNothing() throws {
         let source = try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)

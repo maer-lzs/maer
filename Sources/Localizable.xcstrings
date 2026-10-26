@@ -10552,6 +10552,16 @@
         }
       }
     },
+    "Speed %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geschwindigkeit %@"
+          }
+        }
+      }
+    },
     "Spoken Word" : {
       "localizations" : {
         "de" : {
