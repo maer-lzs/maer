@@ -34,6 +34,17 @@ struct CatalogShuffleSongsTests {
         #expect(unanswered.map(\.id) == ["lva:gone"], "without an answer the title stays itself")
     }
 
+    @Test("Ein abgebrochener Rufer bekommt nichts, auch nicht den Titel")
+    func aCancelledCallerGetsNothing() async {
+        let task = Task { @MainActor in
+            await CatalogShuffleSongs.songs(of: self.item("lva:called-off")) { _ in
+                withUnsafeCurrentTask { $0?.cancel() }
+                return []
+            }
+        }
+        #expect(await task.value.isEmpty, "a cancelled start would play the title")
+    }
+
     @Test("Der Wurf startet die Lieder des ersten Albums, die uebrigen werden an ihrem Platz zu Liedern")
     func theDrawStartsSongsAndExpandsTheRest() async {
         let context = PlaybackContext()

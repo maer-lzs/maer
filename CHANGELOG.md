@@ -3,9 +3,14 @@
 ## Next build (not yet cut)
 
 **Shuffle on an Internet Archive album always does something.** If the
-album's details cannot be loaded when you long-press its tile and pick
-Shuffle, for example offline, the album now plays as a whole instead of
-nothing happening.
+album's list of songs cannot be loaded when you long-press its tile and
+pick Shuffle, the album now starts as a whole instead of nothing
+happening. Without a connection the mini player says that it cannot be
+reached.
+
+**The empty album page speaks German again in every build.** The
+sentence an album page shows when its source names no track keeps its
+German translation.
 
 ## v3.5 (Build 56)
 

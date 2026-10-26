@@ -69,10 +69,14 @@ struct MusicAlbumView: View {
     /// playlist that holds none is empty, not broken: it says so, without a
     /// retry. An album that names no audio track keeps the source's wording
     /// and its retry.
+    /// Each wording is its own initializer call: string extraction reads a
+    /// literal only there, and a second branch of a conditional slips past
+    /// it, which left the album's wording stale in the catalog.
     nonisolated static func emptyWording(isPlaylist: Bool) -> (sentence: LocalizedStringResource, offersRetry: Bool) {
-        isPlaylist
-            ? ("This playlist has no tracks yet.", false)
-            : ("The source answered without any audio track for this item.", true)
+        if isPlaylist {
+            return (LocalizedStringResource("This playlist has no tracks yet."), false)
+        }
+        return (LocalizedStringResource("The source answered without any audio track for this item."), true)
     }
     /// Bars per track index by play count (pure, tested); all zero hides
     /// every bar. Reads the provider's per-detail cache. Plain read.

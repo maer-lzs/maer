@@ -3746,9 +3746,6 @@
         }
       }
     },
-    "E" : {
-      "shouldTranslate" : false
-    },
     "e.g. audio.example.com" : {
       "localizations" : {
         "de" : {

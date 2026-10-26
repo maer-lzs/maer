@@ -175,6 +175,44 @@ struct StringCatalogOrderTests {
         #expect(try !found("Playing on %@: %@"), "a longer key is not taken for a shorter literal")
     }
 
+    /// The lines that open a branch of a conditional with a tuple whose
+    /// first element is a string literal (`? ("…", …)`, `: ("…", …)`).
+    static func literalTupleBranches(_ source: String) throws -> [String] {
+        let branch = try NSRegularExpression(pattern: #"^\s*[?:] \(""#)
+        return source.split(separator: "\n").map(String.init)
+            .filter { branch.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil }
+    }
+
+    /// Measured on the archive of 3.5 (56): Xcode's extraction took the
+    /// literal of the first branch of `isPlaylist ? ("…", false) : ("…",
+    /// true)` and missed the second, which it then marked stale. Its German
+    /// held only while the stale entry was built along. A wording stands in
+    /// an initializer of its own, never as a tuple in a branch.
+    @Test("Kein Wortlaut steht als Literal-Tupel im Zweig einer Bedingung, Xcode zieht ihn dort nicht heraus", .needsTheSources)
+    func noWordingStandsInATupleBranch() throws {
+        var found: [String] = []
+        for folder in ["Sources", "LiveActivityWidget"] {
+            let files = SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
+                .filter { $0.pathExtension == "swift" }
+            #expect(!files.isEmpty, "the fence read \(folder)")
+            for file in files {
+                found += try Self.literalTupleBranches(String(contentsOf: file, encoding: .utf8))
+                    .map { "\(file.lastPathComponent): \($0.trimmingCharacters(in: .whitespaces))" }
+            }
+        }
+        #expect(found.isEmpty, "wordings in a branch tuple (\(found.count)): \(found.prefix(5))")
+        // The instrument sees both branches and leaves an initializer alone.
+        #expect(try Self.literalTupleBranches("""
+            isPlaylist
+                ? ("This playlist has no tracks yet.", false)
+                : ("The source answered without any audio track for this item.", true)
+            """).count == 2)
+        #expect(try Self.literalTupleBranches("""
+                return (LocalizedStringResource("This playlist has no tracks yet."), false)
+                let x = flag ? (count, true) : (0, false)
+            """).isEmpty)
+    }
+
     @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen", .needsTheSources)
     func everyDynamicGuideKeyIsHeldManual() throws {
         let entries = try Self.entries()

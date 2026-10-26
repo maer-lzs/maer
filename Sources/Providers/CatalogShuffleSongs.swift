@@ -23,11 +23,13 @@ enum CatalogShuffleSongs {
     typealias AlbumSongs = (String) async -> [LibraryItem]
 
     /// What one title plays as: its songs in order when the release holds
-    /// more than one track, else the title itself.
+    /// more than one track, else the title itself. A cancelled caller gets
+    /// nothing, so a start that was called off stays off.
     static func songs(of title: LibraryItem,
                       albumSongs: AlbumSongs = { await ArchiveMusicLoader.albumSongs(albumId: $0, router: .live) })
         async -> [LibraryItem] {
         let songs = await albumSongs(title.id)
+        guard !Task.isCancelled else { return [] }
         return songs.count > 1 ? songs : [title]
     }
 
