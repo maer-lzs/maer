@@ -32,17 +32,31 @@ What leaves the device, where it goes, and what stays. Every statement below can
 
 ## Screenshots
 
-| Library | Player | Music |
+Version 3.5 (56) in the simulator, against real sources (an Audiobookshelf and a gonic test instance, public podcast feeds and radio stations), German interface.
+
+| Start | Podcasts | Podcast page | Album | Search |
+|---|---|---|---|---|
+| ![Start](screenshots/iphone_home.jpg) | ![Podcasts](screenshots/iphone_podcasts.jpg) | ![Podcast page](screenshots/iphone_podcast_page.jpg) | ![Album](screenshots/iphone_album.jpg) | ![Search](screenshots/iphone_search.jpg) |
+
+| Start (iPad) | Podcasts (iPad) | Music (iPad) |
 |---|---|---|
-| ![Library](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Music](screenshots/iphone_music.png) |
+| ![Start on iPad](screenshots/ipad_home.jpg) | ![Podcasts on iPad](screenshots/ipad_podcasts.jpg) | ![Music on iPad](screenshots/ipad_music.jpg) |
 
-| Library (iPad) | Book page (iPad) |
-|---|---|
-| ![Library on iPad](screenshots/ipad_library.png) | ![Book page on iPad](screenshots/ipad_detail.png) |
+| Playlist (iPad) | Player (iPad) | Radio (iPad) |
+|---|---|---|
+| ![Playlist on iPad](screenshots/ipad_playlist.jpg) | ![Player on iPad](screenshots/ipad_player.jpg) | ![Radio on iPad](screenshots/ipad_radio.jpg) |
 
-| Library (landscape) | Book page (landscape) |
+| Start (iPhone Duo, open) | Podcasts (iPhone Duo, open) |
 |---|---|
-| ![Library in landscape](screenshots/iphone_library_landscape.png) | ![Book page in landscape](screenshots/iphone_detail_landscape.png) |
+| ![Start on the open iPhone Duo](screenshots/duo_open_home.jpg) | ![Podcasts on the open iPhone Duo](screenshots/duo_open_podcasts.jpg) |
+
+| Podcast page (iPhone Duo, open) | Playlist (iPhone Duo, open) |
+|---|---|
+| ![Podcast page on the open iPhone Duo](screenshots/duo_open_podcast_page.jpg) | ![Playlist on the open iPhone Duo](screenshots/duo_open_playlist.jpg) |
+
+| Audiobooks (iPhone Duo, folded) | Radio (iPhone Duo, folded) |
+|---|---|
+| ![Audiobooks on the folded iPhone Duo](screenshots/duo_folded_audiobooks.jpg) | ![Radio on the folded iPhone Duo](screenshots/duo_folded_radio.jpg) |
 
 ## Features
 
@@ -134,7 +148,7 @@ Mär talks to servers through their standard APIs, so it works with more than on
 - **Jellyfin**: verified, music in daily use; audiobooks measured against Jellyfin 12 on 10 September 2026: a library with `CollectionType: books` shows up as an audiobook library, the files of one folder with the same album tag are one book, and its listening position travels through `UserData`. One limit is the server's: there are no chapters. Works with Jellyfin 12 and with older servers.
 - **Pinchflat**: verified end-to-end against a live instance (12/12 real-feed probe): connect with server address + route token (+ optional Basic Auth), the channel list (`/sources/opml`) mirrors as its own group, new/removed channels follow the server, per-channel hide as opt-out, provenance shown as "YouTube". Credentials live in the keychain; the mirrored group stays out of gpodder sync (each device mirrors its own).
 - **RSS / Podcasting 2.0** feeds, the **PodcastIndex** directory, and the open **Radio Browser** catalog for stations.
-- **gonic** (v0.22.0): protocol-probed, 9/9 Subsonic endpoints clean (wave 3). Not yet used from the app.
+- **gonic** (v0.22.0): verified from the app against a test instance (sign-in, library, search, cover art, playback), plus the 9/9 Subsonic protocol probe (wave 3).
 - **Airsonic Advanced**: protocol-probed, 9/9 endpoints once the probe negotiated the API version (wave 3). Mär negotiates the version itself since July; not yet confirmed from the app. An account whose password is stored only as bcrypt or argon2 answers 41 to the token sign-in; Mär shows that reason and never falls back to sending the password in clear text (set the password again in Airsonic, or choose a decodable encoder there).
 - **PodFetch**: protocol-probed as a gpodder server (wave 2): login and device registration work; two deviations remain open, the subscription list arrives as an object instead of a list and episode actions answer 400. Mär's gpodder sync depends on both, so treat it as not yet working until tested.
 - **Funkwhale** (1.2.10): protocol-probed (wave 2): ping, search and streaming work; needs a separate Subsonic token as the password; numeric ids and JSON cover answers are handled since July. Not yet used from the app.
@@ -437,4 +451,4 @@ Radio uses the open **[Radio Browser](https://www.radio-browser.info/)** catalog
 
 ## About this project
 
-Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), plus locally hosted open-weight models (qwen3, devstral and OpenAI's open gpt-oss weights) run via Ollama for tooling.
+Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), Mistral (Codestral and Mistral Large, via Mistral's API) for reviews, plus locally hosted open-weight models (qwen3, devstral and OpenAI's open gpt-oss weights) run via Ollama for tooling.

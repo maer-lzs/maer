@@ -32,17 +32,31 @@ Was das Gerät verlässt, wohin es geht und was bleibt. Jede Aussage unten läss
 
 ## Screenshots
 
-| Bibliothek | Player | Musik |
+Version 3.5 (56) im Simulator, an echten Quellen (eine Audiobookshelf- und eine gonic-Testinstanz, öffentliche Podcast-Feeds und Radiosender), deutsche Oberfläche.
+
+| Start | Podcasts | Podcastseite | Album | Suche |
+|---|---|---|---|---|
+| ![Start](screenshots/iphone_home.jpg) | ![Podcasts](screenshots/iphone_podcasts.jpg) | ![Podcastseite](screenshots/iphone_podcast_page.jpg) | ![Album](screenshots/iphone_album.jpg) | ![Suche](screenshots/iphone_search.jpg) |
+
+| Start (iPad) | Podcasts (iPad) | Musik (iPad) |
 |---|---|---|
-| ![Bibliothek](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Musik](screenshots/iphone_music.png) |
+| ![Start auf dem iPad](screenshots/ipad_home.jpg) | ![Podcasts auf dem iPad](screenshots/ipad_podcasts.jpg) | ![Musik auf dem iPad](screenshots/ipad_music.jpg) |
 
-| Bibliothek (iPad) | Buchseite (iPad) |
-|---|---|
-| ![Bibliothek auf dem iPad](screenshots/ipad_library.png) | ![Buchseite auf dem iPad](screenshots/ipad_detail.png) |
+| Playlist (iPad) | Player (iPad) | Radio (iPad) |
+|---|---|---|
+| ![Playlist auf dem iPad](screenshots/ipad_playlist.jpg) | ![Player auf dem iPad](screenshots/ipad_player.jpg) | ![Radio auf dem iPad](screenshots/ipad_radio.jpg) |
 
-| Bibliothek (Querformat) | Buchseite (Querformat) |
+| Start (iPhone Duo, aufgeklappt) | Podcasts (iPhone Duo, aufgeklappt) |
 |---|---|
-| ![Bibliothek im Querformat](screenshots/iphone_library_landscape.png) | ![Buchseite im Querformat](screenshots/iphone_detail_landscape.png) |
+| ![Start auf dem aufgeklappten iPhone Duo](screenshots/duo_open_home.jpg) | ![Podcasts auf dem aufgeklappten iPhone Duo](screenshots/duo_open_podcasts.jpg) |
+
+| Podcastseite (iPhone Duo, aufgeklappt) | Playlist (iPhone Duo, aufgeklappt) |
+|---|---|
+| ![Podcastseite auf dem aufgeklappten iPhone Duo](screenshots/duo_open_podcast_page.jpg) | ![Playlist auf dem aufgeklappten iPhone Duo](screenshots/duo_open_playlist.jpg) |
+
+| Hörbücher (iPhone Duo, zugeklappt) | Radio (iPhone Duo, zugeklappt) |
+|---|---|
+| ![Hörbücher auf dem zugeklappten iPhone Duo](screenshots/duo_folded_audiobooks.jpg) | ![Radio auf dem zugeklappten iPhone Duo](screenshots/duo_folded_radio.jpg) |
 
 ## Funktionen
 
@@ -134,7 +148,7 @@ Mär spricht mit Servern über ihre Standard-APIs, also geht es mit mehr als ein
 - **Jellyfin**: geprüft, Musik im täglichen Gebrauch; Hörbücher gemessen gegen Jellyfin 12 am 10. September 2026: eine Bibliothek mit `CollectionType: books` erscheint als Hörbuch-Bibliothek, die Dateien eines Ordners mit demselben Album-Tag sind ein Buch, und seine Hörposition reist über `UserData`. Eine Grenze liegt beim Server: es gibt keine Kapitel. Geht mit Jellyfin 12 und mit älteren Servern.
 - **Pinchflat**: Ende zu Ende geprüft gegen eine laufende Instanz (Probe mit echten Feeds, 12/12): Verbinden mit Serveradresse + Routen-Token (+ optional Basic Auth), die Kanalliste (`/sources/opml`) wird als eigene Gruppe gespiegelt, neue und entfernte Kanäle folgen dem Server, Ausblenden je Kanal als Abwahl, Herkunft als „YouTube“ angezeigt. Zugangsdaten liegen im Schlüsselbund; die gespiegelte Gruppe bleibt aus dem gpodder-Sync draußen (jedes Gerät spiegelt selbst).
 - **RSS / Podcasting 2.0**-Feeds, das **PodcastIndex**-Verzeichnis und der offene **Radio-Browser**-Katalog für Sender.
-- **gonic** (v0.22.0): Protokoll-geprobt, 9/9 Subsonic-Endpunkte sauber (Welle 3). Aus der App noch nicht benutzt.
+- **gonic** (v0.22.0): aus der App geprüft gegen eine Testinstanz (Anmeldung, Bibliothek, Suche, Cover, Wiedergabe), dazu die Subsonic-Protokoll-Probe mit 9/9 (Welle 3).
 - **Airsonic Advanced**: Protokoll-geprobt, 9/9 Endpunkte, sobald die Probe die API-Version ausgehandelt hatte (Welle 3). Mär handelt die Version seit Juli selbst aus; aus der App noch nicht bestätigt. Ein Konto, dessen Passwort nur als bcrypt oder argon2 gespeichert ist, antwortet auf die Token-Anmeldung mit 41; Mär zeigt diesen Grund und fällt nie darauf zurück, das Passwort im Klartext zu senden (das Passwort in Airsonic neu setzen oder dort einen umkehrbaren Encoder wählen).
 - **PodFetch**: als gpodder-Server Protokoll-geprobt (Welle 2): Anmeldung und Geräte-Registrierung gehen; zwei Abweichungen bleiben offen, die Abo-Liste kommt als Objekt statt als Liste, und Folgen-Aktionen antworten mit 400. Märs gpodder-Sync hängt an beidem, also bis zu einem Test als noch nicht funktionierend betrachten.
 - **Funkwhale** (1.2.10): Protokoll-geprobt (Welle 2): Ping, Suche und Streaming gehen; braucht einen eigenen Subsonic-Token als Passwort; numerische Kennungen und JSON-Antworten für Cover werden seit Juli behandelt. Aus der App noch nicht benutzt.
@@ -437,4 +451,4 @@ Radio nutzt den offenen Katalog **[Radio Browser](https://www.radio-browser.info
 
 ## Über dieses Projekt
 
-Mär ist mit Unterstützung von KI entstanden: Anthropic Claude (Opus, Sonnet und Fable), dazu lokal betriebene Modelle mit offenen Gewichten (qwen3, devstral und OpenAIs offene gpt-oss-Gewichte) über Ollama für Werkzeuge.
+Mär ist mit Unterstützung von KI entstanden: Anthropic Claude (Opus, Sonnet und Fable), Mistral (Codestral und Mistral Large, über Mistrals API) für Gegenprüfungen, dazu lokal betriebene Modelle mit offenen Gewichten (qwen3, devstral und OpenAIs offene gpt-oss-Gewichte) über Ollama für Werkzeuge.
