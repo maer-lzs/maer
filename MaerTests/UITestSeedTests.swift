@@ -158,8 +158,8 @@ struct UITestSeedTests {
     @Test("a seed name elsewhere in the sources goes through UITestSeed.shown", .needsTheSources)
     func seedNamesElsewhereGoThroughTheTable() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" && $0.lastPathComponent != "UITestSeed.swift" }
+        let files = SourceTree.files(under: sources)
+            .filter { $0.pathExtension == "swift" && $0.lastPathComponent != "UITestSeed.swift" }
         let literal = try NSRegularExpression(pattern: #"(UITestSeed\.shown\()?"((?:Seed|Filler) [^"]*)""#)
         var found = 0
         for file in files {
