@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.5 (Build 56)
+
 **The Browse page shows what each catalog holds.** Behind the Browse
 arrow, on Start and in every tab, each catalog now stands as a row of
 covers with its arrow onto its own page, instead of a plain list of
