@@ -44,6 +44,23 @@ struct ImageCacheKeyTests {
         #expect(a.utf8.count <= 255)
     }
 
+    /// Without `raw` Audiobookshelf scales every cover to 400 pixels wide
+    /// (`CacheManager`, `options.width || 400`): the client asks for the
+    /// cover as the server keeps it, and a cover kept from the scaled
+    /// address never answers the new one.
+    @Test("ein Audiobookshelf-Cover kommt ungerechnet, und kein 400-Pixel-Cover antwortet seiner Adresse")
+    func absCoverComesUnscaled() throws {
+        let client = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "T")
+        let url = try #require(client.coverURL(forItemId: "li_1"))
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(items.contains(URLQueryItem(name: "raw", value: "1")))
+        #expect(url.path == "/api/items/li_1/cover")
+        #expect(APIClient.buildsImage(path: url.path))
+        let scaled = key("https://abs.example.lan/api/items/li_1/cover?token=T")
+        #expect(key(url.absoluteString) != scaled, "a cover kept at 400 pixels answers the unscaled address")
+        #expect(key(url.absoluteString) == key("https://abs.example.lan/api/items/li_1/cover?raw=1&token=OTHER"))
+    }
+
     @Test func jellyfinApiKeyIsNotPartOfTheKeyEither() {
         let a = key("https://jf.example.lan/Items/9/Images/Primary?api_key=AAA")
         let b = key("https://jf.example.lan/Items/9/Images/Primary?api_key=BBB")
@@ -91,7 +108,9 @@ struct ImageCacheKeyTests {
         for url in [abs.coverURL(forItemId: "li_1"), abs.authorImageURL(authorId: "aut_1")] {
             let built = try #require(url)
             let absNames = Set(try #require(URLComponents(url: built, resolvingAgainstBaseURL: false)?.queryItems).map(\.name))
-            #expect(!absNames.isEmpty && absNames.isSubset(of: ImageCache.signInQueryNames), "ABS: \(absNames)")
+            // `raw` names the picture (unscaled), as `id` and `size` do for Subsonic.
+            let signIn = absNames.subtracting([APIClient.coverOriginalName])
+            #expect(!signIn.isEmpty && signIn.isSubset(of: ImageCache.signInQueryNames), "ABS: \(absNames)")
         }
         #expect(ImageCache.signInQueryNames.contains(JellyfinClient.mediaAuthQueryItem(token: "j1").name))
     }

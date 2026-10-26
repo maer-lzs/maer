@@ -373,6 +373,8 @@ final class APIClient {
     /// names no picture, so no cover file name carries it
     /// (`ImageCache.signInQueryNames`).
     nonisolated static let mediaTokenName = "token"
+    /// The query name that asks for a cover as the server keeps it, unscaled.
+    nonisolated static let coverOriginalName = "raw"
 
     /// Whether a path is one of this client's image addresses: an item's
     /// cover (`api/items/<id>/cover`) or an author's image
@@ -385,12 +387,20 @@ final class APIClient {
     /// Cover image URL. AsyncImage cannot set custom headers, so the token goes
     /// as a query parameter here (officially supported for Audiobookshelf GET
     /// requests). Worst case only a cover image is missing, no core function.
+    ///
+    /// The cover comes as the server keeps it (`raw`): without it the server
+    /// scales every cover to 400 pixels wide (`CacheManager`, `options.width
+    /// || 400`), and a detail page, the full player and the lock screen show
+    /// that enlarged. The app brings it to the size it shows
+    /// (`ImageCache.displaySized`). `raw` is part of the cover's name in the
+    /// cache, so no cover kept at 400 pixels answers this address.
     func coverURL(forItemId itemId: String) -> URL? {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/items/\(itemId)/cover"),
             resolvingAgainstBaseURL: false
         ) else { return nil }
         var items = components.queryItems ?? []
+        items.append(URLQueryItem(name: Self.coverOriginalName, value: "1"))
         if let token, !token.isEmpty {
             items.append(URLQueryItem(name: Self.mediaTokenName, value: token))
         }

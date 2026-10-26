@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Audiobook covers are sharp.** Covers from an Audiobookshelf server
+now come at the size the server keeps them, instead of 400 pixels wide,
+so the book page, the full player and the lock screen show them crisp.
+Covers load once more after the update.
+
 **Shuffle on an Internet Archive album always does something.** If the
 album's list of songs cannot be loaded when you long-press its tile and
 pick Shuffle, the album now starts as a whole instead of nothing
