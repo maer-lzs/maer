@@ -317,8 +317,12 @@ enum UITestSeed {
                                 duration: 600, chapters: nil, tracks: nil),
                             addedAt: nil)
             }
-            FreeCatalogStore.shared._seedForUITest(
-                classical: (1...4).map(classic), freeMusic: [])
+            let classics = (1...4).map(classic)
+            // The store pictures cover them before a tile asks the archive.
+            if seedsStorePictures {
+                placeCovers(items: classics.map { ($0.id, $0.media?.metadata?.title ?? "") }, shows: [])
+            }
+            FreeCatalogStore.shared._seedForUITest(classical: classics, freeMusic: [])
         }
 
         // Mixed Up-Next queue: a book, an album and an episode.
