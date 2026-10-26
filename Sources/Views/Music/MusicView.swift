@@ -670,17 +670,22 @@ struct CollectionMenuItems: View {
 
 extension CollectionMenuItems {
     /// The entries of a catalogue music tile: an archive album shuffles
-    /// its songs, which its detail counts; anything else (an archive track,
-    /// a Jamendo title) offers no shuffle. The queue and the playlist take
-    /// the title as its one entry, as for a server album; Details opens the
-    /// title's page.
+    /// its songs, which its detail counts, or plays as its one title when
+    /// no songs come, as a drawn title does (`CatalogShuffleSongs`);
+    /// anything else (an archive track, a Jamendo title) offers no shuffle.
+    /// The queue and the playlist take the title as its one entry, as for a
+    /// server album; Details opens the title's page.
     static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator,
                         router: ItemRouter) -> CollectionMenuItems {
         CollectionMenuItems(
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: { await ArchiveMusicLoader.albumSongs(albumId: item.id, router: router) },
+            songs: {
+                await CatalogShuffleSongs.songs(of: item) {
+                    await ArchiveMusicLoader.albumSongs(albumId: $0, router: router)
+                }
+            },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
             catalogDetails: item.id)

@@ -11,7 +11,8 @@ import Testing
 /// The songs of a catalogue album come from one list at the catalogue: in
 /// order, from one metadata answer for the whole release, and a song that
 /// builds nothing is named instead of dropping out. The page plays the rest
-/// and writes the count in its log line.
+/// and writes the count in its log line. A tile's long-press Shuffle whose
+/// count fails plays the release as its one title and logs the failure.
 @MainActor
 struct CatalogAlbumSongsTests {
     private static func release(_ names: [String]) throws -> ArchiveDecoder.MetadataResponse {
@@ -51,6 +52,31 @@ struct CatalogAlbumSongsTests {
         #expect(answer.songs.map(\.id) == [CatalogSongID.make(album: album, index: 0)])
         #expect(answer.missing == [1])
         #expect(asked == 1)
+    }
+
+    @Test("faellt die Zahl aus, zaehlt der Lader kein Lied und die Kachel spielt den Titel selbst")
+    func withoutTheCountTheTilePlaysTheTitle() async {
+        var router = ItemRouter.empty
+        router.provider = { _ in FailedLoadTests.DeadAddressProvider() }
+        let album = Self.freshAlbum()
+        #expect(await ArchiveMusicLoader.albumSongs(albumId: album, router: router).isEmpty)
+        let title = LibraryItem(id: album, media: nil, addedAt: nil)
+        let menu = CollectionMenuItems.catalog(title, playerCoordinator: PlayerCoordinator(provider: MockProvider()),
+                                               router: router)
+        #expect(menu.offersShuffle)
+        #expect(await menu.songs().map(\.id) == [album], "the long-press Shuffle starts nothing")
+    }
+
+    @Test("die Kachel nimmt den Weg des Wurfs, ein ausgefallenes Detail steht im Log", .needsTheSources)
+    func theTileTakesTheDrawsWay() throws {
+        let menu = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
+        let loader = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/ArchiveMusicLoader.swift"), encoding: .utf8))
+        #expect(menu.contains("await CatalogShuffleSongs.songs(of: item) {"))
+        #expect(!menu.contains("songs: { await ArchiveMusicLoader.albumSongs(albumId: item.id, router: router) }"))
+        #expect(loader.contains("CATALOG album songs, detail failed for"))
+        #expect(!loader.contains("try? await router.provider(albumId).fetchItemDetail"), "the detail fails silently again")
     }
 
     @Test("die Katalogseite nimmt die Liste des Anbieters ueber den Lader und nennt fehlende Lieder mit Zahl", .needsTheSources)

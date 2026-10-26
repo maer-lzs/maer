@@ -58,11 +58,19 @@ enum ArchiveMusicLoader {
 
     /// The same songs where the caller does not know how many there are (a
     /// tile's long-press Shuffle): the release's detail counts them, `router`
-    /// answers its source.
+    /// answers its source. A detail that fails counts none and says so in the
+    /// log; the caller then plays the release as its one title
+    /// (`CatalogShuffleSongs.songs(of:)`).
     static func albumSongs(albumId: String, router: ItemRouter) async -> [LibraryItem] {
-        // A missing detail is bearable, because an empty pool starts nothing.
-        let detail = try? await router.provider(albumId).fetchItemDetail(itemId: albumId)
-        return await albumSongs(albumId: albumId, count: detail?.media.tracks?.count ?? 0).songs
+        let count: Int
+        do {
+            count = try await router.provider(albumId).fetchItemDetail(itemId: albumId).media.tracks?.count ?? 0
+        } catch {
+            guard !error.isCancellation else { return [] }
+            Logger.library.error("CATALOG album songs, detail failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+            count = 0
+        }
+        return await albumSongs(albumId: albumId, count: count).songs
     }
 
     private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {

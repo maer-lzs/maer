@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Shuffle on an Internet Archive album always does something.** If the
+album's details cannot be loaded when you long-press its tile and pick
+Shuffle, for example offline, the album now plays as a whole instead of
+nothing happening.
+
 ## v3.5 (Build 56)
 
 **The Browse page shows what each catalog holds.** Behind the Browse
