@@ -5,6 +5,32 @@
 
 import XCTest
 
+/// Back from a pushed page by its OWN back button, for every journey. On
+/// iOS 26 and later the system names it `BackButton`: in the topmost bar,
+/// or, with the tabs at the side, in the side column outside every bar. On
+/// iOS 18 it is the unnamed leading button of the topmost bar. Indexing
+/// `app.navigationBars.buttons` instead reaches across every bar in the
+/// hierarchy, including the library's.
+nonisolated func backFromPage(_ app: XCUIApplication,
+                              file: StaticString = #filePath, line: UInt = #line) {
+    let deadline = Date().addingTimeInterval(5)
+    repeat {
+        let bar = app.navigationBars.element(boundBy: max(app.navigationBars.count - 1, 0))
+        if #available(iOS 26, *) {
+            for back in [bar.buttons["BackButton"], app.toolbars.buttons["BackButton"]]
+            where back.exists && back.isHittable {
+                back.tap()
+                return
+            }
+        } else if bar.exists, bar.buttons.count > 0 {
+            bar.buttons.element(boundBy: 0).tap()
+            return
+        }
+        usleep(200_000)
+    } while Date() < deadline
+    XCTFail("the page must offer the way back", file: file, line: line)
+}
+
 /// Permanent UI-test harness (Stage 2). Read-only journeys only — never mutate a
 /// live server (mirrors the audit harness discipline). Data-dependent journeys
 /// launch with `-uitest`, which activates the DEBUG-only seeding hook
@@ -15,16 +41,6 @@ import XCTest
 /// from the app, but XCTestCase's lifecycle (init/setUp) is nonisolated — opt out.
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-
-    /// Back from a pushed page by the leading button of the topmost bar: on
-    /// iOS 26 and later the system names it `BackButton`, on iOS 18 it
-    /// carries no name.
-    private func backFromPage(_ app: XCUIApplication) {
-        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
-        let back = bar.buttons.element(boundBy: 0)
-        XCTAssertTrue(back.waitForExistence(timeout: 5), "the page must offer the way back")
-        back.tap()
-    }
 
     /// THE launch. Every journey comes up through here, so "the process really
     /// reached the foreground" is asserted once instead of being forgotten:
@@ -125,8 +141,14 @@ nonisolated final class MaerUITests: XCTestCase {
                       "search must find the seeded episode")
         // Fillers don't match "Seed", so the capped sections stay canonical;
         // dismiss the keyboard before scrolling on (swipes over the keyboard
-        // don't scroll the list), then reach the album section.
-        field.typeText("\n")
+        // don't scroll the list), then reach the album section. The
+        // keyboard's own Search key, as a finger presses it: on the iPhone
+        // Duo a typed "\n" ends the field's focus but leaves the keyboard
+        // standing.
+        let searchKey = app.keyboards.buttons["Search"].firstMatch
+        if searchKey.exists { searchKey.tap() } else { field.typeText("\n") }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5),
+                      "submitting the search must close the keyboard")
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: album), "search must find the seeded album")
         snap(app, "global-search-library")
@@ -246,7 +268,7 @@ nonisolated final class MaerUITests: XCTestCase {
         audiobooks.tap()
         XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
                       "the audiobook area must lead to the Audiobookshelf setup")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        backFromPage(app)
         // The map's row for the sync service stands there too. It sits below
         // the fold, so this scrolls, after the no-scrolling check above.
         XCTAssertTrue(waitScrollingTo(app, element: app.buttons["source-map-sync"].firstMatch),

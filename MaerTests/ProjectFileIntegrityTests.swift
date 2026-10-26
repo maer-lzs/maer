@@ -884,6 +884,37 @@ extension ProjectFileIntegrityTests {
         """) == 2)
         #expect(Self.appBuildSites(in: "let app = launchSeeded(extra: [\"-uitest-huge\"])") == 0)
     }
+
+    /// Every back tap that indexes the buttons of all bars at once, and every
+    /// own definition of the shared way back.
+    static func ownBackSites(in text: String) -> (indexed: Int, helpers: Int) {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return (collapsed.components(separatedBy: "navigationBars.buttons.element(boundBy:").count - 1,
+                collapsed.components(separatedBy: "funcbackFromPage(").count - 1)
+    }
+
+    /// One way back for every journey, `backFromPage`: it knows the side
+    /// column, where the system stands the back button outside every bar.
+    @Test("die Journeys gehen ueber den einen geteilten Weg zurueck", .needsTheUITests)
+    func journeysGoBackThroughTheSharedWay() {
+        let sites = Self.sourceTexts(in: ["MaerUITests"]).map { Self.ownBackSites(in: $0.text) }
+        #expect(sites.count >= 5, "the fence read no journey file: \(sites.count)")
+        #expect(sites.map(\.indexed).reduce(0, +) == 0,
+                "a journey taps the first button of all bars again instead of backFromPage")
+        #expect(sites.map(\.helpers).reduce(0, +) == 1,
+                "the way back is defined more than once, or not at all")
+    }
+
+    /// Proof run on the forms that shipped: the setup journey's index tap
+    /// and a journey's own copy of the helper.
+    @Test("der Zurueck-Zaun faengt die ausgelieferten Formen")
+    func backFenceCatchesTheShippedShapes() {
+        #expect(Self.ownBackSites(in: "app.navigationBars.buttons.element(boundBy: 0).tap()").indexed == 1)
+        #expect(Self.ownBackSites(in: "private func backFromPage(_ app: XCUIApplication) {").helpers == 1)
+        let call = Self.ownBackSites(in: "backFromPage(app)   // area page to the map")
+        #expect(call.indexed == 0)
+        #expect(call.helpers == 0)
+    }
 }
 
 // MARK: - The size class is not a caller's question

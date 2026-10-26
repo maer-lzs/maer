@@ -142,11 +142,20 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         row.tap()
         flipAndWait(app.switches["music-tab-toggle"].firstMatch, "the toggle must flip")
         // Back to the settings root (Done lives on ITS toolbar), then out.
-        backOut(app)   // source page to area page
-        backOut(app)   // area page to the map
+        backFromPage(app)   // source page to area page
+        backFromPage(app)   // area page to the map
+        closeSettings(app)
+    }
+
+    /// Closes the settings by Done on their toolbar, or, with the sections
+    /// at the side, by the close button at the column's top.
+    private func closeSettings(_ app: XCUIApplication) {
         let done = app.buttons["settings-done"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 5))
-        done.tap()
+        let close = app.buttons["settings-close"].firstMatch
+        let either = NSPredicate { _, _ in done.exists || close.exists }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: either, object: nil)],
+                                      timeout: 5), .completed, "the settings must offer a way out")
+        (done.exists ? done : close).tap()
     }
 
     /// Flips the music tab's master switch in the settings.
@@ -157,9 +166,7 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         let toggle = app.switches["tab-master-music"].firstMatch
         XCTAssertTrue(scrollTo(app, toggle, hittable: true))
         flipAndWait(toggle, "the master toggle must flip")
-        let done = app.buttons["settings-done"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 5))
-        done.tap()
+        closeSettings(app)
     }
 
     /// The identifier sits on the row-wide element: a center tap hits the
@@ -172,17 +179,6 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         let flipped = NSPredicate(format: "value != %@", before ?? "")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
                                       timeout: 5), .completed, message)
-    }
-
-    /// Leave the current detail page by its OWN back button. Using
-    /// `app.navigationBars.buttons` by index reaches across every bar in the
-    /// hierarchy, including the library's, whose leading button is present
-    /// only on tabs that have something to sort.
-    private func backOut(_ app: XCUIApplication) {
-        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
-        let back = bar.buttons.element(boundBy: 0)
-        XCTAssertTrue(back.waitForExistence(timeout: 5), "the detail page must offer a way back")
-        back.tap()
     }
 
     // MARK: - Getting there
