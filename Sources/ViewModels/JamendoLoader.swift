@@ -13,11 +13,24 @@ import OSLog
 enum JamendoLoader {
     typealias Outcome = CatalogLoadOutcome
 
+    /// How long the trove waits before it asks a second time after an
+    /// answer without tracks.
+    static let emptyAnswerPause: Duration = .milliseconds(1500)
+
     /// The weekly popularity trove of the Jamendo page. `clients` are the
-    /// live ones by default; a witness hands in its own.
-    static func trove(limit: Int, using clients: CatalogClients = .live) async -> Outcome {
+    /// live ones by default; a witness hands in its own. Jamendo at times
+    /// answers success without a single track (measured against the API);
+    /// the trove then asks once more after `pause`, and an answer that
+    /// stays empty comes back empty for the page to say so.
+    static func trove(limit: Int, using clients: CatalogClients = .live,
+                      pause: Duration = emptyAnswerPause) async -> Outcome {
         do {
-            let tracks = try await clients.jamendo.popularTracks(limit, [], 0, .none)
+            var tracks = try await clients.jamendo.popularTracks(limit, [], 0, .none)
+            if tracks.isEmpty {
+                Logger.library.notice("JAMENDO trove answered without tracks, asking once more")
+                try await Task.sleep(for: pause)
+                tracks = try await clients.jamendo.popularTracks(limit, [], 0, .none)
+            }
             return .loaded(items: register(tracks), fetched: tracks.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }

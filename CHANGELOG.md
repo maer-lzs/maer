@@ -7,7 +7,9 @@
 **The Jamendo page no longer closes the app.** Opening Music (Jamendo)
 from Browse could end the app a few seconds later, on every device. The
 genre rows of the page now load one after the other, each row shows as
-soon as it has arrived, and the app stays.
+soon as it has arrived, and the app stays. When Jamendo answers without
+any tracks, the page asks once more; if it stays empty, it says so and
+offers Retry instead of standing silently empty.
 
 **The Browse page names each area once on a wide screen.** When the
 lanes stand in two columns, as on an iPad, an area that runs on into the

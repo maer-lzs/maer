@@ -114,6 +114,38 @@ struct JamendoLoaderWitnessTests {
         #expect(await JamendoLoader.trove(limit: 2, using: cancelled) == .cancelled)
     }
 
+    @Test("Jamendo: eine Antwort ohne Titel fragt nach der Pause ein zweites Mal, nie ein drittes")
+    func anEmptyAnswerIsAskedOnce() async {
+        let asked = Mutex(0)
+        var emptyThenFilled = W.answering()
+        emptyThenFilled.jamendo.popularTracks = { _, _, _, _ in
+            asked.withLock { $0 += 1; return $0 } == 1 ? [] : [W.track(), W.track()]
+        }
+        let filled = await JamendoLoader.trove(limit: 2, using: emptyThenFilled, pause: .zero)
+        #expect(W.items(filled)?.count == 2, "the second answer did not fill the trove")
+        #expect(asked.withLock { $0 } == 2)
+
+        asked.withLock { $0 = 0 }
+        var alwaysEmpty = W.answering()
+        alwaysEmpty.jamendo.popularTracks = { _, _, _, _ in asked.withLock { $0 += 1 }; return [] }
+        #expect(await JamendoLoader.trove(limit: 2, using: alwaysEmpty, pause: .zero) == .loaded(items: [], fetched: 0))
+        #expect(asked.withLock { $0 } == 2, "an empty answer was asked more than once more")
+
+        asked.withLock { $0 = 0 }
+        var answering = W.answering()
+        answering.jamendo.popularTracks = { _, _, _, _ in asked.withLock { $0 += 1 }; return [W.track()] }
+        _ = await JamendoLoader.trove(limit: 1, using: answering, pause: .zero)
+        #expect(asked.withLock { $0 } == 1, "a filled answer was asked again")
+    }
+
+    @Test("die Jamendo-Seite sagt eine leere Antwort mit Satz und Knopf", .needsTheSources)
+    func thePageSaysAnEmptyAnswer() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
+        #expect(page.contains("sentence: \"Jamendo answered without tracks right now.\""))
+        #expect(!page.contains("EmptyStateView(\"Music (Jamendo)\""), "the page falls silent on an empty answer again")
+    }
+
     @Test("Jamendo-Regale: ein scheiterndes Regal kommt als Fehlschlag, die anderen als Zeilen")
     func shelvesKeepTheirFailures() async throws {
         let failingKey = try #require(CatalogGenreAxis.musicShelves.first?.key)

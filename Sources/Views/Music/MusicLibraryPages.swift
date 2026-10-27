@@ -570,7 +570,12 @@ struct FreeJamendoPage: View {
                     Task { await loadAll() }
                 }
             } else if items.isEmpty {
-                EmptyStateView("Music (Jamendo)", systemImage: "music.note")
+                // Jamendo answered without tracks twice (the loader asked
+                // again): the page says so and offers another try.
+                LoadFailedView(form: .page(title: Text("Music (Jamendo)"), systemImage: "music.note"),
+                               sentence: "Jamendo answered without tracks right now.") {
+                    Task { await loadAll() }
+                }
             } else {
                 // Genre shelf rows FIRST (blueprint form. Row +
                 // entry chevron onto the server-paged shelf grid), the weekly
