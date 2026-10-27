@@ -32,9 +32,10 @@ pick Shuffle, the album now starts as a whole instead of nothing
 happening. Without a connection the mini player says that it cannot be
 reached.
 
-**The empty album page speaks German again in every build.** The
-sentence an album page shows when its source names no track keeps its
-German translation.
+**The empty album page speaks German in every build.** The sentence an
+album page shows when its source names no track keeps its German
+translation however the app is built; until now it held only while a
+leftover catalog entry was built along.
 
 ## v3.5 (Build 56)
 

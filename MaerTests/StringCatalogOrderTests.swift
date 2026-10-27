@@ -175,10 +175,12 @@ struct StringCatalogOrderTests {
         #expect(try !found("Playing on %@: %@"), "a longer key is not taken for a shorter literal")
     }
 
-    /// The lines that open a branch of a conditional with a tuple whose
-    /// first element is a string literal (`? ("…", …)`, `: ("…", …)`).
+    /// The lines that hold a branch of a conditional with a tuple whose
+    /// first element is a string literal (`? ("…", …)`, `: ("…", …)`), at
+    /// the start of a line or within it. The `?` or `:` stands apart, as a
+    /// conditional writes it; a label (`label: ("…")`) is no branch.
     static func literalTupleBranches(_ source: String) throws -> [String] {
-        let branch = try NSRegularExpression(pattern: #"^\s*[?:] \(""#)
+        let branch = try NSRegularExpression(pattern: #"(^|\s)[?:] \(""#)
         return source.split(separator: "\n").map(String.init)
             .filter { branch.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil }
     }
@@ -210,7 +212,12 @@ struct StringCatalogOrderTests {
         #expect(try Self.literalTupleBranches("""
                 return (LocalizedStringResource("This playlist has no tracks yet."), false)
                 let x = flag ? (count, true) : (0, false)
+                show(label: ("Title", 1))
             """).isEmpty)
+        // One line holds both branches: the instrument still sees them.
+        #expect(try Self.literalTupleBranches("""
+                let pair = isPlaylist ? ("This playlist has no tracks yet.", false) : ("No track.", true)
+            """).count == 1)
     }
 
     @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen", .needsTheSources)
