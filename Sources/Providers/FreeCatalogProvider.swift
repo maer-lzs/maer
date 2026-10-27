@@ -192,6 +192,17 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     private var gutenbergCovers: [String: URL] = [:]
+    /// The original picture of an archive item, per identifier, for the
+    /// large views; learnt wherever the item's files are read anyway, never
+    /// asked for its own sake (`noteFiles`).
+    private var archiveOriginalCovers: [String: URL] = [:]
+
+    /// Keeps the original picture of an item whose files were just read.
+    private func noteFiles(_ meta: ArchiveDecoder.MetadataResponse, identifier: String) {
+        if let cover = FreeCatalog.archiveOriginalCover(identifier: identifier, files: meta.files ?? []) {
+            archiveOriginalCovers[identifier] = cover
+        }
+    }
     /// The one resolver of Gutenberg works, owned here; a witness hands in its own.
     private let gutenbergWorks = GutenbergWorks()
 
@@ -398,6 +409,7 @@ final class FreeCatalogProvider: AudioProvider {
     private func fetchAlbumDetail(albumId: String) async throws -> LibraryItemDetail {
         let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+        noteFiles(meta, identifier: identifier)
         let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
         guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
         return LibraryItemDetail(id: albumId,
@@ -413,6 +425,7 @@ final class FreeCatalogProvider: AudioProvider {
                             index: Int) async throws -> LibraryItemDetail {
         let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+        noteFiles(meta, identifier: identifier)
         guard let detail = songDetail(songId: songId, identifier: identifier, meta: meta, index: index) else {
             throw URLError(.resourceUnavailable)
         }
@@ -443,6 +456,7 @@ final class FreeCatalogProvider: AudioProvider {
                 asked = true
                 do {
                     meta = try await (metadata ?? { try await ArchiveOrgClient.metadata(identifier: $0) })(identifier)
+                    if let meta { noteFiles(meta, identifier: identifier) }
                 } catch {
                     Logger.library.error("CATALOG album songs, release answer failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
                 }
@@ -469,6 +483,7 @@ final class FreeCatalogProvider: AudioProvider {
         let meta: ArchiveDecoder.MetadataResponse
         do {
             meta = try await (metadata ?? { try await ArchiveOrgClient.metadata(identifier: $0) })(identifier)
+            noteFiles(meta, identifier: identifier)
         } catch {
             guard !error.isCancellation else { return [] }
             let held = heldSongs(albumId: albumId)
@@ -592,6 +607,7 @@ final class FreeCatalogProvider: AudioProvider {
             }
             let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+            noteFiles(meta, identifier: identifier)
             // This endpoint answers for every item, including one that no row
             // ever showed. So the form is known here even on a cold start.
             rememberCollections(meta.metadata?.collection?.values, forItemId: itemId)
@@ -700,6 +716,25 @@ final class FreeCatalogProvider: AudioProvider {
                 number: String(itemId.dropFirst(FreeCatalog.gutenbergPrefix.count)))
         }
         return nil
+    }
+
+    /// The cover of a large view: an archive item's original picture once
+    /// its files were read (`noteFiles`), else the larger form of the grid
+    /// cover where its source keeps one (`CoverAddressHistory`).
+    func largeCoverURL(forItemId itemId: String) -> URL? {
+        if let identifier = archiveIdentifier(forItemId: itemId), let original = archiveOriginalCovers[identifier] {
+            return original
+        }
+        return CoverAddressHistory.large(coverURL(forItemId: itemId))
+    }
+
+    /// The archive.org item behind a catalogue id: a release or a song of it,
+    /// or the archive copy of a LibriVox book.
+    private func archiveIdentifier(forItemId itemId: String) -> String? {
+        if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
+            return FreeCatalog.iarchiveIdentifier(from: librivoxBooks[itemId]?.url_iarchive)
+        }
+        return FreeCatalog.archiveIdentifier(of: itemId)
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? { URL(string: contentPath) }

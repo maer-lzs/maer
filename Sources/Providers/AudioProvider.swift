@@ -135,6 +135,10 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
 
     // MARK: Medien
     func coverURL(forItemId itemId: String) -> URL?
+    /// The cover a large view (a title's page, the full player, the lock
+    /// screen) asks; the grid keeps `coverURL`. Default: its larger form
+    /// where the source keeps one (`CoverAddressHistory.large`).
+    func largeCoverURL(forItemId itemId: String) -> URL?
     func streamURL(forContentPath contentPath: String) -> URL?
     /// HTTP headers for streaming/downloads (today: bearer token); empty when
     /// the source needs no auth (local files).
@@ -151,6 +155,10 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
 }
 
 extension AudioProvider {
+    func largeCoverURL(forItemId itemId: String) -> URL? {
+        CoverAddressHistory.large(coverURL(forItemId: itemId))
+    }
+
     /// Default: item-independent source headers.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String] { streamAuthHeaders }
 

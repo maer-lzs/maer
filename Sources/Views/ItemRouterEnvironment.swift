@@ -47,6 +47,10 @@ struct ItemRouter: Sendable {
     var coverURL: @MainActor @Sendable (String) -> URL? = {
         liveSession.coverURL(forItemId: $0)
     }
+    /// The address of the item's cover in a large view (`AudioProvider.largeCoverURL`).
+    var largeCoverURL: @MainActor @Sendable (String) -> URL? = {
+        liveSession.largeCoverURL(forItemId: $0)
+    }
     /// Asks the sources for cover addresses they have not named yet for
     /// these ids; true when something was learned and the covers are worth
     /// asking again.
@@ -89,6 +93,7 @@ struct ItemRouter: Sendable {
     /// this way, and that is worth seeing rather than hiding.
     static let empty = ItemRouter(
         coverURL: { _ in nil },
+        largeCoverURL: { _ in nil },
         learnCovers: { _ in false },
         item: { _ in nil },
         playable: { _ in nil },

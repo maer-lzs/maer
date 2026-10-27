@@ -35,6 +35,14 @@ nonisolated enum CoverAddressHistory {
     /// none.
     static func formerAddress(of url: URL) -> URL? {
         if let jamendo = jamendoFormer(of: url) { return jamendo }
+        // archive.org: an original picture download/<id>/<file> stands in
+        // for the item image service services/img/<id>.
+        if url.host == "archive.org" {
+            let parts = url.path.split(separator: "/").map(String.init)
+            let picture = ["jpg", "jpeg", "png"].contains(url.pathExtension.lowercased())
+            guard parts.count >= 3, parts[0] == "download", picture else { return nil }
+            return FreeCatalog.archiveCoverURL(identifier: parts[1])
+        }
         // Gutenberg: cache/epub/<n>/images/cover.jpg
         guard let parts = gutenbergCache(url), parts.count == 5,
               parts[3] == "images", parts[4] == "cover.jpg" else { return nil }

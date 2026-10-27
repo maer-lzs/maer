@@ -212,6 +212,13 @@ final class AppSession: ObservableObject {
         return provider(for: itemId).coverURL(forItemId: itemId)
     }
 
+    /// The cover of a large view via the item's source, behind the same
+    /// namespace guard as `coverURL`.
+    func largeCoverURL(forItemId itemId: String) -> URL? {
+        guard ItemNamespace.isKnown(itemId) else { return nil }
+        return provider(for: itemId).largeCoverURL(forItemId: itemId)
+    }
+
     /// Asks the sources of these ids for the cover addresses they have not
     /// named yet. Only the music server's songs need it (`learnSongCovers`);
     /// every other source derives a cover from the id. True when something

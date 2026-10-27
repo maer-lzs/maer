@@ -112,7 +112,7 @@ struct PlayerScreen: View {
         PlayerView(
             viewModel: viewModel,
             coordinator: coordinator,
-            coverURL: CoverAddressHistory.large(router.coverURL(item.id)),
+            coverURL: router.largeCoverURL(item.id),
             dragProgress: dragProgress,
             cornerRadius: cornerRadius,
             topInset: topInset,

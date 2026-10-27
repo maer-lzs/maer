@@ -41,11 +41,13 @@ struct CatalogCoverAddressTests {
                 contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         #expect(try read("Sources/Views/BookDetailScreen.swift")
-            .contains("hiresCover ?? CoverAddressHistory.large(router.coverURL(entry.id))"))
+            .contains("hiresCover ?? router.largeCoverURL(entry.id)"))
         #expect(try read("Sources/Views/PlayerScreen.swift")
-            .contains("coverURL: CoverAddressHistory.large(router.coverURL(item.id)),"))
+            .contains("coverURL: router.largeCoverURL(item.id),"))
         #expect(try read("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
-            .contains("CoverAddressHistory.large(item.flatMap { provider.coverURL(forItemId: $0.id) })"))
+            .contains("songCoverURL ?? item.flatMap { provider.largeCoverURL(forItemId: $0.id) }"))
+        #expect(try read("Sources/Providers/AudioProvider.swift")
+            .contains("CoverAddressHistory.large(coverURL(forItemId: itemId))"), "the default asks the larger form")
     }
 
     @Test("Jamendo fragt 600 Pixel ueberall, 300 ist der fruehere Name", .needsTheSources)
@@ -62,6 +64,88 @@ struct CatalogCoverAddressTests {
         #expect(clients.contains("URLQueryItem(name: \"imagesize\", value: String(FreeCatalog.jamendoCoverSize))"))
         #expect(JamendoClient.popularRule.hasSuffix("|\(FreeCatalog.jamendoCoverSize)"),
                 "a stored answer with smaller covers is still found")
+    }
+
+    private static func file(_ name: String, source: String, format: String, bytes: Int) -> ArchiveFile {
+        ArchiveFile(name: name, length: nil, title: nil, format: format, source: source, size: String(bytes))
+    }
+
+    @Test("archive.org: das groesste Original-Bild unter der Grenze, sonst der Dienst")
+    func archiveTakesTheLargestOriginalPicture() throws {
+        let files = [
+            Self.file("cover small.jpg", source: "original", format: "JPEG", bytes: 80_000),
+            Self.file("cover.png", source: "original", format: "PNG", bytes: 250_000),
+            Self.file("scan.jpg", source: "original", format: "JPEG", bytes: FreeCatalog.archiveOriginalCoverCap + 1),
+            Self.file("cover_thumb.jpg", source: "derivative", format: "JPEG", bytes: 300_000),
+            Self.file("a.mp3", source: "original", format: "VBR MP3", bytes: 400_000),
+        ]
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: files)?.absoluteString
+                == "https://archive.org/download/rel/cover.png")
+        let onlySmall = [Self.file("cover small.jpg", source: "original", format: "JPEG", bytes: 80_000)]
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: onlySmall)?.absoluteString
+                == "https://archive.org/download/rel/cover%20small.jpg")
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: [files[2], files[3], files[4]]) == nil,
+                "a picture past the cap, a derivative or a sound is no large cover")
+        let original = try #require(URL(string: "https://archive.org/download/rel/cover.png"))
+        #expect(CoverAddressHistory.formerAddress(of: original) == FreeCatalog.archiveCoverURL(identifier: "rel"))
+        #expect(CoverAddressHistory.formerAddress(of: URL(string: "https://archive.org/download/rel/a.mp3")!) == nil)
+    }
+
+    @Test("die grosse Ansicht nimmt das Original, sobald die Dateiliste gelesen ist; das Raster bleibt beim Dienst")
+    func theLargeViewTakesTheOriginalOnceTheFilesWereRead() async throws {
+        let album = "lva:cover-witness-\(UUID().uuidString)"
+        let identifier = try #require(FreeCatalog.archiveIdentifier(of: album))
+        let provider = FreeCatalogProvider.shared
+        let service = FreeCatalog.archiveCoverURL(identifier: identifier)
+        #expect(provider.largeCoverURL(forItemId: album) == service, "the precondition: no files read yet")
+        let json = """
+            {"files": [{"name": "a.mp3", "length": "60", "format": "VBR MP3", "source": "original", "size": "900000"},
+                       {"name": "front.jpg", "format": "JPEG", "source": "original", "size": "120000"}],
+             "metadata": {"title": "Witness"}}
+            """
+        let meta = try ArchiveDecoder.decodeMetadata(Data(json.utf8))
+        _ = await provider.releaseSongs(albumId: album) { _ in meta }
+        #expect(provider.largeCoverURL(forItemId: album)?.absoluteString
+                == "https://archive.org/download/\(identifier)/front.jpg")
+        #expect(provider.coverURL(forItemId: album) == service, "the grid left the service")
+    }
+
+    @Test("nur die grossen Ansichten fragen largeCoverURL, nie das Raster", .needsTheSources)
+    func onlyTheLargeViewsAskTheLargeCover() throws {
+        // The three large views and the path that carries the question.
+        let allowed: Set<String> = ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift",
+                                    "AudioProvider.swift", "AppSession.swift", "ItemRouterEnvironment.swift",
+                                    "FreeCatalogProvider.swift"]
+        var askers: Set<String> = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("largeCoverURL") { askers.insert(file.lastPathComponent) }
+        }
+        #expect(askers.subtracting(allowed).isEmpty, "a grid or row asks the large cover: \(askers.subtracting(allowed).sorted())")
+        #expect(askers.isSuperset(of: ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift"]),
+                "the reader no longer sees the large views")
+    }
+
+    /// A grey strip several times wider than tall, the waveform the item
+    /// image service answers for an item without a picture.
+    private static func waveformStrip() throws -> Data {
+        let width = 120, height = 20
+        let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue))
+        context.setFillColor(gray: 0.5, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let image = try #require(context.makeImage())
+        return try #require(UIImage(cgImage: image).pngData())
+    }
+
+    @Test("ein Original wird nie als Platzhalter gemerkt, derselbe Streifen vom Dienst schon")
+    func anOriginalIsNeverAPlaceholder() throws {
+        let strip = try Self.waveformStrip()
+        let service = FreeCatalog.archiveCoverURL(identifier: "rel")!
+        #expect(ArchiveServicePlaceholder.isPlaceholder(data: strip, url: service), "the precondition: the strip is one")
+        let original = URL(string: "https://archive.org/download/rel/front.png")!
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(data: strip, url: original),
+                "an uploader's own picture was judged a placeholder and would be remembered as none")
     }
 
     @Test("ein Cover unter der kleinen Adresse bleibt offline lesbar")

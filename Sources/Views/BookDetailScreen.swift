@@ -137,7 +137,7 @@ struct BookDetailScreen: View {
     @State private var hiresCover: URL?
 
     private var coverImageContent: some View {
-        CachedAsyncImage(url: hiresCover ?? CoverAddressHistory.large(router.coverURL(entry.id))) { image, pixels in
+        CachedAsyncImage(url: hiresCover ?? router.largeCoverURL(entry.id)) { image, pixels in
             // A large cover stands alone on its page, so it can afford
             // the blurred enlargement behind a fitted picture.
             CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)

@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Internet Archive covers are sharper where they are large.** Once a
+release's or a book's files have been read, its page, the full player
+and the lock screen show the picture its uploader put there, up to
+600 kB, instead of the 180 pixel image the archive derives. Grids and
+rows keep the small one; offline it stands in.
+
 **Jamendo covers are twice as sharp.** Music from Jamendo comes with
 600 pixel covers instead of 300, in grids and rows too, at about three
 times the bytes of the small ones. A cover already loaded stays visible

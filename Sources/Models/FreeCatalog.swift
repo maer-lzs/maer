@@ -123,6 +123,12 @@ nonisolated struct ArchiveFile: Decodable, Sendable {
     /// Archive.org's rendition label ("VBR MP3", "64Kbps MP3", …).
     /// The format PREFERENCE chain picks by this, not by filename suffix.
     let format: String?
+    /// "original" for a file the uploader put there, "derivative" for one
+    /// archive.org made from it, and the file's bytes as a decimal string.
+    /// The cover of a large view is the largest original picture
+    /// (`FreeCatalog.archiveOriginalCover`).
+    var source: String? = nil
+    var size: String? = nil
 }
 
 // MARK: - Jamendo wire
@@ -869,6 +875,29 @@ nonisolated enum FreeCatalog {
         guard let url, let last = url.split(separator: "/").last, !last.isEmpty else { return nil }
         return String(last)
     }
+
+    /// The largest picture the uploader put into an item, for the large
+    /// views: an original JPEG or PNG of at most `archiveOriginalCoverCap`
+    /// bytes; nil when there is none, and the item image service stands.
+    /// Measured 27.10.: LibriVox 300 pixels (75 to 123 kB), Old Time Radio
+    /// 709 and 1513 pixels (168 and 265 kB), a netlabel 600 pixels at 1.08 MB,
+    /// against 180 pixels and 3 to 24 kB from the service; more than three
+    /// times the bytes, so the grid keeps the service.
+    static func archiveOriginalCover(identifier: String, files: [ArchiveFile]) -> URL? {
+        let pictures = files.compactMap { file -> (name: String, bytes: Int)? in
+            guard file.source == "original", let name = file.name,
+                  let format = file.format?.lowercased(), format == "jpeg" || format == "png",
+                  let bytes = file.size.flatMap({ Int($0) }), bytes > 0, bytes <= archiveOriginalCoverCap
+            else { return nil }
+            return (name, bytes)
+        }
+        guard let largest = pictures.max(by: { $0.bytes < $1.bytes }),
+              let path = largest.name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
+        return URL(string: "https://archive.org/download/\(identifier)/\(path)")
+    }
+
+    /// The most bytes a large view's archive cover may cost.
+    static let archiveOriginalCoverCap = 600_000
 
     /// Keyless cover: the archive.org item image service.
     static func archiveCoverURL(identifier: String) -> URL? {
