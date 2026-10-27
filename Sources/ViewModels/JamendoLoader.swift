@@ -26,45 +26,32 @@ enum JamendoLoader {
         }
     }
 
-    /// The genre shelf rows of the Jamendo page, asked concurrently. A
+    /// The genre shelf rows of the Jamendo page, asked in turn. A
     /// failing genre drops out instead of taking the page down, and its
     /// reason comes back so the page can say so when nothing arrived. A
     /// shelf that answered empty stays honestly absent.
     static func shelves(using clients: CatalogClients = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
         let jamendo = clients.jamendo
-        // One task per shelf, started together and awaited in turn, without
-        // a task group: a group here ends while a child still runs, and the
-        // child's end aborts the app (`__cxa_pure_virtual` in
-        // `completeFuture`). A cancelled page cancels the asks. Tracks
-        // (Sendable) cross into the tasks; the mapping runs afterwards on
-        // the main actor.
-        let asks = CatalogGenreAxis.musicShelves.map { shelf in
-            let key = shelf.key
-            return (key, Task { () -> (String, [JamendoTrack], String?) in
-                let tags = CatalogGenreAxis.musicTags(forShelf: key)
-                do {
-                    return (key, try await jamendo.popularTracks(12, tags, 0, .none), nil)
-                } catch {
-                    return (key, [], error.isCancellation ? nil : reason(error))
-                }
-            })
-        }
-        let answers = await withTaskCancellationHandler {
-            var out: [(String, [JamendoTrack], String?)] = []
-            for (_, ask) in asks { out.append(await ask.value) }
-            return out
-        } onCancel: {
-            for (_, ask) in asks { ask.cancel() }
-        }
+        // The shelves ask one after the other on the main actor, each
+        // without a task of its own. Asked side by side, in a task group or
+        // in tasks of their own, an answer comes back with a broken key in
+        // the optimized build and the app aborts; one after the other it
+        // does not (measured in the simulator). A cancelled page stops
+        // asking.
         var rows: [String: [LibraryItem]] = [:]
         var failures: [String: String] = [:]
-        for (key, tracks, failure) in answers {
-            if let failure {
+        for shelf in CatalogGenreAxis.musicShelves {
+            guard !Task.isCancelled else { break }
+            let key = shelf.key
+            do {
+                let tracks = try await jamendo.popularTracks(12, CatalogGenreAxis.musicTags(forShelf: key), 0, .none)
+                rows[key] = register(tracks)
+            } catch {
+                guard !error.isCancellation else { break }
+                let failure = reason(error)
                 Logger.library.error("JAMENDO shelf=\(key, privacy: .public) FAILED: \(failure, privacy: .public)")
                 failures[key] = failure
-                continue
             }
-            rows[key] = register(tracks)
         }
         return (rows, failures)
     }

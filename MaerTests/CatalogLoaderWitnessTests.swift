@@ -145,15 +145,20 @@ struct JamendoLoaderWitnessTests {
         let shelves = await page.value
         #expect(ContinuousClock.now - started < .seconds(10), "a cancelled page waited for its asks")
         #expect(shelves.failures.isEmpty, "a cancelled ask is no failure")
-        #expect(asked.withLock { $0 } == CatalogGenreAxis.musicShelves.count, "every shelf asks at once")
+        #expect(asked.withLock { $0 } == 1, "a cancelled page asked on")
     }
 
-    @Test("Jamendo-Regale fragen ohne Aufgabengruppe", .needsTheSources)
-    func shelvesAskWithoutATaskGroup() throws {
+    @Test("Jamendo-Regale fragen der Reihe nach, in keiner eigenen Aufgabe", .needsTheSources)
+    func shelvesAskInTurn() throws {
         let loader = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/JamendoLoader.swift"), encoding: .utf8))
-        #expect(!loader.contains("TaskGroup("), "the shelves ask in a task group again")
-        #expect(loader.contains("withTaskCancellationHandler"))
+        let start = try #require(loader.range(of: "static func shelves(")).upperBound
+        let rest = loader[start...]
+        let body = String(rest[..<(rest.range(of: "\n    }\n")?.lowerBound ?? rest.endIndex)])
+        #expect(!body.contains("TaskGroup("), "the shelves ask in a task group again")
+        #expect(!body.contains("Task {"), "the shelves ask in tasks of their own again")
+        #expect(!body.contains("async let"), "the shelves ask side by side again")
+        #expect(body.contains("for shelf in CatalogGenreAxis.musicShelves"))
     }
 }
 
