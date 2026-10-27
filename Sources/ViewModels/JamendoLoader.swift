@@ -32,23 +32,29 @@ enum JamendoLoader {
     /// shelf that answered empty stays honestly absent.
     static func shelves(using clients: CatalogClients = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
         let jamendo = clients.jamendo
-        // Tracks (Sendable) cross the group boundary; the mapping runs
-        // afterwards on the main actor.
-        let answers = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
-            for shelf in CatalogGenreAxis.musicShelves {
-                let key = shelf.key
-                group.addTask {
-                    let tags = CatalogGenreAxis.musicTags(forShelf: key)
-                    do {
-                        return (key, try await jamendo.popularTracks(12, tags, 0, .none), nil)
-                    } catch {
-                        return (key, [], error.isCancellation ? nil : reason(error))
-                    }
+        // One task per shelf, started together and awaited in turn, without
+        // a task group: a group here ends while a child still runs, and the
+        // child's end aborts the app (`__cxa_pure_virtual` in
+        // `completeFuture`). A cancelled page cancels the asks. Tracks
+        // (Sendable) cross into the tasks; the mapping runs afterwards on
+        // the main actor.
+        let asks = CatalogGenreAxis.musicShelves.map { shelf in
+            let key = shelf.key
+            return (key, Task { () -> (String, [JamendoTrack], String?) in
+                let tags = CatalogGenreAxis.musicTags(forShelf: key)
+                do {
+                    return (key, try await jamendo.popularTracks(12, tags, 0, .none), nil)
+                } catch {
+                    return (key, [], error.isCancellation ? nil : reason(error))
                 }
-            }
+            })
+        }
+        let answers = await withTaskCancellationHandler {
             var out: [(String, [JamendoTrack], String?)] = []
-            for await answer in group { out.append(answer) }
+            for (_, ask) in asks { out.append(await ask.value) }
             return out
+        } onCancel: {
+            for (_, ask) in asks { ask.cancel() }
         }
         var rows: [String: [LibraryItem]] = [:]
         var failures: [String: String] = [:]

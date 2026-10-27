@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The Jamendo page no longer closes the app.** Opening Music (Jamendo)
+from Browse could end the app a few seconds later, on every device. The
+genre rows of the page now load without that fault.
+
 **Audiobook covers are sharp.** Covers from an Audiobookshelf server
 now come at the size the server keeps them, instead of 400 pixels wide,
 so the book page, the full player and the lock screen show them crisp.

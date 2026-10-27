@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Synchronization
 @testable import Maer
 
 /// Each catalogue loader runs offline with stand-in clients: an answer
@@ -126,6 +127,33 @@ struct JamendoLoaderWitnessTests {
         #expect(shelves.failures == [failingKey: W.offlineReason])
         #expect(shelves.rows[failingKey] == nil)
         #expect(shelves.rows.count == CatalogGenreAxis.musicShelves.count - 1)
+    }
+
+    @Test("Jamendo-Regale: eine abgebrochene Seite bricht jede Frage ab und wartet auf keine")
+    func shelvesFollowTheCancelledPage() async {
+        let asked = Mutex(0)
+        var clients = W.answering()
+        clients.jamendo.popularTracks = { _, _, _, _ in
+            asked.withLock { $0 += 1 }
+            try await Task.sleep(for: .seconds(30))
+            return [W.track()]
+        }
+        let started = ContinuousClock.now
+        let page = Task { await JamendoLoader.shelves(using: clients) }
+        try? await Task.sleep(for: .milliseconds(200))
+        page.cancel()
+        let shelves = await page.value
+        #expect(ContinuousClock.now - started < .seconds(10), "a cancelled page waited for its asks")
+        #expect(shelves.failures.isEmpty, "a cancelled ask is no failure")
+        #expect(asked.withLock { $0 } == CatalogGenreAxis.musicShelves.count, "every shelf asks at once")
+    }
+
+    @Test("Jamendo-Regale fragen ohne Aufgabengruppe", .needsTheSources)
+    func shelvesAskWithoutATaskGroup() throws {
+        let loader = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/JamendoLoader.swift"), encoding: .utf8))
+        #expect(!loader.contains("TaskGroup("), "the shelves ask in a task group again")
+        #expect(loader.contains("withTaskCancellationHandler"))
     }
 }
 
