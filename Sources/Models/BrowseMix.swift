@@ -107,6 +107,13 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         let cut = (sections.count + 1) / 2
         return (Array(sections.prefix(cut)), Array(sections.dropFirst(cut)))
     }
+
+    /// The areas that run on from the leading column into the trailing one.
+    /// The trailing column keeps their title's room without showing it, so
+    /// no title stands twice side by side and the lanes stay level.
+    static func continuedGroups(leading: [BrowseSection], trailing: [BrowseSection]) -> Set<Group> {
+        Set(leading.map(\.group)).intersection(trailing.map(\.group))
+    }
 }
 
 /// The Browse offer of a media tab: which area of the Browse page it

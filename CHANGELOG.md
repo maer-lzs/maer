@@ -9,6 +9,10 @@ from Browse could end the app a few seconds later, on every device. The
 genre rows of the page now load one after the other, each row shows as
 soon as it has arrived, and the app stays.
 
+**The Browse page names each area once on a wide screen.** When the
+lanes stand in two columns, as on an iPad, an area that runs on into the
+second column no longer shows its title above both.
+
 **Audiobook covers are sharp.** Covers from an Audiobookshelf server
 now come at the size the server keeps them, instead of 400 pixels wide,
 so the book page, the full player and the lock screen show them crisp.

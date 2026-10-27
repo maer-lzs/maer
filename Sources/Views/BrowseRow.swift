@@ -192,7 +192,8 @@ struct BrowsePage: View {
                     lanes(halves.leading)
                         .environment(\.sideColumnReach, 0)
                 } trailing: { _ in
-                    lanes(halves.trailing)
+                    lanes(halves.trailing,
+                          continued: BrowseSection.continuedGroups(leading: halves.leading, trailing: halves.trailing))
                 }
             } else {
                 lanes(sections)
@@ -204,7 +205,9 @@ struct BrowsePage: View {
     }
 
     /// The lanes of some sections under their area's title, in one scroll.
-    private func lanes(_ shown: [BrowseSection]) -> some View {
+    /// An area `continued` from the leading column keeps its title's room
+    /// here but not the title (`BrowseSection.continuedGroups`).
+    private func lanes(_ shown: [BrowseSection], continued: Set<BrowseSection.Group> = []) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 ForEach(BrowseSection.Group.allCases) { group in
@@ -214,6 +217,8 @@ struct BrowsePage: View {
                             Text(Self.title(group))
                                 .font(.headline).foregroundStyle(.secondary)
                                 .padding(.horizontal)
+                                .opacity(continued.contains(group) ? 0 : 1)
+                                .accessibilityHidden(continued.contains(group))
                             ForEach(inGroup) { section in
                                 BrowseLane(tiles: tiles(section), problem: problem(section),
                                            reason: reason(section), playerCoordinator: playerCoordinator) {
