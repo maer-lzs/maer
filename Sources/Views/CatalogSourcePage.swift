@@ -1056,7 +1056,9 @@ struct ArchiveSeriesPage: View {
     private func header(_ detail: LibraryItemDetail) -> some View {
         DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) { side in
             // An album takes the album page's measure, a series the show's.
-            podcastArtwork(url: router.coverURL(itemId),
+            // The page is a large view: the release's original picture once
+            // its files were read (`AudioProvider.largeCoverURL`).
+            podcastArtwork(url: router.largeCoverURL(itemId),
                            size: side ?? (effectiveFlavor == .album ? 240 : 150),
                            corner: DetailCoverCard.cornerRadius)
                 .coverCard()
