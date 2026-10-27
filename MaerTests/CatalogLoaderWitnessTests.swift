@@ -148,6 +148,35 @@ struct JamendoLoaderWitnessTests {
         #expect(asked.withLock { $0 } == 1, "a cancelled page asked on")
     }
 
+    @Test("Jamendo-Regale: das erste Regal steht, bevor das zweite gefragt wird")
+    func eachShelfShowsOnArrival() async {
+        let shown = Mutex<[String]>([])
+        let shownBeforeSecondAsk = Mutex<[String]?>(nil)
+        let asked = Mutex(0)
+        var clients = W.answering()
+        clients.jamendo.popularTracks = { _, _, _, _ in
+            let count = asked.withLock { $0 += 1; return $0 }
+            if count == 2 { shownBeforeSecondAsk.withLock { $0 = shown.withLock { $0 } } }
+            return [W.track()]
+        }
+        let shelves = await JamendoLoader.shelves(using: clients) { key, row in
+            #expect(row.count == 1)
+            shown.withLock { $0.append(key) }
+        }
+        let first = CatalogGenreAxis.musicShelves[0].key
+        #expect(shownBeforeSecondAsk.withLock { $0 } == [first], "the first shelf waited for the second")
+        #expect(shown.withLock { $0 } == CatalogGenreAxis.musicShelves.map(\.key))
+        #expect(shelves.rows.count == CatalogGenreAxis.musicShelves.count)
+    }
+
+    @Test("die Jamendo-Seite stellt jedes Regal bei seiner Ankunft hin", .needsTheSources)
+    func thePageTakesEachShelfOnArrival() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
+        #expect(page.contains("JamendoLoader.shelves { key, row in shelfRows[key] = row }"))
+        #expect(!page.contains("for (key, row) in shelves.rows"), "the page waits for all shelves again")
+    }
+
     @Test("Jamendo-Regale fragen der Reihe nach, in keiner eigenen Aufgabe", .needsTheSources)
     func shelvesAskInTurn() throws {
         let loader = SyncContractFenceTests.stripped(try String(

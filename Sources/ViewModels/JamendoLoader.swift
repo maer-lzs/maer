@@ -29,8 +29,12 @@ enum JamendoLoader {
     /// The genre shelf rows of the Jamendo page, asked in turn. A
     /// failing genre drops out instead of taking the page down, and its
     /// reason comes back so the page can say so when nothing arrived. A
-    /// shelf that answered empty stays honestly absent.
-    static func shelves(using clients: CatalogClients = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
+    /// shelf that answered empty stays honestly absent. Each answered
+    /// shelf goes to `onShelf` as soon as it arrives, before the next one is
+    /// asked, so the page fills row by row.
+    static func shelves(using clients: CatalogClients = .live,
+                        onShelf: (_ key: String, _ row: [LibraryItem]) -> Void = { _, _ in })
+        async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
         let jamendo = clients.jamendo
         // The shelves ask one after the other on the main actor, each
         // without a task of its own. Asked side by side, in a task group or
@@ -45,7 +49,9 @@ enum JamendoLoader {
             let key = shelf.key
             do {
                 let tracks = try await jamendo.popularTracks(12, CatalogGenreAxis.musicTags(forShelf: key), 0, .none)
-                rows[key] = register(tracks)
+                let row = register(tracks)
+                rows[key] = row
+                onShelf(key, row)
             } catch {
                 guard !error.isCancellation else { break }
                 let failure = reason(error)

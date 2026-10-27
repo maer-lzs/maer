@@ -321,6 +321,19 @@ final class ImageCache {
         return Self.fileName(for: url) { Self.dropsFromName($0, clientImage: clientImage) }
     }
 
+    /// The name an Audiobookshelf cover had before it came unscaled
+    /// (`APIClient.coverOriginalName`): the kept cover of a downloaded book
+    /// stands under it until the unscaled one has arrived. Nil for every
+    /// other address.
+    nonisolated func formerName(for url: URL) -> String? {
+        guard APIClient.buildsImage(path: url.path),
+              URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .contains(where: { $0.name == APIClient.coverOriginalName }) == true else { return nil }
+        return Self.fileName(for: url) {
+            Self.dropsFromName($0, clientImage: true) || $0 == APIClient.coverOriginalName
+        }
+    }
+
     /// The name an address had under the earlier rule, which dropped every
     /// sign-in name at every address. Only for moving kept covers of foreign
     /// addresses to their new name (`legacyMoves`).
@@ -473,15 +486,22 @@ final class ImageCache {
     /// candidate: a gate that goes to the network asks first without it
     /// (`allowKept: false`), so the next display asks the server, and every
     /// other reader (CarPlay, the widget) and the network gate after a failed
-    /// load still find it.
-    private func readCandidates(_ fileKey: String, allowKept: Bool) -> [URL] {
+    /// load still find it. The `former` name of an address comes after all
+    /// of them and only where the kept copy may answer: it is read only when
+    /// nothing stands under today's name, and the network gate never sees
+    /// it, so the new cover is still asked for.
+    private func readCandidates(_ fileKey: String, allowKept: Bool, former: String? = nil) -> [URL] {
         let tiers: [URL]
         if !refreshing.contains(fileKey) {
             tiers = [persistentDirectory, diskDirectory]
         } else {
             tiers = allowKept ? [diskDirectory, persistentDirectory] : [diskDirectory]
         }
-        return tiers.map { $0.appendingPathComponent(fileKey) }
+        var candidates = tiers.map { $0.appendingPathComponent(fileKey) }
+        if allowKept, let former {
+            candidates += [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(former) }
+        }
+        return candidates
     }
 
     /// The memory name of a picture read while its address waits for the
@@ -659,7 +679,7 @@ final class ImageCache {
             return kept
         }
         let startedAt = invalidations[fileKey, default: 0]
-        let candidates = readCandidates(fileKey, allowKept: allowKept)
+        let candidates = readCandidates(fileKey, allowKept: allowKept, former: formerName(for: url))
         guard let (thumb, source) = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
         #if DEBUG
         await testDiskHold?("read", fileKey)
@@ -678,10 +698,12 @@ final class ImageCache {
     /// the network gate would then find under the plain name); while the
     /// address waits, only bytes of the persistent copy, under the waiting
     /// name (a cache file read then may be the one the invalidation's
-    /// removal has not reached yet).
+    /// removal has not reached yet). A picture read under the former name
+    /// stands nowhere: in memory the network gate would take it for today's.
     private func memoryName(_ name: String, fileKey: String, waitingAtStart: Bool,
                             startedAt: Int, source: URL) -> NSString? {
-        guard invalidations[fileKey, default: 0] == startedAt,
+        guard source.lastPathComponent == fileKey,
+              invalidations[fileKey, default: 0] == startedAt,
               refreshing.contains(fileKey) == waitingAtStart else { return nil }
         guard waitingAtStart else { return name as NSString }
         return Self.stands(source, in: persistentDirectory) ? Self.waitingName(name) : nil
@@ -798,7 +820,8 @@ final class ImageCache {
             return kept
         }
         let startedAt = invalidations[cacheKey, default: 0]
-        guard let (image, source) = await diskImage(readCandidates(cacheKey, allowKept: allowKept)) else { return nil }
+        guard let (image, source) = await diskImage(readCandidates(cacheKey, allowKept: allowKept,
+                                                                   former: formerName(for: url))) else { return nil }
         if let name = memoryName(cacheKey, fileKey: cacheKey, waitingAtStart: waiting, startedAt: startedAt, source: source) {
             memoryCache.setObject(image, forKey: name, cost: cost(of: image))
         }
@@ -1233,6 +1256,14 @@ final class ImageCache {
         return tally
     }
 
+    /// The former names (`formerName(for:)`, keyed by today's name) the
+    /// sweep keeps as covers of downloads: one stays while today's name of
+    /// its address has no kept cover, so a downloaded book keeps its old
+    /// cover offline until the unscaled one has come and gone up.
+    nonisolated static func keptFormerNames(_ formers: [String: String], persistent: Set<String>) -> Set<String> {
+        Set(formers.compactMap { today, former in persistent.contains(today) ? nil : former })
+    }
+
     nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,
                                       active: Set<String>, knowsAll: Bool) -> [TierMove] {
         let up = active.intersection(cache).subtracting(persistent).sorted().map(TierMove.promote)
@@ -1312,6 +1343,10 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
+        var formers: [String: String] = [:]
+        for url in activeCoverURLs {
+            if let former = formerName(for: url) { formers[key(for: url)] = former }
+        }
         let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: knowsAll) { key(for: $0) }
         let started = Date()
         // detached because the sweep is disk work off the MainActor and must not die with the caller
@@ -1328,8 +1363,11 @@ final class ImageCache {
 
             // 1) Between the tiers (`tierMoves`): an active cover found only
             //    in the cache goes up, a persistent one without a download
-            //    goes down.
-            let moved = Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,
+            //    goes down. A download's cover under its former name counts
+            //    as active until today's name is kept.
+            let persistentNames = names(persistent)
+            let active = activeNames.union(Self.keptFormerNames(formers, persistent: persistentNames))
+            let moved = Self.tierMoves(persistent: persistentNames, cache: names(cache), active: active,
                                        knowsAll: knowsAll)
             await Self.applyTierMoves(moved, persistent: persistent, cache: cache) { name in
                 await MainActor.run { self.refreshing.contains(name) }

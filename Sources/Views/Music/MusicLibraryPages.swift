@@ -636,9 +636,9 @@ struct FreeJamendoPage: View {
             }
             // The failure TRAVELS instead of being swallowed: a page whose
             // shelves could not be asked says so; a shelf that answered
-            // empty stays honestly absent.
-            let shelves = await JamendoLoader.shelves()
-            for (key, row) in shelves.rows { shelfRows[key] = row }
+            // empty stays honestly absent. Each row shows as soon as its
+            // shelf answered, while the next one is still being asked.
+            let shelves = await JamendoLoader.shelves { key, row in shelfRows[key] = row }
             shelfFailures = shelves.failures
     }
 
