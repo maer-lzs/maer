@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Shuffle on a music server says when it cannot start.** If the songs of
+an album or playlist on your music server cannot be loaded, for example
+because the server does not answer, Shuffle now says so in the mini
+player instead of doing nothing.
+
 ## v3.5 (Build 57)
 
 **The Jamendo page no longer closes the app.** Opening Music (Jamendo)

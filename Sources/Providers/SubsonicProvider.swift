@@ -872,15 +872,18 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         if UITestSeed.isActive { return [UITestSeed.seedSong] }
         #endif
         guard let client else { return [] }
-        let songs: [SubsonicSong]
-        if let albumId = Self.id(itemId, kind: "album") {
-            songs = (try? await client.album(id: albumId))?.song ?? []
-        } else if let playlistId = Self.id(itemId, kind: "playlist") {
-            songs = (try? await client.playlist(id: playlistId))?.entry ?? []
-        } else if let songId = Self.id(itemId, kind: "song"), let song = try? await client.song(id: songId) {
-            songs = [song]
-        } else {
-            songs = []
+        var songs: [SubsonicSong] = []
+        do {
+            if let albumId = Self.id(itemId, kind: "album") {
+                songs = try await client.album(id: albumId)?.song ?? []
+            } else if let playlistId = Self.id(itemId, kind: "playlist") {
+                songs = try await client.playlist(id: playlistId)?.entry ?? []
+            } else if let songId = Self.id(itemId, kind: "song") {
+                songs = try await client.song(id: songId).map { [$0] } ?? []
+            }
+        } catch {
+            // The caller gets no songs and says so (`ShufflePlayButton`).
+            MusicSongsFailure.log(itemId: itemId, error)
         }
         learnCovers(songs)
         let items = songs.map(Self.songItem(from:))

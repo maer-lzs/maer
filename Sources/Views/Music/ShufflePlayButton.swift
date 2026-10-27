@@ -51,9 +51,21 @@ struct ShufflePlayButton: View {
         guard !busy else { return }
         busy = true
         Task {
-            let items = await pool()
-            await playerCoordinator.shufflePlay(items: items)
+            await Self.start(pool: pool, coordinator: playerCoordinator)
             busy = false
         }
+    }
+
+    /// Shuffles what the pool holds. An empty pool (a server that did not
+    /// answer, a list without songs) starts nothing and says so in the mini
+    /// player, never a tap that does nothing.
+    static func start(pool: () async -> [LibraryItem], coordinator: PlayerCoordinator) async {
+        let items = await pool()
+        guard !items.isEmpty else {
+            guard !Task.isCancelled else { return }
+            coordinator.sayOpenFailure(String(localized: "Couldn't load tracks"), cause: .unknown, title: nil)
+            return
+        }
+        await coordinator.shufflePlay(items: items)
     }
 }

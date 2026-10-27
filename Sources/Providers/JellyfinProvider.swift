@@ -689,15 +689,18 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     func songItems(forItemId itemId: String) async -> [LibraryItem] {
         guard let client else { return [] }
-        let songs: [JFItem]
-        if let albumId = Self.id(itemId, kind: "album") {
-            songs = (try? await client.albumSongs(albumId: albumId)) ?? []
-        } else if let playlistId = Self.id(itemId, kind: "playlist") {
-            songs = (try? await client.playlistSongs(playlistId: playlistId)) ?? []
-        } else if let songId = Self.id(itemId, kind: "song"), let song = try? await client.item(id: songId) {
-            songs = [song]
-        } else {
-            songs = []
+        var songs: [JFItem] = []
+        do {
+            if let albumId = Self.id(itemId, kind: "album") {
+                songs = try await client.albumSongs(albumId: albumId)
+            } else if let playlistId = Self.id(itemId, kind: "playlist") {
+                songs = try await client.playlistSongs(playlistId: playlistId)
+            } else if let songId = Self.id(itemId, kind: "song") {
+                songs = try await client.item(id: songId).map { [$0] } ?? []
+            }
+        } catch {
+            // The caller gets no songs and says so (`ShufflePlayButton`).
+            MusicSongsFailure.log(itemId: itemId, error)
         }
         let items = songs.map(Self.songItem(from:))
         for item in items { itemsById[item.id] = item }

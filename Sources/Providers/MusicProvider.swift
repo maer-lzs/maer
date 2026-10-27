@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// What kind of music item an item id denotes (provider-namespaced ids stay
 /// opaque to the UI. It asks the provider instead of parsing prefixes).
@@ -13,6 +14,16 @@ import Combine
 /// project default.
 nonisolated enum MusicItemKind {
     case album, playlist, song, artist
+}
+
+/// The one log line of a server whose songs did not come
+/// (`songItems(forItemId:)`): the caller then holds no songs and says so to
+/// the listener. A cancelled ask says nothing.
+nonisolated enum MusicSongsFailure {
+    static func log(itemId: String, _ error: Error) {
+        guard !error.isCancellation else { return }
+        Logger.music.error("MUSIC songItems failed item=\(itemId, privacy: .private(mask: .hash)): \(FailureReason.of(error), privacy: .public)")
+    }
 }
 
 /// The capability surface the MUSIC UI talks to. Jellyfin staging, stage 1:
