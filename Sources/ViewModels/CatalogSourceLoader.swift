@@ -54,10 +54,14 @@ enum CatalogSourceLoader {
     }
 
     /// Runs one source fetch and classifies its outcome, so the group can
-    /// hand back a `Sendable` value instead of an error existential.
+    /// hand back a `Sendable` value instead of an error existential. The
+    /// result goes into a `let` before the tuple (`TupleTryAwaitFenceTests`).
     nonisolated private static func attempt<T: Sendable>(
         _ op: @escaping @Sendable () async throws -> T) async -> (T?, String?) {
-        do { return (try await op(), nil) } catch { return (nil, await CatalogPageFailure.sentence(for: error, at: "source")) }
+        do {
+            let value = try await op()
+            return (value, nil)
+        } catch { return (nil, await CatalogPageFailure.sentence(for: error, at: "source")) }
     }
 
     /// `clients` and `gates` are the live ones by default; a witness hands
