@@ -40,10 +40,10 @@ struct CollectionMenuTests {
         // The album cell, the playlist card and the catalogue music tiles.
         #expect(music.contains(".musicItemMenu(item:item,playerCoordinator:playerCoordinator,isAlbum:true)"))
         #expect(music.contains("ifisAlbum{CollectionMenuItems("))
-        #expect(music.contains("CollectionMenuItems.catalog(item,playerCoordinator:playerCoordinator,router:router)"))
+        #expect(music.contains("CollectionMenuItems.catalog(item,playerCoordinator:playerCoordinator)"))
         #expect(try Self.flat("Sources/Views/Music/PlaylistCard.swift").contains(".contextMenu{CollectionMenuItems("))
         #expect(try Self.flat("Sources/Views/BrowseRow.swift")
-            .contains("CollectionMenuItems.catalog(item,playerCoordinator:playerCoordinator,router:router)"))
+            .contains("CollectionMenuItems.catalog(item,playerCoordinator:playerCoordinator)"))
     }
 }
 #endif

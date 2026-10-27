@@ -105,7 +105,7 @@ struct CatalogShuffleSongsTests {
                 "a Jamendo track is a song already")
         let songs = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/CatalogShuffleSongs.swift"),
                                encoding: .utf8)
-        #expect(songs.contains("await ArchiveMusicLoader.albumSongs(albumId: $0, router: .live)"),
+        #expect(songs.contains("await ArchiveMusicLoader.albumSongs(albumId: $0)"),
                 "the songs come the one way of a catalogue album's songs")
     }
 }

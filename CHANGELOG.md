@@ -7,6 +7,11 @@ an album or playlist on your music server cannot be loaded, for example
 because the server does not answer, Shuffle now says so in the mini
 player instead of doing nothing.
 
+**Shuffle on an Internet Archive album keeps its songs offline.** When
+the album's songs were already loaded in this session, a long-press
+Shuffle without a connection plays them instead of the album as one
+title. The album is asked once instead of twice.
+
 ## v3.5 (Build 57)
 
 **The Jamendo page no longer closes the app.** Opening Music (Jamendo)

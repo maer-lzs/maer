@@ -54,29 +54,59 @@ struct CatalogAlbumSongsTests {
         #expect(asked == 1)
     }
 
-    @Test("faellt die Zahl aus, zaehlt der Lader kein Lied und die Kachel spielt den Titel selbst")
-    func withoutTheCountTheTilePlaysTheTitle() async {
-        var router = ItemRouter.empty
-        router.provider = { _ in FailedLoadTests.DeadAddressProvider() }
+    @Test("ohne Zahl zaehlt und baut eine Antwort die Lieder, ein Titel ausserhalb des Archivs fragt nichts")
+    func withoutTheCountOneAnswerCountsAndBuilds() async throws {
         let album = Self.freshAlbum()
-        #expect(await ArchiveMusicLoader.albumSongs(albumId: album, router: router).isEmpty)
-        let title = LibraryItem(id: album, media: nil, addedAt: nil)
-        let menu = CollectionMenuItems.catalog(title, playerCoordinator: PlayerCoordinator(provider: MockProvider()),
-                                               router: router)
-        #expect(menu.offersShuffle)
-        #expect(await menu.songs().map(\.id) == [album], "the long-press Shuffle starts nothing")
+        let meta = try Self.release(["a", "b", "c"])
+        var asked = 0
+        let songs = await ArchiveMusicLoader.albumSongs(albumId: album) { _ in
+            asked += 1
+            return meta
+        }
+        #expect(asked == 1, "the count and the songs came from two answers")
+        #expect(songs.map(\.id) == (0..<3).map { CatalogSongID.make(album: album, index: $0) })
+        var foreign = 0
+        #expect(await ArchiveMusicLoader.albumSongs(albumId: "jam:1234") { _ in foreign += 1; return meta }.isEmpty)
+        #expect(foreign == 0, "a title outside the archive asked the archive")
     }
 
-    @Test("die Kachel nimmt den Weg des Wurfs, ein ausgefallenes Detail steht im Log", .needsTheSources)
+    @Test("ohne Antwort bleiben die gehaltenen Lieder, ohne Lieder spielt die Kachel den Titel")
+    func withoutAnAnswerTheTileKeepsItsHeldSongs() async throws {
+        let album = Self.freshAlbum()
+        let meta = try Self.release(["a", "b"])
+        _ = await FreeCatalogProvider.shared.albumSongs(albumId: album, count: 2) { _ in meta }
+        let held = await ArchiveMusicLoader.albumSongs(albumId: album) { _ in throw URLError(.notConnectedToInternet) }
+        #expect(held.map(\.id) == (0..<2).map { CatalogSongID.make(album: album, index: $0) },
+                "the held songs were given away")
+
+        let fresh = Self.freshAlbum()
+        let title = LibraryItem(id: fresh, media: nil, addedAt: nil)
+        let menu = CollectionMenuItems.catalog(title, playerCoordinator: PlayerCoordinator(provider: MockProvider())) {
+            await ArchiveMusicLoader.albumSongs(albumId: $0) { _ in throw URLError(.notConnectedToInternet) }
+        }
+        #expect(menu.offersShuffle)
+        #expect(await menu.songs().map(\.id) == [fresh], "the long-press Shuffle starts nothing")
+    }
+
+    @Test("ein Buendel ueber der Grenze spielt als Titel")
+    func aBundlePastTheCapPlaysAsItsTitle() async throws {
+        let names = (0...FreeCatalog.defaultTrackCap).map { "t\($0)" }
+        let meta = try Self.release(names)
+        #expect(await ArchiveMusicLoader.albumSongs(albumId: Self.freshAlbum()) { _ in meta }.isEmpty)
+    }
+
+    @Test("die Kachel nimmt den Weg des Wurfs, eine ausgefallene Antwort steht einmal im Log", .needsTheSources)
     func theTileTakesTheDrawsWay() throws {
         let menu = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
         let loader = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/ArchiveMusicLoader.swift"), encoding: .utf8))
-        #expect(menu.contains("await CatalogShuffleSongs.songs(of: item) {"))
-        #expect(!menu.contains("songs: { await ArchiveMusicLoader.albumSongs(albumId: item.id, router: router) }"))
-        #expect(loader.contains("CATALOG album songs, detail failed for"))
-        #expect(!loader.contains("try? await router.provider(albumId).fetchItemDetail"), "the detail fails silently again")
+        let provider = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/FreeCatalogProvider.swift"), encoding: .utf8))
+        #expect(menu.contains("await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)"))
+        #expect(loader.contains("await catalog.releaseSongs(albumId: albumId, metadata: metadata)"))
+        #expect(!loader.contains("fetchItemDetail"), "the count comes from a second answer again")
+        #expect(provider.contains("CATALOG album songs, release answer failed for"))
     }
 
     @Test("die Katalogseite nimmt die Liste des Anbieters ueber den Lader und nennt fehlende Lieder mit Zahl", .needsTheSources)
@@ -86,7 +116,7 @@ struct CatalogAlbumSongsTests {
         let loader = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/ArchiveMusicLoader.swift"), encoding: .utf8))
         #expect(page.contains("ArchiveMusicLoader.albumSongs(albumId: itemId, count: tracks.count)"))
-        #expect(loader.contains("FreeCatalogProvider.shared.albumSongs(albumId: albumId, count: count)"))
+        #expect(loader.contains("await catalog.albumSongs(albumId: albumId, count: count)"))
         #expect(loader.contains("CATALOG album songs missing=\\(answer.missing.count)"))
         #expect(!page.contains("resolveItem(forId: CatalogSongID.make"), "the page resolves the songs one by one again")
         // The count reaches the line under the buttons.

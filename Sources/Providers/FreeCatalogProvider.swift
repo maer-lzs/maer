@@ -456,6 +456,52 @@ final class FreeCatalogProvider: AudioProvider {
         return (songs, missing)
     }
 
+    /// Every song of a release whose count the caller does not know (a
+    /// tile's long-press Shuffle): ONE metadata answer counts the tracks and
+    /// builds the songs. A title that is no archive release asks nothing.
+    /// Without an answer the songs the session already holds stand, from
+    /// the first on; a release past the plausible track count is a bundle,
+    /// not an album, and comes back empty so the caller plays the title.
+    func releaseSongs(albumId: String,
+                      metadata: ((String) async throws -> ArchiveDecoder.MetadataResponse)? = nil)
+        async -> [LibraryItem] {
+        guard let identifier = FreeCatalog.archiveIdentifier(of: albumId) else { return [] }
+        let meta: ArchiveDecoder.MetadataResponse
+        do {
+            meta = try await (metadata ?? { try await ArchiveOrgClient.metadata(identifier: $0) })(identifier)
+        } catch {
+            guard !error.isCancellation else { return [] }
+            let held = heldSongs(albumId: albumId)
+            Logger.library.error("CATALOG album songs, release answer failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public), held=\(held.count)")
+            return held
+        }
+        let files = FreeCatalog.preferredAudioFiles(meta.files ?? [])
+        let count = FreeCatalog.archiveTracks(identifier: identifier, files: files).count
+        let collections = meta.metadata?.collection?.values ?? []
+        let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
+            ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
+        guard FreeCatalog.trackCountPlausible(count, cap: cap) else {
+            Logger.library.notice("CATALOG album songs gate: \(identifier, privacy: .public) has \(count) tracks, plays as its title")
+            return []
+        }
+        let answer = await albumSongs(albumId: albumId, count: count) { _ in meta }
+        if let first = answer.missing.first {
+            Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(count) first=\(first)")
+        }
+        return answer.songs
+    }
+
+    /// The songs of a release the session holds, from the first on, up to
+    /// the first it does not hold.
+    private func heldSongs(albumId: String) -> [LibraryItem] {
+        var songs: [LibraryItem] = []
+        while let held = itemsById[CatalogSongID.make(album: albumId, index: songs.count)],
+              !(held.media?.tracks ?? []).isEmpty {
+            songs.append(held)
+        }
+        return songs
+    }
+
     /// One song built from its release's metadata answer; nil past the end
     /// of the release's playable files.
     private func songDetail(songId: String, identifier: String,

@@ -97,7 +97,6 @@ struct BrowseTileView: View {
     let marksKinds: Bool
     let reason: (PodcastSearchResult) -> String
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @Environment(\.itemRouter) private var router
     @Environment(\.pushMusicRoute) private var pushMusicRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
 
@@ -120,7 +119,7 @@ struct BrowseTileView: View {
                 })
                 .stackedKind(marksKinds ? .music : nil)
                 .contextMenu {
-                    CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router)
+                    CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator)
                 }
         case .catalog(let tile):
             CatalogMixTile(tile: tile, marksKind: marksKinds, playerCoordinator: playerCoordinator)

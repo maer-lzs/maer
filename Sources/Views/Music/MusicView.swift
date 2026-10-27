@@ -322,7 +322,7 @@ struct MusicView: View {
                         })
                     .cardRowSlot(spacing: 14)
                     .contextMenu {
-                        CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator, router: router)
+                        CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator)
                     }
                 }
             }
@@ -676,16 +676,14 @@ extension CollectionMenuItems {
     /// The queue and the playlist take the title as its one entry, as for a
     /// server album; Details opens the title's page.
     static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator,
-                        router: ItemRouter) -> CollectionMenuItems {
+                        albumSongs: @escaping CatalogShuffleSongs.AlbumSongs = {
+                            await ArchiveMusicLoader.albumSongs(albumId: $0)
+                        }) -> CollectionMenuItems {
         CollectionMenuItems(
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: {
-                await CatalogShuffleSongs.songs(of: item) {
-                    await ArchiveMusicLoader.albumSongs(albumId: $0, router: router)
-                }
-            },
+            songs: { await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
             catalogDetails: item.id)

@@ -13,6 +13,9 @@ import OSLog
 enum ArchiveMusicLoader {
     typealias Outcome = CatalogLoadOutcome
 
+    /// The catalogue the loader registers in and asks for songs.
+    private static var catalog: FreeCatalogProvider { .shared }
+
     /// One page of an area's popularity list. `clients` are the live ones by
     /// default; a witness hands in its own.
     static func areaPage(_ area: ArchiveMusicArea, rows: Int, page: Int,
@@ -49,7 +52,7 @@ enum ArchiveMusicLoader {
     /// from the catalogue's one list of them. The songs that did not resolve
     /// are counted for the page and named in the log.
     static func albumSongs(albumId: String, count: Int) async -> (songs: [LibraryItem], missing: Int) {
-        let answer = await FreeCatalogProvider.shared.albumSongs(albumId: albumId, count: count)
+        let answer = await catalog.albumSongs(albumId: albumId, count: count)
         if let first = answer.missing.first {
             Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(count) first=\(first) ns=\(ItemNamespace.of(albumId) ?? "-", privacy: .public)")
         }
@@ -57,24 +60,19 @@ enum ArchiveMusicLoader {
     }
 
     /// The same songs where the caller does not know how many there are (a
-    /// tile's long-press Shuffle): the release's detail counts them, `router`
-    /// answers its source. A detail that fails counts none and says so in the
-    /// log; the caller then plays the release as its one title
-    /// (`CatalogShuffleSongs.songs(of:)`).
-    static func albumSongs(albumId: String, router: ItemRouter) async -> [LibraryItem] {
-        let count: Int
-        do {
-            count = try await router.provider(albumId).fetchItemDetail(itemId: albumId).media.tracks?.count ?? 0
-        } catch {
-            guard !error.isCancellation else { return [] }
-            Logger.library.error("CATALOG album songs, detail failed for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
-            count = 0
-        }
-        return await albumSongs(albumId: albumId, count: count).songs
+    /// tile's long-press Shuffle): one answer of the release counts and
+    /// builds them (`FreeCatalogProvider.releaseSongs`). With no songs the
+    /// caller plays the release as its one title
+    /// (`CatalogShuffleSongs.songs(of:)`). `metadata`: the answer, a
+    /// witness hands in its own.
+    static func albumSongs(albumId: String,
+                           metadata: ((String) async throws -> ArchiveDecoder.MetadataResponse)? = nil)
+        async -> [LibraryItem] {
+        await catalog.releaseSongs(albumId: albumId, metadata: metadata)
     }
 
     private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
-        let provider = FreeCatalogProvider.shared
+        let provider = catalog
         return docs.compactMap { provider.remember(popular: $0) }
     }
 
