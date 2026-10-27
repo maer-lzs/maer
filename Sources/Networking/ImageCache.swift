@@ -321,11 +321,14 @@ final class ImageCache {
         return Self.fileName(for: url) { Self.dropsFromName($0, clientImage: clientImage) }
     }
 
-    /// The name an Audiobookshelf cover had before it came unscaled
-    /// (`APIClient.coverOriginalName`): the kept cover of a downloaded book
-    /// stands under it until the unscaled one has arrived. Nil for every
+    /// The name a cover had before it was asked in its larger form: an
+    /// Audiobookshelf cover before it came unscaled
+    /// (`APIClient.coverOriginalName`), a catalogue cover under its earlier
+    /// address (`CoverAddressHistory`). The kept cover of a downloaded title
+    /// stands under it until the larger one has arrived. Nil for every
     /// other address.
     nonisolated func formerName(for url: URL) -> String? {
+        if let former = CoverAddressHistory.formerAddress(of: url) { return key(for: former) }
         guard APIClient.buildsImage(path: url.path),
               URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
                 .contains(where: { $0.name == APIClient.coverOriginalName }) == true else { return nil }

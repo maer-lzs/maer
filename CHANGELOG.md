@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Project Gutenberg covers are sharp where they are large.** A
+Gutenberg audiobook's page, the full player and the lock screen show the
+scanned cover the site keeps, usually 500 to 1800 pixels wide, instead of
+a 200 pixel version. Grids and rows keep the small cover, which loads a
+fraction of the bytes. A work without a scan keeps the small cover, and
+offline the small one stands in.
+
 **Shuffle on a music server says when it cannot start.** If the songs of
 an album or playlist on your music server cannot be loaded, for example
 because the server does not answer, Shuffle now says so in the mini

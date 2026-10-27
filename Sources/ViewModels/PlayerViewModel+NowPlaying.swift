@@ -287,10 +287,11 @@ extension PlayerViewModel {
     }
 
     /// The lock screen's cover for what plays: the playing song's where it
-    /// has its own (`songCoverURL`), else the entry's.
+    /// has its own (`songCoverURL`), else the entry's in its larger form
+    /// (`CoverAddressHistory.large`).
     func loadNowPlayingArtwork() {
         loadedArtworkKey = artworkKey
-        loadArtwork(coverURL: songCoverURL ?? item.flatMap { provider.coverURL(forItemId: $0.id) })
+        loadArtwork(coverURL: songCoverURL ?? CoverAddressHistory.large(item.flatMap { provider.coverURL(forItemId: $0.id) }))
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter

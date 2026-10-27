@@ -167,7 +167,20 @@ enum Artwork {
         await tiers.makePersistent(coverURL: url, data: data)
     }
 
+    /// The earlier address of a cover (`CoverAddressHistory`); a witness
+    /// hands in its own through `testFormerAddress`.
+    private static func formerAddress(of url: URL) -> URL? {
+        #if DEBUG
+        if let testFormerAddress { return testFormerAddress(url) }
+        #endif
+        return CoverAddressHistory.formerAddress(of: url)
+    }
+
     #if DEBUG
+    /// Test seam: the earlier address of a cover in place of
+    /// `CoverAddressHistory`, so a local stand can stand in for the source.
+    static var testFormerAddress: ((URL) -> URL?)?
+
     /// A generated cover placed for the test mode, synchronously and before
     /// the first render, where a tile's fetch would leave it.
     @discardableResult
@@ -250,7 +263,11 @@ enum Artwork {
         return await ImageCache.reduced(image, maxPixelSize: maxPixel)
     }
 
-    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> Fetched {
+    /// `storedAs`: the address the picture is kept under when `url` is the
+    /// earlier address a larger cover fell back to (`CoverAddressHistory`).
+    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int,
+                              storedAs asked: URL? = nil) async -> Fetched {
+        let target = asked ?? url
         // Offline there is nothing to fetch. Per-cell attempts during
         // scrolling would only burn cycles.
         guard await Reachability.isConnected() else {
@@ -263,7 +280,7 @@ enum Artwork {
         }
         // The invalidation count when this request leaves; `set` keeps the
         // answer only when no invalidation came in between.
-        let startedAt = tiers.invalidationCount(for: url)
+        let startedAt = tiers.invalidationCount(for: target)
         // bearable, because the HTTP door logs the failure with its reason and the trace names it as transport
         guard let (data, http) = try? await HTTP.data(from: url, lane: .cover) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
@@ -277,6 +294,11 @@ enum Artwork {
             let absent = StatusMeaning.from(status: status).isAbsence
             CoverTraceLog.note(pot: .network, outcome: absent ? .absent : .status, attempt: attempt,
                                url: url, bytes: data.count)
+            // A larger cover that is not there falls back to its earlier,
+            // smaller address once, kept under the larger one's name.
+            if absent, asked == nil, let former = formerAddress(of: url) {
+                return await fetch(former, retryDelay: nil, attempt: attempt, storedAs: url)
+            }
             return absent ? .absent : .unanswered
         }
         // The archive item-image service never says "no picture"; it
@@ -306,7 +328,7 @@ enum Artwork {
         let reduced: (UIImage, Data)?
         do { reduced = try await ImageCache.displaySized(data, maxPixelSize: tiers.displayPixelSize) } catch { return .unanswered }
         let (shown, kept) = reduced ?? (image, data)
-        tiers.set(shown, data: kept, for: url, startedAt: startedAt)
+        tiers.set(shown, data: kept, for: target, startedAt: startedAt)
         CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
         return .picture(shown)
     }

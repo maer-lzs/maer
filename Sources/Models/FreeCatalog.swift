@@ -736,12 +736,28 @@ nonisolated enum FreeCatalog {
         return url
     }
 
-    /// The cover of a work from its number alone. Measured 28.09. for 5884
-    /// and 3002: the RDF record names exactly this address, and it answers
-    /// 200 image/jpeg. nil for anything that is not a number.
+    /// The cover of a work from its number alone, the medium form the grid
+    /// and the rows show. Measured 28.09. for 5884 and 3002: the RDF record
+    /// names exactly this address, and it answers 200 image/jpeg. nil for
+    /// anything that is not a number.
     static func gutenbergCoverURL(number: String) -> URL? {
-        guard !number.isEmpty, number.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        guard isWorkNumber(number) else { return nil }
         return URL(string: "https://www.gutenberg.org/cache/epub/\(number)/pg\(number).cover.medium.jpg")
+    }
+
+    /// The scan Gutenberg keeps of a work's cover, for the large views
+    /// (`CoverAddressHistory.largerAddress(of:)`). Measured 27.10. on the 20
+    /// works of Gutendex' first page: 19 have it, 500 to 1806 pixels wide and
+    /// 100 to 550 kB, against about 200 pixels and 13 to 42 kB for the medium
+    /// form; more than three times the bytes, so the grid keeps the medium
+    /// form. Where the scan is missing the image door falls back to it.
+    static func gutenbergScanURL(number: String) -> URL? {
+        guard isWorkNumber(number) else { return nil }
+        return URL(string: "https://www.gutenberg.org/cache/epub/\(number)/images/cover.jpg")
+    }
+
+    private static func isWorkNumber(_ number: String) -> Bool {
+        !number.isEmpty && number.allSatisfy { $0.isASCII && $0.isNumber }
     }
 
     /// What a Gutenberg record's `dcterms:rights` says, as the title page's
