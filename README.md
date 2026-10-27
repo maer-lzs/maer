@@ -433,7 +433,7 @@ Audiobookshelf endpoints used (complete, measured on `Sources/Networking/APIClie
 | Password sign-in | `POST /login` |
 | Search (books/authors/series) | `GET /api/libraries/{id}/search?q=` |
 | Bookmarks | `GET /api/me`, `POST /api/me/item/{id}/bookmark`, `DELETE /api/me/item/{id}/bookmark/{time}` |
-| Cover, author image | `GET /api/items/{id}/cover?token=...`, `GET /api/authors/{id}/image` |
+| Cover, author image | `GET /api/items/{id}/cover?raw=1&token=...`, `GET /api/authors/{id}/image` |
 | Podcast libraries (opt-in source) | `POST /api/podcasts`, `POST /api/podcasts/feed`, `POST /api/podcasts/{id}/download-episodes` |
 | A show's cover, removing a show (needs delete rights) | `POST /api/items/{id}/cover`, `DELETE /api/items/{id}` |
 | Upload of a local file to the server | `POST /api/upload` |

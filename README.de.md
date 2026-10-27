@@ -433,7 +433,7 @@ Genutzte Audiobookshelf-Endpunkte (vollständig, gemessen an `Sources/Networking
 | Anmeldung mit Passwort | `POST /login` |
 | Suche (Bücher/Autoren/Serien) | `GET /api/libraries/{id}/search?q=` |
 | Lesezeichen | `GET /api/me`, `POST /api/me/item/{id}/bookmark`, `DELETE /api/me/item/{id}/bookmark/{time}` |
-| Cover, Autorenbild | `GET /api/items/{id}/cover?token=...`, `GET /api/authors/{id}/image` |
+| Cover, Autorenbild | `GET /api/items/{id}/cover?raw=1&token=...`, `GET /api/authors/{id}/image` |
 | Podcast-Bibliotheken (zuschaltbare Quelle) | `POST /api/podcasts`, `POST /api/podcasts/feed`, `POST /api/podcasts/{id}/download-episodes` |
 | Cover einer Sendung, Sendung entfernen (braucht Löschrechte) | `POST /api/items/{id}/cover`, `DELETE /api/items/{id}` |
 | Hochladen einer lokalen Datei auf den Server | `POST /api/upload` |
