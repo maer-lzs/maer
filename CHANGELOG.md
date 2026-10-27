@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Jamendo covers are twice as sharp.** Music from Jamendo comes with
+600 pixel covers instead of 300, in grids and rows too, at about three
+times the bytes of the small ones. A cover already loaded stays visible
+offline until the larger one has come.
+
 **Project Gutenberg covers are sharp where they are large.** A
 Gutenberg audiobook's page, the full player and the lock screen show the
 scanned cover the site keeps, usually 500 to 1800 pixels wide, instead of

@@ -1132,7 +1132,9 @@ nonisolated enum JamendoClient {
     /// rule can name it: a stored answer only holds while the window and
     /// the ordering that produced it hold.
     static let rotationWindow = 6_000
-    static let popularRule = "popularity_week|\(rotationWindow)"
+    /// The cover size is part of it: an answer stored with smaller covers
+    /// is not found, so the row asks once more and gets the larger ones.
+    static let popularRule = "popularity_week|\(rotationWindow)|\(FreeCatalog.jamendoCoverSize)"
 
     /// The one surface key of the Jamendo lane in the day store.
     static let daySurface = "jamendo"
@@ -1175,6 +1177,7 @@ nonisolated enum JamendoClient {
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "order", value: "popularity_week"),
             URLQueryItem(name: "audioformat", value: "mp32"),
+            URLQueryItem(name: "imagesize", value: String(FreeCatalog.jamendoCoverSize)),
         ]
         let alleTags = tags + filter.extraTags
         if !alleTags.isEmpty {

@@ -5,11 +5,13 @@
 
 import Foundation
 
-/// The two forms of a catalogue cover whose source keeps a larger one than
-/// the grid shows. The grid and the rows ask the smaller address (a cover
-/// of more than three times the bytes stays out of a grid cell); the large
-/// views (a title's page, the full player, the lock screen) ask the larger
-/// one (`large(_:)`). The image door falls back to the smaller address when
+/// The two forms of a catalogue cover whose source keeps a larger one. A
+/// larger form of more than three times the bytes stays out of a grid
+/// cell: the grid and the rows ask the smaller address, the large views (a
+/// title's page, the full player, the lock screen) the larger one
+/// (`large(_:)`). A larger form within that factor is asked everywhere
+/// directly and only its earlier name is known here (Jamendo). The image
+/// door falls back to the smaller address when
 /// the larger one names no picture (`Artwork`), and the cover cache reads a
 /// cover kept under the smaller name while nothing stands under the larger
 /// (`ImageCache.formerName`). Pure, so the mapping is testable without the
@@ -32,10 +34,26 @@ nonisolated enum CoverAddressHistory {
     /// The smaller address a larger cover was asked as, or nil when it has
     /// none.
     static func formerAddress(of url: URL) -> URL? {
+        if let jamendo = jamendoFormer(of: url) { return jamendo }
         // Gutenberg: cache/epub/<n>/images/cover.jpg
         guard let parts = gutenbergCache(url), parts.count == 5,
               parts[3] == "images", parts[4] == "cover.jpg" else { return nil }
         return FreeCatalog.gutenbergCoverURL(number: parts[2])
+    }
+
+    /// Jamendo: a cover asked with `width=<jamendoCoverSize>` came as
+    /// `width=<jamendoFormerCoverSize>` before. The grid takes the larger
+    /// one directly (2.98 times the bytes); only the kept name leads back.
+    private static func jamendoFormer(of url: URL) -> URL? {
+        guard url.host == "usercontent.jamendo.com",
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = components.queryItems,
+              items.contains(where: { $0.name == "width" && $0.value == String(FreeCatalog.jamendoCoverSize) })
+        else { return nil }
+        components.setQuery(items.map {
+            $0.name == "width" ? URLQueryItem(name: "width", value: String(FreeCatalog.jamendoFormerCoverSize)) : $0
+        })
+        return components.url
     }
 
     /// The path parts of an address under Gutenberg's `cache/epub/<n>/`, nil

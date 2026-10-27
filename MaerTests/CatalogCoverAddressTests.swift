@@ -48,6 +48,22 @@ struct CatalogCoverAddressTests {
             .contains("CoverAddressHistory.large(item.flatMap { provider.coverURL(forItemId: $0.id) })"))
     }
 
+    @Test("Jamendo fragt 600 Pixel ueberall, 300 ist der fruehere Name", .needsTheSources)
+    func jamendoAsksTheLargerSizeEverywhere() throws {
+        let large = try #require(URL(string: "https://usercontent.jamendo.com?type=album&id=7&width=600&trackid=9"))
+        #expect(CoverAddressHistory.formerAddress(of: large)?.absoluteString
+                == "https://usercontent.jamendo.com?type=album&id=7&width=300&trackid=9")
+        #expect(CoverAddressHistory.large(large) == large, "the grid already holds the larger one")
+        let small = try #require(URL(string: "https://usercontent.jamendo.com?type=album&id=7&width=300&trackid=9"))
+        #expect(CoverAddressHistory.formerAddress(of: small) == nil)
+        #expect(ImageCache.shared.formerName(for: large) == ImageCache.shared.testKey(for: small))
+        let clients = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8))
+        #expect(clients.contains("URLQueryItem(name: \"imagesize\", value: String(FreeCatalog.jamendoCoverSize))"))
+        #expect(JamendoClient.popularRule.hasSuffix("|\(FreeCatalog.jamendoCoverSize)"),
+                "a stored answer with smaller covers is still found")
+    }
+
     @Test("ein Cover unter der kleinen Adresse bleibt offline lesbar")
     func theEarlierNameIsAReadCandidate() throws {
         let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "1342"))

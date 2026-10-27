@@ -162,6 +162,12 @@ nonisolated enum FreeCatalog {
         return String(album.dropFirst(archivePrefix.count))
     }
     static let jamendoPrefix = "jam:"
+    /// The cover size a Jamendo track answer asks for (`imagesize`).
+    /// Measured 27.10.: 600 pixels at about 31 kB against the default 300
+    /// at about 10 kB, a factor of 2.98, so the grid takes it too.
+    static let jamendoCoverSize = 600
+    /// The size the covers came in before (`width=300` in the address).
+    static let jamendoFormerCoverSize = 300
     /// Project Gutenberg audiobook (`gut:<bookId>`).
     static let gutenbergPrefix = "gut:"
 
