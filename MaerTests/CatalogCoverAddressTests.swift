@@ -86,6 +86,17 @@ struct CatalogCoverAddressTests {
                 == "https://archive.org/download/rel/cover%20small.jpg")
         #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: [files[2], files[3], files[4]]) == nil,
                 "a picture past the cap, a derivative or a sound is no large cover")
+        // Measured on Vkrsnl038: the back is larger than the front; on
+        // STQK011 the only front is a "Book Cover".
+        let backLarger = [Self.file("Talk-To-Me-front-cover.jpg", source: "original", format: "JPEG", bytes: 118_639),
+                          Self.file("Talk-to-me-back-cover.jpg", source: "original", format: "JPEG", bytes: 137_055)]
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: backLarger)?.lastPathComponent
+                == "Talk-To-Me-front-cover.jpg")
+        let bookCover = [Self.file("STQK011_Cover.jpg", source: "original", format: "Book Cover", bytes: 148_170),
+                         Self.file("STQK011_photo.jpg", source: "original", format: "JPEG", bytes: 300_000)]
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: bookCover)?.lastPathComponent
+                == "STQK011_Cover.jpg", "a named front comes before a larger other picture")
+        #expect(FreeCatalog.archiveOriginalCover(identifier: "rel", files: [backLarger[1]]) == nil, "a back side alone")
         let original = try #require(URL(string: "https://archive.org/download/rel/cover.png"))
         #expect(CoverAddressHistory.formerAddress(of: original) == FreeCatalog.archiveCoverURL(identifier: "rel"))
         #expect(CoverAddressHistory.formerAddress(of: URL(string: "https://archive.org/download/rel/a.mp3")!) == nil)

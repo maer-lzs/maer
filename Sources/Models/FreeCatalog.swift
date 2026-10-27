@@ -876,22 +876,30 @@ nonisolated enum FreeCatalog {
         return String(last)
     }
 
-    /// The largest picture the uploader put into an item, for the large
-    /// views: an original JPEG or PNG of at most `archiveOriginalCoverCap`
-    /// bytes; nil when there is none, and the item image service stands.
+    /// The largest front picture the uploader put into an item, for the
+    /// large views: an original JPEG, PNG or "Book Cover" of at most
+    /// `archiveOriginalCoverCap` bytes, a named front or cover before any
+    /// other, never a back side; nil when there is none, and the item image
+    /// service stands.
     /// Measured 27.10.: LibriVox 300 pixels (75 to 123 kB), Old Time Radio
     /// 709 and 1513 pixels (168 and 265 kB), a netlabel 600 pixels at 1.08 MB,
     /// against 180 pixels and 3 to 24 kB from the service; more than three
     /// times the bytes, so the grid keeps the service.
     static func archiveOriginalCover(identifier: String, files: [ArchiveFile]) -> URL? {
-        let pictures = files.compactMap { file -> (name: String, bytes: Int)? in
+        let pictures = files.compactMap { file -> (name: String, bytes: Int, front: Bool)? in
             guard file.source == "original", let name = file.name,
-                  let format = file.format?.lowercased(), format == "jpeg" || format == "png",
+                  let format = file.format?.lowercased(), ["jpeg", "png", "book cover"].contains(format),
+                  !name.lowercased().contains("back"),
                   let bytes = file.size.flatMap({ Int($0) }), bytes > 0, bytes <= archiveOriginalCoverCap
             else { return nil }
-            return (name, bytes)
+            let lower = name.lowercased()
+            return (name, bytes, format == "book cover" || lower.contains("front") || lower.contains("cover"))
         }
-        guard let largest = pictures.max(by: { $0.bytes < $1.bytes }),
+        // A front comes first: measured 27.10., a release kept its back
+        // cover larger than its front, and one named its only front a
+        // "Book Cover"; a back side never stands for the release.
+        let fronts = pictures.filter(\.front)
+        guard let largest = (fronts.isEmpty ? pictures : fronts).max(by: { $0.bytes < $1.bytes }),
               let path = largest.name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
         return URL(string: "https://archive.org/download/\(identifier)/\(path)")
     }
