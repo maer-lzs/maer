@@ -112,17 +112,18 @@ struct CatalogCoverAddressTests {
 
     @Test("nur die grossen Ansichten fragen largeCoverURL, nie das Raster", .needsTheSources)
     func onlyTheLargeViewsAskTheLargeCover() throws {
-        // The three large views and the path that carries the question.
+        // The four large views and the path that carries the question.
         let allowed: Set<String> = ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift",
-                                    "AudioProvider.swift", "AppSession.swift", "ItemRouterEnvironment.swift",
-                                    "FreeCatalogProvider.swift"]
+                                    "MusicAlbumView.swift", "AudioProvider.swift", "AppSession.swift",
+                                    "ItemRouterEnvironment.swift", "FreeCatalogProvider.swift"]
         var askers: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             if code.contains("largeCoverURL") { askers.insert(file.lastPathComponent) }
         }
         #expect(askers.subtracting(allowed).isEmpty, "a grid or row asks the large cover: \(askers.subtracting(allowed).sorted())")
-        #expect(askers.isSuperset(of: ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift"]),
+        #expect(askers.isSuperset(of: ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift",
+                                        "MusicAlbumView.swift"]),
                 "the reader no longer sees the large views")
     }
 

@@ -375,8 +375,10 @@ struct MusicAlbumView: View {
                     Image(uiImage: highResCover)
                         .resizable().aspectRatio(1, contentMode: .fit)
                 } else {
+                    // The page is a large view: an archive release shows its
+                    // original picture once its files were read.
                     CachedAsyncImage(
-                        url: router.coverURL(item.id),
+                        url: router.largeCoverURL(item.id),
                         useThumbnail: true, thumbnailMaxPixel: 600
                     ) { image in
                         image.resizable().aspectRatio(1, contentMode: .fit)
