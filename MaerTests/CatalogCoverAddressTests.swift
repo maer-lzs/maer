@@ -128,7 +128,7 @@ struct CatalogCoverAddressTests {
     static let largeCoverStock: [String: (count: Int, reason: String)] = [
         "BookDetailScreen.swift": (1, reason: "the hero cover of a title's page"),
         "PlayerScreen.swift": (1, reason: "the full player's cover"),
-        "PlayerViewModel+NowPlaying.swift": (1, reason: "the lock screen's cover"),
+        "PlayerViewModel+NowPlaying.swift": (2, reason: "the lock screen's cover and a LibriVox book's fallback without a feed cover"),
         "MusicAlbumView.swift": (1, reason: "the album page's cover"),
         "CatalogSourcePage.swift": (1, reason: "the head of an archive release or series page"),
         "AudioProvider.swift": (2, reason: "the requirement and its default"),
@@ -160,8 +160,26 @@ struct CatalogCoverAddressTests {
         #expect(player.contains("feedCovers[item.id] ?? router.largeCoverURL(item.id)"))
         #expect(player.contains("await LibriVoxCoverLoader.hiresCover(forItemId: item.id)"))
         let lock = try read("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
-        #expect(lock.contains("await LibriVoxCoverLoader.hiresCover(forItemId: id)"))
-        #expect(lock.contains("self.loadArtwork(coverURL: feed)"))
+        #expect(lock.contains("let cover = await self.libriVoxCover(id)"))
+        // Two calls, one per path, and the declaration.
+        #expect(lock.components(separatedBy: "loadArtwork(coverURL:").count - 1 == 3,
+                "the lock screen loads one cover per path, never two under one key")
+        let model = try read("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(model.contains("var feedCover: (String) async -> URL? = { await LibriVoxCoverLoader.hiresCover(forItemId: $0) }"))
+    }
+
+    @Test("Sperrbildschirm bei LibriVox: zuerst der Feed, das grosse Cover nur ohne Feed, eine Antwort")
+    func theLockScreenAsksTheFeedFirst() async throws {
+        let model = PlayerViewModel(provider: FreeCatalogProvider.shared)
+        let feed = try #require(URL(string: "https://archive.org/download/book/feed-cover.jpg"))
+        var asked: [String] = []
+        model.feedCover = { id in asked.append(id); return feed }
+        #expect(await model.libriVoxCover("gut:1342") == feed, "the feed's cover answers first")
+        #expect(asked == ["gut:1342"])
+        model.feedCover = { _ in nil }
+        let large = FreeCatalogProvider.shared.largeCoverURL(forItemId: "gut:1342")
+        #expect(large != nil, "the precondition: a large cover to fall back to")
+        #expect(await model.libriVoxCover("gut:1342") == large, "without a feed cover the large one stands")
     }
 
     /// A grey strip several times wider than tall, the waveform the item

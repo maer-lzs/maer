@@ -288,18 +288,30 @@ extension PlayerViewModel {
 
     /// The lock screen's cover for what plays: the playing song's where it
     /// has its own (`songCoverURL`), else the entry's large cover
-    /// (`AudioProvider.largeCoverURL`). A LibriVox book then shows the cover
-    /// its page shows, the feed's (`LibriVoxCoverLoader.hiresCover`), once
-    /// it is known; the session keeps it, so it is asked once per book.
+    /// (`AudioProvider.largeCoverURL`). A LibriVox book shows the cover its
+    /// page shows (`libriVoxCover`).
     func loadNowPlayingArtwork() {
         loadedArtworkKey = artworkKey
-        loadArtwork(coverURL: songCoverURL ?? item.flatMap { provider.largeCoverURL(forItemId: $0.id) })
-        guard songCoverURL == nil, let id = item?.id, id.hasPrefix(FreeCatalog.librivoxPrefix) else { return }
-        Task { [weak self] in
-            guard let feed = await LibriVoxCoverLoader.hiresCover(forItemId: id),
-                  let self, self.item?.id == id else { return }
-            self.loadArtwork(coverURL: feed)
+        guard songCoverURL == nil, let id = item?.id, id.hasPrefix(FreeCatalog.librivoxPrefix) else {
+            loadArtwork(coverURL: songCoverURL ?? item.flatMap { provider.largeCoverURL(forItemId: $0.id) })
+            return
         }
+        // One answer, one load: two loads under the same key let a slower
+        // small picture replace the feed's, on the lock screen and in the
+        // widget.
+        Task { [weak self] in
+            guard let self else { return }
+            let cover = await self.libriVoxCover(id)
+            guard self.item?.id == id else { return }
+            self.loadArtwork(coverURL: cover)
+        }
+    }
+
+    /// A LibriVox book's cover for the lock screen: the feed's, as its page
+    /// shows it, and the large cover only where the feed names none.
+    func libriVoxCover(_ id: String) async -> URL? {
+        if let feed = await feedCover(id) { return feed }
+        return provider.largeCoverURL(forItemId: id)
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter

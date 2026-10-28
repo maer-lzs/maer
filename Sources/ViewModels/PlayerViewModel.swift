@@ -168,6 +168,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Both are the shared ones; a witness hands in its own.
     private let localTracks: (String) -> [Int: URL]
     private let isOnline: () -> Bool
+    /// The feed cover of a LibriVox book, as its page shows it; a witness
+    /// sets its own (`libriVoxCover`).
+    var feedCover: (String) async -> URL? = { await LibriVoxCoverLoader.hiresCover(forItemId: $0) }
     /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream
     /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
     /// (playback never begins). It would stall silently. Rebuilt per queue.
