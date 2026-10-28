@@ -73,7 +73,7 @@ nonisolated enum MusicSourceRule {
     /// no song title.
     static func isServerMusic(_ itemId: String) -> Bool {
         guard owner(itemId) != nil else { return false }
-        return JellyfinProvider.id(itemId, kind: "book") == nil
+        return ItemNamespace.jellyfinId(itemId, kind: "book") == nil
     }
 
     /// The music servers that serve music now, Subsonic first.

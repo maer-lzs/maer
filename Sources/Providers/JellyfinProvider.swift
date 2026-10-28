@@ -968,9 +968,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     nonisolated static func owns(itemId: String) -> Bool { itemId.hasPrefix("jf:") }
 
     nonisolated static func id(_ itemId: String, kind: String) -> String? {
-        let prefix = "jf:\(kind):"
-        guard itemId.hasPrefix(prefix) else { return nil }
-        return String(itemId.dropFirst(prefix.count))
+        ItemNamespace.jellyfinId(itemId, kind: kind)
     }
 
     nonisolated private static func rawId(_ itemId: String) -> String? {

@@ -58,6 +58,14 @@ nonisolated enum ItemNamespace {
     /// One predicate per known namespace, this one without a caller today:
     /// the next asker finds it here instead of spelling the prefix.
     static func isJellyfin(_ itemId: String) -> Bool { itemId.hasPrefix("jf:") }
+    /// The server's own id behind a Jellyfin id of one kind
+    /// (`jf:<kind>:<id>`), nil for another kind or namespace. Pure, so a
+    /// rule in Models reads it without the provider.
+    static func jellyfinId(_ itemId: String, kind: String) -> String? {
+        let prefix = "jf:\(kind):"
+        guard itemId.hasPrefix(prefix) else { return nil }
+        return String(itemId.dropFirst(prefix.count))
+    }
     static func isRadio(_ itemId: String) -> Bool { itemId.hasPrefix("radio:") }
     /// The two id forms inside the radio namespace, spelled here with the
     /// namespaces: a community station carries its radio-browser UUID, a

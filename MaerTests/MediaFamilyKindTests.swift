@@ -72,6 +72,16 @@ struct MediaFamilyKindTests {
         #expect(ClaimRefreshThrottle.library(of: "local:file") == nil)
         // The music of the same server stays music.
         #expect(MediaFamily.isMusicByForm("jf:album:1") && MusicSourceRule.isServerMusic("jf:album:1"))
+        #expect(!MusicSourceRule.isServerMusic("jf:book:7"), "a Jellyfin audiobook is no music")
+    }
+
+    @Test("die Kennung hinter einer Jellyfin-Adresse liest die reine Schicht, der Anbieter fragt sie dort")
+    func theJellyfinIdIsPure() {
+        #expect(ItemNamespace.jellyfinId("jf:book:7", kind: "book") == "7")
+        #expect(ItemNamespace.jellyfinId("jf:album:a:b", kind: "album") == "a:b")
+        #expect(ItemNamespace.jellyfinId("jf:album:1", kind: "book") == nil)
+        #expect(ItemNamespace.jellyfinId("sub:book:7", kind: "book") == nil)
+        #expect(JellyfinProvider.id("jf:song:9", kind: "song") == ItemNamespace.jellyfinId("jf:song:9", kind: "song"))
     }
 
     @Test("ein Katalog-Lied ist im Player Musik: unter dem Titel steht der Kuenstler", .needsTheSources)
