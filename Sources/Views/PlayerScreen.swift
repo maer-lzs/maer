@@ -34,6 +34,8 @@ nonisolated enum PlayerScreenContent: Equatable {
 struct PlayerScreen: View {
     @Environment(\.itemRouter) private var router
     @ObservedObject var coordinator: PlayerCoordinator
+    /// The feed cover of a LibriVox book once resolved, by id.
+    @State private var feedCovers: [String: URL] = [:]
     /// Passed through from the overlay presentation (drag-to-dismiss).
     var dragProgress: CGFloat = 0
     /// Corner radius of the overlay sheet. Passed through to PlayerView.
@@ -112,12 +114,16 @@ struct PlayerScreen: View {
         PlayerView(
             viewModel: viewModel,
             coordinator: coordinator,
-            coverURL: router.largeCoverURL(item.id),
+            coverURL: feedCovers[item.id] ?? router.largeCoverURL(item.id),
             dragProgress: dragProgress,
             cornerRadius: cornerRadius,
             topInset: topInset,
             bottomInset: bottomInset
         )
+        .task(id: item.id) {
+            // A LibriVox book shows the cover its page shows, the feed's.
+            if let feed = await LibriVoxCoverLoader.hiresCover(forItemId: item.id) { feedCovers[item.id] = feed }
+        }
     }
 }
 

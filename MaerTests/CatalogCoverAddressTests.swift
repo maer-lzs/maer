@@ -43,7 +43,7 @@ struct CatalogCoverAddressTests {
         #expect(try read("Sources/Views/BookDetailScreen.swift")
             .contains("hiresCover ?? router.largeCoverURL(entry.id)"))
         #expect(try read("Sources/Views/PlayerScreen.swift")
-            .contains("coverURL: router.largeCoverURL(item.id),"))
+            .contains("coverURL: feedCovers[item.id] ?? router.largeCoverURL(item.id),"))
         #expect(try read("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
             .contains("songCoverURL ?? item.flatMap { provider.largeCoverURL(forItemId: $0.id) }"))
         #expect(try read("Sources/Providers/AudioProvider.swift")
@@ -121,22 +121,47 @@ struct CatalogCoverAddressTests {
         #expect(provider.coverURL(forItemId: album) == service, "the grid left the service")
     }
 
-    @Test("nur die grossen Ansichten fragen largeCoverURL, nie das Raster", .needsTheSources)
+    /// Every place that names `largeCoverURL`, with how often: the large
+    /// views ask it once each, the path that carries the question names it
+    /// where it declares, routes and answers it. A grid or a row that asks
+    /// it, or a large view that asks it a second time, changes a count.
+    static let largeCoverStock: [String: (count: Int, reason: String)] = [
+        "BookDetailScreen.swift": (1, reason: "the hero cover of a title's page"),
+        "PlayerScreen.swift": (1, reason: "the full player's cover"),
+        "PlayerViewModel+NowPlaying.swift": (1, reason: "the lock screen's cover"),
+        "MusicAlbumView.swift": (1, reason: "the album page's cover"),
+        "CatalogSourcePage.swift": (1, reason: "the head of an archive release or series page"),
+        "AudioProvider.swift": (2, reason: "the requirement and its default"),
+        "AppSession.swift": (2, reason: "the routing function and its call into the provider"),
+        "ItemRouterEnvironment.swift": (3, reason: "the closure, its live answer and the empty router"),
+        "FreeCatalogProvider.swift": (1, reason: "the catalogue's answer"),
+    ]
+
+    @Test("nur die grossen Ansichten fragen largeCoverURL, je genau so oft wie gezaehlt", .needsTheSources)
     func onlyTheLargeViewsAskTheLargeCover() throws {
-        // The large views (the archive release and series page among them)
-        // and the path that carries the question.
-        let allowed: Set<String> = ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift",
-                                    "MusicAlbumView.swift", "CatalogSourcePage.swift", "AudioProvider.swift", "AppSession.swift",
-                                    "ItemRouterEnvironment.swift", "FreeCatalogProvider.swift"]
-        var askers: Set<String> = []
+        var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
-            if code.contains("largeCoverURL") { askers.insert(file.lastPathComponent) }
+            let count = code.components(separatedBy: "largeCoverURL").count - 1
+            if count > 0 { counts[file.lastPathComponent] = count }
         }
-        #expect(askers.subtracting(allowed).isEmpty, "a grid or row asks the large cover: \(askers.subtracting(allowed).sorted())")
-        #expect(askers.isSuperset(of: ["BookDetailScreen.swift", "PlayerScreen.swift", "PlayerViewModel+NowPlaying.swift",
-                                        "MusicAlbumView.swift", "CatalogSourcePage.swift"]),
-                "the reader no longer sees the large views")
+        #expect(counts == Self.largeCoverStock.mapValues(\.count), "the large cover is asked elsewhere or more often: \(counts)")
+    }
+
+    @Test("grosser Player und Sperrbildschirm zeigen bei LibriVox das Cover der Buchseite", .needsTheSources)
+    func theLibriVoxPlayerShowsThePagesCover() throws {
+        func read(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let page = try read("Sources/Views/BookDetailScreen.swift")
+        #expect(page.contains("LibriVoxCoverLoader.hiresCover(forItemId: entry.id)"), "the page's own source moved")
+        let player = try read("Sources/Views/PlayerScreen.swift")
+        #expect(player.contains("feedCovers[item.id] ?? router.largeCoverURL(item.id)"))
+        #expect(player.contains("await LibriVoxCoverLoader.hiresCover(forItemId: item.id)"))
+        let lock = try read("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
+        #expect(lock.contains("await LibriVoxCoverLoader.hiresCover(forItemId: id)"))
+        #expect(lock.contains("self.loadArtwork(coverURL: feed)"))
     }
 
     /// A grey strip several times wider than tall, the waveform the item

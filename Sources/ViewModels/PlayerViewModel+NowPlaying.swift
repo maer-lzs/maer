@@ -288,10 +288,18 @@ extension PlayerViewModel {
 
     /// The lock screen's cover for what plays: the playing song's where it
     /// has its own (`songCoverURL`), else the entry's large cover
-    /// (`AudioProvider.largeCoverURL`).
+    /// (`AudioProvider.largeCoverURL`). A LibriVox book then shows the cover
+    /// its page shows, the feed's (`LibriVoxCoverLoader.hiresCover`), once
+    /// it is known; the session keeps it, so it is asked once per book.
     func loadNowPlayingArtwork() {
         loadedArtworkKey = artworkKey
         loadArtwork(coverURL: songCoverURL ?? item.flatMap { provider.largeCoverURL(forItemId: $0.id) })
+        guard songCoverURL == nil, let id = item?.id, id.hasPrefix(FreeCatalog.librivoxPrefix) else { return }
+        Task { [weak self] in
+            guard let feed = await LibriVoxCoverLoader.hiresCover(forItemId: id),
+                  let self, self.item?.id == id else { return }
+            self.loadArtwork(coverURL: feed)
+        }
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter

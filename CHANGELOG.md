@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**LibriVox books keep their cover in the player.** The full player and
+the lock screen show the same cover a LibriVox book's page shows, the
+one from its feed, instead of the 180 pixel image.
+
 **Internet Archive covers are sharper where they are large.** Once a
 release's or a book's files have been read, its page or album page,
 the full player and the lock screen show the picture its uploader put there, up to
