@@ -36,10 +36,11 @@ Shuffle now says so in the mini player instead of doing nothing: that
 the tracks could not be loaded, that they are not available offline, or
 that there are no tracks, as the album page says it.
 
-**Shuffle on an Internet Archive album keeps its songs offline.** When
-the album's songs were already loaded in this session, a long-press
-Shuffle without a connection plays them instead of the album as one
-title. The album is asked once instead of twice.
+**Shuffle on an Internet Archive album keeps its song list offline.**
+When the album's songs were already listed in this session, a long-press
+Shuffle without a connection shuffles that list instead of taking the
+album as one title; without a connection only downloaded songs play. The
+album is asked once instead of twice.
 
 ## v3.5 (Build 57)
 
