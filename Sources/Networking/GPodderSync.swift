@@ -252,22 +252,40 @@ final class GPodderSync {
     /// new account's subscriptions, so it rests while another account holds
     /// them than the one it ran for (`RestingShelf.follows`), until the
     /// person goes on with this account or disconnects gpodder. A shelf that
-    /// cannot be read rests it too.
+    /// cannot be read rests it too. The player asks on every tick, so the
+    /// line of an unreadable shelf comes once per state (`GPodderRestLog`),
+    /// not once per question.
     static func rest(on shelf: RestingShelf?, quietly: Bool = false) -> GPodderRest {
-        guard let shelf else { return .runs }
+        guard let shelf else {
+            _ = restLog.due(.runs)
+            return .runs
+        }
         do {
             guard try shelf.follows(shelfFamily, holderOf: PodcastSubscriptions.shelfFamily) else {
                 if !quietly {
                     Logger.gpodder.notice("GPODDER rests: the subscriptions belong to another account than the one it ran for")
                 }
+                _ = restLog.due(.restsAfterSwitch)
                 return .restsAfterSwitch
             }
+            _ = restLog.due(.runs)
             return .runs
         } catch {
-            Logger.gpodder.error("GPODDER rests: owner unreadable reason=\(String(describing: error), privacy: .public)")
+            if restLog.due(.ownerUnreadable) {
+                Logger.gpodder.error("GPODDER rests: owner unreadable reason=\(String(describing: error), privacy: .public)")
+            }
             return .ownerUnreadable
         }
     }
+
+    /// What `rest(on:quietly:)` last answered, for the one line of an
+    /// unreadable shelf.
+    private(set) static var restLog = GPodderRestLog()
+
+    #if DEBUG
+    /// Witnesses start from a gpodder that runs.
+    static func testResetRestLog() { restLog = GPodderRestLog() }
+    #endif
 
     /// gpodder's name on the shelf, where it follows the subscriptions.
     static let shelfFamily = "gpodder"
@@ -827,5 +845,23 @@ nonisolated enum GPodderRest: Equatable, Sendable {
         case .ownerUnreadable:
             return String(localized: "gpodder is paused: it cannot be read which account the subscriptions belong to.")
         }
+    }
+}
+
+/// When the line of an unreadable shelf is due: when the answer before was
+/// another. Ten ticks over a shelf that stays unreadable write one line; a
+/// shelf that reads again and then fails again writes the next.
+nonisolated struct GPodderRestLog: Equatable, Sendable {
+    private(set) var last: GPodderRest = .runs
+    /// How many unreadable lines came due, for the witnesses.
+    private(set) var lines = 0
+
+    /// Remembers `state`; true when it is an unreadable shelf after another
+    /// answer, the moment its line is written.
+    mutating func due(_ state: GPodderRest) -> Bool {
+        defer { last = state }
+        guard state == .ownerUnreadable, last != .ownerUnreadable else { return false }
+        lines += 1
+        return true
     }
 }

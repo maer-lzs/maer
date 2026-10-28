@@ -39,6 +39,37 @@ struct GPodderAfterSwitchTests {
         #expect(GPodderSync.rest(on: shelf, quietly: true) == .ownerUnreadable)
     }
 
+    @Test("zehn Ticks ueber einem unlesbaren Regal geben eine Zeile, ein wieder gelesenes und erneut unlesbares Regal die naechste")
+    func anUnreadableShelfWritesOneLinePerState() throws {
+        let (shelf, folder) = shelf()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        GPodderSync.testResetRestLog()
+        try shelf.setHolding(.init(owner: "account-a"), of: PodcastSubscriptions.shelfFamily)
+        #expect(GPodderSync.rest(on: shelf, quietly: true) == .runs)
+        let holding = folder.appendingPathComponent(PodcastSubscriptions.shelfFamily, isDirectory: true)
+            .appendingPathComponent("holding.json")
+        try Data("not json".utf8).write(to: holding)
+        for _ in 0..<10 {
+            #expect(GPodderSync.followsTheSubscriptions(on: shelf, quietly: true) == false)
+        }
+        #expect(GPodderSync.restLog.lines == 1, "one line for ten ticks")
+        try shelf.setHolding(.init(owner: "account-a"), of: PodcastSubscriptions.shelfFamily)
+        #expect(GPodderSync.rest(on: shelf, quietly: true) == .runs)
+        try Data("not json".utf8).write(to: holding)
+        #expect(GPodderSync.rest(on: shelf, quietly: true) == .ownerUnreadable)
+        #expect(GPodderSync.rest(on: shelf, quietly: true) == .ownerUnreadable)
+        #expect(GPodderSync.restLog.lines == 2, "the shelf read again, so its next failure is a new state")
+    }
+
+    @Test("die Regel der Zeile: nur ein unlesbares Regal nach einer anderen Antwort")
+    func theRestLogRule() {
+        var log = GPodderRestLog()
+        let answers: [GPodderRest] = [.runs, .restsAfterSwitch, .ownerUnreadable, .ownerUnreadable, .restsAfterSwitch, .ownerUnreadable]
+        let due = answers.map { log.due($0) }
+        #expect(due == [false, false, true, false, false, true])
+        #expect(log.lines == 2)
+    }
+
     @Test("die liegengelassenen Feeds sieht gpodder in keiner Richtung, bis dieses Geraet einen selbst abonniert")
     func theLeftFeedsAreUnseen() {
         let server = ["a": "https://a.example/feed", "s": "https://s.example/feed"]
