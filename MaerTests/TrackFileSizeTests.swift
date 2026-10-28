@@ -9,6 +9,7 @@ import Foundation
 import AVFoundation
 import Network
 import os
+import OSLog
 @testable import Maer
 
 /// A stored track holds the whole file its source names, at three gates:
@@ -190,12 +191,30 @@ struct TrackFileSizeTests {
         #expect(short.bytes == nil)
         let sameType = try await store(head: Self.withLength(50_000), body: half, stated: nil, claim: claim)
         #expect(sameType.error == nil && sameType.bytes == 50_000,
-                "same type, another length: transcoded at a lower bitrate, held to nothing")
+                "same type, another length: transcoded at a lower bitrate, held to nothing: \(String(describing: sameType.error))")
         let transcodedHead = "HTTP/1.1 200 OK\r\nContent-Type: audio/aac\r\nContent-Length: 50000\r\nConnection: close\r\n\r\n"
         let transcoded = try await store(head: transcodedHead, body: half, stated: nil, claim: claim)
-        #expect(transcoded.error == nil && transcoded.bytes == 50_000, "a transcoded answer is held to nothing, as before")
+        #expect(transcoded.error == nil && transcoded.bytes == 50_000, "a transcoded answer is held to nothing, as before: \(String(describing: transcoded.error))")
         let noLength = try await store(head: Self.noLength, body: half, stated: nil, claim: claim)
-        #expect(noLength.error == nil && noLength.bytes == 50_000, "an answer without length is held to nothing, as before")
+        #expect(noLength.error == nil && noLength.bytes == 50_000, "an answer without length is held to nothing, as before: \(String(describing: noLength.error))")
+    }
+
+    @Test("ein Download, der an seinem Status scheitert, schreibt den Status ins Log, nie die Adresse")
+    func aDownloadThatFailsByStatusWritesItsLine() async throws {
+        let since = Date()
+        // A host that closes without answering is asked again and again by
+        // the background session, so the witness takes the status path.
+        let missing = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 9\r\nConnection: close\r\n\r\n"
+        let stored = try await store(head: missing, body: Data("not found".utf8), stated: nil)
+        let error = try #require(stored.error as? URLError, "ends with an error: \(String(describing: stored.error))")
+        #expect(error.code == .badServerResponse && stored.bytes == nil)
+        let logStore = try OSLogStore(scope: .currentProcessIdentifier)
+        let entries = try logStore.getEntries(at: logStore.position(date: since)).compactMap { $0 as? OSLogEntryLog }
+        let lines: [String] = entries.filter { entry in
+            entry.subsystem == AppLogSubsystem.value && entry.category == "library"
+        }.map(\.composedMessage).filter { $0.hasPrefix("DOWNLOAD status") }
+        #expect(lines.contains { $0.contains("status=404") }, "the path wrote its line: \(lines)")
+        #expect(!lines.contains { $0.contains("127.0.0.1") }, "no address in the line")
     }
 
     @Test("ein Server, der eine Laenge nennt und frueh schliesst, endet als unvollstaendige Spur statt ohne Ende")

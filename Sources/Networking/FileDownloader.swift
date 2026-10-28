@@ -182,6 +182,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         // The file at `location` vanishes once this returns. Move it now.
         let handler = takeHandler(downloadTask.taskIdentifier)
         guard let destination = takeDestination(downloadTask.taskIdentifier) else {
+            Logger.library.error("DOWNLOAD unplaced task=\(downloadTask.taskIdentifier), no destination, failed")
             handler?.continuation.resume(throwing: URLError(.unknown))
             return
         }
@@ -190,6 +191,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         // (CoreMedia -12864). Validate the status before keeping anything.
         if let http = downloadTask.response as? HTTPURLResponse,
            !(200...299).contains(http.statusCode) {
+            Logger.library.error("DOWNLOAD status task=\(downloadTask.taskIdentifier) status=\(http.statusCode), failed")
             handler?.continuation.resume(throwing: URLError(.badServerResponse))
             return
         }
@@ -239,6 +241,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             try FileManager.default.moveItem(at: location, to: destination)
             handler?.continuation.resume(returning: ())
         } catch {
+            Logger.library.error("DOWNLOAD not stored task=\(downloadTask.taskIdentifier) reason=\(FailureReason.of(error), privacy: .public), failed")
             handler?.continuation.resume(throwing: error)
         }
         // No handler (relaunch) and no existing file: keep it. A later
@@ -255,6 +258,8 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             let data = nsError.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
             handler.continuation.resume(throwing: DownloadCancelledError(resumeData: data))
         } else {
+            // Domain and code only: the error itself names the address.
+            Logger.library.error("DOWNLOAD ended task=\(task.taskIdentifier) reason=\(FailureReason.of(error), privacy: .public), failed")
             handler.continuation.resume(throwing: error)
         }
     }
