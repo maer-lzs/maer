@@ -48,7 +48,9 @@ struct ShuffleEmptyPoolTests {
     /// takes: `fetched` for a source that turns a failure into an empty
     /// list, `server` for a music server's songs with their failure mark,
     /// `of` for a list already in hand, `passed` for a menu item that hands
-    /// on the pool its caller built. A new entry, or one that changes its
+    /// on the pool its caller built. A list fetched in place (`of-await`)
+    /// is its own form and stands in no entry: a fetch that swallowed its
+    /// failure reads as empty there. A new entry, or one that changes its
     /// form, moves a count and is read here with its reason.
     nonisolated static let entryStock: [String: (count: Int, reason: String)] = [
         "CatalogSourcePage.swift:fetched": (1, "albumSongs turns a failed release fetch into no songs"),
@@ -74,6 +76,7 @@ struct ShuffleEmptyPoolTests {
             let body = window.range(of: "}").map { String(window[..<$0.upperBound]) } ?? window
             if body.contains(".fetched(") { forms.append("fetched") }
             else if body.contains("serverPool(") { forms.append("server") }
+            else if body.contains(".of(await") { forms.append("of-await") }
             else if body.contains(".of(") { forms.append("of") }
             else if body.contains("pool: songs") { forms.append("passed") }
             else { forms.append("unknown") }
@@ -86,6 +89,8 @@ struct ShuffleEmptyPoolTests {
         #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) { .fetched(await a()) }") == ["fetched"])
         #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) {\n    await CollectionSongs.serverPool(id)\n}") == ["server"])
         #expect(Self.entryForms(in: "shuffleDraw: { .of(items) },") == ["of"])
+        #expect(Self.entryForms(in: "shuffleDraw: { .of(await load()) },") == ["of-await"],
+                "a list fetched in place is no list in hand")
         #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .menuItem, pool: songs)\n}") == ["passed"])
         #expect(Self.entryForms(in: "songs: { .songs(await load()) },") == ["unknown"])
         #expect(Self.entryForms(in: "// ShufflePlayButton(playerCoordinator: c) { .of(x) }").isEmpty)
