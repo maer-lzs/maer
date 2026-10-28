@@ -868,8 +868,11 @@ final class DownloadManager {
                 try? FileManager.default.removeItem(at: file)
             }
 
-            // Persist the cover. Survives iOS cache purges offline.
-            await Artwork.persist(provider.coverURL(forItemId: itemId))
+            // Persist the cover in the form the large views show, so the
+            // page and the player stay sharp offline; the grid reads it
+            // under its former name (`ImageCache.formerNames`). Survives iOS
+            // cache purges offline.
+            await Artwork.persist(provider.largeCoverURL(forItemId: itemId))
 
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
@@ -932,7 +935,7 @@ final class DownloadManager {
             // The mark leaves with the files, whether or not the folder went.
             details.removeValue(forKey: itemId)
             if kinds.removeValue(forKey: itemId) != nil { kindsChanged = true }
-            Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
+            Artwork.forget(AppSession.shared.largeCoverURL(forItemId: itemId))
             downloadedItemIds.remove(itemId)
         }
         // The marks leave with the deleted downloads, the last one too.
@@ -963,7 +966,7 @@ final class DownloadManager {
         var knowsAll: Bool { unresolved == 0 && !movePending && !unreadable }
     }
 
-    func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) },
+    func activeCovers(address: (String) -> URL? = { AppSession.shared.largeCoverURL(forItemId: $0) },
                       idMovePending: () -> Bool = { NavidromeRekeyRun.isPending() }) async -> ActiveCovers {
         await ensureScanned()
         let itemIds = downloadedItemIds.sorted()

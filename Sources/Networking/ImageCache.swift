@@ -321,20 +321,27 @@ final class ImageCache {
         return Self.fileName(for: url) { Self.dropsFromName($0, clientImage: clientImage) }
     }
 
-    /// The name a cover had before it was asked in its larger form: an
-    /// Audiobookshelf cover before it came unscaled
-    /// (`APIClient.coverOriginalName`), a catalogue cover under its earlier
-    /// address (`CoverAddressHistory`). The kept cover of a downloaded title
-    /// stands under it until the larger one has arrived. Nil for every
-    /// other address.
-    nonisolated func formerName(for url: URL) -> String? {
-        if let former = CoverAddressHistory.formerAddress(of: url) { return key(for: former) }
+    /// The names a cover may stand under from before, in the order they are
+    /// read: a catalogue cover under its earlier address
+    /// (`CoverAddressHistory`); an Audiobookshelf grid cover
+    /// (`APIClient.coverWidthName`) under the unscaled name a download keeps,
+    /// then under the name from before 3.5 (57); an unscaled one under that
+    /// name. A downloaded title's kept cover stands there until today's has
+    /// arrived. Empty for every other address.
+    nonisolated func formerNames(for url: URL) -> [String] {
+        if let former = CoverAddressHistory.formerAddress(of: url) { return [key(for: former)] }
         guard APIClient.buildsImage(path: url.path),
-              URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
-                .contains(where: { $0.name == APIClient.coverOriginalName }) == true else { return nil }
-        return Self.fileName(for: url) {
-            Self.dropsFromName($0, clientImage: true) || $0 == APIClient.coverOriginalName
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = components.queryItems else { return [] }
+        let forms: Set<String> = [APIClient.coverOriginalName, APIClient.coverWidthName]
+        let plain = Self.fileName(for: url) { Self.dropsFromName($0, clientImage: true) || forms.contains($0) }
+        if items.contains(where: { $0.name == APIClient.coverWidthName }) {
+            components.setQuery(items.filter { $0.name != APIClient.coverWidthName }
+                                + [URLQueryItem(name: APIClient.coverOriginalName, value: "1")])
+            guard let unscaled = components.url else { return [plain] }
+            return [key(for: unscaled), plain]
         }
+        return items.contains(where: { $0.name == APIClient.coverOriginalName }) ? [plain] : []
     }
 
     /// The name an address had under the earlier rule, which dropped every
@@ -493,7 +500,7 @@ final class ImageCache {
     /// of them and only where the kept copy may answer: it is read only when
     /// nothing stands under today's name, and the network gate never sees
     /// it, so the new cover is still asked for.
-    private func readCandidates(_ fileKey: String, allowKept: Bool, former: String? = nil) -> [URL] {
+    private func readCandidates(_ fileKey: String, allowKept: Bool, former: [String] = []) -> [URL] {
         let tiers: [URL]
         if !refreshing.contains(fileKey) {
             tiers = [persistentDirectory, diskDirectory]
@@ -501,8 +508,10 @@ final class ImageCache {
             tiers = allowKept ? [diskDirectory, persistentDirectory] : [diskDirectory]
         }
         var candidates = tiers.map { $0.appendingPathComponent(fileKey) }
-        if allowKept, let former {
-            candidates += [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(former) }
+        if allowKept {
+            for name in former {
+                candidates += [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(name) }
+            }
         }
         return candidates
     }
@@ -682,7 +691,7 @@ final class ImageCache {
             return kept
         }
         let startedAt = invalidations[fileKey, default: 0]
-        let candidates = readCandidates(fileKey, allowKept: allowKept, former: formerName(for: url))
+        let candidates = readCandidates(fileKey, allowKept: allowKept, former: formerNames(for: url))
         guard let (thumb, source) = await diskThumbnail(candidates, maxPixelSize: maxPixelSize) else { return nil }
         #if DEBUG
         await testDiskHold?("read", fileKey)
@@ -824,7 +833,7 @@ final class ImageCache {
         }
         let startedAt = invalidations[cacheKey, default: 0]
         guard let (image, source) = await diskImage(readCandidates(cacheKey, allowKept: allowKept,
-                                                                   former: formerName(for: url))) else { return nil }
+                                                                   former: formerNames(for: url))) else { return nil }
         if let name = memoryName(cacheKey, fileKey: cacheKey, waitingAtStart: waiting, startedAt: startedAt, source: source) {
             memoryCache.setObject(image, forKey: name, cost: cost(of: image))
         }
@@ -1029,7 +1038,15 @@ final class ImageCache {
     /// sweep moves it down.
     func removePersistent(coverURL: URL?) {
         guard let coverURL else { return }
-        let cacheKey = key(for: coverURL)
+        // Every stage of the address's name chain leaves the kept folder:
+        // a cover kept under a former name would otherwise outlive its
+        // download there.
+        for cacheKey in [key(for: coverURL)] + formerNames(for: coverURL) {
+            unpersist(cacheKey)
+        }
+    }
+
+    private func unpersist(_ cacheKey: String) {
         let source = persistentDirectory.appendingPathComponent(cacheKey)
         guard FileManager.default.fileExists(atPath: source.path) else { return }
         if refreshing.contains(cacheKey) {
@@ -1259,12 +1276,12 @@ final class ImageCache {
         return tally
     }
 
-    /// The former names (`formerName(for:)`, keyed by today's name) the
+    /// The former names (`formerNames(for:)`, keyed by today's name) the
     /// sweep keeps as covers of downloads: one stays while today's name of
     /// its address has no kept cover, so a downloaded book keeps its old
     /// cover offline until the unscaled one has come and gone up.
-    nonisolated static func keptFormerNames(_ formers: [String: String], persistent: Set<String>) -> Set<String> {
-        Set(formers.compactMap { today, former in persistent.contains(today) ? nil : former })
+    nonisolated static func keptFormerNames(_ formers: [String: [String]], persistent: Set<String>) -> Set<String> {
+        Set(formers.flatMap { today, former in persistent.contains(today) ? [] : former })
     }
 
     nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,
@@ -1346,9 +1363,10 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
-        var formers: [String: String] = [:]
+        var formers: [String: [String]] = [:]
         for url in activeCoverURLs {
-            if let former = formerName(for: url) { formers[key(for: url)] = former }
+            let former = formerNames(for: url)
+            if !former.isEmpty { formers[key(for: url)] = former }
         }
         let moves = Self.legacyMoves(for: activeCoverURLs, knowsAll: knowsAll) { key(for: $0) }
         let started = Date()

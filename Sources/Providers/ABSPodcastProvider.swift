@@ -112,6 +112,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         client.coverURL(forItemId: Self.split(itemId).show)   // the show's cover
     }
 
+    func largeCoverURL(forItemId itemId: String) -> URL? {
+        client.largeCoverURL(forItemId: Self.split(itemId).show)
+    }
+
     func streamURL(forContentPath contentPath: String) -> URL? {
         client.streamURL(forContentPath: contentPath)
     }

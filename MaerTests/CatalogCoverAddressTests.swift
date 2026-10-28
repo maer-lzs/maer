@@ -58,7 +58,7 @@ struct CatalogCoverAddressTests {
         #expect(CoverAddressHistory.large(large) == large, "the grid already holds the larger one")
         let small = try #require(URL(string: "https://usercontent.jamendo.com?type=album&id=7&width=300&trackid=9"))
         #expect(CoverAddressHistory.formerAddress(of: small) == nil)
-        #expect(ImageCache.shared.formerName(for: large) == ImageCache.shared.testKey(for: small))
+        #expect(ImageCache.shared.formerNames(for: large).first == ImageCache.shared.testKey(for: small))
         let clients = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8))
         #expect(clients.contains("URLQueryItem(name: \"imagesize\", value: String(FreeCatalog.jamendoCoverSize))"))
@@ -135,6 +135,9 @@ struct CatalogCoverAddressTests {
         "AppSession.swift": (2, reason: "the routing function and its call into the provider"),
         "ItemRouterEnvironment.swift": (3, reason: "the closure, its live answer and the empty router"),
         "FreeCatalogProvider.swift": (1, reason: "the catalogue's answer"),
+        "APIClient.swift": (1, reason: "the Audiobookshelf answer, the unscaled cover"),
+        "ABSPodcastProvider.swift": (2, reason: "the podcast answer and its call to the show's cover"),
+        "DownloadManager.swift": (3, reason: "a download keeps, sweeps and forgets the large cover"),
     ]
 
     @Test("nur die grossen Ansichten fragen largeCoverURL, je genau so oft wie gezaehlt", .needsTheSources)
@@ -208,7 +211,7 @@ struct CatalogCoverAddressTests {
     func theEarlierNameIsAReadCandidate() throws {
         let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "1342"))
         let scan = try #require(CoverAddressHistory.large(medium))
-        #expect(ImageCache.shared.formerName(for: scan) == ImageCache.shared.testKey(for: medium))
+        #expect(ImageCache.shared.formerNames(for: scan).first == ImageCache.shared.testKey(for: medium))
     }
 
     private static func png(pixels: Int) -> Data {

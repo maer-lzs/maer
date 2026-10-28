@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Audiobookshelf grids load light covers again.** Grids and rows ask a
+cover at 400 pixels wide, a fraction of the original's bytes for a large
+podcast cover; a book's page, the full player and the lock screen keep
+the unscaled one. A download keeps the unscaled cover, so its page and
+the player stay sharp offline, and the grid shows it reduced.
+
 **LibriVox books keep their cover in the player.** The full player and
 the lock screen show the same cover a LibriVox book's page shows, the
 one from its feed, instead of the 180 pixel image.

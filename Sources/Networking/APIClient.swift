@@ -375,6 +375,12 @@ final class APIClient {
     nonisolated static let mediaTokenName = "token"
     /// The query name that asks for a cover as the server keeps it, unscaled.
     nonisolated static let coverOriginalName = "raw"
+    /// The query name and value that ask for a cover scaled to the grid's
+    /// width. Measured 26.10. on the demo server: podcast originals up to
+    /// 4 MB, at this width 2 to 30 kB; the grid shows at most this many
+    /// pixels (`ImageCache.defaultThumbnailPixel`).
+    nonisolated static let coverWidthName = "width"
+    nonisolated static let coverGridWidth = 400
 
     /// Whether a path is one of this client's image addresses: an item's
     /// cover (`api/items/<id>/cover`) or an author's image
@@ -388,19 +394,29 @@ final class APIClient {
     /// as a query parameter here (officially supported for Audiobookshelf GET
     /// requests). Worst case only a cover image is missing, no core function.
     ///
-    /// The cover comes as the server keeps it (`raw`): without it the server
-    /// scales every cover to 400 pixels wide (`CacheManager`, `options.width
-    /// || 400`), and a detail page, the full player and the lock screen show
-    /// that enlarged. The app brings it to the size it shows
-    /// (`ImageCache.displaySized`). `raw` is part of the cover's name in the
-    /// cache, so no cover kept at 400 pixels answers this address.
+    /// The grid and the rows ask the cover at their width
+    /// (`coverGridWidth`); the large views ask it as the server keeps it
+    /// (`largeCoverURL`). Without either the server scales every cover to 400
+    /// pixels wide (`CacheManager`, `options.width || 400`), and a detail
+    /// page, the full player and the lock screen showed that enlarged. Both
+    /// forms are part of the cover's name in the cache.
     func coverURL(forItemId itemId: String) -> URL? {
+        coverAddress(itemId, form: URLQueryItem(name: Self.coverWidthName, value: String(Self.coverGridWidth)))
+    }
+
+    /// The cover as the server keeps it, unscaled, for the large views; the
+    /// app brings it to the size it shows (`ImageCache.displaySized`).
+    func largeCoverURL(forItemId itemId: String) -> URL? {
+        coverAddress(itemId, form: URLQueryItem(name: Self.coverOriginalName, value: "1"))
+    }
+
+    private func coverAddress(_ itemId: String, form: URLQueryItem) -> URL? {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/items/\(itemId)/cover"),
             resolvingAgainstBaseURL: false
         ) else { return nil }
         var items = components.queryItems ?? []
-        items.append(URLQueryItem(name: Self.coverOriginalName, value: "1"))
+        items.append(form)
         if let token, !token.isEmpty {
             items.append(URLQueryItem(name: Self.mediaTokenName, value: token))
         }

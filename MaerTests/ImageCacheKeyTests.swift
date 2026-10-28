@@ -51,7 +51,7 @@ struct ImageCacheKeyTests {
     @Test("ein Audiobookshelf-Cover kommt ungerechnet, und kein 400-Pixel-Cover antwortet seiner Adresse")
     func absCoverComesUnscaled() throws {
         let client = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "T")
-        let url = try #require(client.coverURL(forItemId: "li_1"))
+        let url = try #require(client.largeCoverURL(forItemId: "li_1"))
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         #expect(items.contains(URLQueryItem(name: "raw", value: "1")))
         #expect(url.path == "/api/items/li_1/cover")
@@ -105,11 +105,12 @@ struct ImageCacheKeyTests {
         #expect(subsonicNames.subtracting(["id", "size"]).isSubset(of: ImageCache.signInQueryNames),
                 "the Subsonic client writes a name beside the sign-in that enters a cover name: \(subsonicNames)")
         let abs = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "jwt-1")
-        for url in [abs.coverURL(forItemId: "li_1"), abs.authorImageURL(authorId: "aut_1")] {
+        for url in [abs.coverURL(forItemId: "li_1"), abs.largeCoverURL(forItemId: "li_1"), abs.authorImageURL(authorId: "aut_1")] {
             let built = try #require(url)
             let absNames = Set(try #require(URLComponents(url: built, resolvingAgainstBaseURL: false)?.queryItems).map(\.name))
-            // `raw` names the picture (unscaled), as `id` and `size` do for Subsonic.
-            let signIn = absNames.subtracting([APIClient.coverOriginalName])
+            // `raw` and `width` name the picture (unscaled, grid width), as
+            // `id` and `size` do for Subsonic.
+            let signIn = absNames.subtracting([APIClient.coverOriginalName, APIClient.coverWidthName])
             #expect(!signIn.isEmpty && signIn.isSubset(of: ImageCache.signInQueryNames), "ABS: \(absNames)")
         }
         #expect(ImageCache.signInQueryNames.contains(JellyfinClient.mediaAuthQueryItem(token: "j1").name))

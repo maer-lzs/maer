@@ -40,9 +40,9 @@ struct FormerCoverNameTests {
     func theFormerNameIsTheNameWithoutRaw() {
         let tag = UUID().uuidString
         let cache = ImageCache.shared
-        #expect(cache.formerName(for: address(tag, raw: true)) == cache.testKey(for: address(tag, raw: false)))
-        #expect(cache.formerName(for: address(tag, raw: false)) == nil)
-        #expect(cache.formerName(for: URL(string: "https://nd.example.lan/rest/getCoverArt?id=al-1&raw=1")!) == nil)
+        #expect(cache.formerNames(for: address(tag, raw: true)) == [cache.testKey(for: address(tag, raw: false))])
+        #expect(cache.formerNames(for: address(tag, raw: false)).isEmpty)
+        #expect(cache.formerNames(for: URL(string: "https://nd.example.lan/rest/getCoverArt?id=al-1&raw=1")!).isEmpty)
     }
 
     @Test("offline: alte Datei da, neue nicht, das alte Bild kommt; das Netz-Tor sieht es nicht")
@@ -50,7 +50,7 @@ struct FormerCoverNameTests {
         let tag = UUID().uuidString
         let url = address(tag, raw: true)
         let cache = ImageCache.shared
-        let former = try #require(cache.formerName(for: url))
+        let former = try #require(cache.formerNames(for: url).first)
         #expect(cache.testPlacePersistent(png(64), named: former), "the precondition: the old cover is kept")
         defer { cache.testRemovePersistent(named: former) }
         #expect(!cache.testIsPersistent(url), "the precondition: nothing under today's name")
@@ -66,7 +66,7 @@ struct FormerCoverNameTests {
         let tag = UUID().uuidString
         let url = address(tag, raw: true)
         let cache = ImageCache.shared
-        let former = try #require(cache.formerName(for: url))
+        let former = try #require(cache.formerNames(for: url).first)
         #expect(cache.testPlacePersistent(png(64), named: former))
         #expect(cache.testPlacePersistent(png(32), for: url))
         defer {
@@ -78,7 +78,7 @@ struct FormerCoverNameTests {
 
     @Test("der Fegelauf behaelt den frueheren Namen, bis der heutige geschuetzt steht")
     func theSweepKeepsTheFormerNameUntilTodaysIsKept() {
-        let formers = ["today": "former"]
+        let formers = ["today": ["former"]]
         #expect(ImageCache.keptFormerNames(formers, persistent: ["former"]) == ["former"])
         #expect(ImageCache.keptFormerNames(formers, persistent: ["former", "today"]).isEmpty)
         let moves = ImageCache.tierMoves(persistent: ["former"], cache: [],
