@@ -298,13 +298,32 @@ extension PlayerViewModel {
         }
         // One answer, one load: two loads under the same key let a slower
         // small picture replace the feed's, on the lock screen and in the
-        // widget.
+        // widget. A picture the cache already holds stands at once, read
+        // before the feed is asked in the same task, so it can never land
+        // after the feed's.
+        let key = loadedArtworkKey
         Task { [weak self] in
             guard let self else { return }
+            if let kept = await self.keptLibriVoxImage(id), self.item?.id == id, self.loadedArtworkKey == key {
+                self.artworkImage = kept
+                self.updateNowPlayingInfo()
+            }
             let cover = await self.libriVoxCover(id)
             guard self.item?.id == id else { return }
             self.loadArtwork(coverURL: cover)
         }
+    }
+
+    /// The picture of a LibriVox book the cache already holds, large form
+    /// first, from memory or disk only: the lock screen shows it while the
+    /// feed is asked.
+    func keptLibriVoxImage(_ id: String) async -> UIImage? {
+        let large = provider.largeCoverURL(forItemId: id)
+        let grid = provider.coverURL(forItemId: id)
+        for url in [large, grid].compactMap({ $0 }) {
+            if let image = await Artwork.full(for: url) { return image }
+        }
+        return nil
     }
 
     /// A LibriVox book's cover for the lock screen: the feed's, as its page

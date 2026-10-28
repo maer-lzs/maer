@@ -128,7 +128,7 @@ struct CatalogCoverAddressTests {
     static let largeCoverStock: [String: (count: Int, reason: String)] = [
         "BookDetailScreen.swift": (1, reason: "the hero cover of a title's page"),
         "PlayerScreen.swift": (1, reason: "the full player's cover"),
-        "PlayerViewModel+NowPlaying.swift": (2, reason: "the lock screen's cover and a LibriVox book's fallback without a feed cover"),
+        "PlayerViewModel+NowPlaying.swift": (3, reason: "the lock screen's cover, a LibriVox book's fallback without a feed cover, and the kept picture it shows while the feed is asked"),
         "MusicAlbumView.swift": (1, reason: "the album page's cover"),
         "CatalogSourcePage.swift": (1, reason: "the head of an archive release or series page"),
         "AudioProvider.swift": (2, reason: "the requirement and its default"),
@@ -250,6 +250,83 @@ struct CatalogCoverAddressTests {
             Issue.record("an address without an earlier one is no absence")
             return
         }
+    }
+
+    /// A source whose LibriVox book has a large and a grid address, as the
+    /// catalogue builds them; the host does not exist.
+    private final class LibriVoxCoverSource: AudioProvider {
+        let large: URL
+        let grid: URL
+        init(tag: String) {
+            large = URL(string: "https://covers.invalid/download/\(tag)/front.jpg")!
+            grid = URL(string: "https://covers.invalid/services/img/\(tag)")!
+        }
+        var providerId: String { "librivox-cover" }
+        var keepsMarksOnDevice: Bool { true }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [Maer.LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            throw NSError(domain: "librivox-cover", code: 404)
+        }
+        func coverURL(forItemId itemId: String) -> URL? { grid }
+        func largeCoverURL(forItemId itemId: String) -> URL? { large }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    /// A plain JPEG of `side` pixels.
+    private static func jpeg(_ side: Int) -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
+            .jpegData(withCompressionQuality: 0.85) { context in
+                UIColor.systemTeal.setFill()
+                context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            }
+    }
+
+    @Test("Sperrbildschirm bei LibriVox: das Bild im Cache steht sofort, das Feed-Cover kommt danach, nie umgekehrt")
+    func theLockScreenShowsTheKeptPictureBeforeTheFeed() async throws {
+        let tag = "lock-\(UUID().uuidString)"
+        let source = LibriVoxCoverSource(tag: tag)
+        let feed = try #require(URL(string: "https://covers.invalid/feed/\(tag).jpg"))
+        let cache = ImageCache.shared
+        #expect(cache.testPlacePersistent(Self.jpeg(300), for: source.large))
+        #expect(cache.testPlacePersistent(Self.jpeg(600), for: feed))
+        defer {
+            for url in [source.large, feed] { _ = cache.testRemovePersistent(named: cache.testKey(for: url)) }
+        }
+        let model = PlayerViewModel(provider: source)
+        // The feed answers only when the witness lets it.
+        final class Gate { var open = false }
+        let gate = Gate()
+        model.feedCover = { _ in
+            while !gate.open { try? await Task.sleep(for: .milliseconds(10)) }
+            return feed
+        }
+        model.item = LibraryItemDetail(id: FreeCatalog.librivoxPrefix + tag, media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: "Lock", authorName: nil, narratorName: nil, seriesName: nil,
+                                          genres: nil, publishedYear: nil, description: nil),
+            duration: 60, chapters: nil, tracks: nil), userMediaProgress: nil)
+        func width() -> Int { model.artworkImage?.cgImage?.width ?? 0 }
+        func wait(for side: Int) async {
+            for _ in 0..<300 where width() != side { try? await Task.sleep(for: .milliseconds(10)) }
+        }
+
+        model.loadNowPlayingArtwork()
+        await wait(for: 300)
+        #expect(width() == 300, "the kept picture stands while the feed is still asked")
+        gate.open = true
+        await wait(for: 600)
+        #expect(width() == 600, "the feed's cover follows")
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(width() == 600, "nothing replaces the feed's cover afterwards")
     }
 }
 #endif
