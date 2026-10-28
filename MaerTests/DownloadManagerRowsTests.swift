@@ -281,5 +281,63 @@ struct DownloadManagerRowsTests {
         #expect(manager.kinds.isEmpty, "die Art geht mit dem Download")
         #expect(home.manager().kinds.isEmpty, "und auch aus der Ablage")
     }
+
+    /// A source that names an original as its large cover, the way the
+    /// catalogue names an archive item's while the session holds its files.
+    /// The host does not exist, so storing the covers asks no real server.
+    private final class OriginalCoverProvider: AudioProvider {
+        static let grid = URL(string: "https://covers.invalid/services/img/session-witness")!
+        static let original = URL(string: "https://covers.invalid/download/session-witness/front.jpg")!
+        var providerId: String { "original-cover" }
+        var keepsMarksOnDevice: Bool { true }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            throw NSError(domain: "original-cover", code: 404)
+        }
+        func coverURL(forItemId itemId: String) -> URL? { Self.grid }
+        func largeCoverURL(forItemId itemId: String) -> URL? { Self.original }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    @Test("nach einem Neustart nennen Fegelauf und Loeschen das gesicherte Original, das nur die Sitzung kannte")
+    func aRestartStillNamesTheKeptOriginal() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let grid = OriginalCoverProvider.grid
+        let original = OriginalCoverProvider.original
+        // The rule: only a large form the grid's address does not lead to.
+        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: original) == [original])
+        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: grid).isEmpty)
+        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: nil).isEmpty)
+        let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "5884"))
+        #expect(DownloadManager.sessionCoverURLs(grid: medium, large: CoverAddressHistory.large(medium)).isEmpty,
+                "the scan is built again from the medium form")
+
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "/nowhere/0.mp3", metadata: nil)
+        await manager.download(item: Self.detail("lva:session-witness", tracks: [track]),
+                               provider: OriginalCoverProvider(), kind: nil)
+        #expect(manager.isDownloaded(itemId: "lva:session-witness"), "the precondition: the download ended")
+
+        // A restart: the session builds only the item image service again.
+        let again = home.manager()
+        let active = await again.activeCovers(address: { _ in grid }, largeAddress: { _ in grid },
+                                              idMovePending: { false })
+        #expect(active.urls.contains(original), "the maintenance names the kept original: \(active.urls)")
+        #expect(active.urls.contains(grid))
+
+        again.deleteDownload(itemId: "lva:session-witness")
+        #expect(DownloadManager.readSessionCovers(from: Ablage(directory: home.directory)).isEmpty,
+                "the remembered original leaves with the download")
+    }
 }
 #endif

@@ -93,9 +93,11 @@ struct AbsCoverFormsTests {
     func theDownloadKeepsBothForms() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
-        #expect(code.contains("for url in Self.keptCoverURLs(grid: provider.coverURL(forItemId: itemId),"))
-        #expect(code.contains("for url in Self.keptCoverURLs(grid: owner.coverURL(forItemId: itemId),"))
-        #expect(code.contains("urls += Self.keptCoverURLs(grid: url, large: largeAddress(itemId))"))
+        #expect(code.contains("let grid = provider.coverURL(forItemId: itemId)"))
+        #expect(code.contains("for url in Self.keptCoverURLs(grid: grid, large: large) {\n                await Artwork.persist(url)"))
+        #expect(code.contains("noteSessionCovers(of: itemId, grid: grid, large: large)"))
+        #expect(code.contains("for url in coverURLs(of: itemId, grid: owner.coverURL(forItemId: itemId),"))
+        #expect(code.contains("urls += coverURLs(of: itemId, grid: url, large: largeAddress(itemId))"))
         let grid = URL(string: "https://archive.org/services/img/x")!
         let large = URL(string: "https://archive.org/download/x/front.jpg")!
         #expect(DownloadManager.keptCoverURLs(grid: grid, large: large) == [grid, large])

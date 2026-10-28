@@ -143,6 +143,13 @@ final class DownloadManager {
     /// The kinds are a document of the app, so they go through the seam.
     private let kindsAblage: Ablage
     nonisolated static let kindsDocument = "download-kinds.json"
+    /// The cover addresses a download keeps that only the session that
+    /// stored it names (`sessionCoverURLs`), per item. An archive item names
+    /// its original only while the session holds its files; this small
+    /// document beside the kinds lets the delete and the cover maintenance
+    /// name the kept original after a restart.
+    private var sessionCovers: [String: [URL]] = [:]
+    nonisolated static let sessionCoversDocument = "download-covers.json"
 
     init(documents: URL, database: MaerDatabase) {
         self.downloadsDirectory = Self.prepareDownloadsDirectory(in: documents)
@@ -150,6 +157,7 @@ final class DownloadManager {
         self.kindsAblage = Ablage(directory: documents)
         loadDetails()
         kinds = Self.readKinds(from: kindsAblage)
+        sessionCovers = Self.readSessionCovers(from: kindsAblage)
         // The full filesystem walk (every download folder + every file's size)
         // used to run synchronously here. On the main actor, BEFORE first
         // paint, scaling with the number of downloads. Scan off-main instead
@@ -200,6 +208,38 @@ final class DownloadManager {
     nonisolated static func readKinds(from ablage: Ablage) -> [String: DownloadKind] {
         (ablage.loadNow([String: String].self, name: kindsDocument).value ?? [:])
             .compactMapValues(DownloadKind.init(rawValue:))
+    }
+
+    /// The remembered session covers, or none. A missing or unreadable
+    /// document reads as none (the seam logs and lays aside an unreadable
+    /// one): the delete and the maintenance then name only the forms built
+    /// now. An address that does not parse is left out.
+    nonisolated static func readSessionCovers(from ablage: Ablage) -> [String: [URL]] {
+        (ablage.loadNow([String: [String]].self, name: sessionCoversDocument).value ?? [:])
+            .mapValues { $0.compactMap(URL.init(string:)) }
+            .filter { !$0.value.isEmpty }
+    }
+
+    /// Written right away, like the kinds.
+    private func writeSessionCovers() {
+        do {
+            try kindsAblage.saveNow(sessionCovers.mapValues { $0.map(\.absoluteString) },
+                                    name: Self.sessionCoversDocument)
+        } catch {
+            // Dropping is bearable, because the seam has already logged the
+            // failure, and a cover that is not remembered only loses its
+            // protection at the next maintenance.
+        }
+    }
+
+    /// Remembers the session covers of a stored download, or forgets the
+    /// entry when it has none.
+    func noteSessionCovers(of itemId: String, grid: URL?, large: URL?) {
+        let urls = Self.sessionCoverURLs(grid: grid, large: large)
+        let entry: [URL]? = urls.isEmpty ? nil : urls
+        guard sessionCovers[itemId] != entry else { return }
+        sessionCovers[itemId] = entry
+        writeSessionCovers()
     }
 
     /// Written right away: the document is small, and a new manager on the
@@ -869,11 +909,14 @@ final class DownloadManager {
             }
 
             // Persist the cover in both forms (`keptCoverURLs`). Survives iOS
-            // cache purges offline.
-            for url in Self.keptCoverURLs(grid: provider.coverURL(forItemId: itemId),
-                                          large: provider.largeCoverURL(forItemId: itemId)) {
+            // cache purges offline. A form only this session names is
+            // remembered beside the downloads (`noteSessionCovers`).
+            let grid = provider.coverURL(forItemId: itemId)
+            let large = provider.largeCoverURL(forItemId: itemId)
+            for url in Self.keptCoverURLs(grid: grid, large: large) {
                 await Artwork.persist(url)
             }
+            noteSessionCovers(of: itemId, grid: grid, large: large)
 
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
@@ -931,21 +974,24 @@ final class DownloadManager {
     func deleteDownloads(_ itemIds: Set<String>) {
         guard !itemIds.isEmpty else { return }
         var kindsChanged = false
+        var sessionCoversChanged = false
         for itemId in itemIds {
             try? FileManager.default.removeItem(at: itemDirectory(itemId))
             // The mark leaves with the files, whether or not the folder went.
             details.removeValue(forKey: itemId)
             if kinds.removeValue(forKey: itemId) != nil { kindsChanged = true }
             let owner = source(of: itemId)
-            for url in Self.keptCoverURLs(grid: owner.coverURL(forItemId: itemId),
-                                          large: owner.largeCoverURL(forItemId: itemId)) {
+            for url in coverURLs(of: itemId, grid: owner.coverURL(forItemId: itemId),
+                                 large: owner.largeCoverURL(forItemId: itemId)) {
                 Artwork.forget(url)
             }
+            if sessionCovers.removeValue(forKey: itemId) != nil { sessionCoversChanged = true }
             downloadedItemIds.remove(itemId)
         }
         // The marks leave with the deleted downloads, the last one too.
         keeper.write(emptying: .allowed) { [weak self] in self?.details }
         if kindsChanged { writeKinds() }
+        if sessionCoversChanged { writeSessionCovers() }
         recalculateTotalSize()
     }
 
@@ -982,6 +1028,22 @@ final class DownloadManager {
         return urls
     }
 
+    /// The kept forms only the storing session names: the large form when
+    /// it is not the grid's own larger form (`CoverAddressHistory.large`),
+    /// which any session builds again from the grid's address.
+    nonisolated static func sessionCoverURLs(grid: URL?, large: URL?) -> [URL] {
+        guard let large, large != CoverAddressHistory.large(grid) else { return [] }
+        return [large]
+    }
+
+    /// Every cover a download holds: the forms built now and the ones only
+    /// an earlier session named.
+    private func coverURLs(of itemId: String, grid: URL?, large: URL?) -> [URL] {
+        var urls = Self.keptCoverURLs(grid: grid, large: large)
+        for url in sessionCovers[itemId] ?? [] where !urls.contains(url) { urls.append(url) }
+        return urls
+    }
+
     func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) },
                       largeAddress: (String) -> URL? = { AppSession.shared.largeCoverURL(forItemId: $0) },
                       idMovePending: () -> Bool = { NavidromeRekeyRun.isPending() }) async -> ActiveCovers {
@@ -991,7 +1053,7 @@ final class DownloadManager {
         var unresolved = 0
         for itemId in itemIds {
             guard let url = address(itemId) else { unresolved += 1; continue }
-            urls += Self.keptCoverURLs(grid: url, large: largeAddress(itemId))
+            urls += coverURLs(of: itemId, grid: url, large: largeAddress(itemId))
         }
         let movePending = itemIds.contains(where: SubsonicProvider.owns(itemId:)) && idMovePending()
         return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending,
@@ -1036,6 +1098,12 @@ final class DownloadManager {
         if let kind = kinds.removeValue(forKey: oldItemId) {
             kinds[newItemId] = kind
             kindMoved = true
+        }
+        // The remembered session covers move too, or the delete and the
+        // maintenance of the successor would miss them.
+        if let covers = sessionCovers.removeValue(forKey: oldItemId) {
+            sessionCovers[newItemId] = covers
+            writeSessionCovers()
         }
         downloadedItemIds.remove(oldItemId)
         downloadedItemIds.insert(newItemId)
