@@ -20,6 +20,8 @@ struct ShufflePlayButton: View {
 
 
     @State private var busy = false
+    /// The device's network, read the way the album page reads it.
+    @Environment(\.isOnline) private var isOnline
 
     var body: some View {
         switch style {
@@ -52,31 +54,33 @@ struct ShufflePlayButton: View {
         guard !busy else { return }
         busy = true
         Task {
-            await Self.start(pool: pool, coordinator: playerCoordinator)
+            await Self.start(pool: pool, isOnline: isOnline, coordinator: playerCoordinator)
             busy = false
         }
     }
 
     /// Shuffles what the pool holds. An empty pool starts nothing and says
-    /// why in the mini player, in the words of the album page: the source
-    /// did not answer, the device is offline, or the list has no track.
-    static func start(pool: () async -> ShufflePool, coordinator: PlayerCoordinator) async {
+    /// why in the mini player, in the words of the album page: the list has
+    /// no track, or the songs did not come, offline when the device has no
+    /// network (as the album page decides it), else that they could not be
+    /// loaded.
+    static func start(pool: () async -> ShufflePool, isOnline: Bool, coordinator: PlayerCoordinator) async {
         let drawn = await pool()
         if case .songs(let items) = drawn {
             await coordinator.shufflePlay(items: items)
             return
         }
         guard !Task.isCancelled else { return }
-        let (sentence, cause) = Self.sentence(for: drawn)
+        let (sentence, cause) = Self.sentence(for: drawn, isOnline: isOnline)
         coordinator.sayOpenFailure(sentence, cause: cause, title: nil)
     }
 
     /// The album page's title for each empty pool, with its symbol's cause.
-    static func sentence(for pool: ShufflePool) -> (String, NoticeCause) {
+    static func sentence(for pool: ShufflePool, isOnline: Bool) -> (String, NoticeCause) {
         switch pool {
         case .songs, .empty: (String(localized: "No tracks"), .unknown)
-        case .offline: (String(localized: "Not available offline"), .network)
-        case .failed: (String(localized: "Couldn't load tracks"), .server)
+        case .unavailable where !isOnline: (String(localized: "Not available offline"), .network)
+        case .unavailable: (String(localized: "Couldn't load tracks"), .server)
         }
     }
 }

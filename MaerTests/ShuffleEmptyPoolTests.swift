@@ -13,31 +13,48 @@ import Testing
 /// never a silent empty list.
 @MainActor
 struct ShuffleEmptyPoolTests {
-    @Test("ein leerer Vorrat startet nichts und sagt in den Worten der Albumseite, warum")
-    func anEmptyPoolSaysWhy() async {
-        let cases: [(ShufflePool, String)] = [
-            (.failed, String(localized: "Couldn't load tracks")),
-            (.offline, String(localized: "Not available offline")),
-            (.empty, String(localized: "No tracks")),
+    @Test("ein leerer Vorrat sagt den Satz der Albumseite, offline nach dem Netz des Geraets")
+    func anEmptyPoolSaysWhyByTheDevicesNetwork() async {
+        let cases: [(ShufflePool, Bool, String)] = [
+            (.unavailable, true, String(localized: "Couldn't load tracks")),
+            (.unavailable, false, String(localized: "Not available offline")),
+            (.empty, true, String(localized: "No tracks")),
+            (.empty, false, String(localized: "No tracks")),
         ]
-        for (pool, sentence) in cases {
+        for (pool, online, sentence) in cases {
             let coordinator = PlayerCoordinator(provider: MockProvider())
-            await ShufflePlayButton.start(pool: { pool }, coordinator: coordinator)
-            #expect(coordinator.loadError == sentence, "\(pool) said \(coordinator.loadError ?? "nothing")")
+            await ShufflePlayButton.start(pool: { pool }, isOnline: online, coordinator: coordinator)
+            #expect(coordinator.loadError == sentence, "\(pool) online=\(online) said \(coordinator.loadError ?? "nothing")")
         }
-        #expect(ShufflePlayButton.sentence(for: .offline).1 == .network, "offline shows the network symbol")
+        #expect(ShufflePlayButton.sentence(for: .unavailable, isOnline: false).1 == .network)
     }
 
-    @Test("der Vorrat eines Servers gibt seinen Grund mit: ohne Netz offline, sonst gescheitert, ohne Fehler leer")
-    func theServerPoolCarriesItsReason() {
-        #expect(ShufflePool.of([], failure: .network).items.isEmpty)
-        if case .offline = ShufflePool.of([], failure: .network) {} else { Issue.record("no network is not offline") }
-        if case .failed = ShufflePool.of([], failure: .server) {} else { Issue.record("a server failure is not a failure") }
-        if case .empty = ShufflePool.of([], failure: nil) {} else { Issue.record("an empty answer is not empty") }
+    @Test("ein verschluckter Ausfall heisst nicht leer: Liste in der Hand leer, Abruf ohne Lieder nicht gekommen")
+    func aSwallowedFailureIsNotEmpty() throws {
+        if case .unavailable = ShufflePool.fetched([]) {} else { Issue.record("a fetch that gave nothing reads as empty") }
         if case .empty = ShufflePool.of([]) {} else { Issue.record("an empty list in hand is not empty") }
-        MusicSongsFailure.log(itemId: "sub:al-witness", URLError(.notConnectedToInternet))
-        #expect(MusicSongsFailure.take("sub:al-witness") == .network)
-        #expect(MusicSongsFailure.take("sub:al-witness") == nil, "the cause is taken once")
+        if case .unavailable = ShufflePool.server([], failed: true) {} else { Issue.record("a failed server fetch is not unavailable") }
+        if case .empty = ShufflePool.server([], failed: false) {} else { Issue.record("an empty server answer is not empty") }
+        // A host the device cannot find while it has a network is a source
+        // that did not answer, not offline: the device decides, not the code.
+        MusicSongsFailure.log(itemId: "sub:al-witness", URLError(.cannotFindHost))
+        #expect(MusicSongsFailure.take("sub:al-witness"))
+        #expect(!MusicSongsFailure.take("sub:al-witness"), "the mark is taken once")
+        #expect(ShufflePlayButton.sentence(for: .server([], failed: true), isOnline: true).0
+                == String(localized: "Couldn't load tracks"))
+    }
+
+    @Test("die Wege, die einen Ausfall verschlucken, sagen fetched", .needsTheSources)
+    func theSwallowingPathsSayFetched() throws {
+        func read(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        #expect(try read("Sources/Views/Music/MusicLibraryPages.swift")
+            .contains(".fetched(await AppSession.shared.musicProvider.shuffleLibrarySongItems())"))
+        #expect(try read("Sources/Views/CatalogSourcePage.swift").contains("{ .fetched(await albumSongs()) }"))
+        #expect(try read("Sources/Views/Music/MusicView.swift")
+            .contains("songs: { .fetched(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) }"))
+        #expect(try read("Sources/Views/Music/ShufflePlayButton.swift").contains("@Environment(\\.isOnline) private var isOnline"))
     }
 
     /// The body of `songItems(forItemId:)` in a provider file.
@@ -60,7 +77,7 @@ struct ShuffleEmptyPoolTests {
         }
         let button = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/ShufflePlayButton.swift"), encoding: .utf8))
-        #expect(button.contains("await Self.start(pool: pool, coordinator: playerCoordinator)"))
+        #expect(button.contains("await Self.start(pool: pool, isOnline: isOnline, coordinator: playerCoordinator)"))
         // The reader finds the body and stops at its end.
         let subsonic = try Self.songItemsBody("Sources/Providers/SubsonicProvider.swift")
         #expect(subsonic.contains("learnCovers(songs)"))

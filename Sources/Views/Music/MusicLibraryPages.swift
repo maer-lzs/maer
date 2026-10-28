@@ -64,7 +64,7 @@ struct MusicAlbumsPage: View {
                             ) { musicSortMenu }
                             Spacer()
                             ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                                .of(await AppSession.shared.musicProvider.shuffleLibrarySongItems())
+                                .fetched(await AppSession.shared.musicProvider.shuffleLibrarySongItems())
                             }
                             .font(.title3)
                         }

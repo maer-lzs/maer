@@ -5,18 +5,18 @@
 
 import Foundation
 
-/// What a shuffle draws from, and why it holds nothing when it does. The
-/// button says each case in the words the album page already uses
-/// (`ShufflePlayButton.start`), so a flight mode no longer reads as a
-/// failed server and an empty list no longer reads as either.
+/// What a shuffle draws from, and whether a pool that holds nothing is
+/// empty or merely did not come. The button says each in the words the
+/// album page uses, and like the album page it tells offline from a failed
+/// source by the device's network, not by an error code
+/// (`ShufflePlayButton.start`).
 nonisolated enum ShufflePool {
     case songs([LibraryItem])
     /// The source answered and named no track.
     case empty
-    /// The device has no network, and nothing here to play.
-    case offline
-    /// The source did not answer.
-    case failed
+    /// The songs did not come: the source did not answer, or the device has
+    /// no network.
+    case unavailable
 
     /// The songs it holds; empty for every other case.
     var items: [LibraryItem] {
@@ -29,12 +29,16 @@ nonisolated enum ShufflePool {
         items.isEmpty ? .empty : .songs(items)
     }
 
-    /// A source's songs with the cause of a fetch that failed, if one did
-    /// (`MusicSongsFailure`): without the network it is offline, otherwise
-    /// a failure; without a failure an empty answer is empty.
-    static func of(_ items: [LibraryItem], failure: NoticeCause?) -> ShufflePool {
+    /// Songs fetched by a path that turns a failure into no songs: nothing
+    /// means they did not come, never that there are none.
+    static func fetched(_ items: [LibraryItem]) -> ShufflePool {
+        items.isEmpty ? .unavailable : .songs(items)
+    }
+
+    /// A server's songs with whether its fetch failed (`MusicSongsFailure`):
+    /// an answer without a failure that names no song is empty.
+    static func server(_ items: [LibraryItem], failed: Bool) -> ShufflePool {
         guard items.isEmpty else { return .songs(items) }
-        guard let failure else { return .empty }
-        return failure == .network ? .offline : .failed
+        return failed ? .unavailable : .empty
     }
 }

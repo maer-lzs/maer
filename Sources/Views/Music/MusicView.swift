@@ -683,7 +683,7 @@ extension CollectionMenuItems {
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: { .of(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) },
+            songs: { .fetched(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
             catalogDetails: item.id)

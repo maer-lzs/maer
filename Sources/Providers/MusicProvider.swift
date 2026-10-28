@@ -20,21 +20,20 @@ nonisolated enum MusicItemKind {
 /// (`songItems(forItemId:)`): the caller then holds no songs and says so to
 /// the listener. A cancelled ask says nothing.
 nonisolated enum MusicSongsFailure {
-    /// The cause of the last failed fetch per item, until the caller takes
-    /// it (`ShufflePool.of(_:failure:)`).
-    @MainActor private static var causes: [String: NoticeCause] = [:]
+    /// The items whose last fetch failed, until the caller takes the mark
+    /// (`ShufflePool.server(_:failed:)`).
+    @MainActor private static var failed: Set<String> = []
 
     @MainActor static func log(itemId: String, _ error: Error) {
         guard !error.isCancellation else { return }
         Logger.music.error("MUSIC songItems failed item=\(itemId, privacy: .private(mask: .hash)): \(FailureReason.of(error), privacy: .public)")
-        // The error's own code decides; a fetch without a way out names
-        // the network there.
-        causes[itemId] = NoticeCause.of(error, online: true)
+        failed.insert(itemId)
     }
 
-    /// The cause booked for `itemId`, taken: the next fetch starts clean.
-    @MainActor static func take(_ itemId: String) -> NoticeCause? {
-        causes.removeValue(forKey: itemId)
+    /// Whether the last fetch of `itemId` failed, taken: the next fetch
+    /// starts clean.
+    @MainActor static func take(_ itemId: String) -> Bool {
+        failed.remove(itemId) != nil
     }
 }
 

@@ -20,6 +20,6 @@ enum CollectionSongs {
     static func serverPool(_ itemId: String) async -> ShufflePool {
         _ = MusicSongsFailure.take(itemId)
         let songs = await server(itemId)
-        return .of(songs, failure: MusicSongsFailure.take(itemId))
+        return .server(songs, failed: MusicSongsFailure.take(itemId))
     }
 }
