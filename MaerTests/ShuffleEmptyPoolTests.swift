@@ -13,11 +13,31 @@ import Testing
 /// never a silent empty list.
 @MainActor
 struct ShuffleEmptyPoolTests {
-    @Test("ein leerer Vorrat startet nichts und sagt es in der Mini-Leiste")
-    func anEmptyPoolSaysSo() async {
-        let coordinator = PlayerCoordinator(provider: MockProvider())
-        await ShufflePlayButton.start(pool: { [] }, coordinator: coordinator)
-        #expect(coordinator.loadError == String(localized: "Couldn't load tracks"))
+    @Test("ein leerer Vorrat startet nichts und sagt in den Worten der Albumseite, warum")
+    func anEmptyPoolSaysWhy() async {
+        let cases: [(ShufflePool, String)] = [
+            (.failed, String(localized: "Couldn't load tracks")),
+            (.offline, String(localized: "Not available offline")),
+            (.empty, String(localized: "No tracks")),
+        ]
+        for (pool, sentence) in cases {
+            let coordinator = PlayerCoordinator(provider: MockProvider())
+            await ShufflePlayButton.start(pool: { pool }, coordinator: coordinator)
+            #expect(coordinator.loadError == sentence, "\(pool) said \(coordinator.loadError ?? "nothing")")
+        }
+        #expect(ShufflePlayButton.sentence(for: .offline).1 == .network, "offline shows the network symbol")
+    }
+
+    @Test("der Vorrat eines Servers gibt seinen Grund mit: ohne Netz offline, sonst gescheitert, ohne Fehler leer")
+    func theServerPoolCarriesItsReason() {
+        #expect(ShufflePool.of([], failure: .network).items.isEmpty)
+        if case .offline = ShufflePool.of([], failure: .network) {} else { Issue.record("no network is not offline") }
+        if case .failed = ShufflePool.of([], failure: .server) {} else { Issue.record("a server failure is not a failure") }
+        if case .empty = ShufflePool.of([], failure: nil) {} else { Issue.record("an empty answer is not empty") }
+        if case .empty = ShufflePool.of([]) {} else { Issue.record("an empty list in hand is not empty") }
+        MusicSongsFailure.log(itemId: "sub:al-witness", URLError(.notConnectedToInternet))
+        #expect(MusicSongsFailure.take("sub:al-witness") == .network)
+        #expect(MusicSongsFailure.take("sub:al-witness") == nil, "the cause is taken once")
     }
 
     /// The body of `songItems(forItemId:)` in a provider file.

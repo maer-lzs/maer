@@ -35,6 +35,8 @@ struct PlaylistCardSource: Identifiable {
     let open: (PlayerCoordinator) async -> Void
     /// The songs, for the shared shuffle path.
     let shufflePool: () async -> [LibraryItem]
+    /// The same songs as a shuffle's pool, with why it is empty when it is.
+    let shuffleDraw: () async -> ShufflePool
     /// Mosaic covers and the most frequent artists, fetched together because
     /// they come from the same source.
     let mosaic: () async -> (covers: [URL], artists: [String])
@@ -207,7 +209,7 @@ struct PlaylistCard: View {
                 isPlayable: offersShuffle,
                 play: { await source.open(playerCoordinator) },
                 queueIds: { await source.shufflePool().map(\.id) },
-                songs: source.shufflePool,
+                songs: source.shuffleDraw,
                 addEntries: {
                     let songs = await source.shufflePool()
                     return (songs.map(\.id), Dictionary(songs.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first }))
@@ -300,6 +302,7 @@ extension PlaylistCardSource {
             detailRoute: .album(playlistLibraryItem(playlist)),
             open: { coordinator in await coordinator.open(item: playlistLibraryItem(playlist)) },
             shufflePool: { await music.songItems(forItemId: itemId) },
+            shuffleDraw: { await CollectionSongs.serverPool(itemId) },
             mosaic: {
                 let ids = await music.playlistMosaicCoverIDs(forItemId: itemId)
                 let artists = PlaylistPresentation.topArtists(
@@ -344,6 +347,7 @@ extension PlaylistCardSource {
             open: { coordinator in await coordinator.playInOrder(items: items(of: list, in: store),
                                                                  contextSource: list.name) },
             shufflePool: { items(of: list, in: store) },
+            shuffleDraw: { .of(items(of: list, in: store)) },
             mosaic: {
                 // A list from before the snapshots existed has none to draw
                 // from: fill them now, on the device that can resolve the

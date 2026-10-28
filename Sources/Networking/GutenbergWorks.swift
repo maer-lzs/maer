@@ -67,7 +67,9 @@ actor GutenbergWorks {
         }
         if let known = kept?[id] { return known }
         let found = try await flights.value(for: id) { [self] in
-            (try await self.resolve(number: number, id: id), 0)
+            // The answer goes into a `let` before the tuple (`TupleTryAwaitFenceTests`).
+            let work = try await self.resolve(number: number, id: id)
+            return (work, 0)
         }
         return found
     }

@@ -64,7 +64,7 @@ struct MusicAlbumsPage: View {
                             ) { musicSortMenu }
                             Spacer()
                             ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                                await AppSession.shared.musicProvider.shuffleLibrarySongItems()
+                                .of(await AppSession.shared.musicProvider.shuffleLibrarySongItems())
                             }
                             .font(.title3)
                         }
@@ -1061,7 +1061,7 @@ struct MaerPlaylistPage: View {
                     Task { await playerCoordinator.playInOrder(items: playable, contextSource: playlist.name) }
                 }
                 .disabled(playable.isEmpty)
-                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { playable }
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { .of(playable) }
                     .font(.title3)
                     .disabled(playable.isEmpty)
             }

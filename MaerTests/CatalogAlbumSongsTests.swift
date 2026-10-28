@@ -85,7 +85,7 @@ struct CatalogAlbumSongsTests {
             await ArchiveMusicLoader.albumSongs(albumId: $0) { _ in throw URLError(.notConnectedToInternet) }
         }
         #expect(menu.offersShuffle)
-        #expect(await menu.songs().map(\.id) == [fresh], "the long-press Shuffle starts nothing")
+        #expect(await menu.songs().items.map(\.id) == [fresh], "the long-press Shuffle starts nothing")
     }
 
     @Test("ein Buendel ueber der Grenze spielt als Titel")

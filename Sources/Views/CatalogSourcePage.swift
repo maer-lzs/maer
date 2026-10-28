@@ -1111,7 +1111,7 @@ struct ArchiveSeriesPage: View {
                             }
                             .disabled(tracks.isEmpty)
                         }
-                        ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { await albumSongs() }
+                        ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { .of(await albumSongs()) }
                             .font(.title3)
                             .disabled(tracks.isEmpty)
                     }

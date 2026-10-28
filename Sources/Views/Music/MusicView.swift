@@ -625,7 +625,7 @@ struct CollectionMenuItems: View {
     /// songs.
     let queueIds: () async -> [String]
     /// The songs Shuffle draws from.
-    let songs: () async -> [LibraryItem]
+    let songs: () async -> ShufflePool
     /// The entries Add to Playlist adds; nil adds the collection itself
     /// under `knownTitles`.
     var addEntries: (() async -> (ids: [String], titles: [String: String]))? = nil
@@ -683,7 +683,7 @@ extension CollectionMenuItems {
             playerCoordinator: playerCoordinator, itemId: item.id,
             play: { await playerCoordinator.open(item: item) },
             queueIds: { [item.id] },
-            songs: { await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs) },
+            songs: { .of(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
             catalogDetails: item.id)
@@ -725,7 +725,7 @@ private struct MusicItemMenu: ViewModifier {
                         isPlayable: isPlayable,
                         play: { await playerCoordinator.open(item: item) },
                         queueIds: { [item.id] },
-                        songs: { await CollectionSongs.server(item.id) },
+                        songs: { await CollectionSongs.serverPool(item.id) },
                         knownTitles: [item.id: item.title],
                         details: { pushRoute(.album(item)) })
                 } else {

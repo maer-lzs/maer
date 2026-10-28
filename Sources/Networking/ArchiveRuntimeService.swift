@@ -79,7 +79,9 @@ actor ArchiveRuntimeService {
         guard await TileDwell.stood(TileDwell.lookup) else { return nil }
         // bearable, because the failure is already named in `lookup` and a caller that left needs no answer
         return try? await lookups.value(for: identifier) { [self] in
-            (try await self.lookup(identifier), 0)
+            // The answer goes into a `let` before the tuple (`TupleTryAwaitFenceTests`).
+            let seconds = try await self.lookup(identifier)
+            return (seconds, 0)
         }
     }
 

@@ -30,10 +30,11 @@ a 200 pixel version. Grids and rows keep the small cover, which loads a
 fraction of the bytes. A work without a scan keeps the small cover, and
 offline the small one stands in.
 
-**Shuffle on a music server says when it cannot start.** If the songs of
-an album or playlist on your music server cannot be loaded, for example
-because the server does not answer, Shuffle now says so in the mini
-player instead of doing nothing.
+**Shuffle on a music server says when it cannot start, and why.** If the
+songs of an album or playlist on your music server cannot be loaded,
+Shuffle now says so in the mini player instead of doing nothing: that
+the tracks could not be loaded, that they are not available offline, or
+that there are no tracks, as the album page says it.
 
 **Shuffle on an Internet Archive album keeps its songs offline.** When
 the album's songs were already loaded in this session, a long-press

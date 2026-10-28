@@ -15,4 +15,11 @@ enum CollectionSongs {
     static func server(_ itemId: String) async -> [LibraryItem] {
         await AppSession.shared.musicProvider(for: itemId).songItems(forItemId: itemId)
     }
+
+    /// The same songs as a shuffle's pool, with why it is empty when it is.
+    static func serverPool(_ itemId: String) async -> ShufflePool {
+        _ = MusicSongsFailure.take(itemId)
+        let songs = await server(itemId)
+        return .of(songs, failure: MusicSongsFailure.take(itemId))
+    }
 }

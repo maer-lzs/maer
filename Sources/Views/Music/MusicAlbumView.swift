@@ -419,7 +419,7 @@ struct MusicAlbumView: View {
                 // Shuffle this album/playlist. Same button/component as the
                 // music-tab root, icon style beside the primary play control.
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                    await music.songItems(forItemId: item.id)
+                    await CollectionSongs.serverPool(item.id)
                 }
                 .font(.title3)
                 .disabled(tracks.isEmpty)
