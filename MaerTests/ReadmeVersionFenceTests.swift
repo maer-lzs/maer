@@ -106,9 +106,12 @@ struct ReadmeVersionFenceTests {
                                   "the changelog's first version heading names no build")
         #expect(newest.version == version && newest.build == build,
                 "the changelog's newest stamp is \(newest.version) (Build \(newest.build)), the project says \(version) (Build \(build))")
-        // Today neither README names a version with its build, so this half
-        // finds nothing to check; it holds a stamp written into a README
-        // later to the project's.
+        // Today neither README names a version as `X.Y (Build N)`, so this
+        // half finds nothing to check; it holds a stamp written that way
+        // later to the project's. The screenshot section names its build in
+        // the short form `3.5 (56)` on purpose: it says which build the
+        // pictures show, not the current stamp, and this reader leaves the
+        // short form alone.
         for name in Self.readmes {
             let wrong = Self.namedStamps(in: try Self.text(name))
                 .filter { $0.version != version || $0.build != build }
