@@ -15,9 +15,10 @@ import Testing
 /// count fails plays the release as its one title and logs the failure.
 @MainActor
 struct CatalogAlbumSongsTests {
-    private static func release(_ names: [String]) throws -> ArchiveDecoder.MetadataResponse {
+    private static func release(_ names: [String], collection: String? = nil) throws -> ArchiveDecoder.MetadataResponse {
         let files = names.map { "{\"name\": \"\($0).mp3\", \"length\": \"60\", \"title\": \"Song \($0)\", \"format\": \"VBR MP3\"}" }
-        let json = "{\"files\": [\(files.joined(separator: ","))], \"metadata\": {\"title\": \"Witness Release\"}}"
+        let collectionField = collection.map { ", \"collection\": [\"\($0)\"]" } ?? ""
+        let json = "{\"files\": [\(files.joined(separator: ","))], \"metadata\": {\"title\": \"Witness Release\"\(collectionField)}}"
         return try ArchiveDecoder.decodeMetadata(Data(json.utf8))
     }
 
@@ -86,6 +87,18 @@ struct CatalogAlbumSongsTests {
         }
         #expect(menu.offersShuffle)
         #expect(await menu.songs().items.map(\.id) == [fresh], "the long-press Shuffle starts nothing")
+    }
+
+    @Test("der Wurf einer Kachel merkt Form und Album aus seiner Antwort wie der Detailabruf")
+    func theShuffleKeepsFormAndDetail() async throws {
+        let album = Self.freshAlbum()
+        let meta = try Self.release(["a", "b", "c"], collection: "netlabels")
+        let provider = FreeCatalogProvider.shared
+        #expect(provider.archiveForm(itemId: album) == nil)
+        let songs = await provider.releaseSongs(albumId: album) { _ in meta }
+        #expect(songs.count == 3)
+        #expect(provider.archiveForm(itemId: album) == .album, "the release's collections were not kept")
+        #expect(provider.libraryItem(forId: album)?.media?.tracks?.count == 3, "the release's detail was not kept")
     }
 
     @Test("ein Buendel ueber der Grenze spielt als Titel")

@@ -505,6 +505,13 @@ final class FreeCatalogProvider: AudioProvider {
             Logger.library.notice("CATALOG album songs gate: \(identifier, privacy: .public) has \(count) tracks, plays as its title")
             return []
         }
+        // The answer also leaves the release's form and detail, as the
+        // detail fetch would, so the album page after a Shuffle knows them.
+        do {
+            _ = try await releaseDetail(itemId: albumId, identifier: identifier, meta: meta)
+        } catch {
+            Logger.library.notice("CATALOG album songs kept no detail for \(albumId, privacy: .public): \(FailureReason.of(error), privacy: .public)")
+        }
         let answer = await albumSongs(albumId: albumId, count: count) { _ in meta }
         if let first = answer.missing.first {
             Logger.library.notice("CATALOG album songs missing=\(answer.missing.count) of=\(count) first=\(first)")
@@ -614,45 +621,7 @@ final class FreeCatalogProvider: AudioProvider {
             let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
             noteFiles(meta, identifier: identifier)
-            // This endpoint answers for every item, including one that no row
-            // ever showed. So the form is known here even on a cold start.
-            rememberCollections(meta.metadata?.collection?.values, forItemId: itemId)
-            let collections = itemCollections[itemId] ?? []
-            // A position stored before tracks had addresses points at the whole
-            // release. It is carried over to the song it falls into, once, and
-            // the album entry stays untouched. Nobody loses where they were.
-            // Only an ALBUM is carried over: for a work the single position IS
-            // the truth, and splitting it into per-track marks would lose it.
-            if ArchiveItemForm.of(collections: collections) == .album {
-                await Self.migrateAlbumPositionToSong(albumId: itemId)
-            }
-            let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
-            guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
-            // Plausibility gate. A collection bundle with
-            // hundreds of parts is not a book; named in the log, never mute.
-            // A CURATED series collection passes the higher bound.
-            // There the bundle is the unit, not an accident. Read from the
-            // item's own collections, so a bundle reached by deep link or from
-            // a playlist is no longer dropped for being too long.
-            let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
-                ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
-            guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
-                Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
-                throw URLError(.resourceUnavailable)
-            }
-            let total = tracks.compactMap(\.duration).reduce(0, +)
-            let detail = LibraryItemDetail(
-                id: itemId,
-                media: LibraryItemMedia(
-                    // The hand-rescued title fallback is covered by the helper.
-                    metadata: detailMetadata(itemId: itemId,
-                                             title: meta.metadata?.title?.first,
-                                             authorName: meta.metadata?.creator?.joined.map(FreeCatalog.repairedMojibake),
-                                             description: meta.metadata?.description?.joined),
-                    duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
-                userMediaProgress: nil)
-            rememberResolved(detail)
-            return detail
+            return try await releaseDetail(itemId: itemId, identifier: identifier, meta: meta)
         }
         if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
             guard let track = jamendoTracks[itemId], let audio = track.audio, !audio.isEmpty else {
@@ -675,6 +644,53 @@ final class FreeCatalogProvider: AudioProvider {
             return try await gutenbergDetail(itemId: itemId)
         }
         throw URLError(.resourceUnavailable)
+    }
+
+    /// An archive release from its metadata answer: its collections, its
+    /// tracks behind the plausibility gate, and the detail kept for the
+    /// session. The detail fetch and the tile's Shuffle (`releaseSongs`)
+    /// take in the same answer, so one answer leaves the same knowledge.
+    private func releaseDetail(itemId: String, identifier: String,
+                               meta: ArchiveDecoder.MetadataResponse) async throws -> LibraryItemDetail {
+        // This endpoint answers for every item, including one that no row
+        // ever showed. So the form is known here even on a cold start.
+        rememberCollections(meta.metadata?.collection?.values, forItemId: itemId)
+        let collections = itemCollections[itemId] ?? []
+        // A position stored before tracks had addresses points at the whole
+        // release. It is carried over to the song it falls into, once, and
+        // the album entry stays untouched. Nobody loses where they were.
+        // Only an ALBUM is carried over: for a work the single position IS
+        // the truth, and splitting it into per-track marks would lose it.
+        if ArchiveItemForm.of(collections: collections) == .album {
+            await Self.migrateAlbumPositionToSong(albumId: itemId)
+        }
+        let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
+        guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
+        // Plausibility gate. A collection bundle with
+        // hundreds of parts is not a book; named in the log, never mute.
+        // A CURATED series collection passes the higher bound.
+        // There the bundle is the unit, not an accident. Read from the
+        // item's own collections, so a bundle reached by deep link or from
+        // a playlist is no longer dropped for being too long.
+        let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
+            ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
+        guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
+            Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
+            throw URLError(.resourceUnavailable)
+        }
+        let total = tracks.compactMap(\.duration).reduce(0, +)
+        let detail = LibraryItemDetail(
+            id: itemId,
+            media: LibraryItemMedia(
+                // The hand-rescued title fallback is covered by the helper.
+                metadata: detailMetadata(itemId: itemId,
+                                         title: meta.metadata?.title?.first,
+                                         authorName: meta.metadata?.creator?.joined.map(FreeCatalog.repairedMojibake),
+                                         description: meta.metadata?.description?.joined),
+                duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
+            userMediaProgress: nil)
+        rememberResolved(detail)
+        return detail
     }
 
     /// A Gutenberg work from its record: every file of the reading as a
