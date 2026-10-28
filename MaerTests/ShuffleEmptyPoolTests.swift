@@ -44,17 +44,70 @@ struct ShuffleEmptyPoolTests {
                 == String(localized: "Couldn't load tracks"))
     }
 
-    @Test("die Wege, die einen Ausfall verschlucken, sagen fetched", .needsTheSources)
-    func theSwallowingPathsSayFetched() throws {
-        func read(_ path: String) throws -> String {
-            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+    /// Every shuffle entry in the views, per file and by the form its pool
+    /// takes: `fetched` for a source that turns a failure into an empty
+    /// list, `server` for a music server's songs with their failure mark,
+    /// `of` for a list already in hand, `passed` for a menu item that hands
+    /// on the pool its caller built. A new entry, or one that changes its
+    /// form, moves a count and is read here with its reason.
+    nonisolated static let entryStock: [String: (count: Int, reason: String)] = [
+        "CatalogSourcePage.swift:fetched": (1, "albumSongs turns a failed release fetch into no songs"),
+        "MusicLibraryPages.swift:fetched": (1, "shuffleLibrarySongItems turns a failed library fetch into no songs"),
+        "MusicLibraryPages.swift:of": (1, "the playable songs of the page, already in hand"),
+        "MusicView.swift:fetched": (1, "CatalogShuffleSongs turns a failed catalogue fetch into no songs"),
+        "MusicView.swift:server": (1, "a server collection's songs with their failure mark"),
+        "MusicView.swift:passed": (1, "the menu item hands on the pool its caller built"),
+        "MusicAlbumView.swift:server": (1, "the album or playlist page's songs with their failure mark"),
+        "PlaylistCard.swift:server": (1, "a server playlist's songs with their failure mark"),
+        "PlaylistCard.swift:of": (1, "a local playlist's entries, already in hand"),
+    ]
+
+    /// The form of each shuffle entry in a text: the entry's line and the
+    /// two after it, up to the first closing brace.
+    nonisolated static func entryForms(in text: String) -> [String] {
+        let lines = SyncContractFenceTests.stripped(text)
+            .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var forms: [String] = []
+        for (index, line) in lines.enumerated()
+        where line.contains("ShufflePlayButton(") || line.contains("shuffleDraw: {") || line.contains("songs: {") {
+            let window = lines[index..<min(index + 3, lines.count)].joined(separator: "\n")
+            let body = window.range(of: "}").map { String(window[..<$0.upperBound]) } ?? window
+            if body.contains(".fetched(") { forms.append("fetched") }
+            else if body.contains("serverPool(") { forms.append("server") }
+            else if body.contains(".of(") { forms.append("of") }
+            else if body.contains("pool: songs") { forms.append("passed") }
+            else { forms.append("unknown") }
         }
-        #expect(try read("Sources/Views/Music/MusicLibraryPages.swift")
-            .contains(".fetched(await AppSession.shared.musicProvider.shuffleLibrarySongItems())"))
-        #expect(try read("Sources/Views/CatalogSourcePage.swift").contains("{ .fetched(await albumSongs()) }"))
-        #expect(try read("Sources/Views/Music/MusicView.swift")
-            .contains("songs: { .fetched(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) }"))
-        #expect(try read("Sources/Views/Music/ShufflePlayButton.swift").contains("@Environment(\\.isOnline) private var isOnline"))
+        return forms
+    }
+
+    @Test("der Leser der Zufall-Einstiege erkennt jede Form, auch ueber zwei Zeilen und im Kommentar nicht")
+    func theEntryReaderSeesEveryForm() {
+        #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) { .fetched(await a()) }") == ["fetched"])
+        #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) {\n    await CollectionSongs.serverPool(id)\n}") == ["server"])
+        #expect(Self.entryForms(in: "shuffleDraw: { .of(items) },") == ["of"])
+        #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .menuItem, pool: songs)\n}") == ["passed"])
+        #expect(Self.entryForms(in: "songs: { .songs(await load()) },") == ["unknown"])
+        #expect(Self.entryForms(in: "// ShufflePlayButton(playerCoordinator: c) { .of(x) }").isEmpty)
+    }
+
+    @Test("jeder Zufall-Einstieg der Ansichten steht mit seiner Form im Bestand, in beide Richtungen", .needsTheSources)
+    func everyShuffleEntryIsInTheStock() throws {
+        var counts: [String: Int] = [:]
+        let files = SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views"))
+            .filter { $0.pathExtension == "swift" }
+        for file in files {
+            for form in Self.entryForms(in: try String(contentsOf: file, encoding: .utf8)) {
+                counts["\(file.lastPathComponent):\(form)", default: 0] += 1
+            }
+        }
+        #expect(counts.values.reduce(0, +) >= 9, "the precondition: the reader found the entries: \(counts)")
+        let drift = StockDrift.findings(counts: counts, stock: Self.entryStock.mapValues(\.count))
+        #expect(drift.isEmpty, "a shuffle entry is new, gone or changed its form: \(drift)")
+        #expect(Self.entryStock.values.allSatisfy { !$0.reason.isEmpty })
+        let button = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/ShufflePlayButton.swift"), encoding: .utf8))
+        #expect(button.contains("@Environment(\\.isOnline) private var isOnline"))
     }
 
     /// The body of `songItems(forItemId:)` in a provider file.
