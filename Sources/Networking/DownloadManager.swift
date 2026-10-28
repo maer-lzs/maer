@@ -868,11 +868,12 @@ final class DownloadManager {
                 try? FileManager.default.removeItem(at: file)
             }
 
-            // Persist the cover in the form the large views show, so the
-            // page and the player stay sharp offline; the grid reads it
-            // under its former name (`ImageCache.formerNames`). Survives iOS
+            // Persist the cover in both forms (`keptCoverURLs`). Survives iOS
             // cache purges offline.
-            await Artwork.persist(provider.largeCoverURL(forItemId: itemId))
+            for url in Self.keptCoverURLs(grid: provider.coverURL(forItemId: itemId),
+                                          large: provider.largeCoverURL(forItemId: itemId)) {
+                await Artwork.persist(url)
+            }
 
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
@@ -935,7 +936,11 @@ final class DownloadManager {
             // The mark leaves with the files, whether or not the folder went.
             details.removeValue(forKey: itemId)
             if kinds.removeValue(forKey: itemId) != nil { kindsChanged = true }
-            Artwork.forget(AppSession.shared.largeCoverURL(forItemId: itemId))
+            let owner = source(of: itemId)
+            for url in Self.keptCoverURLs(grid: owner.coverURL(forItemId: itemId),
+                                          large: owner.largeCoverURL(forItemId: itemId)) {
+                Artwork.forget(url)
+            }
             downloadedItemIds.remove(itemId)
         }
         // The marks leave with the deleted downloads, the last one too.
@@ -966,14 +971,27 @@ final class DownloadManager {
         var knowsAll: Bool { unresolved == 0 && !movePending && !unreadable }
     }
 
-    func activeCovers(address: (String) -> URL? = { AppSession.shared.largeCoverURL(forItemId: $0) },
+    /// The covers a download keeps: the grid's form and the large views'
+    /// form where they differ. The large form alone is not enough: an
+    /// archive item names its original only while the session holds it
+    /// (`FreeCatalogProvider.largeCoverURL`), and after a restart both views
+    /// ask the item image service until the files are read again.
+    nonisolated static func keptCoverURLs(grid: URL?, large: URL?) -> [URL] {
+        var urls: [URL] = []
+        for url in [grid, large].compactMap({ $0 }) where !urls.contains(url) { urls.append(url) }
+        return urls
+    }
+
+    func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) },
+                      largeAddress: (String) -> URL? = { AppSession.shared.largeCoverURL(forItemId: $0) },
                       idMovePending: () -> Bool = { NavidromeRekeyRun.isPending() }) async -> ActiveCovers {
         await ensureScanned()
         let itemIds = downloadedItemIds.sorted()
         var urls: [URL] = []
         var unresolved = 0
         for itemId in itemIds {
-            if let url = address(itemId) { urls.append(url) } else { unresolved += 1 }
+            guard let url = address(itemId) else { unresolved += 1; continue }
+            urls += Self.keptCoverURLs(grid: url, large: largeAddress(itemId))
         }
         let movePending = itemIds.contains(where: SubsonicProvider.owns(itemId:)) && idMovePending()
         return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending,

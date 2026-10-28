@@ -89,13 +89,43 @@ struct AbsCoverFormsTests {
         #expect(cache.testIsInCache(named: cache.testKey(for: large)) || cache.testIsInCache(named: old))
     }
 
-    @Test("ein Download sichert das grosse Cover, Fegelauf und forget fragen dasselbe", .needsTheSources)
-    func theDownloadKeepsTheLargeCover() throws {
+    @Test("ein Download sichert beide Formen, Fegelauf und forget fragen dieselben", .needsTheSources)
+    func theDownloadKeepsBothForms() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
-        #expect(code.contains("await Artwork.persist(provider.largeCoverURL(forItemId: itemId))"))
-        #expect(code.contains("Artwork.forget(AppSession.shared.largeCoverURL(forItemId: itemId))"))
-        #expect(code.contains("address: (String) -> URL? = { AppSession.shared.largeCoverURL(forItemId: $0) }"))
+        #expect(code.contains("for url in Self.keptCoverURLs(grid: provider.coverURL(forItemId: itemId),"))
+        #expect(code.contains("for url in Self.keptCoverURLs(grid: owner.coverURL(forItemId: itemId),"))
+        #expect(code.contains("urls += Self.keptCoverURLs(grid: url, large: largeAddress(itemId))"))
+        let grid = URL(string: "https://archive.org/services/img/x")!
+        let large = URL(string: "https://archive.org/download/x/front.jpg")!
+        #expect(DownloadManager.keptCoverURLs(grid: grid, large: large) == [grid, large])
+        #expect(DownloadManager.keptCoverURLs(grid: grid, large: grid) == [grid], "one form kept once")
+    }
+
+    @Test("Neustart und offline: ein geladener Archiv-Titel zeigt in Raster und grosser Ansicht ein Cover")
+    func afterARestartBothFormsStandOffline() async throws {
+        let provider = FreeCatalogProvider.shared
+        let album = "lva:restart-witness-\(UUID().uuidString)"
+        let json = """
+            {"files": [{"name": "a.mp3", "length": "60", "format": "VBR MP3", "source": "original", "size": "900000"},
+                       {"name": "front.jpg", "format": "JPEG", "source": "original", "size": "120000"}],
+             "metadata": {"title": "Witness"}}
+            """
+        let meta = try ArchiveDecoder.decodeMetadata(Data(json.utf8))
+        _ = await provider.releaseSongs(albumId: album) { _ in meta }
+        let grid = try #require(provider.coverURL(forItemId: album))
+        let original = try #require(provider.largeCoverURL(forItemId: album))
+        #expect(grid != original, "the precondition: the session knows the original")
+        // The download keeps what `keptCoverURLs` names.
+        let cache = ImageCache.shared
+        let kept = DownloadManager.keptCoverURLs(grid: grid, large: original)
+        for url in kept { #expect(cache.testPlacePersistent(Self.jpeg(300), for: url)) }
+        defer { for url in kept { cache.testRemovePersistent(named: cache.testKey(for: url)) } }
+        // A restart: the session no longer knows the original.
+        provider.testForgetOriginalCovers()
+        let large = try #require(provider.largeCoverURL(forItemId: album))
+        #expect(await cache.thumbnail(for: grid, maxPixelSize: 400) != nil, "the grid has no cover offline")
+        #expect(await cache.image(for: large) != nil, "the large view has no cover offline after a restart")
     }
 
     /// The process footprint the system counts against the app, in bytes.

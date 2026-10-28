@@ -754,7 +754,7 @@ struct NavidromeRekeyTests {
 
         // A sweep right then, as the housekeeping starts one next to the pass.
         let pending = { NavidromeRekeyRun.isPending(server: server, applies: true, defaults: defaults) }
-        let covers = await manager.activeCovers(address: { cover($0) }, idMovePending: pending)
+        let covers = await manager.activeCovers(address: { cover($0) }, largeAddress: { _ in nil }, idMovePending: pending)
         #expect(!covers.knowsAll, "while the rename is queued the sweep cannot name every cover")
         await ImageCache.shared.performMaintenance(activeCoverURLs: covers.urls, knowsAll: covers.knowsAll).value
 

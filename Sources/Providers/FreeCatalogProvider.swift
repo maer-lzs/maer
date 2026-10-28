@@ -197,6 +197,12 @@ final class FreeCatalogProvider: AudioProvider {
     /// asked for its own sake (`noteFiles`).
     private var archiveOriginalCovers: [String: URL] = [:]
 
+    #if DEBUG
+    /// Test seam: the session's learnt originals forgotten, as a restart
+    /// leaves them.
+    func testForgetOriginalCovers() { archiveOriginalCovers = [:] }
+    #endif
+
     /// Keeps the original picture of an item whose files were just read.
     private func noteFiles(_ meta: ArchiveDecoder.MetadataResponse, identifier: String) {
         if let cover = FreeCatalog.archiveOriginalCover(identifier: identifier, files: meta.files ?? []) {

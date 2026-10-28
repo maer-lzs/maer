@@ -287,11 +287,11 @@ struct ImageCachePersistentTests {
         let manager = DownloadManager(documents: directory,
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         // Asked right after construction: the answer waits for the scan.
-        let all = await manager.activeCovers(address: { URL(string: "https://example.lan/cover/\($0)") },
+        let all = await manager.activeCovers(address: { URL(string: "https://example.lan/cover/\($0)") }, largeAddress: { _ in nil },
                                              idMovePending: { false })
         #expect(all.urls.count == 2 && all.knowsAll, "both downloads were known, the scan was awaited")
         let noClient = await manager.activeCovers(
-            address: { $0.hasPrefix("sub:") ? nil : URL(string: "https://example.lan/cover/\($0)") },
+            address: { $0.hasPrefix("sub:") ? nil : URL(string: "https://example.lan/cover/\($0)") }, largeAddress: { _ in nil },
             idMovePending: { false })
         #expect(noClient.urls.count == 1 && noClient.unresolved == 1 && !noClient.knowsAll,
                 "a music title without its client makes the answer incomplete")
@@ -311,10 +311,10 @@ struct ImageCachePersistentTests {
         let manager = DownloadManager(documents: directory,
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         let address: (String) -> URL? = { URL(string: "https://example.lan/cover/\($0)") }
-        let pending = await manager.activeCovers(address: address, idMovePending: { true })
+        let pending = await manager.activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { true })
         #expect(pending.urls.count == 2 && pending.unresolved == 0, "the precondition: every address can be built")
         #expect(pending.movePending && !pending.knowsAll, "a music download waiting for the move holds the sweep")
-        let done = await manager.activeCovers(address: address, idMovePending: { false })
+        let done = await manager.activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { false })
         #expect(done.knowsAll, "after the move the answer is complete again")
 
         let bookOnly = FileManager.default.temporaryDirectory
@@ -323,7 +323,7 @@ struct ImageCachePersistentTests {
         try await NavidromeRekeyTests.plant([("li_book", [NavidromeRekeyTests.old])], in: bookOnly)
         let books = DownloadManager(documents: bookOnly,
                                     database: MaerDatabase(path: bookOnly.appendingPathComponent("maer.sqlite").path))
-        let booksAnswer = await books.activeCovers(address: address, idMovePending: { true })
+        let booksAnswer = await books.activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { true })
         #expect(!booksAnswer.movePending && booksAnswer.knowsAll, "a book does not wait on Navidrome's move")
     }
 
@@ -422,7 +422,7 @@ struct ImageCachePersistentTests {
                                                marked: []).readable)
         let manager = DownloadManager(documents: blocked,
                                       database: MaerDatabase(path: blocked.appendingPathComponent("maer.sqlite").path))
-        let walked = await manager.activeCovers(address: address, idMovePending: { false })
+        let walked = await manager.activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { false })
         #expect(walked.urls.isEmpty && walked.unreadable && !walked.knowsAll,
                 "an unlisted folder answered as no downloads")
 
@@ -432,7 +432,7 @@ struct ImageCachePersistentTests {
         let database = try await NavidromeRekeyTests.unreadableDatabase(
             ["download_meta"], at: unread.appendingPathComponent("maer.sqlite").path)
         let marks = await DownloadManager(documents: unread, database: database)
-            .activeCovers(address: address, idMovePending: { false })
+            .activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { false })
         #expect(marks.unreadable && !marks.knowsAll, "unread marks answered as no downloads")
 
         // The marks: the start read them, but one row did not decode.
@@ -443,7 +443,7 @@ struct ImageCachePersistentTests {
         _ = try await halfBase.connection().run("INSERT INTO download_meta (key, payload) VALUES (?, ?)",
                                                 [.text("later-form"), .blob(Data("not a mark".utf8))])
         let halfRead = await DownloadManager(documents: half, database: halfBase)
-            .activeCovers(address: address, idMovePending: { false })
+            .activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { false })
         #expect(halfRead.unreadable && !halfRead.knowsAll, "a start with a mark that did not decode answered as all known")
 
         // A readable empty folder is the honest "none".
@@ -451,7 +451,7 @@ struct ImageCachePersistentTests {
         defer { try? FileManager.default.removeItem(at: empty) }
         let none = await DownloadManager(documents: empty,
                                          database: MaerDatabase(path: empty.appendingPathComponent("maer.sqlite").path))
-            .activeCovers(address: address, idMovePending: { false })
+            .activeCovers(address: address, largeAddress: { _ in nil }, idMovePending: { false })
         #expect(!none.unreadable && none.knowsAll, "an empty readable folder is a complete answer")
     }
 
