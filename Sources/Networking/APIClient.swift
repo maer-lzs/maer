@@ -424,10 +424,6 @@ final class APIClient {
         return components.url
     }
 
-    /// Absolute URL for an audio track. Authentication for streaming is done NOT
-    /// via query parameter but via the Authorization header (see PlayerViewModel);
-    /// that is the more robust, officially supported way for AVPlayer
-    /// (AVURLAssetHTTPHeaderFieldsKey).
     /// The server's author image (only some authors have one). Same
     /// token-in-query auth as the covers, cached through the shared cover
     /// infrastructure (ImageCache), no cache path of its own.
@@ -444,6 +440,10 @@ final class APIClient {
         return components.url
     }
 
+    /// Absolute URL for an audio track. The stream authenticates through the
+    /// Authorization header the player sets on its asset
+    /// (`streamAuthHeaders`, `AVURLAssetHTTPHeaderFieldsKey`), not through a
+    /// query parameter.
     func streamURL(forContentPath contentPath: String) -> URL? {
         #if DEBUG
         // The seeded books play a silence file on the device.
