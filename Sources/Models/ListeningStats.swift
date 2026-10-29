@@ -136,9 +136,11 @@ final class ListeningStatsStore: ObservableObject {
         // and publish, since without it the device's whole history would
         // count as the account's.
         var loadedLedger = Ledger()
+        var ledgerFailed = false
         do {
             loadedLedger = try shelf?.rest(Ledger.self, of: Self.ledgerFamily, owner: Self.ledgerOwner) ?? Ledger()
         } catch {
+            ledgerFailed = true
             ledgerUnread = true
             Logger.library.error("STATS ledger unreadable reason=\(String(describing: error), privacy: .public)")
         }
@@ -150,8 +152,10 @@ final class ListeningStatsStore: ObservableObject {
         let (loaded, base) = Self.startBase(days: days, items: items)
         let stock = loaded ?? ListeningStatsData()
         ownData = stock
-        // What is shown is the holding account's part from the first read.
-        composed = ListeningStatsSync.owned(device: stock, carried: loadedLedger.carried, since: loadedLedger.since)
+        // What is shown is the holding account's part from the first read,
+        // by the rule of `ownerPot`: nothing of this device's while the
+        // ledger is unread.
+        composed = Self.ownerPot(device: stock, ledger: loadedLedger, unread: ledgerFailed)
         rowBase = base
         if case .unknown = base { startMissedRows = true } else { startMissedRows = false }
         unreadDays = days == nil
@@ -417,8 +421,12 @@ final class ListeningStatsStore: ObservableObject {
     /// the ledger is unread: no number of another account, and `publish`
     /// holds then, with or without an identity, so no empty pot goes up.
     var ownerPot: ListeningStatsData {
-        guard !ledgerUnread else { return ListeningStatsData() }
-        return ListeningStatsSync.owned(device: ownData, carried: ledger.carried, since: ledger.since)
+        Self.ownerPot(device: ownData, ledger: ledger, unread: ledgerUnread)
+    }
+
+    private static func ownerPot(device: ListeningStatsData, ledger: Ledger, unread: Bool) -> ListeningStatsData {
+        guard !unread else { return ListeningStatsData() }
+        return ListeningStatsSync.owned(device: device, carried: ledger.carried, since: ledger.since)
     }
 
     /// An unreadable ledger is read again, the way unread tables are;

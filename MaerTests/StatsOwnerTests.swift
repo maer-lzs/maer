@@ -196,6 +196,31 @@ struct StatsOwnerTests {
         }
     }
 
+    @Test("ein unlesbares Hauptbuch beim Start ueber Zeilen mit Hoerzeit: schon das erste Lesen vor jeder Aenderung zeigt keine Sekunde des Geraets")
+    func anUnreadLedgerShowsNothingOfTheDeviceFromTheFirstRead() async throws {
+        let rig = try rig()
+        defer { try? FileManager.default.removeItem(at: rig.folder) }
+        let shelf = rig.shelf
+        try shelf.setHolding(.init(owner: "account-a"), of: "stats")
+        let earlier = ListeningStatsStore(carrier: AccountCarrier(scope: { "account-a" }), database: rig.database,
+                                          history: ListeningStatsSyncTests.RecordingHistory(),
+                                          identity: { "account-a" }, shelf: shelf)
+        earlier.addSeconds(80, itemId: "rss:a-1")
+        await earlier.awaitPendingWrites()
+        let ledgerFile = shelf.directory.appendingPathComponent("statsLedger").appendingPathComponent("device.json")
+        try FileManager.default.createDirectory(at: ledgerFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not a ledger".utf8).write(to: ledgerFile)
+
+        let stats = ListeningStatsStore(carrier: AccountCarrier(scope: { "account-a" }), database: rig.database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        identity: { "account-a" }, shelf: shelf)
+        #expect(stats.ledgerUnread, "the precondition: the ledger is unread")
+        #expect(stats.ownData.secondsPerItem["rss:a-1"] == 80, "the precondition: the rows hold listening time")
+        #expect(stats.totalSeconds() == 0, "the first read showed the device's history")
+        #expect(stats.data.secondsPerItem.isEmpty, "the first read showed the device's items")
+        await stats.awaitPendingWrites()
+    }
+
     @Test("das eigene Topf-Abbild nach einem Zuruecksetzen der Zeilen kommt im Raum des Geraets zurueck: kein Doppel, kein Unterzaehlen")
     func theOwnPotComesBackInTheDevicesSpace() async throws {
         let rig = try rig()

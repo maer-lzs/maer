@@ -1,5 +1,13 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**The statistics page shows no listening time it cannot assign.** When
+the device cannot read which part of its listening belongs to the
+account, the page says so and shows nothing of this device from the
+first look on, instead of the whole device's time until the next second
+was counted.
+
 ## v3.5.1 (Build 58)
 
 **A download from a server that stopped answering ends instead of
