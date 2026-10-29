@@ -187,6 +187,29 @@ final class SyncQueue {
         return moves.count
     }
 
+    /// Rewrites each queued stand's server in its one name
+    /// (`ABSServerScope.identity`): an entry from before the name may carry
+    /// a user and a password in its address. Nothing while the start could
+    /// not read the entries, as in `rekey`. Returns how many changed.
+    @discardableResult
+    func normalizeServers() async -> Int {
+        if storage.startReadFailed { return 0 }
+        var pending = loadAll()
+        var changed = 0
+        for (itemId, update) in pending {
+            guard let server = update.server else { continue }
+            let name = ABSServerScope.identity(of: server)
+            if name != server {
+                pending[itemId]?.server = name
+                changed += 1
+            }
+        }
+        guard changed > 0 else { return 0 }
+        save(pending)
+        await storage.awaitPendingWrites()
+        return changed
+    }
+
     /// Returns when the removal has landed on disk. Only while the stored
     /// entry is still the one the caller saw before its own write: the queue
     /// is an actor and every writer waits on the network, so a decision
@@ -228,6 +251,7 @@ final class SyncQueue {
         flushInFlight = true
         defer { flushInFlight = false }
 
+        await normalizeServers()
         let pending = loadAll()
         guard !pending.isEmpty else { return }
         let flushStarted = Date()

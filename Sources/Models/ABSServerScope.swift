@@ -13,6 +13,29 @@ import Foundation
 /// its normalized address, so the same instance under a new address counts
 /// as another server and nothing is cleaned for it.
 nonisolated enum ABSServerScope {
+    /// The one name of a server: the address without a user, a password,
+    /// a query or a fragment (`KnownServers.normalized` strips the
+    /// credentials), the scheme and the host in small letters, without the
+    /// scheme's default port and a trailing slash. Every place that stores
+    /// or compares a server asks here, so one server under two spellings
+    /// stays one, and no secret reaches the settings.
+    static func identity(of raw: String) -> String {
+        let text = KnownServers.normalized(raw)
+        guard var components = URLComponents(string: text), let host = components.host else { return text }
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        components.scheme = components.scheme?.lowercased()
+        components.host = host.lowercased()
+        if (components.scheme == "https" && components.port == 443) || (components.scheme == "http" && components.port == 80) {
+            components.port = nil
+        }
+        var name = components.string ?? text
+        while name.hasSuffix("/") { name.removeLast() }
+        return name
+    }
+
     /// What a full library load may do with the per-book state.
     enum Cleanup: Equatable, Sendable {
         case clean
@@ -30,7 +53,7 @@ nonisolated enum ABSServerScope {
         if moreThanOneServer { return .skip("more than one server signed in on this device") }
         guard let current else { return .skip("server unknown") }
         guard let lastFullLoad else { return .skip("no earlier full load known") }
-        return lastFullLoad == current ? .clean : .skip("last full load from another server")
+        return identity(of: lastFullLoad) == identity(of: current) ? .clean : .skip("last full load from another server")
     }
 
     /// What the queue does with one waiting stand.
@@ -50,7 +73,7 @@ nonisolated enum ABSServerScope {
     static func queueFate(itemId: String, entryServer: String?, queuedAt: Double?,
                           current: String?, switchedAt: Double?) -> QueueFate {
         guard ItemNamespace.of(itemId) == nil else { return .send }
-        if let entryServer { return entryServer == current ? .send : .wait }
+        if let entryServer { return identity(of: entryServer) == current.map(identity(of:)) ? .send : .wait }
         guard let switchedAt else { return .send }
         return (queuedAt ?? 0) < switchedAt ? .sendKeptOnAbsence : .send
     }
@@ -58,6 +81,6 @@ nonisolated enum ABSServerScope {
     /// The server a stand of `itemId` is queued under: the signed-in one
     /// for a library id, none for an id with a namespace.
     static func server(of itemId: String, signedIn: String?) -> String? {
-        ItemNamespace.of(itemId) == nil ? signedIn : nil
+        ItemNamespace.of(itemId) == nil ? signedIn.map(identity(of:)) : nil
     }
 }

@@ -201,6 +201,68 @@ struct ABSServerSwitchTests {
         #expect(d.object(forKey: PlayedTail.key(bookA)) != nil, "a load of B cleaned A's played tail")
     }
 
+    @Test("ein Server hat einen Namen: ohne Zugangswerte, Wirt klein, ohne Standard-Port und Schraegstrich")
+    func aServerHasOneName() {
+        let name = "https://abs.example.com"
+        #expect(ABSServerScope.identity(of: "https://Name:Secret@ABS.Example.com:443/") == name)
+        #expect(ABSServerScope.identity(of: "HTTPS://abs.example.com/?token=abc#x") == name)
+        #expect(ABSServerScope.identity(of: "http://abs.example.com:80") == "http://abs.example.com")
+        #expect(ABSServerScope.identity(of: "https://abs.example.com:13378/sub/") == "https://abs.example.com:13378/sub",
+                "another port and a path are part of the server")
+        #expect(ABSServerScope.identity(of: "https://other.example.com") != name)
+    }
+
+    @Test("die Anmeldung merkt den Namen ohne Zugangswerte, eine andere Schreibweise ist derselbe Server")
+    func theSignInKeepsNoSecret() {
+        let saved = Saved()
+        defer { saved.restore() }
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
+        AppStorageKeys.noteABSSignIn("https://Name:Secret@ABS.Example.com/", nowMs: 1)
+        let stored = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        #expect(stored == "https://abs.example.com", "the settings hold \(stored ?? "nothing")")
+        #expect(stored?.contains("Secret") == false)
+        AppStorageKeys.noteABSSignIn("https://abs.example.com:443", nowMs: 2)
+        #expect(!AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false),
+                "another spelling of the same server counted as a second one")
+        #expect(AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt) == 1, "another spelling counted as a switch")
+        #expect(ABSServerScope.server(of: "book", signedIn: "https://Name:Secret@abs.example.com") == "https://abs.example.com",
+                "a queued stand carries the name")
+    }
+
+    /// A queue whose entries the witness writes in their old form.
+    private final class MemoryQueue: SyncQueueStorage {
+        var entries: [String: SyncQueue.PendingUpdate] = [:]
+        func load() -> [String: SyncQueue.PendingUpdate] { entries }
+        func save(_ pending: [String: SyncQueue.PendingUpdate]) { entries = pending }
+        func awaitPendingWrites() async {}
+        let startReadFailed = false
+    }
+
+    @Test("gemerkte Server von vor dem Namen ziehen einmal um: Einstellungen und Warteschlange ohne Zugangswerte")
+    func olderServersMoveToTheirName() async {
+        let saved = Saved()
+        defer { saved.restore() }
+        AppStorageKeys.set("https://Name:Secret@ABS.Example.com/", for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set("https://abs.example.com:443", for: AppStorageKeys.absLastFullLoadServer)
+        AppStorageKeys.normalizeABSServers()
+        #expect(AppStorageKeys.string(AppStorageKeys.absSignedInServer) == "https://abs.example.com")
+        #expect(AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer) == "https://abs.example.com")
+
+        let storage = MemoryQueue()
+        storage.entries["book"] = SyncQueue.PendingUpdate(currentTime: 321, duration: 1000, isFinished: false,
+                                                           queuedAt: 5, server: "https://Name:Secret@ABS.Example.com/")
+        let queue = SyncQueue(storage: storage)
+        #expect(await queue.normalizeServers() == 1)
+        #expect(storage.entries["book"]?.server == "https://abs.example.com", "the queue keeps the secret")
+        #expect(storage.entries["book"]?.currentTime == 321, "the stand itself moved")
+        // The old raw value and the name are one server for the rule.
+        #expect(ABSServerScope.queueFate(itemId: "book", entryServer: "https://Name:Secret@ABS.Example.com/",
+                                         queuedAt: 5, current: "https://abs.example.com", switchedAt: 1) == .send)
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://ABS.example.com:443/", current: "https://abs.example.com",
+                                       moreThanOneServer: false) == .clean)
+    }
+
     @Test("ein Eintrag von vor dem Wechsel ohne Server geht an den neuen Server, dessen 404 verwirft ihn nicht")
     func anOlderEntryIsKeptOnAbsenceAfterASwitch() async throws {
         let saved = Saved()

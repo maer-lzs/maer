@@ -69,8 +69,9 @@ final class AuthViewModel: ObservableObject {
         // A device that stored a server before the server was remembered
         // takes the stored address as its server, without a switch, also
         // when it is signed out: the address stays after a sign-out.
+        AppStorageKeys.normalizeABSServers()
         if !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
-            AppStorageKeys.set(url.absoluteString, for: AppStorageKeys.absSignedInServer)
+            AppStorageKeys.set(ABSServerScope.identity(of: url.absoluteString), for: AppStorageKeys.absSignedInServer)
         }
 
         // A 401 marks the session SUSPECT. It never destroys the login.

@@ -894,11 +894,24 @@ nonisolated enum AppStorageKeys {
     /// remembers: a switch only keeps queued stands, never drops one. A
     /// move from one known server to another marks the device as having
     /// known more than one.
-    static func noteABSSignIn(_ server: String, nowMs: Double) {
-        let before = string(absSignedInServer)
+    static func noteABSSignIn(_ address: String, nowMs: Double) {
+        let server = ABSServerScope.identity(of: address)
+        let before = string(absSignedInServer).map(ABSServerScope.identity(of:))
         if before != server { set(nowMs, for: absServerSwitchedAt) }
         if let before, before != server { set(true, for: absMoreThanOneServer) }
         set(server, for: absSignedInServer)
+    }
+
+    /// Rewrites the remembered servers in their one name
+    /// (`ABSServerScope.identity`), once per start: a value stored before
+    /// the name existed may carry a user and a password, and another
+    /// spelling of the same server would count as a second one.
+    static func normalizeABSServers() {
+        for key in [absSignedInServer, absLastFullLoadServer] {
+            guard let stored = string(key) else { continue }
+            let name = ABSServerScope.identity(of: stored)
+            if name != stored { set(name, for: key) }
+        }
     }
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).
