@@ -942,11 +942,25 @@ final class DownloadManager {
                 lastPublishedFraction[itemId] = nil
             }
         } catch {
-            // Keep partial files: the next attempt fetches only missing tracks.
+            // Keep partial files: the next attempt fetches only missing tracks,
+            // and a track that ended with resume data (a silent host, the
+            // session's resource limit) continues at its byte, as after a pause.
+            if let data = Self.resumeData(of: error) {
+                let inFlight = controls[itemId]?.inFlightTrackIndex
+                controls[itemId]?.resumeData = data
+                controls[itemId]?.resumeTrackIndex = inFlight
+            }
             phase[itemId] = .failed(String(localized: "Download failed: \(ErrorSentence.of(error))"))
             controls[itemId]?.currentTask = nil
             lastPublishedFraction[itemId] = nil
         }
+    }
+
+    /// The resume data a failed download left: from the silence rule, or
+    /// in the error's own information (the resource limit).
+    nonisolated static func resumeData(of error: Error) -> Data? {
+        if let silent = error as? SilentHostError { return silent.resumeData }
+        return (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
     }
 
     /// Used storage of a book in bytes (0 if nothing is stored).

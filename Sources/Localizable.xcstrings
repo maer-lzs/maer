@@ -11755,6 +11755,16 @@
         }
       }
     },
+    "The server stopped answering. Try the download again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server antwortet nicht mehr. Versuch den Download erneut."
+          }
+        }
+      }
+    },
     "The service asked for sign-in settings this Mär does not accept. Nothing was sent." : {
       "localizations" : {
         "de" : {

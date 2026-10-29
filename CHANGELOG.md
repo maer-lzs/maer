@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**A download from a server that stopped answering ends instead of
+loading for days.** When a server gives none of your downloads a single
+byte for two minutes while the app is open and online, they end with
+"The server stopped answering" and can be tried again; the next try
+continues where the bytes stopped. Downloads waiting behind others at a
+server that does answer keep waiting.
+
 **Switching your Audiobookshelf server keeps what you heard offline.**
 A position you reached offline and had not sent yet waits for the
 server it belongs to: the new server neither receives it nor makes the

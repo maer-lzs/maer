@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import Synchronization
 
 /// Thrown when a download task was cancelled deliberately (pause or abort).
 /// `resumeData` is non-nil for pauses and lets the next attempt continue
@@ -19,6 +20,14 @@ struct ShortDownloadError: LocalizedError {
     let bytes: Int64
     let stated: Int64
     var errorDescription: String? { String(localized: "A track arrived incomplete. Try the download again.") }
+}
+
+/// Thrown when the host of a download gave no byte for the limit of
+/// `DownloadSilence` while the app watched.
+/// `resumeData` lets the next attempt continue where the bytes stopped.
+nonisolated struct SilentHostError: LocalizedError {
+    let resumeData: Data?
+    var errorDescription: String? { String(localized: "The server stopped answering. Try the download again.") }
 }
 
 /// Downloads files with progress reporting over ONE shared background
@@ -49,7 +58,30 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         let claim: TrackFileSize.Claim?
         /// The runs of this task so far (`DownloadStall`).
         var stall = DownloadStall()
+        /// The host the app asked, the key of `DownloadSilence`.
+        let host: String
+        /// The task, for ending it when its host fell silent.
+        let task: URLSessionDownloadTask
     }
+
+    /// The silence of every host with downloads running, how often the
+    /// watch looks, and whether it runs. A host may give no byte for two
+    /// minutes (`DownloadSilence.limit`); a gap of three looks means the
+    /// app was not running.
+    private struct Watch {
+        var silence = DownloadSilence(limit: 120, maxGap: 45)
+        var tick: TimeInterval = 15
+        var running = false
+    }
+    private let watch = Mutex(Watch())
+
+    #if DEBUG
+    /// Test seam: a short limit and tick, as a witness waits seconds, not
+    /// minutes. Only while no download runs.
+    func testSetSilence(limit: TimeInterval, tick: TimeInterval) {
+        watch.withLock { $0 = Watch(silence: DownloadSilence(limit: limit, maxGap: tick * 3), tick: tick) }
+    }
+    #endif
 
     // An implicitly-unwrapped `var` only because the delegate-`self` pattern
     // forbids a `let` here (self isn't available before super.init).
@@ -71,6 +103,10 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             withIdentifier: "absplayer.track-downloads"
         )
         config.isDiscretionary = false
+        // A net under the silence watch, which only counts while the app
+        // runs: a download still not finished after a day ends with its
+        // resume data. The default is seven days.
+        config.timeoutIntervalForResource = 86_400
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         // Prune destination entries orphaned by earlier app kills. Anything
         // that no longer belongs to a live task.
@@ -96,7 +132,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     /// fewer bytes are not kept and throw `ShortDownloadError`. `claim`
     /// does the same for a source that may transcode, once the answer
     /// shows the original arrived. A task that ends `DownloadStall.limit`
-    /// runs at the same byte also throws `ShortDownloadError`.
+    /// runs at the same byte also throws `ShortDownloadError`. A host that
+    /// gives no byte to any of its downloads for the limit of
+    /// `DownloadSilence` ends them with `SilentHostError`.
     func download(
         request: URLRequest,
         to destination: URL,
@@ -114,22 +152,72 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let task = resumeData.map { session.downloadTask(withResumeData: $0) }
                 ?? session.downloadTask(with: request)
+            // The host the app asks; a redirect elsewhere still counts here.
+            let host = task.originalRequest?.url?.host ?? request.url?.host ?? ""
             lock.lock()
             handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation,
-                                                    statedBytes: statedBytes, claim: claim)
+                                                    statedBytes: statedBytes, claim: claim, host: host, task: task)
             var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
             map[String(task.taskIdentifier)] = destination.path
             AppStorageKeys.set(map, for: destinationsKey)
             lock.unlock()
+            let startWatch = watch.withLock { state -> Bool in
+                state.silence.began(host, at: Date())
+                defer { state.running = true }
+                return !state.running
+            }
+            if startWatch { watchSilence() }
             onTask?(task)
             task.resume()
         }
     }
 
+    /// Looks at the silence of every host every `Watch.tick` while
+    /// downloads run, and ends the downloads of a host that fell silent.
+    private func watchSilence() {
+        Task { [weak self] in
+            while let self {
+                let tick = self.watch.withLock { $0.tick }
+                // bearable, because a cancelled sleep only ends the watch, which the next download starts again
+                try? await Task.sleep(for: .seconds(tick))
+                let online = await Reachability.isConnected()
+                let silent = self.watch.withLock { $0.silence.tick(at: Date(), online: online) }
+                for host in silent { self.endDownloads(of: host) }
+                let busy = self.lock.withLock { !self.handlers.isEmpty }
+                let goOn = self.watch.withLock { state -> Bool in
+                    if !busy { state.running = false }
+                    return busy
+                }
+                if !goOn { return }
+            }
+        }
+    }
+
+    /// Ends every running download of `host` with `SilentHostError`,
+    /// carrying the resume data its cancellation produces, so the next
+    /// attempt continues where the bytes stopped.
+    private func endDownloads(of host: String) {
+        let ids = lock.withLock { handlers.filter { $0.value.host == host }.map(\.key) }
+        let taken = ids.compactMap { id in takeHandler(id).map { (id, $0) } }
+        for (id, _) in taken { _ = takeDestination(id) }
+        watch.withLock { $0.silence.left(host) }
+        let limit = watch.withLock { Int($0.silence.limit) }
+        Logger.library.error("DOWNLOAD silent host=\(host, privacy: .public) seconds=\(limit) tasks=\(taken.count), failed")
+        for (_, handler) in taken {
+            handler.task.cancel(byProducingResumeData: { data in
+                handler.continuation.resume(throwing: SilentHostError(resumeData: data))
+            })
+        }
+    }
+
     private func takeHandler(_ id: Int) -> Handler? {
-        lock.lock()
-        defer { lock.unlock() }
-        return handlers.removeValue(forKey: id)
+        let (taken, hostLeft): (Handler?, String?) = lock.withLock {
+            let taken = handlers.removeValue(forKey: id)
+            let left = taken.flatMap { gone in handlers.values.contains { $0.host == gone.host } ? nil : gone.host }
+            return (taken, left)
+        }
+        if let hostLeft { watch.withLock { $0.silence.left(hostLeft) } }
+        return taken
     }
 
     private func takeDestination(_ id: Int) -> URL? {
@@ -152,6 +240,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         let stalled = handlers[downloadTask.taskIdentifier]?.stall.written(bytesWritten, total: totalBytesWritten) ?? false
         let handler = handlers[downloadTask.taskIdentifier]
         lock.unlock()
+        if let host = handler?.host { watch.withLock { $0.silence.heard(host, at: Date()) } }
         // A server that states a length and closes early makes the session
         // start over without end (`DownloadStall`): the task ends here as a
         // track that arrived incomplete.
