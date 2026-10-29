@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.5.1 (Build 58)
 
 **A download from a server that stopped answering ends instead of
 loading for days.** When a server gives none of your downloads a single
