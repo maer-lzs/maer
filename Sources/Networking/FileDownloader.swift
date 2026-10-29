@@ -183,10 +183,12 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
                 let online = await Reachability.isConnected()
                 let silent = self.watch.withLock { $0.silence.tick(at: Date(), online: online) }
                 for host in silent { self.endDownloads(of: host) }
-                let busy = self.lock.withLock { !self.handlers.isEmpty }
+                // The stop reads the state its writers change under the same
+                // lock: a download that begins meanwhile either is counted
+                // here or finds the watch stopped and starts it again.
                 let goOn = self.watch.withLock { state -> Bool in
-                    if !busy { state.running = false }
-                    return busy
+                    if !state.silence.watchesAny { state.running = false }
+                    return state.running
                 }
                 if !goOn { return }
             }
@@ -200,7 +202,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         let ids = lock.withLock { handlers.filter { $0.value.host == host }.map(\.key) }
         let taken = ids.compactMap { id in takeHandler(id).map { (id, $0) } }
         for (id, _) in taken { _ = takeDestination(id) }
-        watch.withLock { $0.silence.left(host) }
+        guard !taken.isEmpty else { return }
         let limit = watch.withLock { Int($0.silence.limit) }
         Logger.library.error("DOWNLOAD silent host=\(host, privacy: .public) seconds=\(limit) tasks=\(taken.count), failed")
         for (_, handler) in taken {
@@ -210,13 +212,11 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         }
     }
 
+    /// Takes a task's handler; each taken handler ends one counted download
+    /// of its host (`DownloadSilence.ended`), exactly once.
     private func takeHandler(_ id: Int) -> Handler? {
-        let (taken, hostLeft): (Handler?, String?) = lock.withLock {
-            let taken = handlers.removeValue(forKey: id)
-            let left = taken.flatMap { gone in handlers.values.contains { $0.host == gone.host } ? nil : gone.host }
-            return (taken, left)
-        }
-        if let hostLeft { watch.withLock { $0.silence.left(hostLeft) } }
+        let taken = lock.withLock { handlers.removeValue(forKey: id) }
+        if let host = taken?.host { watch.withLock { $0.silence.ended(host) } }
         return taken
     }
 

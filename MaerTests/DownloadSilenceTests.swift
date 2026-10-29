@@ -58,7 +58,15 @@ struct DownloadSilenceTests {
         second.began("a", at: start + 100)
         for step in 2...9 { _ = second.tick(at: start + Double(step) * 15, online: true) }
         #expect(second.tick(at: start + 150, online: true) == ["a"])
-        second.left("a")
+
+        // Counted per download: one of two ends, the clock stays; the
+        // second ends, it goes; a byte afterwards lays no clock.
+        second.ended("a")
+        #expect(second.since["a"] != nil && second.watchesAny, "one of two downloads ended and the clock went")
+        second.ended("a")
+        #expect(second.since["a"] == nil && !second.watchesAny, "the last download ended and the clock stayed")
+        second.heard("a", at: start + 160)
+        #expect(second.since["a"] == nil, "a byte of a host without a download laid a clock")
         #expect(second.tick(at: start + 165, online: true).isEmpty, "no download, no clock")
     }
 

@@ -25,8 +25,11 @@ nonisolated struct DownloadSilence: Equatable, Sendable {
     /// The longest gap between two ticks that still counts as watched.
     let maxGap: TimeInterval
 
-    /// Per host with downloads running: since when it is silent.
+    /// Per host with downloads running: since when it is silent, and how
+    /// many of its downloads run. The clock goes only when the last one
+    /// ended, so a download starting while another ends keeps one.
     private(set) var since: [String: Date] = [:]
+    private(set) var running: [String: Int] = [:]
     private(set) var lastTick: Date?
 
     init(limit: TimeInterval, maxGap: TimeInterval) {
@@ -34,19 +37,30 @@ nonisolated struct DownloadSilence: Equatable, Sendable {
         self.maxGap = maxGap
     }
 
+    /// Whether any host has a download running: the watch looks while it does.
+    var watchesAny: Bool { !running.isEmpty }
+
     /// A download to `host` started; an already watched host keeps its clock.
     mutating func began(_ host: String, at now: Date) {
+        running[host, default: 0] += 1
         if since[host] == nil { since[host] = now }
     }
 
-    /// A byte came from `host`.
+    /// A byte came from `host`; a host without a running download gets no clock.
     mutating func heard(_ host: String, at now: Date) {
+        guard running[host] != nil else { return }
         since[host] = now
     }
 
-    /// No download to `host` runs any more.
-    mutating func left(_ host: String) {
-        since[host] = nil
+    /// One download to `host` ended; the clock goes with the last one.
+    mutating func ended(_ host: String) {
+        guard let count = running[host] else { return }
+        if count > 1 {
+            running[host] = count - 1
+        } else {
+            running[host] = nil
+            since[host] = nil
+        }
     }
 
     /// One look at the clock: the hosts silent for `limit` while the app
