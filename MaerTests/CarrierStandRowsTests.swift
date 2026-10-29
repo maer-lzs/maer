@@ -176,40 +176,100 @@ struct CarrierStandRowsTests {
         }
     }
 
-    /// Whether a source reads a carrier's mirror blob from the defaults, in
-    /// either of its two forms. Encoded: the shape decoded (`….self`) AND a
-    /// read of data from the defaults in the same text, through the house
-    /// door or not. Property list: a read of an object cast to the shape in
-    /// the same expression. A document of a store of its own (`Ablage`) has
-    /// the shape, not the read.
-    nonisolated static func readsAMirrorBlob(_ code: String) -> Bool {
-        let shapes = ["[String: [Double]]", "[String: [String]]", "[String: Value]"]
-        let decoded = shapes.contains { code.contains($0 + ".self") }
-        let readsData = ["defaults.data(", ".data(forKey:", "AppStorageKeys.data("].contains { code.contains($0) }
-        let cast = shapes.map { NSRegularExpression.escapedPattern(for: "as? " + $0) }.joined(separator: "|")
-        let castRead = code.range(of: #"(\.object\(forKey:|AppStorageKeys\.object\()[^\n]*\)\s*("# + cast + ")",
-                                  options: .regularExpression) != nil
-        return (decoded && readsData) || castRead
+    /// The keys the move takes out of the defaults, from every spec: whole
+    /// owners, owners per identity (`<owner>.<scope>`), and the prefixes of
+    /// keys with one entry each.
+    nonisolated static let legacySpecs: [CarrierRowsSpec] = [.stands, .records, .stamps, .documents, .jumpRings, .bookmarks]
+
+    nonisolated static func isLegacyKey(_ key: String) -> Bool {
+        legacySpecs.contains { spec in
+            spec.legacyOwners.contains(key)
+                || spec.legacyScopedOwners.contains { key == $0 || key.hasPrefix($0 + ".") }
+                || spec.legacyPrefixes.contains { key.hasPrefix($0) }
+        }
     }
 
-    @Test("der Leser der Abbilder sieht Form und Voreinstellung zusammen, ein Dokument einer Ablage nicht")
-    func theBlobReaderNeedsShapeAndDefaults() {
-        #expect(Self.readsAMirrorBlob("let d = defaults.data(forKey: k)\nJSONDecoder().decode([String: [Double]].self, from: d)"))
-        #expect(Self.readsAMirrorBlob("store.data(forKey: k).map { try? JSONDecoder().decode([String: Value].self, from: $0) }"))
-        #expect(!Self.readsAMirrorBlob("ablage.loadNow([String: [String]].self, name: document)"), "a store's own document")
-        #expect(!Self.readsAMirrorBlob("guard let data = defaults.data(forKey: key)\ndecode([String].self, from: data)"), "a list, no mirror")
-        #expect(Self.readsAMirrorBlob("guard let d = AppStorageKeys.data(k) else { return }\ndecode([String: [Double]].self, from: d)"),
-                "the house door of data")
-        #expect(Self.readsAMirrorBlob("let m = AppStorageKeys.object(k) as? [String: [String]]"), "the house door of objects")
-        #expect(Self.readsAMirrorBlob("if let v = defaults.object(forKey: key) as? [String: Value] {"), "the property list")
-        #expect(!Self.readsAMirrorBlob("let n = defaults.object(forKey: k) as? Int\nlet m: [String: [String]] = [:]"),
-                "an object of another shape")
-        #expect(!Self.readsAMirrorBlob("let m = defaults.dictionary(forKey: k) as? [String: [String]]"), "no object read")
+    /// The names a source declares for an old key: a constant whose value
+    /// is one, or a function whose text begins with one (a key per entry).
+    nonisolated static func legacyNames(declaredIn code: String) -> Set<String> {
+        let patterns = [#"let\s+(\w+)\s*(?::\s*String\s*)?=\s*"([^"\\]*)"#, #"func\s+(\w+)\([^)]*\)\s*->\s*String\s*\{\s*"([^"\\]*)"#]
+        var names: Set<String> = []
+        for pattern in patterns {
+            let regex = try! NSRegularExpression(pattern: pattern)
+            for match in regex.matches(in: code, range: NSRange(code.startIndex..., in: code)) {
+                guard let name = Range(match.range(at: 1), in: code), let value = Range(match.range(at: 2), in: code) else { continue }
+                if isLegacyKey(String(code[value])) { names.insert(String(code[name])) }
+            }
+        }
+        return names
+    }
+
+    /// The types a source declares, so that `Type.name` finds the file
+    /// whose constants it means.
+    nonisolated static func typesDeclared(in code: String) -> Set<String> {
+        let regex = try! NSRegularExpression(pattern: #"\b(?:class|struct|enum|actor|extension)\s+(\w+)"#)
+        return Set(regex.matches(in: code, range: NSRange(code.startIndex..., in: code)).compactMap {
+            Range($0.range(at: 1), in: code).map { String(code[$0]) }
+        })
+    }
+
+    /// Whether a source reads an old key from the defaults, through any
+    /// door: a read of the defaults by key, or a read of the house door
+    /// `AppStorageKeys`. The key is an old name as text, a name the same
+    /// source declares for one (`own`, also as `Self.`), or `Type.name`
+    /// of a type whose source declares it (`byType`). The value decides,
+    /// not the name: the same name for another key is no reader. Writes and
+    /// removals are no reads.
+    nonisolated static func readsALegacyKey(_ code: String, own: Set<String>, byType: [String: Set<String>]) -> Bool {
+        let defaults = #"\.(?:data|object|dictionary|array|stringArray|string|integer|double|float|bool|url)\(forKey:\s*"#
+        let door = #"AppStorageKeys\.(?:data|object|dictionary|array|stringArray|string|int|double|float|bool|exists)\(\s*"#
+        let regex = try! NSRegularExpression(pattern: "(?:" + defaults + "|" + door + #")("[^"\\]*|[A-Za-z_][\w.]*)"#)
+        for match in regex.matches(in: code, range: NSRange(code.startIndex..., in: code)) {
+            guard let range = Range(match.range(at: 1), in: code) else { continue }
+            let key = String(code[range])
+            if key.hasPrefix("\"") {
+                if isLegacyKey(String(key.dropFirst())) { return true }
+                continue
+            }
+            let parts = key.split(separator: ".").map(String.init)
+            guard let name = parts.last else { continue }
+            if parts.count == 1 || (parts.count == 2 && parts[0] == "Self") {
+                if own.contains(name) { return true }
+            } else if byType[parts[parts.count - 2]]?.contains(name) == true {
+                return true
+            }
+        }
+        return false
+    }
+
+    @Test("der Leser alter Schluessel sieht jede Tuer und den Wert der Konstante, nicht ihren Namen; Schreiben und Loeschen lesen nicht")
+    func theLegacyReaderSeesEveryDoorAndTheValue() {
+        let carrier = "struct OldCarrier {\n    static let mirrorKey = \"cloudStandMirror\"\n    static let queueKey: String = \"cloudStandQueue\"\n"
+            + "    static func ring(_ id: String) -> String { \"jumpRing.\\(id)\" }\n}"
+        let own = Self.legacyNames(declaredIn: carrier)
+        #expect(own == ["mirrorKey", "queueKey", "ring"], "the declared names of old keys: \(own.sorted())")
+        let byType = ["OldCarrier": own]
+        #expect(Self.readsALegacyKey("let d = defaults.data(forKey: Self.mirrorKey)", own: own, byType: [:]), "a read by key")
+        #expect(Self.readsALegacyKey("let m = AppStorageKeys.dictionary(mirrorKey)", own: own, byType: [:]), "the house door")
+        #expect(Self.readsALegacyKey("let d = store.object(forKey: OldCarrier.mirrorKey)", own: [], byType: byType), "a type's constant")
+        #expect(Self.readsALegacyKey("let d = defaults.data(forKey: \"maerSyncStandsQueue\")", own: [], byType: [:]), "an old name as text")
+        #expect(Self.readsALegacyKey("let d = defaults.data(forKey: \"maerSyncChoices.\\(scope)\")", own: [], byType: [:]), "an owner per identity")
+        #expect(!Self.isLegacyKey("maerSyncStandsQueueRemovals"), "a key of this build that begins like an old one")
+        #expect(Self.readsALegacyKey("let r = defaults.data(forKey: \"bookmarkCache.\\(id)\")", own: [], byType: [:]), "a key per entry")
+        #expect(Self.readsALegacyKey("let r = AppStorageKeys.data(OldCarrier.ring(id))", own: [], byType: byType), "a function of a key per entry")
+        let feed = "enum FeedAuth {\n    static let stampsKey = \"feedAuthStamps\"\n}"
+        #expect(Self.legacyNames(declaredIn: feed).isEmpty, "another key under a shared name")
+        #expect(!Self.readsALegacyKey("let s = defaults.dictionary(forKey: FeedAuth.stampsKey)", own: [],
+                                      byType: ["FeedAuth": [], "UserChoiceCloudSync": ["stampsKey"]]), "the name decided, not the value")
+        #expect(!Self.readsALegacyKey("defaults.set(data, forKey: Self.mirrorKey)\ndefaults.removeObject(forKey: Self.mirrorKey)",
+                                      own: own, byType: [:]), "a write or a removal")
+        #expect(!Self.readsALegacyKey("ablage.loadNow([String: [String]].self, name: document)", own: own, byType: [:]), "a store's own document")
     }
 
     /// The way back holds only while no build writes the old names again:
     /// the tokens and the version of this build have names of their own,
-    /// and no source writes a blob of a mirror into the defaults.
+    /// no source writes a blob of a mirror into the defaults, and none but
+    /// the move reads an old key from them.
     @Test("kein Bau schreibt die alten Namen wieder: Token und Version heissen neu, kein Ganzschrieb eines Abbilds in die Voreinstellungen", .needsTheSources)
     func theOldNamesAreNeverWrittenAgain() throws {
         let tokens = [CloudKitStandCarrier.tokenKey, CloudKitChoiceCarrier.tokenKey, CloudKitPlaylistCarrier.tokenKey,
@@ -225,22 +285,31 @@ struct CarrierStandRowsTests {
             CarrierStandRows.isLegacyOwner(key) || CarrierDocumentRows.isLegacyOwner(key) || versions.contains(key)
         }, "an old name is kept per identity in the defaults")
         let sources = SourceTree.root.appendingPathComponent("Sources")
-        var named: [String] = []
-        var blobReaders: [String] = []
+        var codes: [(name: String, code: String)] = []
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            codes.append((file.lastPathComponent, SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))))
+        }
+        var byType: [String: Set<String>] = [:]
+        for (_, code) in codes {
+            let names = Self.legacyNames(declaredIn: code)
+            for type in Self.typesDeclared(in: code) { byType[type, default: []].formUnion(names) }
+        }
+        #expect(byType["CloudKitStandCarrier"]?.contains("mirrorKey") == true, "the fence does not see the constants of an old key")
+        var named: [String] = []
+        var legacyReaders: [String] = []
+        for (name, code) in codes {
             if (legacy + versions).contains(where: { code.contains("\"\($0)\"") }) {
-                named.append(file.lastPathComponent)
+                named.append(name)
             }
-            if Self.readsAMirrorBlob(code) {
-                blobReaders.append(file.lastPathComponent)
+            if name != "CarrierRows.swift", Self.readsALegacyKey(code, own: Self.legacyNames(declaredIn: code), byType: byType) {
+                legacyReaders.append(name)
             }
-            if file.lastPathComponent == "StandCarrier.swift" {
+            if name == "StandCarrier.swift" {
                 #expect(!code.contains("func save(_ value:") && !code.contains("func saveRows("), "a mirror blob writer came back")
             }
         }
         #expect(named == ["CarrierRows.swift"], "the old names stand outside the move: \(named.sorted())")
-        #expect(blobReaders == ["CarrierRows.swift"], "a mirror blob is read outside the move: \(blobReaders.sorted())")
+        #expect(legacyReaders.isEmpty, "an old key is read outside the move: \(legacyReaders.sorted())")
     }
 }
 #endif
