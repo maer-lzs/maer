@@ -176,6 +176,24 @@ struct CarrierStandRowsTests {
         }
     }
 
+    /// Whether a source reads a carrier's mirror blob from the defaults:
+    /// the shape of the blob AND a read of the defaults in the same text. A
+    /// document of a store of its own (`Ablage`) has the shape, not the read.
+    nonisolated static func readsAMirrorBlob(_ code: String) -> Bool {
+        let shape = ["[String: [Double]].self", "[String: [String]].self", "[String: Value].self"]
+            .contains { code.contains($0) }
+        let readsDefaults = code.contains("defaults.data(") || code.contains(".data(forKey:")
+        return shape && readsDefaults
+    }
+
+    @Test("der Leser der Abbilder sieht Form und Voreinstellung zusammen, ein Dokument einer Ablage nicht")
+    func theBlobReaderNeedsShapeAndDefaults() {
+        #expect(Self.readsAMirrorBlob("let d = defaults.data(forKey: k)\nJSONDecoder().decode([String: [Double]].self, from: d)"))
+        #expect(Self.readsAMirrorBlob("store.data(forKey: k).map { try? JSONDecoder().decode([String: Value].self, from: $0) }"))
+        #expect(!Self.readsAMirrorBlob("ablage.loadNow([String: [String]].self, name: document)"), "a store's own document")
+        #expect(!Self.readsAMirrorBlob("guard let data = defaults.data(forKey: key)\ndecode([String].self, from: data)"), "a list, no mirror")
+    }
+
     /// The way back holds only while no build writes the old names again:
     /// the tokens and the version of this build have names of their own,
     /// and no source writes a blob of a mirror into the defaults.
@@ -201,7 +219,7 @@ struct CarrierStandRowsTests {
             if (legacy + versions).contains(where: { code.contains("\"\($0)\"") }) {
                 named.append(file.lastPathComponent)
             }
-            if code.contains("[String: [Double]].self") || code.contains("[String: [String]].self") || code.contains("[String: Value].self") {
+            if Self.readsAMirrorBlob(code) {
                 blobReaders.append(file.lastPathComponent)
             }
             if file.lastPathComponent == "StandCarrier.swift" {
