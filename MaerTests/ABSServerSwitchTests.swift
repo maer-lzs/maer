@@ -55,7 +55,8 @@ struct ABSServerSwitchTests {
     private struct Saved {
         let values: [String: Any?]
         static let keys = [AppStorageKeys.absSignedInServer, AppStorageKeys.absLastFullLoadServer,
-                           AppStorageKeys.absServerSwitchedAt, AppStorageKeys.selectedLibraryId]
+                           AppStorageKeys.absServerSwitchedAt, AppStorageKeys.absMoreThanOneServer,
+                           AppStorageKeys.selectedLibraryId]
         init() { values = Dictionary(uniqueKeysWithValues: Self.keys.map { ($0, AppStorageKeys.object($0)) }) }
         func restore() { for (key, value) in values { AppStorageKeys.set(value, for: key) } }
     }
@@ -70,10 +71,13 @@ struct ABSServerSwitchTests {
 
     @Test("die Regel: geraeumt wird nur nach der vollen Ladung desselben Servers, ein fremder Stand wartet")
     func theRule() {
-        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a") == .clean)
-        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://b") != .clean)
-        #expect(ABSServerScope.cleanup(lastFullLoad: nil, current: "https://b") != .clean, "the first load after the update")
-        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: nil) != .clean)
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: false) == .clean)
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: true) != .clean,
+                "a device that knew two servers cleans no library id")
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://b", moreThanOneServer: false) != .clean)
+        #expect(ABSServerScope.cleanup(lastFullLoad: nil, current: "https://b", moreThanOneServer: false) != .clean,
+                "the first load after the update")
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: nil, moreThanOneServer: false) != .clean)
         let fate = { (id: String, server: String?, queued: Double?, switched: Double?) in
             ABSServerScope.queueFate(itemId: id, entryServer: server, queuedAt: queued, current: "https://b", switchedAt: switched)
         }
@@ -144,7 +148,11 @@ struct ABSServerSwitchTests {
         defer { ListeningStore.forgetBackups(where: { $0 == gone }) }
         let now = Date().timeIntervalSince1970 * 1000
         AppStorageKeys.set(nil, for: AppStorageKeys.selectedLibraryId)
+        // A device that only ever knew this one server.
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
         AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now)
+        #expect(!AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), "the precondition: one server")
 
         // No full load remembered: this once nothing goes, the server is noted.
         AppStorageKeys.set(nil, for: AppStorageKeys.absLastFullLoadServer)
@@ -158,6 +166,39 @@ struct ABSServerSwitchTests {
         await LibraryViewModel(provider: Server(books: [kept])).loadLibrary()
         try await Task.sleep(for: .milliseconds(500))
         #expect(ListeningStore.backup(gone) == nil, "the same server no longer cleans a book that left")
+    }
+
+    @Test("nach einem Wechsel raeumt auch die zweite volle Ladung von B nichts von A")
+    func aSecondLoadOfTheNewServerKeepsTheOld() async throws {
+        let saved = Saved()
+        defer { saved.restore() }
+        let bookA = "switch-two-a-\(UUID().uuidString)"
+        let bookB = "switch-two-b-\(UUID().uuidString)"
+        let d = UserDefaults.standard
+        defer {
+            ListeningStore.forgetBackups(where: { $0 == bookA })
+            d.removeObject(forKey: AppStorageKeys.playbackRate(bookA))
+            d.removeObject(forKey: PlayedTail.key(bookA))
+        }
+        let now = Date().timeIntervalSince1970 * 1000
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
+        AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now - 120_000)
+        AppStorageKeys.set("https://a.example", for: AppStorageKeys.absLastFullLoadServer)
+        ListeningStore.store(bookA, entry: [321, now])
+        d.set(1.5, forKey: AppStorageKeys.playbackRate(bookA))
+        d.set([1.0], forKey: PlayedTail.key(bookA))
+
+        AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now)
+        #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), "the device knew two servers")
+        AppStorageKeys.set(nil, for: AppStorageKeys.selectedLibraryId)
+        for _ in 0..<2 {
+            await LibraryViewModel(provider: Server(books: [bookB])).loadLibrary()
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        #expect(ListeningStore.backup(bookA)?.first == 321, "a load of B cleaned A's stand")
+        #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) as? Double == 1.5, "a load of B cleaned A's speed")
+        #expect(d.object(forKey: PlayedTail.key(bookA)) != nil, "a load of B cleaned A's played tail")
     }
 
     @Test("ein Eintrag von vor dem Wechsel ohne Server geht an den neuen Server, dessen 404 verwirft ihn nicht")

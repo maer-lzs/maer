@@ -6,8 +6,8 @@
 A position you reached offline and had not sent yet waits for the
 server it belongs to: the new server neither receives it nor makes the
 app forget it, and it goes out once you are back on the first server.
-The first full load of the new server no longer clears the positions of
-the old one's books.
+A full load of the new server no longer clears the positions of the old
+one's books.
 
 **Audiobookshelf grids load light covers again.** Grids and rows ask a
 cover at 400 pixels wide, a fraction of the original's bytes for a large

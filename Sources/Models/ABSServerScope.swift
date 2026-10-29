@@ -20,10 +20,14 @@ nonisolated enum ABSServerScope {
         case skip(String)
     }
 
-    /// A full load of `current` cleans only when the last full load came
-    /// from the same server. No known earlier load (the first start with
+    /// A full load of `current` cleans only on a device that knew one
+    /// server, and only when the last full load came from it. Once a second
+    /// server was signed in, a library id of either could be absent from
+    /// the other's list, so nothing without a namespace is cleaned until the
+    /// id carries its server. No known earlier load (the first start with
     /// this rule) skips once; the caller then remembers `current`.
-    static func cleanup(lastFullLoad: String?, current: String?) -> Cleanup {
+    static func cleanup(lastFullLoad: String?, current: String?, moreThanOneServer: Bool) -> Cleanup {
+        if moreThanOneServer { return .skip("more than one server signed in on this device") }
         guard let current else { return .skip("server unknown") }
         guard let lastFullLoad else { return .skip("no earlier full load known") }
         return lastFullLoad == current ? .clean : .skip("last full load from another server")

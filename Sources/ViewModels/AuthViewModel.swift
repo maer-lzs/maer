@@ -66,9 +66,10 @@ final class AuthViewModel: ObservableObject {
         if state.unknown {
             Logger.library.notice("ABS access unreadable at start: signed in kept, read again on return")
         }
-        // A device signed in before the server was remembered takes the
-        // stored address as the signed-in server, without a switch.
-        if state.signedIn, !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
+        // A device that stored a server before the server was remembered
+        // takes the stored address as its server, without a switch, also
+        // when it is signed out: the address stays after a sign-out.
+        if !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
             AppStorageKeys.set(url.absoluteString, for: AppStorageKeys.absSignedInServer)
         }
 

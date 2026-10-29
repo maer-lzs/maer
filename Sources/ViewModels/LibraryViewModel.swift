@@ -861,7 +861,8 @@ final class LibraryViewModel: ObservableObject {
         guard let validIds else { return }
         let server = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
         let scope = ABSServerScope.cleanup(
-            lastFullLoad: AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer), current: server)
+            lastFullLoad: AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer), current: server,
+            moreThanOneServer: AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false))
         if let server { AppStorageKeys.set(server, for: AppStorageKeys.absLastFullLoadServer) }
         guard AppStorageKeys.listJudgesEveryBook(bookLibraries: bookLibraries) else {
             Logger.library.notice("CLEANUP per book skipped: book libraries=\(bookLibraries.map(String.init) ?? "unknown", privacy: .public), the list holds one")

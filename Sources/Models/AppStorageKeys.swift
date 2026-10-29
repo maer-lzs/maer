@@ -885,12 +885,19 @@ nonisolated enum AppStorageKeys {
     static let absSignedInServer = "absSignedInServer"
     static let absLastFullLoadServer = "absLastFullLoadServer"
     static let absServerSwitchedAt = "absServerSwitchedAt"
+    /// Set once a sign-in moved from one known server to another; then no
+    /// full load cleans ids without a namespace (`ABSServerScope.cleanup`).
+    static let absMoreThanOneServer = "absMoreThanOneServer"
 
     /// Notes a sign-in at `server`. Another server than the one signed in
     /// before is a switch, and so is the first sign-in the device
-    /// remembers: a switch only keeps queued stands, never drops one.
+    /// remembers: a switch only keeps queued stands, never drops one. A
+    /// move from one known server to another marks the device as having
+    /// known more than one.
     static func noteABSSignIn(_ server: String, nowMs: Double) {
-        if string(absSignedInServer) != server { set(nowMs, for: absServerSwitchedAt) }
+        let before = string(absSignedInServer)
+        if before != server { set(nowMs, for: absServerSwitchedAt) }
+        if let before, before != server { set(true, for: absMoreThanOneServer) }
         set(server, for: absSignedInServer)
     }
     /// Per-item markers for "don't show under Continue any more"
