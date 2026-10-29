@@ -24,8 +24,11 @@ woran sie gemessen ist; was nicht im Repository steht, nennt, wer es klärt.
 
 ## Im Code (gemessen am Kandidaten)
 
-- [x] **Version:** `MARKETING_VERSION = 3.5`, `CURRENT_PROJECT_VERSION = 55`
-      an allen acht Stellen.
+- [x] **Version** (Momentaufnahme des Kandidaten 3.5, Build 55):
+      `MARKETING_VERSION = 3.5`, `CURRENT_PROJECT_VERSION = 55` an allen
+      acht Stellen. Den laufenden Stempel misst diese Liste nicht; ihn hält
+      `ReadmeVersionFenceTests.everyNamedVersionIsTheStamp` (ein Stempel im
+      Projekt, gleich der neuesten Überschrift des Changelogs).
 - [x] **App-Icon:** `Assets.xcassets/AppIcon.appiconset` trägt eine Grafik
       1024 × 1024 ohne Alphakanal, dazu die dunkle und die getönte Fassung
       (beide aus derselben dunklen Datei).
