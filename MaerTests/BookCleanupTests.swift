@@ -78,5 +78,77 @@ struct BookCleanupTests {
         #expect(code.components(separatedBy: "cleanUpPerBook(full:").count - 1 == 2,
                 "both load paths hand their full list to the one cleanup")
     }
+
+    /// A server with the given book libraries; each holds its own books.
+    @MainActor
+    final class Libraries: AudioProvider {
+        let libraries: [ABSLibrary]
+        let books: [String: [Maer.LibraryItem]]
+        init(_ books: [String: [String]]) {
+            libraries = books.keys.sorted().map { ABSLibrary(id: $0, name: $0, mediaType: "book") }
+            self.books = books.mapValues { ids in
+                ids.map { id in
+                    Maer.LibraryItem(id: id, media: LibraryItemMedia(
+                        metadata: LibraryItemMetadata(title: id, authorName: nil, narratorName: nil,
+                                                      seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                        duration: 100, chapters: nil, tracks: nil), addedAt: nil)
+                }
+            }
+        }
+        var providerId: String { "two-libraries" }
+        var keepsMarksOnDevice: Bool { false }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { libraries }
+        func fetchLibraryItems(libraryId: String) async throws -> [Maer.LibraryItem] { books[libraryId] ?? [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail { throw NSError(domain: "two-libraries", code: 404) }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    @Test("ueber den Ladeweg: die zweite Buchbibliothek laesst Stand und Geschwindigkeit der ersten stehen, eine einzige raeumt")
+    @MainActor
+    func theLoadOfASecondLibraryKeepsTheFirst() async throws {
+        let keys = [AppStorageKeys.selectedLibraryId, AppStorageKeys.absSignedInServer, AppStorageKeys.absLastFullLoadServer,
+                    AppStorageKeys.absMoreThanOneServer]
+        let saved = keys.map { ($0, AppStorageKeys.object($0)) }
+        defer { for (key, value) in saved { AppStorageKeys.set(value, for: key) } }
+        // One server, loaded fully before: the cleanup asks only the libraries.
+        AppStorageKeys.set("https://one.example", for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set("https://one.example", for: AppStorageKeys.absLastFullLoadServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
+        let d = UserDefaults.standard
+        let bookA = "lib2-a-\(UUID().uuidString)"
+        let bookB = "lib2-b-\(UUID().uuidString)"
+        defer {
+            ListeningStore.forgetBackups(where: { $0 == bookA })
+            d.removeObject(forKey: AppStorageKeys.playbackRate(bookA))
+        }
+        func plant() {
+            ListeningStore.store(bookA, entry: [321, Date().timeIntervalSince1970 * 1000])
+            d.set(1.5, forKey: AppStorageKeys.playbackRate(bookA))
+        }
+        func load(_ provider: Libraries) async throws {
+            AppStorageKeys.set("lib-b", for: AppStorageKeys.selectedLibraryId)
+            await LibraryViewModel(provider: provider).loadLibrary()
+            // The key sweep runs detached after the load.
+            try await Task.sleep(for: .milliseconds(500))
+        }
+
+        plant()
+        try await load(Libraries(["lib-a": [bookA], "lib-b": [bookB]]))
+        #expect(ListeningStore.backup(bookA)?.first == 321, "the second library cleaned the first one's stand")
+        #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) as? Double == 1.5, "the second library cleaned the speed")
+
+        // The same server with one library: the book that left goes.
+        try await load(Libraries(["lib-b": [bookB]]))
+        #expect(ListeningStore.backup(bookA) == nil, "one library no longer cleans a book that left")
+        #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) == nil)
+    }
 }
 #endif
