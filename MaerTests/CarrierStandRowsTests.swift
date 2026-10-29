@@ -176,14 +176,20 @@ struct CarrierStandRowsTests {
         }
     }
 
-    /// Whether a source reads a carrier's mirror blob from the defaults:
-    /// the shape of the blob AND a read of the defaults in the same text. A
-    /// document of a store of its own (`Ablage`) has the shape, not the read.
+    /// Whether a source reads a carrier's mirror blob from the defaults, in
+    /// either of its two forms. Encoded: the shape decoded (`….self`) AND a
+    /// read of data from the defaults in the same text, through the house
+    /// door or not. Property list: a read of an object cast to the shape in
+    /// the same expression. A document of a store of its own (`Ablage`) has
+    /// the shape, not the read.
     nonisolated static func readsAMirrorBlob(_ code: String) -> Bool {
-        let shape = ["[String: [Double]].self", "[String: [String]].self", "[String: Value].self"]
-            .contains { code.contains($0) }
-        let readsDefaults = code.contains("defaults.data(") || code.contains(".data(forKey:")
-        return shape && readsDefaults
+        let shapes = ["[String: [Double]]", "[String: [String]]", "[String: Value]"]
+        let decoded = shapes.contains { code.contains($0 + ".self") }
+        let readsData = ["defaults.data(", ".data(forKey:", "AppStorageKeys.data("].contains { code.contains($0) }
+        let cast = shapes.map { NSRegularExpression.escapedPattern(for: "as? " + $0) }.joined(separator: "|")
+        let castRead = code.range(of: #"(\.object\(forKey:|AppStorageKeys\.object\()[^\n]*\)\s*("# + cast + ")",
+                                  options: .regularExpression) != nil
+        return (decoded && readsData) || castRead
     }
 
     @Test("der Leser der Abbilder sieht Form und Voreinstellung zusammen, ein Dokument einer Ablage nicht")
@@ -192,6 +198,13 @@ struct CarrierStandRowsTests {
         #expect(Self.readsAMirrorBlob("store.data(forKey: k).map { try? JSONDecoder().decode([String: Value].self, from: $0) }"))
         #expect(!Self.readsAMirrorBlob("ablage.loadNow([String: [String]].self, name: document)"), "a store's own document")
         #expect(!Self.readsAMirrorBlob("guard let data = defaults.data(forKey: key)\ndecode([String].self, from: data)"), "a list, no mirror")
+        #expect(Self.readsAMirrorBlob("guard let d = AppStorageKeys.data(k) else { return }\ndecode([String: [Double]].self, from: d)"),
+                "the house door of data")
+        #expect(Self.readsAMirrorBlob("let m = AppStorageKeys.object(k) as? [String: [String]]"), "the house door of objects")
+        #expect(Self.readsAMirrorBlob("if let v = defaults.object(forKey: key) as? [String: Value] {"), "the property list")
+        #expect(!Self.readsAMirrorBlob("let n = defaults.object(forKey: k) as? Int\nlet m: [String: [String]] = [:]"),
+                "an object of another shape")
+        #expect(!Self.readsAMirrorBlob("let m = defaults.dictionary(forKey: k) as? [String: [String]]"), "no object read")
     }
 
     /// The way back holds only while no build writes the old names again:
