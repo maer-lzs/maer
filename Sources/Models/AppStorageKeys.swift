@@ -879,6 +879,20 @@ nonisolated enum AppStorageKeys {
 
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
+    /// The Audiobookshelf server signed in now and the server of the last
+    /// full library load, as normalized addresses, and when the signed-in
+    /// server last changed (ms). `ABSServerScope` decides on them.
+    static let absSignedInServer = "absSignedInServer"
+    static let absLastFullLoadServer = "absLastFullLoadServer"
+    static let absServerSwitchedAt = "absServerSwitchedAt"
+
+    /// Notes a sign-in at `server`. Another server than the one signed in
+    /// before is a switch, and so is the first sign-in the device
+    /// remembers: a switch only keeps queued stands, never drops one.
+    static func noteABSSignIn(_ server: String, nowMs: Double) {
+        if string(absSignedInServer) != server { set(nowMs, for: absServerSwitchedAt) }
+        set(server, for: absSignedInServer)
+    }
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).
     static let continueHiddenMarkers = "continueHiddenMarkers"

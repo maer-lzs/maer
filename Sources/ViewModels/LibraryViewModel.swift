@@ -853,13 +853,22 @@ final class LibraryViewModel: ObservableObject {
     }
 
     /// The keys and rows of books that left the library go, only with a
-    /// fully loaded list and only when that list is every book library of
-    /// the server (`AppStorageKeys.listJudgesEveryBook`); otherwise a line
-    /// and nothing goes.
+    /// fully loaded list, only when that list is every book library of the
+    /// server (`AppStorageKeys.listJudgesEveryBook`), and only when the last
+    /// full load came from the same server (`ABSServerScope.cleanup`);
+    /// otherwise a line and nothing goes.
     private func cleanUpPerBook(full validIds: Set<String>?, bookLibraries: Int?) {
         guard let validIds else { return }
+        let server = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        let scope = ABSServerScope.cleanup(
+            lastFullLoad: AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer), current: server)
+        if let server { AppStorageKeys.set(server, for: AppStorageKeys.absLastFullLoadServer) }
         guard AppStorageKeys.listJudgesEveryBook(bookLibraries: bookLibraries) else {
             Logger.library.notice("CLEANUP per book skipped: book libraries=\(bookLibraries.map(String.init) ?? "unknown", privacy: .public), the list holds one")
+            return
+        }
+        if case .skip(let reason) = scope {
+            Logger.library.notice("CLEANUP per book skipped: \(reason, privacy: .public)")
             return
         }
         // The rows live on the main actor; their entries leave here.

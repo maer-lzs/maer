@@ -119,6 +119,10 @@ final class SyncQueue {
         /// ms epoch when queued. For "recently listened" in the library.
         /// Optional: entries from older app versions lack this field.
         var queuedAt: Double? = nil
+        /// The Audiobookshelf server a library id was queued under
+        /// (`ABSServerScope`). Optional: older entries and ids with a
+        /// namespace carry none.
+        var server: String? = nil
     }
 
     private let storage: SyncQueueStorage
@@ -145,7 +149,8 @@ final class SyncQueue {
             currentTime: currentTime,
             duration: duration,
             isFinished: isFinished,
-            queuedAt: Date().timeIntervalSince1970 * 1000
+            queuedAt: Date().timeIntervalSince1970 * 1000,
+            server: ABSServerScope.server(of: itemId, signedIn: AppStorageKeys.string(AppStorageKeys.absSignedInServer))
         )
         save(pending)
         await storage.awaitPendingWrites()
@@ -236,7 +241,18 @@ final class SyncQueue {
         // missing entry reads as "no server state", not as "wrong server".
         var serverProgressPerTarget: [String: [String: BookProgress]] = [:]
         var unreachable: Set<String> = []
+        let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        let switchedAt = AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt)
         for (itemId, update) in pending {
+            // A stand queued under another Audiobookshelf server waits for
+            // it: the id carries no server, the one signed in now would
+            // take it or answer its absence.
+            let scope = ABSServerScope.queueFate(itemId: itemId, entryServer: update.server, queuedAt: update.queuedAt,
+                                                 current: signedIn, switchedAt: switchedAt)
+            if scope == .wait {
+                Logger.library.notice("SYNCQUEUE waits, queued under another server item=\(itemId, privacy: .private(mask: .hash))")
+                continue
+            }
             guard let target = targetFor(itemId) else { continue }
             if serverProgressPerTarget[target.key] == nil, !unreachable.contains(target.key) {
                 do {
@@ -292,14 +308,17 @@ final class SyncQueue {
                 // A title the host says is not there gets the same answer
                 // every time: the entry leaves instead of being sent on every
                 // flush. Any other refusal waits (`SyncRules.queueDrops`).
-                if Self.httpStatus(of: error).map(SyncRules.queueDrops(status:)) ?? false {
+                if Self.httpStatus(of: error).map(SyncRules.queueDrops(status:)) ?? false, scope != .sendKeptOnAbsence {
                     Logger.library.error("SYNCQUEUE dropped, the title is not on the server: \(FailureReason.of(error), privacy: .public)")
                     await remove(itemId: itemId, ifStill: update)
                     continue
                 }
-                // Still offline or another error. It stays queued; the next
-                // attempt comes automatically.
-                Logger.library.notice("SYNCQUEUE send stays queued: \(FailureReason.of(error), privacy: .public)")
+                // Still offline or another error, or an absence answer for a
+                // stand queued before the signed-in server changed (the
+                // answer may be the other server's). It stays queued; the
+                // next attempt comes automatically.
+                let switched = scope == .sendKeptOnAbsence ? " after a server switch" : ""
+                Logger.library.notice("SYNCQUEUE send stays queued\(switched, privacy: .public): \(FailureReason.of(error), privacy: .public)")
             }
         }
         // The flush reached the server (the fetch succeeded): a write is a

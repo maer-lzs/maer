@@ -66,6 +66,11 @@ final class AuthViewModel: ObservableObject {
         if state.unknown {
             Logger.library.notice("ABS access unreadable at start: signed in kept, read again on return")
         }
+        // A device signed in before the server was remembered takes the
+        // stored address as the signed-in server, without a switch.
+        if state.signedIn, !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
+            AppStorageKeys.set(url.absoluteString, for: AppStorageKeys.absSignedInServer)
+        }
 
         // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
@@ -173,6 +178,7 @@ final class AuthViewModel: ObservableObject {
             // A WORKING address goes into the known-server register.
             // Only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
+            AppStorageKeys.noteABSSignIn(url.absoluteString, nowMs: Date().timeIntervalSince1970 * 1000)
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""

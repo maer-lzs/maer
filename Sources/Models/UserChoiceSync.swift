@@ -215,6 +215,9 @@ nonisolated enum UserChoiceCatalog {
         "gpodderUserRemovedFeeds": .machine,
         "cloudQuotaViolationAt": .machine,
         "pendingDownloadDestinations": .machine,
+        "absSignedInServer": .machine,
+        "absLastFullLoadServer": .machine,
+        "absServerSwitchedAt": .machine,
         // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
         // Machine: setup state and derived caches
