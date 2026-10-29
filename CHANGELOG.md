@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Continue Listening on the lock screen.** The widget comes in a wide
+form with the title, the time left and a bar, and a round one with the
+progress as a ring; a tap opens the app and resumes.
+
+**A paused radio station no longer looks finished in the widget.** The
+home screen widget showed it with a full bar and no time left; it now
+says "Live".
+
 **The statistics page shows no listening time it cannot assign.** When
 the device cannot read which part of its listening belongs to the
 account, the page says so and shows nothing of this device from the

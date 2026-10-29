@@ -9,15 +9,19 @@ import Foundation
 @testable import Maer
 
 /// The Continue Listening widget draws its cover to every edge in both
-/// sizes: the cover is the widget's background, the text stands over it.
-/// The widget target has no test host, so the fence reads its source.
+/// home sizes: the cover is the widget's background, the text stands over
+/// it. Only the two lock screen families go without, since the lock screen
+/// draws in one tone. The widget target has no test host, so the fence
+/// reads its source.
 struct ContinueListeningWidgetFenceTests {
 
     @Test("das Widget Weiterhoeren zeichnet das Cover in beiden Groessen bis an den Rand, der Text steht darueber", .needsTheSources)
     func theCoverReachesEveryEdge() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
-        #expect(widget.contains(".containerBackground(for: .widget) { if entry.snapshot != nil { coverBackground } else {"),
+        #expect(widget.contains(".containerBackground(for: .widget) { if isAccessory { Color.clear } else if entry.snapshot != nil { coverBackground } else {"),
                 "a size draws its cover inside the system's margins again")
+        #expect(widget.contains("private var isAccessory: Bool { family == .accessoryRectangular || family == .accessoryCircular }"),
+                "a home size counts as a lock screen family and loses its cover")
         #expect(!widget.contains("family == .systemSmall, entry.snapshot != nil"), "only the small widget carries the cover")
         #expect(!widget.contains(".frame(width: 96, height: 96)"), "the medium widget shows a small cover beside the text again")
         let medium = try #require(widget.range(of: "private func medium(")).upperBound

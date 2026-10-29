@@ -6,12 +6,13 @@
 import SwiftUI
 import WidgetKit
 
-/// Home-screen widget "Continue": shows the last played book with cover,
-/// progress and remaining time; a tap opens the app and resumes (maer://resume
-/// → ResumeRequest path). Data comes as a snapshot from the App Group container
-/// (see WidgetShared.swift, belongs to both targets); the app triggers reloads
-/// on play/pause/book change. This file belongs ONLY to the widget extension
-/// target.
+/// Widget "Continue": shows the last played title, on the home screen with
+/// cover, progress and remaining time, on the lock screen wide and round in
+/// one tone; a live station shows "Live" instead of progress. A tap opens
+/// the app and resumes (maer://resume → ResumeRequest path). Data comes as
+/// a snapshot from the App Group container (see WidgetShared.swift, belongs
+/// to both targets); the app triggers reloads on play/pause/book change.
+/// This file belongs ONLY to the widget extension target.
 struct ContinueListeningEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot?
@@ -65,7 +66,7 @@ struct ContinueListeningWidget: Widget {
         }
         .configurationDisplayName("Continue Listening")
         .description("The last thing you played, one tap away.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular])
     }
 }
 
@@ -76,16 +77,26 @@ private struct ContinueListeningView: View {
     var body: some View {
         Group {
             if let snapshot = entry.snapshot {
+                let line = WidgetLine.of(snapshot, at: entry.date)
                 switch family {
-                case .systemMedium: medium(snapshot)
-                default: small(snapshot)
+                case .systemMedium: medium(snapshot, line)
+                case .accessoryRectangular: rectangular(line)
+                case .accessoryCircular: circular(line)
+                default: small(line)
                 }
             } else {
-                empty
+                switch family {
+                case .accessoryRectangular, .accessoryCircular: emptyAccessory
+                default: empty
+                }
             }
         }
         .containerBackground(for: .widget) {
-            if entry.snapshot != nil {
+            if isAccessory {
+                // The lock screen draws its own material; a cover does not
+                // carry in one tone.
+                Color.clear
+            } else if entry.snapshot != nil {
                 coverBackground
             } else {
                 Color(.systemBackground)
@@ -93,21 +104,92 @@ private struct ContinueListeningView: View {
         }
     }
 
+    private var isAccessory: Bool {
+        family == .accessoryRectangular || family == .accessoryCircular
+    }
+
     /// Small and medium: the cover is the widget's background, which the
     /// system draws to every edge whatever its content margins are on this
     /// device; the text and the progress bar stand at the bottom inside
     /// those margins.
-    private func small(_ snapshot: WidgetSnapshot) -> some View {
+    private func small(_ line: WidgetLine) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Spacer(minLength: 0)
-            Text(snapshot.title)
+            Text(line.title)
                 .font(.caption.bold())
                 .foregroundStyle(.white)
                 .lineLimit(2)
-            ProgressView(value: snapshot.shown(at: entry.date).fraction)
-                .tint(.orange)
+            if line.isLive {
+                liveMark
+            } else {
+                ProgressView(value: line.fraction ?? 0)
+                    .tint(.orange)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    }
+
+    /// A live station in place of the time left and the bar.
+    private var liveMark: some View {
+        Text("Live")
+            .font(.caption2.bold())
+            .foregroundStyle(.white.opacity(0.85))
+    }
+
+    /// Lock screen, wide: the kind's symbol and the title in one line, the
+    /// time left and the bar below; a live station says so instead. The
+    /// play mark stands at the right; a tap opens the app and resumes.
+    private func rectangular(_ line: WidgetLine) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    Text(line.title).lineLimit(1)
+                } icon: {
+                    Image(systemName: line.symbol)
+                }
+                .font(.headline)
+                if line.isLive {
+                    Text("Live").font(.caption)
+                } else {
+                    if let remaining = line.remainingText {
+                        Text(remaining).font(.caption)
+                    }
+                    ProgressView(value: line.fraction ?? 0)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "play.fill")
+                .font(.title3)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Lock screen, round: the progress as a ring around the kind's
+    /// symbol; a live station shows the symbol alone.
+    private func circular(_ line: WidgetLine) -> some View {
+        Group {
+            if line.isLive {
+                ZStack {
+                    AccessoryWidgetBackground()
+                    Image(systemName: line.symbol).font(.title3)
+                }
+            } else {
+                Gauge(value: line.fraction ?? 0) {
+                    Image(systemName: line.symbol)
+                }
+                .gaugeStyle(.accessoryCircularCapacity)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(line.title))
+        .accessibilityValue(line.isLive ? Text("Live") : Text(line.remainingText ?? ""))
+    }
+
+    private var emptyAccessory: some View {
+        Image(systemName: "headphones")
+            .font(.title3)
+            .accessibilityLabel(Text("Nothing playing yet"))
     }
 
     /// The cover with the shade that keeps the text readable. The medium
@@ -124,10 +206,8 @@ private struct ContinueListeningView: View {
 
     /// Medium: title, author, remaining time and bar at the bottom, over
     /// the cover.
-    private func medium(_ snapshot: WidgetSnapshot) -> some View {
-        // The step of this entry's minute while playing.
-        let shown = snapshot.shown(at: entry.date)
-        return VStack(alignment: .leading, spacing: 3) {
+    private func medium(_ snapshot: WidgetSnapshot, _ line: WidgetLine) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 3) {
                 Text(snapshot.title)
@@ -140,7 +220,9 @@ private struct ContinueListeningView: View {
                         .foregroundStyle(.white.opacity(0.85))
                         .lineLimit(1)
                 }
-                if let remaining = shown.remainingText {
+                if line.isLive {
+                    liveMark
+                } else if let remaining = line.remainingText {
                     Text(remaining)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.85))
@@ -148,8 +230,10 @@ private struct ContinueListeningView: View {
             }
             // Beside the placeholder's mark, never over it.
             .padding(.trailing, entry.cover == nil ? Self.placeholderRoom : 0)
-            ProgressView(value: shown.fraction)
-                .tint(.orange)
+            if !line.isLive {
+                ProgressView(value: line.fraction ?? 0)
+                    .tint(.orange)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
     }

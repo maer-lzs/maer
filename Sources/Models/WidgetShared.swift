@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// App Group. Shared container of app and widget extension.
 /// Forks: adapt to your own bundle structure (also change it in the
@@ -36,6 +37,13 @@ nonisolated struct WidgetSnapshot: Codable {
     /// before shows its saved values.
     var steps: [Step]?
     var savedAt: Double?
+    /// The symbol of the title's kind, written by the app, which knows the
+    /// kinds (`MediaFamily.placeholderSymbol`). Nil in a snapshot that
+    /// does not carry it.
+    var kindSymbol: String?
+    /// A live station: it has no end, so no progress and no time left.
+    /// Nil in a snapshot that does not carry it.
+    var isLive: Bool?
 
     struct Step: Codable, Equatable {
         var fraction: Double
@@ -51,6 +59,29 @@ nonisolated struct WidgetSnapshot: Codable {
             let at = min(position + Double(minute) * 60 * rate, duration)
             return Step(fraction: min(max(at / duration, 0), 1), remainingText: text(max(duration - at, 0)))
         }
+    }
+
+    /// The snapshot the app writes for its current title, nil while there
+    /// is nothing to show (a title whose length is not known yet). A live
+    /// station has no length: it is written as live, without progress and
+    /// time left, whatever its position says.
+    static func of(itemId: String, title: String, author: String?, kindSymbol: String, isLive: Bool,
+                   position: Double, duration: Double, rate: Double, isPlaying: Bool, now: Double,
+                   minutesAhead: Int, remaining text: (Double) -> String?) -> WidgetSnapshot? {
+        if isLive {
+            return WidgetSnapshot(itemId: itemId, title: title, author: author, fraction: 0, remainingText: nil,
+                                  isPlaying: isPlaying, steps: nil, savedAt: now, kindSymbol: kindSymbol, isLive: true)
+        }
+        guard duration > 0 else { return nil }
+        return WidgetSnapshot(
+            itemId: itemId, title: title, author: author,
+            fraction: min(max(position / duration, 0), 1),
+            remainingText: text(max(duration - position, 0)),
+            isPlaying: isPlaying,
+            steps: isPlaying
+                ? steps(position: position, duration: duration, rate: rate, minutes: minutesAhead, remaining: text)
+                : nil,
+            savedAt: now, kindSymbol: kindSymbol, isLive: false)
     }
 
     /// What the widget shows at `date`: the step of the minute since the
@@ -86,8 +117,48 @@ nonisolated struct WidgetSnapshot: Codable {
     }
 
     func save() {
-        guard let url = Self.snapshotURL, let data = try? JSONEncoder().encode(self) else { return }
-        try? data.write(to: url, options: .atomic)
+        guard let url = Self.snapshotURL else {
+            WidgetLog.logger.error("WIDGET snapshot not written: no app group container")
+            return
+        }
+        do {
+            try JSONEncoder().encode(self).write(to: url, options: .atomic)
+        } catch {
+            WidgetLog.logger.error("WIDGET snapshot not written: \(String(describing: error), privacy: .public)")
+        }
+    }
+}
+
+/// The log of the shared widget files, in app and widget alike; each
+/// process names its own subsystem by its bundle.
+nonisolated enum WidgetLog {
+    static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "fm.maer.app", category: "widget")
+}
+
+/// What a widget shows of a snapshot at a moment, the same for every
+/// family: the kind's symbol, the title, and either the progress with the
+/// time left or the mark of a live station.
+nonisolated struct WidgetLine: Equatable {
+    var symbol: String
+    var title: String
+    /// 0…1; nil for a live station.
+    var fraction: Double?
+    /// Nil for a live station or when not known.
+    var remainingText: String?
+    var isLive: Bool
+
+    /// The symbol of a snapshot that carries none, the same one the app
+    /// gives a title of no known kind.
+    static let unknownKindSymbol = "waveform"
+
+    static func of(_ snapshot: WidgetSnapshot, at date: Date) -> WidgetLine {
+        let symbol = snapshot.kindSymbol ?? unknownKindSymbol
+        if snapshot.isLive == true {
+            return WidgetLine(symbol: symbol, title: snapshot.title, fraction: nil, remainingText: nil, isLive: true)
+        }
+        let shown = snapshot.shown(at: date)
+        return WidgetLine(symbol: symbol, title: snapshot.title, fraction: shown.fraction,
+                          remainingText: shown.remainingText, isLive: false)
     }
 }
 

@@ -24,25 +24,23 @@ extension PlayerViewModel {
     /// itself (`WidgetSnapshot.steps`); the tick renews them after
     /// `widgetMinutesAhead` less the margin of `needsRenewal`.
     func updateWidgetSnapshot() {
-        guard let item, duration > 0 else { return }
+        guard let item else { return }
         let now = Date().timeIntervalSince1970
-        widgetWrites += 1
-        widgetPlayingSavedAt = isPlaying ? now : nil
-
-        let remaining = max(duration - currentTime, 0)
-        WidgetSnapshot(
+        // A live station's duration grows with its position, so it is
+        // written as live and never by its length.
+        guard let snapshot = WidgetSnapshot.of(
             itemId: item.id,
             title: item.media.metadata?.title ?? "",
             author: item.media.metadata?.authorName,
-            fraction: min(max(currentTime / duration, 0), 1),
-            remainingText: Self.widgetRemainingText(remaining),
-            isPlaying: isPlaying,
-            steps: isPlaying
-                ? WidgetSnapshot.steps(position: currentTime, duration: duration, rate: Double(playbackRate),
-                                       minutes: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText)
-                : nil,
-            savedAt: now
-        ).save()
+            kindSymbol: MediaFamily.placeholderSymbol(for: item.id, markedForm: ListeningStore.startedForm(item.id)),
+            isLive: isLiveStream,
+            position: currentTime, duration: duration, rate: Double(playbackRate), isPlaying: isPlaying, now: now,
+            minutesAhead: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText
+        ) else { return }
+        widgetWrites += 1
+        // Only a snapshot with steps needs renewing.
+        widgetPlayingSavedAt = snapshot.steps == nil ? nil : now
+        snapshot.save()
 
         // Copy the cover only on a book change (the thumbnail tier is plenty for
         // the widget).
