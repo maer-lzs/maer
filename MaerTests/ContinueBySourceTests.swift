@@ -330,6 +330,23 @@ struct ContinueBySourceTests {
         #expect(!WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 20_000, snapshot: nil))
     }
 
+    @Test("eine geaenderte Quelle nimmt nur die Zeilen ihrer Titel, ohne auf einen Durchgang zu warten", .needsTheSources)
+    func aSourceChangeKeepsWhatIsStillThere() throws {
+        let stored = ContinueRows(rows: [row("li_book", .audiobooks, at: 3_000), row("radio:x", .radio, at: 2_000),
+                                         row("sub:album:1", .music, at: 1_000)], passAtMs: 5_000)
+        let radioOff: (String) -> Bool = { !$0.hasPrefix("radio:") }
+        let kept = ContinueBySource.keepingAvailable(stored, snapshotItemId: "li_book", nowMs: 9_000, isAvailable: radioOff)
+        #expect(kept.rows.map(\.itemId) == ["li_book", "sub:album:1"], "the rows of a source still on went too")
+        #expect(kept.passAtMs == 5_000, "a title heard after the last pass would no longer join")
+        let gone = ContinueBySource.keepingAvailable(stored, snapshotItemId: "radio:x", nowMs: 9_000, isAvailable: radioOff)
+        #expect(gone.passAtMs == 9_000, "the snapshot's title lost its source and would join again")
+        let none = ContinueBySource.keepingAvailable(nil, snapshotItemId: nil, nowMs: 9_000, isAvailable: radioOff)
+        #expect(none.rows.isEmpty && none.passAtMs == 9_000)
+        let session = try FetchAnswerTests.squeezedSource("Sources/AppSession.swift")
+        #expect(session.contains("Task { await ContinueRowsWriter.keepAvailable { self.provider(for: $0).isAvailable } }"),
+                "a change of sources no longer cuts the rows by the session's one answer")
+    }
+
     @Test("nach dem Abmelden vom Server stehen keine Zeilen mehr da, ueber den echten Weg der Person")
     @MainActor
     func aSignOutForgetsTheRows() async throws {

@@ -17,6 +17,18 @@ nonisolated enum ContinueBySource {
         MediaFamily.kind(for: id, markedForm: markedForm).flatMap { WidgetSource(rawValue: $0.rawValue) }
     }
 
+    /// The rows after a change of sources, without waiting for a home pass
+    /// that may not come: the rows whose title's source is still available
+    /// stay, the others go. The moment of the pass stays too, so a title
+    /// heard after it still joins; only when the snapshot's own title lost
+    /// its source does the moment become `nowMs`, so it stays out as well.
+    static func keepingAvailable(_ stored: ContinueRows?, snapshotItemId: String?, nowMs: Double,
+                                 isAvailable: (String) -> Bool) -> (rows: [WidgetSourceRow], passAtMs: Double) {
+        let rows = (stored?.rows ?? []).filter { isAvailable($0.itemId) }
+        let snapshotGone = snapshotItemId.map { !isAvailable($0) } ?? false
+        return (rows, snapshotGone ? nowMs : (stored?.passAtMs ?? nowMs))
+    }
+
     /// What the home page knows of one title of its rows.
     struct Card: Equatable {
         var title: String

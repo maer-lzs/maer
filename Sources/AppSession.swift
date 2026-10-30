@@ -42,9 +42,9 @@ final class AppSession: ObservableObject {
         subsonicProvider.reloadConfig()   // rebuilds/nils client + notifies
         jellyfinProvider.reloadConfig()
         notifySourcesChanged()            // toggles that don't touch the music clients
-        // The widget's rows may name titles of a source now off; the next
-        // home pass writes them anew.
-        Task { await ContinueRowsWriter.forget() }
+        // The widget's rows may name titles of a source now off; they go,
+        // the rest stays until the next home pass.
+        Task { await ContinueRowsWriter.keepAvailable { self.provider(for: $0).isAvailable } }
     }
 
     /// Owns the APIClient (built from the keychain). Base URL and token are

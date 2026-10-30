@@ -62,12 +62,22 @@ enum ContinueRowsWriter {
         if wrote { reload() }
     }
 
-    /// A server signed out or a source changed: the home page may not
-    /// compute again (it shows the welcome page after the sign-out), so the
-    /// rows of its last pass would stand. They go, with the moment now, so a
-    /// snapshot heard before stays out too; the next pass writes anew.
+    /// A server signed out: the app shows the welcome page and the home
+    /// page does not compute, so the rows of its last pass would stand.
+    /// They go, with the moment now, so a snapshot heard before stays out
+    /// too; the next pass writes anew.
     static func forget() async {
         await write([], passAtMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// A source switched or another device's choices adopted: a home pass
+    /// follows only if the library changes, so the rows are cut here to the
+    /// titles whose source is still available (`ContinueBySource.keepingAvailable`).
+    static func keepAvailable(_ isAvailable: (String) -> Bool) async {
+        let kept = ContinueBySource.keepingAvailable(ContinueRows.load(), snapshotItemId: WidgetSnapshot.load()?.itemId,
+                                                     nowMs: Date().timeIntervalSince1970 * 1000,
+                                                     isAvailable: isAvailable)
+        await write(kept.rows, passAtMs: kept.passAtMs)
     }
 
     private static func reload() {
