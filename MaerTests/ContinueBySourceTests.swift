@@ -66,15 +66,85 @@ struct ContinueBySourceTests {
         #expect(rows.map(\.itemId) == ["book-b", "station", "song", "ep"], "a title heard again stands once, with its new moment")
     }
 
-    @Test("eine Zeile geht, wenn die App den Titel nicht mehr zeigt: beendet, ausgeblendet, Server oder Konto weg")
-    func aRowGoesWithItsTitle() {
-        let heard = 1_800_000_000_000.0
-        let rows = [row("done", .audiobooks, at: heard), row("hidden", .podcasts, at: heard),
-                    row("hidden-then-heard", .podcasts, at: heard + 60_000), row("gone", .music, at: heard),
-                    row("stays", .radio, at: heard)]
-        let markers = ["hidden": heard / 1000, "hidden-then-heard": heard / 1000]
-        let kept = ContinueBySource.kept(rows, finished: ["done"], hiddenMarkers: markers, owned: { $0 != "gone" })
-        #expect(kept.map(\.itemId) == ["hidden-then-heard", "stays"])
+    private func progress(_ fraction: Double, at ms: Double, time: Double? = nil) -> BookProgress {
+        BookProgress(fraction: fraction, isFinished: false, lastUpdate: ms, currentTime: time)
+    }
+
+    @Test("ein Durchgang der Startseite wird zu Zeilen, je Art aus dem, was die Startseite liest")
+    func theHomePassBecomesRows() {
+        let song = CatalogSongID.make(album: FreeCatalog.archivePrefix + "album", index: 1)
+        let cards: [String: ContinueBySource.Card] = [
+            "li_book": .init(title: "Buch", subtitle: "Autorin", kindSymbol: "book.closed", markedForm: nil, isLive: false,
+                             local: progress(0.1, at: 1_000), server: progress(0.5, at: 2_000, time: 1_800), duration: 3_600),
+            "rss:feed#ep": .init(title: "Folge", subtitle: "Sendung", kindSymbol: "mic", markedForm: nil, isLive: false,
+                                 local: progress(0.75, at: 9_000, time: 900), server: progress(0.2, at: 3_000), duration: 1_200),
+            "sub:album:1": .init(title: "Album", subtitle: "Band", kindSymbol: "music.note", markedForm: nil, isLive: false),
+            "radio:station": .init(title: "Sender", subtitle: nil, kindSymbol: "antenna.radiowaves.left.and.right",
+                                   markedForm: nil, isLive: true, local: progress(0.9, at: 9_999)),
+            song: .init(title: "Spur", subtitle: nil, kindSymbol: "music.note", markedForm: nil, isLive: false),
+        ]
+        let moments: [(id: String, ms: Double)] = [("li_book", 5), ("rss:feed#ep", 4), ("sub:album:1", 3),
+                                                   ("radio:station", 2), (song, 1), ("unknown:x", 9)]
+        let rows = ContinueBySource.rows(of: moments) { cards[$0] }
+        let byId = Dictionary(uniqueKeysWithValues: rows.map { ($0.itemId, $0) })
+        #expect(byId["li_book"]?.source == .audiobooks && byId["li_book"]?.fraction == 0.5,
+                "the book shows the newer progress, the server's")
+        #expect(byId["li_book"]?.remainingText == DurationText.remaining(seconds: 1_800))
+        #expect(byId["rss:feed#ep"]?.source == .podcasts && byId["rss:feed#ep"]?.fraction == 0.75,
+                "the episode shows the newer progress, this device's")
+        #expect(byId["sub:album:1"]?.source == .music && byId["sub:album:1"]?.fraction == nil
+                    && byId["sub:album:1"]?.remainingText == nil, "an album without a position has no bar")
+        #expect(byId["radio:station"]?.isLive == true && byId["radio:station"]?.fraction == nil)
+        #expect(byId[song] == nil || byId[song]?.source == .music, "a catalogue track is music")
+        #expect(byId["unknown:x"] == nil, "a title without a card has no row")
+        #expect(rows.allSatisfy { $0.cover == WidgetCoverStore.continueRows.name(for: $0.itemId) })
+        #expect(rows.map(\.playedAt) == rows.map(\.playedAt).sorted(by: >), "heard last first")
+    }
+
+    @Test("die Karte des Schreibers: ein Sender ist live, ein Buch traegt Titel, Autorin, Laenge und den Stand des Servers")
+    @MainActor
+    func theWritersCard() throws {
+        let stationId = "radio:rb:card-\(UUID().uuidString)"
+        let station = RadioStation(id: stationId, name: "Sender", streamURL: "https://stream.example/live")
+        let live = try #require(ContinueRowsWriter.card(for: stationId, entry: nil, item: nil, station: station, serverProgress: nil))
+        #expect(live.isLive && live.title == "Sender" && live.local == nil && live.server == nil)
+        let bookId = "li_card-\(UUID().uuidString)"
+        let metadata = try JSONDecoder().decode(LibraryItemMetadata.self,
+                                                from: Data(#"{"title":"Buch","authorName":"Autorin"}"#.utf8))
+        let item = LibraryItem(id: bookId, media: LibraryItemMedia(metadata: metadata, duration: 3_600, chapters: nil, tracks: nil),
+                               addedAt: nil)
+        let server = progress(0.5, at: 2_000, time: 1_800)
+        let book = try #require(ContinueRowsWriter.card(for: bookId, entry: LibraryEntry(item: item, progress: server),
+                                                        item: nil, station: nil, serverProgress: nil))
+        #expect(!book.isLive && book.title == "Buch" && book.subtitle == "Autorin" && book.duration == 3_600)
+        #expect(book.server == server && book.local == nil, "the book's progress is the library entry's")
+        #expect(ContinueRowsWriter.card(for: "li_none-\(UUID().uuidString)", entry: nil, item: nil, station: nil,
+                                        serverProgress: nil) == nil, "a title nothing resolves has no card")
+    }
+
+    @Test("nichts eines frueheren Durchgangs bleibt: ein Titel, den die Startseite nicht mehr zeigt, geht")
+    func aTitleTheHomeNoLongerShowsLeaves() {
+        let card = ContinueBySource.Card(title: "t", subtitle: nil, kindSymbol: "book.closed", markedForm: nil, isLive: false)
+        let first = ContinueBySource.rows(of: [("li_a", 2), ("li_gone", 1)]) { _ in card }
+        #expect(first.map(\.itemId) == ["li_a", "li_gone"])
+        let second = ContinueBySource.rows(of: [("li_a", 3)]) { _ in card }
+        #expect(second.map(\.itemId) == ["li_a"], "a title of a removed server or another account stayed")
+    }
+
+    @Test("die Startseite ruft den einen Schreiber mit dem, was ihre Zeilen zeigen; nur er schreibt die Zeilen", .needsTheSources)
+    func theHomePassCallsTheOneWriter() throws {
+        let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
+        #expect(home.contains("writeWidgetRows(continueMoments: books + episodesShown, episodeProgress: episodeProgress)"),
+                "the home pass no longer hands the writer what its Continue row shows")
+        #expect(home.contains("let entries = listenAgain(limit: RowPreview.limit).entries"),
+                "the Listen Again row reads its entries another way than the widget's rows")
+        #expect(home.contains("Task { await ContinueRowsWriter.write(rows) }"))
+        var writers: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if text.contains("ContinueRows(rows:") { writers.append(file.lastPathComponent) }
+        }
+        #expect(writers == ["ContinueRowsWriter.swift"], "the rows have another writer: \(writers)")
     }
 
     @Test("gross: je eingeschaltete Quelle der neueste Titel in der Reihenfolge der Reiter, in Bedienungshilfen-Groessen zwei")

@@ -410,6 +410,12 @@ nonisolated struct ContinueRows: Codable, Equatable {
         guard let url, let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(ContinueRows.self, from: data)
     }
+
+    /// Says whether the file was written; only `ContinueRowsWriter` calls it.
+    func save() -> Bool {
+        guard let url = Self.url, let data = try? JSONEncoder().encode(self) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
 }
 
 /// What a "Continue" widget shows: its rows (large and medium, when it has

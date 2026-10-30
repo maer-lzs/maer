@@ -346,17 +346,56 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             + stations + catalogTracks.count
     }
 
-    @ViewBuilder
-    private var recentlyPlayedSection: some View {
+    /// "Listen Again" with the moment of each entry, where known: the one
+    /// reading for the row and for the widget's rows.
+    private func listenAgain(limit: Int) -> (entries: [RecentlyPlayedRow.Entry], times: [String: Double]) {
+        let albumTimes = RecentlyPlayedRow.albumTimes(musicContinueProgress)
+        let stationTimes = RadioStore.recentTimes()
+        let catalogTimes = RecentlyPlayedRow.catalogTimes(catalogTracks)
         let entries = RecentlyPlayedRow.merged(
             albums: recentMusicItems.map(\.id),
-            albumTimes: RecentlyPlayedRow.albumTimes(musicContinueProgress),
+            albumTimes: albumTimes,
             continued: Set(continueIds),
             stations: radioRecents.map(\.id),
-            stationTimes: RadioStore.recentTimes(),
+            stationTimes: stationTimes,
             catalog: catalogTracks.map(\.id),
-            catalogTimes: RecentlyPlayedRow.catalogTimes(catalogTracks),
-            limit: RowPreview.limit)
+            catalogTimes: catalogTimes,
+            limit: limit)
+        let times = albumTimes.merging(stationTimes) { first, _ in first }.merging(catalogTimes) { first, _ in first }
+        return (entries, times)
+    }
+
+    /// The widget's rows from this pass: "Continue" and "Listen Again" with
+    /// their moments, read where the rows read them, handed to the one
+    /// writer.
+    private func writeWidgetRows(continueMoments: [(id: String, ts: Double)],
+                                 episodeProgress: [String: BookProgress]) {
+        let again = listenAgain(limit: Self.widgetListenAgainLimit)
+        let againMoments = again.entries.map { entry -> (id: String, ms: Double) in
+            let id: String
+            switch entry {
+            case .album(let album): id = album
+            case .station(let station): id = station
+            case .catalogTrack(let track): id = track
+            }
+            return (id, again.times[id] ?? 0)
+        }
+        let moments = continueMoments.map { (id: $0.id, ms: $0.ts) } + againMoments
+        let stations = Dictionary(radioRecents.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let rows = ContinueBySource.rows(of: moments) { id in
+            ContinueRowsWriter.card(for: id, entry: libraryViewModel.entry(id: id), item: router.item(id),
+                                    station: stations[id],
+                                    serverProgress: episodeProgress[id] ?? musicContinueProgress[id])
+        }
+        Task { await ContinueRowsWriter.write(rows) }
+    }
+
+    /// How many "Listen Again" entries the widget's rows draw from.
+    private static let widgetListenAgainLimit = 50
+
+    @ViewBuilder
+    private var recentlyPlayedSection: some View {
+        let entries = listenAgain(limit: RowPreview.limit).entries
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 // Now there IS a page. Counted chevron by the rule
@@ -662,10 +701,11 @@ RowHeading(title: "Rediscover",
         // The same moment the episode card names (local or server stand,
         // whichever is newer), so the row cannot rank by one clock and
         // show another.
+        let episodeProgress = ABSPodcastProvider.shared.episodeProgress
         let episodes = sections.nextUp.map {
             (id: $0.id, ts: HomeSections.lastPlayedMs(
                 local: localTimestamp($0.id),
-                server: ABSPodcastProvider.shared.episodeProgress[$0.id]?.lastUpdate ?? 0,
+                server: episodeProgress[$0.id]?.lastUpdate ?? 0,
                 // What plays IS the newest thing: its stand is written every
                 // thirty seconds, and between two writes a stand arriving
                 // from the other device used to push it down the row.
@@ -816,6 +856,7 @@ RowHeading(title: "Rediscover",
             rediscoverPicks = rediscover
             rediscoverPool = pool
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
+            writeWidgetRows(continueMoments: books + episodesShown, episodeProgress: episodeProgress)
         }
         // Layout-shift fix: same calm gate as the other libraries. A landed
         // recompute never reshapes Home mid-scroll.
