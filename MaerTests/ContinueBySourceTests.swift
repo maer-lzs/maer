@@ -162,6 +162,8 @@ struct ContinueBySourceTests {
         #expect(widget.contains("WidgetCoverStore.continueRows.url(named: name)"), "the rows' covers come from another place")
         #expect(widget.contains(".fixedSize(horizontal: subtitle != nil, vertical: false)"),
                 "beside a long name the time left is cut off again")
+        #expect(widget.contains("Text(verbatim: \" · \") .fixedSize() .accessibilityHidden(true)"),
+                "VoiceOver reads the separator between name and time")
     }
 
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)

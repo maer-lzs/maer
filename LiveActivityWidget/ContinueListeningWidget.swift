@@ -209,6 +209,7 @@ private struct ContinueListeningView: View {
                 if !time.isEmpty {
                     Text(verbatim: " · ")
                         .fixedSize()
+                        .accessibilityHidden(true)
                 }
             }
             Text(verbatim: time)
