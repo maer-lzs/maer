@@ -336,6 +336,20 @@ nonisolated enum WidgetRows {
     }
 }
 
+/// What a "Continue" widget shows: its rows (large and medium, when it has
+/// any), else the one last played title, and only without any snapshot
+/// that nothing was played yet.
+nonisolated enum ContinueFace: Equatable, Sendable {
+    case rows
+    case oneTitle
+    case nothingYet
+
+    static func of(showsRowsAtThisSize: Bool, hasRows: Bool, hasSnapshot: Bool) -> ContinueFace {
+        if showsRowsAtThisSize, hasRows { return .rows }
+        return hasSnapshot ? .oneTitle : .nothingYet
+    }
+}
+
 /// What the medium "Continue" shows.
 nonisolated enum ContinueMediumContent: String, Sendable, AppEnum {
     case lastHeard

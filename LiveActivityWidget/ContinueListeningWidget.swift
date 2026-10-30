@@ -99,20 +99,23 @@ private struct ContinueListeningView: View {
                          accessibilitySize: dynamicTypeSize.isAccessibilitySize)
     }
 
-    /// Large and medium show rows when there are any; without them the
-    /// medium widget shows the one title, the large one says nothing played.
-    private var showsRows: Bool {
-        (family == .systemLarge || family == .systemMedium) && !rows.isEmpty
+    /// Large and medium are the sizes with text over the cover and with rows.
+    private var isWide: Bool {
+        family == .systemLarge || family == .systemMedium
+    }
+
+    private var face: ContinueFace {
+        ContinueFace.of(showsRowsAtThisSize: isWide, hasRows: !rows.isEmpty, hasSnapshot: entry.snapshot != nil)
     }
 
     var body: some View {
         Group {
-            if showsRows {
+            if face == .rows {
                 rowsFace(rows)
-            } else if let snapshot = entry.snapshot, family != .systemLarge {
+            } else if face == .oneTitle, let snapshot = entry.snapshot {
                 let line = WidgetLine.of(snapshot, at: entry.date)
                 switch family {
-                case .systemMedium: medium(snapshot, line)
+                case .systemMedium, .systemLarge: medium(snapshot, line)
                 case .accessoryRectangular: rectangular(line)
                 case .accessoryCircular: circular(line)
                 default: small(line)
@@ -129,7 +132,7 @@ private struct ContinueListeningView: View {
                 // The lock screen draws its own material; a cover does not
                 // carry in one tone.
                 Color.clear
-            } else if entry.snapshot != nil, !showsRows, family != .systemLarge {
+            } else if face == .oneTitle {
                 coverBackground
             } else {
                 Color(.systemBackground)
@@ -337,20 +340,20 @@ private struct ContinueListeningView: View {
             .accessibilityLabel(Text("Nothing playing yet"))
     }
 
-    /// The cover with the shade that keeps the text readable. The medium
-    /// widget carries four lines of text, so its shade starts at the top.
+    /// The cover with the shade that keeps the text readable. Medium and
+    /// large carry four lines of text, so their shade starts at the top.
     private var coverBackground: some View {
         ZStack {
             coverImage
             LinearGradient(
-                colors: family == .systemMedium ? [.black.opacity(0.2), .black.opacity(0.8)] : [.clear, .black.opacity(0.75)],
-                startPoint: family == .systemMedium ? .top : .center, endPoint: .bottom
+                colors: isWide ? [.black.opacity(0.2), .black.opacity(0.8)] : [.clear, .black.opacity(0.75)],
+                startPoint: isWide ? .top : .center, endPoint: .bottom
             )
         }
     }
 
-    /// Medium: title, author, remaining time and bar at the bottom, over
-    /// the cover.
+    /// Medium, and large without rows: title, author, remaining time and
+    /// bar at the bottom, over the cover.
     private func medium(_ snapshot: WidgetSnapshot, _ line: WidgetLine) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Spacer(minLength: 0)
@@ -390,16 +393,16 @@ private struct ContinueListeningView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } else {
-            // The medium widget carries its text at the bottom left across
+            // Medium and large carry their text at the bottom left across
             // the width; the placeholder's mark stands at the right so the
             // title never lies on it.
             Rectangle()
                 .fill(.quaternary)
-                .overlay(alignment: family == .systemMedium ? .trailing : .center) {
+                .overlay(alignment: isWide ? .trailing : .center) {
                     Image(systemName: "book.closed")
-                        .font(family == .systemMedium ? .largeTitle : .body)
+                        .font(isWide ? .largeTitle : .body)
                         .foregroundStyle(.secondary)
-                        .padding(.trailing, family == .systemMedium ? Self.placeholderInset : 0)
+                        .padding(.trailing, isWide ? Self.placeholderInset : 0)
                 }
         }
     }

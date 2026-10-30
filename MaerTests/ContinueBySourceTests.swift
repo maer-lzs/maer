@@ -151,6 +151,24 @@ struct ContinueBySourceTests {
         #expect(back.bySource == snapshot.bySource)
     }
 
+    @Test("ohne Zeilen zeigt auch gross den einen Titel, „Noch nichts gehört“ nur ohne Schnappschuss")
+    func theFaceWithoutRows() {
+        typealias Row = (wide: Bool, rows: Bool, snapshot: Bool, want: ContinueFace)
+        let table: [Row] = [
+            (true, true, true, .rows),
+            (true, false, true, .oneTitle),
+            (true, false, false, .nothingYet),
+            (true, true, false, .rows),
+            (false, true, true, .oneTitle),
+            (false, false, true, .oneTitle),
+            (false, false, false, .nothingYet),
+        ]
+        for row in table {
+            #expect(ContinueFace.of(showsRowsAtThisSize: row.wide, hasRows: row.rows, hasSnapshot: row.snapshot) == row.want,
+                    "\(row)")
+        }
+    }
+
     @Test("gross und mittel zeigen die Zeilen der Regel, je Zeile ein Link und ein Knopf mit ihrem Titel", .needsTheSources)
     func theWidgetShowsTheRows() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
@@ -159,6 +177,10 @@ struct ContinueBySourceTests {
         #expect(widget.contains("Link(destination: ResumeLink.url(itemId: row.itemId))"), "a row does not open its own title")
         #expect(widget.contains("Button(intent: ResumeListeningIntent(itemId: row.itemId))"), "a row's button does not continue its own title")
         #expect(widget.contains(".supportedFamilies([.systemSmall, .systemMedium, .systemLarge,"))
+        #expect(widget.contains("ContinueFace.of(showsRowsAtThisSize: isWide, hasRows: !rows.isEmpty, hasSnapshot: entry.snapshot != nil)"),
+                "the widget decides its face past the rule")
+        #expect(widget.contains("case .systemMedium, .systemLarge: medium(snapshot, line)"),
+                "the large widget without rows does not show the one title")
         #expect(widget.contains("WidgetCoverStore.continueRows.url(named: name)"), "the rows' covers come from another place")
         #expect(widget.contains(".fixedSize(horizontal: subtitle != nil, vertical: false)"),
                 "beside a long name the time left is cut off again")
