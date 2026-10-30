@@ -261,7 +261,33 @@ struct ContinueBySourceTests {
         #expect(station.heardMs == 12_000, "a playing station without a position is heard while it plays")
         station.isPlaying = false
         #expect(station.heardMs == nil)
+        #expect(snapshot("again", .audiobooks, savedAt: 20, heardAtMs: 6_000, playing: true).heardMs == 20_000,
+                "a title playing again counts from this write, not from its older position")
         #expect(WidgetRows.withTitle(of: station, at: Date(), in: pass, passAtMs: 10_000) == pass)
+    }
+
+    @Test("ueber den echten Player: ein Titel, den der Durchgang ausliess und der wieder laeuft, steht waehrend des Hoerens in seiner Zeile", .needsAudio)
+    func aTitleHeardAgainStandsInItsRow() async throws {
+        let ticks = TickWorkTests()
+        let file = try ticks.tone(seconds: 12)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "widget-again-\(UUID().uuidString)"
+        let heard = Date().timeIntervalSince1970 * 1000 - 3_600_000
+        ListeningStore.record(id, position: 3, duration: 12, atMs: heard)
+        ContinueHiddenStore.hide(id: id, lastUpdate: heard)
+        defer { ContinueHiddenStore.show(id: id) }
+        let pass = [row("book-before", .audiobooks, at: heard - 60_000)]
+        let passAt = Date().timeIntervalSince1970 * 1000
+        let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
+        model.play()
+        let written = try #require(WidgetSnapshot.load(), "the precondition: the play wrote a snapshot")
+        #expect(written.itemId == id && written.isPlaying, "the precondition: the snapshot of the play")
+        let shown = WidgetRows.withTitle(of: written, at: Date(), in: pass, passAtMs: passAt)
+        let large = WidgetRows.shown(shown, layout: .large(Set(WidgetSource.allCases)), accessibilitySize: false)
+        #expect(large.first?.itemId == id, "the title playing again is missing from its row: \(large.map(\.itemId))")
+        model.stop()
     }
 
     @Test("ueber den echten Player: ein Titel, den die Wiederherstellung ohne Hoeren laedt, legt sich nicht ueber den Durchgang zurueck", .needsAudio)

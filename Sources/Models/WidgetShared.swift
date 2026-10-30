@@ -140,18 +140,23 @@ nonisolated struct WidgetSnapshot: Codable {
     /// (`ContinueBySource.source`). Nil in a snapshot that does not carry
     /// it; the title then joins no row of the large and medium widget.
     var source: WidgetSource?
-    /// When the title was last heard on this device, in milliseconds: the
-    /// moment of its last position, which only listening writes. A write
-    /// without listening (a restore at start, a change of speed) leaves it.
+    /// When the title's position was last written on this device, in
+    /// milliseconds: by listening, by a sync of positions from another
+    /// device, or by marking it heard. A write of the snapshot without any
+    /// of them (a restore at start, a change of speed) leaves it.
     var heardAtMs: Double?
 
-    /// The moment the title counts as heard: its last position, or, while
-    /// it plays (a station has no position), the write; nil for a title
-    /// neither heard here nor playing.
+    /// The moment the title counts as heard: while it plays, the later of
+    /// its position's moment and this write (playing starts before the
+    /// first position is written, and a station has none); stopped, its
+    /// position's moment alone. Nil for a title without a position here
+    /// that is not playing.
     var heardMs: Double? {
-        if let heardAtMs { return heardAtMs }
-        guard isPlaying, let savedAt else { return nil }
-        return savedAt * 1000
+        let playingMs = isPlaying ? savedAt.map { $0 * 1000 } : nil
+        switch (heardAtMs, playingMs) {
+        case let (position?, playing?): return max(position, playing)
+        default: return heardAtMs ?? playingMs
+        }
     }
 
     struct Step: Codable, Equatable {
