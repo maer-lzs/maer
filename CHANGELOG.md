@@ -46,6 +46,17 @@ after the app starts, these and Siri's "Continue Listening" also find a
 last played song or Jellyfin title, which the app then asks its server
 for, the way it restores the mini player.
 
+**Continue Listening, large and by source.** The Continue Listening
+widget now also comes in large, and large and medium show a row per
+title. Large shows the newest title of each source, audiobooks, podcasts,
+music and radio, each switched on or off under Edit Widget; medium shows
+the two titles heard last, or the newest of two sources you choose. The
+rows are what the start page shows under Continue and Listen Again, so
+titles from your other devices appear too once the start page has
+loaded. A tap on a row opens that title, its play button continues it
+without opening the app. At the largest text sizes fewer rows stand,
+each in full. Without rows the widget shows the last title, as before.
+
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same
 title (a tap, the widget's button) was swallowed; it now plays.

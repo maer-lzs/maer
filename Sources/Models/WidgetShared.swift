@@ -337,18 +337,26 @@ nonisolated enum WidgetRows {
     }
 
     /// The rows a widget shows: the rows the app's home pass wrote
-    /// (`ContinueRows`), with the title of the player's snapshot in the row
-    /// of its source. Each comes from its own writer, so neither can take
-    /// the other's write away; the snapshot is the newer word on what plays
-    /// here, a snapshot without a source joins no row.
-    static func withTitle(of snapshot: WidgetSnapshot?, at date: Date, in rows: [WidgetSourceRow]) -> [WidgetSourceRow] {
+    /// (`ContinueRows`, at `passAtMs`), with the title of the player's
+    /// snapshot in the row of its source. Each comes from its own writer, so
+    /// neither can take the other's write away. The snapshot's title joins
+    /// when the pass shows it or the snapshot is newer than the pass; a
+    /// title the pass left out after the snapshot (finished, hidden, its
+    /// server or account gone) stays out, and a row of the pass newer than
+    /// the snapshot stands as it is. A snapshot without a source joins no
+    /// row.
+    static func withTitle(of snapshot: WidgetSnapshot?, at date: Date, in rows: [WidgetSourceRow],
+                          passAtMs: Double?) -> [WidgetSourceRow] {
         guard let snapshot, let source = snapshot.source else { return rows }
+        let savedMs = (snapshot.savedAt ?? date.timeIntervalSince1970) * 1000
+        let shownByPass = rows.first { $0.itemId == snapshot.itemId }
+        if let shownByPass, shownByPass.playedAt > savedMs { return rows }
+        guard shownByPass != nil || savedMs > (passAtMs ?? -.infinity) else { return rows }
         let line = WidgetLine.of(snapshot, at: date)
         let row = WidgetSourceRow(source: source, itemId: snapshot.itemId, title: snapshot.title,
                                   subtitle: snapshot.author, fraction: line.fraction,
                                   remainingText: line.remainingText, isLive: line.isLive,
-                                  kindSymbol: line.symbol, cover: nil,
-                                  playedAt: (snapshot.savedAt ?? date.timeIntervalSince1970) * 1000)
+                                  kindSymbol: line.symbol, cover: nil, playedAt: savedMs)
         return merged(row, into: rows)
     }
 
@@ -380,9 +388,13 @@ nonisolated enum WidgetRows {
 /// reads (`WidgetRows.withTitle`).
 nonisolated struct ContinueRows: Codable, Equatable {
     var rows: [WidgetSourceRow]
+    /// When the pass that wrote the rows ran, in milliseconds; nil in a
+    /// file that does not carry it.
+    var passAtMs: Double?
 
-    init(rows: [WidgetSourceRow]) {
+    init(rows: [WidgetSourceRow], passAtMs: Double?) {
         self.rows = rows
+        self.passAtMs = passAtMs
     }
 
     /// A row of another form (a field it lacks, a source this build does
@@ -391,6 +403,7 @@ nonisolated struct ContinueRows: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         rows = (try container.decodeIfPresent([LenientRow].self, forKey: .rows) ?? []).compactMap(\.row)
+        passAtMs = try container.decodeIfPresent(Double.self, forKey: .passAtMs)
     }
 
     private struct LenientRow: Decodable {

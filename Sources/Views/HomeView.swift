@@ -387,7 +387,8 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     station: stations[id],
                                     serverProgress: episodeProgress[id] ?? musicContinueProgress[id])
         }
-        Task { await ContinueRowsWriter.write(rows) }
+        let passAtMs = Date().timeIntervalSince1970 * 1000
+        Task { await ContinueRowsWriter.write(rows, passAtMs: passAtMs) }
     }
 
     /// How many "Listen Again" entries the widget's rows draw from.

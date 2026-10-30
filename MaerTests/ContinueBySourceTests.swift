@@ -138,7 +138,7 @@ struct ContinueBySourceTests {
                 "the home pass no longer hands the writer what its Continue row shows")
         #expect(home.contains("let entries = listenAgain(limit: RowPreview.limit).entries"),
                 "the Listen Again row reads its entries another way than the widget's rows")
-        #expect(home.contains("Task { await ContinueRowsWriter.write(rows) }"))
+        #expect(home.contains("Task { await ContinueRowsWriter.write(rows, passAtMs: passAtMs) }"))
         var writers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -222,7 +222,7 @@ struct ContinueBySourceTests {
         let object = try JSONSerialization.jsonObject(with: encoded)
         let keys = try #require(object as? [String: Any]).keys
         #expect(!keys.contains("rows") && !keys.contains("bySource"), "the player's snapshot carries rows again: \(keys.sorted())")
-        let rows = ContinueRows(rows: [row("ep", .podcasts, at: 2), row("station", .radio, at: 1)])
+        let rows = ContinueRows(rows: [row("ep", .podcasts, at: 2), row("station", .radio, at: 1)], passAtMs: 5)
         #expect(try JSONDecoder().decode(ContinueRows.self, from: JSONEncoder().encode(rows)) == rows)
     }
 
@@ -248,9 +248,9 @@ struct ContinueBySourceTests {
     @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)
     func thePlayerNeverWritesTheRows() throws {
         let home = [row("book", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
-        let shown = WidgetRows.withTitle(of: snapshot("song", .music, savedAt: 2), at: Date(timeIntervalSince1970: 3), in: home)
+        let shown = WidgetRows.withTitle(of: snapshot("song", .music, savedAt: 2), at: Date(timeIntervalSince1970: 3),
+                                         in: home, passAtMs: 1_500)
         #expect(shown.map(\.itemId) == ["song", "book", "ep"], "the rows are the pass's rows and the playing title")
-        #expect(!shown.contains { $0.itemId == "gone" })
         let player = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+Widget.swift")
         #expect(!player.contains("ContinueRows"), "the player writes the home pass's rows")
         #expect(player.contains("source: ContinueBySource.source(for: item.id, markedForm: markedForm),"),
@@ -261,13 +261,36 @@ struct ContinueBySourceTests {
     func thePlayingTitleStandsInItsRow() {
         let home = [row("book-old", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
         let playing = snapshot("book-now", .audiobooks, savedAt: 5)
-        let shown = WidgetRows.withTitle(of: playing, at: Date(timeIntervalSince1970: 6), in: home)
+        let shown = WidgetRows.withTitle(of: playing, at: Date(timeIntervalSince1970: 6), in: home, passAtMs: 1_500)
         let large = WidgetRows.shown(shown, layout: .large(Set(WidgetSource.allCases)), accessibilitySize: false)
         #expect(large.map(\.itemId) == ["book-now", "ep"], "the playing book stands in the audiobooks row")
         #expect(large.first?.playedAt == 5_000 && large.first?.fraction == 0.4)
-        #expect(WidgetRows.withTitle(of: snapshot("x", nil, savedAt: 9), at: Date(), in: home) == home,
+        #expect(WidgetRows.withTitle(of: snapshot("x", nil, savedAt: 9), at: Date(), in: home, passAtMs: 1_500) == home,
                 "a snapshot without a source joins no row")
-        #expect(WidgetRows.withTitle(of: nil, at: Date(), in: home) == home)
+        #expect(WidgetRows.withTitle(of: nil, at: Date(), in: home, passAtMs: 1_500) == home)
+        #expect(WidgetRows.withTitle(of: playing, at: Date(), in: home, passAtMs: nil).contains { $0.itemId == "book-now" },
+                "a file without the moment of its pass takes the snapshot's title in")
+    }
+
+    @Test("ein Titel, den der juengste Durchgang ausliess (beendet, ausgeblendet, Konto weg), steht in keiner Zeile, auch wenn der Schnappschuss ihn traegt")
+    func aTitleThePassLeftOutStaysOut() {
+        let pass = [row("book-before", .audiobooks, at: 4_000), row("ep", .podcasts, at: 3_000)]
+        // Finished, hidden or no longer this account's: the pass at 10 s left X out, the snapshot of X is older.
+        for left in ["finished", "hidden", "other-account"] {
+            let shown = WidgetRows.withTitle(of: snapshot(left, .audiobooks, savedAt: 6), at: Date(timeIntervalSince1970: 11),
+                                             in: pass, passAtMs: 10_000)
+            #expect(shown == pass, "\(left) came back into the rows: \(shown.map(\.itemId))")
+            let large = WidgetRows.shown(shown, layout: .large(Set(WidgetSource.allCases)), accessibilitySize: false)
+            #expect(large.first?.itemId == "book-before", "the audiobooks row shows \(left) instead of the book before")
+        }
+        // Heard after the pass: the pass could not know it yet.
+        let after = WidgetRows.withTitle(of: snapshot("new", .audiobooks, savedAt: 12), at: Date(timeIntervalSince1970: 13),
+                                         in: pass, passAtMs: 10_000)
+        #expect(after.first?.itemId == "new")
+        // The pass knows the title with a newer moment than the snapshot: its row stands.
+        let newer = [row("book-before", .audiobooks, at: 14_000)]
+        #expect(WidgetRows.withTitle(of: snapshot("book-before", .audiobooks, savedAt: 12), at: Date(timeIntervalSince1970: 15),
+                                     in: newer, passAtMs: 14_500) == newer)
     }
 
     @Test("ohne Zeilen zeigt auch gross den einen Titel, „Noch nichts gehört“ nur ohne Schnappschuss")
@@ -291,7 +314,7 @@ struct ContinueBySourceTests {
     @Test("gross und mittel zeigen die Zeilen der Regel, je Zeile ein Link und ein Knopf mit ihrem Titel", .needsTheSources)
     func theWidgetShowsTheRows() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
-        #expect(widget.contains("WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows), layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
+        #expect(widget.contains("WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows, passAtMs: entry.passAtMs), layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
                 "the widget picks its rows past the rule, or without the type size")
         #expect(widget.contains("Link(destination: ResumeLink.url(itemId: row.itemId))"), "a row does not open its own title")
         #expect(widget.contains("Button(intent: ResumeListeningIntent(itemId: row.itemId))"), "a row's button does not continue its own title")

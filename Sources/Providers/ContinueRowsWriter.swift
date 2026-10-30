@@ -35,14 +35,16 @@ enum ContinueRowsWriter {
                                      local: local, server: entry?.progress ?? serverProgress, duration: duration)
     }
 
-    /// Writes the rows when they changed, then the covers they name, and
-    /// reloads the widget.
-    static func write(_ rows: [WidgetSourceRow]) async {
-        guard ContinueRows.load()?.rows != rows else { return }
-        guard ContinueRows(rows: rows).save() else {
+    /// Writes the rows with the moment of the pass, every pass, so the
+    /// widget knows which snapshot is newer than the rows; when the rows
+    /// changed, also the covers they name, and reloads the widget.
+    static func write(_ rows: [WidgetSourceRow], passAtMs: Double) async {
+        let changed = ContinueRows.load()?.rows != rows
+        guard ContinueRows(rows: rows, passAtMs: passAtMs).save() else {
             Logger.library.notice("WIDGET rows not written count=\(rows.count, privacy: .public)")
             return
         }
+        guard changed else { return }
         reload()
         let covered = rows.compactMap { row in row.cover.map { (id: row.itemId, name: $0) } }
         let wrote = await WidgetCoverWriter.write(covered, into: .continueRows) {

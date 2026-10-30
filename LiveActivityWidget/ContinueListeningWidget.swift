@@ -22,8 +22,10 @@ struct ContinueListeningEntry: TimelineEntry {
     let cover: UIImage?
     /// The rows the widget's settings ask for at its size.
     let layout: WidgetRows.Layout
-    /// The rows the app's home pass wrote, without the snapshot's title.
+    /// The rows the app's home pass wrote, without the snapshot's title,
+    /// and when that pass ran.
     var homeRows: [WidgetSourceRow] = []
+    var passAtMs: Double?
     /// The covers of the rows the app left in the app group, by file name.
     var rowCovers: [String: UIImage] = [:]
 }
@@ -35,7 +37,8 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         if let url = WidgetSnapshot.coverURL, let data = try? Data(contentsOf: url) {
             cover = UIImage(data: data)
         }
-        let homeRows = ContinueRows.load()?.rows ?? []
+        let pass = ContinueRows.load()
+        let homeRows = pass?.rows ?? []
         var rowCovers: [String: UIImage] = [:]
         for name in homeRows.compactMap(\.cover) {
             if let url = WidgetCoverStore.continueRows.url(named: name), let data = try? Data(contentsOf: url) {
@@ -43,7 +46,7 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
             }
         }
         return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout,
-                                      homeRows: homeRows, rowCovers: rowCovers)
+                                      homeRows: homeRows, passAtMs: pass?.passAtMs, rowCovers: rowCovers)
     }
 
     private func layout(_ settings: ContinueWidgetSettings, _ context: Context) -> WidgetRows.Layout {
@@ -70,7 +73,8 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         let start = Date(timeIntervalSince1970: savedAt)
         let entries = (0..<steps.count).map { minute in
             ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot,
-                                   cover: now.cover, layout: now.layout, homeRows: now.homeRows, rowCovers: now.rowCovers)
+                                   cover: now.cover, layout: now.layout, homeRows: now.homeRows,
+                                   passAtMs: now.passAtMs, rowCovers: now.rowCovers)
         }.filter { $0.date.addingTimeInterval(60) > Date() }
         return Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never)
     }
@@ -99,7 +103,8 @@ private struct ContinueListeningView: View {
 
     /// The rows the settings ask for at this size and type size.
     private var rows: [WidgetSourceRow] {
-        WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows),
+        WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows,
+                                              passAtMs: entry.passAtMs),
                          layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
     }
 
