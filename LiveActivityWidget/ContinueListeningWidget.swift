@@ -63,7 +63,7 @@ struct ContinueListeningWidget: Widget {
             provider: ContinueListeningProvider()
         ) { entry in
             ContinueListeningView(entry: entry)
-                .widgetURL(URL(string: "maer://resume"))
+                .widgetURL(ResumeLink.url(itemId: nil))
         }
         .configurationDisplayName("Continue Listening")
         .description("The last thing you played, one tap away.")

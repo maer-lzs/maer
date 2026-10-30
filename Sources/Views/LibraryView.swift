@@ -824,8 +824,9 @@ struct LibraryView: View {
         }
         .onOpenURL { url in
             // Home-screen widget: maer://resume → resume path (like the quick
-            // action / Siri).
-            guard url.scheme == "maer" else { return }
+            // action / Siri); a row's link names its title like Siri does.
+            guard ResumeLink.asksToResume(url) else { return }
+            ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)
             ResumeRequest.pending = true
             Task { await handlePendingResumeRequest() }
         }

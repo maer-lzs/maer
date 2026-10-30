@@ -73,14 +73,38 @@ struct ResumeTargetTests {
                 let coordinator = PlayerCoordinator(provider: MockProvider())
                 await Reachability.$assumed.withValue(true) {
                     targets.append(await coordinator.resume(namedItemId: nil, by: caller, library: library, lastPlayedId: id,
-                                                            resolveLast: { lastId, _ in
-                                                                asked.append(lastId)
+                                                            resolve: { lastId, _, allowsShowNewest in
+                                                                asked.append("\(lastId) \(allowsShowNewest)")
                                                                 return LibraryItem(id: lastId, media: nil, addedAt: nil)
                                                             }))
                 }
             }
             #expect(targets == [.lastPlayed(id), .lastPlayed(id)], "\(id) was not found: \(targets)")
-            #expect(asked == [id, id], "the door did not ask the restore's chain for \(id)")
+            #expect(asked == ["\(id) true", "\(id) true"], "the door did not ask the restore's chain for \(id), as the restore does")
+        }
+    }
+
+    @Test("ein genannter Titel (Siri, Zeile eines Widgets), nicht im Speicher der Sitzung, wird ueber die Kette gefunden, nie der Nachbar")
+    func aNamedTitleResolvesWithoutItsNeighbour() async {
+        let library = LibraryViewModel(provider: MockProvider())
+        let suffix = UUID().uuidString
+        for id in ["sub:song:\(suffix)", "jf:item:\(suffix)", "rss:feed:\(suffix)#ep", "radio:\(suffix)", "book-\(suffix)"] {
+            #expect(AppSession.shared.libraryItem(forId: id) == nil, "the precondition: \(id) is in the session's memory")
+            var asked: [String] = []
+            var targets: [ResumeTarget] = []
+            for caller in [PlayerCoordinator.ResumeCaller.view, .command] {
+                let coordinator = PlayerCoordinator(provider: MockProvider())
+                await Reachability.$assumed.withValue(true) {
+                    targets.append(await coordinator.resume(namedItemId: id, by: caller, library: library,
+                                                            lastPlayedId: "resume-last-\(suffix)",
+                                                            resolve: { namedId, _, allowsShowNewest in
+                                                                asked.append("\(namedId) \(allowsShowNewest)")
+                                                                return LibraryItem(id: namedId, media: nil, addedAt: nil)
+                                                            }))
+                }
+            }
+            #expect(targets == [.item(id), .item(id)], "\(id) was not found: \(targets)")
+            #expect(asked == ["\(id) false", "\(id) false"], "the door asked for \(id) another way than the play on a foreign claim")
         }
     }
 
@@ -106,10 +130,24 @@ struct ResumeTargetTests {
         defer { ResumeListeningIntent.handler = before }
         ResumeListeningIntent.handler = nil
         _ = try await ResumeListeningIntent().perform()
-        var runs = 0
-        ResumeListeningIntent.handler = { runs += 1 }
+        var runs: [String?] = []
+        ResumeListeningIntent.handler = { runs.append($0) }
         _ = try await ResumeListeningIntent().perform()
-        #expect(runs == 1)
+        _ = try await ResumeListeningIntent(itemId: "row-title").perform()
+        #expect(runs == [nil, "row-title"], "the work did not run once per command, with the title a row names")
+    }
+
+    @Test("der Link des Widgets: ohne Titel weiterhoeren, mit Titel genau diesen, jede Kennung kommt unversehrt an")
+    func theWidgetsLink() throws {
+        let plain = ResumeLink.url(itemId: nil)
+        #expect(plain.absoluteString == "maer://resume")
+        #expect(ResumeLink.asksToResume(plain) && ResumeLink.itemId(in: plain) == nil)
+        for id in ["li_book-1", "rss:https://feed.example/a?b=c&d#ep 1/ä", "sub:song:1", "lva:x+y=z"] {
+            #expect(ResumeLink.itemId(in: ResumeLink.url(itemId: id)) == id, "\(id) did not come back")
+        }
+        #expect(ResumeLink.itemId(in: try #require(URL(string: "maer://resume/"))) == nil, "an empty title is a title")
+        let other = try #require(URL(string: "https://maer.fm/resume/a"))
+        #expect(!ResumeLink.asksToResume(other) && ResumeLink.itemId(in: other) == nil)
     }
 
     /// The text between a function's head and the next `func` of the file.
@@ -144,11 +182,20 @@ struct ResumeTargetTests {
         #expect(!command.contains("ResumeRequest"), "the command leaves a request for the view")
         let door = try body(of: "func resume(namedItemId: String?, by caller: ResumeCaller,",
                             in: "Sources/ViewModels/PlayerCoordinator+Resume.swift")
-        #expect(door.contains("last = await resolveStandbyItem(lastPlayedId, entries: entries, allowsShowNewest: true)"),
-                "the door resolves the last played title another way than the app's own restore")
+        #expect(door.contains("await self.resolveStandbyItem(id, entries: entries, allowsShowNewest: allowsShowNewest)"),
+                "the door resolves titles another way than the app's own restore")
+        #expect(door.contains("named = await resolve(namedItemId, entries, false)"),
+                "a named title may become the show's newest episode beside it")
+        #expect(door.contains("last = await resolve(lastPlayedId, entries, true)"),
+                "the last played title resolves another way than the app's own restore")
         let app = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
-        #expect(app.contains("ResumeListeningIntent.handler = { await AppSession.shared.playerCoordinator.resume(namedItemId: nil, by: .command) }"),
-                "the app does not give the command its work at start")
+        #expect(app.contains("ResumeListeningIntent.handler = { itemId in await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command) }"),
+                "the app does not give the command its work at start, with the title a row names")
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.id"), "Siri's named book does not reach the door through the view")
+        let link = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(link.contains("guard ResumeLink.asksToResume(url) else { return } ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)"),
+                "the widget's link does not hand its title to the door")
     }
 }
 #endif

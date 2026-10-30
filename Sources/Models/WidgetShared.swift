@@ -9,10 +9,11 @@ import OSLog
 
 /// The command behind the play button of the wide widget, the round widget
 /// and the control: continue the last played title without opening the
-/// app. As an audio command it runs in the app's process, which the system
-/// starts in the background when it is not running; the app gives the
-/// command its work (`handler`) when it starts. Without it, in the widget's
-/// process, the command writes a line and does nothing.
+/// app, or the title a row of the large or medium widget names. As an audio
+/// command it runs in the app's process, which the system starts in the
+/// background when it is not running; the app gives the command its work
+/// (`handler`) when it starts. Without it, in the widget's process, the
+/// command writes a line and does nothing.
 struct ResumeListeningIntent: AudioPlaybackIntent {
     static let title: LocalizedStringResource = "Continue Listening"
     static let description = IntentDescription("Continues the last played title.")
@@ -20,7 +21,17 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
     /// (`ContinueListeningIntent`) is the one action of that name there.
     static let isDiscoverable = false
 
-    @MainActor static var handler: (@MainActor () async -> Void)?
+    /// The title a widget row names; nil continues the last played title.
+    @Parameter(title: "Title")
+    var itemId: String?
+
+    init() {}
+
+    init(itemId: String?) {
+        self.itemId = itemId
+    }
+
+    @MainActor static var handler: (@MainActor (String?) async -> Void)?
 
     @MainActor
     func perform() async throws -> some IntentResult {
@@ -28,8 +39,38 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
             WidgetLog.logger.notice("RESUME command without the app's handler")
             return .result()
         }
-        await handler()
+        await handler(itemId)
         return .result()
+    }
+}
+
+/// The link a widget opens the app with to continue listening:
+/// `maer://resume`, with the title a row names as its path. Built and read
+/// only here, by the widget and the app. The path, not a query, because a
+/// query is set only in `QueryValues`, which the widget does not build.
+nonisolated enum ResumeLink {
+    static let scheme = "maer"
+    static let host = "resume"
+
+    static func url(itemId: String?) -> URL {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        if let itemId { components.path = "/" + itemId }
+        return components.url ?? URL(string: "\(scheme)://\(host)")!
+    }
+
+    /// Every link of the app's scheme asks to continue listening.
+    static func asksToResume(_ url: URL) -> Bool {
+        url.scheme == scheme
+    }
+
+    /// The title the link names; nil for none or an empty one.
+    static func itemId(in url: URL) -> String? {
+        guard asksToResume(url),
+              let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?.path else { return nil }
+        let id = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        return id.isEmpty ? nil : id
     }
 }
 

@@ -30,35 +30,33 @@ extension PlayerCoordinator {
     /// waits for a load and never leaves a request behind; the view keeps
     /// waiting on `.waitForLibrary`.
     ///
-    /// A title Siri named is looked up like the view does. The last played
-    /// title resolves the way the app's own restore resolves it
+    /// Every title resolves the way the app's own restore resolves it
     /// (`resolveStandbyItem`: the list, the session's resolver with a detail
     /// fetch from the title's server, the feed), so a song or a Jellyfin
     /// title the session's memory does not hold after a cold start is still
-    /// found; and only when it is the question, with no title named and no
-    /// player open. `resolveLast` stands in for that chain in a witness.
+    /// found. A title Siri or a widget row named is that title or nothing,
+    /// never the show's newest episode beside it, like the play on a foreign
+    /// claim. The last played title is asked only when it is the question,
+    /// with no title named and no player open, and may take that neighbour,
+    /// like the restore. `resolve` stands in for the chain in a witness; its
+    /// third argument says whether the neighbour may be taken.
     @discardableResult
     func resume(namedItemId: String?, by caller: ResumeCaller, library given: LibraryViewModel? = nil,
                 lastPlayedId: String? = AppStorageKeys.lastPlayedItemIdValue,
-                resolveLast: (@MainActor (String, [LibraryEntry]) async -> LibraryItem?)? = nil) async -> ResumeTarget {
+                resolve resolver: (@MainActor (String, [LibraryEntry], Bool) async -> LibraryItem?)? = nil) async -> ResumeTarget {
         let session = AppSession.shared
         let library = given ?? session.libraryViewModel
         if caller == .command, library.entries.isEmpty {
             await library.showCachedLibraryIfAvailable()
         }
-        if let namedItemId, ItemNamespace.isPodcastEpisode(namedItemId) {
-            await PodcastSubscriptions.shared.ensureLoaded()
+        let resolve = resolver ?? { id, entries, allowsShowNewest in
+            await self.resolveStandbyItem(id, entries: entries, allowsShowNewest: allowsShowNewest)
         }
         let entries = library.entries
-        let named = namedItemId.flatMap { Self.resumeItem(forId: $0, entries: entries, known: session.libraryItem) }
+        var named: LibraryItem?
+        if let namedItemId { named = await resolve(namedItemId, entries, false) }
         var last: LibraryItem?
-        if namedItemId == nil, viewModel == nil, let lastPlayedId {
-            if let resolveLast {
-                last = await resolveLast(lastPlayedId, entries)
-            } else {
-                last = await resolveStandbyItem(lastPlayedId, entries: entries, allowsShowNewest: true)
-            }
-        }
+        if namedItemId == nil, viewModel == nil, let lastPlayedId { last = await resolve(lastPlayedId, entries, true) }
         let target = ResumeTarget.pick(namedItemId: namedItemId, namedItemKnown: named != nil,
                                        hasActivePlayer: viewModel != nil,
                                        lastPlayedId: lastPlayedId, lastPlayedKnown: last != nil,

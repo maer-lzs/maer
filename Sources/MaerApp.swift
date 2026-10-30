@@ -240,8 +240,8 @@ struct MaerApp: App {
         #endif
         // The widget's play command runs in this process, also when the
         // system starts it in the background for the command alone.
-        ResumeListeningIntent.handler = {
-            await AppSession.shared.playerCoordinator.resume(namedItemId: nil, by: .command)
+        ResumeListeningIntent.handler = { itemId in
+            await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command)
         }
         // Clear orphaned import temp (partial downloads/upload
         // bodies of a killed import). No invisible MB; freed size in the log.
