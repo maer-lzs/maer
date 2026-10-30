@@ -191,7 +191,7 @@ final class PlayQueue: ObservableObject {
             guard let item = AppSession.shared.libraryItem(forId: id) else { return nil }
             var cover: String?
             if covered.count < PodcastQueueSnapshot.coveredCount {
-                let name = PodcastQueueSnapshot.coverName(for: id)
+                let name = WidgetCoverStore.upNext.name(for: id)
                 covered.append((id, name))
                 cover = name
             }
@@ -201,37 +201,16 @@ final class PlayQueue: ObservableObject {
         }
         PodcastQueueSnapshot(items: items).save()
         Self.reloadUpNextWidget()
-        Task { await Self.writeWidgetCovers(covered) }
+        Task {
+            let wrote = await WidgetCoverWriter.write(covered, into: .upNext) {
+                Set(PodcastQueueSnapshot.load()?.items.compactMap(\.cover) ?? [])
+            }
+            if wrote { Self.reloadUpNextWidget() }
+        }
     }
 
     private static func reloadUpNextWidget() {
         WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext")
-    }
-
-    /// The thumbnails of the covered entries, written where missing; the
-    /// files the snapshot on disk no longer names go (asked at the end, so
-    /// an earlier pass never removes the covers of a later queue).
-    private static func writeWidgetCovers(_ covered: [(id: String, name: String)]) async {
-        guard let folder = AppGroup.containerURL else { return }
-        var wrote = false
-        for entry in covered {
-            guard let target = PodcastQueueSnapshot.coverURL(named: entry.name),
-                  !FileManager.default.fileExists(atPath: target.path),
-                  let url = ItemRouter.live.coverURL(entry.id),
-                  let image = await Artwork.thumbnail(for: url),
-                  let data = PlayerViewModel.downscaled(image, maxPixel: PodcastQueueSnapshot.coverPixel).pngData()
-            else { continue }
-            wrote = PodcastQueueSnapshot.writeCover(data, named: entry.name) || wrote
-        }
-        // bearable, because an unread folder only leaves old thumbnails for the next pass
-        let present = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
-        let named = Set(PodcastQueueSnapshot.load()?.items.compactMap(\.cover) ?? [])
-        for name in PodcastQueueSnapshot.staleCovers(in: present, keeping: named) {
-            guard let url = PodcastQueueSnapshot.coverURL(named: name) else { continue }
-            // bearable, because a thumbnail left behind is removed on the next pass
-            try? FileManager.default.removeItem(at: url)
-        }
-        if wrote { reloadUpNextWidget() }
     }
 }
 

@@ -24,7 +24,7 @@ struct PodcastUpNextProvider: TimelineProvider {
         let items = PodcastQueueSnapshot.load()?.items ?? []
         var covers: [String: UIImage] = [:]
         for name in items.compactMap(\.cover) {
-            if let url = PodcastQueueSnapshot.coverURL(named: name), let data = try? Data(contentsOf: url) {
+            if let url = WidgetCoverStore.upNext.url(named: name), let data = try? Data(contentsOf: url) {
                 covers[name] = UIImage(data: data)
             }
         }

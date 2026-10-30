@@ -303,6 +303,46 @@ nonisolated enum WidgetRows {
     }
 }
 
+/// The cover thumbnails a widget reads from the app group, which loads
+/// nothing from the network: one store per widget, told apart by the
+/// prefix of its files, so one widget's clean-up never takes another's
+/// covers.
+nonisolated struct WidgetCoverStore: Sendable {
+    let prefix: String
+    /// The thumbnail's longest side in pixels.
+    let pixel: CGFloat
+
+    /// "Up Next": the cover stands 26 pt high in the widget, at three
+    /// pixels per point with room to spare.
+    static let upNext = WidgetCoverStore(prefix: "upnext-cover-", pixel: 96)
+
+    /// The thumbnail file of a title: a stable name from its id (FNV-1a),
+    /// so a list that only reorders keeps its files.
+    func name(for id: String) -> String {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        for byte in id.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01B3
+        }
+        return prefix + String(hash, radix: 16) + ".png"
+    }
+
+    func url(named name: String) -> URL? {
+        AppGroup.containerURL?.appendingPathComponent(name)
+    }
+
+    /// The cover files to remove: every thumbnail of this store the
+    /// widget's snapshot no longer names.
+    func stale(in names: [String], keeping kept: Set<String>) -> [String] {
+        names.filter { $0.hasPrefix(prefix) && !kept.contains($0) }.sorted()
+    }
+
+    func write(_ data: Data, named name: String) -> Bool {
+        guard let url = url(named: name) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
+}
+
 /// Preview of the podcast "Up Next" queue for the home-screen widget. The app
 /// writes on every queue change (see `PlayQueue.save`), the widget reads.
 /// Via the App Group container, since it is a separate process.
@@ -311,7 +351,8 @@ nonisolated struct PodcastQueueSnapshot: Codable {
         var title: String
         var show: String?
         /// The file of the entry's cover thumbnail in the app group
-        /// (`coverName(for:)`); the medium widget shows it when it is there.
+        /// (`WidgetCoverStore.upNext`); the medium widget shows it when it
+        /// is there.
         var cover: String?
         /// The app's placeholder symbol for the entry's kind, shown while
         /// there is no cover.
@@ -322,39 +363,9 @@ nonisolated struct PodcastQueueSnapshot: Codable {
     /// How many entries the medium widget lists with their covers; the app
     /// leaves a thumbnail for each of them.
     static let coveredCount = 4
-    /// The thumbnail's longest side in pixels: the cover stands 26 pt high
-    /// in the widget, at three pixels per point with room to spare.
-    static let coverPixel: CGFloat = 96
-    static let coverPrefix = "upnext-cover-"
 
     static var url: URL? {
         AppGroup.containerURL?.appendingPathComponent("podcast-queue-snapshot.json")
-    }
-
-    /// The thumbnail file of an entry: a stable name from its id (FNV-1a),
-    /// so a queue that only reorders keeps its files.
-    static func coverName(for id: String) -> String {
-        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
-        for byte in id.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 0x0000_0100_0000_01B3
-        }
-        return coverPrefix + String(hash, radix: 16) + ".png"
-    }
-
-    static func coverURL(named name: String) -> URL? {
-        AppGroup.containerURL?.appendingPathComponent(name)
-    }
-
-    /// The cover files to remove: every thumbnail of the queue the
-    /// snapshot no longer names.
-    static func staleCovers(in names: [String], keeping kept: Set<String>) -> [String] {
-        names.filter { $0.hasPrefix(coverPrefix) && !kept.contains($0) }.sorted()
-    }
-
-    static func writeCover(_ data: Data, named name: String) -> Bool {
-        guard let url = coverURL(named: name) else { return false }
-        return (try? data.write(to: url, options: .atomic)) != nil
     }
 
     static func load() -> PodcastQueueSnapshot? {
