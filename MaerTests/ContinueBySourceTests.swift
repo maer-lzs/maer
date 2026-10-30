@@ -140,6 +140,28 @@ struct ContinueBySourceTests {
         }
     }
 
+    @Test("der Schnappschuss traegt die Zeilen, ein Schnappschuss ohne sie liest sich wie vorher")
+    func theSnapshotCarriesTheRows() throws {
+        let old = Data(#"{"itemId":"li_1","title":"Buch","fraction":0.5,"isPlaying":false}"#.utf8)
+        let read = try JSONDecoder().decode(WidgetSnapshot.self, from: old)
+        #expect(read.title == "Buch" && read.bySource == nil)
+        var snapshot = read
+        snapshot.bySource = [row("ep", .podcasts, at: 2), row("station", .radio, at: 1)]
+        let back = try JSONDecoder().decode(WidgetSnapshot.self, from: JSONEncoder().encode(snapshot))
+        #expect(back.bySource == snapshot.bySource)
+    }
+
+    @Test("gross und mittel zeigen die Zeilen der Regel, je Zeile ein Link und ein Knopf mit ihrem Titel", .needsTheSources)
+    func theWidgetShowsTheRows() throws {
+        let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
+        #expect(widget.contains("WidgetRows.shown(entry.snapshot?.bySource ?? [], layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
+                "the widget picks its rows past the rule, or without the type size")
+        #expect(widget.contains("Link(destination: ResumeLink.url(itemId: row.itemId))"), "a row does not open its own title")
+        #expect(widget.contains("Button(intent: ResumeListeningIntent(itemId: row.itemId))"), "a row's button does not continue its own title")
+        #expect(widget.contains(".supportedFamilies([.systemSmall, .systemMedium, .systemLarge,"))
+        #expect(widget.contains("WidgetCoverStore.continueRows.url(named: name)"), "the rows' covers come from another place")
+    }
+
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)
     func theWidgetReadsItsSettings() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")

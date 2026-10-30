@@ -113,6 +113,10 @@ nonisolated struct WidgetSnapshot: Codable {
     /// A live station: it has no end, so no progress and no time left.
     /// Nil in a snapshot that does not carry it.
     var isLive: Bool?
+    /// The rows of the large and medium "Continue" (`WidgetSourceRow`),
+    /// kept by the app with `ContinueBySource`. Nil in a snapshot that does
+    /// not carry them; the medium widget then shows the one title.
+    var bySource: [WidgetSourceRow]?
 
     struct Step: Codable, Equatable {
         var fraction: Double
@@ -392,6 +396,9 @@ nonisolated struct WidgetCoverStore: Sendable {
     /// "Up Next": the cover stands 26 pt high in the widget, at three
     /// pixels per point with room to spare.
     static let upNext = WidgetCoverStore(prefix: "upnext-cover-", pixel: 96)
+    /// The rows of the large and medium "Continue": the cover stands up
+    /// to 44 pt high, at three pixels per point.
+    static let continueRows = WidgetCoverStore(prefix: "continue-cover-", pixel: 132)
 
     /// The thumbnail file of a title: a stable name from its id (FNV-1a),
     /// so a list that only reorders keeps its files.

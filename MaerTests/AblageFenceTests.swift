@@ -45,7 +45,7 @@ struct AblageFenceTests {
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
         "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
         "APIClient.swift": (1, "a file mapped for a multipart upload"),
-        "ContinueListeningWidget.swift": (1, "the widget reads the cover bytes the app left in the app group"),
+        "ContinueListeningWidget.swift": (2, "the widget reads the cover bytes the app left in the app group, the title's and its rows'"),
         "PodcastUpNextWidget.swift": (1, "the widget reads the queue's cover thumbnails the app left in the app group"),
     ]
 

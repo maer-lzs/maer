@@ -9,7 +9,9 @@ import WidgetKit
 
 /// Widget "Continue": shows the last played title, on the home screen with
 /// cover, progress and remaining time, on the lock screen wide and round in
-/// one tone; a live station shows "Live" instead of progress. A tap opens
+/// one tone; a live station shows "Live" instead of progress. Large and
+/// medium show one row per title the settings ask for, once the app has
+/// written rows (`WidgetSnapshot.bySource`). A tap opens
 /// the app and resumes (maer://resume → ResumeRequest path). Data comes as
 /// a snapshot from the App Group container (see WidgetShared.swift, belongs
 /// to both targets); the app triggers reloads on play/pause/book change.
@@ -20,6 +22,8 @@ struct ContinueListeningEntry: TimelineEntry {
     let cover: UIImage?
     /// The rows the widget's settings ask for at its size.
     let layout: WidgetRows.Layout
+    /// The covers of the rows the app left in the app group, by file name.
+    var rowCovers: [String: UIImage] = [:]
 }
 
 struct ContinueListeningProvider: AppIntentTimelineProvider {
@@ -29,7 +33,13 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         if let url = WidgetSnapshot.coverURL, let data = try? Data(contentsOf: url) {
             cover = UIImage(data: data)
         }
-        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout)
+        var rowCovers: [String: UIImage] = [:]
+        for name in (snapshot?.bySource ?? []).compactMap(\.cover) {
+            if let url = WidgetCoverStore.continueRows.url(named: name), let data = try? Data(contentsOf: url) {
+                rowCovers[name] = UIImage(data: data)
+            }
+        }
+        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout, rowCovers: rowCovers)
     }
 
     private func layout(_ settings: ContinueWidgetSettings, _ context: Context) -> WidgetRows.Layout {
@@ -56,7 +66,7 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         let start = Date(timeIntervalSince1970: savedAt)
         let entries = (0..<steps.count).map { minute in
             ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot,
-                                   cover: now.cover, layout: now.layout)
+                                   cover: now.cover, layout: now.layout, rowCovers: now.rowCovers)
         }.filter { $0.date.addingTimeInterval(60) > Date() }
         return Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never)
     }
@@ -74,17 +84,32 @@ struct ContinueListeningWidget: Widget {
         }
         .configurationDisplayName("Continue Listening")
         .description("The last thing you played, one tap away.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular])
     }
 }
 
 private struct ContinueListeningView: View {
     let entry: ContinueListeningEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// The rows the settings ask for at this size and type size.
+    private var rows: [WidgetSourceRow] {
+        WidgetRows.shown(entry.snapshot?.bySource ?? [], layout: entry.layout,
+                         accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+    }
+
+    /// Large and medium show rows when there are any; without them the
+    /// medium widget shows the one title, the large one says nothing played.
+    private var showsRows: Bool {
+        (family == .systemLarge || family == .systemMedium) && !rows.isEmpty
+    }
 
     var body: some View {
         Group {
-            if let snapshot = entry.snapshot {
+            if showsRows {
+                rowsFace(rows)
+            } else if let snapshot = entry.snapshot, family != .systemLarge {
                 let line = WidgetLine.of(snapshot, at: entry.date)
                 switch family {
                 case .systemMedium: medium(snapshot, line)
@@ -104,7 +129,7 @@ private struct ContinueListeningView: View {
                 // The lock screen draws its own material; a cover does not
                 // carry in one tone.
                 Color.clear
-            } else if entry.snapshot != nil {
+            } else if entry.snapshot != nil, !showsRows, family != .systemLarge {
                 coverBackground
             } else {
                 Color(.systemBackground)
@@ -114,6 +139,86 @@ private struct ContinueListeningView: View {
 
     private var isAccessory: Bool {
         family == .accessoryRectangular || family == .accessoryCircular
+    }
+
+    /// Large and medium with rows: a heading, then one row per title. A
+    /// tap on a row opens the app with that title; its button continues
+    /// the title without opening the app.
+    private func rowsFace(_ rows: [WidgetSourceRow]) -> some View {
+        VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 8) {
+            Label("Continue Listening", systemImage: "headphones")
+                .font(.caption.bold())
+                .foregroundStyle(.orange)
+            ForEach(rows, id: \.itemId) { row in
+                sourceRow(row)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The title stands on one line. The medium rows and the accessibility
+    /// sizes keep only the time in the line under it, and the accessibility
+    /// sizes drop the cover.
+    private func sourceRow(_ row: WidgetSourceRow) -> some View {
+        let large = family == .systemLarge
+        let compact = !large || dynamicTypeSize.isAccessibilitySize
+        return HStack(spacing: 8) {
+            Link(destination: ResumeLink.url(itemId: row.itemId)) {
+                HStack(spacing: 8) {
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        rowCover(row, side: large ? 44 : 34)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.title)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Text(verbatim: rowDetail(row, compact: compact))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        if !row.isLive {
+                            ProgressView(value: row.fraction ?? 0)
+                                .tint(.orange)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+            Button(intent: ResumeListeningIntent(itemId: row.itemId)) {
+                Image(systemName: "play.circle.fill")
+                    .font(compact ? .title3 : .title2)
+                    .foregroundStyle(.orange)
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityLabel(Text("Continue Listening"))
+            .accessibilityValue(Text(row.title))
+        }
+    }
+
+    /// Who and how long, or live; compact, only how long or live.
+    private func rowDetail(_ row: WidgetSourceRow, compact: Bool) -> String {
+        let time = row.isLive ? String(localized: "Live") : (row.remainingText ?? "")
+        guard !compact, let subtitle = row.subtitle, !subtitle.isEmpty else { return time }
+        return time.isEmpty ? subtitle : "\(subtitle) · \(time)"
+    }
+
+    private func rowCover(_ row: WidgetSourceRow, side: CGFloat) -> some View {
+        Group {
+            if let name = row.cover, let image = entry.rowCovers[name] {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Rectangle()
+                    .fill(.quaternary)
+                    .overlay(Image(systemName: row.kindSymbol).font(.caption).foregroundStyle(.secondary))
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 
     /// Small and medium: the cover is the widget's background, which the
