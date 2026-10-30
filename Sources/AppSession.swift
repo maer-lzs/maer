@@ -42,8 +42,10 @@ final class AppSession: ObservableObject {
         subsonicProvider.reloadConfig()   // rebuilds/nils client + notifies
         jellyfinProvider.reloadConfig()
         notifySourcesChanged()            // toggles that don't touch the music clients
-        // The widget's rows may name titles of a source now off; they go,
-        // the rest stays until the next home pass.
+        // The widget's rows may name titles the home page no longer shows;
+        // they go (`ContinueBySource.standsAfterSwitch`: a station, an RSS
+        // episode and a catalogue title stay with their source off), the
+        // rest stays until the next home pass.
         Task { await ContinueRowsWriter.keepStanding { self.provider(for: $0).isAvailable } }
     }
 

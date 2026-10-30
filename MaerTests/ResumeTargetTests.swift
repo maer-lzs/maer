@@ -80,8 +80,31 @@ struct ResumeTargetTests {
                 }
             }
             #expect(targets == [.lastPlayed(id), .lastPlayed(id)], "\(id) was not found: \(targets)")
-            #expect(asked == ["\(id) true", "\(id) true"], "the door did not ask the restore's chain for \(id), as the restore does")
+            #expect(asked == ["\(id) false", "\(id) false"], "the door asked for \(id) with the neighbour, and plays what it finds")
         }
+    }
+
+    @Test("zuletzt gehoert, eine Folge, die aus Feed und Historie fiel: die Tuer spielt nicht die neueste der Sendung, sie findet nichts")
+    func theLastPlayedEpisodeNeverPlaysItsNeighbour() async {
+        let library = LibraryViewModel(provider: MockProvider())
+        let suffix = UUID().uuidString
+        let gone = "rss:feed:\(suffix)#gone"
+        let newest = LibraryItem(id: "rss:feed:\(suffix)#newest", media: nil, addedAt: nil)
+        var targets: [ResumeTarget] = []
+        for caller in [PlayerCoordinator.ResumeCaller.view, .command] {
+            let coordinator = PlayerCoordinator(provider: MockProvider())
+            await Reachability.$assumed.withValue(true) {
+                targets.append(await coordinator.resume(namedItemId: nil, by: caller, library: library, lastPlayedId: gone,
+                                                        resolve: { _, _, allowsShowNewest in
+                                                            PlayerCoordinator.standbyTail(fetched: nil, showNewest: newest,
+                                                                                          allowsShowNewest: allowsShowNewest).0
+                                                        }))
+            }
+            #expect(coordinator.viewModel == nil, "the door opened a player for the show's newest episode")
+        }
+        #expect(targets == [.nothing(missing: "last played not found"), .nothing(missing: "last played not found")],
+                "the door continued another title than the last played: \(targets)")
+        #expect(targets.allSatisfy { $0.findsNothing }, "nothing found must bring the sentence")
     }
 
     @Test("ein genannter Titel (Siri, Zeile eines Widgets), nicht im Speicher der Sitzung, wird ueber die Kette gefunden, nie der Nachbar")
@@ -207,8 +230,8 @@ struct ResumeTargetTests {
                 "the door resolves titles another way than the app's own restore")
         #expect(door.contains("named = await resolve(namedItemId, entries, false)"),
                 "a named title may become the show's newest episode beside it")
-        #expect(door.contains("last = await resolve(lastPlayedId, entries, true)"),
-                "the last played title resolves another way than the app's own restore")
+        #expect(door.contains("last = await resolve(lastPlayedId, entries, false)"),
+                "the last played title may become the show's newest episode beside it, and plays")
         let app = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
         #expect(app.contains("ResumeListeningIntent.handler = { itemId in let target = await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command) return !target.findsNothing }"),
                 "the app does not give the command its work at start, with the title a row names")

@@ -45,9 +45,11 @@ extension PlayerCoordinator {
     /// found. A title Siri or a widget row named is that title or nothing,
     /// never the show's newest episode beside it, like the play on a foreign
     /// claim. The last played title is asked only when it is the question,
-    /// with no title named and no player open, and may take that neighbour,
-    /// like the restore. `resolve` stands in for the chain in a witness; its
-    /// third argument says whether the neighbour may be taken.
+    /// with no title named and no player open, and without the neighbour
+    /// too: the door plays what it finds, and only the restore at start,
+    /// which does not play, may take one (`standbyTail`). A title that left
+    /// its feed is nothing found. `resolve` stands in for the chain in a
+    /// witness; its third argument says whether the neighbour may be taken.
     @discardableResult
     func resume(namedItemId: String?, by caller: ResumeCaller, library given: LibraryViewModel? = nil,
                 lastPlayedId: String? = AppStorageKeys.lastPlayedItemIdValue,
@@ -64,7 +66,7 @@ extension PlayerCoordinator {
         var named: LibraryItem?
         if let namedItemId { named = await resolve(namedItemId, entries, false) }
         var last: LibraryItem?
-        if namedItemId == nil, viewModel == nil, let lastPlayedId { last = await resolve(lastPlayedId, entries, true) }
+        if namedItemId == nil, viewModel == nil, let lastPlayedId { last = await resolve(lastPlayedId, entries, false) }
         let target = ResumeTarget.pick(namedItemId: namedItemId, namedItemKnown: named != nil,
                                        hasActivePlayer: viewModel != nil,
                                        lastPlayedId: lastPlayedId, lastPlayedKnown: last != nil,
