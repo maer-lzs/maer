@@ -912,11 +912,12 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// The standby pointer's resolution chain, shared by the start restore,
-    /// the live refresh and the play on a foreign claim. Every exit writes
-    /// one line: what was asked, what was taken, by which rung.
-    private func resolveStandbyItem(_ lastId: String,
-                                    entries: [LibraryEntry] = [],
-                                    allowsShowNewest: Bool) async -> LibraryItem? {
+    /// the live refresh, the play on a foreign claim and the door that
+    /// continues listening (`resume`). Every exit writes one line: what was
+    /// asked, what was taken, by which rung.
+    func resolveStandbyItem(_ lastId: String,
+                            entries: [LibraryEntry] = [],
+                            allowsShowNewest: Bool) async -> LibraryItem? {
         // Podcast episodes resolve through the subscriptions' episode index,
         // which loads asynchronously at startup. Wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.

@@ -55,6 +55,31 @@ struct ResumeTargetTests {
         }
     }
 
+    @Test("zuletzt gehoert, nicht im Speicher der Sitzung, aber aufloesbar: jede Art wird von Ansicht und Befehl gefunden")
+    func everyKindResolvesBeyondTheSessionsMemory() async {
+        let library = LibraryViewModel(provider: MockProvider())
+        let suffix = UUID().uuidString
+        let ids = ["sub:song:\(suffix)", "jf:item:\(suffix)", "abspod:show:\(suffix)", "rss:feed:\(suffix)",
+                   "radio:\(suffix)", "lva:\(suffix)", "book-\(suffix)"]
+        for id in ids {
+            #expect(AppSession.shared.libraryItem(forId: id) == nil, "the precondition: \(id) is in the session's memory")
+            var asked: [String] = []
+            var targets: [ResumeTarget] = []
+            for caller in [PlayerCoordinator.ResumeCaller.view, .command] {
+                let coordinator = PlayerCoordinator(provider: MockProvider())
+                await Reachability.$assumed.withValue(true) {
+                    targets.append(await coordinator.resume(namedItemId: nil, by: caller, library: library, lastPlayedId: id,
+                                                            resolveLast: { lastId, _ in
+                                                                asked.append(lastId)
+                                                                return LibraryItem(id: lastId, media: nil, addedAt: nil)
+                                                            }))
+                }
+            }
+            #expect(targets == [.lastPlayed(id), .lastPlayed(id)], "\(id) was not found: \(targets)")
+            #expect(asked == [id, id], "the door did not ask the restore's chain for \(id)")
+        }
+    }
+
     @Test("ein Befehl ohne Titel hinterlaesst keinen Wunsch: kein Auftrag fuer die Ansicht, kein Player")
     func aCommandLeavesNoRequest() async {
         let before = (ResumeRequest.pending, ResumeRequest.pendingItemId)
@@ -92,6 +117,15 @@ struct ResumeTargetTests {
         return String(rest[..<end])
     }
 
+    @Test("der Befehl des Widgets steht nicht neben Siris gleichnamiger Aktion in Kurzbefehlen und Suche", .needsTheSources)
+    func theWidgetsCommandIsNotListed() throws {
+        let shared = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
+        let intent = try #require(shared.range(of: "struct ResumeListeningIntent: AudioPlaybackIntent {"), "the command is gone")
+        let head = String(shared[intent.upperBound...].prefix(400))
+        #expect(head.contains("static let isDiscoverable = false"),
+                "the widget's command is listed beside Siri's action of the same name")
+    }
+
     @Test("Ansicht, Siri und Befehl tragen keine eigene Entscheidung, alle fragen die Tuer; das Werk setzt die App beim Start", .needsTheSources)
     func noCallerDecidesOnItsOwn() throws {
         let view = try body(of: "private func handlePendingResumeRequest() async", in: "Sources/Views/LibraryView.swift")
@@ -104,6 +138,10 @@ struct ResumeTargetTests {
             }
         }
         #expect(!command.contains("ResumeRequest"), "the command leaves a request for the view")
+        let door = try body(of: "func resume(namedItemId: String?, by caller: ResumeCaller,",
+                            in: "Sources/ViewModels/PlayerCoordinator+Resume.swift")
+        #expect(door.contains("last = await resolveStandbyItem(lastPlayedId, entries: entries, allowsShowNewest: true)"),
+                "the door resolves the last played title another way than the app's own restore")
         let app = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
         #expect(app.contains("ResumeListeningIntent.handler = { await AppSession.shared.playerCoordinator.resume(namedItemId: nil, by: .command) }"),
                 "the app does not give the command its work at start")

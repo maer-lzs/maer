@@ -6,7 +6,10 @@
 form with the title, the time left and a bar, and a round one with the
 progress as a ring. Its play button, the round widget and a new control
 for Control Center continue the last played title without opening the
-app; a tap elsewhere on the widget opens the app and resumes.
+app; a tap elsewhere on the widget opens the app and resumes. Right
+after the app starts, these and Siri's "Continue Listening" also find a
+last played song or Jellyfin title, which the app then asks its server
+for, the way it restores the mini player.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same

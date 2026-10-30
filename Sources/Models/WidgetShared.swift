@@ -16,6 +16,9 @@ import OSLog
 struct ResumeListeningIntent: AudioPlaybackIntent {
     static let title: LocalizedStringResource = "Continue Listening"
     static let description = IntentDescription("Continues the last played title.")
+    /// Not listed in Shortcuts or the search: Siri's "Continue Listening"
+    /// (`ContinueListeningIntent`) is the one action of that name there.
+    static let isDiscoverable = false
 
     @MainActor static var handler: (@MainActor () async -> Void)?
 
