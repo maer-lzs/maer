@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -138,7 +139,8 @@ private struct ContinueListeningView: View {
 
     /// Lock screen, wide: the kind's symbol and the title in one line, the
     /// time left and the bar below; a live station says so instead. The
-    /// play mark stands at the right; a tap opens the app and resumes.
+    /// play button at the right continues without opening the app; a tap
+    /// beside it opens the app and resumes.
     private func rectangular(_ line: WidgetLine) -> some View {
         HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
@@ -163,17 +165,32 @@ private struct ContinueListeningView: View {
                 }
             }
             .layoutPriority(1)
+            .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
-            Image(systemName: "play.fill")
-                .font(.body)
-                .accessibilityHidden(true)
+            Button(intent: ResumeListeningIntent()) {
+                Image(systemName: "play.fill")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Continue Listening"))
         }
-        .accessibilityElement(children: .combine)
     }
 
     /// Lock screen, round: the progress as a ring around the kind's
-    /// symbol; a live station shows the symbol alone.
+    /// symbol; a live station shows the symbol alone. The whole widget is
+    /// the play button.
     private func circular(_ line: WidgetLine) -> some View {
+        Button(intent: ResumeListeningIntent()) {
+            circularFace(line)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(line.title))
+        .accessibilityValue(line.isLive ? Text("Live") : Text(line.remainingText ?? ""))
+        .accessibilityHint(Text("Continue Listening"))
+    }
+
+    private func circularFace(_ line: WidgetLine) -> some View {
         Group {
             if line.isLive {
                 ZStack {
@@ -187,9 +204,6 @@ private struct ContinueListeningView: View {
                 .gaugeStyle(.accessoryCircularCapacity)
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(line.title))
-        .accessibilityValue(line.isLive ? Text("Live") : Text(line.remainingText ?? ""))
     }
 
     private var emptyAccessory: some View {

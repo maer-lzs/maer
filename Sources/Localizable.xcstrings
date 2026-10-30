@@ -2800,6 +2800,16 @@
         }
       }
     },
+    "Continues the last played title." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setzt den zuletzt gehörten Titel fort."
+          }
+        }
+      }
+    },
     "Continuing" : {
       "localizations" : {
         "de" : {

@@ -418,7 +418,8 @@ final class PlayerCoordinator: ObservableObject {
         // CarPlay) must not race the startup download scan. An empty id set
         // would make a downloaded book stream (or fail offline) instead of
         // playing its local files. No-op once the scan has merged.
-        await DownloadManager.shared.ensureScanned()
+        let downloads = DownloadManager.shared
+        await downloads.ensureScanned()
 
         // Offline, a title that is not on the device cannot play. Say
         // so clearly, and BEFORE tearing anything down: the running session
@@ -430,7 +431,7 @@ final class PlayerCoordinator: ObservableObject {
         let connected = await Reachability.isConnected()
         if MediaAvailability.offlineUnavailable(
             isConnected: connected,
-            isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id)) {
+            isDownloaded: downloads.isDownloaded(itemId: item.id)) {
             openFailed(String(localized: "Offline. This title is not downloaded."),
                        reason: "offlineNotDownloaded", item: item, origin: origin, cause: .network)
             return
@@ -467,8 +468,8 @@ final class PlayerCoordinator: ObservableObject {
         // path: the offline route becomes the DOWNLOAD route, and the
         // network state only decides whether a background reconciliation
         // follows.
-        if DownloadManager.shared.isDownloaded(itemId: item.id),
-           let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
+        if downloads.isDownloaded(itemId: item.id),
+           let cached = downloads.loadCachedDetail(forItemId: item.id) {
             // If the cached detail carries NO progress, the local
             // route would show a confident "00:00" until someone presses play.
             // And that invitation is the dangerous one. So ask the server
@@ -480,7 +481,7 @@ final class PlayerCoordinator: ObservableObject {
                itemProvider.capabilities.contains(.progressSync),
                let fresh = await Self.boundedDetail(provider: itemProvider, itemId: item.id) {
                 detail = fresh
-                await DownloadManager.shared.updateCachedProgress(
+                await downloads.updateCachedProgress(
                     itemId: item.id, progress: fresh.userMediaProgress ?? MediaProgress(
                         currentTime: 0, duration: nil, progress: nil,
                         isFinished: nil, lastUpdate: nil))
@@ -519,7 +520,7 @@ final class PlayerCoordinator: ObservableObject {
             // instead of failing entirely. Without this even a long-downloaded
             // book would need a working server connection just to open.
             guard generation == openGeneration else { return }
-            if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
+            if let cached = downloads.loadCachedDetail(forItemId: item.id) {
                 await start(detail: cached, item: item, provider: itemProvider,
                             offlineFallback: true, autoplay: autoplay, restart: restart,
                             carriedSleep: carriedSleep, preservesContext: preservesContext, generation: generation)

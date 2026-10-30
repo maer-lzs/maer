@@ -4,7 +4,9 @@
 
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the
-progress as a ring; a tap opens the app and resumes.
+progress as a ring. Its play button, the round widget and a new control
+for Control Center continue the last played title without opening the
+app; a tap elsewhere on the widget opens the app and resumes.
 
 **A paused radio station no longer looks finished in the widget.** The
 home screen widget showed it with a full bar and no time left; it now

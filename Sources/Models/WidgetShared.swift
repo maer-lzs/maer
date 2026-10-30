@@ -3,8 +3,32 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AppIntents
 import Foundation
 import OSLog
+
+/// The command behind the play button of the wide widget, the round widget
+/// and the control: continue the last played title without opening the
+/// app. As an audio command it runs in the app's process, which the system
+/// starts in the background when it is not running; the app gives the
+/// command its work (`handler`) when it starts. Without it, in the widget's
+/// process, the command writes a line and does nothing.
+struct ResumeListeningIntent: AudioPlaybackIntent {
+    static let title: LocalizedStringResource = "Continue Listening"
+    static let description = IntentDescription("Continues the last played title.")
+
+    @MainActor static var handler: (@MainActor () async -> Void)?
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        guard let handler = Self.handler else {
+            WidgetLog.logger.notice("RESUME command without the app's handler")
+            return .result()
+        }
+        await handler()
+        return .result()
+    }
+}
 
 /// App Group. Shared container of app and widget extension.
 /// Forks: adapt to your own bundle structure (also change it in the

@@ -64,7 +64,11 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 371
 
-    /// The same count over all of `Sources`, measured 737 (the music
+    /// The same count over all of `Sources`, measured 734 (the door that
+    /// continues listening reaches the session and the podcast index, and
+    /// the app hands the widget's command its work: three, paid by the
+    /// player's open asking the downloads through one grip instead of six;
+    /// before that 737: the music
     /// server asks the downloads which song keeps its cover, and the music
     /// shuffle's songs expand in the one context; before that 735: a catalogue
     /// album's songs for the tile menu take the music loader's one way, so
@@ -83,7 +87,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 736
+    nonisolated static let sourcesStock = 734
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

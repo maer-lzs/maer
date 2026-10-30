@@ -13,5 +13,6 @@ struct MaerWidgetBundle: WidgetBundle {
     var body: some Widget {
         ContinueListeningWidget()
         PodcastUpNextWidget()
+        ContinueListeningControl()
     }
 }
