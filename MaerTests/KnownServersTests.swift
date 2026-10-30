@@ -28,6 +28,34 @@ struct KnownServersTests {
         #expect(all.first?.url == "https://audio.example.com")
     }
 
+    @Test("derselbe Server unter anderer Schreibweise: ein Eintrag, der seine Schreibweise behaelt, und ein Vorschlag")
+    func theSameServerUnderAnotherSpellingIsOne() throws {
+        let d = fresh()
+        KnownServers.remember("https://Audio.Example.com", service: .audiobookshelf, now: 100, defaults: d)
+        KnownServers.remember("https://audio.example.com:443/", service: .audiobookshelf, now: 200, defaults: d)
+        let all = KnownServers.all(defaults: d)
+        #expect(all.map(\.url) == ["https://Audio.Example.com"], "another spelling became a second entry: \(all.map(\.url))")
+        #expect(all.first?.lastSuccessAt == 200, "the same server was not refreshed")
+        #expect(KnownServers.sameServer("https://Audio.Example.com", "https://audio.example.com:443"),
+                "the register answers the same server another way than the one name")
+        let filled = fresh()
+        KnownServers.backfill([("https://Audio.Example.com", .audiobookshelf), ("https://audio.example.com/", .audiobookshelf)],
+                              now: 300, defaults: filled)
+        #expect(KnownServers.all(defaults: filled).count == 1, "the backfill took one server twice")
+
+        // Two spellings a build before the one name stored stay as they are
+        // (their ids travel as tombstones) and are one suggestion, the newer.
+        let older = fresh()
+        let stored = [KnownServer(url: "https://Audio.Example.com", service: .audiobookshelf, lastSuccessAt: 100),
+                      KnownServer(url: "https://audio.example.com", service: .audiobookshelf, lastSuccessAt: 200),
+                      KnownServer(url: "https://audio.example.com", service: .subsonic, lastSuccessAt: 50)]
+        older.set(try JSONEncoder().encode(stored), forKey: KnownServers.storeKey)
+        #expect(KnownServers.suggestions(for: .audiobookshelf, defaults: older).map(\.id)
+                == ["audiobookshelf|https://audio.example.com", "subsonic|https://audio.example.com"],
+                "one server stands twice under the field")
+        #expect(KnownServers.all(defaults: older).count == 3, "the offer moved the stored entries")
+    }
+
     @Test("Vorschlaege: eigener Dienst zuerst, Rest darunter — nach Aktualitaet")
     func ownServiceFirst() {
         let d = fresh()

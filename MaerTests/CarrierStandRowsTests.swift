@@ -268,8 +268,10 @@ struct CarrierStandRowsTests {
 
     /// The way back holds only while no build writes the old names again:
     /// the tokens and the version of this build have names of their own,
-    /// no source writes a blob of a mirror into the defaults, and none but
-    /// the move reads an old key from them.
+    /// no source writes a blob of a mirror into the defaults, and none reads
+    /// an old key from them by its name. The move does not either: it walks
+    /// the keys of the defaults (`dictionaryRepresentation`), so it is held
+    /// to the same rule and stands in no exception.
     @Test("kein Bau schreibt die alten Namen wieder: Token und Version heissen neu, kein Ganzschrieb eines Abbilds in die Voreinstellungen", .needsTheSources)
     func theOldNamesAreNeverWrittenAgain() throws {
         let tokens = [CloudKitStandCarrier.tokenKey, CloudKitChoiceCarrier.tokenKey, CloudKitPlaylistCarrier.tokenKey,
@@ -301,7 +303,7 @@ struct CarrierStandRowsTests {
             if (legacy + versions).contains(where: { code.contains("\"\($0)\"") }) {
                 named.append(name)
             }
-            if name != "CarrierRows.swift", Self.readsALegacyKey(code, own: Self.legacyNames(declaredIn: code), byType: byType) {
+            if Self.readsALegacyKey(code, own: Self.legacyNames(declaredIn: code), byType: byType) {
                 legacyReaders.append(name)
             }
             if name == "StandCarrier.swift" {
@@ -309,7 +311,7 @@ struct CarrierStandRowsTests {
             }
         }
         #expect(named == ["CarrierRows.swift"], "the old names stand outside the move: \(named.sorted())")
-        #expect(legacyReaders.isEmpty, "an old key is read outside the move: \(legacyReaders.sorted())")
+        #expect(legacyReaders.isEmpty, "an old key is read by its name: \(legacyReaders.sorted())")
     }
 }
 #endif

@@ -36,6 +36,21 @@ nonisolated enum ABSServerScope {
         return name
     }
 
+    /// Whether a second server was ever signed in on this device, by the
+    /// register of servers that worked (`registered`, the Audiobookshelf
+    /// addresses of `KnownServers`). A build before the one name compared
+    /// raw addresses, so another spelling of the same server set the mark
+    /// `absMoreThanOneServer`. The register was there before the mark, every
+    /// sign-in that could set it wrote its address there first, and it never
+    /// empties itself: when all its entries are one server and that is the
+    /// one signed in, no second one was. An empty register, a second name or
+    /// no server signed in keep the mark. An address the person took out of
+    /// the register by hand takes its evidence with it.
+    static func secondServerShown(registered: [String], signedIn: String?) -> Bool {
+        guard let signedIn else { return true }
+        return Set(registered.map(identity(of:))) != [identity(of: signedIn)]
+    }
+
     /// What a full library load may do with the per-book state.
     enum Cleanup: Equatable, Sendable {
         case clean

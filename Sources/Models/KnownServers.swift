@@ -19,6 +19,13 @@ import Foundation
 /// **Never deleted automatically** (an outage is not a reason
 /// to delete anything). An entry leaves only by hand.
 ///
+/// **The same server** is one question with one answer,
+/// `ABSServerScope.identity`: finding an entry again and offering it ask
+/// there. An entry keeps the spelling it was stored in, because its id
+/// (`service|url`) travels as a tombstone: a move to the name would leave a
+/// hand-made removal on another device without an entry to remove, and an
+/// older build would bring the old spelling back as a second one.
+///
 /// Hook: this is deliberately a plain, codable value list. When the
 /// iCloud config travel arrives (after the ID flip), it only has to
 /// transport this array. No reshaping.
@@ -79,14 +86,15 @@ nonisolated enum KnownServers {
     }
 
     /// Register an address. ONLY on a successful connection. Re-registering
-    /// refreshes the date instead of creating a duplicate.
+    /// the same server, also under another spelling, refreshes the date
+    /// instead of creating a duplicate.
     static func remember(_ url: String, service: KnownServer.Service,
                          now: Double = Date().timeIntervalSince1970,
                          defaults: UserDefaults = .standard) {
         let trimmed = normalized(url)
         guard !trimmed.isEmpty else { return }
         var list = all(defaults: defaults)
-        if let index = list.firstIndex(where: { $0.url == trimmed && $0.service == service }) {
+        if let index = list.firstIndex(where: { sameServer($0.url, trimmed) && $0.service == service }) {
             list[index].lastSuccessAt = now
         } else {
             list.append(KnownServer(url: trimmed, service: service, lastSuccessAt: now))
@@ -104,14 +112,22 @@ nonisolated enum KnownServers {
 
     /// Suggestions for a form: OWN service type first (most likely), the rest
     /// below. The value of a foreign entry is its domain family. Newest
-    /// success first within each group. The sync service and the media
-    /// servers never stand under each other: a sync service serves no media,
-    /// and a media server keeps no sync.
+    /// success first within each group, one per server and service: two
+    /// spellings stored before the one name are one suggestion, the newer.
+    /// The sync service and the media servers never stand under each other:
+    /// a sync service serves no media, and a media server keeps no sync.
     static func suggestions(for service: KnownServer.Service,
                             defaults: UserDefaults = .standard) -> [KnownServer] {
+        var seen: Set<String> = []
         let list = all(defaults: defaults).sorted { $0.lastSuccessAt > $1.lastSuccessAt }
+            .filter { seen.insert("\($0.service.rawValue)|\(ABSServerScope.identity(of: $0.url))").inserted }
         return list.filter { $0.service == service }
             + list.filter { $0.service != service && sameKind($0.service, service) }
+    }
+
+    /// Whether two stored addresses name the same server, by its one name.
+    static func sameServer(_ a: String, _ b: String) -> Bool {
+        ABSServerScope.identity(of: a) == ABSServerScope.identity(of: b)
     }
 
     /// Whether two services are offered under each other: media servers among
@@ -130,7 +146,7 @@ nonisolated enum KnownServers {
         var list: [KnownServer] = []
         for entry in existing {
             let url = normalized(entry.url)
-            guard !url.isEmpty, !list.contains(where: { $0.url == url && $0.service == entry.service })
+            guard !url.isEmpty, !list.contains(where: { sameServer($0.url, url) && $0.service == entry.service })
             else { continue }
             list.append(KnownServer(url: url, service: entry.service, lastSuccessAt: now))
         }

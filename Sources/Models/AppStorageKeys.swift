@@ -905,12 +905,20 @@ nonisolated enum AppStorageKeys {
     /// Rewrites the remembered servers in their one name
     /// (`ABSServerScope.identity`), once per start: a value stored before
     /// the name existed may carry a user and a password, and another
-    /// spelling of the same server would count as a second one.
+    /// spelling of the same server would count as a second one. The mark of
+    /// a second server such a spelling set goes too, where the register
+    /// shows no second one (`ABSServerScope.secondServerShown`); the moment
+    /// of the switch stays, it only keeps queued stands.
     static func normalizeABSServers() {
         for key in [absSignedInServer, absLastFullLoadServer] {
             guard let stored = string(key) else { continue }
             let name = ABSServerScope.identity(of: stored)
             if name != stored { set(name, for: key) }
+        }
+        let registered = KnownServers.all().filter { $0.service == .audiobookshelf }.map(\.url)
+        if bool(absMoreThanOneServer),
+           !ABSServerScope.secondServerShown(registered: registered, signedIn: string(absSignedInServer)) {
+            set(false, for: absMoreThanOneServer)
         }
     }
     /// Per-item markers for "don't show under Continue any more"

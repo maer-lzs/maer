@@ -56,7 +56,7 @@ struct ABSServerSwitchTests {
         let values: [String: Any?]
         static let keys = [AppStorageKeys.absSignedInServer, AppStorageKeys.absLastFullLoadServer,
                            AppStorageKeys.absServerSwitchedAt, AppStorageKeys.absMoreThanOneServer,
-                           AppStorageKeys.selectedLibraryId]
+                           AppStorageKeys.selectedLibraryId, KnownServers.storeKey]
         init() { values = Dictionary(uniqueKeysWithValues: Self.keys.map { ($0, AppStorageKeys.object($0)) }) }
         func restore() { for (key, value) in values { AppStorageKeys.set(value, for: key) } }
     }
@@ -261,6 +261,34 @@ struct ABSServerSwitchTests {
                                          queuedAt: 5, current: "https://abs.example.com", switchedAt: 1) == .send)
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://ABS.example.com:443/", current: "https://abs.example.com",
                                        moreThanOneServer: false) == .clean)
+    }
+
+    @Test("die Marke eines zweiten Servers, die eine andere Schreibweise setzte, faellt beim Umzug, wo das Register keinen zweiten zeigt")
+    func aSpellingsMarkFallsWhereTheRegisterShowsOneServer() {
+        let saved = Saved()
+        defer { saved.restore() }
+        func move(register: [String], signedIn: String?) -> Bool {
+            // Written as stored, without the register's notice to the cloud.
+            let entries = register.map { KnownServer(url: $0, service: .audiobookshelf, lastSuccessAt: 1) }
+                + [KnownServer(url: "https://music.example.com", service: .subsonic, lastSuccessAt: 1)]
+            AppStorageKeys.set(try? JSONEncoder().encode(entries), for: KnownServers.storeKey)
+            AppStorageKeys.set(signedIn, for: AppStorageKeys.absSignedInServer)
+            AppStorageKeys.set(true, for: AppStorageKeys.absMoreThanOneServer)
+            AppStorageKeys.set(7.0, for: AppStorageKeys.absServerSwitchedAt)
+            AppStorageKeys.normalizeABSServers()
+            #expect(AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt) == 7, "the moment of the switch moved")
+            return AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false)
+        }
+        // The shape 3.5.1 left: two spellings of one server, the mark set.
+        #expect(!move(register: ["https://ABS.example.com/", "https://abs.example.com:443"], signedIn: "https://abs.example.com/"),
+                "one server under two spellings still cleans no book")
+        #expect(move(register: ["https://abs.example.com", "https://other.example.com"], signedIn: "https://abs.example.com"),
+                "a real second server lost its mark")
+        #expect(move(register: [], signedIn: "https://abs.example.com"), "an empty register is no evidence")
+        #expect(move(register: ["https://abs.example.com"], signedIn: "https://other.example.com"),
+                "a server signed in that the register does not name")
+        #expect(move(register: ["https://abs.example.com"], signedIn: nil), "no server signed in")
+        #expect(ABSServerScope.secondServerShown(registered: ["https://A.example.com:443/"], signedIn: "https://a.example.com") == false)
     }
 
     @Test("ein Eintrag von vor dem Wechsel ohne Server geht an den neuen Server, dessen 404 verwirft ihn nicht")
