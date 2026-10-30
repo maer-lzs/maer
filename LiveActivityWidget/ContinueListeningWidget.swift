@@ -140,7 +140,7 @@ private struct ContinueListeningView: View {
     /// time left and the bar below; a live station says so instead. The
     /// play mark stands at the right; a tap opens the app and resumes.
     private func rectangular(_ line: WidgetLine) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Label {
                     Text(line.title).lineLimit(1)
@@ -152,14 +152,20 @@ private struct ContinueListeningView: View {
                     Text("Live").font(.caption)
                 } else {
                     if let remaining = line.remainingText {
-                        Text(remaining).font(.caption)
+                        // One line, as the bar below it: the width is the
+                        // lock screen's and does not grow.
+                        Text(remaining)
+                            .font(.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     ProgressView(value: line.fraction ?? 0)
                 }
             }
+            .layoutPriority(1)
             Spacer(minLength: 0)
             Image(systemName: "play.fill")
-                .font(.title3)
+                .font(.body)
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
