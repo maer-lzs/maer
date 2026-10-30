@@ -173,10 +173,9 @@ private struct ContinueListeningView: View {
                         Text(row.title)
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
-                        Text(verbatim: rowDetail(row, compact: compact))
+                        rowDetail(row, compact: compact)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
                         if !row.isLive {
                             ProgressView(value: row.fraction ?? 0)
                                 .tint(.orange)
@@ -198,11 +197,24 @@ private struct ContinueListeningView: View {
         }
     }
 
-    /// Who and how long, or live; compact, only how long or live.
-    private func rowDetail(_ row: WidgetSourceRow, compact: Bool) -> String {
+    /// Who and how long, or live; compact, only how long or live. Beside a
+    /// name the time keeps its width and the name gives way.
+    private func rowDetail(_ row: WidgetSourceRow, compact: Bool) -> some View {
         let time = row.isLive ? String(localized: "Live") : (row.remainingText ?? "")
-        guard !compact, let subtitle = row.subtitle, !subtitle.isEmpty else { return time }
-        return time.isEmpty ? subtitle : "\(subtitle) · \(time)"
+        let subtitle = compact ? nil : row.subtitle.flatMap { $0.isEmpty ? nil : $0 }
+        return HStack(spacing: 0) {
+            if let subtitle {
+                Text(verbatim: subtitle)
+                    .lineLimit(1)
+                if !time.isEmpty {
+                    Text(verbatim: " · ")
+                        .fixedSize()
+                }
+            }
+            Text(verbatim: time)
+                .lineLimit(1)
+                .fixedSize(horizontal: subtitle != nil, vertical: false)
+        }
     }
 
     private func rowCover(_ row: WidgetSourceRow, side: CGFloat) -> some View {

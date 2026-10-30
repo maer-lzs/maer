@@ -160,6 +160,8 @@ struct ContinueBySourceTests {
         #expect(widget.contains("Button(intent: ResumeListeningIntent(itemId: row.itemId))"), "a row's button does not continue its own title")
         #expect(widget.contains(".supportedFamilies([.systemSmall, .systemMedium, .systemLarge,"))
         #expect(widget.contains("WidgetCoverStore.continueRows.url(named: name)"), "the rows' covers come from another place")
+        #expect(widget.contains(".fixedSize(horizontal: subtitle != nil, vertical: false)"),
+                "beside a long name the time left is cut off again")
     }
 
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)
