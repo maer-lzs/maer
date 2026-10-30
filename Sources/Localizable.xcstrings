@@ -2770,6 +2770,16 @@
         }
       }
     },
+    "Content" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhalt"
+          }
+        }
+      }
+    },
     "Content Languages" : {
       "localizations" : {
         "de" : {
@@ -4371,6 +4381,16 @@
         }
       }
     },
+    "First Source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erste Quelle"
+          }
+        }
+      }
+    },
     "Folk" : {
       "localizations" : {
         "de" : {
@@ -5500,6 +5520,16 @@
       }
     },
     "Last heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gehört"
+          }
+        }
+      }
+    },
+    "Last Heard" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9829,6 +9859,16 @@
         }
       }
     },
+    "Second Source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweite Quelle"
+          }
+        }
+      }
+    },
     "Secure connection failed (certificate problem). Is HTTPS set up correctly on the server?" : {
       "localizations" : {
         "de" : {
@@ -10675,6 +10715,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filmmusik"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quelle"
           }
         }
       }
@@ -12960,6 +13010,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Macht aus YouTube-Kanälen Podcast-Feeds."
+          }
+        }
+      }
+    },
+    "Two Sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei Quellen"
           }
         }
       }

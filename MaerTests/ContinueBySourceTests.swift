@@ -104,5 +104,51 @@ struct ContinueBySourceTests {
         #expect(WidgetRows.shown(rows, layout: .mediumSources(.music, .podcasts), accessibilitySize: false).map(\.itemId)
                 == ["ep"], "a source without a title has no row")
     }
+
+    @Test("die Einstellung je Groesse: gross die eingeschalteten Quellen, mittel zuletzt gehoert oder zwei Quellen")
+    @MainActor
+    func theSettingsAskForTheirRows() {
+        var settings = ContinueWidgetSettings()
+        #expect(settings.layout(large: true) == .large(Set(WidgetSource.allCases)), "a new large widget shows every source")
+        #expect(settings.layout(large: false) == .mediumRecent, "a new medium widget shows the titles heard last")
+        settings.music = false
+        settings.radio = false
+        #expect(settings.layout(large: true) == .large([.audiobooks, .podcasts]))
+        settings.mediumContent = .twoSources
+        settings.firstSource = .radio
+        settings.secondSource = .audiobooks
+        #expect(settings.layout(large: false) == .mediumSources(.radio, .audiobooks))
+        #expect(settings.layout(large: true) == .large([.audiobooks, .podcasts]), "the medium choice leaves the large one alone")
+    }
+
+    @Test("jeder Text der Einstellung steht englisch und deutsch im Katalog", .needsTheSources)
+    func theSettingsSpeakGerman() throws {
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let catalog = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let strings = try #require(catalog["strings"] as? [String: Any])
+        let texts = ["Continue Listening", "Audiobooks", "Podcasts", "Music", "Radio", "Content", "Last Heard",
+                     "Two Sources", "First Source", "Second Source", "Source"]
+        for text in texts {
+            let entry = strings[text] as? [String: Any]
+            let german = ((entry?["localizations"] as? [String: Any])?["de"] as? [String: Any])?["stringUnit"] as? [String: Any]
+            #expect((german?["value"] as? String)?.isEmpty == false, "\(text) has no German text")
+            #expect(german?["state"] as? String == "translated", "\(text) is not translated")
+        }
+        let shared = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
+        for text in texts.dropFirst() {
+            #expect(shared.contains("\"\(text)\""), "\(text) is no longer a text of the settings")
+        }
+    }
+
+    @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)
+    func theWidgetReadsItsSettings() throws {
+        let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
+        #expect(widget.contains("AppIntentConfiguration( kind: \"ContinueListeningWidget\", intent: ContinueWidgetSettings.self,"),
+                "the widget's kind or its settings changed; a placed widget keeps its kind")
+        #expect(widget.contains("settings.layout(large: context.family == .systemLarge)"))
+        let shared = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
+        #expect(shared.contains("When(widgetFamily: .equalTo, .systemLarge)") && shared.contains("When(widgetFamily: .equalTo, .systemMedium)"),
+                "the settings are no longer one per size")
+    }
 }
 #endif

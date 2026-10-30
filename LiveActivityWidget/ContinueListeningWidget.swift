@@ -18,48 +18,55 @@ struct ContinueListeningEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot?
     let cover: UIImage?
+    /// The rows the widget's settings ask for at its size.
+    let layout: WidgetRows.Layout
 }
 
-struct ContinueListeningProvider: TimelineProvider {
-    private func currentEntry() -> ContinueListeningEntry {
+struct ContinueListeningProvider: AppIntentTimelineProvider {
+    private func currentEntry(_ layout: WidgetRows.Layout) -> ContinueListeningEntry {
         let snapshot = WidgetSnapshot.load()
         var cover: UIImage?
         if let url = WidgetSnapshot.coverURL, let data = try? Data(contentsOf: url) {
             cover = UIImage(data: data)
         }
-        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover)
+        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout)
+    }
+
+    private func layout(_ settings: ContinueWidgetSettings, _ context: Context) -> WidgetRows.Layout {
+        settings.layout(large: context.family == .systemLarge)
     }
 
     func placeholder(in context: Context) -> ContinueListeningEntry {
-        ContinueListeningEntry(date: Date(), snapshot: nil, cover: nil)
+        ContinueListeningEntry(date: Date(), snapshot: nil, cover: nil, layout: .mediumRecent)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (ContinueListeningEntry) -> Void) {
-        completion(currentEntry())
+    func snapshot(for configuration: ContinueWidgetSettings, in context: Context) async -> ContinueListeningEntry {
+        currentEntry(layout(configuration, context))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<ContinueListeningEntry>) -> Void) {
+    func timeline(for configuration: ContinueWidgetSettings, in context: Context) async -> Timeline<ContinueListeningEntry> {
         // The app reloads on state changes only. While playing, the
         // snapshot carries a step per minute for the next hour, and the
         // widget runs on by itself: one entry per minute from now.
-        let now = currentEntry()
+        let now = currentEntry(layout(configuration, context))
         guard let snapshot = now.snapshot, snapshot.isPlaying, let steps = snapshot.steps, let savedAt = snapshot.savedAt,
               steps.count > 1 else {
-            completion(Timeline(entries: [now], policy: .never))
-            return
+            return Timeline(entries: [now], policy: .never)
         }
         let start = Date(timeIntervalSince1970: savedAt)
         let entries = (0..<steps.count).map { minute in
-            ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot, cover: now.cover)
+            ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot,
+                                   cover: now.cover, layout: now.layout)
         }.filter { $0.date.addingTimeInterval(60) > Date() }
-        completion(Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never))
+        return Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never)
     }
 }
 
 struct ContinueListeningWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        AppIntentConfiguration(
             kind: "ContinueListeningWidget",
+            intent: ContinueWidgetSettings.self,
             provider: ContinueListeningProvider()
         ) { entry in
             ContinueListeningView(entry: entry)

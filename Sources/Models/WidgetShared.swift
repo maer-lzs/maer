@@ -6,6 +6,7 @@
 import AppIntents
 import Foundation
 import OSLog
+import WidgetKit
 
 /// The command behind the play button of the wide widget, the round widget
 /// and the control: continue the last played title without opening the
@@ -233,11 +234,16 @@ nonisolated struct WidgetLine: Equatable {
 /// The sources the large and medium "Continue" have a row for: the app's
 /// tabs. The raw values are the tabs' (`MediaType`), so the app hands a
 /// title's tab over as its source and never assigns sources a second way.
-nonisolated enum WidgetSource: String, Codable, CaseIterable, Sendable {
+nonisolated enum WidgetSource: String, Codable, CaseIterable, Sendable, AppEnum {
     case audiobooks
     case podcasts
     case music
     case radio
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Source"
+    static let caseDisplayRepresentations: [WidgetSource: DisplayRepresentation] = [
+        .audiobooks: "Audiobooks", .podcasts: "Podcasts", .music: "Music", .radio: "Radio",
+    ]
 }
 
 /// One title of the large and medium "Continue", written by the app.
@@ -300,6 +306,77 @@ nonisolated enum WidgetRows {
             let picked = (first == second ? [first] : [first, second]).compactMap(newest)
             return Array(picked.prefix(limit(large: false, accessibilitySize: accessibilitySize)))
         }
+    }
+}
+
+/// What the medium "Continue" shows.
+nonisolated enum ContinueMediumContent: String, Sendable, AppEnum {
+    case lastHeard
+    case twoSources
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Content"
+    static let caseDisplayRepresentations: [ContinueMediumContent: DisplayRepresentation] = [
+        .lastHeard: "Last Heard", .twoSources: "Two Sources",
+    ]
+}
+
+/// The settings of the "Continue" widget, each size its own: the large one
+/// switches sources on and off, the medium one shows the titles heard last
+/// or the newest title of two chosen sources; the other sizes have none.
+struct ContinueWidgetSettings: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Continue Listening"
+    /// Settings of a widget, not an action: not listed in Shortcuts.
+    static let isDiscoverable = false
+
+    @Parameter(title: "Audiobooks", default: true)
+    var audiobooks: Bool
+    @Parameter(title: "Podcasts", default: true)
+    var podcasts: Bool
+    @Parameter(title: "Music", default: true)
+    var music: Bool
+    @Parameter(title: "Radio", default: true)
+    var radio: Bool
+    @Parameter(title: "Content", default: .lastHeard)
+    var mediumContent: ContinueMediumContent
+    @Parameter(title: "First Source", default: .audiobooks)
+    var firstSource: WidgetSource
+    @Parameter(title: "Second Source", default: .podcasts)
+    var secondSource: WidgetSource
+
+    static var parameterSummary: some ParameterSummary {
+        When(widgetFamily: .equalTo, .systemLarge) {
+            Summary {
+                \.$audiobooks
+                \.$podcasts
+                \.$music
+                \.$radio
+            }
+        } otherwise: {
+            When(widgetFamily: .equalTo, .systemMedium) {
+                When(\.$mediumContent, .equalTo, .twoSources) {
+                    Summary {
+                        \.$mediumContent
+                        \.$firstSource
+                        \.$secondSource
+                    }
+                } otherwise: {
+                    Summary {
+                        \.$mediumContent
+                    }
+                }
+            } otherwise: {
+                Summary()
+            }
+        }
+    }
+
+    /// The rows these settings ask for; `large` is the widget's size.
+    func layout(large: Bool) -> WidgetRows.Layout {
+        if large {
+            let switchedOn: [WidgetSource: Bool] = [.audiobooks: audiobooks, .podcasts: podcasts, .music: music, .radio: radio]
+            return .large(Set(WidgetSource.allCases.filter { switchedOn[$0] == true }))
+        }
+        return mediumContent == .twoSources ? .mediumSources(firstSource, secondSource) : .mediumRecent
     }
 }
 
