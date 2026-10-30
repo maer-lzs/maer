@@ -1409,8 +1409,12 @@ extension ProjectFileIntegrityTests {
         // (`ItemRowsTests.theKeysPerTitleMove`). The tenth is
         // `SongCoverArtMemo`, the cover id each server song names, with its
         // hand-written decoder and its witness on other forms
-        // (`SongCoverArtMemoTests.aKeptMemoryOfAnotherFormReads`).
-        let drift = StockDrift.total(found.count, stock: 10)
+        // (`SongCoverArtMemoTests.aKeptMemoryOfAnotherFormReads`). The
+        // eleventh is `ContinueRows`, the rows of the large and medium
+        // Continue widget, rewritten whole by every home pass, with a
+        // decoder that leaves out a row of another form and its witness
+        // (`ContinueBySourceTests.aRowOfAnotherFormIsLeftOut`).
+        let drift = StockDrift.total(found.count, stock: 11)
         #expect(drift == nil,
                 "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform, oder der Bestand liegt ueber der Zaehlung (\(drift ?? "")): \(found.sorted())")
     }

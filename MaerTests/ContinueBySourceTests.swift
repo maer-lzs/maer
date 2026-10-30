@@ -54,15 +54,15 @@ struct ContinueBySourceTests {
     @Test("ein neuer Titel: einmal in den Zeilen, je Quelle der neueste und die zwei zuletzt gehoerten bleiben")
     func aNewTitleReplacesWhatNoWidgetShows() {
         var rows: [WidgetSourceRow] = []
-        rows = ContinueBySource.merged(row("book-a", .audiobooks, at: 1), into: rows)
-        rows = ContinueBySource.merged(row("book-b", .audiobooks, at: 2), into: rows)
+        rows = WidgetRows.merged(row("book-a", .audiobooks, at: 1), into: rows)
+        rows = WidgetRows.merged(row("book-b", .audiobooks, at: 2), into: rows)
         #expect(rows.map(\.itemId) == ["book-b", "book-a"], "two titles heard last stay, even of one source")
-        rows = ContinueBySource.merged(row("ep", .podcasts, at: 3), into: rows)
+        rows = WidgetRows.merged(row("ep", .podcasts, at: 3), into: rows)
         #expect(rows.map(\.itemId) == ["ep", "book-b"], "the older book is neither the newest of its source nor among the two last")
-        rows = ContinueBySource.merged(row("song", .music, at: 4), into: rows)
-        rows = ContinueBySource.merged(row("station", .radio, at: 5), into: rows)
+        rows = WidgetRows.merged(row("song", .music, at: 4), into: rows)
+        rows = WidgetRows.merged(row("station", .radio, at: 5), into: rows)
         #expect(rows.map(\.itemId) == ["station", "song", "ep", "book-b"], "the newest of every source stays")
-        rows = ContinueBySource.merged(row("book-b", .audiobooks, at: 6), into: rows)
+        rows = WidgetRows.merged(row("book-b", .audiobooks, at: 6), into: rows)
         #expect(rows.map(\.itemId) == ["book-b", "station", "song", "ep"], "a title heard again stands once, with its new moment")
     }
 
@@ -140,15 +140,64 @@ struct ContinueBySourceTests {
         }
     }
 
-    @Test("der Schnappschuss traegt die Zeilen, ein Schnappschuss ohne sie liest sich wie vorher")
-    func theSnapshotCarriesTheRows() throws {
+    @Test("der Schnappschuss traegt die Quelle seines Titels, keine Zeilen; ein Schnappschuss ohne Quelle liest sich wie vorher")
+    func theSnapshotCarriesItsSource() throws {
         let old = Data(#"{"itemId":"li_1","title":"Buch","fraction":0.5,"isPlaying":false}"#.utf8)
         let read = try JSONDecoder().decode(WidgetSnapshot.self, from: old)
-        #expect(read.title == "Buch" && read.bySource == nil)
+        #expect(read.title == "Buch" && read.source == nil)
         var snapshot = read
-        snapshot.bySource = [row("ep", .podcasts, at: 2), row("station", .radio, at: 1)]
-        let back = try JSONDecoder().decode(WidgetSnapshot.self, from: JSONEncoder().encode(snapshot))
-        #expect(back.bySource == snapshot.bySource)
+        snapshot.source = .audiobooks
+        let encoded = try JSONEncoder().encode(snapshot)
+        #expect(try JSONDecoder().decode(WidgetSnapshot.self, from: encoded).source == .audiobooks)
+        let object = try JSONSerialization.jsonObject(with: encoded)
+        let keys = try #require(object as? [String: Any]).keys
+        #expect(!keys.contains("rows") && !keys.contains("bySource"), "the player's snapshot carries rows again: \(keys.sorted())")
+        let rows = ContinueRows(rows: [row("ep", .podcasts, at: 2), row("station", .radio, at: 1)])
+        #expect(try JSONDecoder().decode(ContinueRows.self, from: JSONEncoder().encode(rows)) == rows)
+    }
+
+    @Test("eine Zeile anderer Form faellt heraus, die anderen lesen sich")
+    func aRowOfAnotherFormIsLeftOut() throws {
+        let file = Data("""
+            {"rows":[
+              {"source":"podcasts","itemId":"ep","title":"Folge","isLive":false,"kindSymbol":"mic","playedAt":2,"later":"field"},
+              {"source":"audiobooks","itemId":"no-title","isLive":false,"kindSymbol":"book","playedAt":1},
+              {"source":"television","itemId":"tv","title":"TV","isLive":false,"kindSymbol":"tv","playedAt":3}
+            ]}
+            """.utf8)
+        let read = try JSONDecoder().decode(ContinueRows.self, from: file)
+        #expect(read.rows.map(\.itemId) == ["ep"], "a row of another form took the others with it, or was read")
+        #expect(try JSONDecoder().decode(ContinueRows.self, from: Data("{}".utf8)).rows.isEmpty)
+    }
+
+    private func snapshot(_ id: String, _ source: WidgetSource?, savedAt seconds: Double) -> WidgetSnapshot {
+        WidgetSnapshot(itemId: id, title: id, author: nil, fraction: 0.4, remainingText: "x", isPlaying: false,
+                       steps: nil, savedAt: seconds, kindSymbol: "waveform", isLive: false, source: source)
+    }
+
+    @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)
+    func thePlayerNeverWritesTheRows() throws {
+        let home = [row("book", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
+        let shown = WidgetRows.withTitle(of: snapshot("song", .music, savedAt: 2), at: Date(timeIntervalSince1970: 3), in: home)
+        #expect(shown.map(\.itemId) == ["song", "book", "ep"], "the rows are the pass's rows and the playing title")
+        #expect(!shown.contains { $0.itemId == "gone" })
+        let player = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+Widget.swift")
+        #expect(!player.contains("ContinueRows"), "the player writes the home pass's rows")
+        #expect(player.contains("source: ContinueBySource.source(for: item.id, markedForm: markedForm),"),
+                "the player's title carries no source, so it joins no row")
+    }
+
+    @Test("zwei Schreiber, kein Verlust: der laufende Titel steht in seiner Zeile, auch wenn der Durchgang ihn nicht kennt")
+    func thePlayingTitleStandsInItsRow() {
+        let home = [row("book-old", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
+        let playing = snapshot("book-now", .audiobooks, savedAt: 5)
+        let shown = WidgetRows.withTitle(of: playing, at: Date(timeIntervalSince1970: 6), in: home)
+        let large = WidgetRows.shown(shown, layout: .large(Set(WidgetSource.allCases)), accessibilitySize: false)
+        #expect(large.map(\.itemId) == ["book-now", "ep"], "the playing book stands in the audiobooks row")
+        #expect(large.first?.playedAt == 5_000 && large.first?.fraction == 0.4)
+        #expect(WidgetRows.withTitle(of: snapshot("x", nil, savedAt: 9), at: Date(), in: home) == home,
+                "a snapshot without a source joins no row")
+        #expect(WidgetRows.withTitle(of: nil, at: Date(), in: home) == home)
     }
 
     @Test("ohne Zeilen zeigt auch gross den einen Titel, „Noch nichts gehört“ nur ohne Schnappschuss")
@@ -172,7 +221,7 @@ struct ContinueBySourceTests {
     @Test("gross und mittel zeigen die Zeilen der Regel, je Zeile ein Link und ein Knopf mit ihrem Titel", .needsTheSources)
     func theWidgetShowsTheRows() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
-        #expect(widget.contains("WidgetRows.shown(entry.snapshot?.bySource ?? [], layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
+        #expect(widget.contains("WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows), layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
                 "the widget picks its rows past the rule, or without the type size")
         #expect(widget.contains("Link(destination: ResumeLink.url(itemId: row.itemId))"), "a row does not open its own title")
         #expect(widget.contains("Button(intent: ResumeListeningIntent(itemId: row.itemId))"), "a row's button does not continue its own title")

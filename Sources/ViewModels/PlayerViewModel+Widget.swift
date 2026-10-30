@@ -28,12 +28,14 @@ extension PlayerViewModel {
         let now = Date().timeIntervalSince1970
         // A live station's duration grows with its position, so it is
         // written as live and never by its length.
+        let markedForm = ListeningStore.startedForm(item.id)
         guard let snapshot = WidgetSnapshot.of(
             itemId: item.id,
             title: item.media.metadata?.title ?? "",
             author: item.media.metadata?.authorName,
-            kindSymbol: MediaFamily.placeholderSymbol(for: item.id, markedForm: ListeningStore.startedForm(item.id)),
+            kindSymbol: MediaFamily.placeholderSymbol(for: item.id, markedForm: markedForm),
             isLive: isLiveStream,
+            source: ContinueBySource.source(for: item.id, markedForm: markedForm),
             position: currentTime, duration: duration, rate: Double(playbackRate), isPlaying: isPlaying, now: now,
             minutesAhead: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText
         ) else { return }

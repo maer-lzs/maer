@@ -136,10 +136,10 @@ nonisolated struct WidgetSnapshot: Codable {
     /// A live station: it has no end, so no progress and no time left.
     /// Nil in a snapshot that does not carry it.
     var isLive: Bool?
-    /// The rows of the large and medium "Continue" (`WidgetSourceRow`),
-    /// kept by the app with `ContinueBySource`. Nil in a snapshot that does
-    /// not carry them; the medium widget then shows the one title.
-    var bySource: [WidgetSourceRow]?
+    /// The title's source, written by the app, which knows the tabs
+    /// (`ContinueBySource.source`). Nil in a snapshot that does not carry
+    /// it; the title then joins no row of the large and medium widget.
+    var source: WidgetSource?
 
     struct Step: Codable, Equatable {
         var fraction: Double
@@ -162,11 +162,13 @@ nonisolated struct WidgetSnapshot: Codable {
     /// station has no length: it is written as live, without progress and
     /// time left, whatever its position says.
     static func of(itemId: String, title: String, author: String?, kindSymbol: String, isLive: Bool,
+                   source: WidgetSource? = nil,
                    position: Double, duration: Double, rate: Double, isPlaying: Bool, now: Double,
                    minutesAhead: Int, remaining text: (Double) -> String?) -> WidgetSnapshot? {
         if isLive {
             return WidgetSnapshot(itemId: itemId, title: title, author: author, fraction: 0, remainingText: nil,
-                                  isPlaying: isPlaying, steps: nil, savedAt: now, kindSymbol: kindSymbol, isLive: true)
+                                  isPlaying: isPlaying, steps: nil, savedAt: now, kindSymbol: kindSymbol, isLive: true,
+                                  source: source)
         }
         guard duration > 0 else { return nil }
         return WidgetSnapshot(
@@ -177,7 +179,7 @@ nonisolated struct WidgetSnapshot: Codable {
             steps: isPlaying
                 ? steps(position: position, duration: duration, rate: rate, minutes: minutesAhead, remaining: text)
                 : nil,
-            savedAt: now, kindSymbol: kindSymbol, isLive: false)
+            savedAt: now, kindSymbol: kindSymbol, isLive: false, source: source)
     }
 
     /// What the widget shows at `date`: the step of the minute since the
@@ -314,6 +316,42 @@ nonisolated enum WidgetRows {
         }
     }
 
+    /// How many titles the medium widget shows when it shows the titles
+    /// heard last; the rows keep at least that many besides the newest of
+    /// each source.
+    static let recentKept = 2
+
+    /// The rows with `row` in them: its title once, and of the rest only
+    /// what a widget can still show, the newest title of every source and
+    /// the `recentKept` titles heard last.
+    static func merged(_ row: WidgetSourceRow, into rows: [WidgetSourceRow]) -> [WidgetSourceRow] {
+        let others: [WidgetSourceRow] = rows.filter { $0.itemId != row.itemId }
+        let all = (others + [row]).sorted(by: heardLater)
+        var seen = Set<WidgetSource>()
+        var result: [WidgetSourceRow] = []
+        for (index, candidate) in all.enumerated() {
+            let newestOfSource = seen.insert(candidate.source).inserted
+            if newestOfSource || index < recentKept { result.append(candidate) }
+        }
+        return result
+    }
+
+    /// The rows a widget shows: the rows the app's home pass wrote
+    /// (`ContinueRows`), with the title of the player's snapshot in the row
+    /// of its source. Each comes from its own writer, so neither can take
+    /// the other's write away; the snapshot is the newer word on what plays
+    /// here, a snapshot without a source joins no row.
+    static func withTitle(of snapshot: WidgetSnapshot?, at date: Date, in rows: [WidgetSourceRow]) -> [WidgetSourceRow] {
+        guard let snapshot, let source = snapshot.source else { return rows }
+        let line = WidgetLine.of(snapshot, at: date)
+        let row = WidgetSourceRow(source: source, itemId: snapshot.itemId, title: snapshot.title,
+                                  subtitle: snapshot.author, fraction: line.fraction,
+                                  remainingText: line.remainingText, isLive: line.isLive,
+                                  kindSymbol: line.symbol, cover: nil,
+                                  playedAt: (snapshot.savedAt ?? date.timeIntervalSince1970) * 1000)
+        return merged(row, into: rows)
+    }
+
     /// The order of the rows: heard last first, ties by id, so the same
     /// rows always come out the same way.
     static func heardLater(_ lhs: WidgetSourceRow, _ rhs: WidgetSourceRow) -> Bool {
@@ -333,6 +371,44 @@ nonisolated enum WidgetRows {
             let picked = (first == second ? [first] : [first, second]).compactMap(newest)
             return Array(picked.prefix(limit(large: false, accessibilitySize: accessibilitySize)))
         }
+    }
+}
+
+/// The rows of the large and medium "Continue", in their own file in the
+/// app group, written by the app's home pass alone. The player writes only
+/// its snapshot; the widget lays the snapshot's title into the rows when it
+/// reads (`WidgetRows.withTitle`).
+nonisolated struct ContinueRows: Codable, Equatable {
+    var rows: [WidgetSourceRow]
+
+    init(rows: [WidgetSourceRow]) {
+        self.rows = rows
+    }
+
+    /// A row of another form (a field it lacks, a source this build does
+    /// not know) is left out, the other rows still read; the next home pass
+    /// writes the whole file anew.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        rows = (try container.decodeIfPresent([LenientRow].self, forKey: .rows) ?? []).compactMap(\.row)
+    }
+
+    private struct LenientRow: Decodable {
+        let row: WidgetSourceRow?
+
+        init(from decoder: Decoder) throws {
+            // bearable, because a row that does not read is one title fewer until the next pass
+            row = try? WidgetSourceRow(from: decoder)
+        }
+    }
+
+    static var url: URL? {
+        AppGroup.containerURL?.appendingPathComponent("continue-rows.json")
+    }
+
+    static func load() -> ContinueRows? {
+        guard let url, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(ContinueRows.self, from: data)
     }
 }
 

@@ -10,8 +10,8 @@ import WidgetKit
 /// Widget "Continue": shows the last played title, on the home screen with
 /// cover, progress and remaining time, on the lock screen wide and round in
 /// one tone; a live station shows "Live" instead of progress. Large and
-/// medium show one row per title the settings ask for, once the app has
-/// written rows (`WidgetSnapshot.bySource`). A tap opens
+/// medium show one row per title the settings ask for: the rows the app
+/// wrote (`ContinueRows`) with the snapshot's title laid in. A tap opens
 /// the app and resumes (maer://resume → ResumeRequest path). Data comes as
 /// a snapshot from the App Group container (see WidgetShared.swift, belongs
 /// to both targets); the app triggers reloads on play/pause/book change.
@@ -22,6 +22,8 @@ struct ContinueListeningEntry: TimelineEntry {
     let cover: UIImage?
     /// The rows the widget's settings ask for at its size.
     let layout: WidgetRows.Layout
+    /// The rows the app's home pass wrote, without the snapshot's title.
+    var homeRows: [WidgetSourceRow] = []
     /// The covers of the rows the app left in the app group, by file name.
     var rowCovers: [String: UIImage] = [:]
 }
@@ -33,13 +35,15 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         if let url = WidgetSnapshot.coverURL, let data = try? Data(contentsOf: url) {
             cover = UIImage(data: data)
         }
+        let homeRows = ContinueRows.load()?.rows ?? []
         var rowCovers: [String: UIImage] = [:]
-        for name in (snapshot?.bySource ?? []).compactMap(\.cover) {
+        for name in homeRows.compactMap(\.cover) {
             if let url = WidgetCoverStore.continueRows.url(named: name), let data = try? Data(contentsOf: url) {
                 rowCovers[name] = UIImage(data: data)
             }
         }
-        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout, rowCovers: rowCovers)
+        return ContinueListeningEntry(date: Date(), snapshot: snapshot, cover: cover, layout: layout,
+                                      homeRows: homeRows, rowCovers: rowCovers)
     }
 
     private func layout(_ settings: ContinueWidgetSettings, _ context: Context) -> WidgetRows.Layout {
@@ -66,7 +70,7 @@ struct ContinueListeningProvider: AppIntentTimelineProvider {
         let start = Date(timeIntervalSince1970: savedAt)
         let entries = (0..<steps.count).map { minute in
             ContinueListeningEntry(date: start.addingTimeInterval(Double(minute) * 60), snapshot: snapshot,
-                                   cover: now.cover, layout: now.layout, rowCovers: now.rowCovers)
+                                   cover: now.cover, layout: now.layout, homeRows: now.homeRows, rowCovers: now.rowCovers)
         }.filter { $0.date.addingTimeInterval(60) > Date() }
         return Timeline(entries: entries.isEmpty ? [now] : entries, policy: .never)
     }
@@ -95,8 +99,8 @@ private struct ContinueListeningView: View {
 
     /// The rows the settings ask for at this size and type size.
     private var rows: [WidgetSourceRow] {
-        WidgetRows.shown(entry.snapshot?.bySource ?? [], layout: entry.layout,
-                         accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+        WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows),
+                         layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
     }
 
     /// Large and medium are the sizes with text over the cover and with rows.
@@ -221,9 +225,16 @@ private struct ContinueListeningView: View {
         }
     }
 
+    /// A row's cover: its file in the app group, or, for the snapshot's
+    /// title, the snapshot's cover.
+    private func rowImage(_ row: WidgetSourceRow) -> UIImage? {
+        if let name = row.cover, let image = entry.rowCovers[name] { return image }
+        return row.itemId == entry.snapshot?.itemId ? entry.cover : nil
+    }
+
     private func rowCover(_ row: WidgetSourceRow, side: CGFloat) -> some View {
         Group {
-            if let name = row.cover, let image = entry.rowCovers[name] {
+            if let image = rowImage(row) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)

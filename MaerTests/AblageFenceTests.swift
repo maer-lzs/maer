@@ -36,7 +36,7 @@ struct AblageFenceTests {
     /// each with its reason: bytes that are not a document of the app.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
         "ImageCache.swift": (5, "cover bytes in the image cache, not a document"),
-        "WidgetShared.swift": (5, "the app-group snapshot the widget reads and the queue's cover thumbnails, outside the app's own container"),
+        "WidgetShared.swift": (6, "the app-group snapshot the widget reads, the Continue rows and the queue's cover thumbnails, outside the app's own container"),
         "PlayerViewModel+Widget.swift": (1, "artwork bytes for the widget in the app group"),
         "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
         "UITestSeed.swift": (1, "the silent fixture the harness plays"),
