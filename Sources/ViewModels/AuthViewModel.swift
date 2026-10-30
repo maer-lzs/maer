@@ -272,6 +272,7 @@ final class AuthViewModel: ObservableObject {
         apiClient.accessUnknown = false
         Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
+        Task { await ContinueRowsWriter.forget() }
     }
 
     private static func normalizedURL(from raw: String) -> URL? {

@@ -36,6 +36,7 @@ extension PlayerViewModel {
             kindSymbol: MediaFamily.placeholderSymbol(for: item.id, markedForm: markedForm),
             isLive: isLiveStream,
             source: ContinueBySource.source(for: item.id, markedForm: markedForm),
+            heardAtMs: ListeningStore.mark(item.id)?.updatedAtMs,
             position: currentTime, duration: duration, rate: Double(playbackRate), isPlaying: isPlaying, now: now,
             minutesAhead: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText
         ) else { return }

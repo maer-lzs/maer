@@ -36,21 +36,38 @@ enum ContinueRowsWriter {
     }
 
     /// Writes the rows with the moment of the pass, every pass, so the
-    /// widget knows which snapshot is newer than the rows; when the rows
-    /// changed, also the covers they name, and reloads the widget.
+    /// widget knows which title was heard after it. The widget reloads when
+    /// the rows changed, or when the new moment leaves out the title of
+    /// the player's snapshot that the earlier one let in
+    /// (`WidgetRows.passMovesTitle`); covers only for changed rows.
     static func write(_ rows: [WidgetSourceRow], passAtMs: Double) async {
-        let changed = ContinueRows.load()?.rows != rows
+        let previous = ContinueRows.load()
+        let changed = previous?.rows != rows
         guard ContinueRows(rows: rows, passAtMs: passAtMs).save() else {
             Logger.library.notice("WIDGET rows not written count=\(rows.count, privacy: .public)")
             return
         }
-        guard changed else { return }
+        guard changed else {
+            if WidgetRows.passMovesTitle(oldPassAtMs: previous?.passAtMs, newPassAtMs: passAtMs,
+                                         snapshot: WidgetSnapshot.load()) {
+                reload()
+            }
+            return
+        }
         reload()
         let covered = rows.compactMap { row in row.cover.map { (id: row.itemId, name: $0) } }
         let wrote = await WidgetCoverWriter.write(covered, into: .continueRows) {
             Set(ContinueRows.load()?.rows.compactMap(\.cover) ?? [])
         }
         if wrote { reload() }
+    }
+
+    /// A server signed out or a source changed: the home page may not
+    /// compute again (it shows the welcome page after the sign-out), so the
+    /// rows of its last pass would stand. They go, with the moment now, so a
+    /// snapshot heard before stays out too; the next pass writes anew.
+    static func forget() async {
+        await write([], passAtMs: Date().timeIntervalSince1970 * 1000)
     }
 
     private static func reload() {

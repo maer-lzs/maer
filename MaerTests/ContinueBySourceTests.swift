@@ -139,6 +139,9 @@ struct ContinueBySourceTests {
         #expect(home.contains("let entries = listenAgain(limit: RowPreview.limit).entries"),
                 "the Listen Again row reads its entries another way than the widget's rows")
         #expect(home.contains("Task { await ContinueRowsWriter.write(rows, passAtMs: passAtMs) }"))
+        let writer = try FetchAnswerTests.squeezedSource("Sources/Providers/ContinueRowsWriter.swift")
+        #expect(writer.contains("if WidgetRows.passMovesTitle(oldPassAtMs: previous?.passAtMs, newPassAtMs: passAtMs, snapshot: WidgetSnapshot.load()) { reload() }"),
+                "a pass with the same rows that leaves the snapshot's title out no longer reloads the widget")
         var writers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -240,9 +243,89 @@ struct ContinueBySourceTests {
         #expect(try JSONDecoder().decode(ContinueRows.self, from: Data("{}".utf8)).rows.isEmpty)
     }
 
-    private func snapshot(_ id: String, _ source: WidgetSource?, savedAt seconds: Double) -> WidgetSnapshot {
-        WidgetSnapshot(itemId: id, title: id, author: nil, fraction: 0.4, remainingText: "x", isPlaying: false,
-                       steps: nil, savedAt: seconds, kindSymbol: "waveform", isLive: false, source: source)
+    private func snapshot(_ id: String, _ source: WidgetSource?, savedAt seconds: Double, heardAtMs: Double? = nil,
+                          playing: Bool = false) -> WidgetSnapshot {
+        WidgetSnapshot(itemId: id, title: id, author: nil, fraction: 0.4, remainingText: "x", isPlaying: playing,
+                       steps: nil, savedAt: seconds, kindSymbol: "waveform", isLive: false, source: source,
+                       heardAtMs: heardAtMs ?? seconds * 1000)
+    }
+
+    @Test("gehoert ist die letzte Position, nicht das Schreiben: ein Schnappschuss, neu geschrieben ohne Hoeren, bleibt draussen")
+    func writtenIsNotHeard() {
+        let pass = [row("book-before", .audiobooks, at: 4_000)]
+        let restored = snapshot("hidden", .audiobooks, savedAt: 20, heardAtMs: 6_000)
+        #expect(WidgetRows.withTitle(of: restored, at: Date(timeIntervalSince1970: 21), in: pass, passAtMs: 10_000) == pass,
+                "a title written anew after the pass, but heard before it, came back")
+        var station = snapshot("radio:x", .radio, savedAt: 12, playing: true)
+        station.heardAtMs = nil
+        #expect(station.heardMs == 12_000, "a playing station without a position is heard while it plays")
+        station.isPlaying = false
+        #expect(station.heardMs == nil)
+        #expect(WidgetRows.withTitle(of: station, at: Date(), in: pass, passAtMs: 10_000) == pass)
+    }
+
+    @Test("ueber den echten Player: ein Titel, den die Wiederherstellung ohne Hoeren laedt, legt sich nicht ueber den Durchgang zurueck", .needsAudio)
+    func aRestoredTitleStaysOut() async throws {
+        let ticks = TickWorkTests()
+        let file = try ticks.tone(seconds: 12)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "widget-restore-\(UUID().uuidString)"
+        let heard = Date().timeIntervalSince1970 * 1000 - 3_600_000
+        ListeningStore.record(id, position: 3, duration: 12, atMs: heard)
+        ContinueHiddenStore.hide(id: id, lastUpdate: heard)
+        defer { ContinueHiddenStore.show(id: id) }
+        let pass = [row("book-before", .audiobooks, at: heard - 60_000)]
+        let passBefore = Date().timeIntervalSince1970 * 1000
+        // The restore at start: the title opens without playing, and the load writes the snapshot.
+        let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
+        let written = try #require(WidgetSnapshot.load(), "the precondition: the load wrote a snapshot")
+        #expect(written.itemId == id && written.source != nil && !written.isPlaying)
+        #expect(written.heardAtMs == heard, "the load counts as heard: \(String(describing: written.heardAtMs))")
+        #expect(WidgetRows.withTitle(of: written, at: Date(), in: pass, passAtMs: passBefore) == pass,
+                "pass before the restore: the hidden title came back")
+        let passAfter = Date().timeIntervalSince1970 * 1000
+        #expect(WidgetRows.withTitle(of: written, at: Date(), in: pass, passAtMs: passAfter) == pass,
+                "pass after the restore: the hidden title came back")
+        model.stop()
+        let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
+        #expect(coordinator.contains("await open(item: item, autoplay: false, preservesContext: true, origin: .restore)"),
+                "the restore at start plays, so this witness no longer stands for it")
+    }
+
+    @Test("gleiche Zeilen, aber der neue Durchgang laesst den Titel des Schnappschusses aus: das Widget laedt neu")
+    func aPassThatLeavesTheTitleOutReloads() {
+        let heard = snapshot("x", .audiobooks, savedAt: 30, heardAtMs: 15_000)
+        #expect(WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 20_000, snapshot: heard))
+        #expect(!WidgetRows.passMovesTitle(oldPassAtMs: 16_000, newPassAtMs: 20_000, snapshot: heard), "already out before")
+        #expect(!WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 14_000, snapshot: heard), "still in after")
+        #expect(WidgetRows.passMovesTitle(oldPassAtMs: nil, newPassAtMs: 20_000, snapshot: heard))
+        #expect(!WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 20_000, snapshot: nil))
+    }
+
+    @Test("nach dem Abmelden vom Server stehen keine Zeilen mehr da, ueber den echten Weg der Person")
+    @MainActor
+    func aSignOutForgetsTheRows() async throws {
+        let before = ContinueRows.load()
+        let auth = AppSession.shared.authViewModel
+        let wasSignedIn = auth.isLoggedIn
+        let token = KeychainStore.load(forKey: KeychainKey.apiToken)
+        defer {
+            _ = before?.save()
+            if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) }
+            auth.isLoggedIn = wasSignedIn
+        }
+        await ContinueRowsWriter.write([row("li_old-server", .audiobooks, at: 1_000)], passAtMs: 1_000)
+        #expect(ContinueRows.load()?.rows.isEmpty == false, "the precondition: rows of the server")
+        let signedOutAt = Date().timeIntervalSince1970 * 1000
+        auth.logout()
+        for _ in 0..<50 where ContinueRows.load()?.rows.isEmpty == false {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let after = try #require(ContinueRows.load())
+        #expect(after.rows.isEmpty, "the rows of the signed-out server stand: \(after.rows.map(\.itemId))")
+        #expect((after.passAtMs ?? 0) >= signedOutAt, "the moment of the sign-out keeps an older snapshot out")
     }
 
     @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)

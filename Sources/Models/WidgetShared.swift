@@ -140,6 +140,19 @@ nonisolated struct WidgetSnapshot: Codable {
     /// (`ContinueBySource.source`). Nil in a snapshot that does not carry
     /// it; the title then joins no row of the large and medium widget.
     var source: WidgetSource?
+    /// When the title was last heard on this device, in milliseconds: the
+    /// moment of its last position, which only listening writes. A write
+    /// without listening (a restore at start, a change of speed) leaves it.
+    var heardAtMs: Double?
+
+    /// The moment the title counts as heard: its last position, or, while
+    /// it plays (a station has no position), the write; nil for a title
+    /// neither heard here nor playing.
+    var heardMs: Double? {
+        if let heardAtMs { return heardAtMs }
+        guard isPlaying, let savedAt else { return nil }
+        return savedAt * 1000
+    }
 
     struct Step: Codable, Equatable {
         var fraction: Double
@@ -162,13 +175,13 @@ nonisolated struct WidgetSnapshot: Codable {
     /// station has no length: it is written as live, without progress and
     /// time left, whatever its position says.
     static func of(itemId: String, title: String, author: String?, kindSymbol: String, isLive: Bool,
-                   source: WidgetSource? = nil,
+                   source: WidgetSource? = nil, heardAtMs: Double? = nil,
                    position: Double, duration: Double, rate: Double, isPlaying: Bool, now: Double,
                    minutesAhead: Int, remaining text: (Double) -> String?) -> WidgetSnapshot? {
         if isLive {
             return WidgetSnapshot(itemId: itemId, title: title, author: author, fraction: 0, remainingText: nil,
                                   isPlaying: isPlaying, steps: nil, savedAt: now, kindSymbol: kindSymbol, isLive: true,
-                                  source: source)
+                                  source: source, heardAtMs: heardAtMs)
         }
         guard duration > 0 else { return nil }
         return WidgetSnapshot(
@@ -179,7 +192,7 @@ nonisolated struct WidgetSnapshot: Codable {
             steps: isPlaying
                 ? steps(position: position, duration: duration, rate: rate, minutes: minutesAhead, remaining: text)
                 : nil,
-            savedAt: now, kindSymbol: kindSymbol, isLive: false, source: source)
+            savedAt: now, kindSymbol: kindSymbol, isLive: false, source: source, heardAtMs: heardAtMs)
     }
 
     /// What the widget shows at `date`: the step of the minute since the
@@ -340,24 +353,34 @@ nonisolated enum WidgetRows {
     /// (`ContinueRows`, at `passAtMs`), with the title of the player's
     /// snapshot in the row of its source. Each comes from its own writer, so
     /// neither can take the other's write away. The snapshot's title joins
-    /// when the pass shows it or the snapshot is newer than the pass; a
-    /// title the pass left out after the snapshot (finished, hidden, its
-    /// server or account gone) stays out, and a row of the pass newer than
-    /// the snapshot stands as it is. A snapshot without a source joins no
-    /// row.
+    /// when the pass shows it or it was heard after the pass
+    /// (`WidgetSnapshot.heardMs`, never the moment of the write: a restore
+    /// at start writes without listening); a title the pass left out after
+    /// it was heard (finished, hidden, its server or account gone) stays
+    /// out, and a row of the pass newer than the hearing stands as it is. A
+    /// snapshot without a source joins no row.
     static func withTitle(of snapshot: WidgetSnapshot?, at date: Date, in rows: [WidgetSourceRow],
                           passAtMs: Double?) -> [WidgetSourceRow] {
         guard let snapshot, let source = snapshot.source else { return rows }
-        let savedMs = (snapshot.savedAt ?? date.timeIntervalSince1970) * 1000
         let shownByPass = rows.first { $0.itemId == snapshot.itemId }
-        if let shownByPass, shownByPass.playedAt > savedMs { return rows }
-        guard shownByPass != nil || savedMs > (passAtMs ?? -.infinity) else { return rows }
+        let heardMs = snapshot.heardMs
+        if let shownByPass, shownByPass.playedAt > (heardMs ?? -.infinity) { return rows }
+        guard shownByPass != nil || (heardMs ?? -.infinity) > (passAtMs ?? -.infinity) else { return rows }
         let line = WidgetLine.of(snapshot, at: date)
         let row = WidgetSourceRow(source: source, itemId: snapshot.itemId, title: snapshot.title,
                                   subtitle: snapshot.author, fraction: line.fraction,
                                   remainingText: line.remainingText, isLive: line.isLive,
-                                  kindSymbol: line.symbol, cover: nil, playedAt: savedMs)
+                                  kindSymbol: line.symbol, cover: nil,
+                                  playedAt: heardMs ?? shownByPass?.playedAt ?? 0)
         return merged(row, into: rows)
+    }
+
+    /// Whether a pass whose rows did not change still changes what a
+    /// widget shows: the snapshot's title was heard after the earlier pass
+    /// and not after the new one, so it now stays out.
+    static func passMovesTitle(oldPassAtMs: Double?, newPassAtMs: Double, snapshot: WidgetSnapshot?) -> Bool {
+        guard let heard = snapshot?.heardMs else { return false }
+        return heard > (oldPassAtMs ?? -.infinity) && heard <= newPassAtMs
     }
 
     /// The order of the rows: heard last first, ties by id, so the same
