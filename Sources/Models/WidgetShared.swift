@@ -189,6 +189,79 @@ nonisolated struct WidgetLine: Equatable {
     }
 }
 
+/// The sources the large and medium "Continue" have a row for: the app's
+/// tabs. The raw values are the tabs' (`MediaType`), so the app hands a
+/// title's tab over as its source and never assigns sources a second way.
+nonisolated enum WidgetSource: String, Codable, CaseIterable, Sendable {
+    case audiobooks
+    case podcasts
+    case music
+    case radio
+}
+
+/// One title of the large and medium "Continue", written by the app.
+nonisolated struct WidgetSourceRow: Codable, Equatable, Sendable {
+    var source: WidgetSource
+    var itemId: String
+    var title: String
+    var subtitle: String?
+    /// 0…1; nil for a live station.
+    var fraction: Double?
+    var remainingText: String?
+    var isLive: Bool
+    var kindSymbol: String
+    /// The row's cover file in the app group; nil while there is none.
+    var cover: String?
+    /// When the title was last heard, in milliseconds.
+    var playedAt: Double
+}
+
+/// Which rows a large or medium "Continue" shows, from its settings and
+/// the type size. Pure, the same for the widget and its witnesses.
+nonisolated enum WidgetRows {
+    enum Layout: Equatable, Sendable {
+        /// The newest title of every source that is switched on, in the
+        /// order of the app's tabs.
+        case large(Set<WidgetSource>)
+        /// The two titles heard last, from any source.
+        case mediumRecent
+        /// The newest title of each of two chosen sources, in that order.
+        case mediumSources(WidgetSource, WidgetSource)
+    }
+
+    /// How many rows fit. At the accessibility type sizes a row needs its
+    /// title on two lines, so fewer rows stand, and whole ones only.
+    static func limit(large: Bool, accessibilitySize: Bool) -> Int {
+        switch (large, accessibilitySize) {
+        case (true, false): return 4
+        case (true, true): return 2
+        case (false, false): return 2
+        case (false, true): return 1
+        }
+    }
+
+    /// The order of the rows: heard last first, ties by id, so the same
+    /// rows always come out the same way.
+    static func heardLater(_ lhs: WidgetSourceRow, _ rhs: WidgetSourceRow) -> Bool {
+        lhs.playedAt != rhs.playedAt ? lhs.playedAt > rhs.playedAt : lhs.itemId < rhs.itemId
+    }
+
+    static func shown(_ rows: [WidgetSourceRow], layout: Layout, accessibilitySize: Bool) -> [WidgetSourceRow] {
+        let newestFirst = rows.sorted(by: heardLater)
+        let newest = { (source: WidgetSource) in newestFirst.first { $0.source == source } }
+        switch layout {
+        case .large(let switchedOn):
+            let picked = WidgetSource.allCases.filter { switchedOn.contains($0) }.compactMap(newest)
+            return Array(picked.prefix(limit(large: true, accessibilitySize: accessibilitySize)))
+        case .mediumRecent:
+            return Array(newestFirst.prefix(limit(large: false, accessibilitySize: accessibilitySize)))
+        case .mediumSources(let first, let second):
+            let picked = (first == second ? [first] : [first, second]).compactMap(newest)
+            return Array(picked.prefix(limit(large: false, accessibilitySize: accessibilitySize)))
+        }
+    }
+}
+
 /// Preview of the podcast "Up Next" queue for the home-screen widget. The app
 /// writes on every queue change (see `PlayQueue.save`), the widget reads.
 /// Via the App Group container, since it is a separate process.
