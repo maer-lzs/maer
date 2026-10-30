@@ -8,6 +8,10 @@ progress as a ring. Its play button, the round widget and a new control
 for Control Center continue the last played title without opening the
 app; a tap elsewhere on the widget opens the app and resumes.
 
+**Play is no longer lost while the app restores a title.** When the app
+was just bringing back the last title on its own, a play for that same
+title (a tap, the widget's button) was swallowed; it now plays.
+
 **A paused radio station no longer looks finished in the widget.** The
 home screen widget showed it with a full bar and no time left; it now
 says "Live".

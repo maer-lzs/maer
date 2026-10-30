@@ -404,7 +404,7 @@ final class PlayerCoordinator: ObservableObject {
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
         // (pure, tested): the same title already on its way answers nil.
-        guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
+        guard let generation = openGate.begin(itemId: item.id, restart: restart, autoplay: autoplay) else { return }
         defer { openGate.finish(generation) }
         // A restart must reload (start at 0) even if it's the active item. Don't
         // take the "already open, just resume" shortcut.
@@ -592,7 +592,9 @@ final class PlayerCoordinator: ObservableObject {
         // The pointer and its note went out at `beginOwnSession`, for a
         // gesture only; nothing is re-noted here.
         if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
-        if autoplay {
+        // A play asked while this open ran (a tap, the widget's command)
+        // plays it too, also when the open itself began without playing.
+        if autoplay || openGate.playWasAsked(generation) {
             await newViewModel.playWithServerCheck()
             guard generation == openGeneration else { newViewModel.stop(); return }
             // THE point at which something is deliberately being listened to.

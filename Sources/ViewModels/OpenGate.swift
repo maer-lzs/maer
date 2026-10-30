@@ -22,20 +22,33 @@ struct OpenGate {
     private(set) var current = 0
     /// The item a still-running open() is working on.
     private(set) var openingItemId: String?
+    /// A call that coalesced into the running open asked to play. The
+    /// running open then plays when it stands, also when it began without
+    /// playing (a restore, a mirror); otherwise the wish vanishes with the
+    /// coalesced call.
+    private(set) var playAsked = false
 
     /// Draw a generation. Returns nil when this call coalesces into a
     /// running attempt for the SAME item (an explicit restart never
-    /// coalesces. It must reload from the start).
-    mutating func begin(itemId: String, restart: Bool) -> Int? {
-        if !restart, openingItemId == itemId { return nil }
+    /// coalesces. It must reload from the start); its wish to play stays
+    /// with the running attempt.
+    mutating func begin(itemId: String, restart: Bool, autoplay: Bool = false) -> Int? {
+        if !restart, openingItemId == itemId {
+            if autoplay { playAsked = true }
+            return nil
+        }
         current &+= 1
         openingItemId = itemId
+        playAsked = false
         return current
     }
 
     /// Is this generation still the current one? Everything after an await
     /// asks this.
     func isCurrent(_ generation: Int) -> Bool { generation == current }
+
+    /// Whether a call that coalesced into this generation asked to play.
+    func playWasAsked(_ generation: Int) -> Bool { generation == current && playAsked }
 
     /// Release the "in flight" marker. But only if no NEWER call has taken
     /// over in the meantime (otherwise the newer one would lose its
