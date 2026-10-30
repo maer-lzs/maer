@@ -131,10 +131,31 @@ struct ResumeTargetTests {
         ResumeListeningIntent.handler = nil
         _ = try await ResumeListeningIntent().perform()
         var runs: [String?] = []
-        ResumeListeningIntent.handler = { runs.append($0) }
+        ResumeListeningIntent.handler = { runs.append($0); return true }
         _ = try await ResumeListeningIntent().perform()
         _ = try await ResumeListeningIntent(itemId: "row-title").perform()
         #expect(runs == [nil, "row-title"], "the work did not run once per command, with the title a row names")
+    }
+
+    @Test("findet der Befehl nichts, holt er die App nach vorn und sie sagt es; findet er etwas, bleibt sie im Hintergrund")
+    func aCommandThatFindsNothingSaysSo() async throws {
+        let before = (ResumeListeningIntent.handler, ResumeListeningIntent.saysNothing, ResumeListeningIntent.opensApp)
+        defer { (ResumeListeningIntent.handler, ResumeListeningIntent.saysNothing, ResumeListeningIntent.opensApp) = before }
+        var steps: [String] = []
+        ResumeListeningIntent.saysNothing = { steps.append("says") }
+        ResumeListeningIntent.opensApp = { _ in steps.append("front"); return true }
+        ResumeListeningIntent.handler = { _ in true }
+        _ = try await ResumeListeningIntent().perform()
+        #expect(steps.isEmpty, "a command that continues brought the app to the front: \(steps)")
+        ResumeListeningIntent.handler = { _ in false }
+        _ = try await ResumeListeningIntent().perform()
+        #expect(steps == ["front", "says"], "nothing found: the app comes to the front, then says so")
+        steps = []
+        ResumeListeningIntent.opensApp = { _ in steps.append("front"); return false }
+        _ = try await ResumeListeningIntent().perform()
+        #expect(steps == ["front"], "where the system cannot bring the app to the front, nothing is said into the dark")
+        #expect(ResumeTarget.nothing(missing: "item").findsNothing && !ResumeTarget.waitForLibrary.findsNothing
+                    && !ResumeTarget.lastPlayed("a").findsNothing && !ResumeTarget.resumeActive.findsNothing)
     }
 
     @Test("der Link des Widgets: ohne Titel weiterhoeren, mit Titel genau diesen, jede Kennung kommt unversehrt an")
@@ -189,8 +210,12 @@ struct ResumeTargetTests {
         #expect(door.contains("last = await resolve(lastPlayedId, entries, true)"),
                 "the last played title resolves another way than the app's own restore")
         let app = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
-        #expect(app.contains("ResumeListeningIntent.handler = { itemId in await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command) }"),
+        #expect(app.contains("ResumeListeningIntent.handler = { itemId in let target = await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command) return !target.findsNothing }"),
                 "the app does not give the command its work at start, with the title a row names")
+        #expect(app.contains("ResumeListeningIntent.saysNothing = { AppSession.shared.playerCoordinator.sayNothingToResume() }"),
+                "the command says nothing found another way than the view")
+        #expect(view.contains("if target.findsNothing { playerCoordinator.sayNothingToResume() }"),
+                "the view says nothing found another way than the command")
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.id"), "Siri's named book does not reach the door through the view")
         let link = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")

@@ -72,7 +72,10 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 368
 
-    /// The same count over all of `Sources`, measured 740 (the door that
+    /// The same count over all of `Sources`, measured 741 (the app hands
+    /// the widget's command its sentence for nothing found, through the
+    /// session at the moment it is said, as it hands the work; before
+    /// that 740: the door that
     /// continues listening leaves the podcast index to the restore's chain,
     /// which waits for it already; before that 741: the episode row
     /// and the episode page reach the subscriptions through no grip of their
@@ -101,7 +104,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 740
+    nonisolated static let sourcesStock = 741
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

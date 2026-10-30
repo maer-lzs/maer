@@ -14,7 +14,10 @@ import WidgetKit
 /// command it runs in the app's process, which the system starts in the
 /// background when it is not running; the app gives the command its work
 /// (`handler`) when it starts. Without it, in the widget's process, the
-/// command writes a line and does nothing.
+/// command writes a line and does nothing. When the app finds nothing to
+/// continue, the command asks the system to bring the app to the front
+/// (from iOS 26 on) and the app says so (`saysNothing`); before iOS 26 it
+/// writes a line.
 struct ResumeListeningIntent: AudioPlaybackIntent {
     static let title: LocalizedStringResource = "Continue Listening"
     static let description = IntentDescription("Continues the last played title.")
@@ -32,7 +35,21 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
         self.itemId = itemId
     }
 
-    @MainActor static var handler: (@MainActor (String?) async -> Void)?
+    /// Runs in the background; comes to the front only when it must say
+    /// that there is nothing to continue.
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { [.background, .foreground(.dynamic)] }
+
+    /// The app's work; says whether it found something to continue.
+    @MainActor static var handler: (@MainActor (String?) async -> Bool)?
+    /// The app's sentence for nothing found, said once the app is in front.
+    @MainActor static var saysNothing: (@MainActor () -> Void)?
+    /// Brings the app to the front; a witness stands in for the system.
+    @MainActor static var opensApp: (@MainActor (ResumeListeningIntent) async throws -> Bool) = { intent in
+        guard #available(iOS 26.0, *) else { return false }
+        try await intent.continueInForeground(nil, alwaysConfirm: false)
+        return true
+    }
 
     @MainActor
     func perform() async throws -> some IntentResult {
@@ -40,7 +57,13 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
             WidgetLog.logger.notice("RESUME command without the app's handler")
             return .result()
         }
-        await handler(itemId)
+        let found = await handler(itemId)
+        guard !found else { return .result() }
+        guard try await Self.opensApp(self) else {
+            WidgetLog.logger.notice("RESUME command found nothing; the system cannot bring the app to the front")
+            return .result()
+        }
+        Self.saysNothing?()
         return .result()
     }
 }

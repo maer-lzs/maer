@@ -36,9 +36,12 @@ the app starts a downloaded song keeps its cover.
 
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the
-progress as a ring. Its play button, the round widget and a new control
-for Control Center continue the last played title without opening the
-app; a tap elsewhere on the widget opens the app and resumes. Right
+progress as a ring. The wide widget's play button, the whole round
+widget and a new control for Control Center continue the last played
+title without opening the app; a tap beside the wide widget's button
+opens the app and resumes. When there is nothing to continue, the app
+comes to the front and says so (from iOS 26 on; before, the tap does
+nothing). Right
 after the app starts, these and Siri's "Continue Listening" also find a
 last played song or Jellyfin title, which the app then asks its server
 for, the way it restores the mini player.

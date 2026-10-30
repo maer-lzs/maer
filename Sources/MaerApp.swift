@@ -241,8 +241,10 @@ struct MaerApp: App {
         // The widget's play command runs in this process, also when the
         // system starts it in the background for the command alone.
         ResumeListeningIntent.handler = { itemId in
-            await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command)
+            let target = await AppSession.shared.playerCoordinator.resume(namedItemId: itemId, by: .command)
+            return !target.findsNothing
         }
+        ResumeListeningIntent.saysNothing = { AppSession.shared.playerCoordinator.sayNothingToResume() }
         // Clear orphaned import temp (partial downloads/upload
         // bodies of a killed import). No invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()

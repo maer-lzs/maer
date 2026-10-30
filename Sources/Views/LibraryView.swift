@@ -1793,7 +1793,7 @@ struct LibraryView: View {
         guard target != .waitForLibrary else { return }
         ResumeRequest.pendingItemId = nil
         ResumeRequest.pending = false
-        if case .nothing = target { resumeTargetMissing() }
+        if target.findsNothing { playerCoordinator.sayNothingToResume() }
     }
 
     /// Siri or Shortcuts asked for a routine: it starts through the one door
@@ -1823,15 +1823,6 @@ struct LibraryView: View {
     private func routineRequestFailed(_ sentence: String) {
         Haptics.tap()
         playerCoordinator.sayOpenFailure(sentence, cause: .unknown, title: nil)
-    }
-
-    /// A shortcut, a quick action or the widget asked for a title this
-    /// device cannot find: said like a search hit that no longer resolves,
-    /// never a silent tap. The door writes the line.
-    private func resumeTargetMissing() {
-        Haptics.tap()
-        playerCoordinator.sayOpenFailure(String(localized: "Audiobook could not be loaded."),
-                                         cause: .unknown, title: nil)
     }
 
     /// Item for an id across sources (audiobook list OR podcast provider). For

@@ -24,6 +24,14 @@ extension PlayerCoordinator {
         entries.first(where: { $0.id == id })?.item ?? known(id)
     }
 
+    /// A request to continue found no title: said like a search hit that
+    /// no longer resolves, never a silent tap. The one sentence for the
+    /// view and for the widget's command; the door writes the line.
+    func sayNothingToResume() {
+        Haptics.tap()
+        sayOpenFailure(String(localized: "Audiobook could not be loaded."), cause: .unknown, title: nil)
+    }
+
     /// Continues listening and says what it did. The command runs without
     /// a view: on a cold start it first puts the library's stored rows into
     /// the list (the view's cache-first path, all rows or none). It never

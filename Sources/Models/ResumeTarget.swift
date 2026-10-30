@@ -17,6 +17,12 @@ nonisolated enum ResumeTarget: Equatable {
     case waitForLibrary
     case nothing(missing: String)
 
+    /// Nothing continues and nothing waits: the person is told.
+    var findsNothing: Bool {
+        if case .nothing = self { return true }
+        return false
+    }
+
     /// The case without its id, for a log line.
     var name: String {
         switch self {
