@@ -18,15 +18,26 @@ nonisolated enum ContinueBySource {
     }
 
     /// The rows after a change of sources, without waiting for a home pass
-    /// that may not come: the rows whose title's source is still available
-    /// stay, the others go. The moment of the pass stays too, so a title
-    /// heard after it still joins; only when the snapshot's own title lost
-    /// its source does the moment become `nowMs`, so it stays out as well.
-    static func keepingAvailable(_ stored: ContinueRows?, snapshotItemId: String?, nowMs: Double,
-                                 isAvailable: (String) -> Bool) -> (rows: [WidgetSourceRow], passAtMs: Double) {
-        let rows = (stored?.rows ?? []).filter { isAvailable($0.itemId) }
-        let snapshotGone = snapshotItemId.map { !isAvailable($0) } ?? false
+    /// that may not come: the rows that still stand on the home page stay
+    /// (`standsAfterSwitch`), the others go. The moment of the pass stays
+    /// too, so a title heard after it still joins; only when the snapshot's
+    /// own title no longer stands does the moment become `nowMs`, so it
+    /// stays out as well.
+    static func keepingStanding(_ stored: ContinueRows?, snapshotItemId: String?, nowMs: Double,
+                                sourceRead: (String) -> Bool) -> (rows: [WidgetSourceRow], passAtMs: Double) {
+        let rows = (stored?.rows ?? []).filter { standsAfterSwitch($0.itemId, sourceRead: sourceRead) }
+        let snapshotGone = snapshotItemId.map { !standsAfterSwitch($0, sourceRead: sourceRead) } ?? false
         return (rows, snapshotGone ? nowMs : (stored?.passAtMs ?? nowMs))
+    }
+
+    /// Whether a title stands on the home page with the sources as they are
+    /// now. A station heard, an RSS episode and a catalogue track stand
+    /// from what this device holds: a switch stops their traffic, never the
+    /// view of what was heard, so they stand with their source off. Any
+    /// other title stands while the home page reads its source
+    /// (`sourceRead`, the session's `isAvailable`).
+    static func standsAfterSwitch(_ id: String, sourceRead: (String) -> Bool) -> Bool {
+        ItemNamespace.isRadio(id) || ItemNamespace.isRSS(id) || ItemNamespace.isCatalog(id) || sourceRead(id)
     }
 
     /// What the home page knows of one title of its rows.

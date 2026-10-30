@@ -332,18 +332,36 @@ struct ContinueBySourceTests {
 
     @Test("eine geaenderte Quelle nimmt nur die Zeilen ihrer Titel, ohne auf einen Durchgang zu warten", .needsTheSources)
     func aSourceChangeKeepsWhatIsStillThere() throws {
-        let stored = ContinueRows(rows: [row("li_book", .audiobooks, at: 3_000), row("radio:x", .radio, at: 2_000),
-                                         row("sub:album:1", .music, at: 1_000)], passAtMs: 5_000)
-        let radioOff: (String) -> Bool = { !$0.hasPrefix("radio:") }
-        let kept = ContinueBySource.keepingAvailable(stored, snapshotItemId: "li_book", nowMs: 9_000, isAvailable: radioOff)
-        #expect(kept.rows.map(\.itemId) == ["li_book", "sub:album:1"], "the rows of a source still on went too")
-        #expect(kept.passAtMs == 5_000, "a title heard after the last pass would no longer join")
-        let gone = ContinueBySource.keepingAvailable(stored, snapshotItemId: "radio:x", nowMs: 9_000, isAvailable: radioOff)
-        #expect(gone.passAtMs == 9_000, "the snapshot's title lost its source and would join again")
-        let none = ContinueBySource.keepingAvailable(nil, snapshotItemId: nil, nowMs: 9_000, isAvailable: radioOff)
-        #expect(none.rows.isEmpty && none.passAtMs == 9_000)
+        let track = FreeCatalog.jamendoPrefix + "t1"
+        let freeBook = FreeCatalog.librivoxPrefix + "b1"
+        // The session's answers with every source off but Subsonic: the
+        // catalogue says false always, RSS without a subscription too.
+        let onlySubsonic: (String) -> Bool = { ItemNamespace.isSubsonic($0) }
+        let table: [(id: String, stands: Bool, what: String)] = [
+            (track, true, "a catalogue track"),
+            (freeBook, true, "a free audiobook"),
+            ("rss:feed:ep", true, "an episode of a browsed show"),
+            ("radio:rb:x", true, "a station with the radio off"),
+            ("sub:album:1", true, "an album of a source still on"),
+            ("li_book", false, "a book with the server signed out"),
+            ("jf:album:2", false, "an album of a music server switched off"),
+            ("abspod:ep", false, "an episode of the server's podcasts switched off"),
+        ]
+        for entry in table {
+            #expect(ContinueBySource.standsAfterSwitch(entry.id, sourceRead: onlySubsonic) == entry.stands,
+                    "\(entry.what)")
+        }
+        let stored = ContinueRows(rows: table.enumerated().map { row($1.id, .audiobooks, at: Double(8 - $0) * 1_000) },
+                                  passAtMs: 9_000)
+        let kept = ContinueBySource.keepingStanding(stored, snapshotItemId: track, nowMs: 20_000, sourceRead: onlySubsonic)
+        #expect(kept.rows.map(\.itemId) == table.filter(\.stands).map(\.id), "a row that stands went, or one that went stayed")
+        #expect(kept.passAtMs == 9_000, "a title heard after the last pass would no longer join")
+        let gone = ContinueBySource.keepingStanding(stored, snapshotItemId: "li_book", nowMs: 20_000, sourceRead: onlySubsonic)
+        #expect(gone.passAtMs == 20_000, "the snapshot's title lost its source and would join again")
+        let none = ContinueBySource.keepingStanding(nil, snapshotItemId: nil, nowMs: 20_000, sourceRead: onlySubsonic)
+        #expect(none.rows.isEmpty && none.passAtMs == 20_000)
         let session = try FetchAnswerTests.squeezedSource("Sources/AppSession.swift")
-        #expect(session.contains("Task { await ContinueRowsWriter.keepAvailable { self.provider(for: $0).isAvailable } }"),
+        #expect(session.contains("Task { await ContinueRowsWriter.keepStanding { self.provider(for: $0).isAvailable } }"),
                 "a change of sources no longer cuts the rows by the session's one answer")
     }
 

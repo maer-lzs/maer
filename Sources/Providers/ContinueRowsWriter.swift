@@ -72,11 +72,11 @@ enum ContinueRowsWriter {
 
     /// A source switched or another device's choices adopted: a home pass
     /// follows only if the library changes, so the rows are cut here to the
-    /// titles whose source is still available (`ContinueBySource.keepingAvailable`).
-    static func keepAvailable(_ isAvailable: (String) -> Bool) async {
-        let kept = ContinueBySource.keepingAvailable(ContinueRows.load(), snapshotItemId: WidgetSnapshot.load()?.itemId,
-                                                     nowMs: Date().timeIntervalSince1970 * 1000,
-                                                     isAvailable: isAvailable)
+    /// titles that still stand on the home page (`ContinueBySource.keepingStanding`).
+    static func keepStanding(_ sourceRead: (String) -> Bool) async {
+        let kept = ContinueBySource.keepingStanding(ContinueRows.load(), snapshotItemId: WidgetSnapshot.load()?.itemId,
+                                                    nowMs: Date().timeIntervalSince1970 * 1000,
+                                                    sourceRead: sourceRead)
         await write(kept.rows, passAtMs: kept.passAtMs)
     }
 
