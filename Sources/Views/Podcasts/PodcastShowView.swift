@@ -126,6 +126,9 @@ struct PodcastShowView: View {
     }
 
     private var isServerShow: Bool { liveShow.map { ItemNamespace.isABSPodcast($0.id) } == true }
+    /// The show a routine's rule may name: a followed feed. A server's show
+    /// is not among the shows a routine finds (`RoutinePlayback.show`).
+    private var routineShow: PodcastShow? { isServerShow ? nil : storedShow }
     private var title: String { liveShow?.title ?? catalogSeed?.title ?? "" }
 
     // MARK: - Episodes
@@ -265,6 +268,17 @@ struct PodcastShowView: View {
         // carries its own actions and no app settings cog.
         .pageActions("show-actions", shown: caps.showsSettingsSheet) {
             PodcastShowSettingsButton { showSettings = true }
+            if let show = routineShow {
+                Menu {
+                    ForEach(RoutineRule.offered(feedKey: PodcastSubscriptions.feedKey(show.feedURL)), id: \.self) { rule in
+                        AddToPlaylistButton(itemId: rule.id, knownTitles: [rule.id: show.title],
+                                            label: RoutineWords.rule(rule.kind))
+                    }
+                } label: {
+                    Label("Add to Routine", systemImage: "text.badge.plus")
+                }
+                .accessibilityIdentifier("add-to-routine")
+            }
         }
         .sheet(isPresented: $showSettings) {
             Group {

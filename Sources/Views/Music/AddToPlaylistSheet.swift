@@ -53,6 +53,9 @@ final class PlaylistPresenter: ObservableObject {
     @Published var adding: AddRequest?
     @Published var creating: CreateRequest?
     @Published var message: String?
+    /// A followed show whose rule just went into a list, while its
+    /// downloads are off (`RoutinePlayback.autoDownloadOffer`).
+    @Published var offeringAutoDownload: PodcastShow?
 
     /// WHICH hierarchy has to present. A sheet cannot be presented from the
     /// root while another sheet is already up, so a surface living inside one
@@ -102,10 +105,10 @@ final class PlaylistPresenter: ObservableObject {
     func addToDevice(_ ids: [String], titles: [String: String],
                      listId: String, listName: String) async {
         let expanded = await Self.expandedForDevice(ids, titles: titles)
-        message = Self.text(for: MaerPlaylists.shared.add(itemIds: expanded.ids,
-                                                          to: listId,
-                                                          knownTitles: expanded.titles),
-                            listName: listName)
+        let outcome = MaerPlaylists.shared.add(itemIds: expanded.ids, to: listId,
+                                               knownTitles: expanded.titles)
+        message = Self.text(for: outcome, listName: listName)
+        if outcome == .added { offeringAutoDownload = RoutinePlayback.autoDownloadOffer(for: expanded.ids) }
     }
 
     /// The server states which songs an item contributes. An album expands
@@ -252,6 +255,7 @@ final class PlaylistPresenter: ObservableObject {
             // playlists had a compartment of their own.
             return String(localized: "Your playlists are full (\(limit) entries). They share the iCloud space with your podcast progress. Remove something first.")
         case .notQueueable:  return String(localized: "This cannot be added to a playlist.")
+        case .showHasRule:   return String(localized: "“\(listName)” already has a rule for this show. Remove it first to choose another.")
         }
     }
 }
@@ -291,6 +295,9 @@ struct AddToPlaylistButton: View {
     /// resolver instead of ids. `itemId` then only serves the gate. Without
     /// this those rows would need their own copy of the action.
     var resolve: (() async -> (ids: [String], titles: [String: String]))?
+    /// A routine's rule names itself (`RoutineWords`); every other entry is
+    /// added to a playlist.
+    var label: String?
 
     @Environment(\.playlistHost) private var host
 
@@ -311,9 +318,13 @@ struct AddToPlaylistButton: View {
                                                       host: host)
                 }
             } label: {
-                Label("Add to Playlist", systemImage: "text.badge.plus")
+                if let label {
+                    Label(label, systemImage: "text.badge.plus")
+                } else {
+                    Label("Add to Playlist", systemImage: "text.badge.plus")
+                }
             }
-            .accessibilityIdentifier("add-to-playlist")
+            .accessibilityIdentifier(label == nil ? "add-to-playlist" : "add-rule-\(itemId)")
         }
     }
 }
@@ -359,6 +370,16 @@ private struct PlaylistDialogs: ViewModifier {
                 Button("OK", role: .cancel) { presenter.message = nil }
             } message: {
                 if let message = presenter.message { Text(verbatim: message) }
+            }
+            // Asked once after a rule went in; never switched on unasked.
+            .alert("Download automatically?", isPresented: Binding(
+                get: { presenter.offeringAutoDownload != nil && presenter.host == hostId },
+                set: { if !$0 { presenter.offeringAutoDownload = nil } }),
+                   presenting: presenter.offeringAutoDownload) { show in
+                Button("Download Automatically") { PodcastAutoDownload.setEnabled(show.id, true) }
+                Button("Not Now", role: .cancel) {}
+            } message: { show in
+                Text("Offline, a routine plays only downloaded episodes. Download new episodes of “\(show.title)” automatically?")
             }
     }
 }

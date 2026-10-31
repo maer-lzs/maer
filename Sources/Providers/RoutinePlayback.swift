@@ -135,8 +135,13 @@ enum RoutinePlayback {
     /// The show of a feed key among the shows this device knows: the
     /// followed ones, then the ones met while browsing this session.
     static func show(feedKey: String) -> PodcastShow? {
-        let named: (PodcastShow) -> Bool = { PodcastSubscriptions.feedKey($0.feedURL) == feedKey }
-        return PodcastSubscriptions.shared.shows.first(where: named) ?? BrowsedEpisodes.shared.sessionShows().first(where: named)
+        followed(feedKey: feedKey)
+            ?? BrowsedEpisodes.shared.sessionShows().first { PodcastSubscriptions.feedKey($0.feedURL) == feedKey }
+    }
+
+    /// The followed show of a feed key.
+    static func followed(feedKey: String) -> PodcastShow? {
+        PodcastSubscriptions.shared.shows.first { PodcastSubscriptions.feedKey($0.feedURL) == feedKey }
     }
 
     /// What the list plays from what this device holds now, without asking
@@ -174,6 +179,19 @@ enum RoutinePlayback {
         guard let title = SyncCarried.usableTitle(show.title, for: itemId) else { return nil }
         let picture = show.artworkURL.flatMap { premium || PodcastFeedAddress.isTokenFeedURL($0) ? nil : $0 }
         return CarriedItem(id: itemId, title: title, coverURL: picture)
+    }
+
+    /// The followed show to offer the auto-download for after these entries
+    /// went into a list: the first rule's show, when its downloads are not
+    /// on yet. Offline a routine plays only what is downloaded; the offer
+    /// asks, nothing switches it on unasked.
+    static func autoDownloadOffer(for itemIds: [String],
+                                  followedShow: (String) -> PodcastShow? = { followed(feedKey: $0) },
+                                  isEnabled: (String) -> Bool = { PodcastAutoDownload.isEnabled($0) }) -> PodcastShow? {
+        for rule in itemIds.compactMap(RoutineRule.init(id:)) {
+            if let show = followedShow(rule.feedKey) { return isEnabled(show.id) ? nil : show }
+        }
+        return nil
     }
 
     /// A rule's cover: its show's picture as this device knows it.

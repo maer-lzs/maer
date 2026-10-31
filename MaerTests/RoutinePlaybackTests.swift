@@ -227,5 +227,72 @@ struct RoutinePlaybackTests {
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("restartFirst: !start.firstFromRule"))
     }
+
+    // MARK: - Adding
+
+    /// A list of its own over a database of its own.
+    private static func freshStore() -> MaerPlaylists {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("routines-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+    }
+
+    @Test("eine Liste nimmt je Sendung eine Regel, auch unter mehreren, und der Satz nennt die Liste")
+    func aListTakesOneRulePerShow() {
+        let store = Self.freshStore()
+        let list = store.create(name: "Morgens")
+        #expect(store.add(itemId: "rule:newest:aaaa", to: list.id) == .added)
+        #expect(store.add(itemId: "rule:next:aaaa", to: list.id) == .showHasRule)
+        #expect(store.add(itemId: "rule:newest:aaaa", to: list.id) == .showHasRule)
+        #expect(store.add(itemId: "rule:next:2:bbbb", to: list.id) == .added)
+        #expect(store.add(itemIds: ["jam:1886432", "rule:next:3:bbbb"], to: list.id) == .showHasRule)
+        #expect(store.playlists.first { $0.id == list.id }?.itemIds
+                == ["rule:newest:aaaa", "rule:next:2:bbbb", "jam:1886432"])
+        #expect(PlaylistPresenter.text(for: .showHasRule, listName: "Morgens")?.contains("Morgens") == true)
+        store.delete(playlistId: list.id)
+    }
+
+    @Test("eine Regel geht nur in eine Liste des Geraets und bleibt eine Kennung")
+    func aRuleGoesOnlyToTheDevice() {
+        let id = "rule:next:2:aaaa"
+        #expect(MusicSourceRule.owner(id) == nil)
+        #expect(PlaylistDestination.servers(active: [.jellyfin, .subsonic], owners: [MusicSourceRule.owner(id)]).isEmpty)
+        #expect(PlaylistDestination.places(servers: []) == [.device])
+        #expect(PlaylistDestination.expansion(for: id, serverKind: nil) == .asIs)
+    }
+
+    @Test("nach dem Hinzufuegen fragt das Angebot nur fuer eine gefolgte Sendung ohne Auto-Download")
+    func theOfferAsksOnlyWhenOff() {
+        let show = Self.show(1)
+        let followed: (String) -> PodcastShow? = { $0 == Self.key ? show : nil }
+        let rule = "rule:newest:\(Self.key)"
+        #expect(RoutinePlayback.autoDownloadOffer(for: [rule], followedShow: followed, isEnabled: { _ in false })?.id == show.id)
+        #expect(RoutinePlayback.autoDownloadOffer(for: [rule], followedShow: followed, isEnabled: { _ in true }) == nil)
+        #expect(RoutinePlayback.autoDownloadOffer(for: ["rule:newest:zzzz"], followedShow: followed, isEnabled: { _ in false }) == nil,
+                "a show not followed here is offered nothing")
+        #expect(RoutinePlayback.autoDownloadOffer(for: [Self.id(1)], followedShow: followed, isEnabled: { _ in false }) == nil,
+                "an episode is no rule")
+    }
+
+    /// The show page offers the rules of a followed feed through the one
+    /// playlist action, the offer follows a successful add only, and only
+    /// its button switches the downloads on.
+    @Test("die Seite einer gefolgten Sendung bietet die Regeln ueber die eine Aktion an, und nur die Antwort schaltet den Auto-Download", .needsTheSources)
+    func theShowPageOffersTheRules() throws {
+        let page = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastShowView.swift")
+        #expect(page.contains("private var routineShow: PodcastShow? { isServerShow ? nil : storedShow }"))
+        #expect(page.contains("if let show = routineShow { Menu { ForEach(RoutineRule.offered(feedKey:"))
+        #expect(page.contains("AddToPlaylistButton(itemId: rule.id, knownTitles: [rule.id: show.title], label: RoutineWords.rule(rule.kind))"))
+        let sheet = try FetchAnswerTests.squeezedSource("Sources/Views/Music/AddToPlaylistSheet.swift")
+        #expect(sheet.contains("if outcome == .added { offeringAutoDownload = RoutinePlayback.autoDownloadOffer(for: expanded.ids) }"))
+        var switching: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceTexts() {
+            let count = SyncContractFenceTests.stripped(file.text).components(separatedBy: "PodcastAutoDownload.setEnabled(").count - 1
+            if count > 0 { switching[file.name] = count }
+        }
+        #expect(switching == ["PodcastGeneralSettings.swift": 1, "AddToPlaylistSheet.swift": 1])
+        #expect(sheet.contains("Button(\"Download Automatically\") { PodcastAutoDownload.setEnabled(show.id, true) }"))
+    }
 }
 #endif

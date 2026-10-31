@@ -28,6 +28,11 @@ nonisolated struct RoutineRule: Hashable, Sendable {
     /// How many episodes "next" may take.
     static let counts = 1...3
 
+    /// Every rule a show offers, in the order a menu lists them.
+    static func offered(feedKey: String) -> [RoutineRule] {
+        ([Kind.newest] + counts.map { Kind.next(count: $0) }).compactMap { RoutineRule(kind: $0, feedKey: feedKey) }
+    }
+
     init?(kind: Kind, feedKey: String) {
         guard !feedKey.isEmpty, !feedKey.contains(":") else { return nil }
         if case .next(let count) = kind, !Self.counts.contains(count) { return nil }
@@ -67,6 +72,13 @@ nonisolated struct RoutineRule: Hashable, Sendable {
     /// The rule a routine already holds for a show: one rule per show.
     static func ofShow(_ feedKey: String, in itemIds: [String]) -> RoutineRule? {
         itemIds.lazy.compactMap(RoutineRule.init(id:)).first { $0.feedKey == feedKey }
+    }
+
+    /// Whether an id is a rule over a show the routine already holds a rule
+    /// for, the same rule among them. Any other id clashes with nothing.
+    static func clashes(_ id: String, in itemIds: [String]) -> Bool {
+        guard let rule = RoutineRule(id: id) else { return false }
+        return ofShow(rule.feedKey, in: itemIds) != nil
     }
 
     // MARK: - Resolving

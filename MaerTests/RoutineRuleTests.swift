@@ -121,5 +121,19 @@ struct RoutineRuleTests {
         #expect(SyncCarried.resolve(itemId: id, carried: nil, known: nil, sourceConfigured: false).reason == .routineRule)
         #expect(SyncCarried.resolve(itemId: id, carried: nil, known: nil, sourceConfigured: true).reason == .routineRule)
     }
+
+    /// The menu offers every rule once, and a rule over a show the routine
+    /// holds a rule for clashes, the same rule among them.
+    @Test("eine Sendung bietet jede Regel einmal an, und je Sendung steht eine Regel in der Routine")
+    func aShowOffersEachRuleAndHoldsOne() {
+        #expect(RoutineRule.offered(feedKey: "aaaa").map(\.id)
+                == ["rule:newest:aaaa", "rule:next:aaaa", "rule:next:2:aaaa", "rule:next:3:aaaa"])
+        #expect(RoutineRule.offered(feedKey: "a:b").isEmpty, "no feed key, no rule")
+        let held = ["rss:x:1", "rule:newest:aaaa"]
+        #expect(RoutineRule.clashes("rule:newest:aaaa", in: held))
+        #expect(RoutineRule.clashes("rule:next:3:aaaa", in: held))
+        #expect(!RoutineRule.clashes("rule:next:bbbb", in: held))
+        #expect(!RoutineRule.clashes("rss:x:1", in: held), "a title is no rule")
+    }
 }
 #endif

@@ -278,6 +278,8 @@ final class MaerPlaylists: ObservableObject {
         /// The type does not belong in a list. An endless stream is not a
         /// list entry. Same rule as the queue, no second gate concept.
         case notQueueable
+        /// A routine holds one rule per show (`RoutineRule.clashes`).
+        case showHasRule
     }
 
     /// `knownTitle` comes from the SURFACE that added the entry. It had
@@ -289,6 +291,7 @@ final class MaerPlaylists: ObservableObject {
     func add(itemId: String, to playlistId: String, knownTitle: String? = nil) -> AddOutcome {
         guard PlayQueue.canEnqueue(itemId) else { return .notQueueable }
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return .notQueueable }
+        if RoutineRule.clashes(itemId, in: playlists[index].itemIds) { return .showHasRule }
         if playlists[index].itemIds.contains(itemId) { return .alreadyThere }
         guard totalEntries < Self.entryLimit else { return .limitReached(limit: Self.entryLimit) }
         playlists[index].itemIds.append(itemId)
@@ -389,7 +392,7 @@ final class MaerPlaylists: ObservableObject {
 
     /// Several at once (album, saving the queue). The bound counts per entry,
     /// as much is appended as fits, and the caller learns when something did
-    /// not.
+    /// not: the bound, or a rule over a show the routine already has one for.
     @discardableResult
     func add(itemIds: [String], to playlistId: String,
              knownTitles: [String: String] = [:]) -> AddOutcome {
@@ -397,6 +400,7 @@ final class MaerPlaylists: ObservableObject {
         for id in itemIds {
             let result = add(itemId: id, to: playlistId, knownTitle: knownTitles[id])
             if case .limitReached = result { outcome = result; break }
+            if result == .showHasRule { outcome = result }
         }
         return outcome
     }

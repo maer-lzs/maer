@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Routines: a playlist that picks today's episodes.** On the page of a
+show you follow, Add to Routine puts a rule into one of your playlists:
+the newest episode, or the next one, two or three from where you stand.
+When the list plays, each rule becomes the episodes it picks at that
+moment, in its place among the other titles, and its line on the list's
+page says what it will play or why nothing. A list holds one rule per
+show. Offline a routine plays only downloaded episodes, so after adding,
+the app offers to download new episodes of that show automatically.
+
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the
 progress as a ring. Its play button, the round widget and a new control
