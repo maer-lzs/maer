@@ -267,12 +267,15 @@ final class SyncQueue {
         var unreachable: Set<String> = []
         let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
         let switchedAt = AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt)
+        // An entry from before the stamp takes the server that owns its id
+        // (`ItemOwners`); an id without an owner stays as before.
+        let owners = ItemOwnerShelf.app?.read().value
         for (itemId, update) in pending {
             // A stand queued under another Audiobookshelf server waits for
             // it: the id carries no server, the one signed in now would
             // take it or answer its absence.
-            let scope = ABSServerScope.queueFate(itemId: itemId, entryServer: update.server, queuedAt: update.queuedAt,
-                                                 current: signedIn, switchedAt: switchedAt)
+            let scope = ABSServerScope.queueFate(itemId: itemId, entryServer: update.server ?? owners?.owner(of: itemId),
+                                                 queuedAt: update.queuedAt, current: signedIn, switchedAt: switchedAt)
             if scope == .wait {
                 Logger.library.notice("SYNCQUEUE waits, queued under another server item=\(itemId, privacy: .private(mask: .hash))")
                 continue

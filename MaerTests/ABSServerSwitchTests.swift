@@ -58,9 +58,21 @@ struct ABSServerSwitchTests {
                            AppStorageKeys.absServerSwitchedAt, AppStorageKeys.absMoreThanOneServer,
                            AppStorageKeys.selectedLibraryId, KnownServers.storeKey,
                            AppStorageKeys.absSpellingMarkReviewed]
-        init() { values = Dictionary(uniqueKeysWithValues: Self.keys.map { ($0, AppStorageKeys.object($0)) }) }
-        func restore() { for (key, value) in values { AppStorageKeys.set(value, for: key) } }
+        /// The register of owners is a file of its own beside the database.
+        let owners: Data?
+        init() {
+            values = Dictionary(uniqueKeysWithValues: Self.keys.map { ($0, AppStorageKeys.object($0)) })
+            owners = ItemOwnerShelf.app.flatMap { try? Data(contentsOf: $0.file) }
+        }
+        func restore() {
+            for (key, value) in values { AppStorageKeys.set(value, for: key) }
+            if let file = ItemOwnerShelf.app?.file {
+                if let owners { try? owners.write(to: file, options: .atomic) } else { try? FileManager.default.removeItem(at: file) }
+            }
+        }
     }
+
+    private static func owner(of itemId: String) -> String? { ItemOwnerShelf.app?.read().value?.owner(of: itemId) }
 
     private func queue() throws -> (SyncQueue, URL) {
         let directory = FileManager.default.temporaryDirectory
@@ -73,8 +85,10 @@ struct ABSServerSwitchTests {
     @Test("die Regel: geraeumt wird nur nach der vollen Ladung desselben Servers, ein fremder Stand wartet")
     func theRule() {
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: false) == .clean)
-        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: true) != .clean,
-                "a device that knew two servers cleans no library id")
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: true) == .cleanOwned,
+                "a device that knew two servers cleans only the loaded server's own ids")
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://b", moreThanOneServer: true) == .cleanOwned)
+        #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: nil, moreThanOneServer: true) != .clean)
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://b", moreThanOneServer: false) != .clean)
         #expect(ABSServerScope.cleanup(lastFullLoad: nil, current: "https://b", moreThanOneServer: false) != .clean,
                 "the first load after the update")
@@ -174,6 +188,84 @@ struct ABSServerSwitchTests {
         // The next full load of the same server cleans a book that left.
         #expect(await load(Server(books: [kept])), "the same server set off no sweep of keys")
         #expect(ListeningStore.backup(gone) == nil, "the same server no longer cleans a book that left")
+        // A device of one server cleans as before the register, also a book
+        // the register never named; what stays is the server's own.
+        #expect(Self.owner(of: gone) == nil)
+        #expect(Self.owner(of: kept) == "https://a.example", "a full list did not name its books in the register")
+    }
+
+    @Test("zwei Server raeumen je ihre eigenen Buecher: das gegangene Buch von A geht mit der Ladung von A, die von B und der Altbestand bleiben")
+    func twoServersCleanTheirOwn() async throws {
+        let saved = Saved()
+        defer { saved.restore() }
+        let tag = UUID().uuidString
+        let (a1, a2, b1, old, both) = ("own-a1-\(tag)", "own-a2-\(tag)", "own-b1-\(tag)", "own-old-\(tag)", "own-both-\(tag)")
+        let books = [a1, a2, b1, old, both]
+        let d = UserDefaults.standard
+        defer { for book in books { d.removeObject(forKey: AppStorageKeys.playbackRate(book)) } }
+        for book in books { d.set(1.5, forKey: AppStorageKeys.playbackRate(book)) }
+        let rate = { (book: String) in d.object(forKey: AppStorageKeys.playbackRate(book)) as? Double }
+        let now = Date().timeIntervalSince1970 * 1000
+        for key in [AppStorageKeys.absSignedInServer, AppStorageKeys.absMoreThanOneServer,
+                    AppStorageKeys.absLastFullLoadServer, AppStorageKeys.selectedLibraryId] { AppStorageKeys.set(nil, for: key) }
+
+        AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now)
+        await load(Server(books: [a1, a2, both]))
+        AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now + 1)
+        #expect(await !load(Server(books: [b1, both])), "B's load cleaned although none of B's books left")
+        #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), "the precondition: two servers")
+        AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now + 2)
+        #expect(await load(Server(books: [a1, both])), "A's load did not clean the book that left A")
+
+        #expect(rate(a2) == nil, "A's book that left stays")
+        #expect(rate(a1) == 1.5)
+        #expect(rate(b1) == 1.5, "A's load cleaned B's book")
+        #expect(rate(old) == 1.5, "a book no full load named was cleaned")
+        #expect(rate(both) == 1.5, "a book on both servers was cleaned")
+        #expect(Self.owner(of: a2) == nil, "the register still names a cleaned book")
+        #expect(Self.owner(of: b1) == "https://b.example")
+        #expect(Self.owner(of: both) == "https://a.example", "the last full load to name a book owns it")
+        #expect(Self.owner(of: old) == nil)
+    }
+
+    /// The ids that go are decided when a load ends, as a value: a second
+    /// load that notes its ids while the first one's sweep runs changes
+    /// nothing that sweep cleans.
+    @Test("zwei volle Ladungen in einem Zug: A raeumt sein gegangenes Buch, ein Buch von B, das A nicht nennt, bleibt")
+    func twoLoadsInOneGo() async throws {
+        let saved = Saved()
+        defer { saved.restore() }
+        let tag = UUID().uuidString
+        let (aKept, aLeft, shared, bLeft) = ("go-a-\(tag)", "go-a-left-\(tag)", "go-shared-\(tag)", "go-b-left-\(tag)")
+        let books = [aKept, aLeft, shared, bLeft]
+        let d = UserDefaults.standard
+        defer { for book in books { d.removeObject(forKey: AppStorageKeys.playbackRate(book)) } }
+        for book in books { d.set(1.5, forKey: AppStorageKeys.playbackRate(book)) }
+        let rate = { (book: String) in d.object(forKey: AppStorageKeys.playbackRate(book)) as? Double }
+        let now = Date().timeIntervalSince1970 * 1000
+        for key in [AppStorageKeys.absSignedInServer, AppStorageKeys.absMoreThanOneServer,
+                    AppStorageKeys.absLastFullLoadServer, AppStorageKeys.selectedLibraryId] { AppStorageKeys.set(nil, for: key) }
+        AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now)
+        await load(Server(books: [aKept, aLeft]))
+        AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now + 1)
+        await load(Server(books: [shared, bLeft]))
+
+        // A, then B, the second before the first one's sweep ended.
+        AppStorageKeys.noteABSSignIn("https://a.example", nowMs: now + 2)
+        let first = LibraryViewModel(provider: Server(books: [aKept]))
+        await first.loadLibrary()
+        AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now + 3)
+        let second = LibraryViewModel(provider: Server(books: [shared]))
+        await second.loadLibrary()
+        #expect(first.keySweep != nil && second.keySweep != nil, "the precondition: both loads cleaned")
+        await first.keySweep?.value
+        await second.keySweep?.value
+
+        #expect(rate(shared) == 1.5, "A's load cleaned a book of B that A does not name")
+        #expect(rate(aKept) == 1.5)
+        #expect(rate(aLeft) == nil, "A's book that left stays")
+        #expect(rate(bLeft) == nil, "B's book that left stays")
+        #expect(Self.owner(of: shared) == "https://b.example")
     }
 
     @Test("nach einem Wechsel raeumt auch die zweite volle Ladung von B nichts von A")
@@ -346,6 +438,27 @@ struct ABSServerSwitchTests {
         let serverB = Server(books: [])
         await queue.flush { _ in ProgressTarget(key: "abs", client: serverB) }
         #expect(queue.pendingUpdate(itemId: book)?.currentTime == 77, "the absence answer after a switch dropped the stand")
+    }
+
+    @Test("ein Eintrag ohne Server, dessen Buch Server A gehoert, wartet unter B, auch wenn B das Buch kennt")
+    func anOlderEntryOfAnOwnedBookWaits() async throws {
+        let saved = Saved()
+        defer { saved.restore() }
+        let (queue, directory) = try queue()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let book = "switch-owned-\(UUID().uuidString)"
+        let now = Date().timeIntervalSince1970 * 1000
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        await queue.enqueue(itemId: book, currentTime: 77, duration: 1000, isFinished: false)
+        #expect(queue.pendingUpdate(itemId: book)?.server == nil, "the precondition: an entry without a server")
+        var owners = ItemOwnerShelf.app?.read().value ?? ItemOwners()
+        owners.noteFullLoad(ids: [book], server: "https://a.example")
+        ItemOwnerShelf.app?.write(owners, afterCorruptRead: false)
+        AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now)
+        let serverB = Server(books: [book])
+        await queue.flush { _ in ProgressTarget(key: "abs", client: serverB) }
+        #expect(serverB.sent[book] == nil, "a stand of A's book went to B")
+        #expect(queue.pendingUpdate(itemId: book)?.currentTime == 77, "the stand of A's book left the queue under B")
     }
 }
 #endif

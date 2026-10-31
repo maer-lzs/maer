@@ -854,9 +854,13 @@ final class LibraryViewModel: ObservableObject {
 
     /// The keys and rows of books that left the library go, only with a
     /// fully loaded list, only when that list is every book library of the
-    /// server (`AppStorageKeys.listJudgesEveryBook`), and only when the last
-    /// full load came from the same server (`ABSServerScope.cleanup`);
-    /// otherwise a line and nothing goes.
+    /// server (`AppStorageKeys.listJudgesEveryBook`), and only by the rule
+    /// of `ABSServerScope.cleanup`: on a device that knew one server every
+    /// absent id after a full load of the same server, on a device that knew
+    /// more only the absent ids this server owns (`ItemOwners`); otherwise a
+    /// line and nothing goes. Every full list names its server's ids in the
+    /// register first, also one that does not judge every book: without
+    /// that, a book from before the register would never get an owner.
     private func cleanUpPerBook(full validIds: Set<String>?, bookLibraries: Int?) {
         guard let validIds else { return }
         let server = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
@@ -864,19 +868,39 @@ final class LibraryViewModel: ObservableObject {
             lastFullLoad: AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer), current: server,
             moreThanOneServer: AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false))
         if let server { AppStorageKeys.set(server, for: AppStorageKeys.absLastFullLoadServer) }
+        let shelf = ItemOwnerShelf.app
+        let read = shelf?.read() ?? .fresh
+        var owners = read.value ?? ItemOwners()
+        var changed = server.map { owners.noteFullLoad(ids: validIds, server: $0) } ?? false
+        defer { if changed { shelf?.write(owners, afterCorruptRead: read.blocksEmptySave) } }
         guard AppStorageKeys.listJudgesEveryBook(bookLibraries: bookLibraries) else {
             Logger.library.notice("CLEANUP per book skipped: book libraries=\(bookLibraries.map(String.init) ?? "unknown", privacy: .public), the list holds one")
             return
         }
-        if case .skip(let reason) = scope {
+        // The ids that go, decided here as a value: a load that notes its
+        // ids meanwhile changes nothing a sweep already set off cleans.
+        let gone: @Sendable (String) -> Bool
+        switch scope {
+        case .skip(let reason):
             Logger.library.notice("CLEANUP per book skipped: \(reason, privacy: .public)")
             return
+        case .clean:
+            gone = { AppStorageKeys.prunedByBookCleanup($0, validItemIds: validIds) }
+        case .cleanOwned:
+            let cleanable = server.map { owners.cleanable(absentFrom: validIds, server: $0) } ?? []
+            guard !cleanable.isEmpty else {
+                Logger.library.notice("CLEANUP per book skipped: more than one server signed in, none of this server's books left")
+                return
+            }
+            Logger.library.notice("CLEANUP per book of this server only: more than one server signed in, books=\(cleanable.count)")
+            gone = { cleanable.contains($0) }
         }
         // The rows live on the main actor; their entries leave here.
-        CarrierRowStores.cleanupPerBookRows(validItemIds: validIds)
+        CarrierRowStores.cleanupPerBookRows(where: gone)
+        if owners.drop(where: gone) { changed = true }
         // detached because a store sweep after the load must not die with the load's task; off the MainActor
         keySweep = Task.detached(priority: .utility) {
-            AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+            AppStorageKeys.cleanupPerBookKeys(where: gone)
         }
     }
 

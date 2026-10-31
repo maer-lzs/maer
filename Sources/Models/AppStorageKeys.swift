@@ -1086,7 +1086,12 @@ nonisolated enum AppStorageKeys {
     /// FULL library list (never the filtered offline list. Valid keys would be
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
-        let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
+        cleanupPerBookKeys(where: { prunedByBookCleanup($0, validItemIds: validItemIds) }, in: defaults)
+    }
+
+    /// The same for the ids `gone` names: on a device that knew more than
+    /// one server, the ids the loaded server owns and no longer lists.
+    static func cleanupPerBookKeys(where gone: (String) -> Bool, in defaults: UserDefaults = .standard) {
         for prefix in ["playbackRate.", PlayedTail.prefix] {
             for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
                 if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }

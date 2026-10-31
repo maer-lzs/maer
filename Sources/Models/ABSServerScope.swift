@@ -54,19 +54,23 @@ nonisolated enum ABSServerScope {
     /// What a full library load may do with the per-book state.
     enum Cleanup: Equatable, Sendable {
         case clean
+        /// Only the ids `current` owns (`ItemOwners`): the device knew more
+        /// than one server.
+        case cleanOwned
         /// Not this time, with the reason for the line.
         case skip(String)
     }
 
-    /// A full load of `current` cleans only on a device that knew one
-    /// server, and only when the last full load came from it. Once a second
-    /// server was signed in, a library id of either could be absent from
-    /// the other's list, so nothing without a namespace is cleaned until the
-    /// id carries its server. No known earlier load (the first start with
-    /// this rule) skips once; the caller then remembers `current`.
+    /// A full load of `current` cleans every absent library id only on a
+    /// device that knew one server, and only when the last full load came
+    /// from it. Once a second server was signed in, a library id of either
+    /// could be absent from the other's list, so a load cleans only the ids
+    /// the register says are its own; an id without an owner stays. No
+    /// known earlier load (the first start with this rule) skips once; the
+    /// caller then remembers `current`.
     static func cleanup(lastFullLoad: String?, current: String?, moreThanOneServer: Bool) -> Cleanup {
-        if moreThanOneServer { return .skip("more than one server signed in on this device") }
         guard let current else { return .skip("server unknown") }
+        if moreThanOneServer { return .cleanOwned }
         guard let lastFullLoad else { return .skip("no earlier full load known") }
         return identity(of: lastFullLoad) == identity(of: current) ? .clean : .skip("last full load from another server")
     }

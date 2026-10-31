@@ -500,7 +500,11 @@ enum CarrierRowStores {
     /// cleaned up before). Only with a FULL library list, by the rule of
     /// `AppStorageKeys.cleanupPerBookKeys`.
     static func cleanupPerBookRows(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
-        let gone: (String) -> Bool = { AppStorageKeys.prunedByBookCleanup($0, validItemIds: validItemIds) }
+        cleanupPerBookRows(where: { AppStorageKeys.prunedByBookCleanup($0, validItemIds: validItemIds) }, in: defaults)
+    }
+
+    /// The same for the ids `gone` names (`AppStorageKeys.cleanupPerBookKeys(where:in:)`).
+    static func cleanupPerBookRows(where gone: (String) -> Bool, in defaults: UserDefaults = .standard) {
         JumpRingRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
         BookmarkCacheRows.matching(defaults).removeEntries(CarrierRowsSpec.entryOwner, where: gone)
     }

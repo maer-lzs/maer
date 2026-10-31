@@ -25,6 +25,13 @@ account, the page says so and shows nothing of this device from the
 first look on, instead of the whole device's time until the next second
 was counted.
 
+**A device that used two Audiobookshelf servers tidies up again.** Since
+3.5.1 such a device kept the speed, position and other per-book data of
+every book that left a server, for good, so that nothing of the other
+server was lost. Now each server's full load removes only the data of
+its own books that are gone; books of the other server, and books no
+load has listed since this update, stay.
+
 ## v3.5.1 (Build 58)
 
 **A download from a server that stopped answering ends instead of

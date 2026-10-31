@@ -118,6 +118,13 @@ struct BookCleanupTests {
                     AppStorageKeys.absMoreThanOneServer]
         let saved = keys.map { ($0, AppStorageKeys.object($0)) }
         defer { for (key, value) in saved { AppStorageKeys.set(value, for: key) } }
+        let ownersFile = ItemOwnerShelf.app?.file
+        let savedOwners = ownersFile.flatMap { try? Data(contentsOf: $0) }
+        defer {
+            if let ownersFile {
+                if let savedOwners { try? savedOwners.write(to: ownersFile, options: .atomic) } else { try? FileManager.default.removeItem(at: ownersFile) }
+            }
+        }
         // One server, loaded fully before: the cleanup asks only the libraries.
         AppStorageKeys.set("https://one.example", for: AppStorageKeys.absSignedInServer)
         AppStorageKeys.set("https://one.example", for: AppStorageKeys.absLastFullLoadServer)
@@ -147,6 +154,8 @@ struct BookCleanupTests {
         #expect(await !load(Libraries(["lib-a": [bookA], "lib-b": [bookB]])), "the second library set off a sweep of keys")
         #expect(ListeningStore.backup(bookA)?.first == 321, "the second library cleaned the first one's stand")
         #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) as? Double == 1.5, "the second library cleaned the speed")
+        #expect(ItemOwnerShelf.app?.read().value?.owner(of: bookB) == "https://one.example",
+                "a full list that judges not every book did not name its books in the register")
 
         // The same server with one library: the book that left goes.
         #expect(await load(Libraries(["lib-b": [bookB]])), "one library set off no sweep of keys")
