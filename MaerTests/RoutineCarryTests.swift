@@ -124,13 +124,15 @@ struct RoutineCarryTests {
         withExtendedLifetime((a.runner, b.runner, watching)) {}
     }
 
-    @Test("ein Stand ohne Routinen fragt fuer eine Regel keine Quelle, zeigt sie als unbekannt und heilt keinen Titel")
+    /// The same file runs in a build without routines, so it asks what both
+    /// builds answer alike: no source, no cover, no title, nothing to play.
+    @Test("ein Stand ohne Routinen fragt fuer eine Regel keine Quelle, spielt sie nicht als Titel und heilt keinen Titel")
     func aBuildWithoutRoutinesAsksNoSource() async throws {
         for id in Self.ruleIds {
             #expect(AppSession.shared.provider(for: id) is UnknownSourceProvider, "\(id) reaches no source")
             #expect(AppSession.shared.coverURL(forItemId: id) == nil)
             #expect(AppSession.shared.libraryItem(forId: id) == nil)
-            #expect(AppSession.shared.resolve(forId: id, carried: nil).reason == .unknownSource, "dimmed and skipped")
+            #expect(AppSession.shared.resolve(forId: id, carried: nil).item == nil, "dimmed and skipped")
         }
         let directory = try scratchDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

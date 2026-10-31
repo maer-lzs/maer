@@ -402,6 +402,6 @@ extension PlaylistCardSource {
     /// store is the factory's; the helper takes it rather than reaching for it.
     @MainActor
     static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
-        RoutinePlayback.held(list, in: store).items
+        RoutinePlayback.held(list, in: store).start.items
     }
 }

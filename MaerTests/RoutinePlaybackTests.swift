@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// A routine at its start: each rule becomes what it picks, judged with the
@@ -122,6 +123,89 @@ struct RoutinePlaybackTests {
         #expect(context.ids == ["rss:a:1", "rss:a:2"])
         #expect(context.expand("rss:a:2", into: [rule, "rss:a:3"]))
         #expect(context.ids == ["rss:a:1", "rss:a:3"])
+    }
+
+    @Test("das Abbild einer Regel traegt Titel und Bild der Sendung, kein Satz, und kein Bild mit Zugang")
+    func aRuleTravelsWithTitleAndPublicPictureOnly() throws {
+        let id = try #require(RoutineRule(kind: .next(count: 2), feedKey: Self.key)).id
+        var show = Self.show(1)
+        show.artworkURL = "https://cdn.example/cover.jpg"
+        let plain = try #require(RoutinePlayback.snapshot(id, show: show, premium: false))
+        #expect(plain.title == "Morgen")
+        #expect(plain.subtitle == nil, "the rule in words is said by the reading device")
+        #expect(plain.coverURL == "https://cdn.example/cover.jpg")
+        #expect(plain.source == "rule:")
+        #expect(RoutinePlayback.snapshot(id, show: show, premium: true)?.coverURL == nil, "a premium feed's picture stays home")
+        show.artworkURL = "https://cdn.example/cover.jpg?token=abc"
+        #expect(RoutinePlayback.snapshot(id, show: show, premium: false)?.coverURL == nil, "a picture with a secret stays home")
+        show.title = id
+        #expect(RoutinePlayback.snapshot(id, show: show, premium: false) == nil, "no title, no snapshot")
+        #expect(AppSession.shared.carried(forId: "rule:newest:no-such-show") == nil)
+        #expect(AppSession.shared.coverURL(forItemId: "rule:newest:no-such-show") == nil)
+    }
+
+    /// Each source the answer reads moves it: the listening state, the
+    /// downloads, the network, the show's episodes after a fetch.
+    @Test("jede Quelle der Antwort bewegt die Zeile: Hoerstand, Downloads, Netz, neue Folgen")
+    func everySourceMovesTheLine() throws {
+        let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
+        let answer: (PodcastShow, Bool, (LibraryItem) -> EpisodePlayState, Set<String>) -> [String] = { show, online, state, local in
+            RoutinePlayback.answer(newest, in: show, online: online, state: state,
+                                   isDownloaded: { local.contains($0) }).items.map(\.id)
+        }
+        let unheard: (LibraryItem) -> EpisodePlayState = { _ in .unplayed }
+        #expect(answer(Self.show(5), true, unheard, []) == [Self.id(5)])
+        #expect(answer(Self.show(6), true, unheard, []) == [Self.id(6)], "a fetch brought episode 6")
+        #expect(answer(Self.show(5), true, { $0.id == Self.id(5) ? .played : .unplayed }, []).isEmpty, "heard elsewhere")
+        #expect(answer(Self.show(5), false, unheard, []).isEmpty, "offline")
+        #expect(answer(Self.show(5), false, unheard, [Self.id(5)]) == [Self.id(5)], "downloaded")
+        guard case .showUnknown = RoutinePlayback.answer(newest, in: nil, online: true, state: unheard, isDownloaded: { _ in false }) else {
+            Issue.record("an unknown show answers as unknown"); return
+        }
+    }
+
+    /// The page shows the answer of the moment: it observes each source the
+    /// answer reads, holds it once per pass, and every source tells.
+    @Test("die Seite einer Liste beobachtet jede Quelle der Antwort, und jede Quelle meldet sich", .needsTheSources)
+    func thePageObservesEverySource() throws {
+        let pages = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
+        let page = try #require(pages.range(of: "struct MaerPlaylistPage: View {")).upperBound
+        let body = String(pages[page...].prefix(4000))
+        #expect(body.contains("@ObservedObject private var store = MaerPlaylists.shared"))
+        #expect(body.contains("@ObservedObject private var answerSources = RoutineAnswerSources.shared"))
+        #expect(body.components(separatedBy: "RoutinePlayback.held(").count == 2, "held once per pass")
+        #expect(body.contains("if let line = held?.lines[id] { RoutineRuleRow(line: line,"), "a rule shows its line")
+
+        // Each source reaches the one object the page observes.
+        final class Counter { var changes = 0 }
+        let counter = Counter()
+        let watching = RoutineAnswerSources.shared.objectWillChange.sink { counter.changes += 1 }
+        ListeningRevision.shared.bump("routine witness")
+        #expect(counter.changes == 1, "the listening state")
+        DownloadManager.shared.stock.objectWillChange.send()
+        #expect(counter.changes == 2, "the downloads")
+        NetworkMonitor.shared.objectWillChange.send()
+        #expect(counter.changes == 3, "the network")
+        withExtendedLifetime(watching) {}
+        // Marks adopted from another device and new episodes both move the
+        // listening revision the page observes.
+        let state = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastPlayState.swift")
+        #expect(state.contains("ListeningRevision.shared.bump(\"podcast store reload\")"))
+        let subscriptions = try FetchAnswerTests.squeezedSource("Sources/Providers/PodcastSubscriptions.swift")
+        #expect(subscriptions.contains("ListeningRevision.shared.bump(\"subscriptions\")"))
+    }
+
+    @Test("die Regel in Worten sagt das lesende Geraet, aus der Art in der Kennung")
+    func theDeviceSaysTheRule() throws {
+        #expect(RoutineWords.rule(.newest) == String(localized: "Newest episode"))
+        #expect(RoutineWords.rule(.next(count: 1)) == String(localized: "Next episode"))
+        #expect(RoutineWords.rule(.next(count: 3)) == String(localized: "Next \(3) episodes"))
+        #expect(RoutineWords.answer(.absent(.nothingNext)) == String(localized: "No unheard episode from where you stand"))
+        #expect(RoutineWords.answer(.showUnknown) == String(localized: "Unknown on this device: follow the show so the routine finds it"))
+        let show = Self.show(2)
+        let picked = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
+        #expect(RoutineWords.answer(.play(picked)) == [picked[0].title, picked[1].title].formatted(.list(type: .and)))
+        #expect(picked[0].title == "Folge 1", "the precondition: an episode names itself")
     }
 
     /// Both play buttons of a list start through the one door, and the door

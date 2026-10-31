@@ -17,7 +17,7 @@ import Foundation
 nonisolated enum ItemNamespace {
     /// Every namespace the app knows. Library ids (no namespace) are NOT here.
     static let known: Set<String> = {
-        var all: Set<String> = ["local:", "abspod:", "rss:", "sub:", "jf:", "radio:"]
+        var all: Set<String> = ["local:", "abspod:", "rss:", "sub:", "jf:", "radio:", routinePrefix]
         for prefix in FreeCatalog.allPrefixes { all.insert(prefix) }
         return all
     }()
@@ -74,9 +74,8 @@ nonisolated enum ItemNamespace {
     static let radioBrowserPrefix = "radio:rb:"
     static let radioManualPrefix = "radio:manual:"
     /// A routine's rule over a show (`RoutineRule`), not a title. A start
-    /// turns it into episodes (`RoutinePlayback`). Not in `known` yet: until
-    /// the list page shows a rule's line, a row reads it as a build without
-    /// routines does, dimmed.
+    /// turns it into episodes and a list page shows its line
+    /// (`RoutinePlayback`); it never reaches a source.
     static let routinePrefix = "rule:"
     static func isRoutineRule(_ itemId: String) -> Bool { itemId.hasPrefix(routinePrefix) }
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }

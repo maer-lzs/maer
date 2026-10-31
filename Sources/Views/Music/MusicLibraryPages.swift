@@ -960,6 +960,9 @@ struct MaerPlaylistPage: View {
     let playlistId: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = MaerPlaylists.shared
+    // What a routine's rule picks moves with these besides the list, so the
+    // page draws its lines again on each.
+    @ObservedObject private var answerSources = RoutineAnswerSources.shared
     @State private var renaming = false
     @State private var newName = ""
     /// Reordering and deleting, switched from the page's menu.
@@ -975,8 +978,11 @@ struct MaerPlaylistPage: View {
         // fold (`DetailListColumns`), as on a server playlist. The round is
         // read here, so a pass that learned covers draws head and rows anew.
         let round = coverRound
+        // Held once per pass: the head's buttons and every rule's line read
+        // the same answer.
+        let held = playlist.map { RoutinePlayback.held($0, in: store) }
         DetailListColumns {
-            if let playlist { header(playlist, round: round) }
+            if let playlist, let held { header(playlist, playable: held.start.items, round: round) }
         } rows: {
             if let playlist {
                 if playlist.isRescue, let reason = playlist.rescueReason, !reason.isEmpty {
@@ -989,7 +995,12 @@ struct MaerPlaylistPage: View {
                 }
                 Section {
                     ForEach(playlist.itemIds, id: \.self) { id in
-                        row(id)
+                        if let line = held?.lines[id] {
+                            RoutineRuleRow(line: line, carried: playlist.carried(for: id),
+                                           cover: PlaylistCardSource.deviceCover(of: id, in: playlist, router: router))
+                        } else {
+                            row(id)
+                        }
                     }
                     .onDelete { offsets in
                         for index in offsets { store.remove(itemId: playlist.itemIds[index], from: playlistId) }
@@ -1046,9 +1057,8 @@ struct MaerPlaylistPage: View {
 
     /// The one head of a detail page: the list's mosaic, its name and count,
     /// Play in order and Shuffle over what this device can play.
-    private func header(_ playlist: MaerPlaylists.Playlist, round: Int) -> some View {
-        let playable = PlaylistCardSource.items(of: playlist, in: store)
-        return DetailHeader(title: playlist.name) { side in
+    private func header(_ playlist: MaerPlaylists.Playlist, playable: [LibraryItem], round: Int) -> some View {
+        DetailHeader(title: playlist.name) { side in
             PlaylistArtwork(playlistID: playlist.id, coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router))
                 .id(round)
                 .frame(maxWidth: side ?? 240)
@@ -1119,6 +1129,7 @@ struct MaerPlaylistPage: View {
         case .fileNotOnDevice: return String(localized: "Not available on this device: the file is not on this device")
         case .showNotFollowed: return String(localized: "Not available on this device: the show is not followed here")
         case .unknownSource: return String(localized: "Not available on this device: unknown source")
+        case .routineRule: return String(localized: "A routine rule: it plays as its episodes when the routine starts")
         }
     }
 }

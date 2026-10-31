@@ -1025,6 +1025,16 @@
         }
       }
     },
+    "A routine rule: it plays as its episodes when the routine starts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Regel einer Routine: sie läuft als ihre Folgen, wenn die Routine startet"
+          }
+        }
+      }
+    },
     "A track arrived incomplete. Try the download again." : {
       "localizations" : {
         "de" : {
@@ -6626,6 +6636,16 @@
         }
       }
     },
+    "Newest episode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neueste Folge"
+          }
+        }
+      }
+    },
     "Newest episodes" : {
       "localizations" : {
         "de" : {
@@ -6666,12 +6686,32 @@
         }
       }
     },
+    "Next %lld episodes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächste %lld Folgen"
+          }
+        }
+      }
+    },
     "Next chapter" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nächstes Kapitel"
+          }
+        }
+      }
+    },
+    "Next episode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächste Folge"
           }
         }
       }
@@ -7102,6 +7142,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Titel mit diesem Filter"
+          }
+        }
+      }
+    },
+    "No unheard episode from where you stand" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ab deinem Stand keine ungehörte Folge"
           }
         }
       }
@@ -7668,6 +7718,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Offline"
+          }
+        }
+      }
+    },
+    "Offline, and the episode is not downloaded" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline, und die Folge ist nicht geladen"
           }
         }
       }
@@ -11613,6 +11673,16 @@
         }
       }
     },
+    "The newest episode is heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die neueste Folge ist gehört"
+          }
+        }
+      }
+    },
     "The old key stays. Nothing was sent." : {
       "localizations" : {
         "de" : {
@@ -11921,6 +11991,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Fach hat Titel, diese Kombination nicht."
+          }
+        }
+      }
+    },
+    "The show has no episodes yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sendung hat noch keine Folgen"
           }
         }
       }
@@ -12832,6 +12912,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unbekannter Autor"
+          }
+        }
+      }
+    },
+    "Unknown on this device: follow the show so the routine finds it" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät unbekannt: folge der Sendung, damit die Routine sie findet"
           }
         }
       }

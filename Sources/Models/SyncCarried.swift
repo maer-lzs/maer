@@ -50,6 +50,9 @@ nonisolated enum UnavailableReason: Equatable, Sendable {
     case showNotFollowed
     /// A namespace nobody knows.
     case unknownSource
+    /// A routine's rule: a list entry, no title. The routine's start turns
+    /// it into episodes.
+    case routineRule
 }
 
 /// The answer of the seam for one id on this device.
@@ -137,6 +140,7 @@ nonisolated enum SyncCarried {
         switch namespace {
         case "local:": return .unavailable(.fileNotOnDevice)
         case "rss:", "abspod:": return .unavailable(.showNotFollowed)
+        case ItemNamespace.routinePrefix: return .unavailable(.routineRule)
         default:
             return .unavailable(sourceConfigured ? .notInLibrary : .sourceNotConfigured(source: namespace))
         }

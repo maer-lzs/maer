@@ -3,8 +3,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+// The publisher is a non-Sendable Combine type held nonisolated by a
+// MainActor class; the pre-concurrency import is the sanctioned suppression.
+@preconcurrency import Combine
 import Foundation
 import OSLog
+
+/// What moves a held answer (`RoutinePlayback.held`) besides the list: the
+/// listening state (also marks adopted from another device and new episodes
+/// after a fetch), the downloads and the network. One object for a page to
+/// observe, so a rule's line never shows the answer of an earlier moment.
+@MainActor
+final class RoutineAnswerSources: ObservableObject {
+    static let shared = RoutineAnswerSources()
+    nonisolated let objectWillChange = ObservableObjectPublisher()
+    private var watching: [AnyCancellable] = []
+
+    private init() {
+        let changes = objectWillChange
+        watching = [
+            ListeningRevision.shared.objectWillChange.sink { _ in changes.send() },
+            DownloadManager.shared.stock.objectWillChange.sink { _ in changes.send() },
+            NetworkMonitor.shared.objectWillChange.sink { _ in changes.send() },
+        ]
+    }
+}
 
 /// A Mär playlist at its start. Every rule of the list (`RoutineRule`)
 /// becomes the episodes it picks now, every other entry stays what this
@@ -26,27 +49,64 @@ enum RoutinePlayback {
     static func expand(_ itemIds: [String], entry: (String) -> LibraryItem?,
                        picks: (RoutineRule) -> [LibraryItem]) -> Start {
         var items: [LibraryItem] = []
+        var seen: Set<String> = []
         var firstFromRule = false
         for id in itemIds {
             let fromRule = RoutineRule(id: id)
             let found = fromRule.map(picks) ?? entry(id).map { [$0] } ?? []
-            let fresh = found.filter { item in !items.contains { $0.id == item.id } }
+            let fresh = found.filter { seen.insert($0.id).inserted }
             if items.isEmpty, !fresh.isEmpty { firstFromRule = fromRule != nil }
             items += fresh
         }
         return Start(items: items, firstFromRule: firstFromRule)
     }
 
-    /// What one rule picks from its show. Heard and begun are `state`'s
-    /// answer, begun in the auto-download's sense
-    /// (`PodcastAutoDownloadRules.isStarted`); an episode without audio is
-    /// none to pick.
+    /// What one rule answers now: the episodes it picks, or why it picks none.
+    enum Answer {
+        case play([LibraryItem])
+        case absent(RoutineRule.Absence)
+        /// Neither followed nor met this session: this device cannot find
+        /// the show behind the rule's feed key.
+        case showUnknown
+
+        var items: [LibraryItem] {
+            if case .play(let items) = self { return items }
+            return []
+        }
+    }
+
+    /// A rule's line on a list page: the rule, its show as this device
+    /// knows it, and what it answers now.
+    struct Line {
+        var rule: RoutineRule
+        var show: PodcastShow?
+        var answer: Answer
+    }
+
+    /// What the list holds now, each rule with its line.
+    struct Held {
+        var start: Start
+        /// By rule id.
+        var lines: [String: Line]
+    }
+
+    /// The episodes one rule picks from its show (`answer`).
     static func picks(_ rule: RoutineRule, in show: PodcastShow?, online: Bool,
                       state: (LibraryItem) -> EpisodePlayState,
                       isDownloaded: (String) -> Bool) -> [LibraryItem] {
+        answer(rule, in: show, online: online, state: state, isDownloaded: isDownloaded).items
+    }
+
+    /// What one rule answers from its show. Heard and begun are `state`'s
+    /// answer, begun in the auto-download's sense
+    /// (`PodcastAutoDownloadRules.isStarted`); an episode without audio is
+    /// none to pick.
+    static func answer(_ rule: RoutineRule, in show: PodcastShow?, online: Bool,
+                       state: (LibraryItem) -> EpisodePlayState,
+                       isDownloaded: (String) -> Bool) -> Answer {
         guard let show else {
             Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: the show is not known on this device")
-            return []
+            return .showUnknown
         }
         let pairs = show.episodes.filter(\.isPlayable).map { ($0, podcastLibraryItem(show: show, episode: $0)) }
         let byId = Dictionary(pairs.map { ($0.1.id, $0.1) }) { first, _ in first }
@@ -58,18 +118,18 @@ enum RoutinePlayback {
         }
         switch rule.resolve(episodes, online: online) {
         case .play(let ids):
-            return ids.compactMap { byId[$0] }
+            return .play(ids.compactMap { byId[$0] })
         case .absent(let absence):
             Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: \(absence.rawValue, privacy: .public)")
-            return []
+            return .absent(absence)
         }
     }
 
-    /// What one rule picks on this device: the shared judgement and the
+    /// What one rule answers on this device: the shared judgement and the
     /// downloads this device holds.
-    private static func picks(_ rule: RoutineRule, in show: PodcastShow?, online: Bool) -> [LibraryItem] {
-        picks(rule, in: show, online: online, state: { podcastPlayState(for: $0) },
-              isDownloaded: { DownloadManager.shared.isDownloaded(itemId: $0) })
+    private static func answer(_ rule: RoutineRule, in show: PodcastShow?, online: Bool) -> Answer {
+        answer(rule, in: show, online: online, state: { podcastPlayState(for: $0) },
+               isDownloaded: { DownloadManager.shared.isDownloaded(itemId: $0) })
     }
 
     /// The show of a feed key among the shows this device knows: the
@@ -80,13 +140,46 @@ enum RoutinePlayback {
     }
 
     /// What the list plays from what this device holds now, without asking
-    /// a feed: the page's count, shuffle and covers. The page asks
-    /// synchronously, so it reads the monitor, not the door.
-    static func held(_ list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> Start {
+    /// a feed: the page's lines, shuffle and covers. The page asks
+    /// synchronously, so it reads the monitor, not the door. The answer
+    /// moves with the list, the listening state (`ListeningRevision`, also
+    /// for marks adopted from another device and for new episodes), the
+    /// downloads (`DownloadStock`) and the network (`NetworkMonitor`); a
+    /// page that shows it observes all four.
+    static func held(_ list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> Held {
         let online = NetworkMonitor.shared.isConnected
-        return expand(list.itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
-            picks(rule, in: show(feedKey: rule.feedKey), online: online)
+        var lines: [String: Line] = [:]
+        for id in list.itemIds where lines[id] == nil {
+            guard let rule = RoutineRule(id: id) else { continue }
+            let known = show(feedKey: rule.feedKey)
+            lines[id] = Line(rule: rule, show: known, answer: answer(rule, in: known, online: online))
         }
+        let start = expand(list.itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
+            lines[rule.id]?.answer.items ?? []
+        }
+        return Held(start: start, lines: lines)
+    }
+
+    /// The snapshot a rule entry travels with: its show's title and, when
+    /// the address carries no access, its picture. The rule in words is not
+    /// part of it; every device says it in its own language from the id.
+    static func carried(forRule itemId: String) -> CarriedItem? {
+        guard let rule = RoutineRule(id: itemId), let show = show(feedKey: rule.feedKey) else { return nil }
+        return snapshot(itemId, show: show, premium: PodcastSubscriptions.isPremiumFeed(show.feedURL))
+    }
+
+    /// The snapshot from a show, pure. A premium feed's picture or a
+    /// picture address with a secret in its query stays home.
+    nonisolated static func snapshot(_ itemId: String, show: PodcastShow, premium: Bool) -> CarriedItem? {
+        guard let title = SyncCarried.usableTitle(show.title, for: itemId) else { return nil }
+        let picture = show.artworkURL.flatMap { premium || PodcastFeedAddress.isTokenFeedURL($0) ? nil : $0 }
+        return CarriedItem(id: itemId, title: title, coverURL: picture)
+    }
+
+    /// A rule's cover: its show's picture as this device knows it.
+    static func coverURL(forRule itemId: String) -> URL? {
+        guard let rule = RoutineRule(id: itemId) else { return nil }
+        return show(feedKey: rule.feedKey)?.artworkURL.flatMap(URL.init(string:))
     }
 
     /// The start of a list. With rules and a connection, the feeds of their
@@ -100,7 +193,7 @@ enum RoutinePlayback {
         let fresh = online ? await refreshed(list.itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
         let start = expand(list.itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
-            picks(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online)
+            answer(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online).items
         }
         await coordinator.playInOrder(items: start.items, contextSource: list.name,
                                       restartFirst: !start.firstFromRule)

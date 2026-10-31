@@ -55,6 +55,17 @@ struct RoutineRuleTests {
         }
     }
 
+    /// Next picks after the listener's place, so episodes before it that
+    /// are still unheard do not count, and the line says so.
+    @Test("naechste ohne Wahl heisst ab dem Stand nichts Ungehoertes, auch wenn davor ungehoerte stehen")
+    func nothingNextMeansNothingFromThePlace() throws {
+        let rule = try #require(RoutineRule(kind: .next(count: 1), feedKey: "aaaa"))
+        let episodes = (1...3).map { RoutineRule.Episode(guid: "e\($0)", pubDate: Double($0), isPlayed: $0 == 3,
+                                                         isStarted: false, isDownloaded: false) }
+        #expect(rule.resolve(episodes, online: true) == .absent(.nothingNext))
+        #expect(RoutineRule.Absence.nothingNext.rawValue == "no unheard episode from where the listener stands")
+    }
+
     @Test("eine Regel je Sendung: die Routine findet die Regel ihrer Sendung, nicht die einer anderen")
     func oneRulePerShow() {
         let ids = ["rss:a:1", "rule:newest:aaaa", "rule:next:2:bbbb", "rule:next:4:cccc"]
@@ -100,12 +111,15 @@ struct RoutineRuleTests {
         }
     }
 
-    /// Until the list page shows a rule's line, a row reads a rule as a
-    /// build without routines does: an unknown source, dimmed.
-    @Test("bis die Seite eine Regel zeigt, liest eine Zeile sie wie ein Stand ohne Routinen")
-    func aRuleIsNotYetAKnownSource() {
-        #expect(!ItemNamespace.isKnown("rule:newest:aaaa"))
-        #expect(!ItemNamespace.mayReachLibraryServer("rule:newest:aaaa"))
+    /// A rule is a namespace this build knows, never a source: the seam calls
+    /// it a rule, the page shows its line, and nothing asks a server.
+    @Test("eine Regel ist bekannt und erreicht keine Quelle, die Naht nennt sie Regel")
+    func aRuleIsKnownAndReachesNoSource() {
+        let id = "rule:newest:aaaa"
+        #expect(ItemNamespace.isKnown(id))
+        #expect(!ItemNamespace.mayReachLibraryServer(id))
+        #expect(SyncCarried.resolve(itemId: id, carried: nil, known: nil, sourceConfigured: false).reason == .routineRule)
+        #expect(SyncCarried.resolve(itemId: id, carried: nil, known: nil, sourceConfigured: true).reason == .routineRule)
     }
 }
 #endif

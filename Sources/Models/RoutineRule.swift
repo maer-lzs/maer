@@ -94,7 +94,7 @@ nonisolated struct RoutineRule: Hashable, Sendable {
     enum Absence: String, Equatable, Sendable {
         case noEpisodes = "the show has no episodes"
         case newestHeard = "the newest episode is heard"
-        case nothingNext = "every episode is heard"
+        case nothingNext = "no unheard episode from where the listener stands"
         case offline = "offline, the episode is not downloaded"
     }
 
