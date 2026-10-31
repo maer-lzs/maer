@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Central place for all UserDefaults keys. Per-book keys are pruned via
 /// `cleanupPerBookKeys` once a book no longer exists in the (full) library.
@@ -885,8 +886,8 @@ nonisolated enum AppStorageKeys {
     static let absSignedInServer = "absSignedInServer"
     static let absLastFullLoadServer = "absLastFullLoadServer"
     static let absServerSwitchedAt = "absServerSwitchedAt"
-    /// Set once a sign-in moved from one known server to another; then no
-    /// full load cleans ids without a namespace (`ABSServerScope.cleanup`).
+    /// Set once a sign-in moved from one known server to another; then a
+    /// full load cleans only the ids its server owns (`ABSServerScope.cleanup`).
     static let absMoreThanOneServer = "absMoreThanOneServer"
     /// Set once the start looked at a mark a build before the one name may
     /// have set (`normalizeABSServers`); it never looks again.
@@ -910,26 +911,32 @@ nonisolated enum AppStorageKeys {
     /// the name existed may carry a user and a password, and another
     /// spelling of the same server would count as a second one. The mark of
     /// a second server such a spelling set goes too, where the register
-    /// shows no second one (`ABSServerScope.secondServerShown`); the moment
-    /// of the switch stays, it only keeps queued stands.
+    /// shows no second one (`ABSServerScope.reviewMark`); the moment of the
+    /// switch stays, it only keeps queued stands.
     ///
-    /// That look happens ONCE per device, on the first start of this build:
-    /// since the one name no spelling sets the mark, and the register
-    /// travels, so a removal by hand on another device later would take
-    /// the evidence of a mark that stands rightly.
-    static func normalizeABSServers() {
+    /// That look happens ONCE per device, on the first start of this build,
+    /// also when it learns nothing: since the one name no spelling sets the
+    /// mark, and the register travels, so a removal by hand on another
+    /// device later would take the evidence of a mark that stands rightly.
+    /// A mark that stays only lets each full load clean its own books
+    /// (`ABSServerScope.Cleanup.cleanOwned`). Every look writes one line
+    /// with what it found and answers it; nil when this device looked
+    /// before.
+    @discardableResult
+    static func normalizeABSServers() -> ABSServerScope.MarkReview? {
         for key in [absSignedInServer, absLastFullLoadServer] {
             guard let stored = string(key) else { continue }
             let name = ABSServerScope.identity(of: stored)
             if name != stored { set(name, for: key) }
         }
-        guard !bool(absSpellingMarkReviewed) else { return }
+        guard !bool(absSpellingMarkReviewed) else { return nil }
         let registered = KnownServers.all().filter { $0.service == .audiobookshelf }.map(\.url)
-        if bool(absMoreThanOneServer),
-           !ABSServerScope.secondServerShown(registered: registered, signedIn: string(absSignedInServer)) {
-            set(false, for: absMoreThanOneServer)
-        }
+        let review = ABSServerScope.reviewMark(isSet: bool(absMoreThanOneServer), registered: registered,
+                                               signedIn: string(absSignedInServer))
+        if review == .withdrawn { set(false, for: absMoreThanOneServer) }
         set(true, for: absSpellingMarkReviewed)
+        Logger.library.notice("ABS second server mark reviewed: \(review.rawValue, privacy: .public)")
+        return review
     }
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).

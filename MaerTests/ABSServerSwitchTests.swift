@@ -194,6 +194,27 @@ struct ABSServerSwitchTests {
         #expect(Self.owner(of: kept) == "https://a.example", "a full list did not name its books in the register")
     }
 
+    /// A model that loads twice answers for its last load: a load that sets
+    /// off no sweep holds none of the load before.
+    @Test("ein Modell, zweimal geladen: die zweite Ladung ohne Raeumen haelt keine Aufgabe der ersten")
+    func aSecondLoadHoldsNoSweepOfTheFirst() async throws {
+        let saved = Saved()
+        defer { saved.restore() }
+        let book = "twice-\(UUID().uuidString)"
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.selectedLibraryId)
+        AppStorageKeys.set("https://a.example", for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set("https://a.example", for: AppStorageKeys.absLastFullLoadServer)
+        let model = LibraryViewModel(provider: Server(books: [book]))
+        await model.loadLibrary()
+        #expect(model.keySweep != nil, "the precondition: the first load cleaned")
+        await model.keySweep?.value
+        // No server known any more: the second load skips the cleanup.
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        await model.loadLibrary()
+        #expect(model.keySweep == nil, "the second load still holds the first one's sweep")
+    }
+
     @Test("zwei Server raeumen je ihre eigenen Buecher: das gegangene Buch von A geht mit der Ladung von A, die von B und der Altbestand bleiben")
     func twoServersCleanTheirOwn() async throws {
         let saved = Saved()
@@ -366,7 +387,7 @@ struct ABSServerSwitchTests {
     func aSpellingsMarkFallsWhereTheRegisterShowsOneServer() {
         let saved = Saved()
         defer { saved.restore() }
-        func move(register: [String], signedIn: String?) -> Bool {
+        func move(register: [String], signedIn: String?, mark: Bool = true) -> (kept: Bool, review: ABSServerScope.MarkReview?) {
             // The first start of this build on a device 3.5.1 left.
             AppStorageKeys.set(nil, for: AppStorageKeys.absSpellingMarkReviewed)
             // Written as stored, without the register's notice to the cloud.
@@ -374,22 +395,47 @@ struct ABSServerSwitchTests {
                 + [KnownServer(url: "https://music.example.com", service: .subsonic, lastSuccessAt: 1)]
             AppStorageKeys.set(try? JSONEncoder().encode(entries), for: KnownServers.storeKey)
             AppStorageKeys.set(signedIn, for: AppStorageKeys.absSignedInServer)
-            AppStorageKeys.set(true, for: AppStorageKeys.absMoreThanOneServer)
+            AppStorageKeys.set(mark, for: AppStorageKeys.absMoreThanOneServer)
             AppStorageKeys.set(7.0, for: AppStorageKeys.absServerSwitchedAt)
-            AppStorageKeys.normalizeABSServers()
+            let review = AppStorageKeys.normalizeABSServers()
             #expect(AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt) == 7, "the moment of the switch moved")
-            return AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false)
+            #expect(AppStorageKeys.bool(AppStorageKeys.absSpellingMarkReviewed, default: false), "the look was not noted")
+            return (AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), review)
         }
         // The shape 3.5.1 left: two spellings of one server, the mark set.
-        #expect(!move(register: ["https://ABS.example.com/", "https://abs.example.com:443"], signedIn: "https://abs.example.com/"),
-                "one server under two spellings still cleans no book")
-        #expect(move(register: ["https://abs.example.com", "https://other.example.com"], signedIn: "https://abs.example.com"),
-                "a real second server lost its mark")
-        #expect(move(register: [], signedIn: "https://abs.example.com"), "an empty register is no evidence")
-        #expect(move(register: ["https://abs.example.com"], signedIn: "https://other.example.com"),
-                "a server signed in that the register does not name")
-        #expect(move(register: ["https://abs.example.com"], signedIn: nil), "no server signed in")
-        #expect(ABSServerScope.secondServerShown(registered: ["https://A.example.com:443/"], signedIn: "https://a.example.com") == false)
+        let spellings = move(register: ["https://ABS.example.com/", "https://abs.example.com:443"], signedIn: "https://abs.example.com/")
+        #expect(!spellings.kept, "one server under two spellings still cleans no book")
+        #expect(spellings.review == .withdrawn)
+        let second = move(register: ["https://abs.example.com", "https://other.example.com"], signedIn: "https://abs.example.com")
+        #expect(second.kept, "a real second server lost its mark")
+        #expect(second.review == .secondServerShown)
+        let empty = move(register: [], signedIn: "https://abs.example.com")
+        #expect(empty.kept, "an empty register is no evidence")
+        #expect(empty.review == .noAnswer, "an empty register answered as a second server")
+        let other = move(register: ["https://abs.example.com"], signedIn: "https://other.example.com")
+        #expect(other.kept, "a server signed in that the register does not name")
+        #expect(other.review == .secondServerShown)
+        let nobody = move(register: ["https://abs.example.com"], signedIn: nil)
+        #expect(nobody.kept, "no server signed in")
+        #expect(nobody.review == .noAnswer, "no server signed in answered as a second server")
+        let unset = move(register: ["https://abs.example.com"], signedIn: "https://abs.example.com", mark: false)
+        #expect(!unset.kept && unset.review == .noMark)
+        #expect(ABSServerScope.reviewMark(isSet: true, registered: ["https://A.example.com:443/"], signedIn: "https://a.example.com") == .withdrawn)
+    }
+
+    /// Every look at the mark writes its line: one line after every case,
+    /// no return between the look and it.
+    @Test("jeder Blick auf die Marke schreibt eine Zeile mit dem, was er fand", .needsTheSources)
+    func everyLookAtTheMarkWritesALine() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/AppStorageKeys.swift"), encoding: .utf8))
+        let tail = try #require(code.components(separatedBy: "static func normalizeABSServers()").dropFirst().first)
+        let body = try #require(tail.components(separatedBy: "\n    }\n").first)
+        let look = try #require(body.range(of: "ABSServerScope.reviewMark("))
+        let after = body[look.upperBound...]
+        #expect(after.contains("Logger.library.notice(\"ABS second server mark reviewed: \\(review.rawValue"),
+                "the look writes no line with what it found")
+        #expect(after.components(separatedBy: "return ").count - 1 == 1, "a return between the look and its line")
     }
 
     /// The register travels: a removal by hand on another device arrives as
@@ -417,7 +463,7 @@ struct ABSServerSwitchTests {
         #expect(AppStorageKeys.bool(AppStorageKeys.absSpellingMarkReviewed, default: false), "the first start did not note its look")
         // Another device takes X out of the list, it arrives here; the next start.
         register([y])
-        AppStorageKeys.normalizeABSServers()
+        #expect(AppStorageKeys.normalizeABSServers() == nil, "the next start looked again")
         #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false),
                 "a removal on another device lowered a right mark, the next full load would clean the books of X")
     }

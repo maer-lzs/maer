@@ -862,6 +862,10 @@ final class LibraryViewModel: ObservableObject {
     /// register first, also one that does not judge every book: without
     /// that, a book from before the register would never get an owner.
     private func cleanUpPerBook(full validIds: Set<String>?, bookLibraries: Int?) {
+        #if DEBUG
+        // A load that sets off no sweep leaves none of an earlier load behind.
+        keySweep = nil
+        #endif
         guard let validIds else { return }
         let server = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
         let scope = ABSServerScope.cleanup(
@@ -899,14 +903,21 @@ final class LibraryViewModel: ObservableObject {
         CarrierRowStores.cleanupPerBookRows(where: gone)
         if owners.drop(where: gone) { changed = true }
         // detached because a store sweep after the load must not die with the load's task; off the MainActor
-        keySweep = Task.detached(priority: .utility) {
+        let sweep = Task.detached(priority: .utility) {
             AppStorageKeys.cleanupPerBookKeys(where: gone)
         }
+        #if DEBUG
+        keySweep = sweep
+        #else
+        _ = sweep
+        #endif
     }
 
-    /// The last sweep of per-book keys this model set off, so a witness
-    /// waits for its end instead of for a clock. Nil while none ran.
+    #if DEBUG
+    /// The sweep of per-book keys the last load set off, so a witness waits
+    /// for its end instead of for a clock. Nil when the last load set none off.
     private(set) var keySweep: Task<Void, Never>?
+    #endif
 
     /// The last library id that actually loaded. The search endpoint's
     /// fallback when no explicit settings choice is stored.

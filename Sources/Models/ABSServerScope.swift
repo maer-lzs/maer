@@ -36,6 +36,15 @@ nonisolated enum ABSServerScope {
         return name
     }
 
+    /// What the one look at the mark of a second server found
+    /// (`AppStorageKeys.normalizeABSServers`); the raw value is its line.
+    enum MarkReview: String, Equatable, Sendable {
+        case noMark = "no mark set"
+        case withdrawn = "withdrawn, the register shows one server, the one signed in"
+        case secondServerShown = "kept, the register shows a second server"
+        case noAnswer = "kept, the register is empty or no server is signed in"
+    }
+
     /// Whether a second server was ever signed in on this device, by the
     /// register of servers that worked (`registered`, the Audiobookshelf
     /// addresses of `KnownServers`). A build before the one name compared
@@ -43,12 +52,14 @@ nonisolated enum ABSServerScope {
     /// `absMoreThanOneServer`. The register was there before the mark, every
     /// sign-in that could set it wrote its address there first, and it never
     /// empties itself: when all its entries are one server and that is the
-    /// one signed in, no second one was. An empty register, a second name or
-    /// no server signed in keep the mark. An address the person took out of
-    /// the register by hand takes its evidence with it.
-    static func secondServerShown(registered: [String], signedIn: String?) -> Bool {
-        guard let signedIn else { return true }
-        return Set(registered.map(identity(of:))) != [identity(of: signedIn)]
+    /// one signed in, no second one was. A second name keeps the mark; an
+    /// empty register or no server signed in tell nothing and keep it too.
+    /// An address the person took out of the register by hand takes its
+    /// evidence with it.
+    static func reviewMark(isSet: Bool, registered: [String], signedIn: String?) -> MarkReview {
+        guard isSet else { return .noMark }
+        guard let signedIn, !registered.isEmpty else { return .noAnswer }
+        return Set(registered.map(identity(of:))) == [identity(of: signedIn)] ? .withdrawn : .secondServerShown
     }
 
     /// What a full library load may do with the per-book state.
