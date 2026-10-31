@@ -73,6 +73,11 @@ nonisolated enum ItemNamespace {
     /// and reads its ids through these.
     static let radioBrowserPrefix = "radio:rb:"
     static let radioManualPrefix = "radio:manual:"
+    /// A routine's rule over a show (`RoutineRule`), not a title. Not in
+    /// `known` yet: until a routine plays, this build reads it as a build
+    /// without routines does, dimmed and skipped.
+    static let routinePrefix = "rule:"
+    static func isRoutineRule(_ itemId: String) -> Bool { itemId.hasPrefix(routinePrefix) }
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
     static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }
 

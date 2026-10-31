@@ -1,0 +1,39 @@
+{
+  "regel": "RoutineRule.init(id:) / id / resolve",
+  "pin": "374d8879",
+  "form": 1,
+  "asks": {
+    "id": "input: eine Kennung; expect: die eine Schreibweise der Regel, die sie nennt, oder null, wenn sie keine Regel ist oder eine Form, die dieser Stand nicht liest",
+    "resolve": "input: rule (newest oder next), count (nur bei next, 1 bis 3), episodes als {count: N} (die Folgen e1 bis eN, pubDate = Nummer, N darf 0 sein), played, started, local als Listen von guids, online; expect: die guids, die spielen, in Reihenfolge, oder der Grund des Ausfalls (noEpisodes, newestHeard, nothingNext, offline)"
+  },
+  "cases": [
+    { "slug": "id-newest", "ask": "id", "input": "rule:newest:9f2c", "expect": "rule:newest:9f2c" },
+    { "slug": "id-next-one-without-count", "ask": "id", "input": "rule:next:9f2c", "expect": "rule:next:9f2c" },
+    { "slug": "id-next-two", "ask": "id", "input": "rule:next:2:9f2c", "expect": "rule:next:2:9f2c" },
+    { "slug": "id-next-three", "ask": "id", "input": "rule:next:3:9f2c", "expect": "rule:next:3:9f2c" },
+    { "slug": "id-next-one-with-count-is-not-the-spelling", "ask": "id", "input": "rule:next:1:9f2c", "expect": null },
+    { "slug": "id-next-four-is-not-read", "ask": "id", "input": "rule:next:4:9f2c", "expect": null },
+    { "slug": "id-next-zero-padded-is-not-read", "ask": "id", "input": "rule:next:02:9f2c", "expect": null },
+    { "slug": "id-newest-with-count-is-not-read", "ask": "id", "input": "rule:newest:2:9f2c", "expect": null },
+    { "slug": "id-without-show", "ask": "id", "input": "rule:newest:", "expect": null },
+    { "slug": "id-unknown-rule", "ask": "id", "input": "rule:random:9f2c", "expect": null },
+    { "slug": "id-an-episode-is-no-rule", "ask": "id", "input": "rss:9f2c:episode", "expect": null },
+
+    { "slug": "newest-plays-the-newest", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": [], "started": [], "local": [], "online": true }, "expect": ["e5"] },
+    { "slug": "newest-heard-falls-out", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": ["e5"], "started": [], "local": [], "online": true }, "expect": "newestHeard" },
+    { "slug": "newest-heard-never-plays-yesterday", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": ["e5"], "started": [], "local": ["e4"], "online": true }, "expect": "newestHeard" },
+    { "slug": "newest-begun-resumes", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": [], "started": ["e5"], "local": [], "online": true }, "expect": ["e5"] },
+    { "slug": "newest-without-episodes", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 0 }, "played": [], "started": [], "local": [], "online": true }, "expect": "noEpisodes" },
+    { "slug": "next-without-marks-starts-at-the-oldest", "ask": "resolve", "input": { "rule": "next", "count": 1, "episodes": { "count": 5 }, "played": [], "started": [], "local": [], "online": true }, "expect": ["e1"] },
+    { "slug": "next-from-where-the-listener-stands", "ask": "resolve", "input": { "rule": "next", "count": 1, "episodes": { "count": 5 }, "played": ["e1", "e2"], "started": [], "local": [], "online": true }, "expect": ["e3"] },
+    { "slug": "next-two", "ask": "resolve", "input": { "rule": "next", "count": 2, "episodes": { "count": 5 }, "played": ["e1"], "started": [], "local": [], "online": true }, "expect": ["e2", "e3"] },
+    { "slug": "next-three-near-the-end", "ask": "resolve", "input": { "rule": "next", "count": 3, "episodes": { "count": 4 }, "played": ["e1", "e2", "e3"], "started": [], "local": [], "online": true }, "expect": ["e4"] },
+    { "slug": "next-begun-comes-first", "ask": "resolve", "input": { "rule": "next", "count": 2, "episodes": { "count": 5 }, "played": ["e1", "e2"], "started": ["e3"], "local": [], "online": true }, "expect": ["e3", "e4"] },
+    { "slug": "next-one-out-of-the-row-is-not-the-place", "ask": "resolve", "input": { "rule": "next", "count": 1, "episodes": { "count": 727 }, "played": ["e100"], "started": ["e727"], "local": [], "online": true }, "expect": ["e101"] },
+    { "slug": "next-every-episode-heard", "ask": "resolve", "input": { "rule": "next", "count": 1, "episodes": { "count": 3 }, "played": ["e1", "e2", "e3"], "started": [], "local": [], "online": true }, "expect": "nothingNext" },
+    { "slug": "offline-newest-downloaded-plays", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": [], "started": [], "local": ["e5"], "online": false }, "expect": ["e5"] },
+    { "slug": "offline-newest-not-downloaded-an-older-one-does-not-stand-in", "ask": "resolve", "input": { "rule": "newest", "episodes": { "count": 5 }, "played": [], "started": [], "local": ["e4"], "online": false }, "expect": "offline" },
+    { "slug": "offline-next-plays-up-to-the-first-not-downloaded", "ask": "resolve", "input": { "rule": "next", "count": 3, "episodes": { "count": 5 }, "played": [], "started": [], "local": ["e1", "e2", "e4"], "online": false }, "expect": ["e1", "e2"] },
+    { "slug": "offline-next-first-not-downloaded-falls-out", "ask": "resolve", "input": { "rule": "next", "count": 2, "episodes": { "count": 5 }, "played": [], "started": [], "local": ["e2"], "online": false }, "expect": "offline" }
+  ]
+}
