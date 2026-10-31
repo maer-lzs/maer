@@ -133,20 +133,23 @@ struct BookCleanupTests {
             ListeningStore.store(bookA, entry: [321, Date().timeIntervalSince1970 * 1000])
             d.set(1.5, forKey: AppStorageKeys.playbackRate(bookA))
         }
-        func load(_ provider: Libraries) async throws {
+        @discardableResult
+        func load(_ provider: Libraries) async -> Bool {
             AppStorageKeys.set("lib-b", for: AppStorageKeys.selectedLibraryId)
-            await LibraryViewModel(provider: provider).loadLibrary()
-            // The key sweep runs detached after the load.
-            try await Task.sleep(for: .milliseconds(500))
+            let model = LibraryViewModel(provider: provider)
+            await model.loadLibrary()
+            // The key sweep runs detached after the load: its end, not a clock.
+            await model.keySweep?.value
+            return model.keySweep != nil
         }
 
         plant()
-        try await load(Libraries(["lib-a": [bookA], "lib-b": [bookB]]))
+        #expect(await !load(Libraries(["lib-a": [bookA], "lib-b": [bookB]])), "the second library set off a sweep of keys")
         #expect(ListeningStore.backup(bookA)?.first == 321, "the second library cleaned the first one's stand")
         #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) as? Double == 1.5, "the second library cleaned the speed")
 
         // The same server with one library: the book that left goes.
-        try await load(Libraries(["lib-b": [bookB]]))
+        #expect(await load(Libraries(["lib-b": [bookB]])), "one library set off no sweep of keys")
         #expect(ListeningStore.backup(bookA) == nil, "one library no longer cleans a book that left")
         #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) == nil)
     }

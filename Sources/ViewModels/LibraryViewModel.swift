@@ -875,10 +875,14 @@ final class LibraryViewModel: ObservableObject {
         // The rows live on the main actor; their entries leave here.
         CarrierRowStores.cleanupPerBookRows(validItemIds: validIds)
         // detached because a store sweep after the load must not die with the load's task; off the MainActor
-        Task.detached(priority: .utility) {
+        keySweep = Task.detached(priority: .utility) {
             AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
         }
     }
+
+    /// The last sweep of per-book keys this model set off, so a witness
+    /// waits for its end instead of for a clock. Nil while none ran.
+    private(set) var keySweep: Task<Void, Never>?
 
     /// The last library id that actually loaded. The search endpoint's
     /// fallback when no explicit settings choice is stored.
