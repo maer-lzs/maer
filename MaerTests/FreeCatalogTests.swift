@@ -873,6 +873,30 @@ struct CatalogGenreAxisTests {
         #expect(!FreeCatalog.trackCountPlausible(0, cap: FreeCatalog.seriesTrackCap))
     }
 
+    @Test("die Grenze eines Archiv-Titels aus seinen eigenen Sammlungen: eine Antwort fuer das Detail und die Lieder eines Albums")
+    func anArchiveTitlesBoundComesFromItsCollections() {
+        let series = ["oldtimeradio", "radioprograms"], plain = ["librivoxaudio"]
+        for (count, inSeries, elsewhere) in [(0, false, false), (1, true, true), (200, true, true), (201, true, false),
+                                             (1_000, true, false), (1_001, false, false)] {
+            #expect(FreeCatalog.archiveTrackCountPlausible(count, collections: series) == inSeries, "\(count) in a series")
+            #expect(FreeCatalog.archiveTrackCountPlausible(count, collections: plain) == elsewhere, "\(count) elsewhere")
+            #expect(FreeCatalog.archiveTrackCountPlausible(count, collections: []) == elsewhere, "\(count) without collections")
+        }
+    }
+
+    /// Both ways to an archive title ask the one bound: no source picks a
+    /// cap from the series question by itself.
+    @Test("die Grenze eines Archiv-Titels wird an einer Stelle gewaehlt", .needsTheSources)
+    func anArchiveTitlesBoundIsChosenOnce() throws {
+        var askers: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = try String(contentsOf: file, encoding: .utf8)
+            if code.contains("isCuratedSeriesCollection(") { askers.append(file.lastPathComponent) }
+        }
+        #expect(askers.sorted() == ["ArchiveItemForm.swift", "FreeCatalog.swift"],
+                "the series question is asked outside the one bound: \(askers.sorted())")
+    }
+
     @Test("0ce5df3: Gutenberg path filter — readings in, music examples out")
     func gutenbergAudiobookFilter() {
         // Measured on the full stock: readings live under /mp3/ (885) and

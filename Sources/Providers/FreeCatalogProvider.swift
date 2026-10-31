@@ -499,9 +499,7 @@ final class FreeCatalogProvider: AudioProvider {
         let files = FreeCatalog.preferredAudioFiles(meta.files ?? [])
         let count = FreeCatalog.archiveTracks(identifier: identifier, files: files).count
         let collections = meta.metadata?.collection?.values ?? []
-        let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
-            ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
-        guard FreeCatalog.trackCountPlausible(count, cap: cap) else {
+        guard FreeCatalog.archiveTrackCountPlausible(count, collections: collections) else {
             Logger.library.notice("CATALOG album songs gate: \(identifier, privacy: .public) has \(count) tracks, plays as its title")
             return []
         }
@@ -672,9 +670,7 @@ final class FreeCatalogProvider: AudioProvider {
         // There the bundle is the unit, not an accident. Read from the
         // item's own collections, so a bundle reached by deep link or from
         // a playlist is no longer dropped for being too long.
-        let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
-            ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
-        guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
+        guard FreeCatalog.archiveTrackCountPlausible(tracks.count, collections: collections) else {
             Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
             throw URLError(.resourceUnavailable)
         }

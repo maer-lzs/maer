@@ -870,6 +870,15 @@ nonisolated enum FreeCatalog {
         count >= 1 && count <= cap
     }
 
+    /// The bound of an archive.org title, read from its own collections: a
+    /// curated series collection passes the higher one. One answer for the
+    /// detail and for the songs of an album, so a bundle reached either way
+    /// is held to the same bound.
+    static func archiveTrackCountPlausible(_ count: Int, collections: [String]) -> Bool {
+        trackCountPlausible(count, cap: ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
+            ? seriesTrackCap : defaultTrackCap)
+    }
+
     /// The archive.org identifier out of `url_iarchive` (last path component).
     static func iarchiveIdentifier(from url: String?) -> String? {
         guard let url, let last = url.split(separator: "/").last, !last.isEmpty else { return nil }
