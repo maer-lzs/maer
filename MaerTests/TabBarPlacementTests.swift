@@ -174,16 +174,30 @@ struct TabBarPlacementTests {
 
     @Test("die obere Kante ist weich in jeder Haltung, keine Seite setzt eine harte", .needsTheSources)
     func theTopEdgeIsSoft() throws {
-        let library = SyncContractFenceTests.stripped(try String(
-            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
-        #expect(library.components(separatedBy: ".softTopScrollEdge()").count - 1 == 1)
-        #expect(library.contains("scrollEdgeEffectStyle(.soft, for: .top)"))
-        // The one declaration is the soft one; no other place declares an edge.
-        var declared = 0
-        for (_, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
-            declared += SyncContractFenceTests.stripped(text).components(separatedBy: "scrollEdgeEffectStyle(").count - 1
+        let edge = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TopScrollEdge.swift"), encoding: .utf8))
+        #expect(edge.contains("scrollEdgeEffectStyle(.soft, for: .top)"))
+        #expect(edge.contains("scrollEdgeEffectHidden(true, for: .top)"))
+        // The one component declares the edge; no other place declares one,
+        // and every navigation stack names it: a presented stack does not
+        // inherit it from the stack below.
+        let stack = try NSRegularExpression(pattern: #"NavigationStack\s*[({]"#)
+        var declared = 0, stacks = 0, hidden: [String] = [], bare: [String] = []
+        for (name, raw) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            let text = SyncContractFenceTests.stripped(raw)
+            declared += text.components(separatedBy: "scrollEdgeEffectStyle(").count - 1
+                + text.components(separatedBy: "scrollEdgeEffectHidden(").count - 1
+            let opened = stack.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
+            let named = text.components(separatedBy: ".softTopScrollEdge()").count - 1
+            stacks += opened
+            if opened != named { bare.append("\(name): \(opened) stacks, \(named) edges") }
+            if text.contains(".withoutTopScrollEdge()") { hidden.append(name) }
         }
-        #expect(declared == 1, "another scroll edge is declared")
+        #expect(declared == 2, "another scroll edge is declared")
+        #expect(stacks > 0, "the fence found no navigation stack, so it measures nothing")
+        #expect(bare.isEmpty, "a navigation stack without the soft edge: \(bare.sorted())")
+        // The settings in two columns are the one page without an edge.
+        #expect(hidden == ["SettingsView.swift"], "a page without a top edge: \(hidden.sorted())")
     }
 }
 #endif

@@ -66,6 +66,7 @@ struct NextStepsSheet: View {
                 }
             }
         }
+        .softTopScrollEdge()
     }
 }
 

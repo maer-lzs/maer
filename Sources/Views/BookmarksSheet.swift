@@ -83,6 +83,7 @@ struct BookmarksSheet: View {
                 }
             }
         }
+        .softTopScrollEdge()
         .task { await reload() }
         .alert("New Bookmark", isPresented: $showTitleAlert) {
             TextField("Title", text: $newTitle)

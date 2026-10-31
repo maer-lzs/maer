@@ -242,6 +242,7 @@ struct RadioView: View {
                     }
                 }
             }
+            .softTopScrollEdge()
             .followsAppearanceChoice()
         }
         .sheet(isPresented: $showRegionPicker) {

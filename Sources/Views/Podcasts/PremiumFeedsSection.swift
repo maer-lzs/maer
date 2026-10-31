@@ -244,6 +244,7 @@ struct PremiumMarkPicker: View {
                 }
             }
         }
+        .softTopScrollEdge()
         .presentationDetents([.medium, .large])
     }
 }

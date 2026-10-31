@@ -1825,6 +1825,7 @@ struct LibraryView: View {
         NavigationStack {
             SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
         }
+        .softTopScrollEdge()
         // The list rows of the settings keep their title's edge at an
         // accessibility size (`RowLabelStyle`).
         .labelStyle(RowLabelStyle())
@@ -1915,20 +1916,5 @@ extension View {
     func takesInput(_ takes: Bool) -> some View {
         allowsHitTesting(takes)
             .accessibilityHidden(!takes)
-    }
-}
-
-private extension View {
-    /// The declared top edge of every tab stack, its root and its pushed
-    /// pages: soft in every posture. The hard edge stays on at the top once
-    /// content has been under the bar, a band over a page at rest. Scroll
-    /// edge effects exist from iOS 26; below it there is none to declare.
-    @ViewBuilder
-    func softTopScrollEdge() -> some View {
-        if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            self
-        }
     }
 }

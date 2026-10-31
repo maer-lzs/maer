@@ -32,6 +32,12 @@ server was lost. Now each server's full load removes only the data of
 its own books that are gone; books of the other server, and books no
 load has listed since this update, stay.
 
+**A soft top edge in the settings and every sheet.** The settings, the
+pages opened in them and the app's other sheets (queue, bookmarks,
+chapters, lyrics, sign in) fade their content softly under the top bar
+like the tabs; before, they showed a hard milky band. Where the settings
+stand in two columns, the band is gone entirely.
+
 ## v3.5.1 (Build 58)
 
 **A download from a server that stopped answering ends instead of

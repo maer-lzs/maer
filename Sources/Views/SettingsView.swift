@@ -171,6 +171,9 @@ struct SettingsView: View {
                     } trailing: { _ in
                         sectionForm(atFold: true) { secondSections }
                     }
+                    // Two forms under one bar: an edge over each drew a
+                    // band across the page, so these columns carry none.
+                    .withoutTopScrollEdge()
                 } else {
                     sectionForm(atFold: false) {
                         firstSections

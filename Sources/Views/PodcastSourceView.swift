@@ -139,6 +139,7 @@ struct PodcastSourceView: View {
                     .padding()
                     .presentationDetents([.height(180)])
                 }
+                .softTopScrollEdge()
                 .followsAppearanceChoice()
             }
         }

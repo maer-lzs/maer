@@ -348,6 +348,7 @@ private struct PlaylistDialogs: ViewModifier {
             .sheet(item: Binding(get: { mine(presenter.creating) },
                                  set: { if $0 == nil { presenter.creating = nil } })) { request in
                 NavigationStack { PlaylistCreateForm(request: request) }
+                    .softTopScrollEdge()
                     .followsAppearanceChoice()
             }
             // An alert presents fine from any level, so the message needs no
@@ -476,6 +477,7 @@ struct AddToPlaylistSheet: View {
             .overlay { if busy { ProgressView().controlSize(.large) } }
             .task { await loadServer() }
         }
+        .softTopScrollEdge()
     }
 
     /// Creating from inside the sheet PUSHES. A second sheet on top of this

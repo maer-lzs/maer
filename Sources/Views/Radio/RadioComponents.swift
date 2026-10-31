@@ -704,6 +704,7 @@ struct RadioRegionPickerSheet: View {
                 }
             }
         }
+        .softTopScrollEdge()
     }
 }
 

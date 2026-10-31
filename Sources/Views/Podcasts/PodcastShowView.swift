@@ -314,6 +314,7 @@ struct PodcastShowView: View {
             Task { await subs.recheckAccess(showId: show.id) }
         }) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
+                .softTopScrollEdge()
                 // A settings page outside the settings sheet keeps the rows'
                 // title edge at an accessibility size, as there.
                 .labelStyle(RowLabelStyle())

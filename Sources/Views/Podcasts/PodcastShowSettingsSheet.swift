@@ -259,6 +259,7 @@ struct PodcastShowSettingsSheet: View {
                 AppStorageKeys.setPodcastNotify(on, showId: showId)
             }
         }
+        .softTopScrollEdge()
     }
 
     /// Every state of the sheet from the store. Only reads: the `onChange`

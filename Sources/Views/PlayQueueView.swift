@@ -21,6 +21,7 @@ struct PlayQueueSheet: View {
         NavigationStack {
             PlayQueueView(playerCoordinator: playerCoordinator)
         }
+        .softTopScrollEdge()
         .presentationDragIndicator(.visible)
         .playlistDialogs(id: playlistHost)
     }

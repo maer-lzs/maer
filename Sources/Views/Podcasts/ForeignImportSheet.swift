@@ -162,6 +162,7 @@ struct ForeignImportSheet: View {
             }
             .interactiveDismissDisabled(isApplying || isReading)
         }
+        .softTopScrollEdge()
     }
 
     private var sourceName: LocalizedStringKey {

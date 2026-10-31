@@ -180,6 +180,7 @@ struct PodcastsView: View {
 
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
+                .softTopScrollEdge()
                 // A settings page outside the settings sheet: its rows keep
                 // the title's edge at an accessibility size, as there.
                 .labelStyle(RowLabelStyle())
@@ -202,6 +203,7 @@ struct PodcastsView: View {
         }
         .sheet(item: $signInTarget) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
+                .softTopScrollEdge()
                 .labelStyle(RowLabelStyle())
                 .followsAppearanceChoice()
         }

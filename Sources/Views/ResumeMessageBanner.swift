@@ -53,6 +53,7 @@ struct ResumeMessageBanner: View {
             // A settings page outside the settings sheet: its stack sets the
             // row style like the sheet does.
             NavigationStack { NoticeLogView(notices: notices) }
+                .softTopScrollEdge()
                 .labelStyle(RowLabelStyle())
                 .followsAppearanceChoice()
         }

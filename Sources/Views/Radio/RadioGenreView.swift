@@ -121,6 +121,7 @@ struct RadioGenreView: View {
                     },
                     onWorldwide: { store([]) })
             }
+            .softTopScrollEdge()
             .followsAppearanceChoice()
         }
     }

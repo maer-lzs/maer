@@ -74,5 +74,6 @@ struct LyricsPanel: View {
                 }
             }
         }
+        .softTopScrollEdge()
     }
 }

@@ -62,5 +62,6 @@ struct ChapterListView: View {
                 }
             }
         }
+        .softTopScrollEdge()
     }
 }
