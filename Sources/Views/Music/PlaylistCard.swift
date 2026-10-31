@@ -344,8 +344,7 @@ extension PlaylistCardSource {
             // provider. The count stands alone instead of guessing.
             durationSeconds: nil,
             detailRoute: .maerPlaylist(list.id),
-            open: { coordinator in await coordinator.playInOrder(items: items(of: list, in: store),
-                                                                 contextSource: list.name) },
+            open: { coordinator in await RoutinePlayback.start(list, in: store, on: coordinator) },
             shufflePool: { items(of: list, in: store) },
             shuffleDraw: { .of(items(of: list, in: store)) },
             mosaic: {
@@ -398,10 +397,11 @@ extension PlaylistCardSource {
     }
 
     /// What this device can actually play of the list, in list order: the
-    /// seam's answer per entry, with the entry's snapshot. The store is
-    /// the factory's; the helper takes it rather than reaching for it.
+    /// seam's answer per entry, with the entry's snapshot, and a rule's
+    /// episodes from what the device holds (`RoutinePlayback.held`). The
+    /// store is the factory's; the helper takes it rather than reaching for it.
     @MainActor
     static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
-        list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
+        RoutinePlayback.held(list, in: store).items
     }
 }

@@ -70,6 +70,7 @@ struct ReachabilityTests {
     nonisolated static let monitorStock: [String: String] = [
         "Reachability.swift": "the door itself",
         "MaerSyncCarriers.swift": "hands the monitor to the sync session as its path source, it reads nothing",
+        "RoutinePlayback.swift": "a list page counts a routine's episodes synchronously; the start asks the door",
     ]
 
     @Test("unter Networking und Providers nennt nur der Bestand den Netzwaechter, jeder mit Grund, in beide Richtungen", .needsTheSources)

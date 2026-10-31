@@ -621,10 +621,12 @@ final class PlayerCoordinator: ObservableObject {
     /// becomes the CONTEXT (never the queue: a collection start used to
     /// overwrite the hand-placed orders, and hours-old music won against
     /// the next episode). Shuffle is the same path with a shuffled order,
-    /// so the two do not drift apart. An empty set is a no-op.
-    func playInOrder(items: [LibraryItem], contextSource: String? = nil) async {
+    /// so the two do not drift apart. An empty set is a no-op. The first item
+    /// starts from the beginning, unless the start says otherwise (a begun
+    /// episode a routine's rule picked resumes).
+    func playInOrder(items: [LibraryItem], contextSource: String? = nil, restartFirst: Bool = true) async {
         guard let first = items.first else { return }
-        await open(item: first, restart: true, preservesContext: true)
+        await open(item: first, restart: restartFirst, preservesContext: true)
         PlaybackContext.shared.replace(ids: items.dropFirst().map(\.id),
                                        source: contextSource)
     }

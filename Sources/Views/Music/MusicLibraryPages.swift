@@ -1058,7 +1058,7 @@ struct MaerPlaylistPage: View {
         } actions: {
             HStack(spacing: 12) {
                 DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {
-                    Task { await playerCoordinator.playInOrder(items: playable, contextSource: playlist.name) }
+                    Task { await RoutinePlayback.start(playlist, in: store, on: playerCoordinator) }
                 }
                 .disabled(playable.isEmpty)
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { .of(playable) }

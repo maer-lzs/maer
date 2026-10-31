@@ -69,9 +69,10 @@ final class PlaybackContext: ObservableObject {
     var isEmpty: Bool { ids.isEmpty }
 
     /// A collection start hands over its rest. Radio never queues anywhere
-    /// (play only replaces the active playback), same rule as the queue.
+    /// (play only replaces the active playback), and a routine's rule is
+    /// never anything to play: same rule as the queue (`PlayQueue.canHold`).
     func replace(ids newIds: [String], source: String?) {
-        ids = newIds.filter { PlayQueue.canEnqueue($0) }
+        ids = newIds.filter { PlayQueue.canHold($0) }
         sourceTitle = ids.isEmpty ? nil : source
         save()
     }
@@ -117,7 +118,7 @@ final class PlaybackContext: ObservableObject {
     @discardableResult
     func expand(_ id: String, into parts: [String]) -> Bool {
         guard let at = ids.firstIndex(of: id) else { return false }
-        let fresh = parts.filter { PlayQueue.canEnqueue($0) }
+        let fresh = parts.filter { PlayQueue.canHold($0) }
         guard !fresh.isEmpty, fresh != [id] else { return true }
         ids.replaceSubrange(at...at, with: fresh)
         save()

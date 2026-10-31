@@ -90,6 +90,13 @@ nonisolated enum PodcastAutoDownloadRules {
     /// episode to hear what it is about is not where anyone stands.
     static let startedAtLeast: Double = 30
 
+    /// Whether a mark is begun in that sense: in progress and at least
+    /// `startedAtLeast` in. The auto-download and a routine's rule ask this.
+    static func isStarted(_ mark: ProgressMark.PlayState, duration: Double) -> Bool {
+        guard case .inProgress(_, let remaining) = mark else { return false }
+        return duration - remaining >= startedAtLeast
+    }
+
     /// Where the listener stands, as an index into the episodes in order of
     /// publication (`marked` says which are heard or begun). Marks with at
     /// most `gap` unmarked episodes between them form a run. The anchor is

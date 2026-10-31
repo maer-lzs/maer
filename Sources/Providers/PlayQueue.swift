@@ -87,6 +87,14 @@ final class PlayQueue: ObservableObject {
         !id.hasPrefix("radio:")
     }
 
+    /// What the queue and the context hold: what a list may hold, without
+    /// a routine's rule. A rule is a list entry, never something to play;
+    /// it becomes episodes at the routine's start (`RoutinePlayback`), so
+    /// no saved order or context names one.
+    nonisolated static func canHold(_ id: String) -> Bool {
+        canEnqueue(id) && !ItemNamespace.isRoutineRule(id)
+    }
+
     /// Text-only rss episodes never enter the queue.
     /// Even if some future call site forgets its own gate.
     private func isQueueable(_ id: String) -> Bool {
@@ -95,7 +103,7 @@ final class PlayQueue: ObservableObject {
 
     func playNext(_ id: String) {
         guard isQueueable(id) else { return }
-        guard Self.canEnqueue(id) else { return }
+        guard Self.canHold(id) else { return }
         removeMatching(id)
         ids.insert(id, at: 0)
         save()
@@ -112,7 +120,7 @@ final class PlayQueue: ObservableObject {
     /// To the end of the queue (no-op if already present under any face).
     func playLast(_ id: String) {
         guard isQueueable(id) else { return }
-        guard Self.canEnqueue(id) else { return }
+        guard Self.canHold(id) else { return }
         guard !contains(id) else { return }
         ids.append(id)
         save()

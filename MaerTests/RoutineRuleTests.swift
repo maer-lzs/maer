@@ -100,9 +100,9 @@ struct RoutineRuleTests {
         }
     }
 
-    /// Until a routine plays, this build reads a rule as a build without
-    /// routines does: an unknown source, dimmed and skipped.
-    @Test("bis eine Routine spielt, liest dieser Stand eine Regel wie ein Stand ohne Routinen")
+    /// Until the list page shows a rule's line, a row reads a rule as a
+    /// build without routines does: an unknown source, dimmed.
+    @Test("bis die Seite eine Regel zeigt, liest eine Zeile sie wie ein Stand ohne Routinen")
     func aRuleIsNotYetAKnownSource() {
         #expect(!ItemNamespace.isKnown("rule:newest:aaaa"))
         #expect(!ItemNamespace.mayReachLibraryServer("rule:newest:aaaa"))

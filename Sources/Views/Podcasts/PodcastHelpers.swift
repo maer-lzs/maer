@@ -379,10 +379,9 @@ enum PodcastAutoDownload {
                     show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
                     isPlayed: { guid in byGuid[guid].map(isPlayed) ?? false },
                     isStarted: { guid in
-                        guard let episode = byGuid[guid],
-                              case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration)
-                        else { return false }
-                        return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast
+                        guard let episode = byGuid[guid] else { return false }
+                        return PodcastAutoDownloadRules.isStarted(progress.state(guid: guid, duration: episode.duration),
+                                                                  duration: episode.duration)
                     },
                     isDownloaded: { _ in false },
                     limit: .max)

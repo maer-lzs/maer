@@ -59,8 +59,19 @@ struct AutoDownloadOrderTests {
     func begunMeansHalfAMinute() throws {
         #expect(PodcastAutoDownloadRules.startedAtLeast == 30)
         #expect(PodcastAutoDownloadRules.runGap == 3)
+        #expect(!PodcastAutoDownloadRules.isStarted(.inProgress(fraction: 0.02, remaining: 590), duration: 600))
+        #expect(PodcastAutoDownloadRules.isStarted(.inProgress(fraction: 0.05, remaining: 570), duration: 600))
+        #expect(!PodcastAutoDownloadRules.isStarted(.played, duration: 600))
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
-        #expect(helpers.contains("case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration) else { return false } return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast"))
+        #expect(helpers.contains("return PodcastAutoDownloadRules.isStarted(progress.state(guid: guid, duration: episode.duration), duration: episode.duration)"))
+        // A routine's rule asks the same question at the same place, and
+        // the half minute is spelled nowhere else.
+        let routine = try Self.source("Sources/Providers/RoutinePlayback.swift")
+        #expect(routine.contains("isStarted: PodcastAutoDownloadRules.isStarted(mark, duration: episode.duration)"))
+        let spelled = ProjectFileIntegrityTests.sourceTexts().filter { file in
+            SyncContractFenceTests.stripped(file.text).contains("startedAtLeast")
+        }.map(\.name)
+        #expect(spelled == ["PodcastAutoDownloadRules.swift"], "the half minute is read at its one place: \(spelled)")
     }
 
     @Test("Blatt: jedes Feld schreibt nur eine Aenderung, das Oeffnen schreibt nichts", .needsTheSources)
