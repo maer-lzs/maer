@@ -38,6 +38,8 @@ klärt.
       1024 × 1024 ohne Alphakanal, dazu die dunkle und die getönte Fassung
       (beide aus derselben dunklen Datei).
 - [x] **Kategorie:** `LSApplicationCategoryType` ist
+      `public.app-category.music` an beiden Stellen (Debug und Release),
+      gleich der ersten Kategorie im Store; seit 31.10.2026, vorher
       `public.app-category.books`.
 - [x] **Privacy-Manifest** (`Sources/PrivacyInfo.xcprivacy`): kein Tracking,
       keine Tracking-Domains, keine erfassten Daten. Schnittstellen mit
@@ -77,11 +79,9 @@ klärt.
 
 ## App Store Connect
 
-- [x] **App angelegt:** Name „Mär“, Sprachen Deutsch und Englisch. Im
-      öffentlichen Eintrag steht als erste Kategorie **Musik**, als zweite
-      Bücher (gemessen 31.10.2026); im Code steht
-      `public.app-category.books`. Die Kategorie in App Store Connect setzt
-      der Kontoinhaber.
+- [x] **App angelegt:** Name „Mär“, Sprachen Deutsch und Englisch.
+      Kategorie Musik, sekundär Bücher, so eingereicht; der öffentliche
+      Eintrag zeigt beide in dieser Reihenfolge (gemessen 31.10.2026).
 - [x] **Preis und Verfügbarkeit:** kostenlos (Preis 0, gemessen), kein
       In-App-Kauf, kein Tip Jar; alle Länder außer China (Festland). **Auch
       auf Macs mit Apple-Chip:** die App ist ein iPhone- und iPad-Ziel
@@ -89,7 +89,7 @@ klärt.
       als iPad-App; CarPlay und Widget gibt es dort nicht. Am Mac von uns
       nicht gemessen; die App ist dort im Gebrauch. Vision Pro aus.
 - [x] **App-Privacy-Angaben:** „Keine Daten erfasst“ (Data Not Collected),
-      so eingereicht. MetricKit und alle Diagnose-Flaechen laufen nur in
+      so eingereicht. MetricKit und alle Diagnose-Flächen laufen nur in
       Builds aus Xcode, in keinem Release-Build (TestFlight, App Store).
 - [x] **Angabe zum Digital Services Act:** kein Händler, so eingereicht.
 - [ ] **Altersfreigabe, EULA, Zusatzbedingungen, Export:** im Store steht
