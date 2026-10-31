@@ -78,6 +78,15 @@ struct RoutineRuleTests {
         }
     }
 
+    /// The carry witnesses write their rules out so they run against a build
+    /// without routines; here they must be rules in their one spelling.
+    @Test("die Regeln der Traegerzeugen sind Regeln in ihrer einen Schreibweise")
+    func theCarriedIdsAreRules() {
+        for id in RoutineCarryTests.ruleIds {
+            #expect(RoutineRule(id: id)?.id == id, "\(id)")
+        }
+    }
+
     /// The order "next" reads is the auto-download's own, with the judgement
     /// handed in: no second function that would answer "where does the
     /// listener stand" differently.
