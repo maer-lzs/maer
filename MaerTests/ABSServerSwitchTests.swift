@@ -56,7 +56,8 @@ struct ABSServerSwitchTests {
         let values: [String: Any?]
         static let keys = [AppStorageKeys.absSignedInServer, AppStorageKeys.absLastFullLoadServer,
                            AppStorageKeys.absServerSwitchedAt, AppStorageKeys.absMoreThanOneServer,
-                           AppStorageKeys.selectedLibraryId, KnownServers.storeKey]
+                           AppStorageKeys.selectedLibraryId, KnownServers.storeKey,
+                           AppStorageKeys.absSpellingMarkReviewed]
         init() { values = Dictionary(uniqueKeysWithValues: Self.keys.map { ($0, AppStorageKeys.object($0)) }) }
         func restore() { for (key, value) in values { AppStorageKeys.set(value, for: key) } }
     }
@@ -268,6 +269,8 @@ struct ABSServerSwitchTests {
         let saved = Saved()
         defer { saved.restore() }
         func move(register: [String], signedIn: String?) -> Bool {
+            // The first start of this build on a device 3.5.1 left.
+            AppStorageKeys.set(nil, for: AppStorageKeys.absSpellingMarkReviewed)
             // Written as stored, without the register's notice to the cloud.
             let entries = register.map { KnownServer(url: $0, service: .audiobookshelf, lastSuccessAt: 1) }
                 + [KnownServer(url: "https://music.example.com", service: .subsonic, lastSuccessAt: 1)]
@@ -289,6 +292,36 @@ struct ABSServerSwitchTests {
                 "a server signed in that the register does not name")
         #expect(move(register: ["https://abs.example.com"], signedIn: nil), "no server signed in")
         #expect(ABSServerScope.secondServerShown(registered: ["https://A.example.com:443/"], signedIn: "https://a.example.com") == false)
+    }
+
+    /// The register travels: a removal by hand on another device arrives as
+    /// `forget` here. Once the first start looked, no later start lowers a
+    /// mark that stands rightly, whatever the register then shows.
+    @Test("die Marke wird einmal je Geraet zurueckgenommen: nach einer Loeschung im Register bleibt eine zu Recht gesetzte Marke beim naechsten Start")
+    func theMarkIsReviewedOncePerDevice() {
+        let saved = Saved()
+        defer { saved.restore() }
+        let x = "https://x.example.com", y = "https://y.example.com"
+        // The register as stored, without its notice to the cloud.
+        func register(_ urls: [String]) {
+            let entries = urls.map { KnownServer(url: $0, service: .audiobookshelf, lastSuccessAt: 1) }
+            AppStorageKeys.set(try? JSONEncoder().encode(entries), for: KnownServers.storeKey)
+        }
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSpellingMarkReviewed)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.set(nil, for: AppStorageKeys.absMoreThanOneServer)
+        // Signed in at X, then at Y: the mark stands rightly.
+        register([x, y])
+        AppStorageKeys.noteABSSignIn(x, nowMs: 1)
+        AppStorageKeys.noteABSSignIn(y, nowMs: 2)
+        AppStorageKeys.normalizeABSServers()
+        #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), "the first start took a right mark")
+        #expect(AppStorageKeys.bool(AppStorageKeys.absSpellingMarkReviewed, default: false), "the first start did not note its look")
+        // Another device takes X out of the list, it arrives here; the next start.
+        register([y])
+        AppStorageKeys.normalizeABSServers()
+        #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false),
+                "a removal on another device lowered a right mark, the next full load would clean the books of X")
     }
 
     @Test("ein Eintrag von vor dem Wechsel ohne Server geht an den neuen Server, dessen 404 verwirft ihn nicht")

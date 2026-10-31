@@ -888,6 +888,9 @@ nonisolated enum AppStorageKeys {
     /// Set once a sign-in moved from one known server to another; then no
     /// full load cleans ids without a namespace (`ABSServerScope.cleanup`).
     static let absMoreThanOneServer = "absMoreThanOneServer"
+    /// Set once the start looked at a mark a build before the one name may
+    /// have set (`normalizeABSServers`); it never looks again.
+    static let absSpellingMarkReviewed = "absSpellingMarkReviewed"
 
     /// Notes a sign-in at `server`. Another server than the one signed in
     /// before is a switch, and so is the first sign-in the device
@@ -909,17 +912,24 @@ nonisolated enum AppStorageKeys {
     /// a second server such a spelling set goes too, where the register
     /// shows no second one (`ABSServerScope.secondServerShown`); the moment
     /// of the switch stays, it only keeps queued stands.
+    ///
+    /// That look happens ONCE per device, on the first start of this build:
+    /// since the one name no spelling sets the mark, and the register
+    /// travels, so a removal by hand on another device later would take
+    /// the evidence of a mark that stands rightly.
     static func normalizeABSServers() {
         for key in [absSignedInServer, absLastFullLoadServer] {
             guard let stored = string(key) else { continue }
             let name = ABSServerScope.identity(of: stored)
             if name != stored { set(name, for: key) }
         }
+        guard !bool(absSpellingMarkReviewed) else { return }
         let registered = KnownServers.all().filter { $0.service == .audiobookshelf }.map(\.url)
         if bool(absMoreThanOneServer),
            !ABSServerScope.secondServerShown(registered: registered, signedIn: string(absSignedInServer)) {
             set(false, for: absMoreThanOneServer)
         }
+        set(true, for: absSpellingMarkReviewed)
     }
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).

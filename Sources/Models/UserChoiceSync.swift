@@ -219,6 +219,7 @@ nonisolated enum UserChoiceCatalog {
         "absLastFullLoadServer": .machine,
         "absServerSwitchedAt": .machine,
         "absMoreThanOneServer": .machine,
+        "absSpellingMarkReviewed": .machine,
         // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
         // Machine: setup state and derived caches
