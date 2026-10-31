@@ -1,7 +1,12 @@
 # App-Store-Checkliste für Mär
 
-Stand: gemessen am Kandidaten 3.5 (Build 55), 19.10.2026. Jede Zeile nennt,
-woran sie gemessen ist; was nicht im Repository steht, nennt, wer es klärt.
+Stand: 3.5 (Build 56) am 26.10.2026 eingereicht und seit 29.10.2026 im
+Store; 3.5.1 (Build 58) am 29.10.2026 eingereicht und seit 29.10.2026,
+22:22 UTC, im Store (öffentliche Suche von Apple, App-ID `6799687154`,
+gemessen 31.10.2026). Die Zeilen unter „Im Code“ sind am Kandidaten 3.5
+(Build 55) gemessen, 19.10.2026, und für 56 nicht neu gemessen. Jede Zeile
+nennt, woran sie gemessen ist; was nicht im Repository steht, nennt, wer es
+klärt.
 
 ## Konto und Kennungen
 
@@ -72,58 +77,92 @@ woran sie gemessen ist; was nicht im Repository steht, nennt, wer es klärt.
 
 ## App Store Connect
 
-- [ ] **App anlegen:** Name „Mär“ (ob frei, ist nicht geprüft; einen
-      Ersatz schlägt der Entwurf der Store-Texte vor), Primärsprache Deutsch,
-      Kategorie Bücher wie im Code.
-- [ ] **Preis und Verfügbarkeit:** kostenlos, kein In-App-Kauf, kein Tip
-      Jar. **Auch auf Macs mit Apple-Chip** anbieten: die App ist ein
-      iPhone- und iPad-Ziel (`TARGETED_DEVICE_FAMILY = "1,2"`, kein Mac
-      Catalyst) und läuft dort als iPad-App; CarPlay und Widget gibt es dort
-      nicht. Am Mac von uns nicht gemessen; die App ist dort im Gebrauch.
-- [ ] **App-Privacy-Angaben:** „Keine Daten erfasst“ wird vor der
-      Einreichung je Datenfluss neu hergeleitet (Mär-Sync, Pocket-Casts-Import,
-      Kataloge). MetricKit und alle Diagnose-Flaechen laufen nur in Builds aus
-      Xcode, in keinem Release-Build (TestFlight, App Store).
-- [ ] **Angabe zum Digital Services Act (Händler oder nicht):** Feld des
-      Kontoinhabers.
-- [ ] **Altersfreigabe, EULA, Zusatzbedingungen, Export:** Rechtsfrage vor
-      der Einreichung (`docs/EULA.md`).
-- [ ] **Screenshots:** die Bilder in `screenshots/` passen nicht. iPhone
-      hochkant 1206 × 2622 (6,3-Zoll-Klasse), Pflicht ist 6,9 Zoll
-      (1320 × 2868 oder 1290 × 2796); iPad 1488 × 2266, für 13 Zoll braucht
-      es 2064 × 2752. Neue Bilder aus den Journeys am Simulator.
-- [ ] **Beschreibung, Untertitel, Schlagworte, Support- und
-      Marketing-URL, „Was ist neu“:** aus dem Entwurf der Store-Texte. Ein
-      Server ist nicht nötig: Podcasts, Radio, die freien Kataloge und lokale
-      Dateien gehen ohne Konto.
+- [x] **App angelegt:** Name „Mär“, Sprachen Deutsch und Englisch. Im
+      öffentlichen Eintrag steht als erste Kategorie **Musik**, als zweite
+      Bücher (gemessen 31.10.2026); im Code steht
+      `public.app-category.books`. Die Kategorie in App Store Connect setzt
+      der Kontoinhaber.
+- [x] **Preis und Verfügbarkeit:** kostenlos (Preis 0, gemessen), kein
+      In-App-Kauf, kein Tip Jar; alle Länder außer China (Festland). **Auch
+      auf Macs mit Apple-Chip:** die App ist ein iPhone- und iPad-Ziel
+      (`TARGETED_DEVICE_FAMILY = "1,2"`, kein Mac Catalyst) und läuft dort
+      als iPad-App; CarPlay und Widget gibt es dort nicht. Am Mac von uns
+      nicht gemessen; die App ist dort im Gebrauch. Vision Pro aus.
+- [x] **App-Privacy-Angaben:** „Keine Daten erfasst“ (Data Not Collected),
+      so eingereicht. MetricKit und alle Diagnose-Flaechen laufen nur in
+      Builds aus Xcode, in keinem Release-Build (TestFlight, App Store).
+- [x] **Angabe zum Digital Services Act:** kein Händler, so eingereicht.
+- [ ] **Altersfreigabe, EULA, Zusatzbedingungen, Export:** im Store steht
+      12+ (gemessen 31.10.2026). EULA und Zusatzbedingungen
+      (`docs/EULA.md`) und die Export-Kennzeichnung oben sind ohne
+      rechtliche Prüfung eingereicht; was in App Store Connect dazu steht,
+      steht nicht im Repository.
+- [x] **Screenshots:** aus Simulatoren mit dem Release-Build 56, vom
+      Kontoinhaber aufgenommen, keine umgerechneten Bilder. Pflichtklassen
+      laut App Store Connect: iPhone „medium display“ (1206 × 2622 oder
+      1179 × 2556) und iPad 13 Zoll (2064 × 2752); Duo freiwillig. Im
+      öffentlichen Eintrag stehen fünf iPhone- und fünf iPad-Bilder
+      (gemessen 31.10.2026). Die Store-Bilder liegen nicht im Repository;
+      `screenshots/` trägt die verkleinerten Bilder der READMEs.
+- [x] **Beschreibung, Werbetext, Untertitel, Schlagworte, „Was ist
+      neu“:** Deutsch und Englisch eingereicht, für 3.5.1 mit eigenen
+      Neuerungen und Schlagworten; die Texte stehen nicht im Repository.
 
-## Review-Notes (Textbaustein)
+## Review-Notes (so eingereicht)
 
-> Mär is a client for self-hosted audio: audiobooks (Audiobookshelf),
-> podcasts (plain RSS, gpodder sync), music (Subsonic/OpenSubsonic such as
-> Navidrome, and Jellyfin) and internet radio. **A server is NOT required to
-> try the app**: podcasts, internet radio, the free catalogues (LibriVox,
-> Internet Archive, Project Gutenberg, Jamendo) and imported local files all
-> work without any account. Choose "Start without a server" on the setup
-> screen.
->
-> To review the Audiobookshelf part, please use the demo server credentials
-> given in the review information fields above: enter the server address and
-> the token on the setup screen (choose "API Token" as the sign-in method).
->
-> No account creation, no payments, no tracking, no user data collection.
->
-> App Transport Security: the app declares NSAllowsArbitraryLoads because it
-> connects to self-hosted servers at addresses the user types in, commonly on
-> a home network or a private mesh without a TLS certificate; fixed exception
-> domains cannot name a user-entered address. Traffic to the Mär sync service
-> is sealed inside an encrypted session on top of the connection, and podcast
-> feed and artwork requests are still raised to https by the app.
+Der Text, mit dem 3.5 eingereicht wurde. Benutzername und Passwort des
+Demo-Zugangs stehen nur in den Anmeldefeldern von App Store Connect; der Text
+hier lässt den Benutzernamen weg.
 
-Gemessen am Kandidaten: „Start without a server“ und „API Token“ sind die
-Beschriftungen in `SetupView.swift`. Der Demo-Server antwortet (HTTP 200,
-19.10.2026); ob sein Bestand für die Prüfung trägt, wird vor der Einreichung
-geprüft.
+> Mär is an audio player for people who run their own media servers:
+> audiobooks (Audiobookshelf), podcasts (RSS, with optional gpodder sync),
+> music (Subsonic/OpenSubsonic servers such as Navidrome, and Jellyfin) and
+> internet radio.
+>
+> TRYING THE APP WITHOUT A SERVER
+> No server and no account are needed. On the setup screen choose "Start
+> without a server". Podcasts, internet radio, the open catalogues (LibriVox,
+> Internet Archive, Project Gutenberg, Jamendo) and imported audio files then
+> work right away.
+>
+> TRYING THE AUDIOBOOKSHELF PART
+> We run a demo server for the review. Username and password are in the
+> sign-in fields above.
+> 1. On the setup screen enter the server address: https://demo.maer.fm
+> 2. Leave the sign-in method on "Password" and enter the username and the
+>    password.
+> 3. The Audiobooks tab then shows the demo library.
+>
+> CONTENT
+> The app hosts no content. Everything it plays comes from the user's own
+> servers, from public podcast feeds and radio streams, or from open
+> catalogues of public domain and openly licensed works.
+>
+> PRIVACY
+> No account creation, no payments, no ads, no tracking, and no collection of
+> user data. Listening positions can sync through the user's own iCloud
+> account or through a sync service the user hosts.
+>
+> PERMISSIONS
+> Background audio is used to keep playback running with the screen locked
+> and in CarPlay. Local network access is used only to reach the user's own
+> servers at home.
+>
+> APP TRANSPORT SECURITY
+> The app declares NSAllowsArbitraryLoads because it connects to servers the
+> user runs and enters by address. Users typically reach them by a full host
+> name on a home network or through a private VPN, often without a TLS
+> certificate. NSAllowsLocalNetworking covers only .local and unqualified
+> names, and fixed exception domains cannot name an address the user types
+> in. Where the app itself chooses the address it stays on https: podcast
+> feeds and artwork are requested over https even when a feed names http.
+> Traffic to the Mär sync service is additionally sealed in an encrypted
+> session on top of the connection.
+
+Gemessen am eingereichten Build 56 (`c993ee4c`): „Start without a server“
+und „Password“ sind Beschriftungen in `SetupView.swift`, und die Anmeldung
+steht dort von Anfang an auf Passwort (`loginMode = .password` in
+`AuthViewModel.swift`). Der Demo-Server antwortet (HTTP 200, 31.10.2026).
 
 ## CarPlay
 
@@ -133,10 +172,15 @@ geprüft.
 
 ## Upload und Abgabe
 
-- [ ] Xcode: Ziel „Any iOS Device“, **Product → Archive**, Organizer,
-      **Distribute App**, App Store Connect.
-- [ ] TestFlight-Runde auf dem eigenen Gerät mit dem Store-Binary (Widget,
-      Siri, CarPlay, Mac).
-- [ ] Einreichen; bei Ablehnung sachlich antworten und den Demo-Zugang
+- [x] Xcode: Ziel „Any iOS Device“, **Product → Archive**, Organizer,
+      **Distribute App**, App Store Connect (3.5 (56) am 26.10.2026, 3.5.1
+      (58) am 29.10.2026, beide vom Kontoinhaber).
+- [x] TestFlight-Runde auf dem eigenen Gerät mit Build 56 vor der
+      Einreichung (Mini-Leiste beim Titelwechsel, Widget).
+- [x] Eingereicht und freigegeben: 3.5 im Store seit 29.10.2026, 3.5.1 seit
+      29.10.2026. Bei einer Ablehnung sachlich antworten und den Demo-Zugang
       erneut nennen: bei Apps, die einen Server brauchen, ist der fehlende
       Zugang der häufigste Ablehnungsgrund.
+- [ ] Jede neue Version braucht eine neue Versionsnummer: nach der
+      Freigabe nimmt App Store Connect unter derselben Nummer keinen Build
+      mehr an.
