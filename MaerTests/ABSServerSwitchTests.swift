@@ -99,6 +99,16 @@ struct ABSServerSwitchTests {
         #expect(entry.server == nil && entry.currentTime == 321 && entry.queuedAt == 5)
     }
 
+    /// One full load of `server` and the end of the key sweep it set off,
+    /// not a clock; true when it set one off.
+    @discardableResult
+    private func load(_ server: Server) async -> Bool {
+        let model = LibraryViewModel(provider: server)
+        await model.loadLibrary()
+        await model.keySweep?.value
+        return model.keySweep != nil
+    }
+
     @Test("Wechsel von A zu B und zurueck: der offline gehoerte Stand von A bleibt und geht an A, nie an B")
     func aSwitchKeepsTheUnsentStand() async throws {
         let saved = Saved()
@@ -122,8 +132,7 @@ struct ABSServerSwitchTests {
         AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now + 1)
         AppStorageKeys.set(nil, for: AppStorageKeys.selectedLibraryId)
         let serverB = Server(books: [bookB])
-        await LibraryViewModel(provider: serverB).loadLibrary()
-        try await Task.sleep(for: .milliseconds(500))
+        #expect(await !load(serverB), "B's first load set off a sweep of keys")
         #expect(ListeningStore.backup(bookA)?.first == 321, "B's first load cleaned A's stand")
 
         // The queue sends while B is signed in.
@@ -158,14 +167,12 @@ struct ABSServerSwitchTests {
         // No full load remembered: this once nothing goes, the server is noted.
         AppStorageKeys.set(nil, for: AppStorageKeys.absLastFullLoadServer)
         ListeningStore.store(gone, entry: [50, now])
-        await LibraryViewModel(provider: Server(books: [kept])).loadLibrary()
-        try await Task.sleep(for: .milliseconds(500))
+        #expect(await !load(Server(books: [kept])), "the first load after the update set off a sweep of keys")
         #expect(ListeningStore.backup(gone)?.first == 50, "the first load after the update cleaned")
         #expect(AppStorageKeys.string(AppStorageKeys.absLastFullLoadServer) == "https://a.example")
 
         // The next full load of the same server cleans a book that left.
-        await LibraryViewModel(provider: Server(books: [kept])).loadLibrary()
-        try await Task.sleep(for: .milliseconds(500))
+        #expect(await load(Server(books: [kept])), "the same server set off no sweep of keys")
         #expect(ListeningStore.backup(gone) == nil, "the same server no longer cleans a book that left")
     }
 
@@ -193,9 +200,8 @@ struct ABSServerSwitchTests {
         AppStorageKeys.noteABSSignIn("https://b.example", nowMs: now)
         #expect(AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false), "the device knew two servers")
         AppStorageKeys.set(nil, for: AppStorageKeys.selectedLibraryId)
-        for _ in 0..<2 {
-            await LibraryViewModel(provider: Server(books: [bookB])).loadLibrary()
-            try await Task.sleep(for: .milliseconds(500))
+        for round in 1...2 {
+            #expect(await !load(Server(books: [bookB])), "load \(round) of B set off a sweep of keys")
         }
         #expect(ListeningStore.backup(bookA)?.first == 321, "a load of B cleaned A's stand")
         #expect(d.object(forKey: AppStorageKeys.playbackRate(bookA)) as? Double == 1.5, "a load of B cleaned A's speed")
