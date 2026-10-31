@@ -72,6 +72,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         var silence = DownloadSilence(limit: 120, maxGap: 45)
         var tick: TimeInterval = 15
         var running = false
+        #if DEBUG
+        var endAfterEntry = false
+        #endif
     }
     private let watch = Mutex(Watch())
 
@@ -81,6 +84,15 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     func testSetSilence(limit: TimeInterval, tick: TimeInterval) {
         watch.withLock { $0 = Watch(silence: DownloadSilence(limit: limit, maxGap: tick * 3), tick: tick) }
     }
+
+    /// Test seam: the downloads of a host end right after a download's
+    /// entry, where the watch may come between a download and its run.
+    func testEndAfterEntry(_ on: Bool) {
+        watch.withLock { $0.endAfterEntry = on }
+    }
+
+    /// Whether the watch counts any download running.
+    var testWatchesAny: Bool { watch.withLock { $0.silence.watchesAny } }
     #endif
 
     // An implicitly-unwrapped `var` only because the delegate-`self` pattern
@@ -154,18 +166,26 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
                 ?? session.downloadTask(with: request)
             // The host the app asks; a redirect elsewhere still counts here.
             let host = task.originalRequest?.url?.host ?? request.url?.host ?? ""
+            // The entry and its count are one step, as are the take and its
+            // end (`takeHandler`): a watch ending the host between them
+            // would find the entry, end no count, and the count after it
+            // would hold a download that does not run. `watch` is taken
+            // only inside `lock` or alone, never the other way.
             lock.lock()
             handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation,
                                                     statedBytes: statedBytes, claim: claim, host: host, task: task)
-            var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
-            map[String(task.taskIdentifier)] = destination.path
-            AppStorageKeys.set(map, for: destinationsKey)
-            lock.unlock()
             let startWatch = watch.withLock { state -> Bool in
                 state.silence.began(host, at: Date())
                 defer { state.running = true }
                 return !state.running
             }
+            var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
+            map[String(task.taskIdentifier)] = destination.path
+            AppStorageKeys.set(map, for: destinationsKey)
+            lock.unlock()
+            #if DEBUG
+            if watch.withLock({ $0.endAfterEntry }) { endDownloads(of: host) }
+            #endif
             if startWatch { watchSilence() }
             onTask?(task)
             task.resume()
@@ -178,7 +198,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         Task { [weak self] in
             while let self {
                 let tick = self.watch.withLock { $0.tick }
-                // bearable, because a cancelled sleep only ends the watch, which the next download starts again
+                // bearable, because nothing cancels this task (no one holds it); a cancelled sleep would not end the loop but turn it without a pause
                 try? await Task.sleep(for: .seconds(tick))
                 let online = await Reachability.isConnected()
                 let silent = self.watch.withLock { $0.silence.tick(at: Date(), online: online) }
@@ -215,9 +235,11 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     /// Takes a task's handler; each taken handler ends one counted download
     /// of its host (`DownloadSilence.ended`), exactly once.
     private func takeHandler(_ id: Int) -> Handler? {
-        let taken = lock.withLock { handlers.removeValue(forKey: id) }
-        if let host = taken?.host { watch.withLock { $0.silence.ended(host) } }
-        return taken
+        lock.withLock {
+            let taken = handlers.removeValue(forKey: id)
+            if let host = taken?.host { watch.withLock { $0.silence.ended(host) } }
+            return taken
+        }
     }
 
     private func takeDestination(_ id: Int) -> URL? {

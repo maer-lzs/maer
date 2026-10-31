@@ -185,6 +185,24 @@ struct DownloadSilenceTests {
         }
     }
 
+    /// The watch may end a host between a download's entry and its count;
+    /// the seam ends it right there. The download ends, and the watch
+    /// counts nothing after it: a count without a download kept it looking.
+    @Test("die Wacht beendet einen Download gleich nach seinem Eintrag: danach zaehlt sie keinen Download")
+    func aDownloadEndedRightAfterItsEntryIsNotCounted() async throws {
+        let host = try Host { _ in .silent }
+        try await host.start()
+        defer { host.stop() }
+        Self.shortSilence()
+        defer { Self.appSilence() }
+        #expect(!FileDownloader.shared.testWatchesAny, "the precondition: no download counted")
+        FileDownloader.shared.testEndAfterEntry(true)
+        let error = await Self.download(host.url("eintrag.mp3"))
+        FileDownloader.shared.testEndAfterEntry(false)
+        #expect(error is SilentHostError, "the download did not end at its entry: \(String(describing: error))")
+        #expect(!FileDownloader.shared.testWatchesAny, "the watch counts a download that does not run")
+    }
+
     @Test("acht Downloads an einen langsamen, antwortenden Wirt: keiner bricht ab, auch die wartenden nicht")
     func eightDownloadsAtASlowHostAllFinish() async throws {
         let body = Data(repeating: 0x41, count: 6_000)
