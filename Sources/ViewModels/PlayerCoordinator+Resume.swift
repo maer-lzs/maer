@@ -25,11 +25,14 @@ extension PlayerCoordinator {
     }
 
     /// A request to continue found no title: said like a search hit that
-    /// no longer resolves, never a silent tap. The one sentence for the
-    /// view and for the widget's command; the door writes the line.
+    /// no longer resolves, never a silent tap. The one place of the
+    /// sentence for the view and for the widget's command, which says the
+    /// case the door last met (`ResumeTarget.nothingSentence`); the door
+    /// writes the line.
     func sayNothingToResume() {
         Haptics.tap()
-        sayOpenFailure(String(localized: "Audiobook could not be loaded."), cause: .unknown, title: nil)
+        let missing = if case .nothing(let missing) = lastResumeTarget { missing } else { "item" }
+        sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: .unknown, title: nil)
     }
 
     /// Continues listening and says what it did. The command runs without
@@ -71,6 +74,7 @@ extension PlayerCoordinator {
                                        hasActivePlayer: viewModel != nil,
                                        lastPlayedId: lastPlayedId, lastPlayedKnown: last != nil,
                                        libraryLoading: caller == .view && library.isLoading)
+        lastResumeTarget = target
         Logger.player.notice("RESUME by=\(caller.rawValue, privacy: .public) target=\(target.name, privacy: .public)")
         switch target {
         case .item:

@@ -7662,6 +7662,50 @@
         }
       }
     },
+    "Nothing to continue yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts zum Weiterhören."
+          }
+        }
+      }
+    },
+    "Nothing to resume: last played not found" : {
+      "comment" : "Continue listening found a last played title that nothing resolves any more.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch konnte nicht geladen werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobook could not be loaded."
+          }
+        }
+      }
+    },
+    "Nothing to resume: title not found" : {
+      "comment" : "Siri or a widget row named a title this device cannot find.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch konnte nicht geladen werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobook could not be loaded."
+          }
+        }
+      }
+    },
     "Nothing to sync." : {
       "localizations" : {
         "de" : {
@@ -11758,7 +11802,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das zuletzt Gehörte, einen Tipp entfernt."
+            "value" : "Das zuletzt Gehörte, mit einem Tippen."
           }
         }
       }

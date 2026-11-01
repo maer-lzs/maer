@@ -187,6 +187,18 @@ struct WidgetLineTests {
 
     /// Half a second of tone as AAC in ADTS frames, the form a station
     /// sends.
+    /// The description in the widget gallery and in "Edit Widget": the
+    /// English key says "tap", the German value says it the same way.
+    @Test("die Beschreibung von Weiterhoeren: mit einem Tippen, im Widget und im Katalog", .needsTheSources)
+    func theDescriptionSaysOneTap() throws {
+        let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
+        #expect(widget.contains(".description(\"The last thing you played, one tap away.\")"))
+        let catalog = try StringCatalogOrderTests.entries()
+        let german = ((catalog["The last thing you played, one tap away."]?["localizations"] as? [String: Any])?["de"]
+            as? [String: Any])?["stringUnit"] as? [String: Any]
+        #expect(german?["value"] as? String == "Das zuletzt Gehörte, mit einem Tippen.")
+    }
+
     private func adts(seconds: Double) throws -> Data {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("widget-line-\(UUID().uuidString).aac")
         defer { try? FileManager.default.removeItem(at: url) }

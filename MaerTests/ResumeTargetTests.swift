@@ -36,6 +36,39 @@ struct ResumeTargetTests {
         }
     }
 
+    /// Each way of finding nothing has its own catalog key, so a new
+    /// sentence for one case is a catalog value; only a device without a
+    /// last played title says there is nothing to continue yet.
+    @Test("nichts gefunden sagt je Fall den eigenen Schluessel: ohne Zeiger noch nichts zum Weiterhoeren, Zeiger ohne Titel und unbekannter Titel je einer")
+    func eachNothingHasItsSentence() async {
+        #expect(ResumeTarget.nothingSentence(missing: "no last played").key == "Nothing to continue yet.")
+        #expect(ResumeTarget.nothingSentence(missing: "last played not found").key == "Nothing to resume: last played not found")
+        #expect(ResumeTarget.nothingSentence(missing: "item").key == "Nothing to resume: title not found")
+        // The door keeps its answer, so the view and the command say the
+        // case they met.
+        let coordinator = PlayerCoordinator(provider: MockProvider())
+        let library = LibraryViewModel(provider: MockProvider())
+        let target = await coordinator.resume(namedItemId: nil, by: .view, library: library, lastPlayedId: nil)
+        #expect(target == .nothing(missing: "no last played"))
+        #expect(coordinator.lastResumeTarget == target, "the door forgot the case it met")
+    }
+
+    /// The new sentence and the two that keep the old wording until it is
+    /// decided, as the catalog holds them.
+    @Test("die Saetze fuer nichts gefunden im Katalog: der neue deutsch, die zwei anderen mit dem alten Wortlaut", .needsTheSources)
+    func theNothingSentencesInTheCatalog() throws {
+        let catalog = try StringCatalogOrderTests.entries()
+        func value(_ key: String, _ language: String) -> String? {
+            let localized = (catalog[key]?["localizations"] as? [String: Any])?[language] as? [String: Any]
+            return (localized?["stringUnit"] as? [String: Any])?["value"] as? String
+        }
+        #expect(value("Nothing to continue yet.", "de") == "Noch nichts zum Weiterhören.")
+        for key in ["Nothing to resume: last played not found", "Nothing to resume: title not found"] {
+            #expect(value(key, "de") == "Hörbuch konnte nicht geladen werden.", "\(key)")
+            #expect(value(key, "en") == "Audiobook could not be loaded.", "\(key)")
+        }
+    }
+
     @Test("Ansicht und Befehl treffen an der Tuer dieselbe Entscheidung: ein Titel der Bibliothek ist zuletzt gehoert, ein unbekannter ist nichts")
     func theViewAndTheCommandDecideAlike() async throws {
         let known = "resume-known-\(UUID().uuidString)"
@@ -239,6 +272,11 @@ struct ResumeTargetTests {
                 "the command says nothing found another way than the view")
         #expect(view.contains("if target.findsNothing { playerCoordinator.sayNothingToResume() }"),
                 "the view says nothing found another way than the command")
+        let sentence = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator+Resume.swift")
+        #expect(sentence.contains("sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: .unknown, title: nil)"),
+                "the sentence for nothing found is not the one rule's")
+        #expect(!sentence.contains("Audiobook could not be loaded."), "the door says a sentence of its own")
+        #expect(door.contains("lastResumeTarget = target"), "the door does not keep the case it met")
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.id"), "Siri's named book does not reach the door through the view")
         let link = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")

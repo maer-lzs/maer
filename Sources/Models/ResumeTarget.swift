@@ -23,6 +23,17 @@ nonisolated enum ResumeTarget: Equatable {
         return false
     }
 
+    /// What a request that found nothing says, by what was missing. Each
+    /// case has its own catalog key, so one sentence changes without the
+    /// others.
+    static func nothingSentence(missing: String) -> LocalizedStringResource {
+        switch missing {
+        case "no last played": return "Nothing to continue yet."
+        case "last played not found": return "Nothing to resume: last played not found"
+        default: return "Nothing to resume: title not found"
+        }
+    }
+
     /// The case without its id, for a log line.
     var name: String {
         switch self {

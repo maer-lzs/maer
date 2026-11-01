@@ -87,6 +87,10 @@ final class PlayerCoordinator: ObservableObject {
     /// after a title change and the mini player stayed gone.
     private var builtModels: [(model: WeakPlayerModel, watch: AnyCancellable)] = []
     private var soundWithoutBarSaid: ObjectIdentifier?
+    /// The door's last answer to continue listening, so the sentence for
+    /// nothing found names the case the view or the command just met. Only
+    /// `resume(namedItemId:by:)` writes it.
+    var lastResumeTarget: ResumeTarget?
     /// The songs this session played before the running one, newest last:
     /// the title button's way back. In memory only, never saved, never shown;
     /// the queue itself keeps no played titles.
