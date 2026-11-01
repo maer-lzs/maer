@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// A routine's rule: its one spelling as an id, and what it plays.
@@ -134,6 +135,75 @@ struct RoutineRuleTests {
         #expect(RoutineRule.clashes("rule:next:3:aaaa", in: held))
         #expect(!RoutineRule.clashes("rule:next:bbbb", in: held))
         #expect(!RoutineRule.clashes("rss:x:1", in: held), "a title is no rule")
+    }
+}
+
+/// Adding keeps one rule per show; two devices can still each add one to
+/// the same list. The merge keeps the newer side's and settles there.
+@MainActor
+@Suite(.serialized)
+struct RoutineMergeTests {
+    private final class RecordingCarrier: PlaylistCarrier {
+        var name: String { "recording" }
+        var snapshot = MaerPlaylistMerge.Snapshot()
+        var stores = 0
+        func held() -> MaerPlaylistMerge.Snapshot { snapshot }
+        func store(_ snapshot: MaerPlaylistMerge.Snapshot) {
+            self.snapshot = snapshot
+            stores += 1
+        }
+        func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    @Test("zwei Geraete mit je einer anderen Regel derselben Sendung schwingen auf eine ein, die der neueren Seite, danach ueber fuenf Runden kein Schrieb")
+    func twoRulesOfOneShowSettleOnOne() throws {
+        let restore = SyncSwitchProbe.armOn()
+        defer { restore() }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("routine-merge-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = RecordingCarrier()
+        func device(_ name: String) -> (store: MaerPlaylists, runner: MaerPlaylistCloudSync) {
+            let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("\(name).sqlite").path))
+            return (store, MaerPlaylistCloudSync(carrier: carrier, playlists: store, itemIdMap: { $0 },
+                                                 deviceName: { name }, idFormSettled: { true }))
+        }
+        let a = device("Geraet-A")
+        let b = device("Geraet-B")
+        let list = a.store.create(name: "Morgens")
+        _ = a.store.add(itemId: "rss:f:e1", to: list.id)
+        a.runner.reconcile()
+        b.runner.reconcile()
+        #expect(b.store.playlist(id: list.id) != nil, "the precondition: both devices hold the list")
+
+        // Each device adds a rule of the same show before the next round; B's is the newer.
+        #expect(a.store.add(itemId: "rule:newest:aaaa", to: list.id) == .added)
+        _ = a.store.add(itemId: "rule:next:bbbb", to: list.id)
+        #expect(b.store.add(itemId: "rule:next:aaaa", to: list.id) == .added)
+        for _ in 0..<3 {
+            a.runner.reconcile()
+            b.runner.reconcile()
+        }
+        let expected = ["rss:f:e1", "rule:next:aaaa", "rule:next:bbbb"]
+        #expect(a.store.playlist(id: list.id)?.itemIds == expected, "one rule of the show, the newer side's; another show's rule stays")
+        #expect(b.store.playlist(id: list.id)?.itemIds == expected)
+        #expect(carrier.snapshot.lists[list.id]?.itemIds == expected)
+
+        final class Counter { var writes = 0 }
+        let local = Counter()
+        let watching = [a.store.objectWillChange.sink { local.writes += 1 },
+                        b.store.objectWillChange.sink { local.writes += 1 }]
+        let settled = carrier.stores
+        for _ in 0..<5 {
+            a.runner.reconcile()
+            b.runner.reconcile()
+        }
+        #expect(carrier.stores == settled, "settled lists are no reason to write")
+        #expect(local.writes == 0, "no write to either store: \(local.writes)")
+        withExtendedLifetime((a.runner, b.runner, watching)) {}
     }
 }
 #endif

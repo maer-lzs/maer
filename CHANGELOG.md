@@ -3,7 +3,8 @@
 ## Next build (not yet cut)
 
 **Routines: a playlist that picks today's episodes.** On the page of a
-show you follow, Add to Routine puts a rule into one of your playlists:
+show you follow by its feed (not a show of an Audiobookshelf server),
+Add to Routine puts a rule into one of your playlists:
 the newest episode, or the next one, two or three from where you stand.
 When the list plays, each rule becomes the episodes it picks at that
 moment, in its place among the other titles, and its line on the list's
@@ -13,7 +14,12 @@ longer among the playlists of the Music tab. A list holds one rule per
 show. Offline a routine plays only downloaded episodes, so after adding,
 the app offers to download new episodes of that show automatically.
 Siri and Shortcuts can start a routine by its name: the app opens and
-the routine plays, or says why it cannot.
+the routine plays, or says why it cannot. The page of a routine says
+in its footer what a routine does.
+
+**A playlist with one cover shows that cover.** It fills the whole
+square on the card and the page, for your own and for server playlists;
+with two or three covers the mosaic stays as it was.
 
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the

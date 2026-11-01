@@ -104,10 +104,7 @@ enum RoutinePlayback {
     static func answer(_ rule: RoutineRule, in show: PodcastShow?, online: Bool,
                        state: (LibraryItem) -> EpisodePlayState,
                        isDownloaded: (String) -> Bool) -> Answer {
-        guard let show else {
-            Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: the show is not known on this device")
-            return .showUnknown
-        }
+        guard let show else { return .showUnknown }
         let pairs = show.episodes.filter(\.isPlayable).map { ($0, podcastLibraryItem(show: show, episode: $0)) }
         let byId = Dictionary(pairs.map { ($0.1.id, $0.1) }) { first, _ in first }
         let episodes = pairs.map { episode, item in
@@ -120,8 +117,20 @@ enum RoutinePlayback {
         case .play(let ids):
             return .play(ids.compactMap { byId[$0] })
         case .absent(let absence):
-            Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: \(absence.rawValue, privacy: .public)")
             return .absent(absence)
+        }
+    }
+
+    /// The line a start writes for a rule that picks nothing. Only the
+    /// start writes it: the page asks `answer` on every pass, and its lines
+    /// would bury the start's.
+    static func logAbsence(_ rule: RoutineRule, _ answer: Answer) {
+        switch answer {
+        case .play: return
+        case .absent(let absence):
+            Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: \(absence.rawValue, privacy: .public)")
+        case .showUnknown:
+            Logger.library.notice("ROUTINE rule=\(rule.id, privacy: .public) absent: the show is not known on this device")
         }
     }
 
@@ -174,10 +183,10 @@ enum RoutinePlayback {
     }
 
     /// The snapshot from a show, pure. A premium feed's picture or a
-    /// picture address with a secret in its query stays home.
+    /// picture address that carries access stays home.
     nonisolated static func snapshot(_ itemId: String, show: PodcastShow, premium: Bool) -> CarriedItem? {
         guard let title = SyncCarried.usableTitle(show.title, for: itemId) else { return nil }
-        let picture = show.artworkURL.flatMap { premium || PodcastFeedAddress.isTokenFeedURL($0) ? nil : $0 }
+        let picture = show.artworkURL.flatMap { premium || PodcastFeedAddress.carriesAccess($0) ? nil : $0 }
         return CarriedItem(id: itemId, title: title, coverURL: picture)
     }
 
@@ -214,7 +223,9 @@ enum RoutinePlayback {
         let fresh = online ? await refreshed(list.itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
         let start = expand(list.itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
-            answer(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online).items
+            let said = answer(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online)
+            logAbsence(rule, said)
+            return said.items
         }
         await coordinator.playInOrder(items: start.items, contextSource: list.name,
                                       restartFirst: !start.firstFromRule)

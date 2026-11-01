@@ -8,8 +8,8 @@ import SwiftUI
 /// THE playlist cover: up to three album covers, two small squares on top
 /// and one big square below (the server's single playlist cover is
 /// deliberately ignored for a uniform look); a slot without a cover takes
-/// the tint, and with none the `music.note.list` glyph stands in the middle
-/// of the visible square. Built directly by `PlaylistCard` and the
+/// the tint, one cover alone fills the square, and with none the
+/// `music.note.list` glyph stands in the middle of the visible square. Built directly by `PlaylistCard` and the
 /// playlist page.
 struct PlaylistArtwork: View {
     let playlistID: String
@@ -28,13 +28,18 @@ struct PlaylistArtwork: View {
         GeometryReader { geo in
             let w = geo.size.width
             let used = PlaylistPresentation.mosaicTileCount(coverURLs.count)
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    slot(coverIndex: 1, used: used).frame(width: w / 2, height: w / 2)
-                    slot(coverIndex: 2, used: used).frame(width: w / 2, height: w / 2)
+            if PlaylistPresentation.coverFillsSquare(coverURLs.count) {
+                // One cover fills the square, not the big slot's upper half.
+                tile(coverURLs[0]).frame(width: w, height: w)
+            } else {
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        slot(coverIndex: 1, used: used).frame(width: w / 2, height: w / 2)
+                        slot(coverIndex: 2, used: used).frame(width: w / 2, height: w / 2)
+                    }
+                    slot(coverIndex: 0, used: used)
+                        .frame(width: w, height: w)
                 }
-                slot(coverIndex: 0, used: used)
-                    .frame(width: w, height: w)
             }
         }
         // The square tile geometry of the other card rows (MediaTile family).

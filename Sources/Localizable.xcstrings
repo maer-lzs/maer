@@ -1035,12 +1035,12 @@
         }
       }
     },
-    "A routine rule: it plays as its episodes when the routine starts" : {
+    "A routine rule this version cannot read: the routine starts without it" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Regel einer Routine: sie läuft als ihre Folgen, wenn die Routine startet"
+            "value" : "Eine Regel, die diese Version nicht lesen kann: die Routine startet ohne sie"
           }
         }
       }
@@ -9644,6 +9644,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Routinen"
+          }
+        }
+      }
+    },
+    "Routines on your devices pick their episodes when they start. They stay on your devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routinen auf deinen Geräten wählen ihre Folgen, wenn sie starten. Sie bleiben auf deinen Geräten."
           }
         }
       }

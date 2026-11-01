@@ -21,6 +21,20 @@ struct PlaylistPresentationTests {
         #expect(PlaylistPresentation.mosaicTileCount(-3) == 0)
     }
 
+    /// One cover fills the square (all Mär and server playlists); two and
+    /// three keep the mosaic, none keeps the glyph.
+    @Test("eine Playlist mit genau einem Cover zeigt das Cover im ganzen Quadrat, zwei und drei bleiben Mosaik", .needsTheSources)
+    func oneCoverFillsTheSquare() throws {
+        #expect(PlaylistPresentation.coverFillsSquare(1))
+        for count in [0, 2, 3, 9] {
+            #expect(!PlaylistPresentation.coverFillsSquare(count), "\(count) covers")
+        }
+        let art = FetchAnswerTests.squeezed(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PlaylistArtwork.swift"), encoding: .utf8))
+        #expect(art.contains("if PlaylistPresentation.coverFillsSquare(coverURLs.count) { tile(coverURLs[0]).frame(width: w, height: w) } else {"),
+                "the artwork asks the one rule")
+    }
+
     @Test("duration text: H:MM at an hour or more, else M:SS")
     func duration() {
         #expect(PlaylistPresentation.durationText(seconds: 4320) == "1:12")   // 1h12m

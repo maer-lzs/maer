@@ -251,7 +251,7 @@ Auf dem iPhone Duo stehen die Tabs, die Suche und der Einstellungsknopf in einer
 
 ## Aufbau der Quellen
 
-Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält 580 Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
+Der Baum unten ist eine Auswahl, nicht das ganze Repository (`Sources/` hält mehrere hundert Dateien; `tools/` gehört nicht zum Xcode-Projekt, und der Sync-Dienst hat sein eigenes Repository). Er nennt die Schichten, die die App heute tragen; jede Zeile beschreibt die Datei, die sie nennt.
 
 ```text
 Sources/

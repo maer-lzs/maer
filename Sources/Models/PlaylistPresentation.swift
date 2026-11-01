@@ -33,10 +33,18 @@ nonisolated enum PlaylistPresentation {
     }
 
     /// How many UNIQUE covers the portrait mosaic uses (one big and two
-    /// small slots): 0 → tint+glyph, 1 → big cover only,
-    /// 2 → big + one small, 3 or more → all three slots. Never more than 3.
+    /// small slots): 0 → tint+glyph, 1 → the one cover fills the square
+    /// (`coverFillsSquare`), 2 → big + one small, 3 or more → all three
+    /// slots. Never more than 3.
     static func mosaicTileCount(_ coverCount: Int) -> Int {
         min(max(coverCount, 0), 3)
+    }
+
+    /// Whether the one cover fills the whole square instead of a slot. In
+    /// the mosaic the big slot shows only its upper half, under two tinted
+    /// squares; a list with one cover shows that cover.
+    static func coverFillsSquare(_ coverCount: Int) -> Bool {
+        mosaicTileCount(coverCount) == 1
     }
 
     /// Pure, tested: pick the mosaic cover ids from a

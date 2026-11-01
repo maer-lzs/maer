@@ -143,10 +143,11 @@ struct RoutineCarryTests {
         final class Counter { var writes = 0 }
         let local = Counter()
         let watching = store.objectWillChange.sink { local.writes += 1 }
-        // What opening the list page does, then the healing it starts.
-        store.backfillTitles(playlistId: list.id)
+        // What opening the list page does, then the healing it starts, to its end.
+        let healing = store.backfillTitles(playlistId: list.id)
+        #expect(healing != nil, "the precondition: the rules have no snapshot, so the page asks")
+        await healing?.value
         await store.fetchMissingTitles(Self.ruleIds, playlistId: list.id)
-        try await Task.sleep(for: .milliseconds(300))
         #expect(local.writes == 0, "nothing learned, nothing written: \(local.writes)")
         #expect(store.playlist(id: list.id)?.snapshots.isEmpty == true)
         #expect(store.playlist(id: list.id)?.itemIds == Self.ruleIds)

@@ -56,6 +56,14 @@ nonisolated enum PodcastFeedAddress {
     static let secretQueryParams: Set<String> =
         ["token", "auth", "key", "secret", "freebie"]
 
+    /// Whether an address carries access at all: a secret in its query, or
+    /// a user or password before its host. Such an address stays home.
+    static func carriesAccess(_ raw: String) -> Bool {
+        if isTokenFeedURL(raw) { return true }
+        guard let url = URL(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { return false }
+        return url.user != nil || url.password != nil
+    }
+
     /// Token-URL premium class: a known secret parameter with a non-empty
     /// value. Conservative string parse, works for raw and normalized URLs.
     /// Lives here rather than with the subscriptions so the export builder

@@ -1012,7 +1012,8 @@ struct MaerPlaylistPage: View {
                     // Explained once, calmly, not on every add.
                     // The plain list of the frame gives a footer no style of
                     // its own; the note reads small and quiet, as before.
-                    Text(MaerPlaylistFooter.text(anyMusicServer: !PlaylistPresenter.servers(for: []).isEmpty))
+                    Text(MaerPlaylistFooter.text(anyMusicServer: !PlaylistPresenter.servers(for: []).isEmpty,
+                                                 routine: playlist.isRoutine))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -1129,7 +1130,8 @@ struct MaerPlaylistPage: View {
         case .fileNotOnDevice: return String(localized: "Not available on this device: the file is not on this device")
         case .showNotFollowed: return String(localized: "Not available on this device: the show is not followed here")
         case .unknownSource: return String(localized: "Not available on this device: unknown source")
-        case .routineRule: return String(localized: "A routine rule: it plays as its episodes when the routine starts")
+        // A rule this version reads has its own row; this is one it cannot.
+        case .routineRule: return String(localized: "A routine rule this version cannot read: the routine starts without it")
         }
     }
 }

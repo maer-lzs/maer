@@ -251,7 +251,7 @@ On the iPhone Duo the tabs, the search and the settings button stand in a side c
 
 ## Source layout
 
-The tree below is a selection, not the whole repository (`Sources/` holds 580 files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
+The tree below is a selection, not the whole repository (`Sources/` holds several hundred files; `tools/` is not part of the Xcode project, and the sync service has its own repository). It names the layers that carry the app today; every line describes the file it names.
 
 ```text
 Sources/

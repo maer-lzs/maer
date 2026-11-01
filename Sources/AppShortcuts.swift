@@ -161,6 +161,9 @@ struct PlayRoutineIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        // The newest request wins: an older one still waiting gives way.
+        ResumeRequest.pending = false
+        ResumeRequest.pendingItemId = nil
         ResumeRequest.pendingRoutineId = routine.id
         NotificationCenter.default.post(name: .resumeLastBookRequested, object: nil)
         return .result()

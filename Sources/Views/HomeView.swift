@@ -18,8 +18,6 @@ struct HomeView: View {
     var isActive: Bool = true
     @ObservedObject var libraryViewModel: LibraryViewModel
     @ObservedObject private var queue = PlayQueue.shared
-    /// The routines row: a list that gains or loses its rule moves in or out.
-    @ObservedObject private var maerPlaylists = MaerPlaylists.shared
 
     /// Recency-ordered ids of in-progress books + episodes. Resolved to the
     /// matching FeaturedCard (book vs podcast) in the view. The same cards
@@ -293,32 +291,13 @@ struct HomeView: View {
                          libraryViewModel: libraryViewModel)
     }
 
-    /// "Up Next". The global PlayQueue, same row component as the queue page.
-    /// "Routines": every device list with a rule, newest change first, as
-    /// the Music tab's playlist cards. Own holdings and few, so the row
-    /// shows them all and has no page of its own.
-    @ViewBuilder
+    /// "Routines", its own view (`HomeRoutinesRow`): only the row observes
+    /// the device lists.
     private var routinesSection: some View {
-        let routines = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter(\.isRoutine)) {
-            Date(timeIntervalSince1970: $0.updatedAt)
-        }
-        if !routines.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                RowHeading.plain("Routines")
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 16) {
-                        ForEach(routines) { list in
-                            PlaylistCard(source: PlaylistCardSource.device(list, router: router),
-                                         playerCoordinator: playerCoordinator)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .rowReachesUnderSideColumn()
-            }
-        }
+        HomeRoutinesRow(playerCoordinator: playerCoordinator)
     }
 
+    /// "Up Next". The global PlayQueue, same row component as the queue page.
     @ViewBuilder
     private var upNextSection: some View {
         let items = queue.ids.compactMap { router.item($0) }
@@ -1058,6 +1037,37 @@ struct RediscoverPoolPage: View {
                     }
                 }
                 .padding(.horizontal)
+            }
+        }
+    }
+}
+
+/// "Routines" on Start: every device list with a rule, newest change first,
+/// as the Music tab's playlist cards. Own holdings and few, so the row shows
+/// them all and has no page of its own. The row observes the lists itself:
+/// a list that gains or loses its rule redraws this row, not all of Start.
+struct HomeRoutinesRow: View {
+    @Environment(\.itemRouter) private var router
+    let playerCoordinator: PlayerCoordinator
+    @ObservedObject private var maerPlaylists = MaerPlaylists.shared
+
+    var body: some View {
+        let routines = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter(\.isRoutine)) {
+            Date(timeIntervalSince1970: $0.updatedAt)
+        }
+        if !routines.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.plain("Routines")
+                ScrollView(.horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(routines) { list in
+                            PlaylistCard(source: PlaylistCardSource.device(list, router: router),
+                                         playerCoordinator: playerCoordinator)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .rowReachesUnderSideColumn()
             }
         }
     }

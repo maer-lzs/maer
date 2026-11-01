@@ -22,6 +22,17 @@ enum ResumeRequest {
     /// A routine requested via Siri or Shortcuts ("Start <routine>"), by
     /// the id of its list.
     static var pendingRoutineId: String?
+
+    /// Ends a routine request that waits for its list. A later request
+    /// ends it (the routine's intent clears the others when it sets its
+    /// own, so one beside it came later), and so does leaving the
+    /// foreground: an old request must not start hours later at some
+    /// change of the lists.
+    static func endRoutineWait(_ reason: String) {
+        guard let id = pendingRoutineId else { return }
+        pendingRoutineId = nil
+        Logger.library.notice("ROUTINE request \(id, privacy: .public) stops waiting: \(reason, privacy: .public)")
+    }
 }
 
 /// Same shape for "open what the message was about": the tap only leaves a

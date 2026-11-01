@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Bringing Mär playlists together across a person's own devices. The whole
 /// decision logic, pure and testable, without a store or a network in sight.
@@ -129,7 +130,7 @@ nonisolated enum MaerPlaylistMerge {
             let theirs = cloud.lists[id]
             switch (mine, theirs) {
             case let (m?, t?):
-                var united = unite(m, t)
+                var united = unite(m, t, list: id)
                 // A list stays deleted unless it was touched AFTER the deletion.
                 if let deletedAt = outcome.tombstones[id], deletedAt >= united.updatedAt { continue }
                 united.removed = united.removed.filter { $0.value >= oldest }
@@ -149,8 +150,10 @@ nonisolated enum MaerPlaylistMerge {
     /// Two versions of ONE list become one: the union of both sides in the
     /// newer side's order, the older side's own entries appended; an entry
     /// with a removal mark is out unless it was added again AFTER the mark;
-    /// the name by its own clock; titles and snapshots supplemented.
-    static func unite(_ a: Entry, _ b: Entry) -> Entry {
+    /// the name by its own clock; titles and snapshots supplemented. A
+    /// routine keeps one rule per show, the newer side's; `list` names the
+    /// list in the line a dropped rule writes.
+    static func unite(_ a: Entry, _ b: Entry, list: String = "") -> Entry {
         let (newer, older) = b.updatedAt > a.updatedAt ? (b, a) : (a, b)
         let added = newer.added.merging(older.added, uniquingKeysWith: max)
         // A removal mark from either side, newest moment wins. A mark is
@@ -165,6 +168,12 @@ nonisolated enum MaerPlaylistMerge {
         var ids: [String] = []
         for item in newer.itemIds + older.itemIds
         where !ids.contains(item) && marks[item] == nil {
+            // One rule per show, as adding keeps it. Two devices can each
+            // add one; the newer side's stands first and stays.
+            if RoutineRule.clashes(item, in: ids) {
+                Logger.library.notice("PLAYLIST list=\(list, privacy: .public) drops rule=\(item, privacy: .public): its show has a rule in the list")
+                continue
+            }
             ids.append(item)
         }
         var united = newer

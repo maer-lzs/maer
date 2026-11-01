@@ -58,7 +58,9 @@ struct SharedGrowthFenceTests {
     /// the queue through one property each, and the music deck counts the
     /// download stock it already observes; the root's request for a
     /// routine reads the lists through one property and paid with the two
-    /// subscription reads the root already observes, so it fell to 371).
+    /// subscription reads the root already observes, so it fell to 371; the
+    /// routines row on Start observes the lists in its own sheet instead of
+    /// the root, a move, so the total stays).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the

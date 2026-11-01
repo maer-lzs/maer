@@ -360,10 +360,12 @@ final class MaerPlaylists: ObservableObject {
     /// Fill snapshots a list is still missing. Entries added before the
     /// snapshot existed, on the device that can resolve them. Runs when the
     /// list page appears; saves only when something was actually learned.
-    func backfillTitles(playlistId: String) {
-        guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
+    /// Answers the healing it started, if any, so a caller can await its end.
+    @discardableResult
+    func backfillTitles(playlistId: String) -> Task<Void, Never>? {
+        guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return nil }
         let missing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
-        guard !missing.isEmpty else { return }
+        guard !missing.isEmpty else { return nil }
         let learned = Self.snapshots(for: missing)
         if !learned.isEmpty {
             playlists[index].snapshots.merge(learned) { old, _ in old }
@@ -374,8 +376,8 @@ final class MaerPlaylists: ObservableObject {
         // the SAME reload way the row goes, so a shared list heals itself
         // instead of staying at the placeholder forever.
         let stillMissing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
-        guard !stillMissing.isEmpty else { return }
-        Task { await fetchMissingTitles(stillMissing, playlistId: playlistId) }
+        guard !stillMissing.isEmpty else { return nil }
+        return Task { await fetchMissingTitles(stillMissing, playlistId: playlistId) }
     }
 
     /// Resolve entries the session cache does not carry (catalogue ids are

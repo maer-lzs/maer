@@ -817,7 +817,10 @@ struct LibraryView: View {
                 }
             }
             // Offer the home-screen quick action for the last played book.
-            if newPhase == .background { updateQuickActions() }
+            if newPhase == .background {
+                updateQuickActions()
+                ResumeRequest.endRoutineWait("the app left the foreground")
+            }
         }
         .onOpenURL { url in
             // Home-screen widget: maer://resume → resume path (like the quick
@@ -1770,8 +1773,11 @@ struct LibraryView: View {
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
         if let id = ResumeRequest.pendingRoutineId {
-            await handlePendingRoutine(id)
-            return
+            guard ResumeRequest.pending || ResumeRequest.pendingItemId != nil else {
+                await handlePendingRoutine(id)
+                return
+            }
+            ResumeRequest.endRoutineWait("a later request")
         }
         // Siri "Play <book>" names a title; a quick action, Siri's
         // "continue" and the widget's link only ask. The decision is the
@@ -1795,7 +1801,7 @@ struct LibraryView: View {
         let lists = routineLists
         switch RoutinePlayback.request(id, in: lists.playlists, complete: !lists.startIncomplete) {
         case .wait:
-            return
+            Logger.library.notice("ROUTINE request \(id, privacy: .public) waits: the start read missed rows")
         case .missing:
             ResumeRequest.pendingRoutineId = nil
             routineRequestFailed(String(localized: "This routine is not on this device."))

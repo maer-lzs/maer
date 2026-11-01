@@ -111,9 +111,12 @@ nonisolated enum PlaylistOnlyMaerSentence {
 
 /// The footer of a Mär playlist's page: what the lists mix and that they
 /// stay on the devices. The music of a server is named only when one is
-/// set up.
+/// set up; a routine says what it does instead.
 nonisolated enum MaerPlaylistFooter {
-    static func text(anyMusicServer: Bool) -> String {
+    static func text(anyMusicServer: Bool, routine: Bool) -> String {
+        if routine {
+            return String(localized: "Routines on your devices pick their episodes when they start. They stay on your devices.")
+        }
         guard anyMusicServer else {
             return String(localized: "Playlists on your devices mix music from open catalogs and your own files. They stay on your devices.")
         }

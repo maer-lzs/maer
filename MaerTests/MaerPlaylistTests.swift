@@ -277,17 +277,30 @@ struct PlaylistSongSemanticsTests {
     @Test("ohne Musikserver nennt der Fusssatz einer Mär-Playlist keine Musik eines Servers", .needsTheSources)
     func withoutAMusicServerTheFooterNamesNone() throws {
         let withoutServer = "Playlists on your devices mix music from open catalogs and your own files. They stay on your devices."
-        #expect(MaerPlaylistFooter.text(anyMusicServer: false) == String(localized: String.LocalizationValue(withoutServer)))
+        #expect(MaerPlaylistFooter.text(anyMusicServer: false, routine: false) == String(localized: String.LocalizationValue(withoutServer)))
         let withServer = "Playlists on your devices mix music from your server, from open catalogs and your own files. They stay on your devices."
-        #expect(MaerPlaylistFooter.text(anyMusicServer: true) == String(localized: String.LocalizationValue(withServer)))
+        #expect(MaerPlaylistFooter.text(anyMusicServer: true, routine: false) == String(localized: String.LocalizationValue(withServer)))
+        // A routine mixes no music; it says what it does, with a server or without.
+        let routine = "Routines on your devices pick their episodes when they start. They stay on your devices."
+        for server in [false, true] {
+            #expect(MaerPlaylistFooter.text(anyMusicServer: server, routine: true) == String(localized: String.LocalizationValue(routine)))
+        }
         // The German sentences, read from the built catalogue.
         let german = try #require(Bundle.main.path(forResource: "de", ofType: "lproj").flatMap(Bundle.init(path:)))
         #expect(german.localizedString(forKey: withServer, value: nil, table: nil)
                 == "Playlists auf deinen Geräten mischen Musik von deinem Server, aus offenen Katalogen und eigene Dateien. Sie bleiben auf deinen Geräten.")
         #expect(german.localizedString(forKey: withoutServer, value: nil, table: nil)
                 == "Playlists auf deinen Geräten mischen Musik aus offenen Katalogen und eigene Dateien. Sie bleiben auf deinen Geräten.")
+        #expect(german.localizedString(forKey: routine, value: nil, table: nil)
+                == "Routinen auf deinen Geräten wählen ihre Folgen, wenn sie starten. Sie bleiben auf deinen Geräten.")
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
         #expect(page.contains("MaerPlaylistFooter.text(anyMusicServer:"), "the page writes its own footer again")
+        #expect(FetchAnswerTests.squeezed(page).contains("routine: playlist.isRoutine))"), "the page names its kind")
+        // A rule this version cannot read: the one row the reason reaches.
+        let unread = "A routine rule this version cannot read: the routine starts without it"
+        #expect(MaerPlaylistPage.reasonText(.routineRule) == String(localized: String.LocalizationValue(unread)))
+        #expect(german.localizedString(forKey: unread, value: nil, table: nil)
+                == "Eine Regel, die diese Version nicht lesen kann: die Routine startet ohne sie")
     }
 }

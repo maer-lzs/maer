@@ -138,6 +138,12 @@ struct RoutinePlaybackTests {
         #expect(RoutinePlayback.snapshot(id, show: show, premium: true)?.coverURL == nil, "a premium feed's picture stays home")
         show.artworkURL = "https://cdn.example/cover.jpg?token=abc"
         #expect(RoutinePlayback.snapshot(id, show: show, premium: false)?.coverURL == nil, "a picture with a secret stays home")
+        for access in ["https://user:pw@cdn.example/cover.jpg", "https://user@cdn.example/cover.jpg"] {
+            show.artworkURL = access
+            #expect(RoutinePlayback.snapshot(id, show: show, premium: false)?.coverURL == nil, "access before the host stays home: \(access)")
+        }
+        #expect(!PodcastFeedAddress.carriesAccess("https://cdn.example/cover.jpg?size=600"))
+        #expect(!PodcastFeedAddress.carriesAccess("https://cdn.example/user@2x.jpg"), "an @ in the path is no user")
         show.title = id
         #expect(RoutinePlayback.snapshot(id, show: show, premium: false) == nil, "no title, no snapshot")
         #expect(AppSession.shared.carried(forId: "rule:newest:no-such-show") == nil)
@@ -231,6 +237,13 @@ struct RoutinePlaybackTests {
         // leave it.
         #expect(door.contains("@discardableResult static func start("))
         #expect(door.contains("return !start.items.isEmpty"))
+        // Only the start writes why a rule picks nothing; the page asks the
+        // answer on every pass.
+        #expect(door.contains("logAbsence(rule, said) return said.items"))
+        let answer = door.components(separatedBy: "static func answer(_ rule: RoutineRule, in show: PodcastShow?, online: Bool, state:").dropFirst().first?
+            .components(separatedBy: "static func logAbsence").first ?? ""
+        #expect(!answer.isEmpty, "the finder must still find the answer")
+        #expect(!answer.contains("Logger"), "the answer writes no line")
     }
 
     // MARK: - Adding
@@ -325,6 +338,11 @@ struct RoutinePlaybackTests {
         let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
         #expect(home.contains("maerPlaylists.playlists.filter(\\.isRoutine)"))
         #expect(home.contains("PlaylistCard(source: PlaylistCardSource.device(list, router: router)"))
+        // Only the row observes the lists; Start's root does not redraw for them.
+        let row = home.components(separatedBy: "struct HomeRoutinesRow: View {").dropFirst().first ?? ""
+        #expect(row.contains("@ObservedObject private var maerPlaylists = MaerPlaylists.shared"))
+        #expect(home.components(separatedBy: "MaerPlaylists.shared").count - 1 == 1, "the row is the one observer on Start")
+        #expect(home.contains("private var routinesSection: some View { HomeRoutinesRow(playerCoordinator: playerCoordinator) }"))
     }
 
     // MARK: - The shortcut
@@ -354,11 +372,27 @@ struct RoutinePlaybackTests {
         #expect(RoutinePlayback.request("a", in: [morning], complete: true) == .start(morning))
         #expect(RoutinePlayback.request("x", in: [morning], complete: true) == .missing)
         let root = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
-        #expect(root.contains("switch RoutinePlayback.request(id, in: lists.playlists, complete: !lists.startIncomplete) { case .wait: return"),
-                "waiting keeps the request and says nothing")
+        #expect(root.contains("switch RoutinePlayback.request(id, in: lists.playlists, complete: !lists.startIncomplete) { case .wait: Logger.library.notice("),
+                "waiting keeps the request, says nothing and writes its line")
         #expect(root.contains(".onReceive(routineLists.$playlists.dropFirst()) { _ in guard ResumeRequest.pendingRoutineId != nil else { return }"),
                 "the waiting request goes on when the lists arrive")
         #expect(root.contains("if !(await RoutinePlayback.start(list, in: lists, on: playerCoordinator)) { routineRequestFailed("))
+    }
+
+    /// A waiting routine request has an end: a later request takes its
+    /// place, and leaving the foreground ends it, each with its line.
+    @Test("eine wartende Bitte einer Routine endet bei einer spaeteren Bitte und wenn die App den Vordergrund verlaesst", .needsTheSources)
+    func aWaitingRoutineRequestHasAnEnd() throws {
+        let root = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(root.contains("if let id = ResumeRequest.pendingRoutineId { guard ResumeRequest.pending || ResumeRequest.pendingItemId != nil else { await handlePendingRoutine(id) return } ResumeRequest.endRoutineWait("),
+                "a request beside the routine's came later and is carried out")
+        #expect(root.contains("if newPhase == .background { updateQuickActions() ResumeRequest.endRoutineWait("),
+                "leaving the foreground ends the wait")
+        let intents = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(intents.contains("ResumeRequest.pending = false ResumeRequest.pendingItemId = nil ResumeRequest.pendingRoutineId = routine.id"),
+                "the routine's request clears the older ones, so one beside it is later")
+        let request = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
+        #expect(request.contains("guard let id = pendingRoutineId else { return } pendingRoutineId = nil Logger.library.notice("))
     }
 
     @Test("die Kurzbefehle lernen die Routinen nur, wenn eine kommt, geht oder ihren Namen aendert")
