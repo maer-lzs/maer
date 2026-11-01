@@ -365,6 +365,16 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// The matching `abspod:` server episode for an `rss:` episode (if on server).
     func bridgedABSId(forRSS id: String) -> String? { rssToABS[id] }
 
+    #if DEBUG
+    /// Test seam: one bridged episode with the server's progress for it, as
+    /// a refresh leaves them; nil takes the bridge and the progress away.
+    func testBridge(rss rssId: String, abs absId: String, progress: BookProgress?) {
+        absToRSS[absId] = progress == nil ? nil : rssId
+        rssToABS[rssId] = progress == nil ? nil : absId
+        episodeProgress[absId] = progress
+    }
+    #endif
+
     /// Push local (RSS) listening history to the matching server episodes. Only
     /// where the local state is newer than the server. Idempotent. Re-pull the
     /// server progress after the push. Applies only to episodes that exist on

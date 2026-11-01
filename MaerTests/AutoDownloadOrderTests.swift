@@ -63,7 +63,9 @@ struct AutoDownloadOrderTests {
         #expect(PodcastAutoDownloadRules.isStarted(.inProgress(fraction: 0.05, remaining: 570), duration: 600))
         #expect(!PodcastAutoDownloadRules.isStarted(.played, duration: 600))
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
-        #expect(helpers.contains("return PodcastAutoDownloadRules.isStarted(progress.state(guid: guid, duration: episode.duration), duration: episode.duration)"))
+        #expect(helpers.contains("let wanted = PodcastAutoDownloadRules.wanted(show.episodes, direction: direction, since: since(show.id), state: state)"))
+        let rules = try Self.source("Sources/Models/PodcastAutoDownloadRules.swift")
+        #expect(rules.contains("isStarted: { guid in byGuid[guid].map { isStarted(state($0), duration: $0.duration) } ?? false }"))
         // A routine's rule asks the same question at the same place, and
         // the half minute is spelled nowhere else.
         let routine = try Self.source("Sources/Providers/RoutinePlayback.swift")
@@ -120,6 +122,78 @@ struct AutoDownloadOrderTests {
             .contains("on (chosen), direction inOrder (from the older setting)"))
         AppStorageKeys.set("newest", for: PodcastAutoDownload.directionKey(showId))
         #expect(PodcastAutoDownload.stateLine(showId, format: { _ in "t" }).contains("direction newest (chosen)"))
+    }
+
+    /// Episodes 1 to 5 of one show, ten minutes each, pubDate = number.
+    private static func showEpisodes(key: String) -> [PodcastEpisode] {
+        (1...5).map { PodcastEpisode(guid: "rss:\(key):\($0)", title: "Folge \($0)",
+                                     audioURL: "https://feeds.example/\($0).mp3",
+                                     pubDate: Double($0), duration: 600) }
+    }
+
+    @Test("eine Sendung, zwei Urteile, zwei Antworten: lokal ungehoert, geteilt gehoert, in beiden Richtungen")
+    func oneShowTwoJudgementsTwoAnswers() {
+        let episodes = Self.showEpisodes(key: "k")
+        let local: (PodcastEpisode) -> EpisodePlayState = { _ in .unplayed }
+        let shared: (PodcastEpisode) -> EpisodePlayState = { $0.guid.hasSuffix(":1") || $0.guid.hasSuffix(":2") ? .played : .unplayed }
+        let ids = { (numbers: [Int]) in numbers.map { "rss:k:\($0)" } }
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .inOrder, since: 0, state: local) == ids([1, 2, 3, 4, 5]))
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .inOrder, since: 0, state: shared) == ids([3, 4, 5]))
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .newest, since: 0, state: local) == ids([5, 4, 3, 2, 1]))
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .newest, since: 0, state: shared) == ids([5, 4, 3]))
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .newest, since: 4, state: shared) == ids([5, 4]), "the cutoff still holds")
+        #expect(PodcastAutoDownloadRules.protects(.inProgress(fraction: 0.01, remaining: 594)), "any begun state protects")
+        #expect(!PodcastAutoDownloadRules.protects(.unplayed))
+        #expect(!PodcastAutoDownloadRules.protects(.played))
+    }
+
+    /// The other way round: heard here, begun on the server later. The
+    /// shared judgement takes the newer state, so the run fetches and keeps
+    /// the episode the person is in, where the local one let it go.
+    @Test("Gegenrichtung: lokal gehoert, am Server begonnen und neuer, das geteilte Urteil nimmt den neueren Stand")
+    @MainActor
+    func heardHereBegunOnTheServerLater() throws {
+        let key = "witness\(UUID().uuidString.prefix(8))"
+        let episodes = Self.showEpisodes(key: key)
+        let third = episodes[2]
+        let absId = "abspod:\(key):3"
+        let now = Date().timeIntervalSince1970 * 1000
+        defer {
+            ListeningStore.clearBackup(third.guid)
+            ABSPodcastProvider.shared.testBridge(rss: third.guid, abs: absId, progress: nil)
+        }
+        ListeningStore.store(third.guid, entry: [ProgressMark.playedSentinel, now - 3_600_000])
+        ABSPodcastProvider.shared.testBridge(rss: third.guid, abs: absId,
+                                             progress: BookProgress(fraction: 0.5, isFinished: false, lastUpdate: now, currentTime: 300))
+        let item = podcastLibraryItem(show: PodcastShow(id: "feed:\(key)", title: "Morgen", author: nil, artworkURL: nil,
+                                                        description: nil, feedURL: "https://feeds.example/\(key).xml",
+                                                        episodes: episodes),
+                                      episode: third)
+        let localThird = PodcastProgressStore.shared.state(guid: third.guid, duration: third.duration)
+        let sharedThird = podcastPlayState(for: item)
+        #expect(localThird == .played, "the precondition: heard on this device")
+        guard case .inProgress = sharedThird else {
+            Issue.record("the shared judgement takes the newer server state, said \(sharedThird)")
+            return
+        }
+        let local: (PodcastEpisode) -> EpisodePlayState = { $0.guid == third.guid ? localThird : .unplayed }
+        let shared: (PodcastEpisode) -> EpisodePlayState = { $0.guid == third.guid ? sharedThird : .unplayed }
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .inOrder, since: 0, state: local) == [episodes[3].guid, episodes[4].guid])
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .inOrder, since: 0, state: shared) == [third.guid, episodes[3].guid, episodes[4].guid])
+        #expect(PodcastAutoDownloadRules.protects(sharedThird), "the run keeps its own download of it")
+        #expect(!PodcastAutoDownloadRules.protects(localThird))
+    }
+
+    @Test("der Lauf fragt das geteilte Urteil einmal je Folge, das Aufraeumen bleibt lokal", .needsTheSources)
+    func theRunAsksTheSharedJudgementOnce() throws {
+        let helpers = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHelpers.swift"), encoding: .utf8))
+        let run = try #require(functionBody(of: "static func run(shows: [PodcastShow], router: ItemRouter = .live) async {", in: helpers))
+        #expect(!run.contains("progress.state(") && !run.contains("PodcastProgressStore"), "no local question left in the run")
+        #expect(run.components(separatedBy: "podcastPlayState(for:").count - 1 == 1, "one judgement per episode, built once")
+        #expect(run.contains("PodcastAutoDownloadRules.protects(state($0.episode))"))
+        let sweep = try #require(functionBody(of: "static func sweep(now: Double = Date().timeIntervalSince1970) {", in: helpers))
+        #expect(sweep.contains("ListeningStore.backup(id)") && !sweep.contains("podcastPlayState"), "the clean-up keeps the local mark and its time")
     }
 }
 #endif

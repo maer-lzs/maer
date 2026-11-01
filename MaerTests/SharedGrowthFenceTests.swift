@@ -60,15 +60,19 @@ struct SharedGrowthFenceTests {
     /// routine reads the lists through one property and paid with the two
     /// subscription reads the root already observes, so it fell to 371; the
     /// routines row on Start observes the lists in its own sheet instead of
-    /// the root, a move, so the total stays).
+    /// the root, a move, so the total stays; the automatic download asks
+    /// the shared judgement and holds no grip on the progress store of its
+    /// own, so it falls to 370).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 371
+    nonisolated static let stock = 370
 
-    /// The same count over all of `Sources`, measured 734 (the door that
+    /// The same count over all of `Sources`, measured 743 (the automatic
+    /// download asks the shared judgement and holds no grip on the progress
+    /// store of its own; before that 744, and 734 when the door that
     /// continues listening reaches the session and the podcast index, and
     /// the app hands the widget's command its work: three, paid by the
     /// player's open asking the downloads through one grip instead of six;
@@ -91,7 +95,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 744
+    nonisolated static let sourcesStock = 743
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

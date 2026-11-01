@@ -16,7 +16,10 @@ the app offers to download new episodes of that show automatically.
 Siri and Shortcuts can start a routine by its name: the app opens and
 the routine plays, or says why it cannot. The page of a routine says
 in its footer what a routine does. Shuffle on a routine resumes an
-episode a rule picked when it comes first, as Play does.
+episode a rule picked when it comes first, as Play does. Automatic
+downloads now judge an episode heard or begun the way routines and the
+episode rows do, also from its copy on an Audiobookshelf server, so they
+fetch the episodes a routine will pick.
 
 **A playlist with one cover shows that cover.** It fills the whole
 square on the card and the page, for your own and for server playlists;

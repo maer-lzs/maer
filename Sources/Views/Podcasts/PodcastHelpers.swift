@@ -345,8 +345,6 @@ enum PodcastAutoDownload {
             Logger.library.notice("AUTODOWNLOAD no Wi-Fi: tidying only, nothing fetched (cellular is never used unattended)")
         }
         let dm = DownloadManager.shared
-        // One grip for every question of the same store.
-        let progress = PodcastProgressStore.shared
         let owned = ownedByAutomation
         // The automatism does not know the player; the episode the player
         // holds is the standby pointer, and it counts as playing.
@@ -354,43 +352,21 @@ enum PodcastAutoDownload {
         for show in shows where isEnabled(show.id) {
             let entries = show.episodes.map { (item: podcastLibraryItem(show: show, episode: $0), episode: $0) }
             let byId = Dictionary(entries.map { ($0.item.id, $0) }) { first, _ in first }
-            let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
-            let isPlayed: (PodcastEpisode) -> Bool = {
-                progress.state(guid: $0.guid, duration: $0.duration) == .played
-            }
-            let isBegun: (PodcastEpisode) -> Bool = {
-                if case .inProgress = progress.state(guid: $0.guid, duration: $0.duration) { return true }
-                return false
-            }
-            // The DIRECTION is the show's choice. "Newest": the unheard
-            // episodes since the cutoff, newest first. "In order": from where
-            // the listener stands, the unheard ones ascending.
+            // One judgement per episode and run, the shared one a routine and
+            // the rows ask: the newest mark across the bridge to a server's
+            // episode, and the server's state when it is newer. Heard, begun
+            // and started all read it.
+            let states = Dictionary(entries.map { ($0.item.id, podcastPlayState(for: $0.item)) }) { first, _ in first }
+            let state: (PodcastEpisode) -> EpisodePlayState = { states[$0.guid] ?? .unplayed }
+            // The DIRECTION is the show's choice.
             let direction = direction(show.id)
-            let wanted: [String]
-            switch direction {
-            case .newest:
-                let cutoff = since(show.id)
-                wanted = entries
-                    .filter { $0.episode.pubDate >= cutoff && !isPlayed($0.episode) }
-                    .sorted { $0.episode.pubDate > $1.episode.pubDate }
-                    .map(\.item.id)
-            case .inOrder:
-                let picked = PodcastAutoDownloadRules.nextInOrder(
-                    show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
-                    isPlayed: { guid in byGuid[guid].map(isPlayed) ?? false },
-                    isStarted: { guid in
-                        guard let episode = byGuid[guid] else { return false }
-                        return PodcastAutoDownloadRules.isStarted(progress.state(guid: guid, duration: episode.duration),
-                                                                  duration: episode.duration)
-                    },
-                    isDownloaded: { _ in false },
-                    limit: .max)
-                wanted = picked.compactMap { guid in byGuid[guid].map { podcastLibraryItem(show: show, episode: $0).id } }
-            }
+            let wanted = PodcastAutoDownloadRules.wanted(show.episodes, direction: direction,
+                                                         since: since(show.id), state: state)
             let own = entries
                 .filter { owned.contains($0.item.id) && dm.isDownloaded(itemId: $0.item.id) }
                 .map { PodcastAutoDownloadRules.Owned(id: $0.item.id, pubDate: $0.episode.pubDate,
-                                                      isProtected: isBegun($0.episode) || $0.item.id == standby) }
+                                                      isProtected: PodcastAutoDownloadRules.protects(state($0.episode))
+                                                          || $0.item.id == standby) }
             let keep = keep(show.id)
             let plan = PodcastAutoDownloadRules.hold(wanted: wanted, isDownloaded: { dm.isDownloaded(itemId: $0) },
                                                      own: own, direction: direction, limit: keep)

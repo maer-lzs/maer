@@ -97,6 +97,35 @@ nonisolated enum PodcastAutoDownloadRules {
         return duration - remaining >= startedAtLeast
     }
 
+    /// What a run wants of one show, read in its direction from ONE judgement
+    /// per episode (`state`), so heard, begun and started ask the same
+    /// thing. "Newest": the unheard since the cutoff, newest first. "In
+    /// order": `nextInOrder` from where the listener stands.
+    static func wanted(_ episodes: [PodcastEpisode], direction: Direction, since cutoff: Double,
+                       state: (PodcastEpisode) -> ProgressMark.PlayState) -> [String] {
+        switch direction {
+        case .newest:
+            return episodes
+                .filter { $0.pubDate >= cutoff && state($0) != .played }
+                .sorted { $0.pubDate > $1.pubDate }
+                .map(\.guid)
+        case .inOrder:
+            let byGuid = Dictionary(episodes.map { ($0.guid, $0) }) { first, _ in first }
+            return nextInOrder(episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
+                               isPlayed: { guid in byGuid[guid].map { state($0) == .played } ?? false },
+                               isStarted: { guid in byGuid[guid].map { isStarted(state($0), duration: $0.duration) } ?? false },
+                               isDownloaded: { _ in false },
+                               limit: .max)
+        }
+    }
+
+    /// Whether a download the automatism owns is kept over the count: the
+    /// episode is in progress at all, however short.
+    static func protects(_ mark: ProgressMark.PlayState) -> Bool {
+        if case .inProgress = mark { return true }
+        return false
+    }
+
     /// Where the listener stands, as an index into the episodes in order of
     /// publication (`marked` says which are heard or begun). Marks with at
     /// most `gap` unmarked episodes between them form a run. The anchor is
