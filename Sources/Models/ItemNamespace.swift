@@ -54,6 +54,9 @@ nonisolated enum ItemNamespace {
     static func isABSPodcast(_ itemId: String) -> Bool { itemId.hasPrefix("abspod:") }
     /// A podcast episode of either home, RSS or the Audiobookshelf server.
     static func isPodcastEpisode(_ itemId: String) -> Bool { isRSS(itemId) || isABSPodcast(itemId) }
+    /// A title of the Audiobookshelf server: a library id or one of its
+    /// podcast episodes. Signing out of the server forgets what shows it.
+    static func isAudiobookshelf(_ itemId: String) -> Bool { of(itemId) == nil || isABSPodcast(itemId) }
     static func isSubsonic(_ itemId: String) -> Bool { itemId.hasPrefix("sub:") }
     /// One predicate per known namespace, this one without a caller today:
     /// the next asker finds it here instead of spelling the prefix.

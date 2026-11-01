@@ -243,6 +243,19 @@ nonisolated struct WidgetSnapshot: Codable {
             WidgetLog.logger.error("WIDGET snapshot not written: \(String(describing: error), privacy: .public)")
         }
     }
+
+    /// Removes the snapshot and its cover, so every size shows that nothing
+    /// was played yet until the player writes again. A file already gone
+    /// is no error.
+    static func remove() {
+        for url in [snapshotURL, coverURL].compactMap({ $0 }) where FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                WidgetLog.logger.error("WIDGET snapshot not removed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
 }
 
 /// The log of the shared widget files, in app and widget alike; each
@@ -308,6 +321,11 @@ nonisolated struct WidgetSourceRow: Codable, Equatable, Sendable {
     var cover: String?
     /// When the title was last heard, in milliseconds.
     var playedAt: Double
+
+    /// Whether the row shows a bar and the time left: only for a title
+    /// somebody started. Without progress, or at 0, the row names who made
+    /// it instead, like any other title without progress.
+    var showsProgress: Bool { !isLive && (fraction ?? 0) > 0 }
 }
 
 /// Which rows a large or medium "Continue" shows, from its settings and

@@ -101,6 +101,26 @@ struct ContinueBySourceTests {
         #expect(rows.map(\.playedAt) == rows.map(\.playedAt).sorted(by: >), "heard last first")
     }
 
+    @Test("ein Album ohne begonnenen Fortschritt zeigt keinen Balken und keine Restzeit, ohne Stand wie mit 0 vom Server")
+    func anAlbumNobodyStartedShowsNoProgress() {
+        let cards: [String: ContinueBySource.Card] = [
+            "sub:album:none": .init(title: "Album", subtitle: "Band", kindSymbol: "music.note", markedForm: nil, isLive: false,
+                                    duration: 2_400),
+            "sub:album:zero": .init(title: "Album", subtitle: "Band", kindSymbol: "music.note", markedForm: nil, isLive: false,
+                                    server: progress(0, at: 2_000), duration: 2_400),
+            "sub:album:begun": .init(title: "Album", subtitle: "Band", kindSymbol: "music.note", markedForm: nil, isLive: false,
+                                     server: progress(0.25, at: 2_000), duration: 2_400),
+            "radio:station": .init(title: "Sender", subtitle: nil, kindSymbol: "antenna.radiowaves.left.and.right",
+                                   markedForm: nil, isLive: true),
+        ]
+        // One source keeps one row, so every case gets its own pass.
+        let rows = cards.keys.compactMap { id in ContinueBySource.rows(of: [(id, 1)]) { cards[$0] }.first }
+        let shows = Dictionary(uniqueKeysWithValues: rows.map { ($0.itemId, $0.showsProgress) })
+        #expect(shows == ["sub:album:none": false, "sub:album:zero": false, "sub:album:begun": true, "radio:station": false],
+                "only a started title shows a bar and its time")
+        #expect(rows.first { $0.itemId == "sub:album:zero" }?.subtitle == "Band", "the row keeps who made it")
+    }
+
     @Test("die Karte des Schreibers: ein Sender ist live, ein Buch traegt Titel, Autorin, Laenge und den Stand des Servers")
     @MainActor
     func theWritersCard() throws {
@@ -389,6 +409,40 @@ struct ContinueBySourceTests {
         #expect((after.passAtMs ?? 0) >= signedOutAt, "the moment of the sign-out keeps an older snapshot out")
     }
 
+    @Test("das Abmelden vergisst den Schnappschuss samt Cover nur bei einem Titel dieses Servers; ein Sender bleibt")
+    @MainActor
+    func aSignOutForgetsOnlyThisServersSnapshot() async throws {
+        let ids: [(String, Bool)] = [("li_book", true), ("abspod:show#ep", true), ("radio:rb:x", false), ("rss:feed#ep", false),
+                                     ("sub:album:1", false), ("jf:song:1", false), ("local:file", false)]
+        for (id, want) in ids {
+            #expect(ItemNamespace.isAudiobookshelf(id) == want, "\(id)")
+        }
+        let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
+        let coverURL = try #require(WidgetSnapshot.coverURL)
+        let keptSnapshot = try? Data(contentsOf: snapshotURL)
+        let keptCover = try? Data(contentsOf: coverURL)
+        let rows = ContinueRows.load()
+        let auth = AppSession.shared.authViewModel
+        let wasSignedIn = auth.isLoggedIn
+        let token = KeychainStore.load(forKey: KeychainKey.apiToken)
+        defer {
+            for (url, data) in [(snapshotURL, keptSnapshot), (coverURL, keptCover)] {
+                if let data { try? data.write(to: url) } else { try? FileManager.default.removeItem(at: url) }
+            }
+            _ = rows?.save()
+            if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) }
+            auth.isLoggedIn = wasSignedIn
+        }
+        for (id, gone) in [("li_old-server", true), ("radio:rb:station", false)] {
+            WidgetSnapshot(itemId: id, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
+            try Data([0x89]).write(to: coverURL)
+            auth.logout()
+            await ContinueRowsWriter.forget()
+            #expect((WidgetSnapshot.load() == nil) == gone, "\(id): the snapshot")
+            #expect(FileManager.default.fileExists(atPath: coverURL.path) == !gone, "\(id): its cover")
+        }
+    }
+
     @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)
     func thePlayerNeverWritesTheRows() throws {
         let home = [row("book", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
@@ -472,6 +526,12 @@ struct ContinueBySourceTests {
                 "beside a long name the time left is cut off again")
         #expect(widget.contains("Text(verbatim: \" · \") .fixedSize() .accessibilityHidden(true)"),
                 "VoiceOver reads the separator between name and time")
+        #expect(widget.contains("if row.showsProgress { ProgressView(value: row.fraction ?? 0)"),
+                "a title nobody started draws an empty bar again")
+        #expect(widget.contains("row.isLive ? String(localized: \"Live\") : row.showsProgress ? (row.remainingText ?? \"\") : \"\""),
+                "a title nobody started shows its whole length as time left")
+        #expect(widget.contains("rowDetail(row, compact: compact && started)"),
+                "the medium rows hide who made a title nobody started")
     }
 
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)

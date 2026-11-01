@@ -171,10 +171,13 @@ private struct ContinueListeningView: View {
 
     /// The title stands on one line. The medium rows and the accessibility
     /// sizes keep only the time in the line under it, and the accessibility
-    /// sizes drop the cover.
+    /// sizes drop the cover. A title nobody started has no bar and no time;
+    /// under its name stands who made it, and at the accessibility sizes
+    /// only its name.
     private func sourceRow(_ row: WidgetSourceRow) -> some View {
         let large = family == .systemLarge
         let compact = !large || dynamicTypeSize.isAccessibilitySize
+        let started = row.isLive || row.showsProgress
         return HStack(spacing: 8) {
             Link(destination: ResumeLink.url(itemId: row.itemId)) {
                 HStack(spacing: 8) {
@@ -185,10 +188,12 @@ private struct ContinueListeningView: View {
                         Text(row.title)
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
-                        rowDetail(row, compact: compact)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        if !row.isLive {
+                        if started || !dynamicTypeSize.isAccessibilitySize {
+                            rowDetail(row, compact: compact && started)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if row.showsProgress {
                             ProgressView(value: row.fraction ?? 0)
                                 .tint(.orange)
                         }
@@ -212,7 +217,7 @@ private struct ContinueListeningView: View {
     /// Who and how long, or live; compact, only how long or live. Beside a
     /// name the time keeps its width and the name gives way.
     private func rowDetail(_ row: WidgetSourceRow, compact: Bool) -> some View {
-        let time = row.isLive ? String(localized: "Live") : (row.remainingText ?? "")
+        let time = row.isLive ? String(localized: "Live") : row.showsProgress ? (row.remainingText ?? "") : ""
         let subtitle = compact ? nil : row.subtitle.flatMap { $0.isEmpty ? nil : $0 }
         return HStack(spacing: 0) {
             if let subtitle {

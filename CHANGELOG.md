@@ -58,6 +58,10 @@ titles from your other devices appear too once the start page has
 loaded. A tap on a row opens that title, its play button continues it
 without opening the app. At the largest text sizes fewer rows stand,
 each in full. Without rows the widget shows the last title, as before.
+An album nobody started shows its name and the artist under it, without
+an empty bar or its whole length as time left. Signing out of the
+Audiobookshelf server also forgets the widget's last title when it came
+from that server; a station, an RSS episode or a catalogue title stays.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same

@@ -65,8 +65,15 @@ enum ContinueRowsWriter {
     /// A server signed out: the app shows the welcome page and the home
     /// page does not compute, so the rows of its last pass would stand.
     /// They go, with the moment now, so a snapshot heard before stays out
-    /// too; the next pass writes anew.
+    /// too; the next pass writes anew. The player's snapshot goes with its
+    /// cover when its title is one of this server's
+    /// (`ItemNamespace.isAudiobookshelf`); a station, an RSS episode and a
+    /// catalogue title stay, as on the home page.
     static func forget() async {
+        if let id = WidgetSnapshot.load()?.itemId, ItemNamespace.isAudiobookshelf(id) {
+            WidgetSnapshot.remove()
+            reload()
+        }
         await write([], passAtMs: Date().timeIntervalSince1970 * 1000)
     }
 
