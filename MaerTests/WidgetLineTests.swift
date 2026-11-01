@@ -185,8 +185,6 @@ struct WidgetLineTests {
         }
     }
 
-    /// Half a second of tone as AAC in ADTS frames, the form a station
-    /// sends.
     /// The description in the widget gallery and in "Edit Widget": the
     /// English key says "tap", the German value says it the same way.
     @Test("die Beschreibung von Weiterhoeren: mit einem Tippen, im Widget und im Katalog", .needsTheSources)
@@ -199,6 +197,8 @@ struct WidgetLineTests {
         #expect(german?["value"] as? String == "Das zuletzt Gehörte, mit einem Tippen.")
     }
 
+    /// Half a second of tone as AAC in ADTS frames, the form a station
+    /// sends.
     private func adts(seconds: Double) throws -> Data {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("widget-line-\(UUID().uuidString).aac")
         defer { try? FileManager.default.removeItem(at: url) }
