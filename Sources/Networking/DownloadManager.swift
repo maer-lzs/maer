@@ -184,8 +184,13 @@ final class DownloadManager {
                 self.recalculateTotalSize()
             }
             self.clearOldRemnants(scan.remnants, now: Date())
+            self.hasScanned = true
         }
     }
+
+    /// Whether the startup scan is merged, so `downloadedItemIds` names every
+    /// download. Before it, a question "is this not downloaded" has no answer.
+    private(set) var hasScanned = false
 
     /// The one kind the source of this title serves today, if it serves only
     /// one (`DownloadKind.sole`). Read now, never stored. For downloads from

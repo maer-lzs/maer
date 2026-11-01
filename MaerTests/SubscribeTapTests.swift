@@ -82,10 +82,7 @@ struct SubscribeTapTests {
     /// forgetting outside it, no discarded server answer.
     @Test("der Abo-Weg des Abzeichens vergisst nur in settle und verwirft keine Antwort", .needsTheSources)
     func theBadgeForgetsOnlyInSettle() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/Podcasts/PodcastComponents.swift"),
-                              encoding: .utf8)
-        let squeezed = SyncContractFenceTests.stripped(text).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let squeezed = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastComponents.swift")
         #expect(!squeezed.contains("_ = await ABSPodcastProvider.shared.subscribeOnServer"),
                 "the server branch discards its answer again")
         let forgets = squeezed.components(separatedBy: ".forgetListened(").count - 1

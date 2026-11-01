@@ -31,7 +31,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     var itemsById: [String: LibraryItem] = [:]
     /// Artists surfaced by search, kept for the artist route (domain type).
     var searchedArtistsById: [String: MusicArtist] = [:]
-    private var lastScrobbledSong: [String: String] = [:]
+    /// The song each item counted last (`ScrobbleBook`).
+    private let scrobbles = ScrobbleBook()
     /// Package 3: the last song we wrote a continue-bookmark for, per playlist
     /// item. So the previous song's bookmark is cleaned up on a song change.
     private var lastBookmarkedSong: [String: String] = [:]
@@ -103,8 +104,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } else {
             client = nil
         }
-        // The song covers belong to the server they were learned from.
+        // The song covers belong to the server they were learned from, and
+        // so do the songs it did not answer for.
         songCoverStore = nil
+        songCoversUnanswered = UnansweredSongs(server: "")
         // Availability may have flipped (toggle, credentials). The tab
         // bar reacts live in both directions.
         Logger.music.notice("subsonic config reloaded (active=\(AppStorageKeys.subsonicActive), client=\(self.client != nil))")
@@ -334,7 +337,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
         // Remember the songs + offsets so playback can scrobble each one.
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
-        lastScrobbledSong[itemId] = nil
+        scrobbles.forget(itemId)
         // Per-track play counts ride along the detail. The album/playlist
         // "Top Songs" section ranks them client-side, no extra request.
         playCountsByItemId[itemId] = songs.map(\.playCount)
@@ -978,8 +981,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         for song in songs {
             let itemId = Self.itemId(songId: song.songId)
             let old = coverURL(forItemId: itemId)
+            // Before the scan of the downloads every song is kept: the trim
+            // cannot tell yet which cover a download holds.
             guard case .learned = memo.learn(songId: song.songId, coverArt: song.coverArt,
-                                             keeps: { downloads.downloadedItemIds.contains(Self.itemId(songId: $0)) })
+                                             keeps: { !downloads.hasScanned
+                                                 || downloads.downloadedItemIds.contains(Self.itemId(songId: $0)) })
             else { continue }
             songCoverStore = memo
             changed.append((itemId, old, coverURL(forItemId: itemId)))
@@ -999,6 +1005,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Songs a pass of `learnSongCovers` is asking right now, so a card and
     /// a page showing the same list do not ask a song twice.
     private var songCoversAsking: Set<String> = []
+    /// Songs the server gave no answer for in this session, skipped by the
+    /// next passes. On the main actor with the provider; at most
+    /// `UnansweredSongs.cap` ids, emptied on another server and on sign out.
+    private var songCoversUnanswered = UnansweredSongs(server: "")
     /// How many songs one pass asks at most. Chosen: a long list learns its
     /// covers over several appearances instead of in one burst.
     static let songCoverPassLimit = 60
@@ -1010,21 +1020,27 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func learnSongCovers(itemIds: [String]) async -> Bool {
         guard let client else { return false }
         let memo = songCoverMemo
-        var seen: Set<String> = []
-        let missing = itemIds
-            .compactMap { Self.id($0, kind: "song") }
-            .filter { memo.coverArt(of: $0) == nil && !songCoversAsking.contains($0) && seen.insert($0).inserted }
-            .prefix(Self.songCoverPassLimit)
+        let server = Self.coverMemoServer
+        songCoversUnanswered = songCoversUnanswered.belonging(to: server)
+        let missing = UnansweredSongs.toAsk(itemIds.compactMap { Self.id($0, kind: "song") },
+                                            known: { memo.coverArt(of: $0) != nil }, asking: songCoversAsking,
+                                            unanswered: songCoversUnanswered, limit: Self.songCoverPassLimit)
         guard !missing.isEmpty else { return false }
         songCoversAsking.formUnion(missing)
         defer { songCoversAsking.subtract(missing) }
         var songs: [SubsonicSong] = []
+        var silent: [String] = []
         for songId in missing {
-            // bearable, because a song that does not answer keeps its own id as the cover address and is asked again on the next pass
+            // bearable, because a song that does not answer keeps its own id as the cover address and is asked again in the next session
             if let song = try? await client.song(id: songId) {
                 songs.append(song)
+            } else {
+                silent.append(songId)
             }
         }
+        // A sign out or another server during the pass leaves the answers
+        // to the server that was asked.
+        if songCoversUnanswered.server == server { songCoversUnanswered.note(silent) }
         let before = songCoverMemo
         learnCovers(songs)
         let learned = songCoverMemo != before
@@ -1098,14 +1114,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // Scrobble once per song change (play counts), by the one rule.
         // A scrobble the server did not take is logged and asked again at the
         // next call, not booked as done.
-        if let due = ScrobbleTurn.due(song, last: lastScrobbledSong[itemId]) {
-            lastScrobbledSong[itemId] = due
-            do {
-                try await client.scrobble(id: due, submission: true)
-            } catch {
-                lastScrobbledSong[itemId] = nil
-                Logger.music.error("SCROBBLE failed song=\(due, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
-            }
+        if let refused = await scrobbles.count(song, in: itemId, send: { try await client.scrobble(id: $0, submission: true) }) {
+            Logger.music.error("SCROBBLE failed song=\(refused.song, privacy: .private(mask: .hash)) reason=\(FailureReason.of(refused.error), privacy: .public)")
         }
         // Continue-listening bookmark for playlists and albums; a Booksonic
         // book IS an album, so its stand travels between devices the same

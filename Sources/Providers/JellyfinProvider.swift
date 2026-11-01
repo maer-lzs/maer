@@ -29,7 +29,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     var itemsById: [String: LibraryItem] = [:]
     var searchedArtistsById: [String: MusicArtist] = [:]
     private var songsByItemId: [String: [(id: String, start: Double)]] = [:]
-    private var lastScrobbledSong: [String: String] = [:]
+    /// The song each item counted last (`ScrobbleBook`).
+    private let scrobbles = ScrobbleBook()
     private var favoriteAlbumIds: Set<String>?
     private var playlistMosaicCache: [String: [String]] = [:]
     private var playlistArtistCache: [String: [String]] = [:]
@@ -397,7 +398,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         }
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
-        lastScrobbledSong[itemId] = nil
+        scrobbles.forget(itemId)
         // Per-track play counts (UserData.PlayCount) for the client-side
         // "Top Songs" ranking.
         playCountsByItemId[itemId] = songs.map { $0.userData?.playCount }
@@ -794,14 +795,9 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // A play is counted once per song change, by the one rule; a count
         // the server did not take is logged and asked again at the next
         // call, not booked as done.
-        if let due = ScrobbleTurn.due(ScrobbleTurn.song(at: currentTime, in: songs), last: lastScrobbledSong[itemId]) {
-            lastScrobbledSong[itemId] = due
-            do {
-                try await client.markPlayed(itemId: due)
-            } catch {
-                lastScrobbledSong[itemId] = nil
-                Logger.music.error("JELLYFIN play count failed song=\(due, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
-            }
+        if let refused = await scrobbles.count(ScrobbleTurn.song(at: currentTime, in: songs), in: itemId,
+                                               send: { try await client.markPlayed(itemId: $0) }) {
+            Logger.music.error("JELLYFIN play count failed song=\(refused.song, privacy: .private(mask: .hash)) reason=\(FailureReason.of(refused.error), privacy: .public)")
         }
     }
 

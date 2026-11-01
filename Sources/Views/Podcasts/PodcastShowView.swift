@@ -251,7 +251,8 @@ struct PodcastShowView: View {
                 // noise. The show page hands its title in, the pure rule
                 // decides (parity: other surfaces list MANY shows and keep it).
                 PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
-                                  showTitle: title, showsDownload: caps.downloads)
+                                  showTitle: title, showsDownload: caps.downloads,
+                                  facts: .of(item.id, in: subs))
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
             }

@@ -70,6 +70,8 @@ struct PlaylistCard: View {
     let source: PlaylistCardSource
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.pushMusicRoute) private var pushMusicRoute
+    /// The device's network, for the sentence of an empty draw.
+    @Environment(\.isOnline) private var isOnline
     @State private var showRename = false
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
@@ -193,11 +195,11 @@ struct PlaylistCard: View {
                                  accessibilityLabel: Text("Shuffle"),
                                  accessibilityId: "playlist-shuffle-badge") {
                     // The draw, like the long-press menu and the page: the
-                    // episodes a routine's rules pick resume when one comes first.
+                    // episodes a routine's rules pick resume when one comes
+                    // first, and an empty or failed draw says why.
                     Task {
-                        let drawn = await source.shuffleDraw()
-                        await playerCoordinator.shufflePlay(items: drawn.items, contextSource: source.title,
-                                                            resuming: drawn.resuming)
+                        await ShufflePlayButton.start(pool: source.shuffleDraw, isOnline: isOnline,
+                                                      coordinator: playerCoordinator, contextSource: source.title)
                     }
                 }
                 .padding(12)
@@ -389,12 +391,19 @@ extension PlaylistCardSource {
     /// The covers of a device list's mosaic, in list order and each once,
     /// for the card and the list's page. A cover this device cannot derive
     /// comes from the entry's snapshot (a public catalogue address that
-    /// travelled).
+    /// travelled). The card stops at the mosaic's slots; a caller that
+    /// needs every cover names its own `limit`.
     @MainActor
-    static func deviceCovers(_ list: MaerPlaylists.Playlist, router: ItemRouter = .live) -> [URL] {
-        list.itemIds
-            .compactMap { deviceCover(of: $0, in: list, router: router) }
-            .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
+    static func deviceCovers(_ list: MaerPlaylists.Playlist, router: ItemRouter = .live,
+                             limit: Int = PlaylistPresentation.mosaicSlots) -> [URL] {
+        var seen: Set<URL> = []
+        var covers: [URL] = []
+        for id in list.itemIds where covers.count < limit {
+            if let url = deviceCover(of: id, in: list, router: router), seen.insert(url).inserted {
+                covers.append(url)
+            }
+        }
+        return covers
     }
 
     /// One entry's cover on a device playlist: its source's, else the

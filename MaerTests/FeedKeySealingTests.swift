@@ -240,9 +240,7 @@ struct FeedKeySealingTests {
 
     @Test("S3: die App liest ihre Schluessel an der Tuer des Geraets, die Seite hat keinen Code mehr", .needsTheSources)
     func theDeviceWiring() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
-        let flat = SyncContractFenceTests.stripped(runner).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let flat = try FetchAnswerTests.squeezedSource("Sources/Networking/FeedAuthSync.swift")
         // The app's runner names no keys, so it takes the device's; it gets
         // the account and the shelf a change of account needs.
         #expect(flat.contains("static let shared = AccessFollowers.enrolled(FeedAuthSync( identity: { AccessFollowers.identity }, shelf: MaerDatabase.restingShelf))"),

@@ -184,6 +184,38 @@ struct AutoDownloadOrderTests {
         #expect(!PodcastAutoDownloadRules.protects(localThird))
     }
 
+    /// Heard under the episode's server id only: the mark stands under its
+    /// `abspod:` id, the feed episode has none. The shared judgement reads
+    /// the newest mark across the bridge, so the run skips the episode.
+    @Test("eine Marke nur unter der Kennung der Fassung am Server: das geteilte Urteil sieht sie, der Lauf laesst die Folge aus")
+    @MainActor
+    func aMarkUnderTheServerIdCounts() throws {
+        let key = "witness\(UUID().uuidString.prefix(8))"
+        let episodes = Self.showEpisodes(key: key)
+        let second = episodes[1]
+        let absId = "abspod:\(key):2"
+        let now = Date().timeIntervalSince1970 * 1000
+        defer {
+            ListeningStore.clearBackup(absId)
+            ABSPodcastProvider.shared.testBridge(rss: second.guid, abs: absId, progress: nil)
+        }
+        ListeningStore.store(absId, entry: [ProgressMark.playedSentinel, now])
+        ABSPodcastProvider.shared.testBridge(rss: second.guid, abs: absId,
+                                             progress: BookProgress(fraction: 0, isFinished: false,
+                                                                    lastUpdate: now - 7_200_000, currentTime: 0))
+        let item = podcastLibraryItem(show: PodcastShow(id: "feed:\(key)", title: "Morgen", author: nil, artworkURL: nil,
+                                                        description: nil, feedURL: "https://feeds.example/\(key).xml",
+                                                        episodes: episodes),
+                                      episode: second)
+        #expect(PodcastProgressStore.shared.state(guid: second.guid, duration: second.duration) == .unplayed,
+                "the precondition: the feed episode holds no mark of its own")
+        let sharedSecond = podcastPlayState(for: item)
+        #expect(sharedSecond == .played, "the shared judgement reads the mark under the server id, said \(sharedSecond)")
+        let shared: (PodcastEpisode) -> EpisodePlayState = { $0.guid == second.guid ? sharedSecond : .unplayed }
+        #expect(PodcastAutoDownloadRules.wanted(episodes, direction: .newest, since: 0, state: shared)
+                == [episodes[4].guid, episodes[3].guid, episodes[2].guid, episodes[0].guid])
+    }
+
     @Test("der Lauf fragt das geteilte Urteil einmal je Folge, das Aufraeumen bleibt lokal", .needsTheSources)
     func theRunAsksTheSharedJudgementOnce() throws {
         let helpers = SyncContractFenceTests.stripped(try String(

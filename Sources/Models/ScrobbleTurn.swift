@@ -26,3 +26,30 @@ nonisolated enum ScrobbleTurn {
         return playing.id
     }
 }
+
+/// The song each item counted last, and the one way a music provider counts
+/// a play: booked before it is sent, so a call during the send does not
+/// count it twice, and taken back when the server refuses, so the next call
+/// asks again. A class, because the booking stands across the send.
+@MainActor
+final class ScrobbleBook {
+    private(set) var last: [String: String] = [:]
+
+    /// Counts the song playing in `itemId` when it is due. A refused count
+    /// comes back with its song for the provider's own line; nil otherwise.
+    func count(_ playing: ScrobbleTurn.Song?, in itemId: String,
+               send: (String) async throws -> Void) async -> (song: String, error: Error)? {
+        guard let due = ScrobbleTurn.due(playing, last: last[itemId]) else { return nil }
+        last[itemId] = due
+        do {
+            try await send(due)
+            return nil
+        } catch {
+            last[itemId] = nil
+            return (due, error)
+        }
+    }
+
+    /// The item was loaded anew: its next song counts again.
+    func forget(_ itemId: String) { last[itemId] = nil }
+}

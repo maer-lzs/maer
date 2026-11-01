@@ -274,12 +274,14 @@ struct RoutinePlaybackTests {
         // Every way to shuffle a Mär playlist carries the rule picks to
         // `playInOrder`, and `playInOrder` asks the one decision.
         let card = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistCard.swift")
-        #expect(card.contains("let drawn = await source.shuffleDraw() await playerCoordinator.shufflePlay(items: drawn.items, contextSource: source.title, resuming: drawn.resuming)"))
+        #expect(card.contains("await ShufflePlayButton.start(pool: source.shuffleDraw, isOnline: isOnline, coordinator: playerCoordinator, contextSource: source.title)"),
+                "the corner starts through the button's door, so an empty draw says why")
+        #expect(!card.contains("playerCoordinator.shufflePlay("), "the corner passes the door again")
         #expect(card.contains("let start = RoutinePlayback.held(list, in: store).start return .of(start.items, resuming: start.fromRule)"))
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(page.contains("{ .of(playable, resuming: start.fromRule) }"))
         let button = try FetchAnswerTests.squeezedSource("Sources/Views/Music/ShufflePlayButton.swift")
-        #expect(button.contains("if case .songs(let items, let resuming) = drawn { await coordinator.shufflePlay(items: items, resuming: resuming)"))
+        #expect(button.contains("if case .songs(let items, let resuming) = drawn { await coordinator.shufflePlay(items: items, contextSource: contextSource, resuming: resuming)"))
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("contextSource: contextSource ?? String(localized: \"Shuffle\"), resuming: resuming)"))
         #expect(coordinator.contains("await open(item: first, restart: Self.restartsFirst(items, resuming: resuming), preservesContext: true)"))
@@ -433,14 +435,30 @@ struct RoutinePlaybackTests {
     /// place, and leaving the foreground ends it, each with its line.
     @Test("eine wartende Bitte einer Routine endet bei einer spaeteren Bitte und wenn die App den Vordergrund verlaesst", .needsTheSources)
     func aWaitingRoutineRequestHasAnEnd() throws {
+        typealias Row = (routine: String?, pending: Bool, item: String?, want: ResumeRequest.Order)
+        let rows: [Row] = [
+            ("r", false, nil, .routine("r")),
+            ("r", true, nil, .resume(endsRoutine: true)),
+            ("r", false, "t", .resume(endsRoutine: true)),
+            (nil, true, nil, .resume(endsRoutine: false)),
+            (nil, false, "t", .resume(endsRoutine: false)),
+            (nil, false, nil, .nothing),
+        ]
+        for row in rows {
+            #expect(ResumeRequest.order(routineId: row.routine, pending: row.pending, itemId: row.item) == row.want, "\(row)")
+        }
         let root = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
-        #expect(root.contains("if let id = ResumeRequest.pendingRoutineId { guard ResumeRequest.pending || ResumeRequest.pendingItemId != nil else { await handlePendingRoutine(id) return } ResumeRequest.endRoutineWait("),
+        #expect(root.contains("switch ResumeRequest.order(routineId: ResumeRequest.pendingRoutineId, pending: ResumeRequest.pending, itemId: ResumeRequest.pendingItemId) { case .routine(let id): await handlePendingRoutine(id) return case .nothing: return case .resume(let endsRoutine): if endsRoutine { ResumeRequest.endRoutineWait("),
                 "a request beside the routine's came later and is carried out")
         #expect(root.contains("if newPhase == .background { updateQuickActions() ResumeRequest.endRoutineWait("),
                 "leaving the foreground ends the wait")
         let intents = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(intents.contains("ResumeRequest.pending = false ResumeRequest.pendingItemId = nil ResumeRequest.pendingRoutineId = routine.id"),
                 "the routine's request clears the older ones, so one beside it is later")
+        #expect(intents.contains("if let standing = ResumeRequest.standing(routineId: ResumeRequest.pendingRoutineId, pending: ResumeRequest.pending, itemId: ResumeRequest.pendingItemId) { Logger.library.notice("),
+                "a request that gives way leaves its line")
+        #expect(ResumeRequest.standing(routineId: nil, pending: false, itemId: nil) == nil)
+        #expect(ResumeRequest.standing(routineId: "r", pending: true, itemId: "t") == "routine r, title, continue")
         let request = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
         #expect(request.contains("guard let id = pendingRoutineId else { return } pendingRoutineId = nil Logger.library.notice("))
     }

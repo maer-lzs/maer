@@ -35,8 +35,13 @@ nonisolated enum ResumeTarget: Equatable {
             return libraryLoading ? .waitForLibrary : .nothing(missing: "item")
         }
         if hasActivePlayer { return .resumeActive }
-        guard let lastPlayedId, lastPlayedKnown else {
-            return libraryLoading ? .waitForLibrary : .nothing(missing: "last played")
+        // No pointer and a pointer nothing resolves are two findings: the
+        // first is a fresh device, the second a title gone from its source.
+        guard let lastPlayedId else {
+            return libraryLoading ? .waitForLibrary : .nothing(missing: "no last played")
+        }
+        guard lastPlayedKnown else {
+            return libraryLoading ? .waitForLibrary : .nothing(missing: "last played not found")
         }
         return .lastPlayed(lastPlayedId)
     }

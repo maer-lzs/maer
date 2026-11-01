@@ -114,7 +114,31 @@ struct PlaylistPresentationTests {
         #expect(cardCode.contains("source.covers?()??coverURLs"))
         #expect(cardCode.contains("covers:{deviceCovers(list,router:router)}"))
         #expect(try flat("Sources/Views/Music/MusicLibraryPages.swift")
-            .contains("PlaylistArtwork(playlistID:playlist.id,coverURLs:PlaylistCardSource.deviceCovers(playlist,router:router))"))
+            .contains("PlaylistArtwork(playlistID:playlist.id,coverURLs:PlaylistCardSource.deviceCovers(playlist,router:router,limit:.max))"),
+                "the page keeps every cover")
+    }
+
+    /// Each cover once, in list order. The card stops at the mosaic's
+    /// slots; the page names no bound and gets every cover, as before.
+    @Test("die Cover einer Geraete-Liste: je eins, in Reihenfolge, die Karte bis zu den Plaetzen, die Seite alle")
+    @MainActor
+    func deviceCoversStopAtTheSlots() {
+        let ids = ["sub:song:1", "sub:song:2", "sub:song:3", "sub:song:4", "sub:song:5", "sub:song:6"]
+        let list = MaerPlaylists.Playlist(id: "l2", name: "Test", updatedAt: 1, itemIds: ids)
+        var router = ItemRouter.empty
+        // Songs 1 and 2 share an album cover; 5 names none.
+        router.coverURL = { id in
+            switch id {
+            case "sub:song:1", "sub:song:2": URL(string: "https://music.example/a")
+            case "sub:song:5": nil
+            default: URL(string: "https://music.example/\(id)")
+            }
+        }
+        let every = ["https://music.example/a", "https://music.example/sub:song:3",
+                     "https://music.example/sub:song:4", "https://music.example/sub:song:6"].compactMap(URL.init(string:))
+        #expect(PlaylistCardSource.deviceCovers(list, router: router, limit: .max) == every, "the page: every cover once, in order")
+        #expect(PlaylistCardSource.deviceCovers(list, router: router) == Array(every.prefix(PlaylistPresentation.mosaicSlots)))
+        #expect(PlaylistPresentation.mosaicTileCount(.max) == PlaylistPresentation.mosaicSlots, "the card gathers what the mosaic shows")
     }
 
     /// A device list of music server songs met nowhere else: the source has

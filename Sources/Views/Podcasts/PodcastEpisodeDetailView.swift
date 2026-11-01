@@ -19,8 +19,6 @@ struct PodcastEpisodeDetailView: View {
     /// ABS episode is read from it (through `PodcastShowSources`) without
     /// observing there.
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    /// The subscriptions, read plainly for the episode's own facts.
-    private var subscriptions: PodcastSubscriptions { PodcastSubscriptions.shared }
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
     /// The shownotes from the detail: a subscribed episode carries none in
@@ -35,6 +33,10 @@ struct PodcastEpisodeDetailView: View {
     private var coverURL: URL? { router.coverURL(item.id) }
     /// Source-aware show, from the one rule every podcast surface asks.
     private var show: PodcastShow? { PodcastShowSources.show(forEpisodeId: item.id) }
+    /// The subscribed show the episode belongs to: the same rule's answer
+    /// for every id but an Audiobookshelf episode's, which no subscription
+    /// holds.
+    private var subscribedShow: PodcastShow? { ItemNamespace.isABSPodcast(item.id) ? nil : show }
     private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
     private var isInProgress: Bool {
@@ -50,7 +52,7 @@ struct PodcastEpisodeDetailView: View {
     @ViewBuilder
     private func badges(_ ep: PodcastEpisode) -> some View {
         let explicit = PodcastExplicit.marks(
-            episode: ep.explicit, show: subscriptions.episode(guid: item.id)?.show.explicit)
+            episode: ep.explicit, show: subscribedShow?.explicit)
         let parts: [String] = [seasonEpisodeText(ep), typeText(ep), explicit ? PodcastExplicit.letter : nil]
             .compactMap { $0 }
         if !parts.isEmpty {
@@ -285,7 +287,7 @@ struct PodcastEpisodeDetailView: View {
     /// A text-only episode has nothing to play. The page shows the
     /// notes without the play affordance.
     private var isTextOnly: Bool {
-        !subscriptions.isPlayableEpisode(itemId: item.id)
+        !PodcastSubscriptions.isPlayableEpisode(itemId: item.id, episode: podcastEpisode)
     }
 
     private var playButton: some View {

@@ -25,6 +25,13 @@ fetch the episodes a routine will pick.
 square on the card and the page, for your own and for server playlists;
 with two or three covers the mosaic stays as it was.
 
+**The shuffle corner of a playlist card says why nothing plays.** When
+the list has no tracks, its songs could not be loaded or are not
+available offline, the card says so as the Shuffle button on the page
+does. A music server song that gives no answer for its cover is asked
+once a session instead of each time a list shows it, and right after
+the app starts a downloaded song keeps its cover.
+
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the
 progress as a ring. Its play button, the round widget and a new control

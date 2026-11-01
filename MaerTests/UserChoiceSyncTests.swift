@@ -50,11 +50,7 @@ struct UserChoiceMergeTests {
 
     @Test("TF-1b: der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich", .needsTheSources)
     func theCountsAreSaid() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        func flat(_ relative: String) throws -> String {
-            let text = try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
-            return SyncContractFenceTests.stripped(text).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        }
+        let flat = FetchAnswerTests.squeezedSource
         let choices = try flat("Sources/Networking/UserChoiceCloudSync.swift")
         #expect(choices.contains("let count = UserChoiceMerge.subscriptionCount(local: localSubscriptions().map { Set($0.keys) }, localEntries: localEntries, blob: blob)"))
         #expect(choices.contains("Logger.library.notice(\"CHOICE subscriptions local="), "the reconcile says the counts")

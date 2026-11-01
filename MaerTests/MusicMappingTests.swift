@@ -97,10 +97,7 @@ struct MusicPopularityTests {
 
     @Test("GT-18: die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg", .needsTheSources)
     func thePageWiresTheBars() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let page = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),
-                              encoding: .utf8)
-        let flat = SyncContractFenceTests.stripped(page).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicAlbumView.swift")
         #expect(flat.contains("MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))"))
         #expect(flat.contains("bars: popularity.indices.contains(index) ? popularity[index] : 0)"))
         #expect(!flat.contains("Your most played"), "the section above the list is back")
@@ -109,10 +106,7 @@ struct MusicPopularityTests {
 
     @Test("GT-18: bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter", .needsTheSources)
     func theRowGivesTheTitleItsLine() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let row = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/PopularityBars.swift"),
-                             encoding: .utf8)
-        let flat = SyncContractFenceTests.stripped(row).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PopularityBars.swift")
         let large = try #require(flat.range(of: "if typeSize.isAccessibilitySize {"))
         let small = try #require(flat.range(of: "} else {", range: large.upperBound..<flat.endIndex))
         let branch = flat[large.upperBound..<small.lowerBound]

@@ -721,7 +721,8 @@ RowHeading(title: "Downloads list",
                 LazyVStack(spacing: 0) {
                     ForEach(shown) { item in
                         PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
-                                          showsOriginCapsule: mirrored.contains(item.id))
+                                          showsOriginCapsule: mirrored.contains(item.id),
+                                          facts: .of(item.id, in: subs))
                     }
                 }
                 if downloaded.count > limit {
@@ -988,7 +989,8 @@ struct PodcastDownloadsPage: View {
             LazyVStack(spacing: 0) {
                 ForEach(items) { item in
                     PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
-                                      showsOriginCapsule: mirrored.contains(item.id))
+                                      showsOriginCapsule: mirrored.contains(item.id),
+                                      facts: .of(item.id, in: subs))
                 }
             }
             .bottomBarClearance()

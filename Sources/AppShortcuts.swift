@@ -161,7 +161,12 @@ struct PlayRoutineIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        // The newest request wins: an older one still waiting gives way.
+        // The newest request wins: an older one still waiting gives way,
+        // and its line says which.
+        if let standing = ResumeRequest.standing(routineId: ResumeRequest.pendingRoutineId, pending: ResumeRequest.pending,
+                                                 itemId: ResumeRequest.pendingItemId) {
+            Logger.library.notice("ROUTINE request \(routine.id, privacy: .public) replaces a waiting request: \(standing, privacy: .public)")
+        }
         ResumeRequest.pending = false
         ResumeRequest.pendingItemId = nil
         ResumeRequest.pendingRoutineId = routine.id

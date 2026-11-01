@@ -86,6 +86,31 @@ struct FetchAnswerTests {
         squeezed(try String(contentsOf: SourceTree.root.appendingPathComponent(relative), encoding: .utf8))
     }
 
+    /// How many copies of `squeezed` a text spells out: comments stripped,
+    /// then whitespace split and joined by one space, in one expression.
+    /// Read without any whitespace, so a copy spread over lines or spaced
+    /// otherwise is the same finding.
+    nonisolated static func squeezeCopies(in text: String) -> Int {
+        let flat = StockDriftTests.squeezed(SyncContractFenceTests.stripped(text))
+        let copy = #"stripped\([^=]*?\.split\(whereSeparator:(\{\$0\.isWhitespace\}|\\\.isWhitespace)\)\.joined\(separator:""\)"#
+        return flat.ranges(of: try! Regex(copy)).count
+    }
+
+    @Test("squeezed steht einmal: keine Testdatei schreibt die Form selbst", .needsTheSources)
+    func theSqueezeIsWrittenOnce() throws {
+        var copies: [String: Int] = [:]
+        for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["MaerTests"]) where name != "FetchAnswerTests.swift" {
+            let count = Self.squeezeCopies(in: text)
+            if count > 0 { copies[name] = count }
+        }
+        #expect(copies.isEmpty, "copies of FetchAnswerTests.squeezed: \(copies.sorted { $0.key < $1.key })")
+        #expect(Self.squeezeCopies(in: "let a = SyncContractFenceTests.stripped(t).split(whereSeparator: { $0.isWhitespace }).joined(separator: \" \")") == 1)
+        #expect(Self.squeezeCopies(in: "let a = SyncContractFenceTests.stripped(try String(contentsOf: u,\n    encoding: .utf8))\n        .split(whereSeparator:   \\.isWhitespace)\n        .joined(separator: \" \")") == 1,
+                "a copy over lines and spaced otherwise is still a copy")
+        #expect(Self.squeezeCopies(in: "let a = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: \" \")") == 0,
+                "without stripping the comments it is another form")
+    }
+
     @Test("die Abrufe, die einen Fehler als leere Liste zeigten, fragen ueber FetchAnswer", .needsTheSources)
     func theSilentFetchesAskThroughTheAnswer() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

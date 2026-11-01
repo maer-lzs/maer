@@ -565,9 +565,14 @@ final class PodcastSubscriptions: ObservableObject {
     /// queueable/downloadable; non-rss ids (abspod:, books, music) always are
     /// from this check's point of view.
     func isPlayableEpisode(itemId: String) -> Bool {
-        guard itemId.hasPrefix("rss:") else { return true }
-        guard let found = episode(guid: itemId) else { return true }
-        return found.episode.isPlayable
+        Self.isPlayableEpisode(itemId: itemId, episode: episode(guid: itemId)?.episode)
+    }
+
+    /// The rule with the subscribed episode already in hand: only a kept
+    /// feed episode can be text only, an unknown one plays.
+    nonisolated static func isPlayableEpisode(itemId: String, episode: PodcastEpisode?) -> Bool {
+        guard itemId.hasPrefix("rss:"), let episode else { return true }
+        return episode.isPlayable
     }
 
     #if DEBUG

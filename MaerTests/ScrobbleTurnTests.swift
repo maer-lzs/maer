@@ -36,12 +36,44 @@ struct ScrobbleTurnTests {
         #expect(ScrobbleTurn.due(ScrobbleTurn.song(at: 210, in: songs), last: nil) == "b")
     }
 
+    /// The booking a provider's `updateProgress` keeps, driven call by call
+    /// with a server that refuses once.
+    @Test("das Buch der Zaehlungen: einmal je Song, ein abgewiesener zaehlt beim naechsten Aufruf neu, ein neu geladenes Stueck zaehlt wieder")
+    @MainActor
+    func theBookCountsOncePerSongAndAsksARefusalAgain() async {
+        final class Server { var sent: [String] = []; var refuses = false }
+        let server = Server()
+        let book = ScrobbleBook()
+        let send: (String) async throws -> Void = { id in
+            server.sent.append(id)
+            if server.refuses { throw URLError(.badServerResponse) }
+        }
+        #expect(await book.count(ScrobbleTurn.song(at: 10, in: songs), in: "album", send: send) == nil)
+        #expect(await book.count(ScrobbleTurn.song(at: 40, in: songs), in: "album", send: send) == nil)
+        #expect(server.sent == ["a"], "the same song counts once")
+        server.refuses = true
+        let refused = await book.count(ScrobbleTurn.song(at: 200, in: songs), in: "album", send: send)
+        #expect(refused?.song == "b", "a refused count comes back for the provider's line")
+        #expect(book.last["album"] == nil, "a refused count is not booked as done")
+        server.refuses = false
+        #expect(await book.count(ScrobbleTurn.song(at: 210, in: songs), in: "album", send: send) == nil)
+        #expect(server.sent == ["a", "b", "b"], "the next call asks the refused song again")
+        #expect(book.last["album"] == "b")
+        _ = await book.count(ScrobbleTurn.song(at: 10, in: songs), in: "other", send: send)
+        #expect(server.sent.last == "a" && book.last["other"] == "a", "each item counts on its own")
+        book.forget("album")
+        _ = await book.count(ScrobbleTurn.song(at: 220, in: songs), in: "album", send: send)
+        #expect(server.sent.last == "b", "a reloaded item counts its song again")
+    }
+
     @Test("beide Musik-Anbieter fragen die eine Regel und zaehlen keinen Song mehr selbst", .needsTheSources)
     func bothProvidersAskTheOneRule() throws {
         for name in ["SubsonicProvider.swift", "JellyfinProvider.swift"] {
             let code = SyncContractFenceTests.stripped(try String(
                 contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/\(name)"), encoding: .utf8))
-            #expect(code.contains("ScrobbleTurn.due("), "\(name) no longer asks the rule")
+            #expect(code.contains("await scrobbles.count("), "\(name) no longer counts through the book")
+            #expect(code.contains("scrobbles.forget(itemId)"), "\(name) does not count a reloaded item again")
+            #expect(!code.contains("lastScrobbledSong"), "\(name) keeps a booking of its own again")
             #expect(!code.contains("$0.start <= currentTime"), "\(name) finds the playing song itself again")
             #expect(!code.contains("try? await client.markPlayed") && !code.contains("try? await client.scrobble"),
                     "\(name) swallows a refused count again")

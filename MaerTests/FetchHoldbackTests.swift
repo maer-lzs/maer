@@ -120,12 +120,22 @@ struct FetchHoldbackTests {
         #expect(found == Self.automaticSites.mapValues(\.count), "automatische Fragen: \(found.sorted { $0.key < $1.key })")
     }
 
+    /// Only an automatic question waits out a holdback, so the question
+    /// after the cancellation is automatic too: a deliberate one would ask
+    /// the network even inside a holdback and prove nothing.
     @Test("ein Abbruch haelt nicht zurueck, und ohne Rueckhalt fragt der Flug sofort wieder")
     func aCancellationDoesNotHoldBack() async throws {
         let clock = Clock()
-        let holding = CoalescedFlights<Int>(capacity: .none, holdsBack: true, now: { clock.now })
-        _ = try? await holding.value(for: "k") { throw CancellationError() }
-        #expect(try await holding.value(for: "k") { (1, 1) } == 1)
+        let held = Count()
+        let holding = CoalescedFlights<Int>(capacity: .none, holdsBack: true,
+                                            now: { clock.now }, onHeldBack: { _ in held.add() })
+        _ = try? await LookupOccasion.automatic {
+            try await holding.value(for: "k") { throw CancellationError() }
+        }
+        #expect(try await LookupOccasion.automatic {
+            try await holding.value(for: "k") { (1, 1) }
+        } == 1, "die automatische Frage nach einem Abbruch fragt sofort")
+        #expect(held.count == 0)
         let plain = CoalescedFlights<Int>(capacity: .none, now: { clock.now })
         _ = try? await plain.value(for: "k") { throw URLError(.timedOut) }
         #expect(try await plain.value(for: "k") { (2, 1) } == 2, "ohne Rueckhalt wie in F1a")

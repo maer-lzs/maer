@@ -64,10 +64,12 @@ struct ShufflePlayButton: View {
     /// no track, or the songs did not come, offline when the device has no
     /// network (as the album page decides it), else that they could not be
     /// loaded.
-    static func start(pool: () async -> ShufflePool, isOnline: Bool, coordinator: PlayerCoordinator) async {
+    /// `contextSource` names what plays, where a caller has a title for it.
+    static func start(pool: () async -> ShufflePool, isOnline: Bool, coordinator: PlayerCoordinator,
+                      contextSource: String? = nil) async {
         let drawn = await pool()
         if case .songs(let items, let resuming) = drawn {
-            await coordinator.shufflePlay(items: items, resuming: resuming)
+            await coordinator.shufflePlay(items: items, contextSource: contextSource, resuming: resuming)
             return
         }
         guard !Task.isCancelled else { return }

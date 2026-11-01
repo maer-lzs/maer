@@ -1062,7 +1062,8 @@ struct MaerPlaylistPage: View {
     private func header(_ playlist: MaerPlaylists.Playlist, start: RoutinePlayback.Start, round: Int) -> some View {
         let playable = start.items
         return DetailHeader(title: playlist.name) { side in
-            PlaylistArtwork(playlistID: playlist.id, coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router))
+            PlaylistArtwork(playlistID: playlist.id,
+                            coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router, limit: .max))
                 .id(round)
                 .frame(maxWidth: side ?? 240)
                 .coverCard()

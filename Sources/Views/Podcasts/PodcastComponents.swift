@@ -309,6 +309,22 @@ struct ExplicitMark: View {
     }
 }
 
+/// What an episode row needs of the subscriptions: whether the episode
+/// plays (a kept episode without an enclosure does not) and whether its
+/// explicit mark shows. Answered once by the list that observes them, two
+/// indexed reads, so the row stays free of the store.
+struct PodcastEpisodeFacts: Equatable {
+    var isPlayable = true
+    var marksExplicit = false
+
+    static func of(_ itemId: String, in subscriptions: PodcastSubscriptions) -> PodcastEpisodeFacts {
+        let found = subscriptions.episode(guid: itemId)
+        return PodcastEpisodeFacts(
+            isPlayable: subscriptions.isPlayableEpisode(itemId: itemId),
+            marksExplicit: found.map { PodcastExplicit.marks(episode: $0.episode.explicit, show: $0.show.explicit) } ?? false)
+    }
+}
+
 struct PodcastEpisodeRow: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
@@ -335,13 +351,12 @@ struct PodcastEpisodeRow: View {
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.isOnline) private var isOnline
 
-    /// The subscriptions, read plainly: the row observes nothing (above).
-    private var subscriptions: PodcastSubscriptions { PodcastSubscriptions.shared }
+    /// What the subscriptions say of the episode, answered by the list that
+    /// observes them: the row observes nothing (above) and asks no store.
+    let facts: PodcastEpisodeFacts
 
-    /// Text-only episode (kept, no enclosure). Plain read, one per render.
-    private var isTextOnly: Bool {
-        !subscriptions.isPlayableEpisode(itemId: item.id)
-    }
+    /// Text-only episode (kept, no enclosure).
+    private var isTextOnly: Bool { !facts.isPlayable }
 
     var body: some View {
         // Resolve the play state ONCE per render. It deserializes UserDefaults,
@@ -488,9 +503,8 @@ struct PodcastEpisodeRow: View {
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".
     private func metaText(state: EpisodePlayState) -> String {
         var parts: [String] = []
-        // The explicit mark leads the line (`PodcastExplicit`); one indexed read.
-        if let found = subscriptions.episode(guid: item.id),
-           PodcastExplicit.marks(episode: found.episode.explicit, show: found.show.explicit) {
+        // The explicit mark leads the line (`PodcastExplicit`).
+        if facts.marksExplicit {
             parts.append(PodcastExplicit.letter)
         }
         let date = relativeDateText(item)

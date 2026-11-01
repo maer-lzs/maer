@@ -103,7 +103,7 @@ struct AppRowsPageTests {
 
     @Test("ohne Anmeldung haelt der Schalter des Katalogs die eingebettete Seite", .needsTheSources)
     func theEmbeddedCatalogFollowsTheRowSwitch() throws {
-        let code = Self.squeezed(SyncContractFenceTests.stripped(try String(
+        let code = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)))
         #expect(code.components(separatedBy: "embedded:true").count == 2, "a second embedded catalog page")
         #expect(code.contains("ifcatalogRowVisible{OpenCatalogsHeading()FreeAudiobooksPage(playerCoordinator:playerCoordinator,embedded:true)"),
@@ -118,7 +118,7 @@ struct AppRowsPageTests {
         #expect(row.storageKey == AppStorageKeys.rowBooksChartsVisible)
         let catalog = try #require(AppRows.row(key: "books.catalog"))
         #expect(!catalog.sourceKeys.contains("appleCatalog"), "the catalog row counts as carried by Apple alone")
-        let page = Self.squeezed(SyncContractFenceTests.stripped(try String(
+        let page = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FreeAudiobooksPage.swift"), encoding: .utf8)))
         #expect(page.contains("ifAppStorageKeys.appleCatalogEnabledValue&&chartsRowVisible{chartsSection}"),
                 "the chart row is drawn past its switch")
@@ -126,11 +126,6 @@ struct AppRowsPageTests {
                 "a hidden chart row still asks Apple")
         #expect(page.components(separatedBy: ".task(id:ChartsLoad(chip:selectedChip,visible:chartsRowVisible))").count == 3,
                 "showing the row again does not load its charts")
-    }
-
-    /// Code with every whitespace removed, for a shape that spans lines.
-    nonisolated static func squeezed(_ code: String) -> String {
-        code.filter { !$0.isWhitespace }
     }
 
     @Test("die Logo-Diagnose steht nur im Entwicklungsbau", .needsTheSources)

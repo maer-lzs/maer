@@ -25,8 +25,9 @@ struct ResumeTargetTests {
             (nil, false, true, nil, false, true, .resumeActive),
             (nil, false, false, "b", true, false, .lastPlayed("b")),
             (nil, false, false, "b", false, true, .waitForLibrary),
-            (nil, false, false, "b", false, false, .nothing(missing: "last played")),
-            (nil, false, false, nil, false, false, .nothing(missing: "last played")),
+            (nil, false, false, "b", false, false, .nothing(missing: "last played not found")),
+            (nil, false, false, nil, false, false, .nothing(missing: "no last played")),
+            (nil, false, false, nil, false, true, .waitForLibrary),
         ]
         for row in rows {
             let got = ResumeTarget.pick(namedItemId: row.named, namedItemKnown: row.namedKnown, hasActivePlayer: row.active,
@@ -41,7 +42,7 @@ struct ResumeTargetTests {
         let library = LibraryViewModel(provider: MockProvider())
         library.entries = [LibraryEntry(item: LibraryItem(id: known, media: nil, addedAt: nil), progress: nil)]
         let unknown = "resume-unknown-\(UUID().uuidString)"
-        for (lastPlayed, want) in [(unknown, ResumeTarget.nothing(missing: "last played")), (known, .lastPlayed(known))] {
+        for (lastPlayed, want) in [(unknown, ResumeTarget.nothing(missing: "last played not found")), (known, .lastPlayed(known))] {
             var targets: [ResumeTarget] = []
             for caller in [PlayerCoordinator.ResumeCaller.view, .command] {
                 let coordinator = PlayerCoordinator(provider: MockProvider())
@@ -59,7 +60,10 @@ struct ResumeTargetTests {
     func everyKindResolvesBeyondTheSessionsMemory() async {
         let library = LibraryViewModel(provider: MockProvider())
         let suffix = UUID().uuidString
-        let ids = ["sub:song:\(suffix)", "jf:item:\(suffix)", "abspod:show:\(suffix)", "rss:feed:\(suffix)",
+        // Each id in the form its source builds: the seam replaces the
+        // restore's chain, so the forms prove the door passes every one on.
+        let ids = [SubsonicProvider.itemId(songId: suffix), JellyfinProvider.itemId(songId: suffix),
+                   "abspod:show\(suffix):episode\(suffix)", "rss:feed\(suffix):\(suffix)",
                    "radio:\(suffix)", "lva:\(suffix)", "book-\(suffix)"]
         for id in ids {
             #expect(AppSession.shared.libraryItem(forId: id) == nil, "the precondition: \(id) is in the session's memory")
@@ -91,7 +95,7 @@ struct ResumeTargetTests {
         let coordinator = PlayerCoordinator(provider: MockProvider())
         let target = await coordinator.resume(namedItemId: nil, by: .command, library: library,
                                               lastPlayedId: "resume-none-\(UUID().uuidString)")
-        #expect(target == .nothing(missing: "last played"))
+        #expect(target == .nothing(missing: "last played not found"))
         #expect(!ResumeRequest.pending && ResumeRequest.pendingItemId == nil, "the command left a request the view would play later")
         #expect(coordinator.viewModel == nil)
     }

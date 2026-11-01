@@ -60,11 +60,7 @@ struct TrackRowTests {
     /// playlist rows lead with the song's cover and name the artist.
     @Test("Album, Server- und Geraete-Playlist zeichnen die eine Zeile, die Playlist mit Cover und Kuenstler", .needsTheSources)
     func everyListDrawsTheOneRow() throws {
-        func flat(_ path: String) throws -> String {
-            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path),
-                                                       encoding: .utf8))
-                .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        }
+        let flat = FetchAnswerTests.squeezedSource
         let album = try flat("Sources/Views/Music/MusicAlbumView.swift")
         #expect(album.contains("TrackRowLabel(lead: isPlaylist ? .cover(songCoverURL(index), placeholder: \"music.note\") : .number(index + 1)"))
         #expect(album.contains("artist: rowArtist(index)"))

@@ -88,3 +88,39 @@ nonisolated struct SongCoverArtMemo: Codable, Equatable {
         defaults.set(data, forKey: Self.storeKey)
     }
 }
+
+/// The songs a server gave no answer for in this session, so a pass that
+/// learns covers does not ask them again on every appearance. It belongs to
+/// one server like the memory: another server, or none after signing out,
+/// starts empty. Kept in memory only and capped, so the next session asks
+/// each of them once more.
+nonisolated struct UnansweredSongs: Equatable {
+    static let cap = SongCoverArtMemo.cap
+
+    let server: String
+    private(set) var ids: Set<String> = []
+
+    init(server: String) { self.server = server }
+
+    /// This set when it belongs to `server`, else an empty one for it.
+    func belonging(to server: String) -> UnansweredSongs {
+        self.server == server ? self : UnansweredSongs(server: server)
+    }
+
+    func contains(_ songId: String) -> Bool { ids.contains(songId) }
+
+    mutating func note(_ songIds: some Sequence<String>) {
+        for songId in songIds where ids.count < Self.cap { ids.insert(songId) }
+    }
+
+    /// The songs of `songIds` a pass asks: each once, in order, with no
+    /// learned cover, not asked by a running pass and not unanswered here,
+    /// at most `limit`.
+    static func toAsk(_ songIds: [String], known: (String) -> Bool, asking: Set<String>,
+                      unanswered: UnansweredSongs, limit: Int) -> [String] {
+        var seen: Set<String> = []
+        return Array(songIds
+            .filter { !known($0) && !asking.contains($0) && !unanswered.contains($0) && seen.insert($0).inserted }
+            .prefix(limit))
+    }
+}

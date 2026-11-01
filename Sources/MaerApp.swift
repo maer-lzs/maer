@@ -33,6 +33,32 @@ enum ResumeRequest {
         pendingRoutineId = nil
         Logger.library.notice("ROUTINE request \(id, privacy: .public) stops waiting: \(reason, privacy: .public)")
     }
+
+    /// What the library does with the requests that stand.
+    nonisolated enum Order: Equatable {
+        /// Only a routine is asked: it starts or waits for its list.
+        case routine(String)
+        /// A title or "continue" is asked; `endsRoutine` when a routine
+        /// waits beside it, which then gave way to the later request.
+        case resume(endsRoutine: Bool)
+        case nothing
+    }
+
+    /// The order of the requests. The routine's intent clears the others
+    /// when it sets its own, so a request beside a routine came later.
+    nonisolated static func order(routineId: String?, pending: Bool, itemId: String?) -> Order {
+        let asksResume = pending || itemId != nil
+        if let routineId, !asksResume { return .routine(routineId) }
+        return asksResume ? .resume(endsRoutine: routineId != nil) : .nothing
+    }
+
+    /// The requests that stand, by kind, for the line of the one that
+    /// replaces them; nil when none stands.
+    nonisolated static func standing(routineId: String?, pending: Bool, itemId: String?) -> String? {
+        let kinds = [routineId.map { "routine \($0)" }, itemId == nil ? nil : "title", pending ? "continue" : nil]
+            .compactMap { $0 }
+        return kinds.isEmpty ? nil : kinds.joined(separator: ", ")
+    }
 }
 
 /// Same shape for "open what the message was about": the tap only leaves a

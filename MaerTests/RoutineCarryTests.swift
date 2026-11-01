@@ -145,13 +145,22 @@ struct RoutineCarryTests {
         let watching = store.objectWillChange.sink { local.writes += 1 }
         // What opening the list page does, then the healing it starts, to its end.
         let healing = store.backfillTitles(playlistId: list.id)
-        #expect(healing != nil, "the precondition: the rules have no snapshot, so the page asks")
+        #expect(healing == nil, "a rule is no title: the page asks no source for it")
         await healing?.value
         await store.fetchMissingTitles(Self.ruleIds, playlistId: list.id)
         #expect(local.writes == 0, "nothing learned, nothing written: \(local.writes)")
         #expect(store.playlist(id: list.id)?.snapshots.isEmpty == true)
         #expect(store.playlist(id: list.id)?.itemIds == Self.ruleIds)
         withExtendedLifetime(watching) {}
+    }
+
+    @Test("die Heilung der Titel fragt nur Eintraege ohne Abbild, die einen Titel nennen, keine Regel")
+    func theHealingAsksTitlesNotRules() {
+        var list = MaerPlaylists.Playlist(id: "l", name: "Morgens", updatedAt: 1,
+                                          itemIds: ["sub:song:1", "rule:newest:abc", "rule:later:9:abc", "lva:2"])
+        list.snapshots["lva:2"] = CarriedItem(id: "lva:2", title: "Kept")
+        #expect(MaerPlaylists.untitled(list) == ["sub:song:1"],
+                "a rule, also in a form this build does not read, and a kept entry are not asked")
     }
 }
 #endif

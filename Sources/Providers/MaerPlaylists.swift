@@ -364,7 +364,7 @@ final class MaerPlaylists: ObservableObject {
     @discardableResult
     func backfillTitles(playlistId: String) -> Task<Void, Never>? {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return nil }
-        let missing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
+        let missing = Self.untitled(playlists[index])
         guard !missing.isEmpty else { return nil }
         let learned = Self.snapshots(for: missing)
         if !learned.isEmpty {
@@ -375,9 +375,16 @@ final class MaerPlaylists: ObservableObject {
         // The cache is only the shortcut. What it cannot answer goes
         // the SAME reload way the row goes, so a shared list heals itself
         // instead of staying at the placeholder forever.
-        let stillMissing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
+        let stillMissing = Self.untitled(playlists[index])
         guard !stillMissing.isEmpty else { return nil }
         return Task { await fetchMissingTitles(stillMissing, playlistId: playlistId) }
+    }
+
+    /// The entries of a list that lack a snapshot and name a title. A
+    /// routine's rule is no title, also in a form this build does not read:
+    /// no source knows it, it becomes episodes when the list plays.
+    nonisolated static func untitled(_ list: Playlist) -> [String] {
+        list.itemIds.filter { list.snapshots[$0] == nil && !ItemNamespace.isRoutineRule($0) }
     }
 
     /// Resolve entries the session cache does not carry (catalogue ids are

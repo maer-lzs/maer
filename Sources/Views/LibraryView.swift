@@ -1772,18 +1772,20 @@ struct LibraryView: View {
 
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
-        if let id = ResumeRequest.pendingRoutineId {
-            guard ResumeRequest.pending || ResumeRequest.pendingItemId != nil else {
-                await handlePendingRoutine(id)
-                return
-            }
-            ResumeRequest.endRoutineWait("a later request")
+        switch ResumeRequest.order(routineId: ResumeRequest.pendingRoutineId, pending: ResumeRequest.pending,
+                                   itemId: ResumeRequest.pendingItemId) {
+        case .routine(let id):
+            await handlePendingRoutine(id)
+            return
+        case .nothing:
+            return
+        case .resume(let endsRoutine):
+            if endsRoutine { ResumeRequest.endRoutineWait("a later request") }
         }
         // Siri "Play <book>" names a title; a quick action, Siri's
         // "continue" and the widget's link only ask. The decision is the
         // door's, the same one the widget's command asks.
         let named = ResumeRequest.pendingItemId
-        guard named != nil || ResumeRequest.pending else { return }
         let target = await playerCoordinator.resume(namedItemId: named, by: .view, library: viewModel)
         // A title not found while the library still loads waits for the
         // call after the load (`.task`) instead of being dropped.

@@ -87,8 +87,15 @@ struct SongCoverArtMemoTests {
         let learnSites = flat.components(separatedBy: "learnCovers(").count - 2
         #expect(learnSites == 7, "learnCovers call sites: \(learnSites)")
         #expect(flat.contains("if let song = try? await client.song(id: songId) { songs.append(song) }"))
-        #expect(flat.contains(".filter { memo.coverArt(of: $0) == nil && !songCoversAsking.contains($0) && seen.insert($0).inserted } .prefix(Self.songCoverPassLimit)"),
+        #expect(flat.contains("let missing = UnansweredSongs.toAsk(itemIds.compactMap { Self.id($0, kind: \"song\") }, known: { memo.coverArt(of: $0) != nil }, asking: songCoversAsking, unanswered: songCoversUnanswered, limit: Self.songCoverPassLimit)"),
                 "only songs without a named cover, each once, at most one pass's worth")
+        #expect(flat.contains("songCoversUnanswered = songCoversUnanswered.belonging(to: server)"),
+                "a pass reads the unanswered songs of its own server")
+        #expect(flat.contains("if songCoversUnanswered.server == server { songCoversUnanswered.note(silent) }"))
+        #expect(flat.contains("songCoverStore = nil songCoversUnanswered = UnansweredSongs(server: \"\")"),
+                "a new configuration starts without the unanswered songs")
+        #expect(flat.contains("keeps: { !downloads.hasScanned || downloads.downloadedItemIds.contains(Self.itemId(songId: $0)) }"),
+                "before the scan of the downloads the trim keeps every song")
         #expect(flat.contains("learnCovers(songs) let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)"))
         #expect(flat.contains("learnCovers(hits.song ?? [])"))
         #expect(flat.contains("Artwork.rename(from: old, to: new) Artwork.invalidate(new) await Artwork.persist(new)"))
@@ -99,6 +106,33 @@ struct SongCoverArtMemoTests {
         #expect(flat.contains("playCount: entry.playCount, coverArt: entry.coverArt)"))
         #expect(flat.components(separatedBy: "learnCoverArt(").count - 1 == 3,
                 "one definition, the answers with songs and the device list's songs (through learnCovers), the song list page")
+    }
+
+    /// A song the server did not answer for is skipped by the next passes
+    /// of the same server; another server, or none after signing out,
+    /// inherits nothing.
+    @Test("Ein Lied ohne Antwort fragt der naechste Durchgang nicht, ein anderer Server erbt es nicht")
+    func anUnansweredSongIsNotAskedAgain() {
+        var silent = UnansweredSongs(server: "https://a.example|sim")
+        silent.note(["tr-2"])
+        let ask = { (set: UnansweredSongs) in
+            UnansweredSongs.toAsk(["tr-1", "tr-2", "tr-3", "tr-1", "tr-4"], known: { $0 == "tr-3" },
+                                  asking: [], unanswered: set, limit: 60)
+        }
+        #expect(ask(silent) == ["tr-1", "tr-4"], "each once, without the learned and the unanswered")
+        #expect(ask(silent.belonging(to: "https://a.example|sim")) == ["tr-1", "tr-4"], "the same server keeps the set")
+        let other = silent.belonging(to: "https://b.example|sim")
+        #expect(!other.contains("tr-2") && other.server == "https://b.example|sim", "another server starts empty")
+        #expect(ask(other) == ["tr-1", "tr-2", "tr-4"])
+        #expect(silent.belonging(to: "|").ids.isEmpty, "signed out, no server inherits it")
+        #expect(UnansweredSongs.toAsk(["tr-1", "tr-2"], known: { _ in false }, asking: ["tr-1"],
+                                      unanswered: UnansweredSongs(server: "s"), limit: 60) == ["tr-2"],
+                "a song a running pass asks is not asked twice")
+        #expect(UnansweredSongs.toAsk((1...80).map { "tr-\($0)" }, known: { _ in false }, asking: [],
+                                      unanswered: UnansweredSongs(server: "s"), limit: 60).count == 60)
+        var full = UnansweredSongs(server: "s")
+        full.note((0...UnansweredSongs.cap).map { "tr-\($0)" })
+        #expect(full.ids.count == UnansweredSongs.cap, "the set stays within its cap")
     }
 
     @Test("Eine gehaltene Liederliste ohne Cover-Feld liest sich weiter, mit Feld traegt sie es")
