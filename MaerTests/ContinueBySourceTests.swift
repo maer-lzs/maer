@@ -170,7 +170,7 @@ struct ContinueBySourceTests {
         #expect(writers == ["ContinueRowsWriter.swift"], "the rows have another writer: \(writers)")
     }
 
-    @Test("gross: je eingeschaltete Quelle der neueste Titel in der Reihenfolge der Reiter, in Bedienungshilfen-Groessen zwei")
+    @Test("gross: je eingeschaltete Quelle der neueste Titel in der Reihenfolge der Reiter, in Bedienungshilfen-Groessen ebenso vier")
     func theLargeWidget() {
         let rows = [row("station", .radio, at: 9), row("book-b", .audiobooks, at: 8), row("book-a", .audiobooks, at: 7),
                     row("song", .music, at: 6), row("ep", .podcasts, at: 5)]
@@ -181,7 +181,9 @@ struct ContinueBySourceTests {
                 == ["book-b", "ep", "song"], "a source switched off has no row")
         #expect(WidgetRows.shown(rows.filter { $0.source != .music }, layout: .large(all), accessibilitySize: false).map(\.itemId)
                 == ["book-b", "ep", "station"], "a source without a title has no row")
-        #expect(WidgetRows.shown(rows, layout: .large(all), accessibilitySize: true).map(\.itemId) == ["book-b", "ep"])
+        #expect(WidgetRows.shown(rows, layout: .large(all), accessibilitySize: true).map(\.itemId)
+                == ["book-b", "ep", "song", "station"], "the system caps the type, four whole rows stand at every size")
+        #expect(WidgetRows.limit(large: true, accessibilitySize: true) == WidgetRows.limit(large: true, accessibilitySize: false))
     }
 
     @Test("mittel: die zwei zuletzt gehoerten Titel oder je eine von zwei Quellen, in Bedienungshilfen-Groessen eine Zeile")
