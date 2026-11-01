@@ -108,6 +108,70 @@ struct PlayBookIntent: AppIntent {
     }
 }
 
+// MARK: - "Start [routine]"
+
+/// A routine for the Siri parameter: a list of this device with a rule.
+struct RoutineEntity: AppEntity {
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Routine"
+    static let defaultQuery = RoutineQuery()
+
+    let id: String
+    let name: String
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(name)")
+    }
+}
+
+struct RoutineQuery: EntityStringQuery {
+    /// The routines among the lists, in the lists' order; a list without a
+    /// rule is no routine and is not offered.
+    nonisolated static func routines(from lists: [MaerPlaylists.Playlist]) -> [RoutineEntity] {
+        lists.filter(\.isRoutine).map { RoutineEntity(id: $0.id, name: $0.name) }
+    }
+
+    @MainActor
+    private func allRoutines() -> [RoutineEntity] {
+        Self.routines(from: MaerPlaylists.shared.playlists)
+    }
+
+    func entities(for identifiers: [String]) async throws -> [RoutineEntity] {
+        let routines = await allRoutines()
+        return identifiers.compactMap { id in routines.first { $0.id == id } }
+    }
+
+    func entities(matching string: String) async throws -> [RoutineEntity] {
+        await allRoutines().filter { $0.name.localizedCaseInsensitiveContains(string) }
+    }
+
+    func suggestedEntities() async throws -> [RoutineEntity] {
+        await allRoutines()
+    }
+}
+
+/// "Start [routine]": opens the app and starts this routine, the same
+/// start as its card on Start.
+struct PlayRoutineIntent: AppIntent {
+    static let title: LocalizedStringResource = "Start Routine"
+    static let description = IntentDescription("Starts one of your routines.")
+    static let openAppWhenRun = true
+
+    @Parameter(title: "Routine")
+    var routine: RoutineEntity
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        ResumeRequest.pendingRoutineId = routine.id
+        NotificationCenter.default.post(name: .resumeLastBookRequested, object: nil)
+        return .result()
+    }
+}
+
+extension MaerPlaylists {
+    /// The shortcuts learn the routines anew: their phrases name them.
+    static let refreshShortcuts: @MainActor () -> Void = { MaerShortcuts.updateAppShortcutParameters() }
+}
+
 struct DriveModeIntent: AppIntent {
     static let title: LocalizedStringResource = "Drive Mode"
     static let description = IntentDescription("Opens the big-button drive layout.")
@@ -162,6 +226,20 @@ struct MaerShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Play Audiobook",
             systemImageName: "book.fill"
+        )
+        AppShortcut(
+            intent: PlayRoutineIntent(),
+            phrases: [
+                "Start \(\.$routine) in \(.applicationName)",
+                "Start \(\.$routine) in the \(.applicationName) app",
+                "Start \(\.$routine) with the \(.applicationName) app",
+                "Starte \(\.$routine) in \(.applicationName)",
+                "Starte \(\.$routine) in der \(.applicationName)-App",
+                "Starte \(\.$routine) mit der App \(.applicationName)",
+                "Starte \(\.$routine) von der App \(.applicationName)"
+            ],
+            shortTitle: "Start Routine",
+            systemImageName: "music.note.list"
         )
     }
 }

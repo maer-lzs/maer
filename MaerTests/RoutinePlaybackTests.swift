@@ -208,8 +208,9 @@ struct RoutinePlaybackTests {
         #expect(picked[0].title == "Folge 1", "the precondition: an episode names itself")
     }
 
-    /// Both play buttons of a list start through the one door, and the door
-    /// hands the first place's resume to `playInOrder`.
+    /// Both play buttons of a list and the shortcut's request start through
+    /// the one door, and the door hands the first place's resume to
+    /// `playInOrder`.
     @Test("beide Abspielknoepfe einer Liste starten durch RoutinePlayback.start, und der Start reicht das Fortsetzen weiter", .needsTheSources)
     func bothButtonsStartThroughTheOneDoor() throws {
         var starts: [String: Int] = [:]
@@ -222,10 +223,14 @@ struct RoutinePlaybackTests {
                 bare.append(file.name)
             }
         }
-        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1])
+        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("restartFirst: !start.firstFromRule"))
+        // The shortcut is the third caller; it reads the answer, the buttons
+        // leave it.
+        #expect(door.contains("@discardableResult static func start("))
+        #expect(door.contains("return !start.items.isEmpty"))
     }
 
     // MARK: - Adding
@@ -320,6 +325,65 @@ struct RoutinePlaybackTests {
         let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
         #expect(home.contains("maerPlaylists.playlists.filter(\\.isRoutine)"))
         #expect(home.contains("PlaylistCard(source: PlaylistCardSource.device(list, router: router)"))
+    }
+
+    // MARK: - The shortcut
+
+    @Test("der Kurzbefehl bietet nur Routinen an, mit ihrem Namen, und eine Liste ohne Regel faellt heraus")
+    func theShortcutOffersOnlyRoutines() {
+        let lists = [
+            MaerPlaylists.Playlist(id: "a", name: "Morgens", updatedAt: 0, itemIds: ["rule:newest:aaaa", "jam:1"]),
+            MaerPlaylists.Playlist(id: "b", name: "Lieder", updatedAt: 0, itemIds: ["jam:1"]),
+            MaerPlaylists.Playlist(id: "c", name: "Abends", updatedAt: 0, itemIds: ["rule:next:9:aaaa"]),
+        ]
+        let offered = RoutineQuery.routines(from: lists)
+        #expect(offered.map(\.id) == ["a", "c"])
+        #expect(offered.map(\.name) == ["Morgens", "Abends"])
+        #expect(RoutineQuery.routines(from: [MaerPlaylists.Playlist(id: "a", name: "Morgens", updatedAt: 0, itemIds: ["jam:1"])]).isEmpty,
+                "a list that lost its rule is no longer offered")
+    }
+
+    /// A request that comes before the lists are read waits and says
+    /// nothing; when the list arrives it starts. Only a read store that
+    /// lacks the list says so.
+    @Test("eine Bitte vor dem Lesen der Listen wartet still und startet danach, nach dem Lesen fehlt eine unbekannte mit Satz", .needsTheSources)
+    func aRequestBeforeTheListsWaits() throws {
+        let morning = MaerPlaylists.Playlist(id: "a", name: "Morgens", updatedAt: 0, itemIds: ["rule:newest:aaaa"])
+        #expect(RoutinePlayback.request("a", in: [], complete: false) == .wait)
+        #expect(RoutinePlayback.request("a", in: [morning], complete: false) == .start(morning))
+        #expect(RoutinePlayback.request("a", in: [morning], complete: true) == .start(morning))
+        #expect(RoutinePlayback.request("x", in: [morning], complete: true) == .missing)
+        let root = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(root.contains("switch RoutinePlayback.request(id, in: lists.playlists, complete: !lists.startIncomplete) { case .wait: return"),
+                "waiting keeps the request and says nothing")
+        #expect(root.contains(".onReceive(routineLists.$playlists.dropFirst()) { _ in guard ResumeRequest.pendingRoutineId != nil else { return }"),
+                "the waiting request goes on when the lists arrive")
+        #expect(root.contains("if !(await RoutinePlayback.start(list, in: lists, on: playerCoordinator)) { routineRequestFailed("))
+    }
+
+    @Test("die Kurzbefehle lernen die Routinen nur, wenn eine kommt, geht oder ihren Namen aendert")
+    func theShortcutsLearnOnlyAChangedSetOfRoutines() {
+        let store = Self.freshStore()
+        var told = 0
+        store.routinesChanged = { told += 1 }
+        let list = store.create(name: "Morgens")
+        _ = store.add(itemId: "jam:1886432", to: list.id)
+        #expect(told == 0, "a list without a rule is no routine")
+        _ = store.add(itemId: "rule:newest:aaaa", to: list.id)
+        #expect(told == 1)
+        _ = store.add(itemId: "jam:1886433", to: list.id)
+        store.remove(itemId: "jam:1886432", from: list.id)
+        _ = store.add(itemId: "rule:next:bbbb", to: list.id)
+        #expect(told == 1, "writes that leave the routines as they are tell nothing")
+        store.rename(playlistId: list.id, to: "Frueh")
+        #expect(told == 2)
+        let other = store.create(name: "Lieder")
+        store.rename(playlistId: other.id, to: "Musik")
+        #expect(told == 2, "a list that is no routine is not offered")
+        store.delete(playlistId: list.id)
+        #expect(told == 3)
+        store.delete(playlistId: other.id)
+        #expect(told == 3)
     }
 }
 #endif

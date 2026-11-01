@@ -6,6 +6,7 @@
 import SwiftUI
 import UIKit
 import OSLog
+import Combine
 
 struct LibraryView: View {
     @Environment(\.itemRouter) private var router
@@ -571,7 +572,7 @@ struct LibraryView: View {
                 .onChange(of: session.sourcesVersion) { _, _ in
                     // Diagnosis (log-first, device-readable): full source
                     // state at every bump, so a thrown selection is traceable.
-                    let subs = PodcastSubscriptions.shared
+                    let subs = podcastSubs
                     Logger.library.notice("Y37 sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public) selected=\(selectedMediaType.rawValue, privacy: .public) masters(a/p/m/r)=\(AppStorageKeys.audiobooksTabEnabledValue)/\(AppStorageKeys.podcastsTabEnabledValue)/\(AppStorageKeys.musicTabEnabledValue)/\(AppStorageKeys.radioTabEnabledValue) absPod=\(AppStorageKeys.absPodcastsActive)/\(ABSPodcastProvider.shared.hasPodcasts) rss=\(AppStorageKeys.rssActive)/\(subs.hasSubscriptions)")
                     // A source can start serving books after the start (a
                     // Jellyfin books library is a server answer). Without this
@@ -833,6 +834,12 @@ struct LibraryView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .resumeLastBookRequested)) { _ in
             // Fires when the app was ALREADY running (no scene-phase change).
+            Task { await handlePendingResumeRequest() }
+        }
+        // A routine request that waits for rows the start read missed goes
+        // on when the lists arrive; the root reads the lists only here.
+        .onReceive(routineLists.$playlists.dropFirst()) { _ in
+            guard ResumeRequest.pendingRoutineId != nil else { return }
             Task { await handlePendingResumeRequest() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .podcastNewEpisodesTapped)) { _ in
@@ -1744,7 +1751,7 @@ struct LibraryView: View {
     private func handlePendingPodcastRequest() async {
         guard let target = PodcastOpenRequest.pending else { return }
         PodcastOpenRequest.pending = nil
-        await PodcastSubscriptions.shared.ensureLoaded()
+        await podcastSubs.ensureLoaded()
         // Through the ONE navigation point, not past it. It also lowers the
         // full player and closes the search, which a jump from outside needs
         // just as much as a jump from the player.
@@ -1762,6 +1769,10 @@ struct LibraryView: View {
 
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
+        if let id = ResumeRequest.pendingRoutineId {
+            await handlePendingRoutine(id)
+            return
+        }
         // Siri "Play <book>" names a title; a quick action, Siri's
         // "continue" and the widget's link only ask. The decision is the
         // door's, the same one the widget's command asks.
@@ -1774,6 +1785,35 @@ struct LibraryView: View {
         ResumeRequest.pendingItemId = nil
         ResumeRequest.pending = false
         if case .nothing = target { resumeTargetMissing() }
+    }
+
+    /// Siri or Shortcuts asked for a routine: it starts through the one door
+    /// of a list's start. While the store's start read missed rows the list
+    /// may still come, so the request waits silently for the next call;
+    /// only a read store that lacks the list says so.
+    private func handlePendingRoutine(_ id: String) async {
+        let lists = routineLists
+        switch RoutinePlayback.request(id, in: lists.playlists, complete: !lists.startIncomplete) {
+        case .wait:
+            return
+        case .missing:
+            ResumeRequest.pendingRoutineId = nil
+            routineRequestFailed(String(localized: "This routine is not on this device."))
+        case .start(let list):
+            ResumeRequest.pendingRoutineId = nil
+            if !(await RoutinePlayback.start(list, in: lists, on: playerCoordinator)) {
+                routineRequestFailed(String(localized: "This routine picks nothing right now."))
+            }
+        }
+    }
+
+    /// The device lists, read for a routine request and never observed:
+    /// the root draws nothing from them.
+    private var routineLists: MaerPlaylists { .shared }
+
+    private func routineRequestFailed(_ sentence: String) {
+        Haptics.tap()
+        playerCoordinator.sayOpenFailure(sentence, cause: .unknown, title: nil)
     }
 
     /// A shortcut, a quick action or the widget asked for a title this

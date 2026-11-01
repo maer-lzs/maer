@@ -204,9 +204,12 @@ enum RoutinePlayback {
     /// shows are asked first, together under the surface budget, so the
     /// newest episode is today's; a feed that does not answer in time
     /// leaves the episodes this device holds. Then the first item opens and
-    /// the rest becomes the context.
+    /// the rest becomes the context. Answers whether anything was handed to
+    /// playback: a button is disabled when nothing would play, a shortcut
+    /// has no button and says so instead.
+    @discardableResult
     static func start(_ list: MaerPlaylists.Playlist, in store: MaerPlaylists,
-                      on coordinator: PlayerCoordinator) async {
+                      on coordinator: PlayerCoordinator) async -> Bool {
         let online = await Reachability.isConnected()
         let fresh = online ? await refreshed(list.itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
@@ -215,6 +218,24 @@ enum RoutinePlayback {
         }
         await coordinator.playInOrder(items: start.items, contextSource: list.name,
                                       restartFirst: !start.firstFromRule)
+        return !start.items.isEmpty
+    }
+
+    /// What a shortcut's request for a list comes to.
+    enum Request: Equatable {
+        case start(MaerPlaylists.Playlist)
+        /// The store's start read missed rows: the list may still come, so
+        /// the request waits and says nothing.
+        case wait
+        /// The rows are read and the list is not among them.
+        case missing
+    }
+
+    /// The request for one list id against the lists this device holds.
+    nonisolated static func request(_ id: String, in lists: [MaerPlaylists.Playlist],
+                                    complete: Bool) -> Request {
+        if let list = lists.first(where: { $0.id == id }) { return .start(list) }
+        return complete ? .missing : .wait
     }
 
     /// The rules' shows as their feeds answer now, by feed key. A followed

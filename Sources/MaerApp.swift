@@ -19,6 +19,9 @@ enum ResumeRequest {
     /// Specific book requested via Siri ("Play <book>"); takes precedence
     /// over the plain "continue last book" request.
     static var pendingItemId: String?
+    /// A routine requested via Siri or Shortcuts ("Start <routine>"), by
+    /// the id of its list.
+    static var pendingRoutineId: String?
 }
 
 /// Same shape for "open what the message was about": the tap only leaves a

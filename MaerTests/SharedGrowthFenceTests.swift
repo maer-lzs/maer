@@ -56,13 +56,15 @@ struct SharedGrowthFenceTests {
     /// the songs an album shuffles moved into `CollectionSongs`, a move, the
     /// two queue entries of the collection menu and of the song menu read
     /// the queue through one property each, and the music deck counts the
-    /// download stock it already observes).
+    /// download stock it already observes; the root's request for a
+    /// routine reads the lists through one property and paid with the two
+    /// subscription reads the root already observes, so it fell to 371).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 372
+    nonisolated static let stock = 371
 
     /// The same count over all of `Sources`, measured 734 (the door that
     /// continues listening reaches the session and the podcast index, and

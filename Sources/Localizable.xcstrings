@@ -9628,6 +9628,16 @@
         }
       }
     },
+    "Routine" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine"
+          }
+        }
+      }
+    },
     "Routines" : {
       "localizations" : {
         "de" : {
@@ -10790,6 +10800,16 @@
         }
       }
     },
+    "Start Routine" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine starten"
+          }
+        }
+      }
+    },
     "Start without a server" : {
       "localizations" : {
         "de" : {
@@ -10806,6 +10826,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird gestartet…"
+          }
+        }
+      }
+    },
+    "Starts one of your routines." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet eine deiner Routinen."
           }
         }
       }
@@ -12461,6 +12491,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Treffer ist nicht mehr verfügbar."
+          }
+        }
+      }
+    },
+    "This routine is not on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Routine gibt es auf diesem Gerät nicht."
+          }
+        }
+      }
+    },
+    "This routine picks nothing right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Routine wählt gerade nichts."
           }
         }
       }

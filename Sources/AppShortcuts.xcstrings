@@ -103,6 +103,39 @@
           }
         }
       }
+    },
+    "Start ${routine} in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Starte ${routine} in ${applicationName}",
+              "Starte ${routine} in der ${applicationName}-App",
+              "Starte ${routine} mit der App ${applicationName}",
+              "Starte ${routine} von der App ${applicationName}",
+              "Start ${routine} in ${applicationName}",
+              "Start ${routine} in the ${applicationName} app",
+              "Start ${routine} with the ${applicationName} app"
+            ]
+          }
+        },
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start ${routine} in ${applicationName}",
+              "Start ${routine} in the ${applicationName} app",
+              "Start ${routine} with the ${applicationName} app",
+              "Starte ${routine} in ${applicationName}",
+              "Starte ${routine} in der ${applicationName}-App",
+              "Starte ${routine} mit der App ${applicationName}",
+              "Starte ${routine} von der App ${applicationName}"
+            ]
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

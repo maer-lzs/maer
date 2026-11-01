@@ -43,6 +43,10 @@ struct AppShortcutPhrasesTests {
         for (index, block) in blocks.enumerated() {
             #expect(block.contains(where: Self.namesTheApp), "intent \(index) has no phrase with the word app: \(block)")
         }
+        // The name is the device's own (`.applicationName`), never spelled
+        // out: the app is called Mär, and a written name would miss it.
+        let spelled = blocks.flatMap { $0 }.filter { $0.localizedCaseInsensitiveContains("maer") || $0.contains("Mär") }
+        #expect(spelled.isEmpty, "a phrase spells the name out: \(spelled)")
         // The forms a person actually said: "von der App Maer" and "in der Maer-App".
         #expect(blocks.flatMap { $0 }.contains { $0.contains("von der App") })
         #expect(blocks.flatMap { $0 }.contains { $0.contains("-App") })
@@ -62,6 +66,7 @@ struct AppShortcutPhrasesTests {
         text = text.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
         return text.replacingOccurrences(of: "\\(.applicationName)", with: "${applicationName}")
             .replacingOccurrences(of: "\\(\\.$book)", with: "${book}")
+            .replacingOccurrences(of: "\\(\\.$routine)", with: "${routine}")
     }
 
     /// The build files each shortcut's phrases under its first phrase in the

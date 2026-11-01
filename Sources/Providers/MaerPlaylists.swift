@@ -115,7 +115,21 @@ final class MaerPlaylists: ObservableObject {
         set { AppStorageKeys.set(newValue, for: tombstoneKey) }
     }
 
-    @Published private(set) var playlists: [Playlist] = []
+    @Published private(set) var playlists: [Playlist] = [] {
+        didSet {
+            if Self.routineNames(playlists) != Self.routineNames(oldValue) { routinesChanged() }
+        }
+    }
+
+    /// Told when a routine comes, goes or changes its name, never for a
+    /// write that leaves the routines as they are (a stamp from the sync,
+    /// an episode added). Siri and Shortcuts offer the routines by name.
+    var routinesChanged: @MainActor () -> Void = MaerPlaylists.refreshShortcuts
+
+    /// The routines by id with their names: what a shortcut offers.
+    nonisolated static func routineNames(_ lists: [Playlist]) -> [String: String] {
+        Dictionary(lists.filter(\.isRoutine).map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+    }
 
     /// Told after every save, so the runner carries a local change to the
     /// far side without waiting for the next start. Set by the runner.

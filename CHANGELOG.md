@@ -12,6 +12,8 @@ routine: it stands on Start in its own row after Keep Listening, and no
 longer among the playlists of the Music tab. A list holds one rule per
 show. Offline a routine plays only downloaded episodes, so after adding,
 the app offers to download new episodes of that show automatically.
+Siri and Shortcuts can start a routine by its name: the app opens and
+the routine plays, or says why it cannot.
 
 **Continue Listening on the lock screen.** The widget comes in a wide
 form with the title, the time left and a bar, and a round one with the
