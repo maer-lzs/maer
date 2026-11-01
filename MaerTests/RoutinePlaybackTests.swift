@@ -294,5 +294,32 @@ struct RoutinePlaybackTests {
         #expect(switching == ["PodcastGeneralSettings.swift": 1, "AddToPlaylistSheet.swift": 1])
         #expect(sheet.contains("Button(\"Download Automatically\") { PodcastAutoDownload.setEnabled(show.id, true) }"))
     }
+
+    // MARK: - Where a routine stands
+
+    @Test("eine Liste mit einer Regel ist eine Routine, auch mit einer Regel, die dieser Stand nicht liest")
+    func aListWithARuleIsARoutine() {
+        func list(_ ids: [String]) -> MaerPlaylists.Playlist {
+            MaerPlaylists.Playlist(id: "l", name: "L", updatedAt: 0, itemIds: ids)
+        }
+        #expect(list(["rss:x:1", "rule:newest:aaaa"]).isRoutine)
+        #expect(list(["rule:next:9:aaaa"]).isRoutine, "a form this build does not read")
+        #expect(!list(["rss:x:1", "jam:1"]).isRoutine)
+        #expect(!list([]).isRoutine)
+    }
+
+    /// Routines stand on Start and nowhere in the Music tab: its row and
+    /// its deck read the device lists through the one filter.
+    @Test("Routinen stehen auf Start und nicht im Musik-Reiter, weder in der Reihe noch in der Zaehlung", .needsTheSources)
+    func routinesStandOnStartOnly() throws {
+        let music = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
+        #expect(music.contains("private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { !$0.isRoutine } }"))
+        #expect(music.components(separatedBy: "maerPlaylists.playlists").count - 1 == 1, "every reader goes through musicLists")
+        #expect(music.contains("let device = musicLists.map"))
+        #expect(music.contains("count: vm.playlists.count + musicLists.count"))
+        let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
+        #expect(home.contains("maerPlaylists.playlists.filter(\\.isRoutine)"))
+        #expect(home.contains("PlaylistCard(source: PlaylistCardSource.device(list, router: router)"))
+    }
 }
 #endif

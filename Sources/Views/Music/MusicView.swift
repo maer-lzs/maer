@@ -284,7 +284,7 @@ struct MusicView: View {
                       route: .albums),
             deckEntry(String(localized: "Songs"), systemImage: "music.note", count: nil, route: .songs),
             deckEntry(String(localized: "Playlists"), systemImage: "music.note.list",
-                      count: vm.playlists.count + maerPlaylists.playlists.count,
+                      count: vm.playlists.count + musicLists.count,
                       route: .playlists(sortedPlaylists)),
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
             deckEntry(String(localized: "Downloads list"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
@@ -410,9 +410,13 @@ struct MusicView: View {
     /// the capsule "Mär" so one still knows what another client
     /// of the same server will see (server titles only) and what may mix
     /// everything. A second row per world was two rows for one question.
+    /// The device lists the Music tab shows: every one but a routine,
+    /// which stands on Start.
+    private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { !$0.isRoutine } }
+
     private var playlistSources: [PlaylistCardSource] {
         let server = sortedPlaylists.map { PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId)) }
-        let device = maerPlaylists.playlists.map { PlaylistCardSource.device($0, router: router) }
+        let device = musicLists.map { PlaylistCardSource.device($0, router: router) }
         return PlaylistPresentation.sortedByChanged(server + device) {
             $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
         }

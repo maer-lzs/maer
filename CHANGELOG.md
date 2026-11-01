@@ -7,7 +7,9 @@ show you follow, Add to Routine puts a rule into one of your playlists:
 the newest episode, or the next one, two or three from where you stand.
 When the list plays, each rule becomes the episodes it picks at that
 moment, in its place among the other titles, and its line on the list's
-page says what it will play or why nothing. A list holds one rule per
+page says what it will play or why nothing. A list with a rule is a
+routine: it stands on Start in its own row after Keep Listening, and no
+longer among the playlists of the Music tab. A list holds one rule per
 show. Offline a routine plays only downloaded episodes, so after adding,
 the app offers to download new episodes of that show automatically.
 

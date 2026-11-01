@@ -27,6 +27,9 @@ final class PlaylistPresenter: ObservableObject {
     static let shared = PlaylistPresenter()
     private init() {}
 
+    /// The device lists, for adding and creating.
+    private var lists: MaerPlaylists { .shared }
+
     /// Entries looking for a home. The titles travel WITH the ids: the
     /// surface had the name on screen at the moment of the tap, the resolving
     /// routine may not (cold catalogue cache).
@@ -105,8 +108,7 @@ final class PlaylistPresenter: ObservableObject {
     func addToDevice(_ ids: [String], titles: [String: String],
                      listId: String, listName: String) async {
         let expanded = await Self.expandedForDevice(ids, titles: titles)
-        let outcome = MaerPlaylists.shared.add(itemIds: expanded.ids, to: listId,
-                                               knownTitles: expanded.titles)
+        let outcome = lists.add(itemIds: expanded.ids, to: listId, knownTitles: expanded.titles)
         message = Self.text(for: outcome, listName: listName)
         if outcome == .added { offeringAutoDownload = RoutinePlayback.autoDownloadOffer(for: expanded.ids) }
     }
@@ -143,7 +145,7 @@ final class PlaylistPresenter: ObservableObject {
         let name = trimmed.isEmpty ? String(localized: "Playlist") : trimmed
         switch place {
         case .device:
-            let list = MaerPlaylists.shared.create(name: name)
+            let list = lists.create(name: name)
             if !ids.isEmpty {
                 await addToDevice(ids, titles: titles, listId: list.id, listName: name)
             }

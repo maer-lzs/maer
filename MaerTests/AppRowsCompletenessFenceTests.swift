@@ -37,6 +37,7 @@ struct AppRowsCompletenessFenceTests {
 
     static let sites: [String: [Site]] = [
         "home.continue": [Site(owner: "HomeView", name: "continueSection")],
+        "home.routines": [Site(owner: "HomeView", name: "routinesSection")],
         "home.upNext": [Site(owner: "HomeView", name: "upNextSection")],
         "home.listenAgain": [Site(owner: "HomeView", name: "recentlyPlayedSection")],
         "home.latestEpisodes": [Site(owner: "HomeView", name: "latestEpisodesSection")],
@@ -222,7 +223,8 @@ struct AppRowsCompletenessFenceTests {
     static let orders: [Order] = [
         Order(file: "Sources/Views/HomeView.swift",
               from: "LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",
-              steps: [("continueSection", "home.continue"), ("upNextSection", "home.upNext"),
+              steps: [("continueSection", "home.continue"), ("routinesSection", "home.routines"),
+                      ("upNextSection", "home.upNext"),
                       ("recentlyPlayedSection", "home.listenAgain"), ("latestEpisodesSection", "home.latestEpisodes"),
                       ("if recentlyAddedRowVisible { recentlyAddedSection }", "home.recentlyAdded"),
                       ("if rediscoverRowVisible { rediscoverSection }", "home.rediscover"),

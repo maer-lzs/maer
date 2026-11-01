@@ -9628,6 +9628,16 @@
         }
       }
     },
+    "Routines" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routinen"
+          }
+        }
+      }
+    },
     "Rows" : {
       "localizations" : {
         "de" : {

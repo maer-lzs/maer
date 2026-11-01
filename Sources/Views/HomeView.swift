@@ -18,6 +18,8 @@ struct HomeView: View {
     var isActive: Bool = true
     @ObservedObject var libraryViewModel: LibraryViewModel
     @ObservedObject private var queue = PlayQueue.shared
+    /// The routines row: a list that gains or loses its rule moves in or out.
+    @ObservedObject private var maerPlaylists = MaerPlaylists.shared
 
     /// Recency-ordered ids of in-progress books + episodes. Resolved to the
     /// matching FeaturedCard (book vs podcast) in the view. The same cards
@@ -142,10 +144,13 @@ struct HomeView: View {
             if ready {
                 // The order of the tabs: what you are hearing, what
                 // you heard, your stock, and the offer from outside at the
-                // bottom. Continue → Up Next → Listen Again → Latest
-                // Episodes → Recently Added → Rediscover → Browse.
+                // bottom. Continue → Routines → Up Next → Listen Again →
+                // Latest Episodes → Recently Added → Rediscover → Browse.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
+                    // The lists that pick today's episodes, right after
+                    // what is begun and before the plan.
+                    routinesSection
                     // The user's own PLAN directly under the continue
                     // cards: own holdings before any shop window, the
                     // same line the whole start surface follows. The
@@ -289,6 +294,31 @@ struct HomeView: View {
     }
 
     /// "Up Next". The global PlayQueue, same row component as the queue page.
+    /// "Routines": every device list with a rule, newest change first, as
+    /// the Music tab's playlist cards. Own holdings and few, so the row
+    /// shows them all and has no page of its own.
+    @ViewBuilder
+    private var routinesSection: some View {
+        let routines = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter(\.isRoutine)) {
+            Date(timeIntervalSince1970: $0.updatedAt)
+        }
+        if !routines.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.plain("Routines")
+                ScrollView(.horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(routines) { list in
+                            PlaylistCard(source: PlaylistCardSource.device(list, router: router),
+                                         playerCoordinator: playerCoordinator)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .rowReachesUnderSideColumn()
+            }
+        }
+    }
+
     @ViewBuilder
     private var upNextSection: some View {
         let items = queue.ids.compactMap { router.item($0) }

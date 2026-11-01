@@ -100,6 +100,11 @@ final class MaerPlaylists: ObservableObject {
             (snapshots[itemId] ?? titles[itemId].map { CarriedItem(id: itemId, title: $0) })
                 .map(FreeCatalog.gutenbergReadable)
         }
+
+        /// A list with at least one rule is a routine: it stands on Start,
+        /// not among the Music tab's playlists. Any id under the rule
+        /// prefix counts, a form this build does not read among them.
+        var isRoutine: Bool { itemIds.contains(where: ItemNamespace.isRoutineRule) }
     }
 
     /// Deleted lists with the moment of deletion. Without this mark a list
