@@ -36,12 +36,13 @@ final class RoutineAnswerSources: ObservableObject {
 /// rule. A list without rules starts as it always did.
 @MainActor
 enum RoutinePlayback {
-    /// What a start plays, and whether its first item came from a rule.
+    /// What a start plays, and which of it a rule picked.
     struct Start {
         var items: [LibraryItem]
-        /// A begun episode a rule picked resumes; a list's first title
-        /// otherwise starts from the beginning.
-        var firstFromRule: Bool
+        /// The ids a rule picked. Such an episode resumes when it comes
+        /// first, in order or shuffled; a title of the list starts from the
+        /// beginning.
+        var fromRule: Set<String>
     }
 
     /// The entries in order, each rule replaced by what it picks. An item
@@ -50,15 +51,15 @@ enum RoutinePlayback {
                        picks: (RoutineRule) -> [LibraryItem]) -> Start {
         var items: [LibraryItem] = []
         var seen: Set<String> = []
-        var firstFromRule = false
+        var fromRule: Set<String> = []
         for id in itemIds {
-            let fromRule = RoutineRule(id: id)
-            let found = fromRule.map(picks) ?? entry(id).map { [$0] } ?? []
+            let rule = RoutineRule(id: id)
+            let found = rule.map(picks) ?? entry(id).map { [$0] } ?? []
             let fresh = found.filter { seen.insert($0.id).inserted }
-            if items.isEmpty, !fresh.isEmpty { firstFromRule = fromRule != nil }
+            if rule != nil { fromRule.formUnion(fresh.map(\.id)) }
             items += fresh
         }
-        return Start(items: items, firstFromRule: firstFromRule)
+        return Start(items: items, fromRule: fromRule)
     }
 
     /// What one rule answers now: the episodes it picks, or why it picks none.
@@ -228,7 +229,7 @@ enum RoutinePlayback {
             return said.items
         }
         await coordinator.playInOrder(items: start.items, contextSource: list.name,
-                                      restartFirst: !start.firstFromRule)
+                                      resuming: start.fromRule)
         return !start.items.isEmpty
     }
 

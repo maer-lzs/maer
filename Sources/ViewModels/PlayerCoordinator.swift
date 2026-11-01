@@ -611,9 +611,11 @@ final class PlayerCoordinator: ObservableObject {
     /// own pool, the shared `MediaShuffle` sets the order. The first item starts
     /// now; the shuffled tail becomes the Up-Next context and plays through the
     /// existing cross-media auto-continue. An empty pool is a no-op.
-    func shufflePlay(items: [LibraryItem], contextSource: String? = nil) async {
+    /// `resuming` goes on to `playInOrder` as it came, whatever the order.
+    func shufflePlay(items: [LibraryItem], contextSource: String? = nil, resuming: Set<String> = []) async {
         await playInOrder(items: MediaShuffle.shuffled(items),
-                          contextSource: contextSource ?? String(localized: "Shuffle"))
+                          contextSource: contextSource ?? String(localized: "Shuffle"),
+                          resuming: resuming)
     }
 
     /// Play a set of items in the ORDER given. The shared tail of every
@@ -621,14 +623,22 @@ final class PlayerCoordinator: ObservableObject {
     /// becomes the CONTEXT (never the queue: a collection start used to
     /// overwrite the hand-placed orders, and hours-old music won against
     /// the next episode). Shuffle is the same path with a shuffled order,
-    /// so the two do not drift apart. An empty set is a no-op. The first item
-    /// starts from the beginning, unless the start says otherwise (a begun
-    /// episode a routine's rule picked resumes).
-    func playInOrder(items: [LibraryItem], contextSource: String? = nil, restartFirst: Bool = true) async {
+    /// so the two do not drift apart. An empty set is a no-op. Whether the
+    /// first item starts from the beginning is `restartsFirst`.
+    func playInOrder(items: [LibraryItem], contextSource: String? = nil, resuming: Set<String> = []) async {
         guard let first = items.first else { return }
-        await open(item: first, restart: restartFirst, preservesContext: true)
+        await open(item: first, restart: Self.restartsFirst(items, resuming: resuming), preservesContext: true)
         PlaybackContext.shared.replace(ids: items.dropFirst().map(\.id),
                                        source: contextSource)
+    }
+
+    /// The first item of a collection start begins from the beginning,
+    /// unless it is one of `resuming`: an episode a routine's rule picked
+    /// resumes where it stands, in order or shuffled. Every other first item
+    /// restarts and writes its position from zero.
+    nonisolated static func restartsFirst(_ items: [LibraryItem], resuming: Set<String>) -> Bool {
+        guard let first = items.first else { return true }
+        return !resuming.contains(first.id)
     }
 
     /// Auto-continue when an item plays to its end. Order:

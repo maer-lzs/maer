@@ -15,7 +15,8 @@ show. Offline a routine plays only downloaded episodes, so after adding,
 the app offers to download new episodes of that show automatically.
 Siri and Shortcuts can start a routine by its name: the app opens and
 the routine plays, or says why it cannot. The page of a routine says
-in its footer what a routine does.
+in its footer what a routine does. Shuffle on a routine resumes an
+episode a rule picked when it comes first, as Play does.
 
 **A playlist with one cover shows that cover.** It fills the whole
 square on the card and the page, for your own and for server playlists;

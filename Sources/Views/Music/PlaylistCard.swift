@@ -192,8 +192,13 @@ struct PlaylistCard: View {
                 CardCornerButton(systemImage: "shuffle",
                                  accessibilityLabel: Text("Shuffle"),
                                  accessibilityId: "playlist-shuffle-badge") {
-                    Task { await playerCoordinator.shufflePlay(items: await source.shufflePool(),
-                                                              contextSource: source.title) }
+                    // The draw, like the long-press menu and the page: the
+                    // episodes a routine's rules pick resume when one comes first.
+                    Task {
+                        let drawn = await source.shuffleDraw()
+                        await playerCoordinator.shufflePlay(items: drawn.items, contextSource: source.title,
+                                                            resuming: drawn.resuming)
+                    }
                 }
                 .padding(12)
             }
@@ -346,7 +351,10 @@ extension PlaylistCardSource {
             detailRoute: .maerPlaylist(list.id),
             open: { coordinator in await RoutinePlayback.start(list, in: store, on: coordinator) },
             shufflePool: { items(of: list, in: store) },
-            shuffleDraw: { .of(items(of: list, in: store)) },
+            shuffleDraw: {
+                let start = RoutinePlayback.held(list, in: store).start
+                return .of(start.items, resuming: start.fromRule)
+            },
             mosaic: {
                 // A list from before the snapshots existed has none to draw
                 // from: fill them now, on the device that can resolve the

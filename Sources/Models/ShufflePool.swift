@@ -11,7 +11,9 @@ import Foundation
 /// source by the device's network, not by an error code
 /// (`ShufflePlayButton.start`).
 nonisolated enum ShufflePool {
-    case songs([LibraryItem])
+    /// The songs, and the ids among them that resume where they stand when
+    /// they come first: the episodes a routine's rules pick.
+    case songs([LibraryItem], resuming: Set<String> = [])
     /// The source answered and named no track.
     case empty
     /// The songs did not come: the source did not answer, or the device has
@@ -20,13 +22,20 @@ nonisolated enum ShufflePool {
 
     /// The songs it holds; empty for every other case.
     var items: [LibraryItem] {
-        if case .songs(let items) = self { return items }
+        if case .songs(let items, _) = self { return items }
         return []
     }
 
-    /// A list already in hand: empty means empty.
-    static func of(_ items: [LibraryItem]) -> ShufflePool {
-        items.isEmpty ? .empty : .songs(items)
+    /// The ids that resume; empty for every other case.
+    var resuming: Set<String> {
+        if case .songs(_, let resuming) = self { return resuming }
+        return []
+    }
+
+    /// A list already in hand: empty means empty. `resuming` names the
+    /// ids that resume (a routine's start, `RoutinePlayback.Start.fromRule`).
+    static func of(_ items: [LibraryItem], resuming: Set<String> = []) -> ShufflePool {
+        items.isEmpty ? .empty : .songs(items, resuming: resuming)
     }
 
     /// Songs fetched by a path that turns a failure into no songs: nothing

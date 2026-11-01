@@ -45,7 +45,7 @@ struct RoutinePlaybackTests {
         let start = RoutinePlayback.expand(["a", "gone", "b"], entry: { $0 == "gone" ? nil : Self.item($0) },
                                            picks: { _ in Issue.record("no rule here"); return [] })
         #expect(start.items.map(\.id) == ["a", "b"])
-        #expect(!start.firstFromRule)
+        #expect(start.fromRule.isEmpty)
     }
 
     @Test("eine Regel wird an ihrem Platz zu ihren Folgen, jede Folge laeuft einmal, und nur eine Folge einer Regel an erster Stelle setzt fort")
@@ -57,11 +57,13 @@ struct RoutinePlaybackTests {
         }
         let start = RoutinePlayback.expand([newest.id, "x", next.id], entry: { Self.item($0) }, picks: picked)
         #expect(start.items.map(\.id) == ["n1", "x", "b2"], "x plays once, where the list first names it")
-        #expect(start.firstFromRule)
+        #expect(start.fromRule == ["n1", "b2"], "x is the list's own title, its rule pick came later")
+        #expect(!PlayerCoordinator.restartsFirst(start.items, resuming: start.fromRule))
 
         let silentFirst = RoutinePlayback.expand([newest.id, "x"], entry: { Self.item($0) }, picks: { _ in [] })
         #expect(silentFirst.items.map(\.id) == ["x"])
-        #expect(!silentFirst.firstFromRule, "a rule that picks nothing leaves the first place to the title")
+        #expect(silentFirst.fromRule.isEmpty, "a rule that picks nothing leaves the first place to the title")
+        #expect(PlayerCoordinator.restartsFirst(silentFirst.items, resuming: silentFirst.fromRule))
     }
 
     @Test("dieselbe Liste, lokal ungehoert und geteilt gehoert: die Routine nimmt die naechste nach dem geteilten Urteil")
@@ -93,7 +95,43 @@ struct RoutinePlaybackTests {
         let start = RoutinePlayback.expand([newest.id], entry: { _ in nil }) { rule in
             RoutinePlayback.picks(rule, in: Self.show(5), online: true, state: newestBegun, isDownloaded: { _ in false })
         }
-        #expect(start.firstFromRule, "so the start resumes it")
+        #expect(start.fromRule == [Self.id(5)], "so the start resumes it")
+    }
+
+    @Test("der erste Platz beginnt von vorn, ausser er steht unter den fortsetzenden")
+    func theFirstPlaceRestartsUnlessItResumes() {
+        let items = [Self.item("a"), Self.item("b")]
+        #expect(PlayerCoordinator.restartsFirst(items, resuming: []))
+        #expect(!PlayerCoordinator.restartsFirst(items, resuming: ["a"]))
+        #expect(PlayerCoordinator.restartsFirst(items, resuming: ["b"]), "a later place resuming says nothing about the first")
+        #expect(PlayerCoordinator.restartsFirst([], resuming: ["a"]))
+    }
+
+    /// The card's shuffle draws from `ShufflePool`, twice from the same pool
+    /// here: whichever comes first, a rule's begun episode resumes and the
+    /// list's own title restarts.
+    @Test("Zufall auf einer Routine: ueber den Vorrat der Karte setzt eine begonnene Folge einer Regel fort, auch beim zweiten Zug")
+    func shuffleOverTheCardsPoolResumesARulesEpisode() throws {
+        let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
+        let begun: (LibraryItem) -> EpisodePlayState = { $0.id == Self.id(5) ? .inProgress(fraction: 0.5, remaining: 300) : .unplayed }
+        let start = RoutinePlayback.expand([newest.id, "x"], entry: { Self.item($0) }) { rule in
+            RoutinePlayback.picks(rule, in: Self.show(5), online: true, state: begun, isDownloaded: { _ in false })
+        }
+        #expect(start.items.map(\.id) == [Self.id(5), "x"], "the precondition: the rule picks the begun episode")
+        let pool: () -> ShufflePool = { .of(start.items, resuming: start.fromRule) }
+        var seen: Set<String> = []
+        var draws = 0
+        repeat {
+            let drawn = pool()
+            let order = MediaShuffle.shuffled(drawn.items)
+            let first = try #require(order.first)
+            #expect(PlayerCoordinator.restartsFirst(order, resuming: drawn.resuming) == (first.id == "x"),
+                    "draw \(draws + 1): \(first.id) first")
+            seen.insert(first.id)
+            draws += 1
+        } while (seen.count < 2 || draws < 2) && draws < 200
+        #expect(draws >= 2)
+        #expect(seen == [Self.id(5), "x"], "both places came first at least once: \(seen)")
     }
 
     @Test("eine Sendung, die das Geraet nicht kennt, und eine Folge ohne Ton waehlt keine Regel; ohne Netz nur Geladenes")
@@ -232,7 +270,19 @@ struct RoutinePlaybackTests {
         #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
-        #expect(door.contains("restartFirst: !start.firstFromRule"))
+        #expect(door.contains("resuming: start.fromRule)"))
+        // Every way to shuffle a Mär playlist carries the rule picks to
+        // `playInOrder`, and `playInOrder` asks the one decision.
+        let card = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistCard.swift")
+        #expect(card.contains("let drawn = await source.shuffleDraw() await playerCoordinator.shufflePlay(items: drawn.items, contextSource: source.title, resuming: drawn.resuming)"))
+        #expect(card.contains("let start = RoutinePlayback.held(list, in: store).start return .of(start.items, resuming: start.fromRule)"))
+        let page = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
+        #expect(page.contains("{ .of(playable, resuming: start.fromRule) }"))
+        let button = try FetchAnswerTests.squeezedSource("Sources/Views/Music/ShufflePlayButton.swift")
+        #expect(button.contains("if case .songs(let items, let resuming) = drawn { await coordinator.shufflePlay(items: items, resuming: resuming)"))
+        let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
+        #expect(coordinator.contains("contextSource: contextSource ?? String(localized: \"Shuffle\"), resuming: resuming)"))
+        #expect(coordinator.contains("await open(item: first, restart: Self.restartsFirst(items, resuming: resuming), preservesContext: true)"))
         // The shortcut is the third caller; it reads the answer, the buttons
         // leave it.
         #expect(door.contains("@discardableResult static func start("))

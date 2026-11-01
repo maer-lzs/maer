@@ -66,8 +66,8 @@ struct ShufflePlayButton: View {
     /// loaded.
     static func start(pool: () async -> ShufflePool, isOnline: Bool, coordinator: PlayerCoordinator) async {
         let drawn = await pool()
-        if case .songs(let items) = drawn {
-            await coordinator.shufflePlay(items: items)
+        if case .songs(let items, let resuming) = drawn {
+            await coordinator.shufflePlay(items: items, resuming: resuming)
             return
         }
         guard !Task.isCancelled else { return }

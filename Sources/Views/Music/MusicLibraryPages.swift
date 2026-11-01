@@ -982,7 +982,7 @@ struct MaerPlaylistPage: View {
         // the same answer.
         let held = playlist.map { RoutinePlayback.held($0, in: store) }
         DetailListColumns {
-            if let playlist, let held { header(playlist, playable: held.start.items, round: round) }
+            if let playlist, let held { header(playlist, start: held.start, round: round) }
         } rows: {
             if let playlist {
                 if playlist.isRescue, let reason = playlist.rescueReason, !reason.isEmpty {
@@ -1057,9 +1057,11 @@ struct MaerPlaylistPage: View {
     }
 
     /// The one head of a detail page: the list's mosaic, its name and count,
-    /// Play in order and Shuffle over what this device can play.
-    private func header(_ playlist: MaerPlaylists.Playlist, playable: [LibraryItem], round: Int) -> some View {
-        DetailHeader(title: playlist.name) { side in
+    /// Play in order and Shuffle over what this device can play; an episode
+    /// a rule picked resumes when it comes first, in order or shuffled.
+    private func header(_ playlist: MaerPlaylists.Playlist, start: RoutinePlayback.Start, round: Int) -> some View {
+        let playable = start.items
+        return DetailHeader(title: playlist.name) { side in
             PlaylistArtwork(playlistID: playlist.id, coverURLs: PlaylistCardSource.deviceCovers(playlist, router: router))
                 .id(round)
                 .frame(maxWidth: side ?? 240)
@@ -1072,7 +1074,7 @@ struct MaerPlaylistPage: View {
                     Task { await RoutinePlayback.start(playlist, in: store, on: playerCoordinator) }
                 }
                 .disabled(playable.isEmpty)
-                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { .of(playable) }
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) { .of(playable, resuming: start.fromRule) }
                     .font(.title3)
                     .disabled(playable.isEmpty)
             }
