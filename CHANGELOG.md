@@ -28,8 +28,9 @@ with two or three covers the mosaic stays as it was.
 **The shuffle corner of a playlist card says why nothing plays.** When
 the list has no tracks, its songs could not be loaded or are not
 available offline, the card says so as the Shuffle button on the page
-does. A music server song that gives no answer for its cover is asked
-once a session instead of each time a list shows it, and right after
+does. A music server song the server answers without a cover is asked
+once a session instead of each time a list shows it; leaving the page
+or a lost connection does not count as such an answer. Right after
 the app starts a downloaded song keeps its cover.
 
 **Continue Listening on the lock screen.** The widget comes in a wide

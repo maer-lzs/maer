@@ -267,6 +267,18 @@ struct SubsonicClient {
         error is CancellationError || (error as? URLError)?.code == .cancelled
     }
 
+    /// Whether a failed question is the server's answer: an error status,
+    /// the server's own failure, a body nothing reads. A cancelled request,
+    /// a network that does not carry the question, or a request this device
+    /// does not send says nothing about what was asked.
+    nonisolated static func isServersAnswer(_ error: Error) -> Bool {
+        guard !isCancellation(error), let failure = error as? SubsonicError else { return false }
+        switch failure {
+        case .http, .api, .decoding: return true
+        case .badURL, .network, .blockedHere, .keySignInNeedsEncryption: return false
+        }
+    }
+
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
         // Retry parity with the ABS client. Transient failures and the

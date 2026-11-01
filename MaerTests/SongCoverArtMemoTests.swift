@@ -86,7 +86,9 @@ struct SongCoverArtMemoTests {
         // the songs a device list holds that were met nowhere else.
         let learnSites = flat.components(separatedBy: "learnCovers(").count - 2
         #expect(learnSites == 7, "learnCovers call sites: \(learnSites)")
-        #expect(flat.contains("if let song = try? await client.song(id: songId) { songs.append(song) }"))
+        #expect(flat.contains("for songId in missing where !Task.isCancelled { do { if let song = try await client.song(id: songId) { songs.append(song) } else { silent.append(songId) } } catch { guard SubsonicClient.isServersAnswer(error) else { break } silent.append(songId) } }"),
+                "an answer without a song and the server's own failure note it; a cancelled pass or a lost network ends the pass")
+        #expect(!flat.contains("try? await client.song("))
         #expect(flat.contains("let missing = UnansweredSongs.toAsk(itemIds.compactMap { Self.id($0, kind: \"song\") }, known: { memo.coverArt(of: $0) != nil }, asking: songCoversAsking, unanswered: songCoversUnanswered, limit: Self.songCoverPassLimit)"),
                 "only songs without a named cover, each once, at most one pass's worth")
         #expect(flat.contains("songCoversUnanswered = songCoversUnanswered.belonging(to: server)"),
@@ -133,6 +135,29 @@ struct SongCoverArtMemoTests {
         var full = UnansweredSongs(server: "s")
         full.note((0...UnansweredSongs.cap).map { "tr-\($0)" })
         #expect(full.ids.count == UnansweredSongs.cap, "the set stays within its cap")
+    }
+
+    /// The set notes what the server answered and nothing else: leaving a
+    /// page cancels the pass, and a network that does not carry the question
+    /// says nothing about the song.
+    @Test("Ohne Antwort heisst: der Server hat geantwortet; Abbruch und Netz merken nichts")
+    func onlyTheServersReplyNotesASong() {
+        typealias Failure = SubsonicClient.SubsonicError
+        let table: [(Error, Bool)] = [
+            (Failure.http(404), true),
+            (Failure.api(code: 70, message: "not found"), true),
+            (Failure.decoding, true),
+            (Failure.network, false),
+            (Failure.blockedHere, false),
+            (Failure.badURL, false),
+            (Failure.keySignInNeedsEncryption, false),
+            (CancellationError(), false),
+            (URLError(.cancelled), false),
+            (URLError(.notConnectedToInternet), false),
+        ]
+        for (error, noted) in table {
+            #expect(SubsonicClient.isServersAnswer(error) == noted, "\(error)")
+        }
     }
 
     @Test("Eine gehaltene Liederliste ohne Cover-Feld liest sich weiter, mit Feld traegt sie es")

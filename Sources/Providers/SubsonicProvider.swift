@@ -1030,11 +1030,18 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         defer { songCoversAsking.subtract(missing) }
         var songs: [SubsonicSong] = []
         var silent: [String] = []
-        for songId in missing {
-            // bearable, because a song that does not answer keeps its own id as the cover address and is asked again in the next session
-            if let song = try? await client.song(id: songId) {
-                songs.append(song)
-            } else {
+        for songId in missing where !Task.isCancelled {
+            do {
+                if let song = try await client.song(id: songId) {
+                    songs.append(song)
+                } else {
+                    silent.append(songId)
+                }
+            } catch {
+                // Only the server's own reply notes a song. A cancelled pass
+                // or a question the network does not carry ends the pass and
+                // notes nothing, so the rest is asked on the next appearance.
+                guard SubsonicClient.isServersAnswer(error) else { break }
                 silent.append(songId)
             }
         }
