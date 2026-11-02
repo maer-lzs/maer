@@ -95,6 +95,9 @@ struct TrackRowLabel: View {
     var playing: TrackPlaying.Row? = nil
     var coordinator: PlayerCoordinator? = nil
     var bars: Int = 0
+    /// The lines the line under the title may take; one for a track, two
+    /// for a routine's rule, so its reason stands whole.
+    var secondLines: Int = 1
     /// Track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var numberWidth: CGFloat = 24
     @ScaledMetric(relativeTo: .subheadline) private var coverSide: CGFloat = 40
@@ -121,7 +124,7 @@ struct TrackRowLabel: View {
                     leadSlot
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).lineLimit(1)
-                        secondLine.lineLimit(1)
+                        secondLine.lineLimit(secondLines)
                     }
                     Spacer()
                     facts

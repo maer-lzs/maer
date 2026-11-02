@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// The one row of album and playlist lists, and its mark for the song
@@ -73,6 +74,39 @@ struct TrackRowTests {
         #expect(!row.contains("struct AlbumTrackRowLabel"), "a second row is back")
         #expect(row.contains("TrackPlaying.isCurrent(row, playingId: playingId, playingChapterStart: viewModel.currentChapter?.start)"))
         #expect(row.contains("PlayingBars(moving: viewModel.isPlaying)"))
+    }
+
+    /// The row as laid out at a phone's width and the default text size.
+    @MainActor
+    private func height(of label: TrackRowLabel) -> CGFloat {
+        UIHostingController(rootView: label.environment(\.dynamicTypeSize, .large))
+            .sizeThatFits(in: CGSize(width: 340, height: CGFloat.greatestFiniteMagnitude)).height
+    }
+
+    /// A rule's reason is longer than a line: with two lines it stands
+    /// whole and the row grows; a track keeps one line, and a short reason
+    /// takes no more room with two.
+    @Test("der Grund einer Regel steht ganz da, auf zwei Zeilen; ein Lied bleibt einzeilig")
+    @MainActor
+    func aRulesReasonStandsWhole() {
+        let reason = RoutineWords.answer(.showUnknown)
+        let short = RoutineWords.rule(.newest)
+        func row(_ lines: Int, _ text: String) -> TrackRowLabel {
+            TrackRowLabel(lead: .cover(nil, placeholder: "mic"), title: "Sendung", unavailable: text, secondLines: lines)
+        }
+        #expect(TrackRowLabel(lead: .number(1), title: "Lied").secondLines == 1, "a track keeps one line")
+        #expect(height(of: row(2, reason)) > height(of: row(1, reason)), "the reason is cut after one line")
+        #expect(height(of: row(2, short)) == height(of: row(1, short)), "a short reason grows the row")
+    }
+
+    /// The rule's row asks for the two lines; the lists of songs do not.
+    @Test("die Zeile einer Regel nimmt zwei Zeilen fuer den Grund, die Listen der Lieder keine", .needsTheSources)
+    func onlyTheRuleTakesTwoLines() throws {
+        let flat = FetchAnswerTests.squeezedSource
+        #expect(try flat("Sources/Views/Music/RoutineRuleRow.swift").contains("unavailable: plays ? nil : said, secondLines: 2)"))
+        for file in ["Sources/Views/Music/MusicAlbumView.swift", "Sources/Views/Music/MusicLibraryPages.swift"] {
+            #expect(!(try flat(file)).contains("secondLines:"), "\(file) widens its rows")
+        }
     }
 }
 #endif

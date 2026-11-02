@@ -45,7 +45,7 @@ struct RoutineRuleRow: View {
         TrackRowLabel(lead: .cover(cover, placeholder: MediaType.podcasts.systemImage),
                       title: line.show?.title ?? carried?.title ?? RoutineWords.rule(line.rule.kind),
                       artist: plays ? "\(RoutineWords.rule(line.rule.kind)): \(said)" : RoutineWords.rule(line.rule.kind),
-                      unavailable: plays ? nil : said)
+                      unavailable: plays ? nil : said, secondLines: 2)
             .foregroundStyle(plays ? .primary : .secondary)
             .accessibilityElement(children: .combine)
     }
