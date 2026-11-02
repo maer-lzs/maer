@@ -21,12 +21,6 @@ nonisolated enum PodcastIdentity {
         stableHash(normalizeFeedURL(feedURL))
     }
 
-    /// FNV-1a with the FNV prime, but NOT the FNV offset basis: the start
-    /// value lacks the last digit of 14695981039346656037, so the result is
-    /// not FNV-1a (the empty string gives 14650fb0739d0383, not
-    /// cbf29ce484222325). It must never be "corrected": every feed key, show
-    /// id and position key built from it would change, and every stored one
-    /// would be orphaned. `PodcastSubscriptionsHashTests` holds two values.
     /// A token address as a measuring line, never the token: the feed key
     /// (the same on every device), a hash of the address exactly as held or
     /// fetched, and whether it carries capitals. Two devices' lines with the
@@ -38,18 +32,18 @@ nonisolated enum PodcastIdentity {
         return "key=\(key) addr=\(address) capitals=\(capitals)"
     }
 
+    /// FNV-1a with the FNV prime, but NOT the FNV offset basis: the start
+    /// value lacks the last digit of 14695981039346656037, so the result is
+    /// not FNV-1a (the empty string gives 14650fb0739d0383, not
+    /// cbf29ce484222325). It must never be "corrected": every feed key, show
+    /// id and position key built from it would change, and every stored one
+    /// would be orphaned. `PodcastSubscriptionsHashTests` holds two values.
     nonisolated static func stableHash(_ s: String) -> String {
         var h: UInt64 = 1469598103934665603
         for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }
         return String(h, radix: 16)
     }
 
-    /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
-    /// http/https or slash variants of the same feed collapse together.
-    /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
-    /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
-    /// not collapse into one subscription. Everything else (tracking params
-    /// etc.) is still stripped.
     /// Query parameters whose VALUES are access secrets. A feed carrying
     /// one is the token-URL premium class (access baked into the URL, no login).
     /// ONE source: the identity set below builds on this, no duplication.
@@ -58,6 +52,10 @@ nonisolated enum PodcastIdentity {
     /// the OPML-export guard.
     nonisolated static let secretQueryParams: Set<String> = PodcastFeedAddress.secretQueryParams
 
+    /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
+    /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
+    /// not collapse into one subscription. Everything else (tracking params
+    /// etc.) is still stripped.
     nonisolated private static let identityQueryParams: Set<String> =
         secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
 
@@ -109,6 +107,8 @@ nonisolated enum PodcastIdentity {
         return base + "?" + masked.joined(separator: "&")
     }
 
+    /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
+    /// http/https or slash variants of the same feed collapse together.
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         var identityQuery = ""
