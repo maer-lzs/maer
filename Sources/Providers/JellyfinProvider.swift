@@ -78,17 +78,36 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         AppStorageKeys.jellyfinActive && client != nil
     }
 
+    /// Before a new address is stored: the access token and the user id
+    /// were handed out by the stored server, and they go to no other one
+    /// (`ServerAddressSwitch`). The next request signs in anew. Answers
+    /// whether anything was forgotten.
+    @discardableResult
+    static func forgetAccessOnSwitch(to newURL: String) -> Bool {
+        guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.jellyfinServerURLValue, to: newURL) else { return false }
+        AppStorageKeys.setJellyfinToken("")
+        AppStorageKeys.jellyfinUserIdValue = ""
+        Logger.music.notice("JELLYFIN address switch: the access of the stored server is forgotten")
+        return true
+    }
+
+    /// The client the stored settings describe: address, user, password and
+    /// the access the server handed out, if any is kept.
+    static func storedClient() -> JellyfinClient {
+        JellyfinClient(
+            serverURL: AppStorageKeys.jellyfinServerURLValue,
+            username: AppStorageKeys.jellyfinUsernameValue,
+            password: AppStorageKeys.jellyfinPasswordValue,
+            deviceId: AppStorageKeys.jellyfinDeviceIdValue,
+            accessToken: AppStorageKeys.jellyfinTokenValue.isEmpty ? nil : AppStorageKeys.jellyfinTokenValue,
+            userId: AppStorageKeys.jellyfinUserIdValue.isEmpty ? nil : AppStorageKeys.jellyfinUserIdValue)
+    }
+
     /// Rebuild the client from the stored settings (TF bib-toggles: nil when
     /// the source is not effectively active, so ALL calls stop).
     func reloadConfig() {
         if AppStorageKeys.jellyfinActive, !AppStorageKeys.jellyfinServerURLValue.isEmpty {
-            let client = JellyfinClient(
-                serverURL: AppStorageKeys.jellyfinServerURLValue,
-                username: AppStorageKeys.jellyfinUsernameValue,
-                password: AppStorageKeys.jellyfinPasswordValue,
-                deviceId: AppStorageKeys.jellyfinDeviceIdValue,
-                accessToken: AppStorageKeys.jellyfinTokenValue.isEmpty ? nil : AppStorageKeys.jellyfinTokenValue,
-                userId: AppStorageKeys.jellyfinUserIdValue.isEmpty ? nil : AppStorageKeys.jellyfinUserIdValue)
+            let client = Self.storedClient()
             client.onTokenRefresh = { token, userId in
                 AppStorageKeys.setJellyfinToken(token)
                 AppStorageKeys.jellyfinUserIdValue = userId

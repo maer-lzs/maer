@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A new music server address signs in anew.** When you change the
+address of your Jellyfin server, or of a Subsonic server that signed you
+in with its key, the app forgets what the old server gave it and signs
+in to the new one, instead of sending the old access along.
+
 **Routines: a playlist that picks today's episodes.** On the page of a
 show you follow by its feed (not a show of an Audiobookshelf server),
 Add to Routine puts a rule into one of your playlists:

@@ -87,6 +87,33 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         AppStorageKeys.subsonicActive && client != nil
     }
 
+    /// Before a new address is stored: where the stored server signed in
+    /// with its key, the key was handed out by that server and is the stored
+    /// password (`SubsonicSignIn`). On a switch (`ServerAddressSwitch`) it is
+    /// forgotten, and the field's text is kept only when the person typed
+    /// another one for the new server; the form fills the field with the
+    /// stored key, and that one must not be written back. A server signed
+    /// in with the token keeps the password: what it carries is the
+    /// person's own, not a server's gift.
+    static func passwordAfterAddress(_ newURL: String, typed: String) -> String {
+        let stored = AppStorageKeys.subsonicServerURLValue
+        guard ServerAddressSwitch.isSwitch(from: stored, to: newURL),
+              let old = SubsonicClient.address(stored),
+              SubsonicClient.negotiatedSignIn(server: SubsonicClient.serverKey(for: old)) == .apiKey else { return typed }
+        let key = AppStorageKeys.subsonicPasswordValue
+        AppStorageKeys.setSubsonicPassword("")
+        Logger.music.notice("SUBSONIC address switch: the key of the stored server is forgotten")
+        return typed == key ? "" : typed
+    }
+
+    /// The client the stored settings describe; nil without an address or
+    /// a user.
+    static func storedClient() -> SubsonicClient? {
+        SubsonicClient(serverURL: AppStorageKeys.subsonicServerURLValue,
+                       username: AppStorageKeys.subsonicUsernameValue,
+                       password: AppStorageKeys.subsonicPasswordValue)
+    }
+
     /// Rebuild the client from the stored settings (call after a settings change).
     func reloadConfig() {
         let password = AppStorageKeys.subsonicPasswordValue
@@ -96,11 +123,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // (including cross-tab callers like Home's albumShelf) stop. Fixes the
         // "client is never nil when disabled" bug.
         if AppStorageKeys.subsonicActive {
-            client = SubsonicClient(
-                serverURL: AppStorageKeys.subsonicServerURLValue,
-                username: AppStorageKeys.subsonicUsernameValue,
-                password: password
-            )
+            client = Self.storedClient()
         } else {
             client = nil
         }
