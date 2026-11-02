@@ -130,7 +130,7 @@ final class LyricsService: ObservableObject {
         if let hit = memory[songId] { return Self.gated(hit) }
 
         // Disk cache (positive AND negative). Off-main decode.
-        let key = PodcastSubscriptions.stableHash("lyrics:\(songId)")
+        let key = PodcastIdentity.stableHash("lyrics:\(songId)")
         let file = Self.cacheDir.appendingPathComponent("\(key).json")
         // detached because the cache read is disk work off the MainActor
         if let entry = await Task.detached(priority: .userInitiated, operation: { () -> CacheEntry? in

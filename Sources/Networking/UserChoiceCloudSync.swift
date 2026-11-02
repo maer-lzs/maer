@@ -305,7 +305,7 @@ final class UserChoiceCloudSync {
     /// tombstone). An import is a person acting too; mechanics (a server
     /// pull, a mirror) never note.
     func noteSubscription(feedURL: String, subscribed: Bool) {
-        let feedKey = PodcastSubscriptions.feedKey(feedURL)
+        let feedKey = PodcastIdentity.feedKey(feedURL)
         // Subscribing again is the newer statement about the same feed. The
         // record of the older removal goes now, not at the next reconcile:
         // both happening while the sync is off would otherwise leave two

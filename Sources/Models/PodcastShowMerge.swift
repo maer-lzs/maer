@@ -28,17 +28,17 @@ nonisolated enum PodcastShowMerge {
     /// RSS-only ones in theirs. Every one of the five copies did that, and a
     /// list that reorders itself under the user is its own defect.
     static func merge(abs: [PodcastShow], rss: [PodcastShow]) -> [PodcastShow] {
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        let absFeeds = Set(abs.map { PodcastIdentity.normalizeFeedURL($0.feedURL) })
         return abs + rss.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
+            !absFeeds.contains(PodcastIdentity.normalizeFeedURL($0.feedURL))
         }
     }
 
     /// Is this feed among the given shows? Asked when a page has to decide
     /// between „subscribe" and „manage subscription".
     static func contains(feedURL: String, in shows: [PodcastShow]) -> Bool {
-        let target = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        return shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == target }
+        let target = PodcastIdentity.normalizeFeedURL(feedURL)
+        return shows.contains { PodcastIdentity.normalizeFeedURL($0.feedURL) == target }
     }
 
     /// The same folding, but it hands back the WHOLE group instead of only
@@ -54,7 +54,7 @@ nonisolated enum PodcastShowMerge {
         var order: [String] = []
         var groups: [String: [PodcastShow]] = [:]
         for show in shows {
-            let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+            let key = PodcastIdentity.normalizeFeedURL(show.feedURL)
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(show)
         }
@@ -69,7 +69,7 @@ nonisolated enum PodcastShowMerge {
     /// spelling difference hides, and a set that misses one address puts a
     /// show the person already follows back into their recommendations.
     static func normalizedFeeds(_ shows: [PodcastShow]) -> Set<String> {
-        Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        Set(shows.map { PodcastIdentity.normalizeFeedURL($0.feedURL) })
     }
 
     /// The recommendation seed's shape: folded per feed, and without any
@@ -83,11 +83,11 @@ nonisolated enum PodcastShowMerge {
     /// catalog search, which is the incident the seed's filter exists for.
     static func seedGroups(abs: [PodcastShow], rss: [PodcastShow]) -> [[PodcastShow]] {
         let mirrored = Set((abs + rss).filter { $0.origin != nil }
-            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            .map { PodcastIdentity.normalizeFeedURL($0.feedURL) })
         // ABS first, so the survivor is the copy the display list keeps too.
         return foldByFeed(abs + rss).filter { group in
             guard let first = group.first else { return false }
-            return !mirrored.contains(PodcastSubscriptions.normalizeFeedURL(first.feedURL))
+            return !mirrored.contains(PodcastIdentity.normalizeFeedURL(first.feedURL))
         }
     }
 

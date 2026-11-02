@@ -101,7 +101,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// The same by the feed's address.
     func isAccessRefused(feedURL: String) -> Bool {
-        !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(Self.feedKey(feedURL))
+        !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(PodcastIdentity.feedKey(feedURL))
     }
 
     /// THE question which lock a feed's artwork carries; every surface that
@@ -114,7 +114,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Refusals in a row for the show's notice. A page read, not a cell's.
     func refusalCount(_ show: PodcastShow) -> Int {
-        FeedRefusal.all(defaults: defaults)[Self.feedKey(show.feedURL)]?.count ?? 0
+        FeedRefusal.all(defaults: defaults)[PodcastIdentity.feedKey(show.feedURL)]?.count ?? 0
     }
 
     /// The clock of the refusal record. A test sets it to cross the day.
@@ -202,10 +202,10 @@ final class PodcastSubscriptions: ObservableObject {
                                    allowingFreeTwinOf: paid.id)
         // A new show, or the free show that was already subscribed: then
         // the follow refreshed it and the move goes onto that one.
-        let offered = Self.normalizeFeedURL(offer.feedURL)
+        let offered = PodcastIdentity.normalizeFeedURL(offer.feedURL)
         guard case .followed = outcome,
               let free = shows.first(where: { !before.contains($0.id) })
-                ?? shows.first(where: { $0.id != paid.id && Self.normalizeFeedURL($0.feedURL) == offered }) else {
+                ?? shows.first(where: { $0.id != paid.id && PodcastIdentity.normalizeFeedURL($0.feedURL) == offered }) else {
             Logger.rss.notice("SUBSCRIBE free twin for refused show: \(showId, privacy: .private(mask: .hash)) ok=false")
             return false
         }
@@ -248,7 +248,7 @@ final class PodcastSubscriptions: ObservableObject {
         // Mirror the origin-carrying feed keys into the defaults
         // set the nonisolated premium truth reads. ONE maintenance point,
         // always in sync with the store (bootstrap heals existing stores).
-        let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
+        let mirrored = Set(shows.filter { $0.origin != nil }.map { PodcastIdentity.feedKey($0.feedURL) })
         if mirrored != Self.mirroredFeedKeys(defaults: defaults) {
             defaults.set(Array(mirrored).sorted(), forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
         }
@@ -606,108 +606,6 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Stable ids + dedup (migration)
 
-    /// Deterministic key of a feed (an FNV-1a-shaped hash, hex, over the
-    /// normalised URL). Replaces the previously used `String.hashValue`,
-    /// which was re-seeded on each app start and thus caused duplicates and
-    /// progress loss.
-    nonisolated static func feedKey(_ feedURL: String) -> String {
-        stableHash(normalizeFeedURL(feedURL))
-    }
-
-    /// FNV-1a with the FNV prime, but NOT the FNV offset basis: the start
-    /// value lacks the last digit of 14695981039346656037, so the result is
-    /// not FNV-1a (the empty string gives 14650fb0739d0383, not
-    /// cbf29ce484222325). It must never be "corrected": every feed key, show
-    /// id and position key built from it would change, and every stored one
-    /// would be orphaned. `PodcastSubscriptionsHashTests` holds two values.
-    /// A token address as a measuring line, never the token: the feed key
-    /// (the same on every device), a hash of the address exactly as held or
-    /// fetched, and whether it carries capitals. Two devices' lines with the
-    /// same key and a different address hash hold different addresses.
-    nonisolated static func addressLine(_ feedURL: String) -> String {
-        let key = feedKey(feedURL).prefix(8)
-        let address = stableHash(feedURL).prefix(8)
-        let capitals = feedURL.contains { $0.isUppercase }
-        return "key=\(key) addr=\(address) capitals=\(capitals)"
-    }
-
-    nonisolated static func stableHash(_ s: String) -> String {
-        var h: UInt64 = 1469598103934665603
-        for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }
-        return String(h, radix: 16)
-    }
-
-    /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
-    /// http/https or slash variants of the same feed collapse together.
-    /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
-    /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
-    /// not collapse into one subscription. Everything else (tracking params
-    /// etc.) is still stripped.
-    /// Query parameters whose VALUES are access secrets. A feed carrying
-    /// one is the token-URL premium class (access baked into the URL, no login).
-    /// ONE source: the identity set below builds on this, no duplication.
-    /// "freebie" joined after the ZEIT leak finding (their premium
-    /// class uses `freebie=<token>`). ONE set feeds detection, masking AND
-    /// the OPML-export guard.
-    nonisolated static let secretQueryParams: Set<String> = PodcastFeedAddress.secretQueryParams
-
-    nonisolated private static let identityQueryParams: Set<String> =
-        secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
-
-    /// The show behind a statistics key. Episode ids are `rss:<feed key>:<guid>`
-    /// and the statistics fold them to `rss:<feed key>`, while a show's own
-    /// id is `feed:<feed key>`; the two never matched, so the statistics
-    /// page showed keys instead of names.
-    ///
-    /// `heard` are the stocks that remember a show without following it
-    /// (the listen log, the episodes kept from browsing): each entry carries
-    /// its feed address and the show's name. A show listened to for hours
-    /// and then unsubscribed, or only ever browsed, still has its name
-    /// there.
-    nonisolated static func showTitle(for showId: String, in shows: [PodcastShow],
-                                      heard: [(feedURL: String, title: String)] = []) -> String? {
-        if let direct = shows.first(where: { $0.id == showId }) { return direct.title }
-        let parts = showId.split(separator: ":", maxSplits: 1)
-        guard parts.count == 2 else { return nil }
-        let key = String(parts[1])
-        if let followed = shows.first(where: { $0.id == "feed:\(key)" || feedKey($0.feedURL) == key }) {
-            return followed.title
-        }
-        return heard.first { !$0.title.isEmpty && feedKey($0.feedURL) == key }?.title
-    }
-
-
-    /// Token-URL premium class; the rule itself lives in the core layer.
-    nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {
-        PodcastFeedAddress.isTokenFeedURL(raw)
-    }
-
-    /// Provider-premium (Teil 5 cut): the comparable host of a feed URL.
-    /// Scheme/`www.` stripped, lowercased, up to the first path segment.
-    nonisolated static func feedHost(_ raw: String) -> String {
-        var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        s = s.replacingOccurrences(of: "https://", with: "")
-             .replacingOccurrences(of: "http://", with: "")
-        if s.hasPrefix("www.") { s.removeFirst(4) }
-        if let slash = s.firstIndex(where: { $0 == "/" || $0 == "?" }) { s = String(s[..<slash]) }
-        return s
-    }
-
-    /// Display/log-safe form. Secret parameter values become "••••",
-    /// everything else stays. Never show/log a token feed URL unmasked.
-    nonisolated static func maskedFeedURL(_ raw: String) -> String {
-        guard let q = raw.firstIndex(of: "?") else { return raw }
-        let base = raw[..<q]
-        let masked = raw[raw.index(after: q)...].split(separator: "&").map { pair -> String in
-            let parts = pair.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2, secretQueryParams.contains(parts[0].lowercased()) else {
-                return String(pair)
-            }
-            return "\(parts[0])=••••"
-        }
-        return base + "?" + masked.joined(separator: "&")
-    }
-
     /// Known members-only feed hosts (moved here from the podcast tab so the
     /// premium test has ONE home). The membership hosters whose
     /// personalised URLs carry the token in the PATH. Pure data.
@@ -725,12 +623,12 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated static func noteFeedBlocked(_ feedURL: String,
                                             defaults: UserDefaults = .standard) {
         var keys = blockedFeedKeys(defaults: defaults)
-        guard keys.insert(feedKey(feedURL)).inserted else { return }
+        guard keys.insert(PodcastIdentity.feedKey(feedURL)).inserted else { return }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.blockedFeedKeys)
-        Logger.rss.notice("PREMIUM feed-blocked signal: \(maskedFeedURL(feedURL), privacy: .public)")
+        Logger.rss.notice("PREMIUM feed-blocked signal: \(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public)")
         // A block signal is a statement about the FEED, not about
         // this device. It travels with the choice family.
-        let key = feedKey(feedURL)
+        let key = PodcastIdentity.feedKey(feedURL)
         Task { @MainActor in
             UserChoiceCloudSync.shared.noteFeedBlock(key)
         }
@@ -738,7 +636,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     nonisolated static func isFeedBlocked(_ feedURL: String,
                                           defaults: UserDefaults = .standard) -> Bool {
-        blockedFeedKeys(defaults: defaults).contains(feedKey(feedURL))
+        blockedFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL))
     }
 
     /// THE premium test: stored basic-auth credentials OR the token-URL class
@@ -758,13 +656,13 @@ final class PodcastSubscriptions: ObservableObject {
         // A mirrored feed is NEVER premium. Its host login is
         // server infrastructure, not a paywall; its marking is the origin
         // capsule. First check, so no heuristic below can override it.
-        if mirroredFeedKeys(defaults: defaults).contains(feedKey(feedURL)) { return false }
-        if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
-        if isTokenFeedURL(feedURL) { return true }
+        if mirroredFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL)) { return false }
+        if PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey(feedURL)) { return true }
+        if PodcastFeedAddress.isTokenFeedURL(feedURL) { return true }
         // The feed says it itself. Catches the path-token class
         // the query-param heuristic cannot see.
         if isFeedBlocked(feedURL, defaults: defaults) { return true }
-        if manualPremiumFeedKeys(defaults: defaults).contains(feedKey(feedURL)) { return true }
+        if manualPremiumFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
         return premiumHosts.contains { lower.contains($0) }
     }
@@ -781,13 +679,13 @@ final class PodcastSubscriptions: ObservableObject {
 
     nonisolated static func isManuallyMarkedPremium(_ feedURL: String,
                                                     defaults: UserDefaults = .standard) -> Bool {
-        manualPremiumFeedKeys(defaults: defaults).contains(feedKey(feedURL))
+        manualPremiumFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL))
     }
 
     nonisolated static func setManualPremium(_ marked: Bool, feedURL: String,
                                              defaults: UserDefaults = .standard) {
         var keys = manualPremiumFeedKeys(defaults: defaults)
-        let key = feedKey(feedURL)
+        let key = PodcastIdentity.feedKey(feedURL)
         if marked { keys.insert(key) } else { keys.remove(key) }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.premiumMarkedFeeds)
         // The statement travels. An un-marking as its own tombstone,
@@ -803,30 +701,6 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
-    nonisolated static func normalizeFeedURL(_ raw: String) -> String {
-        var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        var identityQuery = ""
-        if let q = s.firstIndex(of: "?") {
-            // Keep identity-relevant parameters (sorted, canonical) so feeds
-            // that differ only in a token/show id stay distinct subscriptions;
-            // drop the rest (tracking) as before.
-            let query = String(s[s.index(after: q)...])
-            let kept = query.split(separator: "&")
-                .filter { pair in
-                    let name = pair.split(separator: "=", maxSplits: 1)[0]
-                    return identityQueryParams.contains(String(name))
-                }
-                .sorted()
-            if !kept.isEmpty { identityQuery = "?" + kept.joined(separator: "&") }
-            s = String(s[..<q])
-        }
-        s = s.replacingOccurrences(of: "https://", with: "")
-             .replacingOccurrences(of: "http://", with: "")
-        if s.hasPrefix("www.") { s.removeFirst(4) }
-        while s.hasSuffix("/") { s.removeLast() }
-        return s + identityQuery
-    }
-
     /// Bring persisted shows to stable ids/guids and merge duplicate shows (same
     /// normalised feed URL). Idempotent. Later starts change nothing. When
     /// re-keying the guids the associated `localPosition` progress moves along
@@ -835,7 +709,7 @@ final class PodcastSubscriptions: ObservableObject {
         // The SAME re-keying rule as everywhere else. Including the
         // comparison the old private copy lacked.
         var retiredTwins: [(loser: String, survivor: String)] = []
-        let (result, changed) = Self.migrate(decoded, moveProgress: { old, new in
+        let (result, changed) = PodcastIdentity.migrate(decoded, moveProgress: { old, new in
             ListeningStore.move(from: old, to: new, in: defaults)
         }, retired: { retiredTwins.append(($0, $1)) })
         if changed {
@@ -846,9 +720,9 @@ final class PodcastSubscriptions: ObservableObject {
         }
         // The held token addresses, once per load, for the comparison with
         // another device's adoption line. Hashes only.
-        for show in result where Self.isTokenFeedURL(show.feedURL) {
+        for show in result where PodcastFeedAddress.isTokenFeedURL(show.feedURL) {
             // Hashes only (`addressLine`), never the address.
-            let measured = Self.addressLine(show.feedURL)
+            let measured = PodcastIdentity.addressLine(show.feedURL)
             Logger.rss.notice("FEEDURL held \(measured, privacy: .public)")
         }
         if !retiredTwins.isEmpty {
@@ -858,212 +732,11 @@ final class PodcastSubscriptions: ObservableObject {
                 for twin in retiredTwins {
                     Self.stateSubscription(twin.loser, subscribed: false)
                     Self.stateSubscription(twin.survivor, subscribed: true)
-                    Logger.rss.notice("PREMIUM token twin retired to the account: \(Self.maskedFeedURL(twin.loser), privacy: .public) -> \(Self.maskedFeedURL(twin.survivor), privacy: .public)")
+                    Logger.rss.notice("PREMIUM token twin retired to the account: \(PodcastIdentity.maskedFeedURL(twin.loser), privacy: .public) -> \(PodcastIdentity.maskedFeedURL(twin.survivor), privacy: .public)")
                 }
             }
         }
         return result
-    }
-
-    /// Identity WITHOUT the secret VALUES. The ZEIT class rotates
-    /// its `freebie` token, and since the token joined the identity params
-    /// a rotated token spawned a TWIN of the same feed (the
-    /// screenshot: two entries, identical masked URL). Same masked identity
-    /// ⇒ same resource on one device.
-    nonisolated static func collapseKey(_ feedURL: String) -> String {
-        stableHash(maskedFeedURL(normalizeFeedURL(feedURL)))
-    }
-
-    /// Pure migration core (testable): re-key ids/guids, report every progress
-    /// move via `moveProgress(old, new)`, dedupe shows of the same feed.
-    /// Stage 1 on the exact identity, stage 2 on the MASKED
-    /// identity so token rotations collapse too. The survivor of a stage-2
-    /// collision is the entry with MORE episodes (the freshly parsed full
-    /// feed carries the CURRENT token in its URL); the loser's episodes fold
-    /// in re-keyed, progress rides along via `moveProgress`.
-    ///
-    /// `retired(loser, survivor)` names each token-rotation twin that was
-    /// folded away, by feed URL, so the caller can say it to the account:
-    /// otherwise the loser's statement with the OLD token keeps travelling,
-    /// and a new device adopts an address that answers 403.
-    nonisolated static func migrate(
-        _ decoded: [PodcastShow],
-        moveProgress: (String, String) -> Void,
-        retired: (_ loser: String, _ survivor: String) -> Void = { _, _ in }
-    ) -> (shows: [PodcastShow], changed: Bool) {
-        var byKey: [String: PodcastShow] = [:]
-        var order: [String] = []
-        var changed = false
-
-        for show in decoded {
-            let key = feedKey(show.feedURL)
-            var rebuilt = show
-            rebuilt.id = "feed:\(key)"
-            if rebuilt.id != show.id { changed = true }
-            rebuilt.episodes = show.episodes.map { ep in
-                var e = ep
-                let newGuid = "rss:\(key):\(originalGuid(ep.guid))"
-                if newGuid != ep.guid {
-                    moveProgress(ep.guid, newGuid)
-                    e.guid = newGuid
-                    changed = true
-                }
-                return e
-            }
-
-            if let existing = byKey[key] {
-                byKey[key] = merge(existing, rebuilt)
-                changed = true
-            } else {
-                byKey[key] = rebuilt
-                order.append(key)
-            }
-        }
-
-        // Stage 2: collapse token-rotation twins (same MASKED id).
-        var byMasked: [String: String] = [:]   // collapseKey → surviving exact key
-        var removedKeys = Set<String>()
-        for key in order {
-            guard let show = byKey[key] else { continue }
-            let masked = collapseKey(show.feedURL)
-            guard let survivorKey = byMasked[masked] else {
-                byMasked[masked] = key
-                continue
-            }
-            guard var survivor = byKey[survivorKey], let loser = byKey[key] else { continue }
-            // The fuller entry survives (its URL carries the current token).
-            if loser.episodes.count > survivor.episodes.count {
-                var newSurvivor = loser
-                collapseInto(&newSurvivor, from: survivor, moveProgress: moveProgress)
-                byKey[key] = newSurvivor
-                byKey[survivorKey] = nil
-                byMasked[masked] = key
-                removedKeys.insert(survivorKey)
-                retired(survivor.feedURL, newSurvivor.feedURL)
-            } else {
-                collapseInto(&survivor, from: loser, moveProgress: moveProgress)
-                byKey[survivorKey] = survivor
-                byKey[key] = nil
-                removedKeys.insert(key)
-                retired(loser.feedURL, survivor.feedURL)
-            }
-            changed = true
-        }
-        if !removedKeys.isEmpty {
-            order.removeAll { removedKeys.contains($0) }
-        }
-
-        return (order.compactMap { byKey[$0] }, changed)
-    }
-
-    /// Fold `loser` into `survivor`: episodes match by ORIGINAL guid, get
-    /// re-keyed to the survivor's feed key (progress rides along), unmatched
-    /// old episodes join the union. Logged loudly with MASKED urls.
-    private nonisolated static func collapseInto(
-        _ survivor: inout PodcastShow, from loser: PodcastShow,
-        moveProgress: (String, String) -> Void
-    ) {
-        let survivorKey = feedKey(survivor.feedURL)
-        var rekeyed = loser
-        rekeyed.episodes = loser.episodes.map { ep in
-            var e = ep
-            let newGuid = "rss:\(survivorKey):\(originalGuid(ep.guid))"
-            if newGuid != ep.guid {
-                moveProgress(ep.guid, newGuid)
-                e.guid = newGuid
-            }
-            return e
-        }
-        // Argument order on purpose: the SECOND side wins the feed facts,
-        // and that has to be the survivor here, because its URL carries the
-        // current token. The store facts survive from either side (see
-        // merge), so the loser only loses its outdated address.
-        survivor = merge(rekeyed, survivor)
-        let loserMasked = maskedFeedURL(loser.feedURL)
-        let survivorMasked = maskedFeedURL(survivor.feedURL)
-        Logger.rss.notice("PREMIUM identity merge: \(loserMasked, privacy: .public) folded into \(survivorMasked, privacy: .public)")
-    }
-
-    /// Extract the original guid from `rss:<hash>:<original>` (which may itself
-    /// contain colons → maxSplits 2).
-    nonisolated static func originalGuid(_ guid: String) -> String {
-        let parts = guid.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
-        if parts.count == 3, parts[0] == "rss" { return String(parts[2]) }
-        return guid
-    }
-
-    /// The same episode under another feed key: an id with the same
-    /// original guid among the followed episodes, never the id itself.
-    /// The guid is the episode's own name in its feed, so two feed keys
-    /// for one show (a moved host, a premium twin) meet here.
-    nonisolated static func twinEpisodeId(for id: String, among guids: [String]) -> String? {
-        let wanted = originalGuid(id)
-        guard wanted != id, !wanted.isEmpty else { return nil }
-        return guids.first { $0 != id && originalGuid($0) == wanted }
-    }
-
-    /// Merge two versions of the same show: episodes as a union over `guid`,
-    /// newest first. `internal` so the RSS hardening (never shrink on a thin
-    /// fetch) can be driven from a unit test.
-    ///
-    /// **Classify fields instead of picking a side.**
-    ///
-    /// Picking the side with more episodes and then patching individual fields
-    /// back requires someone to remember every field, every time. Two fields
-    /// died that way before.
-    ///
-    /// The classification is objective, not a judgement call:
-    ///  * **Feed facts** (title, image, description, categories, the
-    ///    announced duration): a fresh parse knows them best, so the fresh
-    ///    side wins.
-    ///  * **Store facts** (`origin`, the measured asset length): a fresh
-    ///    parse CANNOT know them at all. They survive from the stored side,
-    ///    no matter which side has more episodes.
-    ///
-    /// The episode list stays a union over `guid`: a thin parse (valid title,
-    /// few episodes) must never empty the cache. On a duplicate `guid` the
-    /// classification applies at EPISODE level too, otherwise the same fact
-    /// dies, only less visibly.
-    ///
-    /// The store facts are not taken blindly from `stored`. Whoever has them
-    /// keeps them (`stored ?? fresh`). On a refresh that is the same thing,
-    /// because a fresh parse never has them. But `collapseInto` uses this
-    /// same merge to fold a twin entry into the survivor, and there the
-    /// loser's origin must not be lost just because it is the second
-    /// argument.
-    nonisolated static func merge(_ stored: PodcastShow, _ fresh: PodcastShow) -> PodcastShow {
-        var result = fresh
-        result.origin = stored.origin ?? fresh.origin
-
-        var storedByGuid: [String: PodcastEpisode] = [:]
-        for episode in stored.episodes { storedByGuid[episode.guid] = episode }
-
-        var seen = Set<String>()
-        var episodes: [PodcastEpisode] = []
-        for var episode in fresh.episodes where seen.insert(episode.guid).inserted {
-            if let known = storedByGuid[episode.guid] { carryStoreFacts(from: known, into: &episode) }
-            episodes.append(episode)
-        }
-        for episode in stored.episodes where seen.insert(episode.guid).inserted {
-            episodes.append(episode)
-        }
-        result.episodes = episodes.sorted { $0.pubDate > $1.pubDate }
-        return result
-    }
-
-    /// What only the store knows about an EPISODE. When this list grows, the
-    /// shared cases in `Fixtures/Shared/abos/merge.json` (read by
-    /// `PodcastMergeTests` and the Android side) have to grow with it. That
-    /// is exactly what they are for.
-    private nonisolated static func carryStoreFacts(from stored: PodcastEpisode,
-                                                    into fresh: inout PodcastEpisode) {
-        // Only when the other side carries no measurement of its own,
-        // otherwise an older value would beat a newer one.
-        if fresh.measuredDuration == nil, let measured = stored.measuredDuration, measured > 0 {
-            fresh.measuredDuration = measured
-            // Mirrored so every reader sees the best known length.
-            fresh.duration = measured
-        }
     }
 
     // MARK: - Subscriptions
@@ -1131,7 +804,7 @@ final class PodcastSubscriptions: ObservableObject {
                 reason = FeedAdoptionPending.Reason.from(
                     meaning: StatusMeaning.from(status: code),
                     tokenAddress: PodcastFeedAddress.isTokenFeedURL(url.absoluteString),
-                    hasCredentials: PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey(url.absoluteString)))
+                    hasCredentials: PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey(url.absoluteString)))
                 status = code
             case .failed(let why):
                 reason = why
@@ -1140,9 +813,9 @@ final class PodcastSubscriptions: ObservableObject {
             }
             // Every failed adoption gets a visible reason, not a silent
             // retry on the next reconcile.
-            if adopting, Self.isTokenFeedURL(url.absoluteString) {
+            if adopting, PodcastFeedAddress.isTokenFeedURL(url.absoluteString) {
                 // Hashes only (`addressLine`), never the address.
-                let measured = Self.addressLine(url.absoluteString)
+                let measured = PodcastIdentity.addressLine(url.absoluteString)
                 Logger.rss.notice("FEEDURL adopted \(measured, privacy: .public) status=\(status ?? 0) reason=\(reason.rawValue, privacy: .public)")
             }
             if adopting {
@@ -1193,7 +866,7 @@ final class PodcastSubscriptions: ObservableObject {
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
             // Re-subscribe must not blindly replace: a weak parse (valid title,
             // few/zero episodes) would drop the cached episodes. Union instead.
-            shows[idx] = Self.merge(shows[idx], show)
+            shows[idx] = PodcastIdentity.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
             if PodcastSubscribeNotice.shouldTell(episodeCount: show.episodes.count,
@@ -1312,9 +985,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// `origin` field only. Never a URL heuristic. Drives the
     /// "YouTube" origin capsule on surfaces OUTSIDE the group row.
     func isMirrored(feedURL: String) -> Bool {
-        let normalized = Self.normalizeFeedURL(feedURL)
+        let normalized = PodcastIdentity.normalizeFeedURL(feedURL)
         return shows.contains {
-            $0.origin != nil && Self.normalizeFeedURL($0.feedURL) == normalized
+            $0.origin != nil && PodcastIdentity.normalizeFeedURL($0.feedURL) == normalized
         }
     }
 
@@ -1338,14 +1011,14 @@ final class PodcastSubscriptions: ObservableObject {
         // wait for the two-sync confirmation instead).
         var removedFeedURL: String?
         if let show = shows.first(where: { $0.id == id }) {
-            Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL), defaults: defaults)
+            Self.recordUserRemovedFeed(PodcastIdentity.normalizeFeedURL(show.feedURL), defaults: defaults)
             removedFeedURL = show.feedURL
         }
         shows.removeAll { $0.id == id }
         // ONLY the person's own unsubscribe may empty the list.
         save(emptying: .allowed)
         if let removedFeedURL {
-            FeedRefusal.forget(feedKey: Self.feedKey(removedFeedURL), defaults: defaults)
+            FeedRefusal.forget(feedKey: PodcastIdentity.feedKey(removedFeedURL), defaults: defaults)
             // Published only on a change: an unsubscribe announces once.
             let lasting = FeedRefusal.lasting(defaults: defaults)
             if lasting != refusedFeedKeys { refusedFeedKeys = lasting }
@@ -1368,7 +1041,7 @@ final class PodcastSubscriptions: ObservableObject {
             await self.ensureLoaded()
             var removedTitles: [String] = []
             for feedKey in removed {
-                if let show = self.shows.first(where: { Self.feedKey($0.feedURL) == feedKey }),
+                if let show = self.shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == feedKey }),
                    show.origin == nil {
                     // The family carries the person's decisions only, so a
                     // tombstone is the person's unsubscribe made elsewhere:
@@ -1380,7 +1053,7 @@ final class PodcastSubscriptions: ObservableObject {
                     // may empty the list like `unsubscribe` does; refused,
                     // every write would take the same empty list and the
                     // shows came back at the next start.
-                    Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL), defaults: defaults)
+                    Self.recordUserRemovedFeed(PodcastIdentity.normalizeFeedURL(show.feedURL), defaults: defaults)
                     self.shows.removeAll { $0.id == show.id }
                     self.save(emptying: .allowed)
                     removedTitles.append(show.title)
@@ -1390,8 +1063,8 @@ final class PodcastSubscriptions: ObservableObject {
             let pendingBefore = Set(self.feedsNotFollowed.keys)
             var followed = 0
             for entry in added.sorted(by: { $0.t < $1.t }) {
-                let key = Self.feedKey(entry.feedURL)
-                guard !self.shows.contains(where: { Self.feedKey($0.feedURL) == key }) else { continue }
+                let key = PodcastIdentity.feedKey(entry.feedURL)
+                guard !self.shows.contains(where: { PodcastIdentity.feedKey($0.feedURL) == key }) else { continue }
                 // The account offers an unfollowed feed on EVERY reconcile
                 // (the statement stays open until this device holds it), so
                 // a run that is still fetching must not fetch it twice.
@@ -1423,7 +1096,7 @@ final class PodcastSubscriptions: ObservableObject {
                 case .subscribedUnchecked: outcome = "subscribedUnchecked"
                 case .subscribed, .notSubscribed:
                     outcome = FeedAdoptionPending.outcome(
-                        ok: ok, held: self.shows.contains { Self.feedKey($0.feedURL) == key },
+                        ok: ok, held: self.shows.contains { PodcastIdentity.feedKey($0.feedURL) == key },
                         reason: self.feedsNotFollowed[key]?.reason)
                 }
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok) outcome=\(outcome, privacy: .public)")
@@ -1457,7 +1130,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     private func markNotFollowed(feedURL: String, reason: FeedAdoptionPending.Reason, status: Int? = nil,
                                  statementT: Double? = nil) {
-        let key = Self.feedKey(feedURL)
+        let key = PodcastIdentity.feedKey(feedURL)
         FeedAdoptionPending.mark(feedKey: key, feedURL: feedURL, reason: reason, status: status,
                                  statementT: statementT, defaults: defaults)
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
@@ -1492,7 +1165,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// subscription's identity, so the same link in another spelling is the
     /// same subscription.
     nonisolated static func withdrawsOldAddress(oldFeedURL: String, newURL: String) -> Bool {
-        feedKey(oldFeedURL) != feedKey(newURL)
+        PodcastIdentity.feedKey(oldFeedURL) != PodcastIdentity.feedKey(newURL)
     }
 
     /// A refused feed gets a new link from the person: the new address is
@@ -1551,7 +1224,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// A placeholder show for the surfaces that take a `PodcastShow` (the
     /// login form): host as title, no episodes, nothing persisted.
     nonisolated static func placeholderShow(feedKey: String, feedURL: String) -> PodcastShow {
-        let host = feedHost(feedURL)
+        let host = PodcastIdentity.feedHost(feedURL)
         return PodcastShow(id: feedKey, title: host.isEmpty ? feedURL : host, author: nil,
                     artworkURL: nil, description: nil, feedURL: feedURL, episodes: [])
     }
@@ -1563,7 +1236,7 @@ final class PodcastSubscriptions: ObservableObject {
         guard isLoaded else { return nil }
         var out: [String: String] = [:]
         for show in shows where show.origin == nil {
-            out[Self.feedKey(show.feedURL)] = show.feedURL
+            out[PodcastIdentity.feedKey(show.feedURL)] = show.feedURL
         }
         return out
     }
@@ -1765,7 +1438,7 @@ final class PodcastSubscriptions: ObservableObject {
         await ensureLoaded()
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
         let before = shows[idx].episodes.count
-        shows[idx] = Self.merge(shows[idx], fresh)
+        shows[idx] = PodcastIdentity.merge(shows[idx], fresh)
         save()
         return shows[idx].episodes.count - before
     }
@@ -1836,7 +1509,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.library.notice("PODCAST full history failed reason=\(FailureReason.of(error), privacy: .public)\(browsed ? " browsed" : "", privacy: .public)")
             return nil
         }
-        let key = feedKey(show.feedURL)
+        let key = PodcastIdentity.feedKey(show.feedURL)
         var seen = Set(show.episodes.map { $0.guid })
         var added: [PodcastEpisode] = []
         for pi in indexEpisodes {
@@ -1980,8 +1653,8 @@ final class PodcastSubscriptions: ObservableObject {
         var outcomes = [FollowOutcome?](repeating: nil, count: feeds.count)
         var toFetch: [Int] = []
         for (index, feed) in feeds.enumerated() {
-            let key = Self.feedKey(feed)
-            if let held = shows.first(where: { Self.feedKey($0.feedURL) == key }) {
+            let key = PodcastIdentity.feedKey(feed)
+            if let held = shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == key }) {
                 let outcome = FollowOutcome.followed(title: held.title, wasNew: false, episodes: held.episodes.count)
                 outcomes[index] = outcome
                 answered(index, outcome)
@@ -2085,7 +1758,7 @@ final class PodcastSubscriptions: ObservableObject {
     func serverHolding(feedKey: String) -> ServerHolding {
         var titles: [String: String] = [:]
         for show in serverShows() where !show.feedURL.isEmpty {
-            let key = Self.feedKey(show.feedURL)
+            let key = PodcastIdentity.feedKey(show.feedURL)
             if titles[key] == nil { titles[key] = show.title }
         }
         return .of(feedKey: feedKey, read: serverShowsRead(), serverTitles: titles)
@@ -2126,9 +1799,9 @@ final class PodcastSubscriptions: ObservableObject {
     func subscribeUnlessOnServer(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
                                  isSingleUserAct: Bool = true,
                                  statementT: Double? = nil) async -> LocalSubscription {
-        let key = Self.feedKey(urlString)
+        let key = PodcastIdentity.feedKey(urlString)
         var noted = false
-        if !shows.contains(where: { Self.feedKey($0.feedURL) == key }) {
+        if !shows.contains(where: { PodcastIdentity.feedKey($0.feedURL) == key }) {
             var holding = serverHolding(feedKey: key)
             if holding == .unread {
                 await readServerShows()
@@ -2185,11 +1858,11 @@ final class PodcastSubscriptions: ObservableObject {
             // Asked per show: the hand-over of a show before awaits the server.
             let stock: ServerHolding.StockRead = !isLoaded || rowChain.startReadFailed ? .unread
                 : rowChain.startIncomplete ? .incomplete : .whole
-            let show = shows.first(where: { Self.feedKey($0.feedURL) == key })
+            let show = shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == key })
             let holding = serverHolding(feedKey: key)
             var bridged = true
             if stock == .whole, let show, case .held = holding,
-               let serverShow = serverShows().first(where: { Self.feedKey($0.feedURL) == key }) {
+               let serverShow = serverShows().first(where: { PodcastIdentity.feedKey($0.feedURL) == key }) {
                 bridged = await handOverStates(of: show, to: serverShow)
             }
             switch ServerHolding.settle(holding, everyStateBridged: bridged, stock: stock, showHere: show != nil) {
@@ -2205,7 +1878,7 @@ final class PodcastSubscriptions: ObservableObject {
                     Logger.rss.notice("SETTLE waits: the subscriptions here are not read whole stock=\(String(describing: stock), privacy: .public) key=\(key, privacy: .private(mask: .hash))")
                 }
             case .handOver:
-                shows.removeAll { Self.feedKey($0.feedURL) == key }
+                shows.removeAll { PodcastIdentity.feedKey($0.feedURL) == key }
                 // Handed over means gone here, also when it was the only one:
                 // the removal is the action of this write.
                 save(emptying: .allowed)
@@ -2226,7 +1899,7 @@ final class PodcastSubscriptions: ObservableObject {
             let duration = episode.duration > 0 ? episode.duration : nil
             let write = ForeignServerProgress.write(entry, duration: episode.duration)
             return ForeignListeningState(feedURL: show.feedURL, showTitle: show.title,
-                                         episodeGUID: Self.originalGuid(episode.guid),
+                                         episodeGUID: PodcastIdentity.originalGuid(episode.guid),
                                          enclosureURL: episode.audioURL.isEmpty ? nil : episode.audioURL,
                                          episodeLink: nil, episodeTitle: episode.title,
                                          position: write.time, duration: duration, finished: write.finished,
@@ -2235,17 +1908,17 @@ final class PodcastSubscriptions: ObservableObject {
         guard !states.isEmpty else { return true }
         var result = ImportResult()
         let plan = await applyToServer(ForeignLibrary(feedURLs: [show.feedURL], states: states),
-                                       onServer: [Self.feedKey(show.feedURL): serverShow],
+                                       onServer: [PodcastIdentity.feedKey(show.feedURL): serverShow],
                                        run: ForeignRun(), into: &result)
         return plan.unmatched.isEmpty && result.notSent.isEmpty
     }
 
     /// The shows of `serverShows` that are not subscribed here, by feed key.
     func serverOnlyShows() -> [String: PodcastShow] {
-        let local = Set(shows.map { Self.feedKey($0.feedURL) })
+        let local = Set(shows.map { PodcastIdentity.feedKey($0.feedURL) })
         var byKey: [String: PodcastShow] = [:]
         for show in serverShows() where !show.feedURL.isEmpty {
-            let key = Self.feedKey(show.feedURL)
+            let key = PodcastIdentity.feedKey(show.feedURL)
             if !local.contains(key), byKey[key] == nil { byKey[key] = show }
         }
         return byKey
@@ -2267,7 +1940,7 @@ final class PodcastSubscriptions: ObservableObject {
         let feeds = library.feedURLs
         var statesByFeed: [String: [Int]] = [:]
         for (index, state) in library.states.enumerated() {
-            if let feed = state.feedURL { statesByFeed[Self.feedKey(feed), default: []].append(index) }
+            if let feed = state.feedURL { statesByFeed[PodcastIdentity.feedKey(feed), default: []].append(index) }
         }
         let run = ForeignRun()
         // Time to finish if the app leaves the screen. When it runs out, the
@@ -2290,7 +1963,7 @@ final class PodcastSubscriptions: ObservableObject {
             run.done += 1
             progress(ImportProgress(done: run.done, total: feeds.count))
             guard case .followed = outcome else { return }
-            let key = Self.feedKey(feeds[index])
+            let key = PodcastIdentity.feedKey(feeds[index])
             let own = (statesByFeed[key] ?? []).filter { !run.decided.contains($0) }
             guard !own.isEmpty else { return }
             let plan = applyForeignStates(own.map { library.states[$0] }, titleStates: library.states,
@@ -2334,7 +2007,7 @@ final class PodcastSubscriptions: ObservableObject {
                 result.unreached.append(.init(title: name, reason: reason, status: status))
                 let address = normalizedFeedURL(feed)?.absoluteString ?? feed
                 markNotFollowed(feedURL: address, reason: reason, status: status)
-                Logger.rss.notice("FOREIGN feed not reached reason=\(reason.rawValue, privacy: .public) status=\(status.map(String.init) ?? "-", privacy: .public) feed=\(Self.feedKey(feed), privacy: .private(mask: .hash))")
+                Logger.rss.notice("FOREIGN feed not reached reason=\(reason.rawValue, privacy: .public) status=\(status.map(String.init) ?? "-", privacy: .public) feed=\(PodcastIdentity.feedKey(feed), privacy: .private(mask: .hash))")
             }
         }
         result.paidSkipped = library.unimportablePaidCount
@@ -2374,7 +2047,7 @@ final class PodcastSubscriptions: ObservableObject {
                                run: ForeignRun, into result: inout ImportResult) async -> ForeignStateMatcher.Plan {
         let indices = library.states.indices.filter { index in
             guard !run.decided.contains(index), let feed = library.states[index].feedURL else { return false }
-            return onServer[Self.feedKey(feed)] != nil
+            return onServer[PodcastIdentity.feedKey(feed)] != nil
         }
         guard !indices.isEmpty else {
             Logger.rss.notice("FOREIGN server: no state of a show on Audiobookshelf, shows=\(onServer.count)")
@@ -2391,14 +2064,14 @@ final class PodcastSubscriptions: ObservableObject {
         }
         let server = serverSide()
         let targets = ForeignServerProgress.targets(shows: Array(onServer.values), handles: server.episodeHandles,
-                                                    feedKeyOf: Self.feedKey)
+                                                    feedKeyOf: PodcastIdentity.feedKey)
         let plan = ForeignStateMatcher.plan(states: states, targets: targets, steps: [.guid, .enclosure],
-                                            feedKeyOf: Self.feedKey)
+                                            feedKeyOf: PodcastIdentity.feedKey)
         guard !plan.matches.isEmpty else { return plan }
         var notSent: [String: Int] = [:]
         var order: [String] = []
         func missed(_ state: ForeignListeningState) {
-            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
+            let name = state.showTitle ?? state.feedURL.map(PodcastIdentity.feedHost) ?? "?"
             if notSent[name] == nil { order.append(name) }
             notSent[name, default: 0] += 1
         }
@@ -2492,7 +2165,7 @@ final class PodcastSubscriptions: ObservableObject {
                                     tally: inout ForeignTally) -> ForeignStateMatcher.Plan {
         var targets: [ForeignMatchTarget] = []
         for show in shows {
-            let feedKey = Self.feedKey(show.feedURL)
+            let feedKey = PodcastIdentity.feedKey(show.feedURL)
             if let onlyFeedKey, feedKey != onlyFeedKey { continue }
             for episode in show.episodes {
                 targets.append(ForeignMatchTarget(
@@ -2507,7 +2180,7 @@ final class PodcastSubscriptions: ObservableObject {
         let plan = ForeignStateMatcher.plan(states: states, targets: targets,
                                             twinBridge: twinEnclosureBridge,
                                             steps: allowed, titleStates: titleStates,
-                                            feedKeyOf: Self.feedKey)
+                                            feedKeyOf: PodcastIdentity.feedKey)
         var updated = shows
         let appliedBefore = tally.applied
         var importedMarks: [String] = []
@@ -2583,7 +2256,7 @@ final class PodcastSubscriptions: ObservableObject {
         var lookupCounts: [String: Int] = [:]
         var lookupOrder: [String] = []
         for state in tally.lookedUp {
-            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
+            let name = state.showTitle ?? state.feedURL.map(PodcastIdentity.feedHost) ?? "?"
             if lookupCounts[name] == nil { lookupOrder.append(name) }
             lookupCounts[name, default: 0] += 1
         }
@@ -2595,11 +2268,11 @@ final class PodcastSubscriptions: ObservableObject {
         var groups: [String: UnmatchedGroup] = [:]
         var groupOrder: [String] = []
         for (state, why) in zip(plan.unmatched, plan.whyUnmatched) {
-            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
+            let name = state.showTitle ?? state.feedURL.map(PodcastIdentity.feedHost) ?? "?"
             if groups[name] == nil {
                 var group = UnmatchedGroup(show: name)
                 if let feedURL = state.feedURL,
-                   let show = shows.first(where: { Self.feedKey($0.feedURL) == Self.feedKey(feedURL) }) {
+                   let show = shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == PodcastIdentity.feedKey(feedURL) }) {
                     group.feedEpisodes = show.episodes.count
                     group.oldestInFeed = show.episodes.map(\.pubDate).filter { $0 > 0 }.min()
                 }
@@ -2617,7 +2290,7 @@ final class PodcastSubscriptions: ObservableObject {
             let reasonLine = ForeignStateMatcher.UnmatchedReason.allCases
                 .map { "\($0.rawValue)=\(group.reasons[$0] ?? 0)" }.joined(separator: " ")
             let oldest = group.oldestInFeed.map { Date(timeIntervalSince1970: $0 / 1000).formatted(.iso8601.year().month().day()) } ?? "none"
-            Logger.rss.notice("FOREIGN unmatched show=\(Self.stableHash(group.show), privacy: .public) states=\(group.count) feedEpisodes=\(group.feedEpisodes) oldestInFeed=\(oldest, privacy: .public) \(reasonLine, privacy: .public) title=\(group.show, privacy: .private)")
+            Logger.rss.notice("FOREIGN unmatched show=\(PodcastIdentity.stableHash(group.show), privacy: .public) states=\(group.count) feedEpisodes=\(group.feedEpisodes) oldestInFeed=\(oldest, privacy: .public) \(reasonLine, privacy: .public) title=\(group.show, privacy: .private)")
         }
         let rungs = ForeignStateMatcher.Step.allCases.map { "\($0.rawValue)=\(steps[$0] ?? 0)" }.joined(separator: " ")
         let why = ForeignStateMerge.Reason.allCases.map { "\($0.rawValue)=\(reasons[$0] ?? 0)" }.joined(separator: " ")
@@ -2689,7 +2362,7 @@ final class PodcastSubscriptions: ObservableObject {
                     Logger.rss.debug("RSS refresh shrank \(show.title, privacy: .public): cached=\(show.episodes.count) fresh=\(fresh.episodes.count) → union keeps the cache")
                 }
                 #endif
-                updated[index] = Self.merge(show, fresh)
+                updated[index] = PodcastIdentity.merge(show, fresh)
             }
             // Counted per show, so two devices holding a different number of
             // episodes of one show can be read side by side: what the stock
@@ -2731,7 +2404,7 @@ final class PodcastSubscriptions: ObservableObject {
         case .status(let code): answer = FeedRefusal.answer(status: code)
         case .failed: answer = .other
         }
-        let key = Self.feedKey(show.feedURL)
+        let key = PodcastIdentity.feedKey(show.feedURL)
         let wasRecorded = FeedRefusal.all(defaults: defaults)[key] != nil
         let record = FeedRefusal.note(feedKey: key, answer, now: clock(), defaults: defaults)
         // The feed answers again: the search and the No belonged to that
@@ -2764,7 +2437,7 @@ final class PodcastSubscriptions: ObservableObject {
         let outcome = await fetchForRefresh(url)
         noteRefusal(show, outcome)
         if case .show(let fresh) = outcome, let index = shows.firstIndex(where: { $0.id == showId }) {
-            shows[index] = Self.merge(shows[index], fresh)
+            shows[index] = PodcastIdentity.merge(shows[index], fresh)
             save()
         }
     }
@@ -2867,7 +2540,7 @@ final class PodcastSubscriptions: ObservableObject {
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
         // Private/premium feeds: send the Basic auth header if stored.
         var request = URLRequest(url: feedURL)
-        for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
+        for (field, value) in PodcastFeedAuth.authHeader(feedKey: PodcastIdentity.feedKey(feedURL.absoluteString)) {
             request.setValue(value, forHTTPHeaderField: field)
         }
         // A bulk run waits a short silence, once. The value on the request
@@ -2940,7 +2613,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private let feedKey: String
     init(feedURL: String) {
         self.feedURL = feedURL
-        self.feedKey = PodcastSubscriptions.feedKey(feedURL)
+        self.feedKey = PodcastIdentity.feedKey(feedURL)
     }
 
     private var showTitle = ""

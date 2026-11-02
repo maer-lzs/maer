@@ -202,7 +202,7 @@ enum PinchflatSync {
             // The feeds authenticate via Basic Auth (verified at the stand).
             // Each mirrored feed INHERITS the server login before the fetch.
             if let login {
-                PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(feedURL),
+                PodcastFeedAuth.set(feedKey: PodcastIdentity.feedKey(feedURL),
                                     user: login.user, password: login.password)
             }
             // A mirror is mechanics: it never notes a travelling choice.

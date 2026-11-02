@@ -36,11 +36,11 @@ struct AuditFixTests {
     // MARK: - Feed-URL normalization keeps identity params
 
     @Test func normalizationCollapsesSchemeVariantsOnly() {
-        let a = PodcastSubscriptions.normalizeFeedURL("https://www.example.com/feed/")
-        let b = PodcastSubscriptions.normalizeFeedURL("http://example.com/feed")
+        let a = PodcastIdentity.normalizeFeedURL("https://www.example.com/feed/")
+        let b = PodcastIdentity.normalizeFeedURL("http://example.com/feed")
         #expect(a == b)
         // Tracking params are still stripped.
-        let c = PodcastSubscriptions.normalizeFeedURL("https://example.com/feed?utm_source=x&ref=y")
+        let c = PodcastIdentity.normalizeFeedURL("https://example.com/feed?utm_source=x&ref=y")
         #expect(c == a)
     }
 
@@ -52,10 +52,10 @@ struct AuditFixTests {
         // derives keys fresh from the stored raw feedURL, so it must re-key the
         // show + guids and report the progress moves.
         let feedURL = "https://host.tld/feed?token=SECRET"
-        let newKey = PodcastSubscriptions.feedKey(feedURL)
+        let newKey = PodcastIdentity.feedKey(feedURL)
         // Old key = what the pre-fix normalization produced (query stripped).
-        let oldKey = PodcastSubscriptions.stableHash(
-            PodcastSubscriptions.normalizeFeedURL("https://host.tld/feed"))
+        let oldKey = PodcastIdentity.stableHash(
+            PodcastIdentity.normalizeFeedURL("https://host.tld/feed"))
         #expect(oldKey != newKey, "identity param must change the key")
 
         let legacy = [PodcastShow(
@@ -67,7 +67,7 @@ struct AuditFixTests {
         )]
 
         var moves: [String: String] = [:]
-        let (migrated, changed) = PodcastSubscriptions.migrate(legacy) { moves[$0] = $1 }
+        let (migrated, changed) = PodcastIdentity.migrate(legacy) { moves[$0] = $1 }
         #expect(changed)
         #expect(migrated[0].id == "feed:\(newKey)")
         #expect(migrated[0].episodes[0].guid == "rss:\(newKey):orig-1")
@@ -76,7 +76,7 @@ struct AuditFixTests {
 
         // Second run: nothing changes, no further moves.
         var secondMoves = 0
-        let (again, changedAgain) = PodcastSubscriptions.migrate(migrated) { _, _ in secondMoves += 1 }
+        let (again, changedAgain) = PodcastIdentity.migrate(migrated) { _, _ in secondMoves += 1 }
         #expect(!changedAgain)
         #expect(secondMoves == 0)
         #expect(again[0].id == migrated[0].id)
@@ -84,18 +84,18 @@ struct AuditFixTests {
 
     @Test("Feeds differing in identity params stay DISTINCT subscriptions")
     func identityQueryParamsKeepFeedsApart() {
-        let tokenA = PodcastSubscriptions.normalizeFeedURL("https://host.tld/feed?token=AAA")
-        let tokenB = PodcastSubscriptions.normalizeFeedURL("https://host.tld/feed?token=BBB")
+        let tokenA = PodcastIdentity.normalizeFeedURL("https://host.tld/feed?token=AAA")
+        let tokenB = PodcastIdentity.normalizeFeedURL("https://host.tld/feed?token=BBB")
         #expect(tokenA != tokenB)
-        let show1 = PodcastSubscriptions.normalizeFeedURL("https://cms.tld/rss?show=1")
-        let show2 = PodcastSubscriptions.normalizeFeedURL("https://cms.tld/rss?show=2")
+        let show1 = PodcastIdentity.normalizeFeedURL("https://cms.tld/rss?show=1")
+        let show2 = PodcastIdentity.normalizeFeedURL("https://cms.tld/rss?show=2")
         #expect(show1 != show2)
         // Identity + tracking mixed: identity survives, tracking goes, order canonical.
-        let mixed1 = PodcastSubscriptions.normalizeFeedURL("https://h.tld/f?utm=1&token=T")
-        let mixed2 = PodcastSubscriptions.normalizeFeedURL("https://h.tld/f?token=T&utm=2")
+        let mixed1 = PodcastIdentity.normalizeFeedURL("https://h.tld/f?utm=1&token=T")
+        let mixed2 = PodcastIdentity.normalizeFeedURL("https://h.tld/f?token=T&utm=2")
         #expect(mixed1 == mixed2)
-        #expect(PodcastSubscriptions.feedKey("https://h.tld/f?token=A")
-            != PodcastSubscriptions.feedKey("https://h.tld/f?token=B"))
+        #expect(PodcastIdentity.feedKey("https://h.tld/f?token=A")
+            != PodcastIdentity.feedKey("https://h.tld/f?token=B"))
     }
 }
 

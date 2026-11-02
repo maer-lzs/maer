@@ -70,9 +70,9 @@ struct SettingsConsolidationTests {
         #expect(!doc.contains("freebie"))
         #expect(doc.contains("example.org/feed.xml"))
         // freebie is a first-class secret parameter now (detection + masking).
-        #expect(PodcastSubscriptions.isTokenFeedURL(zeit))
-        #expect(PodcastSubscriptions.maskedFeedURL(zeit).contains("freebie=••••"))
-        #expect(!PodcastSubscriptions.maskedFeedURL(zeit).contains("SECRETTOKEN123"))
+        #expect(PodcastFeedAddress.isTokenFeedURL(zeit))
+        #expect(PodcastIdentity.maskedFeedURL(zeit).contains("freebie=••••"))
+        #expect(!PodcastIdentity.maskedFeedURL(zeit).contains("SECRETTOKEN123"))
     }
 }
 #endif

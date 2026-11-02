@@ -262,7 +262,7 @@ struct PodcastNotesTests {
         }
         try #require(AppStorageKeys.rssActive, "das RSS-Tor ist trotz Setzen zu, der Fall misst nichts")
         let feed = try #require(URL(string: "https://notes.example/\(UUID().uuidString.prefix(8))/feed.xml"))
-        let showId = PodcastSubscriptions.feedKey(feed.absoluteString)
+        let showId = PodcastIdentity.feedKey(feed.absoluteString)
         func fresh(_ texts: [String: String]) -> PodcastShow {
             PodcastShow(id: showId, title: "Notizen", author: nil, artworkURL: nil, description: nil,
                         feedURL: feed.absoluteString,
@@ -357,7 +357,7 @@ struct PodcastNotesTests {
         }
         try #require(AppStorageKeys.rssActive, "das RSS-Tor ist trotz Setzen zu, der Fall misst nichts")
         let feed = try #require(URL(string: "https://notes.example/\(UUID().uuidString.prefix(8))/feed.xml"))
-        let shown = PodcastShow(id: PodcastSubscriptions.feedKey(feed.absoluteString), title: "Notizen", author: nil,
+        let shown = PodcastShow(id: PodcastIdentity.feedKey(feed.absoluteString), title: "Notizen", author: nil,
                                 artworkURL: nil, description: nil, feedURL: feed.absoluteString,
                                 episodes: [episode("rss:r:1", notes: "Eins")])
         let subs = subscriptions(in: folder, defaults: defaults)
@@ -382,7 +382,7 @@ struct PodcastNotesTests {
         #expect(try storedNotes(folder, guid: "rss:r:1") == "Eins", "the hand-over took A's notes")
         // A write under B that removes rows: A's rest still names its episode.
         let otherFeed = try #require(URL(string: "https://notes.example/\(UUID().uuidString.prefix(8))/other.xml"))
-        let other = PodcastShow(id: PodcastSubscriptions.feedKey(otherFeed.absoluteString), title: "Andere", author: nil,
+        let other = PodcastShow(id: PodcastIdentity.feedKey(otherFeed.absoluteString), title: "Andere", author: nil,
                                 artworkURL: nil, description: nil, feedURL: otherFeed.absoluteString,
                                 episodes: [episode("rss:r:2", notes: "Zwei")])
         subs._testFeedFetcher = { _ in .show(other) }

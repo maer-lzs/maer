@@ -127,10 +127,10 @@ struct ForeignImportSheet: View {
     private var preview: ForeignImportPreview? {
         guard let library else { return nil }
         let subs = PodcastSubscriptions.shared
-        let subscribed = Set(subs.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
+        let subscribed = Set(subs.shows.map { PodcastIdentity.feedKey($0.feedURL) })
         return ForeignImportPreview.make(library, subscribedFeedKeys: subscribed,
                                          serverFeedKeys: Set(subs.serverOnlyShows().keys),
-                                         feedKeyOf: PodcastSubscriptions.feedKey)
+                                         feedKeyOf: PodcastIdentity.feedKey)
     }
 
     var body: some View {

@@ -28,7 +28,7 @@ final class CountingChoiceCloud: UserChoiceCloudStore {
 @MainActor
 struct EpisodeLimitRetiredTests {
     static func show(_ url: URL, episodes: Range<Int>) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Grenze",
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Grenze",
                     author: nil, artworkURL: nil, description: nil,
                     feedURL: url.absoluteString,
                     episodes: episodes.map {
@@ -79,7 +79,7 @@ struct EpisodeLimitRetiredTests {
         let closeTheGate = PodcastPublishCountTests.openTheRSSGate()
         let run = UUID().uuidString.prefix(8)
         let feed = try #require(URL(string: "https://limit.example/\(run)/feed.xml"))
-        let showId = PodcastSubscriptions.feedKey(feed.absoluteString)
+        let showId = PodcastIdentity.feedKey(feed.absoluteString)
         // A limit an older build left behind, where the old code read it.
         let oldKeys = ["podcastEpisodeLimit.\(showId)", "podcastEpisodeLimitAll"]
         for key in oldKeys { UserDefaults.standard.set(5, forKey: key) }
@@ -245,7 +245,7 @@ struct EpisodeLimitRetiredTests {
     @Test("I5: die ganze Geschichte einer gestoeberten Sendung liefert Folgen oder einen Fehlschlag, und schreibt nichts")
     func browsedHistoryAnswers() async throws {
         let url = try #require(URL(string: "https://limit.example/browsed/feed.xml"))
-        let key = PodcastSubscriptions.feedKey(url.absoluteString)
+        let key = PodcastIdentity.feedKey(url.absoluteString)
         // The feed's ids have the form the directory's answer maps to, so the
         // known episode is recognised as known.
         var browsed = Self.show(url, episodes: 0..<2)

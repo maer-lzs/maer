@@ -101,7 +101,7 @@ enum PodcastRefreshService {
         var perShow: [NewEpisodeDigest.Show] = []
 
         for show in shows {
-            let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+            let key = PodcastIdentity.normalizeFeedURL(show.feedURL)
             let newest = show.episodes.map(\.pubDate).max() ?? 0
             // Only notify when enabled globally AND for this show.
             if globalOn, AppStorageKeys.podcastNotifyEnabled(show.id), let seen = lastSeen[key] {

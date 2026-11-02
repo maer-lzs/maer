@@ -40,7 +40,7 @@ struct PremiumFeedsSection: View {
     /// Provider grouping: comparable host, alphabetical, stable.
     private var providerGroups: [(host: String, shows: [PodcastShow])] {
         let grouped = Dictionary(grouping: premiumShows) {
-            PodcastSubscriptions.feedHost($0.feedURL)
+            PodcastIdentity.feedHost($0.feedURL)
         }
         return grouped.keys.sorted().map { (host: $0, shows: grouped[$0] ?? []) }
     }
@@ -170,7 +170,7 @@ struct PremiumFeedsSection: View {
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Capsule().fill(Color.primary.opacity(0.08)))
                 }
-                Text(PodcastSubscriptions.maskedFeedURL(show.feedURL))
+                Text(PodcastIdentity.maskedFeedURL(show.feedURL))
                     .font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
             }
@@ -191,10 +191,10 @@ struct PremiumFeedsSection: View {
 
     /// One class label for management rows (moved here from the source page).
     static func classLabel(_ feedURL: String) -> String {
-        if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(feedURL)) {
+        if PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey(feedURL)) {
             return String(localized: "Login")
         }
-        if PodcastSubscriptions.isTokenFeedURL(feedURL) {
+        if PodcastFeedAddress.isTokenFeedURL(feedURL) {
             return String(localized: "Token URL")
         }
         // The feed's own block signal. Honestly "Private", not

@@ -23,7 +23,7 @@ struct BulkImportTests {
     }
 
     static func show(_ url: URL, title: String, episodes: Int = 2) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: title,
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: title,
                     author: nil, artworkURL: nil, description: nil,
                     feedURL: url.absoluteString,
                     episodes: (0..<episodes).map {
@@ -67,7 +67,7 @@ struct BulkImportTests {
         let run = UUID().uuidString.prefix(8)
         let dead = (0..<8).map { "https://dead\($0).example/\(run)/feed.xml" }
         let live = "https://live.example/\(run)/feed.xml"
-        defer { for feed in dead { FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(feed)) } }
+        defer { for feed in dead { FeedAdoptionPending.clear(feedKey: PodcastIdentity.feedKey(feed)) } }
         let tally = Tally()
         let silence: UInt64 = 300_000_000
         subs._testFeedFetcher = { url in
@@ -95,7 +95,7 @@ struct BulkImportTests {
         #expect(result.unreached.map(\.title) == (0..<8).map { "Dead Show \($0)" }, "named by the source, in its order")
         #expect(result.unreached.allSatisfy { $0.reason == .timeout })
         for feed in dead {
-            #expect(subs.feedsNotFollowed[PodcastSubscriptions.feedKey(feed)]?.reason == .timeout,
+            #expect(subs.feedsNotFollowed[PodcastIdentity.feedKey(feed)]?.reason == .timeout,
                     "waits in Not followed yet with its reason")
         }
     }
@@ -145,7 +145,7 @@ struct BulkImportTests {
     }
 
     static func sameTitleShow(_ url: URL, _ run: Substring) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: url.host ?? "-",
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: url.host ?? "-",
                     author: nil, artworkURL: nil, description: nil, feedURL: url.absoluteString,
                     episodes: [PodcastEpisode(guid: "rss:bulk:\(run)-\(url.host == "a.example" ? "a" : "b")", title: "Same Title",
                                               audioURL: "https://\(url.host ?? "x")/0.mp3",
@@ -161,7 +161,7 @@ struct BulkImportTests {
             cleanup()
             ListeningStore.clearBackup(fixture.aEpisode, in: defaults)
             ForeignMarks.clear(fixture.aEpisode, in: defaults)
-            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
+            FeedAdoptionPending.clear(feedKey: PodcastIdentity.feedKey(fixture.b))
         }
         subs._testFeedFetcher = { url in
             url.host == "a.example" ? .show(Self.sameTitleShow(url, run)) : .failed(.timeout)
@@ -181,7 +181,7 @@ struct BulkImportTests {
             cleanup()
             ListeningStore.clearBackup(fixture.aEpisode, in: defaults)
             ForeignMarks.clear(fixture.aEpisode, in: defaults)
-            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
+            FeedAdoptionPending.clear(feedKey: PodcastIdentity.feedKey(fixture.b))
         }
         let gate = Gate()
         let tally = Tally()
@@ -523,7 +523,7 @@ struct BulkImportTests {
             cleanup()
             ListeningStore.clearBackup(aEpisode, in: defaults)
             ForeignMarks.clear(aEpisode, in: defaults)
-            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(b))
+            FeedAdoptionPending.clear(feedKey: PodcastIdentity.feedKey(b))
         }
         let gate = Gate()
         subs._testFeedFetcher = { url in

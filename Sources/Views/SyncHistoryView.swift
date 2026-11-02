@@ -93,7 +93,7 @@ struct SyncHistoryView: View {
                     ForEach(removed, id: \.self) { feed in
                         // Defense in depth: entries persisted BEFORE the
                         // masking-at-source may still carry raw token URLs.
-                        Label(PodcastSubscriptions.maskedFeedURL(feed), systemImage: "minus.circle")
+                        Label(PodcastIdentity.maskedFeedURL(feed), systemImage: "minus.circle")
                             .font(.caption2)
                             .foregroundStyle(.red)
                     }

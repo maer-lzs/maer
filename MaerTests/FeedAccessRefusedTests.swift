@@ -15,7 +15,7 @@ import Foundation
 struct FeedAccessRefusedTests {
     private func show(_ token: String, episodes: Int) -> PodcastShow {
         let url = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=\(token)"
-        let key = PodcastSubscriptions.feedKey(url)
+        let key = PodcastIdentity.feedKey(url)
         return PodcastShow(id: "feed:\(key)", title: "Servus. Grüezi. Hallo.", author: nil,
                            artworkURL: nil, description: nil, feedURL: url,
                            episodes: (0..<episodes).map { i in
@@ -28,7 +28,7 @@ struct FeedAccessRefusedTests {
     @Test("Ein Token-Wechsel nennt die alte und die neue Adresse, damit die alte nicht weiterreist")
     func aRetiredTwinIsNamed() {
         var retired: [(String, String)] = []
-        let (result, _) = PodcastSubscriptions.migrate([show("OLDTOKEN", episodes: 3), show("NEWTOKEN", episodes: 40)],
+        let (result, _) = PodcastIdentity.migrate([show("OLDTOKEN", episodes: 3), show("NEWTOKEN", episodes: 40)],
                                                        moveProgress: { _, _ in },
                                                        retired: { retired.append(($0, $1)) })
         #expect(result.count == 1)
@@ -37,12 +37,12 @@ struct FeedAccessRefusedTests {
         #expect(retired.first?.1.contains("NEWTOKEN") == true, "the survivor carries the current token")
         // The other order: the fuller entry comes first.
         var again: [(String, String)] = []
-        _ = PodcastSubscriptions.migrate([show("NEWTOKEN", episodes: 40), show("OLDTOKEN", episodes: 3)],
+        _ = PodcastIdentity.migrate([show("NEWTOKEN", episodes: 40), show("OLDTOKEN", episodes: 3)],
                                          moveProgress: { _, _ in }, retired: { again.append(($0, $1)) })
         #expect(again.first?.0.contains("OLDTOKEN") == true && again.first?.1.contains("NEWTOKEN") == true)
         // No twin, nothing retired.
         var none = 0
-        _ = PodcastSubscriptions.migrate([show("ONLY", episodes: 3)], moveProgress: { _, _ in }, retired: { _, _ in none += 1 })
+        _ = PodcastIdentity.migrate([show("ONLY", episodes: 3)], moveProgress: { _, _ in }, retired: { _, _ in none += 1 })
         #expect(none == 0)
     }
 
@@ -103,8 +103,8 @@ struct FeedAccessRefusedTests {
     func theMeasuringLine() {
         let upper = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=AbC123SecretToken"
         let lower = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=abc123secrettoken"
-        let a = PodcastSubscriptions.addressLine(upper)
-        let b = PodcastSubscriptions.addressLine(lower)
+        let a = PodcastIdentity.addressLine(upper)
+        let b = PodcastIdentity.addressLine(lower)
         #expect(!a.contains("AbC123SecretToken") && !a.lowercased().contains("secret") && !a.contains("freebie"))
         #expect(a.contains("capitals=true") && b.contains("capitals=false"))
         func part(_ line: String, _ name: String) -> Substring? {

@@ -99,7 +99,7 @@ final class PodcastCloudSync {
     private func subscribedShowKeys() -> Set<String>? {
         let subscriptions = PodcastSubscriptions.shared
         guard subscriptions.isLoaded else { return nil }
-        return Set(subscriptions.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
+        return Set(subscriptions.shows.map { PodcastIdentity.feedKey($0.feedURL) })
     }
 
     /// Asks the carrier for the other side's changes now: the foreground

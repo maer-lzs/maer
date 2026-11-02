@@ -47,8 +47,8 @@ nonisolated enum GPodderVisibleSubscriptions {
         var byNorm: [String: String] = [:]
         var hidden = Set<String>()
         for show in shows {
-            let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
-            let tokenHidden = PodcastSubscriptions.isTokenFeedURL(show.feedURL) && !premiumOptIn
+            let norm = PodcastIdentity.normalizeFeedURL(show.feedURL)
+            let tokenHidden = PodcastFeedAddress.isTokenFeedURL(show.feedURL) && !premiumOptIn
             if tokenHidden || show.origin != nil {
                 hidden.insert(norm)
             } else if byNorm[norm] == nil {
@@ -72,7 +72,7 @@ nonisolated enum GPodderVisibleSubscriptions {
                                   leftOnServer: Set<String>) -> [String: String] {
         let found = withoutLeftOnServer(byNorm, leftOnServer)
         guard !premiumOptIn else { return found }
-        return found.filter { !PodcastSubscriptions.isTokenFeedURL($0.value) }
+        return found.filter { !PodcastFeedAddress.isTokenFeedURL($0.value) }
     }
 
     /// The feeds found only on the server when this device went on with

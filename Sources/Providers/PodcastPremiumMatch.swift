@@ -132,7 +132,7 @@ extension PodcastPremiumMatch {
     ) -> TwinState {
         var maskedSeen = Set<String>()
         for show in shows where isPremium(show.feedURL) {
-            if !maskedSeen.insert(PodcastSubscriptions.collapseKey(show.feedURL)).inserted {
+            if !maskedSeen.insert(PodcastIdentity.collapseKey(show.feedURL)).inserted {
                 return .waitingForRotationMerge
             }
         }
@@ -150,7 +150,7 @@ extension PodcastPremiumMatch {
         // progress into the copy that will not survive the merge.
         var maskedSeen = Set<String>()
         for show in shows where isPremium(show.feedURL) {
-            if !maskedSeen.insert(PodcastSubscriptions.collapseKey(show.feedURL)).inserted {
+            if !maskedSeen.insert(PodcastIdentity.collapseKey(show.feedURL)).inserted {
                 return []
             }
         }

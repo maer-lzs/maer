@@ -66,13 +66,13 @@ enum PodcastSubscriptionSync {
         // Index server feeds (active + archived) normalized.
         var serverByURL: [String: PodcastShow] = [:]
         for show in abs.shows where !show.feedURL.isEmpty {
-            serverByURL[PodcastSubscriptions.normalizeFeedURL(show.feedURL)] = show
+            serverByURL[PodcastIdentity.normalizeFeedURL(show.feedURL)] = show
         }
 
         // Dedupe local subscriptions internally (same normalized URL only once).
         var seen = Set<String>()
         for show in PodcastSubscriptions.shared.shows where !show.feedURL.isEmpty {
-            let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+            let norm = PodcastIdentity.normalizeFeedURL(show.feedURL)
             guard seen.insert(norm).inserted else { continue }
 
             if let existing = serverByURL[norm] {

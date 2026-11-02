@@ -71,11 +71,11 @@ enum PodcastShowSources {
     /// A show's name from every stock on this device: what we own, then the
     /// listen log and the episodes kept from browsing, which remember a
     /// show nobody follows any more. The rule itself is
-    /// `PodcastSubscriptions.showTitle(for:in:heard:)`.
+    /// `PodcastIdentity.showTitle(for:in:heard:)`.
     static func knownTitle(forShowId showId: String) -> String? {
         let heard = PodcastListenLog.shared.entries.values.map { (feedURL: $0.feedURL, title: $0.showTitle) }
             + BrowsedEpisodes.shared.allListened().map { (feedURL: $0.feedURL, title: $0.showTitle) }
-        return PodcastSubscriptions.showTitle(for: showId, in: ownedShows(), heard: heard)
+        return PodcastIdentity.showTitle(for: showId, in: ownedShows(), heard: heard)
     }
 
 

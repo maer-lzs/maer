@@ -166,7 +166,7 @@ nonisolated enum RadioMapping {
             // as witness. Never on the squeezed name alone (two real
             // stations may share a squeezed name; the domain separates them).
             let spaceless = name.replacingOccurrences(of: " ", with: "")
-            let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
+            let host = PodcastIdentity.feedHost(station.homepage ?? "")
             var flat = station; flat.variants = nil   // never nest variants
             if let idx = buckets.firstIndex(where: { bucket in
                 guard countryCompatible(bucket: bucket.country, station: code) else { return false }
@@ -174,7 +174,7 @@ nonisolated enum RadioMapping {
                 return !host.isEmpty
                     && bucket.name.replacingOccurrences(of: " ", with: "") == spaceless
                     && bucket.members.contains {
-                        PodcastSubscriptions.feedHost($0.homepage ?? "") == host
+                        PodcastIdentity.feedHost($0.homepage ?? "") == host
                     }
             }) {
                 if let code, buckets[idx].country == nil { buckets[idx].country = code }
@@ -353,7 +353,7 @@ nonisolated enum RadioMapping {
     static func displayIdentityKey(_ station: RadioStation) -> String {
         let name = RadioBrowseCuration.mergeKey(displayName(station.name))
         let domainSource = station.homepage?.isEmpty == false ? station.homepage! : station.streamURL
-        return name + "|" + PodcastSubscriptions.feedHost(domainSource)
+        return name + "|" + PodcastIdentity.feedHost(domainSource)
     }
 
     /// A user-entered stream (name + URL). Nil when the URL is unusable.

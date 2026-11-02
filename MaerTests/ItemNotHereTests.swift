@@ -36,7 +36,7 @@ struct ItemNotHereTests {
     }
 
     static func show(_ url: URL, episodes: Range<Int>) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Held",
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Held",
                     author: nil, artworkURL: nil, description: nil,
                     feedURL: url.absoluteString,
                     episodes: episodes.map {

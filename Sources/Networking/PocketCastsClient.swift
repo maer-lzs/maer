@@ -80,10 +80,10 @@ nonisolated enum PocketCastsClient {
             let cacheTitle = cached?.title ?? ""
             let known = Set(cached?.episodes.map(\.uuid) ?? [])
             let withoutCache = listened.filter { !known.contains($0.uuid) }.count
-            Logger.rss.notice("FOREIGN cache show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) states=\(listened.count) cached=\(known.count) statesWithoutCache=\(withoutCache) cacheTitle=\(cacheTitle.isEmpty ? "none" : "present", privacy: .public)")
+            Logger.rss.notice("FOREIGN cache show=\(PodcastIdentity.stableHash(podcast.uuid), privacy: .public) states=\(listened.count) cached=\(known.count) statesWithoutCache=\(withoutCache) cacheTitle=\(cacheTitle.isEmpty ? "none" : "present", privacy: .public)")
             if !listTitle.isEmpty, !cacheTitle.isEmpty,
                listTitle.compare(cacheTitle, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame {
-                Logger.rss.warning("FOREIGN cache-mismatch show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) list=\(listTitle, privacy: .private) cache=\(cacheTitle, privacy: .private)")
+                Logger.rss.warning("FOREIGN cache-mismatch show=\(PodcastIdentity.stableHash(podcast.uuid), privacy: .public) list=\(listTitle, privacy: .private) cache=\(cacheTitle, privacy: .private)")
             }
             // The states the cache has no handle for are asked for by
             // themselves, once each, within the import's budget. A refusal
@@ -103,7 +103,7 @@ nonisolated enum PocketCastsClient {
                 }
                 lookedUp.formUnion(round.details.map(\.uuid))
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.rss.notice("FOREIGN lookup show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) asked=\(round.asked) answered=\(round.answered) titled=\(round.titled) addressed=\(round.addressed) ms=\(ms) status=\(round.status, privacy: .public)")
+                Logger.rss.notice("FOREIGN lookup show=\(PodcastIdentity.stableHash(podcast.uuid), privacy: .public) asked=\(round.asked) answered=\(round.answered) titled=\(round.titled) addressed=\(round.addressed) ms=\(ms) status=\(round.status, privacy: .public)")
                 if round.status != "ok" { lookupBudget = 0 }
             }
         }

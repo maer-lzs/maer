@@ -33,7 +33,7 @@ struct SubscriptionFamilyServerTests {
                                     AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderUserRemovedFeeds]
 
     private func show(_ feedURL: String, guid: String) -> PodcastShow {
-        PodcastShow(id: "rss:\(PodcastSubscriptions.feedKey(feedURL))", title: "Show \(guid)", author: "Host",
+        PodcastShow(id: "rss:\(PodcastIdentity.feedKey(feedURL))", title: "Show \(guid)", author: "Host",
                     artworkURL: nil, description: nil, feedURL: feedURL,
                     episodes: [PodcastEpisode(guid: guid, title: "Ep", audioURL: "https://x.example/\(guid).mp3",
                                               pubDate: 1_700_000_000_000, duration: 1800,
@@ -49,7 +49,7 @@ struct SubscriptionFamilyServerTests {
         let feed = "https://example.org/family-\(run)/feed.xml"
         let other = "https://example.org/family-\(run)/other.xml"
         let guid = "rss:family:\(run):ep-1"
-        let feedNorm = PodcastSubscriptions.normalizeFeedURL(feed)
+        let feedNorm = PodcastIdentity.normalizeFeedURL(feed)
         // The merge keeps its state in the standard defaults: kept, cleared
         // for a first-run union (a stale prior state would read the feeds
         // of other witnesses as removed), and put back.
@@ -78,7 +78,7 @@ struct SubscriptionFamilyServerTests {
                                       now: { clock += 1; return clock }, idFormSettled: { true })
         pad.localSubscriptions = { padSubs }
         pad.subscriptionAdopter = { added, removed in
-            for entry in added { padSubs[PodcastSubscriptions.feedKey(entry.feedURL)] = entry.feedURL }
+            for entry in added { padSubs[PodcastIdentity.feedKey(entry.feedURL)] = entry.feedURL }
             for key in removed { padSubs[key] = nil }
         }
         let phone = UserChoiceCloudSync(defaults: phoneDefaults, cloud: cloud, syncEnabled: { true },
@@ -116,7 +116,7 @@ struct SubscriptionFamilyServerTests {
         #expect(ListeningStore.backup(guid) == standBefore, "the stand of the feed is untouched")
 
         // (c) a new subscription on the iPad reaches gpodder.
-        padSubs[PodcastSubscriptions.feedKey(other)] = other
+        padSubs[PodcastIdentity.feedKey(other)] = other
         pad.noteSubscription(feedURL: other, subscribed: true)
         phone.reconcile()
         try await settle { subs.shows.contains { $0.feedURL == other } }

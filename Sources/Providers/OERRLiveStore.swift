@@ -61,7 +61,7 @@ final class OERRLiveStore: ObservableObject {
                                                           "pt", "ja", "ko"])
             .filter { $0.group == .oerr }
         var merged = seed
-        var seenFeeds = Set(seed.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        var seenFeeds = Set(seed.map { PodcastIdentity.normalizeFeedURL($0.feedURL) })
 
         // One query per active language, in each of its storefronts.
         let active = OERRCuration.active(forLanguages: codes)
@@ -90,7 +90,7 @@ final class OERRLiveStore: ObservableObject {
                 // Sender AND form. Without the form gate the broadcaster's
                 // news would stand in a radio-play row (measured).
                 guard OERRCuration.isFiction(categories: hit.categories) else { continue }
-                let normalized = PodcastSubscriptions.normalizeFeedURL(hit.feedURL)
+                let normalized = PodcastIdentity.normalizeFeedURL(hit.feedURL)
                 guard seenFeeds.insert(normalized).inserted else { continue }
                 merged.append(HoerspielCuration.Entry(
                     title: hit.title, author: hit.author ?? "",

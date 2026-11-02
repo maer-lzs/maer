@@ -87,7 +87,7 @@ struct GPodderConflictResolutionTests {
             subs.serverShows = { [ServerHeldImportTests.serverShow(feedURL: held, title: "Server Show")] }
             subs.readServerShows = {}
             subs._testFeedFetcher = { _ in .failed(.timeout) }
-            let raw = Dictionary(uniqueKeysWithValues: feeds.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) })
+            let raw = Dictionary(uniqueKeysWithValues: feeds.map { (PodcastIdentity.normalizeFeedURL($0), $0) })
             let snapshot = GPodderSync.ConflictSnapshot(localNorms: [], serverNorms: Set(raw.keys), localRaw: [:], serverRaw: raw)
             let actions = GPodderConflictResolution.resolve(local: [], server: Set(raw.keys), choices: [:])
             #expect(actions.subscribeLocally == Set(raw.keys), "the precondition: every feed is taken from the server")

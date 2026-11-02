@@ -213,7 +213,7 @@ struct FreeTwinTests {
         await h.subs.ensureLoaded()
         // Die Kennung, unter der die Sendung gleich steht (die Vorrichtung
         // bildet sie aus der Adresse), bekommt die Adresse VOR der Ablehnung.
-        let paidId = PodcastSubscriptions.feedKey(f.paid.absoluteString)
+        let paidId = PodcastIdentity.feedKey(f.paid.absoluteString)
         h.defaults.set(f.free.absoluteString, forKey: AppStorageKeys.podcastFreeTwin(paidId))
         var now = 1_000_000.0
         let show = try await refusedPaidShow(h.subs, f, now: { now }, advance: { now += day / 2 })

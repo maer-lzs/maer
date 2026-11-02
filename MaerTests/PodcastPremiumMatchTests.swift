@@ -96,32 +96,32 @@ struct PodcastPremiumMatchTests {
 struct PodcastTokenFeedTests {
     @Test("token classification: known secret param with value; conservative otherwise")
     func classification() {
-        #expect(PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?token=abc123"))
-        #expect(PodcastSubscriptions.isTokenFeedURL("h.example/feed?auth=x&limit=5"))
-        #expect(PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?SECRET=s"))
-        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed"))
-        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?page=2"))
-        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?token="))   // empty value
+        #expect(PodcastFeedAddress.isTokenFeedURL("https://h.example/feed?token=abc123"))
+        #expect(PodcastFeedAddress.isTokenFeedURL("h.example/feed?auth=x&limit=5"))
+        #expect(PodcastFeedAddress.isTokenFeedURL("https://h.example/feed?SECRET=s"))
+        #expect(!PodcastFeedAddress.isTokenFeedURL("https://h.example/feed"))
+        #expect(!PodcastFeedAddress.isTokenFeedURL("https://h.example/feed?page=2"))
+        #expect(!PodcastFeedAddress.isTokenFeedURL("https://h.example/feed?token="))   // empty value
     }
 
     @Test("masking replaces ONLY secret values, works on raw, normalized and composite strings")
     func masking() {
-        #expect(PodcastSubscriptions.maskedFeedURL("https://h.example/feed?token=abc&page=2")
+        #expect(PodcastIdentity.maskedFeedURL("https://h.example/feed?token=abc&page=2")
                 == "https://h.example/feed?token=••••&page=2")
-        #expect(PodcastSubscriptions.maskedFeedURL("h.example/feed?auth=x")
+        #expect(PodcastIdentity.maskedFeedURL("h.example/feed?auth=x")
                 == "h.example/feed?auth=••••")
-        #expect(PodcastSubscriptions.maskedFeedURL("https://h.example/feed") == "https://h.example/feed")
+        #expect(PodcastIdentity.maskedFeedURL("https://h.example/feed") == "https://h.example/feed")
         // Composite report string ("Title — url?token=…") still gets masked.
-        #expect(PodcastSubscriptions.maskedFeedURL("Show — https://h.example/f?key=s")
+        #expect(PodcastIdentity.maskedFeedURL("Show — https://h.example/f?key=s")
                 == "Show — https://h.example/f?key=••••")
     }
 
     @Test("feedHost: comparable host for the provider-login reuse")
     func feedHost() {
-        #expect(PodcastSubscriptions.feedHost("https://www.Provider.example/rss/a?token=x") == "provider.example")
-        #expect(PodcastSubscriptions.feedHost("http://provider.example/other") == "provider.example")
-        #expect(PodcastSubscriptions.feedHost("provider.example") == "provider.example")
-        #expect(PodcastSubscriptions.feedHost("https://other.example/rss") != "provider.example")
+        #expect(PodcastIdentity.feedHost("https://www.Provider.example/rss/a?token=x") == "provider.example")
+        #expect(PodcastIdentity.feedHost("http://provider.example/other") == "provider.example")
+        #expect(PodcastIdentity.feedHost("provider.example") == "provider.example")
+        #expect(PodcastIdentity.feedHost("https://other.example/rss") != "provider.example")
     }
 
     @Test("premium test: token class counts even without stored credentials")
@@ -139,13 +139,13 @@ struct PodcastTokenFeedTests {
             (id: "o1", title: "Other Show", feedURL: "https://example.org/feed"),
         ]
         let twins = PodcastPremiumMatch.twins(shows: shows,
-                                              isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+                                              isPremium: { PodcastFeedAddress.isTokenFeedURL($0) })
         #expect(twins.count == 1)
         #expect(twins.first?.freeId == "f1")
         #expect(twins.first?.premiumId == "p1")
         // The real podcatcher pattern IS detected: `freebie` is part of the
         // secret-parameter set.
-        #expect(PodcastSubscriptions.isTokenFeedURL(
+        #expect(PodcastFeedAddress.isTokenFeedURL(
             "https://premium-feed.zeit.de/x/rss-podcatcher?freebie=TOKEN"))
     }
 
@@ -166,7 +166,7 @@ struct PodcastTokenFeedTests {
     func identityCollapse() {
         func show(_ token: String, episodes: Int, played: Int = 0) -> PodcastShow {
             let url = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=\(token)"
-            let key = PodcastSubscriptions.feedKey(url)
+            let key = PodcastIdentity.feedKey(url)
             return PodcastShow(id: "feed:\(key)", title: "Servus. Grüezi. Hallo.", author: nil,
                                artworkURL: nil, description: nil, feedURL: url,
                                episodes: (0..<episodes).map { i in
@@ -180,14 +180,14 @@ struct PodcastTokenFeedTests {
         let old = show("OLDTOKEN", episodes: 3)
         let fresh = show("NEWTOKEN", episodes: 413)
         var moves: [(String, String)] = []
-        let (result, changed) = PodcastSubscriptions.migrate([old, fresh],
+        let (result, changed) = PodcastIdentity.migrate([old, fresh],
                                                              moveProgress: { moves.append(($0, $1)) })
         #expect(changed)
         #expect(result.count == 1, "the same masked identity must collapse to ONE entry")
         // The fuller entry survives (its URL carries the current token)…
         #expect(result.first?.feedURL.contains("NEWTOKEN") == true)
         // …and the old entry's episodes were re-keyed (progress rides along).
-        let survivorKey = PodcastSubscriptions.feedKey(result.first!.feedURL)
+        let survivorKey = PodcastIdentity.feedKey(result.first!.feedURL)
         #expect(moves.contains { $0.1.hasPrefix("rss:\(survivorKey):") })
         // Episode union by original guid: 413 (old 3 are a subset).
         #expect(result.first?.episodes.count == 413)
@@ -198,7 +198,7 @@ struct PodcastTokenFeedTests {
                                 description: nil,
                                 feedURL: "https://other-provider.example/rss?freebie=X",
                                 episodes: other.episodes)
-        let (two, _) = PodcastSubscriptions.migrate([show("A", episodes: 3), otherShow],
+        let (two, _) = PodcastIdentity.migrate([show("A", episodes: 3), otherShow],
                                                     moveProgress: { _, _ in })
         #expect(two.count == 2)
     }
@@ -210,11 +210,11 @@ struct PodcastTokenFeedTests {
         let p2 = (id: "p2", title: "Servus. Grüezi. Hallo.", feedURL: "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=BBB")
         // Two premium copies of the SAME masked identity → offer suppressed.
         let guarded = PodcastPremiumMatch.twins(shows: [free, p1, p2],
-                                                isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+                                                isPremium: { PodcastFeedAddress.isTokenFeedURL($0) })
         #expect(guarded.isEmpty, "no repair offer while the identity twins are uncollapsed")
         // After the collapse (one premium copy): exactly ONE offer.
         let offers = PodcastPremiumMatch.twins(shows: [free, p1],
-                                               isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+                                               isPremium: { PodcastFeedAddress.isTokenFeedURL($0) })
         #expect(offers.count == 1)
         #expect(offers.first?.freeId == "free")
     }
@@ -265,7 +265,7 @@ struct PodcastFeedBlockTests {
         PodcastSubscriptions.noteFeedBlocked(feed, defaults: defaults)
         #expect(PodcastSubscriptions.isFeedBlocked(feed, defaults: defaults))
         // The path-token class the query-param heuristic cannot see.
-        #expect(!PodcastSubscriptions.isTokenFeedURL(feed))
+        #expect(!PodcastFeedAddress.isTokenFeedURL(feed))
         // Membership hosters are recognised by host alone.
         #expect(PodcastSubscriptions.isPremiumFeed("https://steadyhq.com/feed/x"))
         #expect(PodcastSubscriptions.isPremiumFeed("https://api.supportingcast.fm/feed/1"))
@@ -288,11 +288,11 @@ struct ProviderTokenChainTests {
 
     @Test("a per-show podcatcher URL is recognised and protected without any new mechanism")
     func recognisedAndProtected() {
-        #expect(PodcastSubscriptions.isTokenFeedURL(zeitPremium))
+        #expect(PodcastFeedAddress.isTokenFeedURL(zeitPremium))
         #expect(PodcastSubscriptions.isPremiumFeed(zeitPremium))
         #expect(!PodcastSubscriptions.isPremiumFeed(zeitFree))
         // The token value never shows up unmasked.
-        #expect(!PodcastSubscriptions.maskedFeedURL(zeitPremium).contains("PLACEHOLDER"))
+        #expect(!PodcastIdentity.maskedFeedURL(zeitPremium).contains("PLACEHOLDER"))
         // OPML export leaves it out (the same guard gpodder sync uses).
         let split = OPMLExport.partition(
             shows: [(title: "Servus", feedURL: zeitPremium),
@@ -319,7 +319,7 @@ struct ProviderTokenChainTests {
         // independent premium feeds. The measured ZEIT form.
         let other = "https://zeit.de/podcasts/wie-war-das-noch-mal/rss-podcatcher?freebie=OTHER"
         #expect(PodcastSubscriptions.isPremiumFeed(other))
-        #expect(PodcastSubscriptions.feedKey(other) != PodcastSubscriptions.feedKey(zeitPremium))
+        #expect(PodcastIdentity.feedKey(other) != PodcastIdentity.feedKey(zeitPremium))
         // …and the OPPOSITE form (Patreon: one membership token, several
         // shows) is not excluded either: the SAME token in two feed URLs
         // yields two feeds, no collision, no merge.
@@ -327,7 +327,7 @@ struct ProviderTokenChainTests {
         let patreonB = "https://www.patreon.com/rss/creator?auth=SAMETOKEN&show=b"
         #expect(PodcastSubscriptions.isPremiumFeed(patreonA))
         #expect(PodcastSubscriptions.isPremiumFeed(patreonB))
-        #expect(PodcastSubscriptions.feedKey(patreonA) != PodcastSubscriptions.feedKey(patreonB))
+        #expect(PodcastIdentity.feedKey(patreonA) != PodcastIdentity.feedKey(patreonB))
         // Neither form is a twin of the other (different shows, no offer).
         let offers = PodcastPremiumMatch.twins(
             shows: [(id: "a", title: "Show A", feedURL: patreonA),
@@ -339,7 +339,7 @@ struct ProviderTokenChainTests {
     @Test("T2-Zaun: gespiegelter Feed traegt NIE Premium — auch mit Host-Credentials")
     func mirroredFeedIsNeverPremium() {
         let feedURL = "https://tube.example/sources/abc/feed.xml"
-        let key = PodcastSubscriptions.feedKey(feedURL)
+        let key = PodcastIdentity.feedKey(feedURL)
         // Host credentials from the server setup. Exactly the class the
         // premium heuristic used to trip over.
         PodcastFeedAuth.set(feedKey: key, user: "probe", password: "pw")
@@ -373,12 +373,12 @@ struct ProviderTokenChainTests {
         // The normal first-refresh case: the fresh parse has MORE episodes,
         // becomes base. And used to drop the store-owned origin silently.
         let freshBigger = show("a", episodes: 5)
-        #expect(PodcastSubscriptions.merge(stored, freshBigger).origin == "pinchflat:tube.example")
+        #expect(PodcastIdentity.merge(stored, freshBigger).origin == "pinchflat:tube.example")
         // The other direction stays correct too.
         let freshSmaller = show("a", episodes: 1)
-        #expect(PodcastSubscriptions.merge(stored, freshSmaller).origin == "pinchflat:tube.example")
+        #expect(PodcastIdentity.merge(stored, freshSmaller).origin == "pinchflat:tube.example")
         // An ordinary subscription never grows an origin out of nowhere.
-        #expect(PodcastSubscriptions.merge(show("b", episodes: 2), show("b", episodes: 5)).origin == nil)
+        #expect(PodcastIdentity.merge(show("b", episodes: 2), show("b", episodes: 5)).origin == nil)
     }
 
     @Test("U4-Zaun: Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")

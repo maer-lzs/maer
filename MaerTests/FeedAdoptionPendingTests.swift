@@ -88,7 +88,7 @@ struct FeedAdoptionPendingTests {
         await subs.ensureLoaded()
         subs._testSetLoaded(true)
         let feedURL = "https://example.org/dismiss-\(UUID().uuidString.prefix(8))/feed.xml"
-        let key = PodcastSubscriptions.feedKey(feedURL)
+        let key = PodcastIdentity.feedKey(feedURL)
         final class Counter: @unchecked Sendable { var calls = 0 }
         let counter = Counter()
         subs._testFeedFetcher = { _ in counter.calls += 1; return .status(404) }
@@ -128,14 +128,14 @@ struct FeedAdoptionPendingTests {
         subs._testSetLoaded(true)
         let stem = "https://example.org/adopt-\(UUID().uuidString.prefix(8))"
         let dead = "\(stem)/dead.xml", slow = "\(stem)/slow.xml", locked = "\(stem)/locked.xml"
-        let keys = [dead, slow, locked].map { PodcastSubscriptions.feedKey($0) }
+        let keys = [dead, slow, locked].map { PodcastIdentity.feedKey($0) }
         final class Counter: @unchecked Sendable { var calls: [String] = [] }
         let counter = Counter()
         var working = false
         subs._testFeedFetcher = { url in
             counter.calls.append(url.absoluteString)
             if working {
-                return .show(PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Followed",
+                return .show(PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Followed",
                                          author: nil, artworkURL: nil, description: nil,
                                          feedURL: url.absoluteString, episodes: []))
             }

@@ -116,11 +116,11 @@ struct LocalSubscribeDoorTests {
             defer { rig.cleanup() }
             let subs = rig.subs
             #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
-            let key = PodcastSubscriptions.feedKey(rig.feed)
+            let key = PodcastIdentity.feedKey(rig.feed)
             let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
             ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
-            let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
-            rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+            let episode = state.hold(rig.feed, guid: PodcastIdentity.originalGuid(heard.guid))
+            rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastIdentity.originalGuid(heard.guid),
                                                                      enclosure: nil)
             // The memory as an unread store holds it: the show is not there.
             let held = subs.shows
@@ -149,15 +149,15 @@ struct LocalSubscribeDoorTests {
         defer { rig.cleanup() }
         let subs = rig.subs
         #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
-        let key = PodcastSubscriptions.feedKey(rig.feed)
+        let key = PodcastIdentity.feedKey(rig.feed)
         let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
         ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
         // A state heard in an episode of the show the memory does not hold.
         let unreadEpisode = "\(rig.feed)#unread-\(UUID().uuidString.prefix(6))"
         ListeningStore.store(unreadEpisode, entry: [300, 5_000_000, 1800], in: rig.defaults)
         defer { ListeningStore.clearBackup(unreadEpisode, in: rig.defaults) }
-        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
-        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+        let episode = state.hold(rig.feed, guid: PodcastIdentity.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastIdentity.originalGuid(heard.guid),
                                                                  enclosure: nil)
         subs._testRowsMissed()
         #expect(subs.startIncomplete, "the precondition: the rows hold more than the memory")
@@ -220,7 +220,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.shows.isEmpty)
         #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked,
                 "the person's tap was refused while the server is unread")
-        let key = PodcastSubscriptions.feedKey(rig.feed)
+        let key = PodcastIdentity.feedKey(rig.feed)
         #expect(subs.uncheckedFeedKeys() == [key], "the subscription is not noted")
         // The subscription stands in the rows before the server is read.
         await subs.awaitPendingWrites()
@@ -228,8 +228,8 @@ struct LocalSubscribeDoorTests {
         let local = try #require(subs.shows.first { $0.feedURL == rig.feed })
         let heard = try #require(local.episodes.first)
         ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
-        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
-        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+        let episode = state.hold(rig.feed, guid: PodcastIdentity.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastIdentity.originalGuid(heard.guid),
                                                                  enclosure: nil)
         await subs.settleUnchecked()
         #expect(rig.server.progress[episode]?.currentTime == 600, "the heard state did not reach the server's episode")
@@ -255,8 +255,8 @@ struct LocalSubscribeDoorTests {
         #expect(await subs.subscribeUnlessOnServer(urlString: rig.feed) == .subscribedUnchecked)
         let heard = try #require(subs.shows.first { $0.feedURL == rig.feed }?.episodes.first)
         ListeningStore.store(heard.guid, entry: [600, 5_000_000, 1800], in: rig.defaults)
-        let episode = state.hold(rig.feed, guid: PodcastSubscriptions.originalGuid(heard.guid))
-        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastSubscriptions.originalGuid(heard.guid),
+        let episode = state.hold(rig.feed, guid: PodcastIdentity.originalGuid(heard.guid))
+        rig.server.episodeHandles[episode] = ServerEpisodeHandle(guid: PodcastIdentity.originalGuid(heard.guid),
                                                                  enclosure: nil)
         rig.server.progress[episode] = BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 9_000_000,
                                                     currentTime: 900)
@@ -282,7 +282,7 @@ struct LocalSubscribeDoorTests {
         await subs.settleUnchecked()
         #expect(subs.shows.contains { $0.feedURL == rig.feed }, "the local subscription went without its states")
         #expect(rig.server.writes.isEmpty)
-        #expect(subs.uncheckedFeedKeys() == [PodcastSubscriptions.feedKey(rig.feed)], "the note went")
+        #expect(subs.uncheckedFeedKeys() == [PodcastIdentity.feedKey(rig.feed)], "the note went")
         // The server read again, and it does not hold the feed.
         state.heldThere = []
         await subs.settleUnchecked()
@@ -365,7 +365,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.shows.contains { $0.feedURL == other }, "the precondition: the other feed was followed")
         #expect(!subs.shows.contains { $0.feedURL == onServer }, "the server's show was subscribed here")
         #expect(!calls.hosts.contains("family-held.example"), "the server's show was fetched")
-        #expect(subs.feedsNotFollowed[PodcastSubscriptions.feedKey(onServer)] == nil, "the server's show was marked as not followed")
+        #expect(subs.feedsNotFollowed[PodcastIdentity.feedKey(onServer)] == nil, "the server's show was marked as not followed")
     }
 
     @Test("Abzeichen und Quellenseite lesen Audiobookshelf vor der Wahl zwischen Server und hier, und das Abzeichen sagt ein Aussetzen", .needsTheSources)

@@ -1,5 +1,5 @@
 {
-  "regel": "PodcastSubscriptions.showTitle(for:in:heard:)",
+  "regel": "PodcastIdentity.showTitle(for:in:heard:)",
   "pin": "15ecd43c",
   "form": 1,
   "asks": {

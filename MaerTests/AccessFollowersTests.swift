@@ -288,7 +288,7 @@ struct AccessFollowersTests {
         // the service.
         let other = device(NamedChoiceCarrier(Self.service, KeyValueChoiceCarrier(store: serviceStore)))
         defer { UserDefaults().removePersistentDomain(forName: other.suite) }
-        other.sync.localSubscriptions = { [PodcastSubscriptions.feedKey(feed): feed] }
+        other.sync.localSubscriptions = { [PodcastIdentity.feedKey(feed): feed] }
         other.sync.noteSubscription(feedURL: feed, subscribed: true)
         KnownServers.remember("https://books.example", service: .audiobookshelf, now: 1_700_000_000, defaults: other.defaults)
         other.sync.noteKnownServers()

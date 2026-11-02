@@ -79,7 +79,7 @@ final class GlobalSearchModel: ObservableObject {
                 // from a deliberate search. Duplicates still collapse.
                 var seenFeeds = Set<String>()
                 return hits
-                    .filter { seenFeeds.insert(PodcastSubscriptions.normalizeFeedURL($0.feedURL)).inserted }
+                    .filter { seenFeeds.insert(PodcastIdentity.normalizeFeedURL($0.feedURL)).inserted }
                     .map { hit in
                         SearchResult(id: hit.feedURL, kind: .catalogShow, title: hit.title,
                                      subtitle: hit.author,

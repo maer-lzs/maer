@@ -28,7 +28,7 @@ struct PodcastSubscriptionsDefaultsTests {
     @Test("die Premium-Pruefung liest Sperre und Markierung aus den uebergebenen defaults, nicht aus denen der App")
     func thePremiumTestReadsTheGivenDefaults() async {
         let feed = "https://feeds.example.org/\(UUID().uuidString)/feed.xml"
-        let key = PodcastSubscriptions.feedKey(feed)
+        let key = PodcastIdentity.feedKey(feed)
         let suite = "premium-defaults-\(UUID().uuidString)"
         let own = UserDefaults(suiteName: suite)!
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }

@@ -85,12 +85,12 @@ struct GPodderAfterSwitchTests {
     func theConflictSheetSeesTheServerLikeTheRound() {
         let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
         let plain = "https://plain.example/feed", left = "https://left.example/feed"
-        let leftNorm = PodcastSubscriptions.normalizeFeedURL(left)
-        let tokenNorm = PodcastSubscriptions.normalizeFeedURL(token)
+        let leftNorm = PodcastIdentity.normalizeFeedURL(left)
+        let tokenNorm = PodcastIdentity.normalizeFeedURL(token)
         let off = GPodderSync.conflictSnapshot(serverURLs: [token, plain, left], localRaw: [:],
                                                premiumOptIn: false, leftOnServer: [leftNorm])
         let seenOff = off.serverNorms
-        #expect(seenOff == [PodcastSubscriptions.normalizeFeedURL(plain)], "without the opt-in: \(seenOff)")
+        #expect(seenOff == [PodcastIdentity.normalizeFeedURL(plain)], "without the opt-in: \(seenOff)")
         let on = GPodderSync.conflictSnapshot(serverURLs: [token, plain, left], localRaw: [:],
                                               premiumOptIn: true, leftOnServer: [leftNorm])
         let seenOn = on.serverNorms
@@ -129,7 +129,7 @@ struct GPodderAfterSwitchTests {
                                AppStorageKeys.gpodderLeftOnServer]
 
     private func show(_ feedURL: String) -> PodcastShow {
-        PodcastShow(id: "rss:\(PodcastSubscriptions.feedKey(feedURL))", title: "Show", author: "Host",
+        PodcastShow(id: "rss:\(PodcastIdentity.feedKey(feedURL))", title: "Show", author: "Host",
                     artworkURL: nil, description: nil, feedURL: feedURL,
                     episodes: [PodcastEpisode(guid: "\(feedURL)#1", title: "Ep", audioURL: "\(feedURL).mp3",
                                               pubDate: 1_700_000_000_000, duration: 1800,
@@ -147,7 +147,7 @@ struct GPodderAfterSwitchTests {
         let aFeed = "https://switch-a.example/\(run)/feed.xml"
         let bFeed = "https://switch-b.example/\(run)/feed.xml"
         let shared = "https://switch-s.example/\(run)/feed.xml"
-        let aNorm = PodcastSubscriptions.normalizeFeedURL(aFeed)
+        let aNorm = PodcastIdentity.normalizeFeedURL(aFeed)
         let kept = Self.keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
         let shows = subs.serverShows, read = subs.serverShowsRead, reader = subs.readServerShows
         let (shelf, folder) = shelf()

@@ -73,7 +73,7 @@ struct FeedRefusalTests {
     }
 
     static func show(_ url: URL, guidStem: String, episodes: Range<Int>) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Verbrechen",
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Verbrechen",
                     author: nil, artworkURL: nil, description: nil,
                     feedURL: url.absoluteString,
                     episodes: episodes.map {
@@ -89,7 +89,7 @@ struct FeedRefusalTests {
         defer { h.close() }
         try #require(AppStorageKeys.rssActive, "das RSS-Tor ist zu, der Fall misst nichts")
         let feed = try #require(URL(string: "https://paid.example/\(UUID().uuidString.prefix(8))/feed?token=abc"))
-        let key = PodcastSubscriptions.feedKey(feed.absoluteString)
+        let key = PodcastIdentity.feedKey(feed.absoluteString)
         var now = 1_000_000.0
         h.subs.clock = { now }
         await h.subs.ensureLoaded()

@@ -19,8 +19,8 @@ enum PodcastAutoContinue {
 
     /// Resolves a show from a feed URL (for value-based navigation routes).
     static func show(forFeedURL feedURL: String) -> PodcastShow? {
-        let target = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        return allShows().first { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == target }
+        let target = PodcastIdentity.normalizeFeedURL(feedURL)
+        return allShows().first { PodcastIdentity.normalizeFeedURL($0.feedURL) == target }
     }
 
     static func next(after finishedItemId: String) -> LibraryItem? {

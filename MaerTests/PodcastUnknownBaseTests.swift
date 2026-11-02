@@ -14,7 +14,7 @@ import Foundation
 @MainActor
 struct PodcastUnknownBaseTests {
     private static func show(_ url: String, mirrored: Bool = false) -> PodcastShow {
-        let key = PodcastSubscriptions.feedKey(url)
+        let key = PodcastIdentity.feedKey(url)
         var show = PodcastShow(id: "feed:\(key)", title: "Sendung \(key.prefix(6))", author: nil, artworkURL: nil,
                            description: nil, feedURL: url,
                            episodes: (0..<2).map {
@@ -109,8 +109,8 @@ struct PodcastUnknownBaseTests {
             let first = make(folder, defaults, database)
             await first.ensureLoaded()
             #expect(first.shows.count == 2, "the precondition: both shows loaded")
-            first.adoptCloudSubscriptions(added: [], removed: [PodcastSubscriptions.feedKey(one.feedURL),
-                                                               PodcastSubscriptions.feedKey(two.feedURL)])
+            first.adoptCloudSubscriptions(added: [], removed: [PodcastIdentity.feedKey(one.feedURL),
+                                                               PodcastIdentity.feedKey(two.feedURL)])
             for _ in 0..<200 where !first.shows.isEmpty { await Task.yield() }
             #expect(first.shows.isEmpty, "the precondition: the tombstones applied")
             await first.awaitPendingWrites()

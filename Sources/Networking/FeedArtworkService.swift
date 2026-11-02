@@ -83,7 +83,7 @@ actor FeedArtworkService {
         do {
             let (data, http) = try await fetch(request)
             let ok = (http?.statusCode).map { (200...299).contains($0) } ?? true
-            Logger.rss.notice("\(Self.fetchLine(feed: PodcastSubscriptions.maskedFeedURL(feedURL), status: http?.statusCode, bytes: data.count, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ok ? "ok" : "status=\(http?.statusCode ?? 0)"), privacy: .public)")
+            Logger.rss.notice("\(Self.fetchLine(feed: PodcastIdentity.maskedFeedURL(feedURL), status: http?.statusCode, bytes: data.count, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ok ? "ok" : "status=\(http?.statusCode ?? 0)"), privacy: .public)")
             if let status = http?.statusCode, !(200...299).contains(status) {
                 // Failure ≠ absence. Only "there is none" is an answer about
                 // the picture: a feed that is gone has no channel image, and
@@ -93,7 +93,7 @@ actor FeedArtworkService {
                 // image" once persisted a 7-day negative.
                 let meaning = StatusMeaning.from(status: status)
                 guard meaning.isAbsence else {
-                    Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: HTTP \(status) \(String(describing: meaning), privacy: .public)")
+                    Logger.rss.error("HOERSPIEL artwork feed=\(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public) → FAILED: HTTP \(status) \(String(describing: meaning), privacy: .public)")
                     return nil
                 }
                 resolved = nil
@@ -105,15 +105,15 @@ actor FeedArtworkService {
                 resolved = FeedArtworkLookup.channelImageURL(fromHead: head)
             }
         } catch {
-            Logger.rss.notice("\(Self.fetchLine(feed: PodcastSubscriptions.maskedFeedURL(feedURL), status: nil, bytes: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ArchiveOrgClient.fetchReason(error)), privacy: .public)")
+            Logger.rss.notice("\(Self.fetchLine(feed: PodcastIdentity.maskedFeedURL(feedURL), status: nil, bytes: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ArchiveOrgClient.fetchReason(error)), privacy: .public)")
             // A failed fetch is NOT a negative result. No caching, the next
             // appearance may well succeed (offline, transient 5xx).
-            Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
+            Logger.rss.error("HOERSPIEL artwork feed=\(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
             return nil
         }
         cache[feedURL] = resolved
         persistResult(feedURL: feedURL, url: resolved)
-        Logger.rss.notice("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
+        Logger.rss.notice("HOERSPIEL artwork feed=\(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
         return resolved
     }
 

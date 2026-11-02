@@ -274,11 +274,11 @@ struct PodcastSourceView: View {
         let url = feedURL.trimmingCharacters(in: .whitespaces)
         guard !url.isEmpty,
               feedUser.trimmingCharacters(in: .whitespaces).isEmpty, feedPassword.isEmpty else { return nil }
-        let host = PodcastSubscriptions.feedHost(url)
+        let host = PodcastIdentity.feedHost(url)
         guard !host.isEmpty else { return nil }
         return subs.shows.first {
-            PodcastSubscriptions.feedHost($0.feedURL) == host
-                && PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey($0.feedURL))
+            PodcastIdentity.feedHost($0.feedURL) == host
+                && PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey($0.feedURL))
         }
     }
 
@@ -546,7 +546,7 @@ struct PodcastSourceView: View {
                 // Teil 5 (provider premium, foundation cut): another show of a
                 // provider you already have a login for. Reuse it, visibly.
                 if let source = providerLoginSource {
-                    Label("Will use your \(PodcastSubscriptions.feedHost(source.feedURL)) login (from “\(source.title)”)",
+                    Label("Will use your \(PodcastIdentity.feedHost(source.feedURL)) login (from “\(source.title)”)",
                           systemImage: "person.badge.key")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -560,11 +560,11 @@ struct PodcastSourceView: View {
                     var password = feedPassword
                     if user.isEmpty, password.isEmpty,
                        let source = providerLoginSource,
-                       let c = PodcastFeedAuth.credentials(feedKey: PodcastSubscriptions.feedKey(source.feedURL)) {
+                       let c = PodcastFeedAuth.credentials(feedKey: PodcastIdentity.feedKey(source.feedURL)) {
                         user = c.user
                         password = c.password
                     }
-                    PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(url),
+                    PodcastFeedAuth.set(feedKey: PodcastIdentity.feedKey(url),
                                         user: user,
                                         password: password)
                     Task {
@@ -845,18 +845,18 @@ struct PremiumFeedEditor: View {
     @State private var user = ""
     @State private var password = ""
 
-    private var feedKey: String { PodcastSubscriptions.feedKey(show.feedURL) }
+    private var feedKey: String { PodcastIdentity.feedKey(show.feedURL) }
 
     var body: some View {
         Form {
             Section {
                 Text(show.title).font(.headline)
                 // Never show the URL unmasked.
-                Text(PodcastSubscriptions.maskedFeedURL(show.feedURL))
+                Text(PodcastIdentity.maskedFeedURL(show.feedURL))
                     .font(.caption).foregroundStyle(.secondary)
                     .textSelection(.disabled)
             }
-            if PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
+            if PodcastFeedAddress.isTokenFeedURL(show.feedURL) {
                 Section {
                     Label("Access is embedded in the feed URL (token). This feed stays on this device and is never synced to a gpodder server.", systemImage: "key.horizontal")
                         .font(.caption)

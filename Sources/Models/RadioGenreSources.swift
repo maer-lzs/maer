@@ -352,7 +352,7 @@ nonisolated enum RadioGenreFamilies {
     /// ("Fußfball-…") stays apart honestly: a different head is a different
     /// family, we do not repair catalog spelling.
     static func familyKey(_ station: RadioStation) -> String? {
-        let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
+        let host = PodcastIdentity.feedHost(station.homepage ?? "")
         guard !host.isEmpty else { return nil }
         let name = RadioMapping.displayName(station.name)
         let separators = [": ", " - "]

@@ -58,7 +58,6 @@ struct ModelsLayerFenceTests {
     /// by decision, none chosen on its own.
     nonisolated static let upwardStock: [String: Int] = [
         "Sources/Models/AppStorageKeys.swift": 22,
-        "Sources/Models/BrowsedEpisodes.swift": 4,
         "Sources/Models/CatalogStockSurfaces.swift": 3,
         "Sources/Models/ContinueHidden.swift": 2,
         "Sources/Models/ContinueSources.swift": 1,
@@ -70,10 +69,8 @@ struct ModelsLayerFenceTests {
         "Sources/Models/ListeningStatsSync.swift": 2,
         "Sources/Models/MediaDownloadOffer.swift": 1,
         "Sources/Models/PlaylistDestination.swift": 1,
-        "Sources/Models/PodcastShowMerge.swift": 8,
-        "Sources/Models/RadioGenreSources.swift": 9,
-        "Sources/Models/RadioLogoLookup.swift": 2,
-        "Sources/Models/RadioModels.swift": 9,
+        "Sources/Models/RadioGenreSources.swift": 8,
+        "Sources/Models/RadioModels.swift": 6,
         "Sources/Models/RecentSearches.swift": 3,
     ]
 

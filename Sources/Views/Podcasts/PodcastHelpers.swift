@@ -14,13 +14,13 @@ import OSLog
 /// come back as "another source".
 @MainActor
 func podcastUnsubscribe(_ show: PodcastShow) {
-    let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+    let norm = PodcastIdentity.normalizeFeedURL(show.feedURL)
     for s in PodcastSubscriptions.shared.shows
-        where PodcastSubscriptions.normalizeFeedURL(s.feedURL) == norm {
+        where PodcastIdentity.normalizeFeedURL(s.feedURL) == norm {
         PodcastSubscriptions.shared.unsubscribe(id: s.id)
     }
     for s in ABSPodcastProvider.shared.shows
-        where PodcastSubscriptions.normalizeFeedURL(s.feedURL) == norm {
+        where PodcastIdentity.normalizeFeedURL(s.feedURL) == norm {
         ABSPodcastProvider.shared.setArchived(s.id, true)
     }
     Task { await GPodderSync.shared.reconcile() }
@@ -435,7 +435,7 @@ enum PodcastAutoDownload {
 /// basis for the later server handoff.
 @MainActor
 func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
-    let guid = "rss:\(PodcastSubscriptions.feedKey(show.feedURL)):\(feed.id)"
+    let guid = "rss:\(PodcastIdentity.feedKey(show.feedURL)):\(feed.id)"
     return LibraryItem(
         id: guid,
         media: LibraryItemMedia(

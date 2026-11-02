@@ -401,16 +401,16 @@ struct UserChoiceCloudSyncTests {
         // Nothing but the address in the blob, under the family's key.
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
         let keys = blob.keys.filter { $0.hasPrefix(UserChoiceCatalog.subscriptionPrefix) }
-        #expect(keys == [UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey("https://example.org/feed.xml")])
+        #expect(keys == [UserChoiceCatalog.subscriptionPrefix + PodcastIdentity.feedKey("https://example.org/feed.xml")])
 
         // B followed the feed (its store now lists it). A unsubscribes: the
         // tombstone reaches B.
         adoptedOnB = []
-        b.sync.localSubscriptions = { [PodcastSubscriptions.feedKey("https://example.org/feed.xml"): "https://example.org/feed.xml"] }
+        b.sync.localSubscriptions = { [PodcastIdentity.feedKey("https://example.org/feed.xml"): "https://example.org/feed.xml"] }
         a.sync.localSubscriptions = { [:] }
         a.sync.noteSubscription(feedURL: "https://example.org/feed.xml", subscribed: false)
         b.sync.reconcile()
-        #expect(removedOnB == [PodcastSubscriptions.feedKey("https://example.org/feed.xml")])
+        #expect(removedOnB == [PodcastIdentity.feedKey("https://example.org/feed.xml")])
         #expect(adoptedOnB.isEmpty)
 
         // A device with a podcast server applies the family too (and hands
@@ -434,7 +434,7 @@ struct UserChoiceCloudSyncTests {
         b.sync.localSubscriptions = { nil }
         b.sync.reconcile()
         let after = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
-        let otherKey = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey("https://example.org/other.xml")
+        let otherKey = UserChoiceCatalog.subscriptionPrefix + PodcastIdentity.feedKey("https://example.org/other.xml")
         #expect(UserChoiceEntry.from(plist: after[otherKey])?.value != nil, "B unloaded must not bury A's subscription")
     }
 
@@ -449,7 +449,7 @@ struct UserChoiceCloudSyncTests {
         let b = device(cloud, now: 2000)
         defer { cleanup(a.suite); cleanup(b.suite) }
         let feeds = (1...5).map { "https://example.org/feed\($0).xml" }
-        let keys = feeds.map { PodcastSubscriptions.feedKey($0) }
+        let keys = feeds.map { PodcastIdentity.feedKey($0) }
         func cloudKey(_ i: Int) -> String { UserChoiceCatalog.subscriptionPrefix + keys[i] }
         a.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys, feeds)) }
         for feed in feeds { a.sync.noteSubscription(feedURL: feed, subscribed: true) }
@@ -513,10 +513,10 @@ struct UserChoiceCloudSyncTests {
         let b = device(cloud, now: 2000)
         defer { cleanup(a.suite); cleanup(b.suite) }
         let feed = "https://example.org/frozen.xml"
-        let key = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey(feed)
+        let key = UserChoiceCatalog.subscriptionPrefix + PodcastIdentity.feedKey(feed)
         cloud.storage[UserChoiceCloudSync.blobKey] = [key: UserChoiceEntry(value: nil, t: 5000).plist]
         a.sync._seedStampsForWitness([key: 5000.0])
-        a.sync.localSubscriptions = { [PodcastSubscriptions.feedKey(feed): feed] }
+        a.sync.localSubscriptions = { [PodcastIdentity.feedKey(feed): feed] }
         a.sync.reconcile()
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
         #expect(UserChoiceEntry.from(plist: blob[key])?.value == .string(feed), "A writes the held value back")

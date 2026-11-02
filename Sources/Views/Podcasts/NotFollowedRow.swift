@@ -51,7 +51,7 @@ struct NotFollowedRow: View {
     private var texts: some View {
         VStack(alignment: .leading, spacing: 2) {
             // Never the address unmasked (token feeds carry secrets).
-            Text(PodcastSubscriptions.maskedFeedURL(entry.feedURL))
+            Text(PodcastIdentity.maskedFeedURL(entry.feedURL))
                 .font(.caption)
                 .lineLimit(2)
                 .truncationMode(.middle)

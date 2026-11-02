@@ -65,14 +65,14 @@ struct ForeignMarksTests {
 
     @Test("die Statistik findet die Sendung hinter dem gefalteten Schluessel")
     func statisticsKeyFindsTheShow() {
-        let key = PodcastSubscriptions.feedKey("https://f.example/rss")
+        let key = PodcastIdentity.feedKey("https://f.example/rss")
         let show = PodcastShow(id: "feed:\(key)", title: "Found", author: nil, artworkURL: nil,
                                description: nil, feedURL: "https://f.example/rss", episodes: [])
         let folded = AppStorageKeys.podcastShowId(forEpisodeId: "rss:\(key):ep-1")
         #expect(folded == "rss:\(key)")
-        #expect(PodcastSubscriptions.showTitle(for: folded!, in: [show]) == "Found")
-        #expect(PodcastSubscriptions.showTitle(for: "rss:unknown", in: [show]) == nil)
-        #expect(PodcastSubscriptions.showTitle(for: "feed:\(key)", in: [show]) == "Found")
+        #expect(PodcastIdentity.showTitle(for: folded!, in: [show]) == "Found")
+        #expect(PodcastIdentity.showTitle(for: "rss:unknown", in: [show]) == nil)
+        #expect(PodcastIdentity.showTitle(for: "feed:\(key)", in: [show]) == "Found")
     }
 
     @Test("S2b I2: ein Wiedergabe-Tick liest die Markenliste nicht und schreibt nur, wenn die Folge markiert war")

@@ -50,9 +50,9 @@ struct StandbyLiveRefreshTests {
                      "rss:key-iphone:https://example.org/ep/42",
                      "rss:key-iphone:https://example.org/ep/43",
                      wanted]
-        #expect(PodcastSubscriptions.twinEpisodeId(for: wanted, among: guids) == "rss:key-iphone:https://example.org/ep/42")
-        #expect(PodcastSubscriptions.twinEpisodeId(for: "rss:key-ipad:https://example.org/ep/99", among: guids) == nil)
-        #expect(PodcastSubscriptions.twinEpisodeId(for: "abs:book", among: guids) == nil, "not an rss id")
+        #expect(PodcastIdentity.twinEpisodeId(for: wanted, among: guids) == "rss:key-iphone:https://example.org/ep/42")
+        #expect(PodcastIdentity.twinEpisodeId(for: "rss:key-ipad:https://example.org/ep/99", among: guids) == nil)
+        #expect(PodcastIdentity.twinEpisodeId(for: "abs:book", among: guids) == nil, "not an rss id")
     }
 
     @Test("A held pointer that turned finished clears the standby live")

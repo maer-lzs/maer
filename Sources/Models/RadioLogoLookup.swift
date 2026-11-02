@@ -273,7 +273,7 @@ nonisolated enum RadioLogoLookup {
     /// homepage host, kin name, most votes first. Nil when nothing qualifies.
     static func siblingFaviconURL(fromSearchData data: Data, stationName: String,
                                   homepage: String?) -> URL? {
-        let host = PodcastSubscriptions.feedHost(homepage ?? "")
+        let host = PodcastIdentity.feedHost(homepage ?? "")
         guard !host.isEmpty,
               let raw = try? JSONDecoder().decode([RadioBrowserStation].self, from: data)
         else { return nil }
@@ -281,7 +281,7 @@ nonisolated enum RadioLogoLookup {
             .filter { entry in
                 guard let favicon = entry.favicon?.trimmingCharacters(in: .whitespaces),
                       !favicon.isEmpty else { return false }
-                guard PodcastSubscriptions.feedHost(entry.homepage ?? "") == host else { return false }
+                guard PodcastIdentity.feedHost(entry.homepage ?? "") == host else { return false }
                 return namesAreKin(stationName, entry.name)
             }
             .sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }

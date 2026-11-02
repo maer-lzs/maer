@@ -15,7 +15,7 @@ import Foundation
 @MainActor
 struct TokenTwinTwoStageTests {
     private static func show(_ url: String, episodes: Int, tag: String) -> PodcastShow {
-        let key = PodcastSubscriptions.feedKey(url)
+        let key = PodcastIdentity.feedKey(url)
         return PodcastShow(id: "feed:\(key)", title: "Zwilling", author: nil, artworkURL: nil,
                            description: nil, feedURL: url,
                            episodes: (0..<episodes).map {
@@ -38,8 +38,8 @@ struct TokenTwinTwoStageTests {
         let oldURL = "https://premium.example/feed.xml?token=alt\(run)"
         let newURL = "https://premium.example/feed.xml?token=neu\(run)"
         // The precondition: one masked identity, two keys, so they ARE twins.
-        #expect(PodcastSubscriptions.collapseKey(oldURL) == PodcastSubscriptions.collapseKey(newURL))
-        #expect(PodcastSubscriptions.feedKey(oldURL) != PodcastSubscriptions.feedKey(newURL))
+        #expect(PodcastIdentity.collapseKey(oldURL) == PodcastIdentity.collapseKey(newURL))
+        #expect(PodcastIdentity.feedKey(oldURL) != PodcastIdentity.feedKey(newURL))
 
         let database = MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path)
         // The OLD token first and thinner: on order alone it would win.

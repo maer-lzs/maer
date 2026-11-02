@@ -27,7 +27,7 @@ struct PodcastPublishCountTests {
     }
 
     static func fixture(_ url: URL, episodes: Int) -> PodcastShow {
-        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Count",
+        PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Count",
                     author: nil, artworkURL: nil, description: nil,
                     feedURL: url.absoluteString,
                     episodes: (0..<episodes).map {
@@ -136,7 +136,7 @@ struct PodcastPublishCountTests {
             guids += subs.shows.flatMap { $0.episodes.map(\.guid) }
             for feed in feeds {
                 tally.count = 0
-                subs.unsubscribe(id: PodcastSubscriptions.feedKey(feed), notesCloud: false)
+                subs.unsubscribe(id: PodcastIdentity.feedKey(feed), notesCloud: false)
                 unsubscribes.append(tally.count)
             }
         }

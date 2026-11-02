@@ -77,8 +77,8 @@ struct PodcastFeedAddressTests {
         // The subscription identity strips the scheme, so raising the REQUEST
         // cannot split one subscription into two. Without this the fix would
         // have been a data bug in disguise.
-        #expect(PodcastSubscriptions.normalizeFeedURL("http://feeds.example.org/show")
-                == PodcastSubscriptions.normalizeFeedURL("https://feeds.example.org/show"))
+        #expect(PodcastIdentity.normalizeFeedURL("http://feeds.example.org/show")
+                == PodcastIdentity.normalizeFeedURL("https://feeds.example.org/show"))
     }
 }
 #endif

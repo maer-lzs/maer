@@ -88,7 +88,7 @@ struct PodcastShowView: View {
 
     // MARK: - State of this page
 
-    private var normalizedFeed: String { PodcastSubscriptions.normalizeFeedURL(feedURL) }
+    private var normalizedFeed: String { PodcastIdentity.normalizeFeedURL(feedURL) }
 
     /// The show as the SUBSCRIPTION stores know it. Looked up per render, so
     /// subscribing on this page switches the state without a new push.
@@ -102,10 +102,10 @@ struct PodcastShowView: View {
             return absPodcast.shows.first { $0.id == id } ?? seedShow
         }
         if let found = subs.shows.first(where: {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+            PodcastIdentity.normalizeFeedURL($0.feedURL) == normalizedFeed
         }) { return found }
         if let found = absPodcast.shows.first(where: {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+            PodcastIdentity.normalizeFeedURL($0.feedURL) == normalizedFeed
         }) { return found }
         return seedShow
     }
@@ -121,7 +121,7 @@ struct PodcastShowView: View {
     /// loads. Best effort: the pool may have rotated since.
     private var catalogSeed: PodcastSearchResult? {
         PodcastRecommendationsStore.shared.results.first {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+            PodcastIdentity.normalizeFeedURL($0.feedURL) == normalizedFeed
         }
     }
 
@@ -215,10 +215,10 @@ struct PodcastShowView: View {
                     remedy: ShowAccessRemedy.of(
                         tokenAddress: PodcastFeedAddress.isTokenFeedURL(show.feedURL),
                         hasCredentials: PodcastFeedAuth.hasCredentials(
-                            feedKey: PodcastSubscriptions.feedKey(show.feedURL))),
+                            feedKey: PodcastIdentity.feedKey(show.feedURL))),
                     onNewLink: { newLinkText = ""; askingNewLink = true },
                     onSignIn: {
-                        signInMomentBefore = PodcastFeedAuth.moment(feedKey: PodcastSubscriptions.feedKey(show.feedURL))
+                        signInMomentBefore = PodcastFeedAuth.moment(feedKey: PodcastIdentity.feedKey(show.feedURL))
                         signInShow = show
                     },
                     freeTwin: subs.freeTwinOffer(show),
@@ -271,7 +271,7 @@ struct PodcastShowView: View {
             PodcastShowSettingsButton { showSettings = true }
             if let show = routineShow {
                 Menu {
-                    ForEach(RoutineRule.offered(feedKey: PodcastSubscriptions.feedKey(show.feedURL)), id: \.self) { rule in
+                    ForEach(RoutineRule.offered(feedKey: PodcastIdentity.feedKey(show.feedURL)), id: \.self) { rule in
                         AddToPlaylistButton(itemId: rule.id, knownTitles: [rule.id: show.title],
                                             label: RoutineWords.rule(rule.kind))
                     }
@@ -324,7 +324,7 @@ struct PodcastShowView: View {
             guard let show = storedShow,
                   FeedRefusal.asksAgainAfterSignIn(
                     momentBefore: signInMomentBefore,
-                    momentAfter: PodcastFeedAuth.moment(feedKey: PodcastSubscriptions.feedKey(show.feedURL)))
+                    momentAfter: PodcastFeedAuth.moment(feedKey: PodcastIdentity.feedKey(show.feedURL)))
             else { return }
             Task { await subs.recheckAccess(showId: show.id) }
         }) { show in

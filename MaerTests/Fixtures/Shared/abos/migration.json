@@ -1,5 +1,5 @@
 {
-  "regel": "PodcastSubscriptions.migrate / buildEpisodeIndex",
+  "regel": "PodcastIdentity.migrate / buildEpisodeIndex",
   "pin": "b8f84cc3",
   "form": 1,
   "asks": {

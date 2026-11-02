@@ -15,9 +15,9 @@ import Testing
 struct PodcastSubscriptionsHashTests {
     @Test("Der Feed-Hash bleibt, wie er ist, auch wenn er nicht FNV-1a ist")
     func theFeedHashNeverChanges() {
-        #expect(PodcastSubscriptions.stableHash("") == "14650fb0739d0383")
-        #expect(PodcastSubscriptions.stableHash("example.com/feed") == "2df29e1f29180479")
-        #expect(PodcastSubscriptions.stableHash("") != "cbf29ce484222325", "the real FNV-1a of the empty string")
+        #expect(PodcastIdentity.stableHash("") == "14650fb0739d0383")
+        #expect(PodcastIdentity.stableHash("example.com/feed") == "2df29e1f29180479")
+        #expect(PodcastIdentity.stableHash("") != "cbf29ce484222325", "the real FNV-1a of the empty string")
     }
 }
 #endif

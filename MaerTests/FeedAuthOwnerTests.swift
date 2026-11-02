@@ -96,7 +96,7 @@ struct FeedAuthOwnerTests {
     static let identityB = MaerSyncIdentity(service: "fp-service", owner: "bert")
     /// A premium address carrying its own token: neither may leave the keychain.
     static let premiumURL = "https://premium.example/feed.xml?token=streng-geheim"
-    static var premium: String { PodcastSubscriptions.feedKey(premiumURL) }
+    static var premium: String { PodcastIdentity.feedKey(premiumURL) }
 
     private struct Rig {
         let session: MaerSyncSession
@@ -213,7 +213,7 @@ struct FeedAuthOwnerTests {
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
-        let other = PodcastSubscriptions.feedKey("https://other.example/feed.xml")
+        let other = PodcastIdentity.feedKey("https://other.example/feed.xml")
         let scopeA = Self.identityA.scope
         let scopeB = Self.identityB.scope
         // The replacement of a run before never landed: A's credential is
@@ -253,7 +253,7 @@ struct FeedAuthOwnerTests {
     func aMissingRestGoesOnAnUnreadableOneHolds() throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
-        let other = PodcastSubscriptions.feedKey("https://other.example/feed.xml")
+        let other = PodcastIdentity.feedKey("https://other.example/feed.xml")
         let scopeA = Self.identityA.scope
         let scopeB = Self.identityB.scope
         // B rests with two names, but only one credential is there.

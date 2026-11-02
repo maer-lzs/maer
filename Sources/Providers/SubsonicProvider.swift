@@ -685,7 +685,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// stored one read the way the client reads it, so the list can be
     /// found while music is off on this device.
     nonisolated static func songCatalogName(forAddress url: URL) -> String {
-        "song-catalog-\(PodcastSubscriptions.stableHash(url.absoluteString)).json"
+        "song-catalog-\(PodcastIdentity.stableHash(url.absoluteString)).json"
     }
 
     /// The stored server address as the client would take it, or nil.

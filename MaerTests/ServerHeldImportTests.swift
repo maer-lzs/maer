@@ -44,8 +44,8 @@ struct ServerHeldImportTests {
         let library = ForeignLibrary(feedURLs: [onServer, other], states: [state])
 
         let preview = ForeignImportPreview.make(
-            library, subscribedFeedKeys: Set(subs.shows.map { PodcastSubscriptions.feedKey($0.feedURL) }),
-            serverFeedKeys: Set(subs.serverOnlyShows().keys), feedKeyOf: PodcastSubscriptions.feedKey)
+            library, subscribedFeedKeys: Set(subs.shows.map { PodcastIdentity.feedKey($0.feedURL) }),
+            serverFeedKeys: Set(subs.serverOnlyShows().keys), feedKeyOf: PodcastIdentity.feedKey)
         #expect(preview.onServer == 1 && preview.alreadySubscribed == 0)
 
         let result = await subs.importForeignLibrary(library)

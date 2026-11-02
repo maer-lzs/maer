@@ -1,5 +1,5 @@
 {
-  "regel": "PodcastSubscriptions.merge",
+  "regel": "PodcastIdentity.merge",
   "pin": "b8f84cc3",
   "form": 1,
   "asks": {

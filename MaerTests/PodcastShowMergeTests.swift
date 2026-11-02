@@ -167,7 +167,7 @@ struct PodcastShowMergeTests {
             show("c", feed: "https://other.org/feed.xml"),
         ])
         #expect(feeds.count == 2, "zwei Schreibweisen desselben Feeds gelten als zwei Abos")
-        #expect(feeds.contains(PodcastSubscriptions.normalizeFeedURL("https://other.org/feed.xml")))
+        #expect(feeds.contains(PodcastIdentity.normalizeFeedURL("https://other.org/feed.xml")))
     }
 
     /// Sechs Stellen bauten die Vereinigung „was wir besitzen" von Hand,

@@ -78,7 +78,7 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// The honest recommendation reason for a result (author > genre > popular).
     func reason(for result: PodcastSearchResult) -> Reason {
-        let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+        let n = PodcastIdentity.normalizeFeedURL(result.feedURL)
         if let author = authorProvenance[n] { return .sameAuthor(author, likeShow: authorSeedShow[n]) }
         // A hit that CAME from a category query says so. The
         // reason must not claim "popular" for something we fetched because
@@ -166,7 +166,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             guard let found = try? await directory.search(author) else { continue }
             for r in found where authorMatches(r, author) {
                 pool.append(r)
-                let n = PodcastSubscriptions.normalizeFeedURL(r.feedURL)
+                let n = PodcastIdentity.normalizeFeedURL(r.feedURL)
                 authorHits.insert(n)
                 authorProvenance[n] = author
                 authorSeedShow[n] = ownTitleByAuthor[author]
@@ -198,7 +198,7 @@ final class PodcastRecommendationsStore: ObservableObject {
                 categoryHits += trend.count
                 for result in trend {
                     pool.append(result)
-                    let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+                    let n = PodcastIdentity.normalizeFeedURL(result.feedURL)
                     if categoryProvenance[n] == nil { categoryProvenance[n] = term }
                 }
             }
@@ -224,7 +224,7 @@ final class PodcastRecommendationsStore: ObservableObject {
                 let category = PodcastCategoryMapping.appleCategory(forGenreId: genreId)
                 for result in top {
                     pool.append(result)
-                    let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+                    let n = PodcastIdentity.normalizeFeedURL(result.feedURL)
                     if categoryProvenance[n] == nil, let category { categoryProvenance[n] = category }
                 }
             }
@@ -379,9 +379,9 @@ final class PodcastRecommendationsStore: ObservableObject {
         // capped-out entries return in source order (a full row of second
         // ZEIT shows beats a short row. The cap orders, it never empties).
         if out.count < limit {
-            let taken = Set(out.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            let taken = Set(out.map { PodcastIdentity.normalizeFeedURL($0.feedURL) })
             for r in authorPool + genrePool + chartPool where out.count < limit {
-                if !taken.contains(PodcastSubscriptions.normalizeFeedURL(r.feedURL)) {
+                if !taken.contains(PodcastIdentity.normalizeFeedURL(r.feedURL)) {
                     out.append(r)
                 }
             }
@@ -416,8 +416,8 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// Remove from the list after subscribing.
     func remove(feedURL: String) {
-        let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+        let n = PodcastIdentity.normalizeFeedURL(feedURL)
+        results.removeAll { PodcastIdentity.normalizeFeedURL($0.feedURL) == n }
     }
 
     // MARK: - "Not interested"
@@ -434,10 +434,10 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// "Not interested": out of all three surfaces at once, permanently.
     func hide(_ result: PodcastSearchResult) {
-        let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+        let n = PodcastIdentity.normalizeFeedURL(result.feedURL)
         hiddenByFeed[n] = result.title
         AppStorageKeys.set(hiddenByFeed, for: Self.hiddenKey)
-        results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+        results.removeAll { PodcastIdentity.normalizeFeedURL($0.feedURL) == n }
     }
 
     /// The release path (settings): the show may be recommended again.
@@ -524,7 +524,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         let qualifying = Set(CoListenedShows.current().filter(CoListened.countsForTaste).map(\.feedKey))
         guard !qualifying.isEmpty else { return out }
         for show in CoListenedShows.shows()
-        where qualifying.contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)) {
+        where qualifying.contains(PodcastIdentity.normalizeFeedURL(show.feedURL)) {
             out.append(TasteShow(id: show.id, author: show.author,
                                  categories: show.categories ?? [],
                                  share: CoListened.tasteShare))
@@ -614,7 +614,7 @@ final class PodcastRecommendationsStore: ObservableObject {
 
         // 1. Base order (author hits first, then category proximity).
         let ordered = list.enumerated()
-            .map { (idx, r) in (r: r, author: authorHits.contains(PodcastSubscriptions.normalizeFeedURL(r.feedURL)), score: score(r), idx: idx) }
+            .map { (idx, r) in (r: r, author: authorHits.contains(PodcastIdentity.normalizeFeedURL(r.feedURL)), score: score(r), idx: idx) }
             .sorted {
                 if $0.author != $1.author { return $0.author }
                 if $0.score != $1.score { return $0.score > $1.score }
@@ -648,7 +648,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         let visible = PodcastShowSources.excludingOwned(list)
         // Same mechanics as the subscribed filter, one more set.
         return visible.filter {
-            hiddenByFeed[PodcastSubscriptions.normalizeFeedURL($0.feedURL)] == nil
+            hiddenByFeed[PodcastIdentity.normalizeFeedURL($0.feedURL)] == nil
         }
     }
 
@@ -670,7 +670,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     ) -> [PodcastSearchResult] {
         var seen = Set<String>()
         return list.filter { candidate in
-            let n = PodcastSubscriptions.normalizeFeedURL(candidate.feedURL)
+            let n = PodcastIdentity.normalizeFeedURL(candidate.feedURL)
             guard !subscribedNormalizedFeeds.contains(n), seen.insert(n).inserted else { return false }
             return !subscribedTitles.contains { PodcastPremiumMatch.sameShow(titleA: $0, titleB: candidate.title) }
         }

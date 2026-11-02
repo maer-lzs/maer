@@ -23,7 +23,7 @@ struct PodcastsRecomputeScopeTests {
         let scope = PodcastsRecomputeScope.shared
         let feedURL = "https://example.org/recompute-\(UUID().uuidString.prefix(8))/feed.xml"
         subs._testFeedFetcher = { url in
-            .show(PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: "Adopted",
+            .show(PodcastShow(id: PodcastIdentity.feedKey(url.absoluteString), title: "Adopted",
                               author: nil, artworkURL: nil, description: nil,
                               feedURL: url.absoluteString, episodes: []))
         }

@@ -57,9 +57,9 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// browsed show may carry `http://` and its tracking bits, and a
     /// subscription on the server branch has no local show to find.
     func forget(feedURL: String) {
-        let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        let key = PodcastIdentity.normalizeFeedURL(feedURL)
         byGuid.withLock { map in
-            map = map.filter { PodcastSubscriptions.normalizeFeedURL($0.value.show.feedURL) != key }
+            map = map.filter { PodcastIdentity.normalizeFeedURL($0.value.show.feedURL) != key }
         }
     }
 
@@ -163,10 +163,10 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// A subscription takes the show over: the remembered episodes of that
     /// address then belong to the subscription stock, and that is the one truth.
     func forgetListened(feedURL: String, defaults: UserDefaults = .standard) {
-        let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        let key = PodcastIdentity.normalizeFeedURL(feedURL)
         let all = Self.writableRecords(defaults)
         let stored = all.filter {
-            PodcastSubscriptions.normalizeFeedURL($0.value.feedURL) != key
+            PodcastIdentity.normalizeFeedURL($0.value.feedURL) != key
         }
         // A duration that is not finite does not encode; then nothing is written.
         guard let data = try? JSONEncoder().encode(stored) else {

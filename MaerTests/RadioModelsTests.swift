@@ -625,7 +625,7 @@ struct RadioStateQueryTests {
         let deduped = RadioMapping.dedupeForDisplay(stations)
         // Real variants fold (name-after-trim + domain); AAC wins the bundle,
         // the bundle carries both streams, the shown one first.
-        let rock = deduped.first { PodcastSubscriptions.feedHost($0.homepage ?? "") == "rockantenne.de" }
+        let rock = deduped.first { PodcastIdentity.feedHost($0.homepage ?? "") == "rockantenne.de" }
         let rockStreams = rock?.variantList.map(\.id) ?? []
         #expect(deduped.count == 4)
         #expect(rock?.id == "2")

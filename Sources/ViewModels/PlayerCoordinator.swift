@@ -958,7 +958,7 @@ final class PlayerCoordinator: ObservableObject {
         let subscriptions = PodcastSubscriptions.shared
         // The same episode followed here under another feed key (the show
         // moved hosts, a premium twin): the twin is the same episode.
-        if let twin = PodcastSubscriptions.twinEpisodeId(for: lastId, among: subscriptions.allEpisodes().map(\.episode.guid)),
+        if let twin = PodcastIdentity.twinEpisodeId(for: lastId, among: subscriptions.allEpisodes().map(\.episode.guid)),
            let item = await AppSession.shared.resolveItem(forId: twin) {
             return (item, "twin")
         }

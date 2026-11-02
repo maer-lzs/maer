@@ -21,7 +21,7 @@ enum CoListenedShows {
         let listened = kept.compactMap { kept -> CoListened.Listened? in
             guard let entry = entries[kept.guid] else { return nil }
             return CoListened.Listened(
-                feedKey: PodcastSubscriptions.normalizeFeedURL(kept.feedURL),
+                feedKey: PodcastIdentity.normalizeFeedURL(kept.feedURL),
                 feedURL: kept.feedURL, showTitle: kept.showTitle,
                 playedAt: entry.playedAt, isPlayed: entry.isPlayed,
                 hasObservedTime: entry.hasObservedTime)
@@ -49,7 +49,7 @@ enum CoListenedShows {
     static func rowItems() -> [LibraryItem] {
         let session = shows()
         return current().compactMap { show -> LibraryItem? in
-            guard let fetched = session.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == show.feedKey }),
+            guard let fetched = session.first(where: { PodcastIdentity.normalizeFeedURL($0.feedURL) == show.feedKey }),
                   let id = PodcastSections.newestPerShow(shows: [fetched], limit: 1).first else { return nil }
             return AppSession.shared.libraryItem(forId: id)
         }
@@ -61,13 +61,13 @@ enum CoListenedShows {
         let keys = Set(current().map(\.feedKey))
         guard !keys.isEmpty else { return [] }
         return BrowsedEpisodes.shared.sessionShows()
-            .filter { keys.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL)) }
+            .filter { keys.contains(PodcastIdentity.normalizeFeedURL($0.feedURL)) }
     }
 
     /// The feed key of an episode that belongs to a co-listened show, else nil.
     static func feedKey(forEpisodeId id: String, among shows: [CoListened.Show]) -> String? {
         guard let feed = PodcastSubscriptions.shared.feedURL(forEpisodeId: id) else { return nil }
-        let key = PodcastSubscriptions.normalizeFeedURL(feed)
+        let key = PodcastIdentity.normalizeFeedURL(feed)
         return shows.contains { $0.feedKey == key } ? key : nil
     }
 

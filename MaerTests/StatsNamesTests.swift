@@ -29,16 +29,16 @@ struct StatsNamesTests {
     func showTitle(_ c: SharedCase) throws {
         let input = try c.value("input")
         let showId = try #require(input["showId"]?.string
-                                  ?? input["showIdFromFeed"]?.string.map { "rss:\(PodcastSubscriptions.feedKey($0))" })
+                                  ?? input["showIdFromFeed"]?.string.map { "rss:\(PodcastIdentity.feedKey($0))" })
         let shows = try #require(input["shows"]?.array).map { show in
-            PodcastShow(id: "feed:\(PodcastSubscriptions.feedKey(show["idFromFeed"]?.string ?? ""))",
+            PodcastShow(id: "feed:\(PodcastIdentity.feedKey(show["idFromFeed"]?.string ?? ""))",
                         title: show["title"]?.string ?? "", author: nil, artworkURL: nil,
                         description: nil, feedURL: show["feedURL"]?.string ?? "", episodes: [])
         }
         let heard = try #require(input["heard"]?.array).map {
             (feedURL: $0["feedURL"]?.string ?? "", title: $0["title"]?.string ?? "")
         }
-        #expect(PodcastSubscriptions.showTitle(for: showId, in: shows, heard: heard) == c["expect"]?.string, "\(c.slug)")
+        #expect(PodcastIdentity.showTitle(for: showId, in: shows, heard: heard) == c["expect"]?.string, "\(c.slug)")
     }
 
     @Test("GT-25: ein Sender, der aus Wieder hoeren gefallen ist, behaelt seinen Namen aus Meistgespielt")
@@ -93,7 +93,7 @@ struct StatsNamesTests {
         let sources = try Self.source("Sources/ViewModels/PodcastShowSources.swift")
         #expect(sources.contains("PodcastListenLog.shared.entries.values.map")
                 && sources.contains("BrowsedEpisodes.shared.allListened().map")
-                && sources.contains("PodcastSubscriptions.showTitle(for: showId, in: ownedShows(), heard: heard)"),
+                && sources.contains("PodcastIdentity.showTitle(for: showId, in: ownedShows(), heard: heard)"),
                 "alle vier Bestaende tragen den Namen")
     }
 }

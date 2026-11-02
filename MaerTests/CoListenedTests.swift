@@ -207,7 +207,7 @@ struct CoListenedTests {
         #expect(BrowsedEpisodes.shared.sessionShows().map(\.id) == ["co-1"])
         #expect(!PodcastSubscriptions.shared.shows.contains { $0.id == "co-1" })
         #expect(!PodcastAutoContinue.allShows().contains { $0.id == "co-1" })
-        #expect(!PodcastShowSources.ownedFeedKeys().contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)))
+        #expect(!PodcastShowSources.ownedFeedKeys().contains(PodcastIdentity.normalizeFeedURL(show.feedURL)))
     }
 
     /// The set of owned feeds has one name; built again by hand, in one step

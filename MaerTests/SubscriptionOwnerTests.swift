@@ -17,7 +17,7 @@ import Foundation
 struct SubscriptionOwnerTests {
     private static func show(_ name: String, episodes: Int) -> PodcastShow {
         let url = "https://feeds.example/\(name).xml"
-        let key = PodcastSubscriptions.feedKey(url)
+        let key = PodcastIdentity.feedKey(url)
         return PodcastShow(id: "feed:\(key)", title: name, author: nil, artworkURL: nil,
                            description: nil, feedURL: url,
                            episodes: (0..<episodes).map {

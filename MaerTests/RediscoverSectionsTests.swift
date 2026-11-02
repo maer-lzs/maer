@@ -105,7 +105,7 @@ struct DiscoverFilterTests {
             PodcastSearchResult(title: "A dup", author: nil, artworkURL: nil, feedURL: "https://a.example/feed"),
             PodcastSearchResult(title: "C", author: nil, artworkURL: nil, feedURL: "https://c.example/feed"),
         ]
-        let subscribed: Set<String> = [PodcastSubscriptions.normalizeFeedURL("https://b.example/feed")]
+        let subscribed: Set<String> = [PodcastIdentity.normalizeFeedURL("https://b.example/feed")]
         let out = PodcastRecommendationsStore.excludingSubscribed(results, subscribedNormalizedFeeds: subscribed)
         #expect(out.map(\.title) == ["A", "C"])
     }
@@ -127,7 +127,7 @@ struct DiscoverFilterTests {
         ]
         let out = PodcastRecommendationsStore.excludingSubscribed(
             pool,
-            subscribedNormalizedFeeds: [PodcastSubscriptions.normalizeFeedURL(
+            subscribedNormalizedFeeds: [PodcastIdentity.normalizeFeedURL(
                 "https://zeit.de/podcasts/servus-gruezi-hallo/rss-podcatcher?freebie=X")],
             subscribedTitles: ["Servus. Grüezi. Hallo."])
         // Both spellings of the same show drop (diacritics folded)…

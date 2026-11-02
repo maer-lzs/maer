@@ -146,12 +146,12 @@ enum RoutinePlayback {
     /// followed ones, then the ones met while browsing this session.
     static func show(feedKey: String) -> PodcastShow? {
         followed(feedKey: feedKey)
-            ?? BrowsedEpisodes.shared.sessionShows().first { PodcastSubscriptions.feedKey($0.feedURL) == feedKey }
+            ?? BrowsedEpisodes.shared.sessionShows().first { PodcastIdentity.feedKey($0.feedURL) == feedKey }
     }
 
     /// The followed show of a feed key.
     static func followed(feedKey: String) -> PodcastShow? {
-        PodcastSubscriptions.shared.shows.first { PodcastSubscriptions.feedKey($0.feedURL) == feedKey }
+        PodcastSubscriptions.shared.shows.first { PodcastIdentity.feedKey($0.feedURL) == feedKey }
     }
 
     /// What the list plays from what this device holds now, without asking
@@ -274,7 +274,7 @@ enum RoutinePlayback {
         var out: [String: PodcastShow] = [:]
         let subscriptions = PodcastSubscriptions.shared
         for (key, answer) in answers {
-            if let followed = subscriptions.shows.first(where: { PodcastSubscriptions.feedKey($0.feedURL) == key }),
+            if let followed = subscriptions.shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == key }),
                await subscriptions.absorb(answer, showId: followed.id) != nil {
                 out[key] = show(feedKey: key)
             } else {

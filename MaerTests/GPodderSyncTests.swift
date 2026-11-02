@@ -23,7 +23,7 @@ struct GPodderVisibilityTests {
         #expect(split.hiddenNorms.count == 2)
         // Both exclusions land in `hidden`, so neither can be re-adopted.
         #expect(split.hiddenNorms.contains(
-            PodcastSubscriptions.normalizeFeedURL("https://pinchflat.mesh/feed/abc.xml")))
+            PodcastIdentity.normalizeFeedURL("https://pinchflat.mesh/feed/abc.xml")))
     }
 
     @Test func aDirectSubscriptionBeatsItsMirror() {
@@ -84,8 +84,8 @@ struct GPodderPremiumAsymmetryTests {
     func offMeansInvisibleInBothDirections() {
         let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
         let normal = "https://example.org/a.xml"
-        let tokenNorm = PodcastSubscriptions.normalizeFeedURL(token)
-        let normalNorm = PodcastSubscriptions.normalizeFeedURL(normal)
+        let tokenNorm = PodcastIdentity.normalizeFeedURL(token)
+        let normalNorm = PodcastIdentity.normalizeFeedURL(normal)
 
         // Das Geraet mit Schalter AUS sieht den Token-Feed lokal NICHT …
         let split = GPodderVisibleSubscriptions.split([show(normal)], premiumOptIn: false)

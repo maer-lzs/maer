@@ -53,7 +53,7 @@ struct PodcastMergeTests {
     func everyStoreFactSurvivesAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let expect = try c.value("expect")
-        let merged = PodcastSubscriptions.merge(Self.show(try #require(input["stored"])),
+        let merged = PodcastIdentity.merge(Self.show(try #require(input["stored"])),
                                                 Self.show(try #require(input["fresh"])))
         #expect(merged.title == expect["title"]?.string, "\(c.slug)")
         #expect(merged.origin == expect["origin"]?.string, "\(c.slug)")

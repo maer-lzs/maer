@@ -262,7 +262,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             // Build the feed-guid bridge → both ids (for shared history).
             let feedURL = detail.media.metadata?.feedUrl ?? ""
             guard !feedURL.isEmpty else { continue }
-            let feedKey = PodcastSubscriptions.feedKey(feedURL)
+            let feedKey = PodcastIdentity.feedKey(feedURL)
             for ep in detail.media.episodes ?? [] {
                 newHandles["abspod:\(detail.id):\(ep.id)"] = ServerEpisodeHandle(guid: ep.guid, enclosure: ep.enclosure?.url)
                 guard let orig = ep.guid ?? ep.enclosure?.url, !orig.isEmpty else { continue }
@@ -547,9 +547,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// URL). Best effort. If it fails, the ABS cover stays.
     private func pushHighResCover(feedURL: String, cover: String?) async {
         guard let cover, !cover.isEmpty else { return }
-        let norm = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        let norm = PodcastIdentity.normalizeFeedURL(feedURL)
         guard let show = shows.first(where: {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm
+            PodcastIdentity.normalizeFeedURL($0.feedURL) == norm
         }) else { return }
         let itemId = String(show.id.dropFirst("abspod:".count))
         do {

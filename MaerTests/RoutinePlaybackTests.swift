@@ -16,7 +16,7 @@ import Combine
 @Suite(.serialized)
 struct RoutinePlaybackTests {
     private static let feedURL = "https://feeds.example/routine.xml"
-    private static var key: String { PodcastSubscriptions.feedKey(feedURL) }
+    private static var key: String { PodcastIdentity.feedKey(feedURL) }
 
     /// Episodes 1 to `count`, ten minutes each, `silent` without audio.
     private static func show(_ count: Int, silent: Set<Int> = []) -> PodcastShow {

@@ -58,7 +58,7 @@ struct PodcastMigrationTests {
         switch c.ask {
         case "migrate":
             var moves: [String: String] = [:]
-            let (migrated, changed) = PodcastSubscriptions.migrate(shows) { old, new in moves[old] = new }
+            let (migrated, changed) = PodcastIdentity.migrate(shows) { old, new in moves[old] = new }
             #expect(changed == expect["changed"]?.bool, "\(c.slug)")
             let actual = JSONValue.array(migrated.map {
                 .object(["id": .string($0.id), "guids": .array($0.episodes.map { .string($0.guid) })])
@@ -79,7 +79,7 @@ struct PodcastMigrationTests {
     /// old synchronous init did and what the async bootstrap does now.
     @Test func decodeMigratePipelineRoundTrip() throws {
         let feed = "https://example.com/feed"
-        let key = PodcastSubscriptions.feedKey(feed)
+        let key = PodcastIdentity.feedKey(feed)
         let legacy = [legacyShow(id: "legacy", feedURL: feed, guids: ["e1", "e2"])]
 
         let dir = FileManager.default.temporaryDirectory
@@ -90,7 +90,7 @@ struct PodcastMigrationTests {
         try JSONEncoder().encode(legacy).write(to: file)
 
         let decoded = try JSONDecoder().decode([PodcastShow].self, from: Data(contentsOf: file))
-        let (shows, changed) = PodcastSubscriptions.migrate(decoded) { _, _ in }
+        let (shows, changed) = PodcastIdentity.migrate(decoded) { _, _ in }
 
         #expect(changed)
         #expect(shows.map(\.id) == ["feed:\(key)"])

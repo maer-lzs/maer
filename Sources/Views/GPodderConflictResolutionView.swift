@@ -109,7 +109,7 @@ struct GPodderConflictResolutionView: View {
     /// Prefer a subscribed show's title (local feeds); else a compact URL.
     private func displayName(feed: String, raw: String?) -> String {
         if let show = PodcastSubscriptions.shared.shows.first(where: {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == feed
+            PodcastIdentity.normalizeFeedURL($0.feedURL) == feed
         }), !show.title.isEmpty {
             return show.title
         }
