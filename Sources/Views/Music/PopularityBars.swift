@@ -95,9 +95,10 @@ struct TrackRowLabel: View {
     var playing: TrackPlaying.Row? = nil
     var coordinator: PlayerCoordinator? = nil
     var bars: Int = 0
-    /// The lines the line under the title may take; one for a track, two
-    /// for a routine's rule, so its reason stands whole.
-    var secondLines: Int = 1
+    /// The lines the line under the title may take; one for a track, as
+    /// many as it needs for a routine's rule (nil), so its reason stands
+    /// whole at every text size.
+    var secondLines: Int? = 1
     /// Track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var numberWidth: CGFloat = 24
     @ScaledMetric(relativeTo: .subheadline) private var coverSide: CGFloat = 40
