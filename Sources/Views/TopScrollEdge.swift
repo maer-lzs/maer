@@ -23,8 +23,9 @@ extension View {
         }
     }
 
-    /// No top edge at all: for columns that stand side by side under one
-    /// bar, where an edge over each column draws a band across the page.
+    /// No top edge at all: for the settings, in two columns under one bar,
+    /// where an edge over each column draws a band across the page, and in
+    /// one form under the pills, where it draws one over the first rows.
     @ViewBuilder
     func withoutTopScrollEdge() -> some View {
         if #available(iOS 26.0, *) {

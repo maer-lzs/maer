@@ -179,6 +179,9 @@ struct SettingsView: View {
                         firstSections
                         secondSections
                     }
+                    // Under the pills the edge drew a band over the first
+                    // rows; the page carries none in either form.
+                    .withoutTopScrollEdge()
                 }
             }
         }

@@ -172,7 +172,7 @@ struct TabBarPlacementTests {
         }
     }
 
-    @Test("die obere Kante ist weich in jeder Haltung, keine Seite setzt eine harte", .needsTheSources)
+    @Test("die obere Kante ist weich in jeder Haltung, nur die Einstellungen tragen in beiden Formen keine", .needsTheSources)
     func theTopEdgeIsSoft() throws {
         let edge = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TopScrollEdge.swift"), encoding: .utf8))
@@ -182,7 +182,7 @@ struct TabBarPlacementTests {
         // and every navigation stack names it: a presented stack does not
         // inherit it from the stack below.
         let stack = try NSRegularExpression(pattern: #"NavigationStack\s*[({]"#)
-        var declared = 0, stacks = 0, hidden: [String] = [], bare: [String] = []
+        var declared = 0, stacks = 0, hidden: [String: Int] = [:], bare: [String] = []
         for (name, raw) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
             let text = SyncContractFenceTests.stripped(raw)
             declared += text.components(separatedBy: "scrollEdgeEffectStyle(").count - 1
@@ -191,13 +191,15 @@ struct TabBarPlacementTests {
             let named = text.components(separatedBy: ".softTopScrollEdge()").count - 1
             stacks += opened
             if opened != named { bare.append("\(name): \(opened) stacks, \(named) edges") }
-            if text.contains(".withoutTopScrollEdge()") { hidden.append(name) }
+            let calls = text.components(separatedBy: ".withoutTopScrollEdge()").count - 1
+            if calls > 0 { hidden[name] = calls }
         }
         #expect(declared == 2, "another scroll edge is declared")
         #expect(stacks > 0, "the fence found no navigation stack, so it measures nothing")
         #expect(bare.isEmpty, "a navigation stack without the soft edge: \(bare.sorted())")
-        // The settings in two columns are the one page without an edge.
-        #expect(hidden == ["SettingsView.swift"], "a page without a top edge: \(hidden.sorted())")
+        // The settings are the one page without an edge, one call for each
+        // of its two forms; a file count would stay green with one form bare.
+        #expect(hidden == ["SettingsView.swift": 2], "pages without a top edge: \(hidden)")
     }
 }
 #endif

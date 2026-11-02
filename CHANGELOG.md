@@ -66,8 +66,8 @@ load has listed since this update, stay.
 **A soft top edge in the settings and every sheet.** The settings, the
 pages opened in them and the app's other sheets (queue, bookmarks,
 chapters, lyrics, sign in) fade their content softly under the top bar
-like the tabs; before, they showed a hard milky band. Where the settings
-stand in two columns, the band is gone entirely.
+like the tabs; before, they showed a hard milky band. On the settings
+page itself the band is gone entirely, in one column and in two.
 
 ## v3.5.1 (Build 58)
 
