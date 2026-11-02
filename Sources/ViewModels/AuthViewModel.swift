@@ -59,7 +59,7 @@ final class AuthViewModel: ObservableObject {
 
         self.serverURLString = storedURLString
         let url = Self.normalizedURL(from: storedURLString) ?? URL(string: "https://example.invalid")!
-        self.apiClient = APIClient(baseURL: url, token: storedToken.value)
+        self.apiClient = Self.makeClient(baseURL: url, token: storedToken.value)
         self.isLoggedIn = state.signedIn
         self.accessUnknown = state.unknown
         apiClient.accessUnknown = state.unknown
@@ -134,9 +134,21 @@ final class AuthViewModel: ObservableObject {
         return ErrorSentence.of(error)
     }
 
+    /// The one way a client of the server comes into being: the shared one
+    /// at the start, a fresh one for every sign-in.
+    static func makeClient(baseURL: URL, token: String?) -> APIClient {
+        APIClient(baseURL: baseURL, token: token)
+    }
+
     /// Connects via username/password (POST /login → token) OR with a directly
     /// entered API token; the connection is then verified via a library fetch
     /// and the token stored in the keychain.
+    ///
+    /// The sign-in runs on a fresh client without a token: the shared one
+    /// still carries the token of the server signed in before, and the new
+    /// address may name another server. Only a sign-in that worked hands
+    /// address and token to the shared client; one that failed leaves it as
+    /// it was, also for the same address.
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
@@ -146,7 +158,7 @@ final class AuthViewModel: ObservableObject {
 
         isLoading = true
         defer { isLoading = false }
-        apiClient.updateBaseURL(url)
+        let trial = Self.makeClient(baseURL: url, token: nil)
 
         let token: String
         switch loginMode {
@@ -157,7 +169,7 @@ final class AuthViewModel: ObservableObject {
                 return
             }
             do {
-                token = try await apiClient.login(username: user, password: password)
+                token = try await trial.login(username: user, password: password)
             } catch APIError.http(401, _) {
                 errorMessage = String(localized: "Login failed. Please check username and password.")
                 return
@@ -174,9 +186,12 @@ final class AuthViewModel: ObservableObject {
             token = trimmedToken
         }
 
-        apiClient.updateToken(token)
+        trial.updateToken(token)
         do {
-            _ = try await apiClient.fetchLibraries()
+            _ = try await trial.fetchLibraries()
+            // The shared client takes the server only now that it answered.
+            apiClient.updateBaseURL(url)
+            apiClient.updateToken(token)
             // A WORKING address goes into the known-server register.
             // Only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
