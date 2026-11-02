@@ -344,9 +344,10 @@ nonisolated enum WidgetRows {
     /// How many whole rows fit. The system caps the type of a widget well
     /// below the app's, so the large size holds four rows at every type
     /// size: measured with the tallest rows (three bars and a station) at
-    /// every accessibility size on an iPhone 16 and on an iPhone 13 mini,
-    /// the smallest large widget of iOS 27. The medium size keeps one row
-    /// at the accessibility sizes.
+    /// the accessibility sizes on an iPhone 16, an iPhone 13 mini and an
+    /// iPhone SE, the smallest large widget of iOS 27. The medium size
+    /// keeps one row there: two started rows push its heading out at the
+    /// largest size.
     static func limit(large: Bool, accessibilitySize: Bool) -> Int {
         switch (large, accessibilitySize) {
         case (true, _): return 4
