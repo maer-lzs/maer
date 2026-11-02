@@ -337,9 +337,16 @@ struct ContinueBySourceTests {
         #expect(WidgetRows.withTitle(of: written, at: Date(), in: pass, passAtMs: passAfter) == pass,
                 "pass after the restore: the hidden title came back")
         model.stop()
+    }
+
+    /// The witness above loads as the restore at start does; this one holds
+    /// that the restore still loads without playing. Its own case, so the
+    /// run over the real player stands without the source tree.
+    @Test("die Wiederherstellung beim Start laedt ohne Hoeren, wie der Zeuge davor sie nachstellt", .needsTheSources)
+    func theRestoreAtStartLoadsWithoutPlaying() throws {
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("await open(item: item, autoplay: false, preservesContext: true, origin: .restore)"),
-                "the restore at start plays, so this witness no longer stands for it")
+                "the restore at start plays, so the witness before no longer stands for it")
     }
 
     @Test("gleiche Zeilen, aber der neue Durchgang laesst den Titel des Schnappschusses aus: das Widget laedt neu")
