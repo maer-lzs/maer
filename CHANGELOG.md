@@ -9,18 +9,18 @@ the newest episode, or the next one, two or three from where you stand.
 When the list plays, each rule becomes the episodes it picks at that
 moment, in its place among the other titles, and its line on the list's
 page says what it will play or why nothing, in full on as many lines
-as the reason needs. A list with a rule is a
-routine: it stands on Start in its own row after Keep Listening, and no
-longer among the playlists of the Music tab. A list holds one rule per
-show. Offline a routine plays only downloaded episodes, so after adding,
-the app offers to download new episodes of that show automatically.
-Siri and Shortcuts can start a routine by its name: the app opens and
-the routine plays, or says why it cannot. The page of a routine says
-in its footer what a routine does. Shuffle on a routine resumes an
-episode a rule picked when it comes first, as Play does. Automatic
-downloads now judge an episode heard or begun the way routines and the
-episode rows do, also from its copy on an Audiobookshelf server, so they
-fetch the episodes a routine will pick.
+as the reason needs. A list with a rule is a routine: it stands on
+Start in its own row after Keep Listening, and no longer among the
+playlists of the Music tab. A list holds one rule per show. Offline a
+routine plays only downloaded episodes, so after adding, the app
+offers to download new episodes of that show automatically. Siri and
+Shortcuts can start a routine by its name: the app opens and the
+routine plays, or says why it cannot. The page of a routine says in its
+footer what a routine does. Shuffle on a routine resumes an episode a
+rule picked when it comes first, as Play does. Automatic downloads now
+judge an episode heard or begun the way routines and the episode rows
+do, also from its copy on an Audiobookshelf server, so they fetch the
+episodes a routine will pick.
 
 **A playlist with one cover shows that cover.** It fills the whole
 square on the card and the page, for your own and for server playlists;
@@ -57,11 +57,12 @@ rows are what the start page shows under Continue and Listen Again, so
 titles from your other devices appear too once the start page has
 loaded. A tap on a row opens that title, its play button continues it
 without opening the app. At the largest text sizes the large widget
-keeps all four rows, each in full; the medium one shows one. Without rows the widget shows the last title, as before.
-An album nobody started shows its name and the artist under it, without
-an empty bar or its whole length as time left. Signing out of the
-Audiobookshelf server also forgets the widget's last title when it came
-from that server; a station, an RSS episode or a catalogue title stays.
+keeps all four rows, each in full; the medium one shows one. Without
+rows the widget shows the last title, as before. An album nobody
+started shows its name and the artist under it, without an empty bar
+or its whole length as time left. Signing out of the Audiobookshelf
+server also forgets the widget's last title when it came from that
+server; a station, an RSS episode or a catalogue title stays.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same
