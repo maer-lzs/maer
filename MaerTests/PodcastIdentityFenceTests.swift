@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 #if canImport(Testing)
+import Foundation
 import Testing
 @testable import Maer
 
@@ -15,22 +16,41 @@ struct PodcastIdentityFenceTests {
                         "normalizeFeedURL", "collapseKey", "migrate", "collapseInto", "originalGuid",
                         "twinEpisodeId", "merge", "carryStoreFacts"]
 
+    /// Whether `text` declares `name` as a static member of any kind: a
+    /// function, or a forwarding constant or property.
+    static func declares(_ name: String, in text: String) -> Bool {
+        text.range(of: #"static (func|let|var) \#(name)\b"#, options: .regularExpression) != nil
+    }
+
     @Test("die stabilen Kennungen der Abos stehen nur in PodcastIdentity, ohne Weiterleitung", .needsTheSources)
     func theStableIdsLiveInOnePlace() throws {
         let subscriptions = try FetchAnswerTests.squeezedSource("Sources/Providers/PodcastSubscriptions.swift")
         for name in Self.moved {
-            #expect(!subscriptions.contains("static func \(name)("), "\(name) is declared in the subscriptions again")
+            #expect(!Self.declares(name, in: subscriptions), "\(name) is declared in the subscriptions again")
         }
-        #expect(!subscriptions.contains("static let secretQueryParams"), "the secret parameters are declared twice")
         let identity = try FetchAnswerTests.squeezedSource("Sources/Models/PodcastIdentity.swift")
         for name in Self.moved {
             #expect(identity.contains("static func \(name)("), "\(name) left the pure type")
         }
-        var tokenRules: [String] = []
-        for (name, text) in ProjectFileIntegrityTests.sourceTexts() where text.contains("func isTokenFeedURL(") {
-            tokenRules.append(name)
+        // One name for each set and rule of the feed address, in its own type.
+        for name in ["isTokenFeedURL", "secretQueryParams"] {
+            var declaring: [String] = []
+            for (file, text) in ProjectFileIntegrityTests.sourceTexts()
+            where Self.declares(name, in: FetchAnswerTests.squeezed(text)) {
+                declaring.append(file)
+            }
+            #expect(declaring == ["PodcastFeedAddress.swift"], "a second name for \(name): \(declaring)")
         }
-        #expect(tokenRules == ["PodcastFeedAddress.swift"], "a second name for the token rule: \(tokenRules)")
+    }
+
+    /// The fence reads every kind of declaration, not only a function.
+    @Test("der Zaun erkennt eine Weiterleitung als func, let und var")
+    func theFenceSeesEveryKind() {
+        #expect(Self.declares("feedKey", in: "nonisolated static func feedKey(_ url: String) -> String"))
+        #expect(Self.declares("feedKey", in: "static let feedKey = PodcastIdentity.feedKey"))
+        #expect(Self.declares("feedKey", in: "static var feedKey: (String) -> String { PodcastIdentity.feedKey }"))
+        #expect(!Self.declares("feedKey", in: "static func feedKeys(_ urls: [String]) -> [String]"))
+        #expect(!Self.declares("feedKey", in: "let key = PodcastIdentity.feedKey(url)"))
     }
 }
 #endif

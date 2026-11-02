@@ -44,20 +44,13 @@ nonisolated enum PodcastIdentity {
         return String(h, radix: 16)
     }
 
-    /// Query parameters whose VALUES are access secrets. A feed carrying
-    /// one is the token-URL premium class (access baked into the URL, no login).
-    /// ONE source: the identity set below builds on this, no duplication.
-    /// "freebie" joined after the ZEIT leak finding (their premium
-    /// class uses `freebie=<token>`). ONE set feeds detection, masking AND
-    /// the OPML-export guard.
-    nonisolated static let secretQueryParams: Set<String> = PodcastFeedAddress.secretQueryParams
-
     /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
     /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
     /// not collapse into one subscription. Everything else (tracking params
-    /// etc.) is still stripped.
+    /// etc.) is still stripped. The secret ones are the one set of
+    /// `PodcastFeedAddress`.
     nonisolated private static let identityQueryParams: Set<String> =
-        secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
+        PodcastFeedAddress.secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
 
     /// The show behind a statistics key. Episode ids are `rss:<feed key>:<guid>`
     /// and the statistics fold them to `rss:<feed key>`, while a show's own
@@ -99,7 +92,7 @@ nonisolated enum PodcastIdentity {
         let base = raw[..<q]
         let masked = raw[raw.index(after: q)...].split(separator: "&").map { pair -> String in
             let parts = pair.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2, secretQueryParams.contains(parts[0].lowercased()) else {
+            guard parts.count == 2, PodcastFeedAddress.secretQueryParams.contains(parts[0].lowercased()) else {
                 return String(pair)
             }
             return "\(parts[0])=••••"
