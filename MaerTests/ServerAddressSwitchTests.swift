@@ -89,6 +89,30 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.jellyfinTokenValue == "token-of-a" && AppStorageKeys.jellyfinUserIdValue == "user-of-a")
     }
 
+    @Test("Jellyfin: der Rueckruf eines Clients von A schreibt nach dem Wechsel nichts, bei demselben Server schon")
+    func aFormerClientKeepsNothingAfterTheSwitch() {
+        let stand = JellyfinStand()
+        defer { stand.restore() }
+        AppStorageKeys.jellyfinServerURLValue = "https://jf.a.example"
+        AppStorageKeys.jellyfinUsernameValue = "hoerer"
+        AppStorageKeys.setJellyfinToken("token-of-a")
+        AppStorageKeys.jellyfinUserIdValue = "user-of-a"
+        let former = JellyfinProvider.storedClient()
+
+        saveJellyfin("https://jf.b.example")
+        // The client of A signs in anew at A while a task still runs.
+        former.onTokenRefresh?("fresh-token-of-a", "user-of-a")
+        #expect(AppStorageKeys.jellyfinTokenValue.isEmpty && AppStorageKeys.jellyfinUserIdValue.isEmpty,
+                "the fresh access of A was stored after the switch")
+        #expect(JellyfinProvider.storedClient().imageURL(itemId: "x", maxWidth: 80) == nil,
+                "the next client of B carries the access of A")
+
+        // The current server's own fresh sign-in is kept.
+        let current = JellyfinProvider.storedClient()
+        current.onTokenRefresh?("token-of-b", "user-of-b")
+        #expect(AppStorageKeys.jellyfinTokenValue == "token-of-b" && AppStorageKeys.jellyfinUserIdValue == "user-of-b")
+    }
+
     /// The stored Subsonic values, put back after the witness.
     private struct SubsonicStand {
         let url = AppStorageKeys.subsonicServerURLValue

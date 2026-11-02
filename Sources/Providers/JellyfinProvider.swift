@@ -92,15 +92,28 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     /// The client the stored settings describe: address, user, password and
-    /// the access the server handed out, if any is kept.
+    /// the access the server handed out, if any is kept. A fresh sign-in is
+    /// kept only while its server is still the stored one: a client of the
+    /// former server lives on in running tasks after a switch, and the
+    /// access it gets there must not reach the next client.
     static func storedClient() -> JellyfinClient {
-        JellyfinClient(
-            serverURL: AppStorageKeys.jellyfinServerURLValue,
+        let builtFor = AppStorageKeys.jellyfinServerURLValue
+        let client = JellyfinClient(
+            serverURL: builtFor,
             username: AppStorageKeys.jellyfinUsernameValue,
             password: AppStorageKeys.jellyfinPasswordValue,
             deviceId: AppStorageKeys.jellyfinDeviceIdValue,
             accessToken: AppStorageKeys.jellyfinTokenValue.isEmpty ? nil : AppStorageKeys.jellyfinTokenValue,
             userId: AppStorageKeys.jellyfinUserIdValue.isEmpty ? nil : AppStorageKeys.jellyfinUserIdValue)
+        client.onTokenRefresh = { token, userId in
+            guard !ServerAddressSwitch.isSwitch(from: builtFor, to: AppStorageKeys.jellyfinServerURLValue) else {
+                Logger.music.notice("JELLYFIN sign-in of a former server not kept")
+                return
+            }
+            AppStorageKeys.setJellyfinToken(token)
+            AppStorageKeys.jellyfinUserIdValue = userId
+        }
+        return client
     }
 
     /// Rebuild the client from the stored settings (TF bib-toggles: nil when
@@ -108,10 +121,6 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func reloadConfig() {
         if AppStorageKeys.jellyfinActive, !AppStorageKeys.jellyfinServerURLValue.isEmpty {
             let client = Self.storedClient()
-            client.onTokenRefresh = { token, userId in
-                AppStorageKeys.setJellyfinToken(token)
-                AppStorageKeys.jellyfinUserIdValue = userId
-            }
             self.client = client
         } else {
             client = nil
