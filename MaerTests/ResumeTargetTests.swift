@@ -278,7 +278,7 @@ struct ResumeTargetTests {
         #expect(!sentence.contains("Audiobook could not be loaded."), "the door says a sentence of its own")
         #expect(door.contains("lastResumeTarget = target"), "the door does not keep the case it met")
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
-        #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.id"), "Siri's named book does not reach the door through the view")
+        #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.itemId"), "Siri's named book does not reach the door through the view")
         let link = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
         #expect(link.contains("guard ResumeLink.asksToResume(url) else { return } ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)"),
                 "the widget's link does not hand its title to the door")

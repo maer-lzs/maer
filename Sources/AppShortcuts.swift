@@ -31,11 +31,15 @@ struct ContinueListeningIntent: AppIntent {
 /// hold the library since the document was poured into them; the document
 /// in Documents stays the reader of last resort for a device that has not
 /// migrated yet.
+///
+/// Its `id` is the outward id (`OutwardItemRef`); the library id stays in
+/// the app and is what a request starts.
 struct BookEntity: AppEntity {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Audiobook"
     static let defaultQuery = BookQuery()
 
     let id: String
+    let itemId: String
     let title: String
     let author: String?
 
@@ -49,45 +53,62 @@ struct BookEntity: AppEntity {
 
 struct BookQuery: EntityStringQuery {
     /// The books the rows hold; no rows or a failed read is no book.
-    nonisolated static func books(rows: LibraryRowStore?) async -> [BookEntity] {
+    nonisolated static func books(rows: LibraryRowStore?, tagOf: (String) -> String?) async -> [BookEntity] {
         guard let rows else { return [] }
         do {
-            return books(from: try await rows.loadAll()?.items ?? [])
+            return books(from: try await rows.loadAll()?.items ?? [], tagOf: tagOf)
         } catch {
             Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public)")
             return []
         }
     }
 
-    /// The entities out of the rows' items: a book needs a title.
-    nonisolated static func books(from items: [LibraryItem]) -> [BookEntity] {
+    /// The entities out of the rows' items: a book needs a title and an
+    /// outward id, so a book whose server the register does not name stays out.
+    nonisolated static func books(from items: [LibraryItem], tagOf: (String) -> String?) -> [BookEntity] {
         items.compactMap { item in
-            guard let title = item.media?.metadata?.title else { return nil }
-            return BookEntity(id: item.id, title: title, author: item.author)
+            guard let title = item.media?.metadata?.title,
+                  let ref = OutwardItemRef.ref(itemId: item.id, serverTag: tagOf(item.id)) else { return nil }
+            return BookEntity(id: ref, itemId: item.id, title: title, author: item.author)
         }
     }
 
-    private func allBooks() async -> [BookEntity] {
+    /// The books the identifiers name, in their order. An outward id finds
+    /// its book when this device knows its owner; an identifier that is no
+    /// outward id is a library id from an older shortcut and finds its book
+    /// directly.
+    nonisolated static func books(for identifiers: [String], in books: [BookEntity],
+                                  tagOf: (String) -> String?) -> [BookEntity] {
+        identifiers.compactMap { identifier in
+            let itemId = OutwardItemRef.parts(of: identifier) == nil
+                ? identifier
+                : OutwardItemRef.itemId(ref: identifier, tagOf: tagOf)
+            return itemId.flatMap { itemId in books.first { $0.itemId == itemId } }
+        }
+    }
+
+    private func allBooks() async -> (books: [BookEntity], tagOf: (String) -> String?) {
+        guard let tagOf = OutwardServerTag.appTagOf() else { return ([], { _ in nil }) }
         var rows: LibraryRowStore?
         do {
             rows = try await MaerDatabase.libraryRows()
         } catch {
             Logger.library.error("SHORTCUT rows unavailable reason=\(String(describing: error), privacy: .public)")
         }
-        return await Self.books(rows: rows)
+        return (await Self.books(rows: rows, tagOf: tagOf), tagOf)
     }
 
     func entities(for identifiers: [String]) async throws -> [BookEntity] {
-        let books = await allBooks()
-        return identifiers.compactMap { id in books.first { $0.id == id } }
+        let all = await allBooks()
+        return Self.books(for: identifiers, in: all.books, tagOf: all.tagOf)
     }
 
     func entities(matching string: String) async throws -> [BookEntity] {
-        await allBooks().filter { $0.title.localizedCaseInsensitiveContains(string) }
+        await allBooks().books.filter { $0.title.localizedCaseInsensitiveContains(string) }
     }
 
     func suggestedEntities() async throws -> [BookEntity] {
-        Array(await allBooks().prefix(12))
+        Array(await allBooks().books.prefix(12))
     }
 }
 
@@ -102,7 +123,7 @@ struct PlayBookIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        ResumeRequest.pendingItemId = book.id
+        ResumeRequest.pendingItemId = book.itemId
         NotificationCenter.default.post(name: .resumeLastBookRequested, object: nil)
         return .result()
     }

@@ -32,7 +32,13 @@ struct ServerAddressSwitchTests {
         ]
         for (stored, new, expected) in cases {
             #expect(ServerAddressSwitch.isSwitch(from: stored, to: new) == expected, "\(stored) to \(new)")
+            // The key is the same rule: two readable addresses switch exactly when their keys differ.
+            if let before = ServerAddressSwitch.serverKey(of: stored), let after = ServerAddressSwitch.serverKey(of: new) {
+                #expect((before != after) == expected, "the key of \(stored) and \(new)")
+            }
         }
+        #expect(ServerAddressSwitch.serverKey(of: "") == nil)
+        #expect(ServerAddressSwitch.serverKey(of: "https://jf.a.example:8096/Jellyfin/") == "jf.a.example:8096/jellyfin")
     }
 
     /// The stored Jellyfin values, put back after the witness.

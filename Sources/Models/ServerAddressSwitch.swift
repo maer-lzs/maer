@@ -25,6 +25,15 @@ nonisolated enum ServerAddressSwitch {
         return old != fresh
     }
 
+    /// The one name of the server an address names by this rule: host,
+    /// port and path; nil for an address that does not read. Two addresses
+    /// with the same key are no switch.
+    static func serverKey(of address: String) -> String? {
+        let text = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, let place = place(of: text) else { return nil }
+        return place.host + (place.port.map { ":\($0)" } ?? "") + place.path
+    }
+
     /// Host, port and path of an address, compared without case, without
     /// a trailing slash and without the default ports.
     private struct Place: Equatable {

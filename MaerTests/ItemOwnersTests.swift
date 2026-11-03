@@ -60,9 +60,10 @@ struct ItemOwnersTests {
     }
 
     /// The register stays on this device: no catalog of synced choices and
-    /// no carrier names it, only the load that writes it and the queue
-    /// that reads it.
-    @Test("das Register reist nicht: nur der Ladeweg und die Warteschlange nennen es", .needsTheSources)
+    /// no carrier names it, only the load that writes it, the queue that
+    /// reads it and the outward tag that hashes its names.
+    @Test("das Register reist nicht: nur der Ladeweg, die Warteschlange und das Etikett nach aussen nennen es",
+          .needsTheSources)
     func theRegisterNeverTravels() throws {
         var namers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -70,8 +71,8 @@ struct ItemOwnersTests {
             if code.contains("ItemOwner") || code.contains("item-owners") { namers.append(file.lastPathComponent) }
         }
         #expect(namers.sorted() == ["ABSServerScope.swift", "ItemOwnerShelf.swift", "ItemOwners.swift",
-                                    "LibraryViewModel.swift", "SyncQueue.swift"],
-                "the register is named outside the load and the queue: \(namers.sorted())")
+                                    "LibraryViewModel.swift", "OutwardServerTag.swift", "SyncQueue.swift"],
+                "the register is named outside the load, the queue and the outward tag: \(namers.sorted())")
     }
 }
 #endif
