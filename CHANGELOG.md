@@ -12,9 +12,11 @@ that fails leaves you connected as you were.
 
 **Siri plays your audiobooks (iOS 27 with Apple Intelligence).** Ask
 Siri to play an audiobook of your Audiobookshelf library in Mär by its
-title or author, or just to play something in Mär to continue the
-audiobook you listened to last. The app answers in the background and
-comes to the front only to say that it found nothing. Shuffle, repeat
+title or author, or just to play something in Mär to continue what
+you listened to last, when that was an audiobook; after an episode,
+a station or music Siri finds nothing to continue for now. The app
+answers in the background and comes to the front only to say that it
+found nothing. Shuffle, repeat
 and a place in the queue do not apply to a book; it plays from where
 you stand. Podcasts, radio and music follow. Shortcuts you made with a
 book keep working. Siri on iOS 26 and earlier is unchanged.
