@@ -47,6 +47,8 @@ final class AppSession: ObservableObject {
         // episode and a catalogue title stay with their source off), the
         // rest stays until the next home pass.
         Task { await ContinueRowsWriter.keepStanding { self.provider(for: $0).isAvailable } }
+        // The switch of the server's podcasts changes the shows on offer.
+        if #available(iOS 27, *) { SpotlightIndex.showsChanged() }
     }
 
     /// Owns the APIClient (built from the keychain). Base URL and token are

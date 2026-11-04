@@ -59,9 +59,7 @@ final class PodcastSubscriptions: ObservableObject {
             ListeningRevision.shared.bump("subscriptions")
             // The device's search follows the shows on offer; the first
             // load from disk asks the first pass.
-            if isTheApp, #available(iOS 27, *), SpotlightIndex.showIds(oldValue) != SpotlightIndex.showIds(stock) {
-                Task { await SpotlightIndex.reconcileShows() }
-            }
+            if isTheApp, #available(iOS 27, *) { SpotlightIndex.showsChanged() }
         }
     }
 

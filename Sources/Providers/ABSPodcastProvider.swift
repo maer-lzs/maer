@@ -76,6 +76,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         if archived { archivedShowIds.insert(showId) } else { archivedShowIds.remove(showId) }
         AppStorageKeys.set(Array(archivedShowIds), for: Self.archiveKey)
         changeToken += 1
+        if #available(iOS 27, *) { SpotlightIndex.showsChanged() }
     }
 
     // MARK: - AudioProvider
@@ -191,6 +192,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         self.rssToABS = rssToABS
         episodeHandles = handles
         changeToken += 1
+        // The server's shows win over the same feed's subscription, so the
+        // device's search follows them too, the first read among them.
+        if #available(iOS 27, *) { SpotlightIndex.showsChanged() }
     }
 
     /// Throttled refresh for frequent, implicit callers (the podcast tab's

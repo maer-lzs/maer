@@ -639,19 +639,111 @@ struct ShortcutBooksTests {
         #expect(index.calls.isEmpty, "a pass without anyone signed in touches the index: \(index.calls)")
     }
 
-    /// A change of the subscriptions asks a pass only when the shows on
-    /// offer change: a show that comes or leaves, or its first episode.
+    /// The shows on offer are those with an episode on offer; a pass
+    /// compares every field of each entity, so a renamed show is a change
+    /// and the same fields are none.
     @Test("die Sendungen auf Angebot fuer Spotlight, nur mit einer Folge auf Angebot")
     @available(iOS 27, *)
+    @MainActor
     func theShowsForSpotlight() {
         let feed = show("s1", title: "Feed", episodes: [("rss:a", "Eins", 1)])
         let empty = show("s2", title: "Leer", episodes: [])
         let server = show("s3", title: "Server", episodes: [("abspod:x", "Zwei", 1)])
-        #expect(SpotlightIndex.showIds([feed, empty, server]) == ["s1"], "only a show with an episode on offer")
+        let prints = { (shows: [PodcastShow]) in Set(PodcastShowQuery.offer(shows).map(SpotlightIndex.fingerprint)) }
+        #expect(PodcastShowQuery.offer([feed, empty, server]).map(\.id) == ["s1"], "only a show with an episode on offer")
         let arrived = show("s2", title: "Leer", episodes: [("rss:b", "Drei", 2)])
-        #expect(SpotlightIndex.showIds([feed, empty]) != SpotlightIndex.showIds([feed, arrived]), "the first episode of a show asks a pass")
-        let renamedEpisode = show("s1", title: "Feed", episodes: [("rss:a", "Eins neu", 1)])
-        #expect(SpotlightIndex.showIds([feed]) == SpotlightIndex.showIds([renamedEpisode]), "a change inside a show asks none")
+        #expect(prints([feed, empty]) != prints([feed, arrived]), "the first episode of a show is a change")
+        #expect(prints([feed]) == prints([show("s1", title: "Feed", episodes: [("rss:a", "Eins", 1)])]), "the same fields are none")
+        #expect(prints([feed]) != prints([show("s1", title: "Feed neu", episodes: [("rss:a", "Eins", 1)])]), "a renamed show is a change")
+    }
+
+    /// Every field that goes into a book's entity is in its print: a book
+    /// renamed, by another author, read by another narrator, in another
+    /// series or genre asks a pass; the same book asks none.
+    @Test("der Abdruck eines Buchs traegt jedes Feld, das in die Suche geht")
+    @available(iOS 27, *)
+    @MainActor
+    func aBooksPrintCarriesEveryField() {
+        let book = BookEntity(id: "r1", itemId: "a", title: "Alpha", author: "A", narrator: "N", series: "S", genres: ["G"])
+        let print = { (book: BookEntity) in SpotlightIndex.fingerprint(AudiobookEntity(book)) }
+        #expect(print(book) == print(book), "the same book is no change")
+        var changed: [String: BookEntity] = [:]
+        changed["title"] = BookEntity(id: "r1", itemId: "a", title: "Beta", author: "A", narrator: "N", series: "S", genres: ["G"])
+        changed["author"] = BookEntity(id: "r1", itemId: "a", title: "Alpha", author: "B", narrator: "N", series: "S", genres: ["G"])
+        changed["narrator"] = BookEntity(id: "r1", itemId: "a", title: "Alpha", author: "A", narrator: "M", series: "S", genres: ["G"])
+        changed["series"] = BookEntity(id: "r1", itemId: "a", title: "Alpha", author: "A", narrator: "N", series: "T", genres: ["G"])
+        changed["genre"] = BookEntity(id: "r1", itemId: "a", title: "Alpha", author: "A", narrator: "N", series: "S", genres: ["H"])
+        for (field, other) in changed {
+            #expect(print(book) != print(other), "a changed \(field) is no change")
+        }
+    }
+
+    /// A renamed book and a renamed show set the index again; the same
+    /// fields leave it.
+    @Test("ein umbenanntes Buch und eine umbenannte Sendung loesen einen Durchgang aus, dieselben Felder keinen")
+    @available(iOS 27, *)
+    @MainActor
+    func aRenameAsksAPass() async {
+        let keptBooks = SpotlightIndex.index
+        let keptShows = SpotlightIndex.showIndex
+        defer {
+            SpotlightIndex.index = keptBooks
+            SpotlightIndex.showIndex = keptShows
+        }
+        let books = SpotlightRecorder()
+        let shows = SpotlightRecorder()
+        SpotlightIndex.index = books.index(naming: { $0.title ?? "" })
+        SpotlightIndex.showIndex = shows.index(naming: \.title)
+        var title = "Alpha"
+        let book = { [BookEntity(id: "r1", itemId: "a", title: title, author: "A", narrator: nil, series: nil, genres: [])] }
+        await SpotlightIndex.forget()
+        await SpotlightIndex.reconcile(books: { book() }, signedIn: { true })
+        await SpotlightIndex.reconcile(books: { book() }, signedIn: { true })
+        title = "Beta"
+        await SpotlightIndex.reconcile(books: { book() }, signedIn: { true })
+        #expect(books.calls == ["remove", "remove", "add Alpha", "remove", "add Beta"], "\(books.calls)")
+
+        var name = "Eins"
+        let offer: @MainActor () -> [PodcastShowEntity] = { [PodcastShowEntity(id: "s1", title: name)] }
+        await SpotlightIndex.reconcileShows(shows: { [] })
+        shows.calls = []
+        await SpotlightIndex.reconcileShows(shows: offer)
+        await SpotlightIndex.reconcileShows(shows: offer)
+        name = "Eins neu"
+        await SpotlightIndex.reconcileShows(shows: offer)
+        #expect(shows.calls == ["remove", "add Eins", "remove", "add Eins neu"], "\(shows.calls)")
+    }
+
+    /// The shows on offer follow what the podcast surface shows: at a cold
+    /// start a show on both sides stands by its feed until the server's
+    /// shows are read, then the server's copy wins and has no episode on
+    /// offer; the switch of the server's podcasts brings the feed's copy
+    /// back. Each change asks a pass, and the pass follows.
+    @Test("die Suche folgt den Sendungen der Flaeche: erste Lesung des Servers und Schalter")
+    @available(iOS 27, *)
+    @MainActor
+    func theShowsFollowTheSurface() async {
+        let keptShows = SpotlightIndex.showIndex
+        defer { SpotlightIndex.showIndex = keptShows }
+        let shows = SpotlightRecorder()
+        SpotlightIndex.showIndex = shows.index(naming: \.id)
+        let feed = show("k1", title: "Zeitfragen", episodes: [("rss:k1:a", "Eins", 1)])
+        var server = feed
+        server.id = "abs-k1"
+        server.episodes = [PodcastEpisode(guid: "abspod:s:e", title: "Eins", audioURL: "https://x.example/a.mp3", pubDate: 1, duration: 0)]
+        var absShows: [PodcastShow] = []
+        let offer: @MainActor () -> [PodcastShowEntity] = { PodcastShowQuery.offer(PodcastShowMerge.merge(abs: absShows, rss: [feed])) }
+
+        await SpotlightIndex.reconcileShows(shows: { [] })
+        shows.calls = []
+        await SpotlightIndex.showsChanged(shows: offer).value
+        #expect(shows.calls == ["remove", "add k1"], "before the server's shows are read the feed stands: \(shows.calls)")
+        absShows = [server]
+        await SpotlightIndex.showsChanged(shows: offer).value
+        #expect(shows.calls == ["remove", "add k1", "remove"], "the first read lets the server's copy win: \(shows.calls)")
+        absShows = []
+        await SpotlightIndex.showsChanged(shows: offer).value
+        #expect(shows.calls == ["remove", "add k1", "remove", "remove", "add k1"], "the switch brings the feed back: \(shows.calls)")
     }
 
     /// The shows go into the same index through the same line, without the
@@ -695,14 +787,16 @@ struct ShortcutBooksTests {
     }
 
     /// One place adds books and shows to the device's search and takes them
-    /// out; the books follow a full list and the sign out, the shows a
-    /// change of the subscriptions.
-    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste, bei der Abmeldung und mit den Abos", .needsTheSources)
+    /// out; the books follow a full list and the sign out, the shows every
+    /// writer of what the podcast surface shows: the subscriptions, the
+    /// server's shows and their archive, and the switch of the sources.
+    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste, bei der Abmeldung und mit den Sendungen der Flaeche", .needsTheSources)
     func spotlightHasOnePlace() throws {
         var writing: [String] = []
         var reconciling: [String] = []
         var forgetting: [String] = []
         var following: [String] = []
+        var asking: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
             let squeezed = FetchAnswerTests.squeezed(text)
             if squeezed.contains("indexAppEntities(") || squeezed.contains("deleteAppEntities(")
@@ -710,16 +804,26 @@ struct ShortcutBooksTests {
             if squeezed.contains("SpotlightIndex.reconcile(") { reconciling.append(file) }
             if squeezed.contains("SpotlightIndex.forget(") { forgetting.append(file) }
             if squeezed.contains("SpotlightIndex.reconcileShows(") { following.append(file) }
+            if squeezed.contains("SpotlightIndex.showsChanged(") { asking.append(file) }
         }
         #expect(writing == ["AppShortcuts.swift"], "the device's search is written elsewhere: \(writing)")
         #expect(reconciling == ["LibraryViewModel.swift"], "\(reconciling)")
         #expect(forgetting == ["AuthViewModel.swift"], "\(forgetting)")
-        #expect(following == ["PodcastSubscriptions.swift"], "\(following)")
+        #expect(following.isEmpty, "the shows' pass is asked past the one way: \(following)")
+        #expect(Set(asking) == ["PodcastSubscriptions.swift", "ABSPodcastProvider.swift", "AppSession.swift"], "\(asking)")
+        let server = try FetchAnswerTests.squeezedSource("Sources/Providers/ABSPodcastProvider.swift")
+        #expect(server.contains("episodeHandles = handles changeToken += 1 if #available(iOS 27, *) { SpotlightIndex.showsChanged() } }"),
+                "the server's shows do not ask a pass where they change")
+        #expect(server.contains("AppStorageKeys.set(Array(archivedShowIds), for: Self.archiveKey) changeToken += 1 if #available(iOS 27, *) { SpotlightIndex.showsChanged() } }"),
+                "the archive does not ask a pass")
+        let session = try FetchAnswerTests.squeezedSource("Sources/AppSession.swift")
+        #expect(session.contains("Task { await ContinueRowsWriter.keepStanding { self.provider(for: $0).isAvailable } } if #available(iOS 27, *) { SpotlightIndex.showsChanged() } }"),
+                "the switch of the sources does not ask a pass")
         let library = try FetchAnswerTests.squeezedSource("Sources/ViewModels/LibraryViewModel.swift")
         #expect(library.contains("cleanUpPerBook(full: full, bookLibraries: libraries.count) if full != nil, #available(iOS 27, *) { Task { await SpotlightIndex.reconcile() } }"),
                 "the pass does not follow the full list")
         let subscriptions = try FetchAnswerTests.squeezedSource("Sources/Providers/PodcastSubscriptions.swift")
-        #expect(subscriptions.contains("@Published private var stock: [PodcastShow] = [] { didSet { rebuildCaches() ListeningRevision.shared.bump(\"subscriptions\") if isTheApp, #available(iOS 27, *), SpotlightIndex.showIds(oldValue) != SpotlightIndex.showIds(stock) { Task { await SpotlightIndex.reconcileShows() } }"),
+        #expect(subscriptions.contains("@Published private var stock: [PodcastShow] = [] { didSet { rebuildCaches() ListeningRevision.shared.bump(\"subscriptions\") if isTheApp, #available(iOS 27, *) { SpotlightIndex.showsChanged() } }"),
                 "the shows' pass does not follow the stock")
     }
 

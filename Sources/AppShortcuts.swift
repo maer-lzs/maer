@@ -334,7 +334,13 @@ struct PodcastShowQuery: EntityStringQuery {
     /// The shows on offer: those with an episode on offer.
     @MainActor
     static func shows() -> [PodcastShowEntity] {
-        PodcastShowSources.active().filter(EpisodeOffer.hasOffer).map { PodcastShowEntity(id: $0.id, title: $0.title) }
+        offer(PodcastShowSources.active())
+    }
+
+    /// The shows on offer among `shows`, as entities.
+    @MainActor
+    static func offer(_ shows: [PodcastShow]) -> [PodcastShowEntity] {
+        shows.filter(EpisodeOffer.hasOffer).map { PodcastShowEntity(id: $0.id, title: $0.title) }
     }
 
     func entities(for identifiers: [String]) async throws -> [PodcastShowEntity] {
@@ -740,10 +746,11 @@ extension PodcastShowEntity: IndexedEntity {}
 /// on offer now (the books with an outward id, the shows with an episode on
 /// offer): all entities of this kind out, the ones on offer in. So a book
 /// that left, a server under a new name (a new tag) and a new server need no
-/// list of the indexed books; no store keeps an outward id. The set indexed
-/// last is kept per kind in this process only, so a pass with the same ids
-/// does nothing. A sign out takes every book out; the shows are subscribed
-/// on this device and stay.
+/// list of the indexed books; no store keeps an outward id. The prints
+/// indexed last (every field of each entity) are kept per kind in this
+/// process only, so a pass with the same entities does nothing and a renamed
+/// book or show is a change. A sign out takes every book out; the shows are
+/// subscribed on this device and stay.
 ///
 /// Passes and the sign out run one at a time, in the order they are asked
 /// (`line`): each waits for the one before. A pass that suspends at the
@@ -788,21 +795,42 @@ enum SpotlightIndex {
         removeAll: { try await CSSearchableIndex.default().deleteAppEntities(ofType: PodcastShowEntity.self) },
         add: { try await CSSearchableIndex.default().indexAppEntities($0) })
 
-    /// The ids indexed last in this process, per kind; nil when unknown.
+    /// The prints indexed last in this process, per kind; nil when unknown.
     private static var indexed: Set<String>?
     private static var showsIndexed: Set<String>?
 
     /// Whether a pass with `offer` changes the index: not when it holds
-    /// exactly these ids already.
+    /// exactly these prints already.
     nonisolated static func pass(offer: Set<String>, indexed: Set<String>?) -> Pass {
         offer == indexed ? .keep : .replace
     }
 
-    /// The ids of the shows a pass would offer from `shows`: those with an
-    /// episode on offer. A change of the subscriptions asks a pass only
-    /// when these differ.
-    nonisolated static func showIds(_ shows: [PodcastShow]) -> Set<String> {
-        Set(shows.filter(EpisodeOffer.hasOffer).map(\.id))
+    /// What a pass compares for one entity: every stored field, read from
+    /// the entity itself, so a field that joins the entity joins the print
+    /// without a list.
+    nonisolated static func fingerprint<Entity>(_ entity: Entity) -> String {
+        Mirror(reflecting: entity).children
+            .map { "\($0.label ?? ""):\(String(describing: $0.value))" }
+            .joined(separator: "\u{1F}")
+    }
+
+    /// The pass of the shows asked and not begun yet; the writes of one
+    /// turn ask one pass.
+    private static var showsAsked: Task<Void, Never>?
+
+    /// Asks a pass of the shows. Every writer of what
+    /// `PodcastShowSources.active()` reads calls here: the subscriptions,
+    /// the server's shows and their archive, and the switch of the sources.
+    /// The pass keeps the index when the prints are the same.
+    @discardableResult
+    static func showsChanged(shows: @escaping @MainActor () -> [PodcastShowEntity] = { PodcastShowQuery.shows() }) -> Task<Void, Never> {
+        if let showsAsked { return showsAsked }
+        let asked = Task { @MainActor in
+            showsAsked = nil
+            await reconcileShows(shows: shows)
+        }
+        showsAsked = asked
+        return asked
     }
 
     /// Sets the index to the books on offer, in line. Without anyone signed
@@ -829,19 +857,19 @@ enum SpotlightIndex {
         }
     }
 
-    /// Sets `index` to `offer` unless it holds exactly these ids, and gives
-    /// the ids it holds now. A failure gives nil, unknown, so the next pass
-    /// sets it again.
+    /// Sets `index` to `offer` unless it holds exactly these prints, and
+    /// gives the prints it holds now. A failure gives nil, unknown, so the
+    /// next pass sets it again.
     private static func replace<Entity: IndexedEntity>(
         _ offer: [Entity], in index: Index<Entity>, indexed: Set<String>?, kind: String
-    ) async -> Set<String>? where Entity.ID == String {
-        let ids = Set(offer.map(\.id))
-        guard pass(offer: ids, indexed: indexed) == .replace else { return indexed }
+    ) async -> Set<String>? {
+        let prints = Set(offer.map(fingerprint))
+        guard pass(offer: prints, indexed: indexed) == .replace else { return indexed }
         do {
             try await index.removeAll()
             if !offer.isEmpty { try await index.add(offer) }
-            Logger.library.notice("SPOTLIGHT \(kind, privacy: .public) indexed=\(ids.count)")
-            return ids
+            Logger.library.notice("SPOTLIGHT \(kind, privacy: .public) indexed=\(offer.count)")
+            return prints
         } catch {
             Logger.library.error("SPOTLIGHT \(kind, privacy: .public) not indexed: \(FailureReason.of(error), privacy: .public)")
             return nil
