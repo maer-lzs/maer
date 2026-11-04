@@ -77,5 +77,45 @@ struct ShortcutBooksTests {
         #expect(found.first?.id == "a", "without a tag the book keeps the id the shortcut holds")
         #expect(BookQuery.books(from: items, tagOf: noTag).isEmpty, "nothing new is offered without a tag")
     }
+
+    @Test("das Hoerbuch der Audio-Domaene traegt, was die Zeile weiss, und dieselbe Kennung")
+    @available(iOS 27, *)
+    func theAudiobookCarriesTheRow() throws {
+        let row = LibraryItem(
+            id: "a",
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(title: "Alpha", authorName: "A", narratorName: "N",
+                                              seriesName: "S", genres: ["Krimi", "Hoerspiel"], publishedYear: nil,
+                                              description: nil),
+                duration: 10, chapters: nil, tracks: nil),
+            addedAt: 1)
+        let book = try #require(BookQuery.books(from: [row], tagOf: tagOf).first)
+        let audiobook = AudiobookEntity(book)
+        #expect(audiobook.id == book.id, "one outward id for both entities")
+        #expect(audiobook.itemId == "a")
+        #expect(audiobook.title == "Alpha")
+        #expect(audiobook.author == "A")
+        #expect(audiobook.narrator == "N")
+        #expect(audiobook.seriesTitle == "S")
+        #expect(audiobook.genre == "Krimi, Hoerspiel")
+        #expect(audiobook.publisher == nil && audiobook.purchaseDate == nil && audiobook.releaseDate == nil,
+                "a field the library does not hold stays empty")
+    }
+
+    /// The build exports the entity under the audio schema: without it the
+    /// metadata of the whole target are missing and no intent works.
+    @Test("der Bau exportiert das Hoerbuch unter dem Schema der Audio-Domaene")
+    func theBuildExportsTheAudiobook() throws {
+        let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
+                                               subdirectory: "Metadata.appintents"),
+                               "the app carries no App Intents metadata")
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        let json = try #require(object as? [String: Any])
+        let entities = try #require(json["entities"] as? [String: Any])
+        let entity = try #require(entities["AudiobookEntity"], "the audiobook entity is not exported")
+        let text = String(describing: entity)
+        #expect(text.contains("MediaBookEntity") && text.contains("audio"), "not under the audio schema: \(text.prefix(300))")
+    }
 }
 #endif

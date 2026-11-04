@@ -42,12 +42,69 @@ struct BookEntity: AppEntity {
     let itemId: String
     let title: String
     let author: String?
+    var narrator: String? = nil
+    var series: String? = nil
+    var genres: [String] = []
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
             title: "\(title)",
             subtitle: author.map { "\($0)" }
         )
+    }
+}
+
+/// The same book for the audio domain of iOS 27 (`.audio.audiobook`): what
+/// Siri and the system's search ask about a book. It comes from the one
+/// reading of the rows (`BookQuery`); a field the library does not hold
+/// stays empty.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.audiobook)
+struct AudiobookEntity: AppEntity {
+    static let defaultQuery = AudiobookQuery()
+
+    let id: String
+    let itemId: String
+    var title: String?
+    var author: String?
+    var genre: String?
+    var narrator: String?
+    var publisher: String?
+    var purchaseDate: Date?
+    var releaseDate: Date?
+    var seriesTitle: String?
+
+    init(_ book: BookEntity) {
+        id = book.id
+        itemId = book.itemId
+        title = book.title
+        author = book.author
+        genre = book.genres.isEmpty ? nil : book.genres.joined(separator: ", ")
+        narrator = book.narrator
+        seriesTitle = book.series
+    }
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(title ?? "")", subtitle: author.map { "\($0)" })
+    }
+}
+
+@available(iOS 27, *)
+struct AudiobookQuery: EntityStringQuery {
+    func entities(for identifiers: [String]) async throws -> [AudiobookEntity] {
+        let now = await BookQuery.current()
+        return BookQuery.books(for: identifiers, in: now.items, tagOf: now.tagOf).map(AudiobookEntity.init)
+    }
+
+    func entities(matching string: String) async throws -> [AudiobookEntity] {
+        let now = await BookQuery.current()
+        return BookQuery.books(from: now.items, tagOf: now.tagOf)
+            .filter { $0.title.localizedCaseInsensitiveContains(string) }.map(AudiobookEntity.init)
+    }
+
+    func suggestedEntities() async throws -> [AudiobookEntity] {
+        let now = await BookQuery.current()
+        return BookQuery.books(from: now.items, tagOf: now.tagOf).prefix(12).map(AudiobookEntity.init)
     }
 }
 
@@ -70,8 +127,9 @@ struct BookQuery: EntityStringQuery {
 
     /// The entity of one item under `id`; an item without a title is no book.
     nonisolated static func book(_ item: LibraryItem, id: String) -> BookEntity? {
-        guard let title = item.media?.metadata?.title else { return nil }
-        return BookEntity(id: id, itemId: item.id, title: title, author: item.author)
+        guard let metadata = item.media?.metadata, let title = metadata.title else { return nil }
+        return BookEntity(id: id, itemId: item.id, title: title, author: item.author,
+                          narrator: metadata.narratorName, series: metadata.seriesName, genres: metadata.genres ?? [])
     }
 
     /// The entities on offer: a book needs a title and an outward id, so a
@@ -103,8 +161,8 @@ struct BookQuery: EntityStringQuery {
     }
 
     /// The rows' items and the tags of this device; without a salt or a
-    /// register no item has a tag.
-    private func current() async -> (items: [LibraryItem], tagOf: (String) -> String?) {
+    /// register no item has a tag. Both entities of a book ask this reading.
+    nonisolated static func current() async -> (items: [LibraryItem], tagOf: (String) -> String?) {
         let tagOf = OutwardServerTag.appTagOf() ?? { _ in nil }
         var rows: LibraryRowStore?
         do {
@@ -116,17 +174,17 @@ struct BookQuery: EntityStringQuery {
     }
 
     func entities(for identifiers: [String]) async throws -> [BookEntity] {
-        let now = await current()
+        let now = await Self.current()
         return Self.books(for: identifiers, in: now.items, tagOf: now.tagOf)
     }
 
     func entities(matching string: String) async throws -> [BookEntity] {
-        let now = await current()
+        let now = await Self.current()
         return Self.books(from: now.items, tagOf: now.tagOf).filter { $0.title.localizedCaseInsensitiveContains(string) }
     }
 
     func suggestedEntities() async throws -> [BookEntity] {
-        let now = await current()
+        let now = await Self.current()
         return Array(Self.books(from: now.items, tagOf: now.tagOf).prefix(12))
     }
 }
