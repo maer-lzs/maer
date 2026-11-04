@@ -319,12 +319,26 @@ struct PlayAudioIntent: AppIntent {
 /// The entity the lock screen's title stands for, so Siri knows what plays
 /// (`MPNowPlayingInfoPropertyAppEntityIdentifiers`): a book with its outward
 /// id. Worked out once per title, because the info is written on every
-/// event of the playback; a title without an outward id has none, also when
-/// its owner becomes known while it plays, until the next title.
+/// event of the playback. A found entity holds for its title. An empty
+/// answer holds only while the owner register keeps its stand and for at
+/// most `emptyHolds` seconds: a book often plays for days, its owner comes
+/// with the next full load, and a salt the locked keychain did not give
+/// comes without an event.
 @available(iOS 27, *)
 @MainActor
 enum NowPlayingEntities {
-    private static var memo: (itemId: String?, identifiers: [MPAppEntityIdentifier])?
+    /// How long an empty answer holds when nothing else changes.
+    nonisolated static let emptyHolds: TimeInterval = 60
+
+    private static var memo: (itemId: String?, identifiers: [MPAppEntityIdentifier], generation: Int, at: Date)?
+
+    /// Whether a kept answer still holds for this title: a found entity
+    /// always, an empty one under the same register stand and within its time.
+    nonisolated static func holds(itemId: String?, identifiers: Int, generation: Int, at: Date,
+                                  for asked: String?, generation now: Int, now date: Date) -> Bool {
+        guard itemId == asked else { return false }
+        return identifiers > 0 || (generation == now && date.timeIntervalSince(at) < emptyHolds)
+    }
 
     /// The outward id of the playing title, when it is a book on offer.
     nonisolated static func ref(forItem itemId: String?, tagOf: (String) -> String?) -> String? {
@@ -333,17 +347,22 @@ enum NowPlayingEntities {
     }
 
     /// The identifiers for the playing title; the device's tags are read
-    /// only when the title changes, and only for a library id.
+    /// only when the kept answer no longer holds, and only for a library id.
     static func identifiers(forItem itemId: String?,
-                            tagOf: () -> ((String) -> String?)? = { OutwardServerTag.appTagOf() }) -> [MPAppEntityIdentifier] {
-        if let memo, memo.itemId == itemId { return memo.identifiers }
+                            tagOf: () -> ((String) -> String?)? = { OutwardServerTag.appTagOf() },
+                            generation: Int = OutwardServerTag.registerGeneration,
+                            now: Date = Date()) -> [MPAppEntityIdentifier] {
+        if let memo, holds(itemId: memo.itemId, identifiers: memo.identifiers.count, generation: memo.generation,
+                           at: memo.at, for: itemId, generation: generation, now: now) {
+            return memo.identifiers
+        }
         var identifiers: [MPAppEntityIdentifier] = []
         if let itemId, ItemNamespace.of(itemId) == nil, let tags = tagOf(),
            let ref = ref(forItem: itemId, tagOf: tags),
            let identifier = MPAppEntityIdentifier(entityIdentifier: EntityIdentifier(for: AudiobookEntity.self, identifier: ref)) {
             identifiers = [identifier]
         }
-        memo = (itemId, identifiers)
+        memo = (itemId, identifiers, generation, now)
         return identifiers
     }
 }

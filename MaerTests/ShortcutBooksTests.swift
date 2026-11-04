@@ -196,6 +196,77 @@ struct ShortcutBooksTests {
                 "without salt or register no entity")
     }
 
+    /// A book often plays for days: an empty answer gives way when the
+    /// register gets a new stand, and an unreadable salt is asked again
+    /// after a minute, without a read on every write in between.
+    @Test("ein leeres Ergebnis weicht einem neuen Stand des Registers und nach einer Minute")
+    @available(iOS 27, *)
+    @MainActor
+    func anEmptyAnswerGivesWay() {
+        let book = "li_\(UUID().uuidString)"
+        let start = Date()
+        var reads = 0
+        var owners = ItemOwners()
+        let tags: () -> ((String) -> String?)? = {
+            reads += 1
+            return OutwardServerTag.tagOf(owners: owners, salt: OutwardItemRefTests.saltA)
+        }
+        #expect(NowPlayingEntities.identifiers(forItem: book, tagOf: tags, generation: 7, now: start).isEmpty,
+                "no owner yet")
+        #expect(NowPlayingEntities.identifiers(forItem: book, tagOf: tags, generation: 7, now: start + 30).isEmpty)
+        #expect(reads == 1, "the same stand within the minute reads nothing")
+        owners.noteFullLoad(ids: [book], server: OutwardItemRefTests.serverA)
+        #expect(NowPlayingEntities.identifiers(forItem: book, tagOf: tags, generation: 8, now: start + 31).count == 1,
+                "the register's new stand gives the entity while the same book plays")
+        #expect(reads == 2)
+        #expect(NowPlayingEntities.identifiers(forItem: book, tagOf: tags, generation: 9, now: start + 999).count == 1)
+        #expect(reads == 2, "a found entity holds for its title")
+
+        let locked = "li_\(UUID().uuidString)"
+        var saltReadable = false
+        let lockedTags: () -> ((String) -> String?)? = {
+            reads += 1
+            guard saltReadable else { return nil }
+            return OutwardServerTag.tagOf(owners: OutwardItemRefTests.owners([locked: OutwardItemRefTests.serverA]),
+                                          salt: OutwardItemRefTests.saltA)
+        }
+        #expect(NowPlayingEntities.identifiers(forItem: locked, tagOf: lockedTags, generation: 9, now: start).isEmpty,
+                "a locked keychain gives no salt")
+        saltReadable = true
+        #expect(NowPlayingEntities.identifiers(forItem: locked, tagOf: lockedTags, generation: 9, now: start + 59).isEmpty)
+        #expect(reads == 3, "within the minute nothing is read")
+        #expect(NowPlayingEntities.identifiers(forItem: locked, tagOf: lockedTags, generation: 9, now: start + 61).count == 1,
+                "after the minute the salt is asked again")
+    }
+
+    @Test("ein gemerktes Ergebnis gilt fuer seinen Titel, leer nur bei gleichem Stand und binnen der Frist")
+    @available(iOS 27, *)
+    func whenAKeptAnswerHolds() {
+        let at = Date()
+        let holds = { (count: Int, kept: Int, now: Int, after: TimeInterval, asked: String?) in
+            NowPlayingEntities.holds(itemId: "a", identifiers: count, generation: kept, at: at,
+                                     for: asked, generation: now, now: at + after)
+        }
+        #expect(holds(1, 1, 2, 9999, "a"), "a found entity holds")
+        #expect(!holds(1, 1, 1, 0, "b"), "another title never holds")
+        #expect(holds(0, 1, 1, 59, "a"), "empty, same stand, within the minute")
+        #expect(!holds(0, 1, 2, 0, "a"), "empty gives way to a new stand")
+        #expect(!holds(0, 1, 1, NowPlayingEntities.emptyHolds, "a"), "empty gives way after the minute")
+    }
+
+    @Test("ein geschriebenes Register zaehlt seinen Stand")
+    func aWrittenRegisterCountsItsStand() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("owners-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let shelf = ItemOwnerShelf(file: dir.appendingPathComponent("item-owners.json"))
+        let before = OutwardServerTag.registerGeneration
+        shelf.write(OutwardItemRefTests.owners(["a": OutwardItemRefTests.serverA]), afterCorruptRead: false)
+        #expect(OutwardServerTag.registerGeneration > before, "a written register is a new stand")
+        let after = OutwardServerTag.registerGeneration
+        shelf.write(ItemOwners(), afterCorruptRead: true)
+        #expect(OutwardServerTag.registerGeneration == after, "a write that does not happen is no new stand")
+    }
+
     @Test("die Angaben zum laufenden Titel tragen sein Buch", .needsTheSources)
     func theNowPlayingInfoCarriesTheBook() throws {
         let nowPlaying = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")

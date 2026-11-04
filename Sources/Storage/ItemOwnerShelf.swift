@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import Synchronization
 
 /// Where the register of `ItemOwners` lies: a file of its own beside the
 /// app's database, like `RestingShelf`, not in the defaults. It grows with
@@ -13,6 +14,13 @@ import OSLog
 /// the resting shelf it stays in the device backup. No carrier reads it.
 nonisolated struct ItemOwnerShelf: Sendable {
     let file: URL
+
+    /// Counts the registers written in this process: a reader that keeps
+    /// what it worked out from the register asks this, not the file.
+    private static let writes = Mutex<Int>(0)
+
+    /// The number of registers written so far; a new number is a new stand.
+    static var generation: Int { writes.withLock { $0 } }
 
     /// The app's register, beside the app's database file.
     static var app: ItemOwnerShelf? {
@@ -36,6 +44,7 @@ nonisolated struct ItemOwnerShelf: Sendable {
         do {
             try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(owners).write(to: file, options: .atomic)
+            Self.writes.withLock { $0 += 1 }
         } catch {
             Logger.library.error("ITEM owners write failed: \(FailureReason.of(error), privacy: .public)")
         }

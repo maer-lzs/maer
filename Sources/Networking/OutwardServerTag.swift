@@ -76,6 +76,10 @@ nonisolated enum OutwardServerTag {
              random: { Data((0..<saltLength).map { _ in UInt8.random(in: .min ... .max) }) })
     }
 
+    /// The stand of the owner register in this process: what was worked out
+    /// from the tags holds as long as this number does.
+    static var registerGeneration: Int { ItemOwnerShelf.generation }
+
     /// The tags of this device: its salt over the owner register. Nil when
     /// either is unavailable; then no outward id is handed out.
     static func appTagOf() -> ((String) -> String?)? {
