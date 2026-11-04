@@ -21,8 +21,12 @@ final class SpotlightRecorder {
     var held: CheckedContinuation<Void, Never>?
 
     @available(iOS 27, *)
-    func index() -> SpotlightBooks.Index {
-        SpotlightBooks.Index(
+    func index() -> SpotlightIndex.Index<AudiobookEntity> { index(naming: \.itemId) }
+
+    /// The index of one kind; `name` gives what a call writes for an entity.
+    @available(iOS 27, *)
+    func index<Entity>(naming name: @escaping (Entity) -> String) -> SpotlightIndex.Index<Entity> {
+        SpotlightIndex.Index(
             removeAll: {
                 self.calls.append("remove")
                 if self.holdNextRemoval {
@@ -32,7 +36,7 @@ final class SpotlightRecorder {
             },
             add: { entities in
                 if self.failAdd { throw URLError(.cannotWriteToFile) }
-                self.calls.append("add " + entities.map(\.itemId).sorted().joined(separator: ","))
+                self.calls.append("add " + entities.map(name).sorted().joined(separator: ","))
             })
     }
 }
@@ -395,11 +399,11 @@ struct ShortcutBooksTests {
     @Test("Spotlight bleibt bei gleicher Menge, ersetzt bei jeder anderen")
     @available(iOS 27, *)
     func whenSpotlightChanges() {
-        #expect(SpotlightBooks.pass(offer: ["a", "b"], indexed: ["b", "a"]) == .keep)
-        #expect(SpotlightBooks.pass(offer: ["a"], indexed: ["a", "b"]) == .replace, "a book left")
-        #expect(SpotlightBooks.pass(offer: ["a", "c"], indexed: ["a"]) == .replace, "a book came")
-        #expect(SpotlightBooks.pass(offer: ["a"], indexed: nil) == .replace, "unknown is set anew")
-        #expect(SpotlightBooks.pass(offer: [], indexed: []) == .keep)
+        #expect(SpotlightIndex.pass(offer: ["a", "b"], indexed: ["b", "a"]) == .keep)
+        #expect(SpotlightIndex.pass(offer: ["a"], indexed: ["a", "b"]) == .replace, "a book left")
+        #expect(SpotlightIndex.pass(offer: ["a", "c"], indexed: ["a"]) == .replace, "a book came")
+        #expect(SpotlightIndex.pass(offer: ["a"], indexed: nil) == .replace, "unknown is set anew")
+        #expect(SpotlightIndex.pass(offer: [], indexed: []) == .keep)
     }
 
     /// The index is set to what is on offer, through the one place, and a
@@ -408,35 +412,35 @@ struct ShortcutBooksTests {
     @available(iOS 27, *)
     @MainActor
     func spotlightCarriesTheOffer() async {
-        let kept = SpotlightBooks.index
-        defer { SpotlightBooks.index = kept }
+        let kept = SpotlightIndex.index
+        defer { SpotlightIndex.index = kept }
         let index = SpotlightRecorder()
-        SpotlightBooks.index = index.index()
+        SpotlightIndex.index = index.index()
         let shelf = [item("a", title: "Alpha"), item("b", title: "Beta"), item("unowned", title: "Ohne")]
         index.items = shelf
         let tagOf = self.tagOf
         let offer: @MainActor () async -> [BookEntity] = { BookQuery.books(from: index.items, tagOf: tagOf) }
         let signedIn: @MainActor () -> Bool = { true }
 
-        await SpotlightBooks.forget()
+        await SpotlightIndex.forget()
         index.calls = []
-        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b"], "the books on offer replace the index, the one without an owner stays out")
-        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b"], "the same books change nothing")
         index.items = [shelf[0]]
-        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b", "remove", "add a"], "a book that left goes out")
         index.failAdd = true
         index.items = shelf
-        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: offer, signedIn: signedIn)
         index.failAdd = false
-        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: offer, signedIn: signedIn)
         #expect(Array(index.calls.suffix(3)) == ["remove", "remove", "add a,b"], "after a failure the next pass sets the index again")
-        await SpotlightBooks.forget()
+        await SpotlightIndex.forget()
         #expect(index.calls.last == "remove", "the sign out takes every book out")
         let count = index.calls.count
-        await SpotlightBooks.reconcile(books: { [] }, signedIn: signedIn)
+        await SpotlightIndex.reconcile(books: { [] }, signedIn: signedIn)
         #expect(index.calls.count == count, "nothing on offer after the sign out changes nothing")
     }
 
@@ -447,21 +451,21 @@ struct ShortcutBooksTests {
     @available(iOS 27, *)
     @MainActor
     func aSignOutDuringAPassLeavesNothing() async {
-        let kept = SpotlightBooks.index
-        defer { SpotlightBooks.index = kept }
+        let kept = SpotlightIndex.index
+        defer { SpotlightIndex.index = kept }
         let index = SpotlightRecorder()
-        SpotlightBooks.index = index.index()
+        SpotlightIndex.index = index.index()
         index.items = [item("a", title: "Alpha"), item("b", title: "Beta")]
         let tagOf = self.tagOf
-        await SpotlightBooks.forget()
+        await SpotlightIndex.forget()
         index.calls = []
 
         index.holdNextRemoval = true
         let pass = Task { @MainActor in
-            await SpotlightBooks.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { true })
+            await SpotlightIndex.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { true })
         }
         while index.held == nil { await Task.yield() }
-        let signOut = Task { @MainActor in await SpotlightBooks.forget() }
+        let signOut = Task { @MainActor in await SpotlightIndex.forget() }
         for _ in 0..<20 { await Task.yield() }
         index.held?.resume()
         index.held = nil
@@ -476,38 +480,100 @@ struct ShortcutBooksTests {
     @available(iOS 27, *)
     @MainActor
     func aPassAfterTheSignOutAddsNothing() async {
-        let kept = SpotlightBooks.index
-        defer { SpotlightBooks.index = kept }
+        let kept = SpotlightIndex.index
+        defer { SpotlightIndex.index = kept }
         let index = SpotlightRecorder()
-        SpotlightBooks.index = index.index()
+        SpotlightIndex.index = index.index()
         index.items = [item("a", title: "Alpha")]
         let tagOf = self.tagOf
-        await SpotlightBooks.forget()
+        await SpotlightIndex.forget()
         index.calls = []
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { false })
+        await SpotlightIndex.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { false })
         #expect(index.calls.isEmpty, "a pass without anyone signed in touches the index: \(index.calls)")
     }
 
-    /// One place adds books to the device's search and takes them out; it
-    /// runs after a full list and at the sign out.
-    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste und bei der Abmeldung", .needsTheSources)
+    /// A change of the subscriptions asks a pass only when the shows on
+    /// offer change: a show that comes or leaves, or its first episode.
+    @Test("die Sendungen auf Angebot fuer Spotlight, nur mit einer Folge auf Angebot")
+    @available(iOS 27, *)
+    func theShowsForSpotlight() {
+        let feed = show("s1", title: "Feed", episodes: [("rss:a", "Eins", 1)])
+        let empty = show("s2", title: "Leer", episodes: [])
+        let server = show("s3", title: "Server", episodes: [("abspod:x", "Zwei", 1)])
+        #expect(SpotlightIndex.showIds([feed, empty, server]) == ["s1"], "only a show with an episode on offer")
+        let arrived = show("s2", title: "Leer", episodes: [("rss:b", "Drei", 2)])
+        #expect(SpotlightIndex.showIds([feed, empty]) != SpotlightIndex.showIds([feed, arrived]), "the first episode of a show asks a pass")
+        let renamedEpisode = show("s1", title: "Feed", episodes: [("rss:a", "Eins neu", 1)])
+        #expect(SpotlightIndex.showIds([feed]) == SpotlightIndex.showIds([renamedEpisode]), "a change inside a show asks none")
+    }
+
+    /// The shows go into the same index through the same line, without the
+    /// sign in to Audiobookshelf, and a sign out leaves them.
+    @Test("Spotlight traegt die Sendungen auf Angebot, die Abmeldung laesst sie stehen")
+    @available(iOS 27, *)
+    @MainActor
+    func spotlightCarriesTheShows() async {
+        let keptBooks = SpotlightIndex.index
+        let keptShows = SpotlightIndex.showIndex
+        defer {
+            SpotlightIndex.index = keptBooks
+            SpotlightIndex.showIndex = keptShows
+        }
+        let books = SpotlightRecorder()
+        let shows = SpotlightRecorder()
+        SpotlightIndex.index = books.index()
+        SpotlightIndex.showIndex = shows.index(naming: \.id)
+        var offer = [PodcastShowEntity(id: "s1", title: "Eins"), PodcastShowEntity(id: "s2", title: "Zwei")]
+        let current: @MainActor () -> [PodcastShowEntity] = { offer }
+
+        await SpotlightIndex.reconcileShows(shows: { [] })
+        shows.calls = []
+        await SpotlightIndex.reconcileShows(shows: current)
+        #expect(shows.calls == ["remove", "add s1,s2"], "the shows on offer replace their index")
+        await SpotlightIndex.reconcileShows(shows: current)
+        #expect(shows.calls == ["remove", "add s1,s2"], "the same shows change nothing")
+        offer = [offer[1]]
+        await SpotlightIndex.reconcileShows(shows: current)
+        #expect(shows.calls == ["remove", "add s1,s2", "remove", "add s2"], "a show that left goes out")
+        books.calls = []
+        await SpotlightIndex.forget()
+        #expect(books.calls == ["remove"], "the sign out takes the books out")
+        #expect(shows.calls.count == 4, "the sign out leaves the shows: \(shows.calls)")
+        shows.failAdd = true
+        offer = [PodcastShowEntity(id: "s3", title: "Drei")]
+        await SpotlightIndex.reconcileShows(shows: current)
+        shows.failAdd = false
+        await SpotlightIndex.reconcileShows(shows: current)
+        #expect(Array(shows.calls.suffix(3)) == ["remove", "remove", "add s3"], "after a failure the next pass sets the shows again")
+    }
+
+    /// One place adds books and shows to the device's search and takes them
+    /// out; the books follow a full list and the sign out, the shows a
+    /// change of the subscriptions.
+    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste, bei der Abmeldung und mit den Abos", .needsTheSources)
     func spotlightHasOnePlace() throws {
         var writing: [String] = []
         var reconciling: [String] = []
         var forgetting: [String] = []
+        var following: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
             let squeezed = FetchAnswerTests.squeezed(text)
             if squeezed.contains("indexAppEntities(") || squeezed.contains("deleteAppEntities(")
                 || squeezed.contains("CSSearchableIndex") { writing.append(file) }
-            if squeezed.contains("SpotlightBooks.reconcile(") { reconciling.append(file) }
-            if squeezed.contains("SpotlightBooks.forget(") { forgetting.append(file) }
+            if squeezed.contains("SpotlightIndex.reconcile(") { reconciling.append(file) }
+            if squeezed.contains("SpotlightIndex.forget(") { forgetting.append(file) }
+            if squeezed.contains("SpotlightIndex.reconcileShows(") { following.append(file) }
         }
         #expect(writing == ["AppShortcuts.swift"], "the device's search is written elsewhere: \(writing)")
         #expect(reconciling == ["LibraryViewModel.swift"], "\(reconciling)")
         #expect(forgetting == ["AuthViewModel.swift"], "\(forgetting)")
+        #expect(following == ["PodcastSubscriptions.swift"], "\(following)")
         let library = try FetchAnswerTests.squeezedSource("Sources/ViewModels/LibraryViewModel.swift")
-        #expect(library.contains("cleanUpPerBook(full: full, bookLibraries: libraries.count) if full != nil, #available(iOS 27, *) { Task { await SpotlightBooks.reconcile() } }"),
+        #expect(library.contains("cleanUpPerBook(full: full, bookLibraries: libraries.count) if full != nil, #available(iOS 27, *) { Task { await SpotlightIndex.reconcile() } }"),
                 "the pass does not follow the full list")
+        let subscriptions = try FetchAnswerTests.squeezedSource("Sources/Providers/PodcastSubscriptions.swift")
+        #expect(subscriptions.contains("@Published private var stock: [PodcastShow] = [] { didSet { rebuildCaches() ListeningRevision.shared.bump(\"subscriptions\") if isTheApp, #available(iOS 27, *), SpotlightIndex.showIds(oldValue) != SpotlightIndex.showIds(stock) { Task { await SpotlightIndex.reconcileShows() } }"),
+                "the shows' pass does not follow the stock")
     }
 
     @Test("die Angaben zum laufenden Titel tragen sein Buch", .needsTheSources)

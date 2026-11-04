@@ -289,7 +289,7 @@ final class AuthViewModel: ObservableObject {
         AppSession.shared.notifySourcesChanged()
         Task { await ContinueRowsWriter.forget() }
         if #available(iOS 27, *) {
-            Task { await SpotlightBooks.forget() }
+            Task { await SpotlightIndex.forget() }
         }
     }
 

@@ -57,6 +57,11 @@ final class PodcastSubscriptions: ObservableObject {
             // A subscription that arrives (import, account adoption, the
             // person's own subscribe) changes what the episode rows show.
             ListeningRevision.shared.bump("subscriptions")
+            // The device's search follows the shows on offer; the first
+            // load from disk asks the first pass.
+            if isTheApp, #available(iOS 27, *), SpotlightIndex.showIds(oldValue) != SpotlightIndex.showIds(stock) {
+                Task { await SpotlightIndex.reconcileShows() }
+            }
         }
     }
 

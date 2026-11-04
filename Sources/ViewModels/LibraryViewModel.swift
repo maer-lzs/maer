@@ -852,7 +852,7 @@ final class LibraryViewModel: ObservableObject {
         cleanUpPerBook(full: full, bookLibraries: libraries.count)
         // A full list sets the books of the device's search to what is on offer.
         if full != nil, #available(iOS 27, *) {
-            Task { await SpotlightBooks.reconcile() }
+            Task { await SpotlightIndex.reconcile() }
         }
     }
 

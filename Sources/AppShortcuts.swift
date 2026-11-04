@@ -559,13 +559,18 @@ enum NowPlayingEntities {
 @available(iOS 27, *)
 extension AudiobookEntity: IndexedEntity {}
 
-/// The books in the device's search: the one place that adds them and takes
-/// them out. Each pass sets the index to what is on offer now (the books
-/// with an outward id): all books of this kind out, the ones on offer in.
-/// So a book that left, a server under a new name (a new tag) and a new
-/// server need no list of the indexed books; no store keeps an outward id.
-/// The set indexed last is kept in this process only, so a pass with the
-/// same books does nothing. A sign out takes every book out.
+@available(iOS 27, *)
+extension PodcastShowEntity: IndexedEntity {}
+
+/// The books and the shows in the device's search: the one place that adds
+/// them and takes them out. Each pass sets the index of one kind to what is
+/// on offer now (the books with an outward id, the shows with an episode on
+/// offer): all entities of this kind out, the ones on offer in. So a book
+/// that left, a server under a new name (a new tag) and a new server need no
+/// list of the indexed books; no store keeps an outward id. The set indexed
+/// last is kept per kind in this process only, so a pass with the same ids
+/// does nothing. A sign out takes every book out; the shows are subscribed
+/// on this device and stay.
 ///
 /// Passes and the sign out run one at a time, in the order they are asked
 /// (`line`): each waits for the one before. A pass that suspends at the
@@ -574,7 +579,7 @@ extension AudiobookEntity: IndexedEntity {}
 /// one signed in and adds nothing.
 @available(iOS 27, *)
 @MainActor
-enum SpotlightBooks {
+enum SpotlightIndex {
     /// The last pass or sign out asked for; the next one waits for it.
     private static var line: Task<Void, Never>?
 
@@ -595,18 +600,24 @@ enum SpotlightBooks {
         case replace
     }
 
-    /// The index as the app uses it; a witness stands in for the system.
-    struct Index {
+    /// The index of one kind as the app uses it; a witness stands in for
+    /// the system.
+    struct Index<Entity> {
         var removeAll: @MainActor () async throws -> Void
-        var add: @MainActor ([AudiobookEntity]) async throws -> Void
+        var add: @MainActor ([Entity]) async throws -> Void
     }
 
-    static var index = Index(
+    static var index = Index<AudiobookEntity>(
         removeAll: { try await CSSearchableIndex.default().deleteAppEntities(ofType: AudiobookEntity.self) },
         add: { try await CSSearchableIndex.default().indexAppEntities($0) })
 
-    /// The outward ids indexed last in this process; nil when unknown.
+    static var showIndex = Index<PodcastShowEntity>(
+        removeAll: { try await CSSearchableIndex.default().deleteAppEntities(ofType: PodcastShowEntity.self) },
+        add: { try await CSSearchableIndex.default().indexAppEntities($0) })
+
+    /// The ids indexed last in this process, per kind; nil when unknown.
     private static var indexed: Set<String>?
+    private static var showsIndexed: Set<String>?
 
     /// Whether a pass with `offer` changes the index: not when it holds
     /// exactly these ids already.
@@ -614,9 +625,15 @@ enum SpotlightBooks {
         offer == indexed ? .keep : .replace
     }
 
-    /// Sets the index to the books on offer, in line. A failure leaves the
-    /// indexed set unknown, so the next pass sets it again. Without anyone
-    /// signed in a pass adds nothing.
+    /// The ids of the shows a pass would offer from `shows`: those with an
+    /// episode on offer. A change of the subscriptions asks a pass only
+    /// when these differ.
+    nonisolated static func showIds(_ shows: [PodcastShow]) -> Set<String> {
+        Set(shows.filter(EpisodeOffer.hasOffer).map(\.id))
+    }
+
+    /// Sets the index to the books on offer, in line. Without anyone signed
+    /// in a pass adds nothing.
     static func reconcile(books: @escaping @MainActor () async -> [BookEntity] = {
         let now = await BookQuery.current()
         return BookQuery.books(from: now.items, tagOf: now.tagOf)
@@ -627,17 +644,34 @@ enum SpotlightBooks {
                 return
             }
             let offer = await books().map(AudiobookEntity.init)
-            let ids = Set(offer.map(\.id))
-            guard pass(offer: ids, indexed: indexed) == .replace else { return }
-            indexed = nil
-            do {
-                try await index.removeAll()
-                if !offer.isEmpty { try await index.add(offer) }
-                indexed = ids
-                Logger.library.notice("SPOTLIGHT books indexed=\(ids.count)")
-            } catch {
-                Logger.library.error("SPOTLIGHT books not indexed: \(FailureReason.of(error), privacy: .public)")
-            }
+            indexed = await replace(offer, in: index, indexed: indexed, kind: "books")
+        }
+    }
+
+    /// Sets the index to the shows on offer, in line. The shows do not ask
+    /// who is signed in to Audiobookshelf: they come from their feeds.
+    static func reconcileShows(shows: @escaping @MainActor () -> [PodcastShowEntity] = { PodcastShowQuery.shows() }) async {
+        await inLine {
+            showsIndexed = await replace(shows(), in: showIndex, indexed: showsIndexed, kind: "shows")
+        }
+    }
+
+    /// Sets `index` to `offer` unless it holds exactly these ids, and gives
+    /// the ids it holds now. A failure gives nil, unknown, so the next pass
+    /// sets it again.
+    private static func replace<Entity: IndexedEntity>(
+        _ offer: [Entity], in index: Index<Entity>, indexed: Set<String>?, kind: String
+    ) async -> Set<String>? where Entity.ID == String {
+        let ids = Set(offer.map(\.id))
+        guard pass(offer: ids, indexed: indexed) == .replace else { return indexed }
+        do {
+            try await index.removeAll()
+            if !offer.isEmpty { try await index.add(offer) }
+            Logger.library.notice("SPOTLIGHT \(kind, privacy: .public) indexed=\(ids.count)")
+            return ids
+        } catch {
+            Logger.library.error("SPOTLIGHT \(kind, privacy: .public) not indexed: \(FailureReason.of(error), privacy: .public)")
+            return nil
         }
     }
 
