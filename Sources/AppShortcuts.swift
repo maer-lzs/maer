@@ -269,11 +269,26 @@ nonisolated struct EpisodeOffer: Equatable, Sendable {
     let released: Date?
     let duration: Double?
 
+    /// Whether an episode is on offer: one with a feed's id.
+    static func isOffered(_ episode: PodcastEpisode) -> Bool { ItemNamespace.of(episode.guid) == "rss:" }
+
+    /// Whether a show has an episode on offer.
+    static func hasOffer(_ show: PodcastShow) -> Bool { show.episodes.contains(where: isOffered) }
+
+    /// What Siri gets for an ask: the episodes it finds, the newest first,
+    /// at most `limit`. Every episode of every show is asked; only the answer
+    /// is bounded, so it stays a handful of entities however long the
+    /// shows' histories are.
+    static func answer(for ask: AudioAsk, in shows: [PodcastShow], lastPlayedId: String?, limit: Int) -> [EpisodeOffer] {
+        let found = AudioAsk.episodes(for: ask, in: episodes(from: shows), lastPlayedId: lastPlayedId)
+        return Array(found.sorted { ($0.released ?? .distantPast) > ($1.released ?? .distantPast) }.prefix(limit))
+    }
+
     /// The episodes of `shows` that are on offer, newest first per show.
     static func episodes(from shows: [PodcastShow]) -> [EpisodeOffer] {
         shows.flatMap { show in
             show.episodes
-                .filter { ItemNamespace.of($0.guid) == "rss:" }
+                .filter(isOffered)
                 .sorted { $0.pubDate > $1.pubDate }
                 .map { episode in
                     EpisodeOffer(itemId: episode.guid, title: episode.title, showId: show.id, showTitle: show.title,
@@ -308,9 +323,7 @@ struct PodcastShowQuery: EntityStringQuery {
     /// The shows on offer: those with an episode on offer.
     @MainActor
     static func shows() -> [PodcastShowEntity] {
-        let shows = PodcastShowSources.active()
-        let offered = Set(EpisodeOffer.episodes(from: shows).map(\.showId))
-        return shows.filter { offered.contains($0.id) }.map { PodcastShowEntity(id: $0.id, title: $0.title) }
+        PodcastShowSources.active().filter(EpisodeOffer.hasOffer).map { PodcastShowEntity(id: $0.id, title: $0.title) }
     }
 
     func entities(for identifiers: [String]) async throws -> [PodcastShowEntity] {
@@ -357,20 +370,43 @@ struct PodcastEpisodeEntity: AppEntity {
 
 @available(iOS 27, *)
 struct PodcastEpisodeQuery: EntityStringQuery {
+    /// The shows as the podcast surface holds them; the one read on the
+    /// main actor, a copy of values.
     @MainActor
-    static func episodes() -> [EpisodeOffer] { EpisodeOffer.episodes(from: PodcastShowSources.active()) }
+    static func shows() -> [PodcastShow] { PodcastShowSources.active() }
+
+    /// Works `work` out off the main actor: every episode of every show can
+    /// be a hundred thousand rows for long histories, too much for the
+    /// actor that draws the screen.
+    nonisolated static func offMain<Result: Sendable>(_ work: @escaping @Sendable ([PodcastShow]) -> Result) async -> Result {
+        let shows = await shows()
+        // detached because a nonisolated async function runs on its caller's
+        // executor, and the caller of an entity query is the main actor.
+        return await Task.detached(priority: .userInitiated) { work(shows) }.value
+    }
+
+    /// The answer to an ask, off the main actor.
+    nonisolated static func answer(for ask: AudioAsk, lastPlayedId: String?) async -> [EpisodeOffer] {
+        await offMain { EpisodeOffer.answer(for: ask, in: $0, lastPlayedId: lastPlayedId, limit: BookQuery.suggestionLimit) }
+    }
 
     func entities(for identifiers: [String]) async throws -> [PodcastEpisodeEntity] {
-        let episodes = await Self.episodes()
-        return identifiers.compactMap { id in episodes.first { $0.itemId == id } }.map(PodcastEpisodeEntity.init)
+        let wanted = Set(identifiers)
+        let found = await Self.offMain { EpisodeOffer.episodes(from: $0).filter { wanted.contains($0.itemId) } }
+        return identifiers.compactMap { id in found.first { $0.itemId == id } }.map(PodcastEpisodeEntity.init)
     }
 
     func entities(matching string: String) async throws -> [PodcastEpisodeEntity] {
-        AudioAsk.episodes(for: .search(string), in: await Self.episodes(), lastPlayedId: nil).map(PodcastEpisodeEntity.init)
+        await Self.answer(for: .search(string), lastPlayedId: nil).map(PodcastEpisodeEntity.init)
     }
 
     func suggestedEntities() async throws -> [PodcastEpisodeEntity] {
-        Array(await Self.episodes().prefix(BookQuery.suggestionLimit)).map(PodcastEpisodeEntity.init)
+        let newest = await Self.offMain { shows in
+            Array(EpisodeOffer.episodes(from: shows)
+                .sorted { ($0.released ?? .distantPast) > ($1.released ?? .distantPast) }
+                .prefix(BookQuery.suggestionLimit))
+        }
+        return newest.map(PodcastEpisodeEntity.init)
     }
 }
 
@@ -404,7 +440,7 @@ struct PlayableAudioSearch: IntentValueQuery {
         let lastPlayed = AppStorageKeys.lastPlayedItemIdValue
         let now = await BookQuery.current()
         let books = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf), lastPlayedId: lastPlayed)
-        let episodes = AudioAsk.episodes(for: ask, in: await PodcastEpisodeQuery.episodes(), lastPlayedId: lastPlayed)
+        let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)
         Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count)")
         return books.map { .audiobook(AudiobookEntity($0)) } + episodes.map { .episode(PodcastEpisodeEntity($0)) }
     }

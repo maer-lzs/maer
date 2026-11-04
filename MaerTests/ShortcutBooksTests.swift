@@ -192,6 +192,32 @@ struct ShortcutBooksTests {
         #expect(ids(.unanswered, "rss:k1:a").isEmpty)
     }
 
+    /// Every episode is asked, the answer to Siri is a handful: at most
+    /// the limit, the newest across all shows first.
+    @Test("Siris Antwort ueber Folgen ist begrenzt, die neuesten zuerst")
+    func theEpisodeAnswerIsBounded() {
+        let shows = (0..<3).map { s in
+            show("k\(s)", title: "Sendung \(s)",
+                 episodes: (0..<10).map { e in ("rss:k\(s):g\(e)", "Wasser \(e)", Double((e * 3 + s) * 1000)) })
+        }
+        let answer = EpisodeOffer.answer(for: .search("wasser"), in: shows, lastPlayedId: nil, limit: BookQuery.suggestionLimit)
+        #expect(answer.count == BookQuery.suggestionLimit, "30 hits, the answer holds the limit")
+        #expect(answer.first?.itemId == "rss:k2:g9", "the newest across all shows comes first")
+        #expect(answer.map(\.released) == answer.map(\.released).sorted { ($0 ?? .distantPast) > ($1 ?? .distantPast) })
+        #expect(EpisodeOffer.answer(for: .unnamed, in: shows, lastPlayedId: "rss:k0:g0", limit: 12).map(\.itemId) == ["rss:k0:g0"],
+                "an old last played episode is still found")
+    }
+
+    /// The episodes are worked out off the main actor; only the shows are
+    /// read there.
+    @Test("die Folgen werden neben dem Haupt-Akteur gerechnet", .needsTheSources)
+    func theEpisodesAreWorkedOutOffMain() throws {
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("let shows = await shows() return await Task.detached(priority: .userInitiated) { work(shows) }.value"))
+        #expect(!shortcuts.contains("EpisodeOffer.episodes(from: PodcastShowSources.active())"), "the episodes are built on the main actor")
+        #expect(shortcuts.contains("let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)"))
+    }
+
     @Test("der Bau exportiert Sendung und Folge unter dem Schema der Audio-Domaene")
     func theBuildExportsShowAndEpisode() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
