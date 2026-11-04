@@ -256,6 +256,12 @@ nonisolated enum AudioAsk: Equatable, Sendable {
         found(for: ask, in: stations, itemId: \.id, fields: { [$0.name] }, lastPlayedId: lastPlayedId)
     }
 
+    /// The lists an ask finds, by name. Nothing named continues a title,
+    /// never a list: what played last is a title.
+    static func lists(for ask: AudioAsk, in lists: [MaerPlaylists.Playlist]) -> [MaerPlaylists.Playlist] {
+        found(for: ask, in: lists, itemId: \.id, fields: { [$0.name] }, lastPlayedId: nil)
+    }
+
     /// The episodes an ask finds, by title and the show's title.
     static func episodes(for ask: AudioAsk, in episodes: [EpisodeOffer], lastPlayedId: String?) -> [EpisodeOffer] {
         found(for: ask, in: episodes, itemId: \.itemId, fields: { [$0.title, $0.showTitle] }, lastPlayedId: lastPlayedId)
@@ -455,6 +461,68 @@ struct RadioStationQuery: EntityStringQuery {
     }
 }
 
+/// A list of this device for the audio domain (`.audio.playlist`), the
+/// routines among them; its id is the list's, which carries no address. The
+/// playlists of a music server are not offered.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.playlist)
+struct PlaylistEntity: AppEntity {
+    static let defaultQuery = PlaylistQuery()
+
+    let id: String
+    var title: String
+    /// A list of this device is the person's own: made by them, not put
+    /// together for them, with no other owner to name.
+    var createdByMe: Bool?
+    var curatedForMe: Bool?
+    var owner: PlaylistOwner?
+
+    init(_ list: MaerPlaylists.Playlist) {
+        id = list.id
+        title = list.name
+        createdByMe = true
+        curatedForMe = false
+    }
+
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(title)") }
+}
+
+/// Who a list belongs to, in the form the schema asks; a list of this
+/// device names none.
+@available(iOS 27, *)
+@UnionValue
+enum PlaylistOwner {
+    case person(IntentPerson)
+    case name(String)
+}
+
+@available(iOS 27, *)
+struct PlaylistQuery: EntityStringQuery {
+    /// The lists of this device, in their order.
+    @MainActor
+    static func lists() -> MaerPlaylists { RoutineQuery.lists() }
+
+    func entities(for identifiers: [String]) async throws -> [PlaylistEntity] {
+        let lists = await Self.lists().playlists
+        return identifiers.compactMap { id in lists.first { $0.id == id } }.map(PlaylistEntity.init)
+    }
+
+    func entities(matching string: String) async throws -> [PlaylistEntity] {
+        AudioAsk.lists(for: .search(string), in: await Self.lists().playlists).map(PlaylistEntity.init)
+    }
+
+    func suggestedEntities() async throws -> [PlaylistEntity] {
+        await Self.lists().playlists.prefix(BookQuery.suggestionLimit).map(PlaylistEntity.init)
+    }
+}
+
+/// What Siri's play starts for a kind: a title through the one door of
+/// continue listening, or a list through the one start of every list.
+nonisolated enum AudioStart: Equatable, Sendable {
+    case item(String)
+    case list(String)
+}
+
 /// The kinds Siri may ask this app to play; each kind joins with its slice.
 /// A show is not one yet: what playing a whole show starts is open.
 @available(iOS 27, *)
@@ -463,14 +531,61 @@ enum PlayableAudio {
     case audiobook(AudiobookEntity)
     case episode(PodcastEpisodeEntity)
     case station(RadioStationEntity)
+    case playlist(PlaylistEntity)
 
-    /// The id of the app the door starts.
-    var itemId: String {
+    /// What the intent starts: a title by its id of the app, or a list.
+    var start: AudioStart {
         switch self {
-        case .audiobook(let book): book.itemId
-        case .episode(let episode): episode.id
-        case .station(let station): station.id
+        case .audiobook(let book): .item(book.itemId)
+        case .episode(let episode): .item(episode.id)
+        case .station(let station): .item(station.id)
+        case .playlist(let list): .list(list.id)
         }
+    }
+}
+
+/// Siri's start of a list: the one start of every list
+/// (`RoutinePlayback.start`), as the list's Play button, in the background.
+/// The app comes to the front only to say that the list is not here or
+/// starts nothing.
+@available(iOS 27, *)
+@MainActor
+enum PlaylistStart {
+    /// The player that starts the list and says why it did not.
+    private static var coordinator: PlayerCoordinator { AppSession.shared.playerCoordinator }
+
+    /// What a request comes to; the sentence the app says for it, if any.
+    nonisolated static func sentence(for request: RoutinePlayback.Request, started: Bool) -> String? {
+        switch request {
+        case .start: started ? nil : String(localized: "This playlist has nothing to play right now.")
+        case .wait, .missing: String(localized: "This playlist is not on this device.")
+        }
+    }
+
+    /// The list's start; a witness stands in for the app's.
+    static var start: @MainActor (MaerPlaylists.Playlist) async -> Bool = { list in
+        await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)
+    }
+
+    /// The app's way to say a sentence once it is in front.
+    static var say: @MainActor (String) -> Void = { sentence in
+        coordinator.sayOpenFailure(sentence, cause: .unknown, title: nil)
+    }
+
+    /// Starts the list `listId` among `store`'s lists. A list the start read
+    /// has not reached yet is not here for Siri: there is no view to wait in.
+    static func run(listId: String, in store: MaerPlaylists,
+                    bringsAppToFront: @MainActor () async throws -> Bool) async throws {
+        let request = RoutinePlayback.request(listId, in: store.playlists, complete: !store.startIncomplete)
+        var started = false
+        if case .start(let list) = request { started = await start(list) }
+        Logger.library.notice("SIRI list start=\(started) found=\(request != .missing && request != .wait)")
+        guard let sentence = sentence(for: request, started: started) else { return }
+        guard try await bringsAppToFront() else {
+            Logger.library.notice("SIRI list says nothing: the system cannot bring the app to the front")
+            return
+        }
+        say(sentence)
     }
 }
 
@@ -489,9 +604,10 @@ struct PlayableAudioSearch: IntentValueQuery {
         let books = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf), lastPlayedId: lastPlayed)
         let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)
         let stations = AudioAsk.stations(for: ask, in: RadioStationQuery.stations(), lastPlayedId: lastPlayed)
-        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count) stations=\(stations.count)")
+        let lists = AudioAsk.lists(for: ask, in: await PlaylistQuery.lists().playlists)
+        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count) stations=\(stations.count) lists=\(lists.count)")
         return books.map { .audiobook(AudiobookEntity($0)) } + episodes.map { .episode(PodcastEpisodeEntity($0)) }
-            + stations.map { .station(RadioStationEntity($0)) }
+            + stations.map { .station(RadioStationEntity($0)) } + lists.map { .playlist(PlaylistEntity($0)) }
     }
 }
 
@@ -544,9 +660,17 @@ struct PlayAudioIntent: AppIntent {
             // A book plays from where it stands and now; the wish is noted, not followed.
             Logger.library.notice("SIRI play attributes=\(playbackAttributes.map(\.rawValue).sorted(), privacy: .public) queue=\(queueLocation?.rawValue ?? "none", privacy: .public) not followed")
         }
-        try await ResumeListeningIntent.run(itemId: audioEntity.itemId) {
-            try await continueInForeground(nil, alwaysConfirm: false)
-            return true
+        switch audioEntity.start {
+        case .item(let itemId):
+            try await ResumeListeningIntent.run(itemId: itemId) {
+                try await continueInForeground(nil, alwaysConfirm: false)
+                return true
+            }
+        case .list(let listId):
+            try await PlaylistStart.run(listId: listId, in: PlaylistQuery.lists()) {
+                try await continueInForeground(nil, alwaysConfirm: false)
+                return true
+            }
         }
         return .result()
     }
@@ -778,9 +902,13 @@ struct RoutineQuery: EntityStringQuery {
         lists.filter(\.isRoutine).map { RoutineEntity(id: $0.id, name: $0.name) }
     }
 
+    /// The lists of this device: the one grip on them for Siri and Shortcuts.
+    @MainActor
+    static func lists() -> MaerPlaylists { .shared }
+
     @MainActor
     private func allRoutines() -> [RoutineEntity] {
-        Self.routines(from: MaerPlaylists.shared.playlists)
+        Self.routines(from: Self.lists().playlists)
     }
 
     func entities(for identifiers: [String]) async throws -> [RoutineEntity] {

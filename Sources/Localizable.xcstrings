@@ -12589,6 +12589,26 @@
         }
       }
     },
+    "This playlist has nothing to play right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Playlist hat gerade nichts zum Abspielen."
+          }
+        }
+      }
+    },
+    "This playlist is not on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Playlist gibt es auf diesem Gerät nicht."
+          }
+        }
+      }
+    },
     "This removes the podcast and its listening history from the server for everyone." : {
       "localizations" : {
         "de" : {

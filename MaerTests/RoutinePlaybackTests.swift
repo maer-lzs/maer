@@ -252,9 +252,9 @@ struct RoutinePlaybackTests {
         #expect(picked[0].title == "Folge 1", "the precondition: an episode names itself")
     }
 
-    /// Both play buttons of a list and the shortcut's request start through
-    /// the one door, and the door hands the first place's resume to
-    /// `playInOrder`.
+    /// Both play buttons of a list, the shortcut's request and Siri's play
+    /// start through the one door, and the door hands the first place's
+    /// resume to `playInOrder`.
     @Test("beide Abspielknoepfe einer Liste starten durch RoutinePlayback.start, und der Start reicht das Fortsetzen weiter", .needsTheSources)
     func bothButtonsStartThroughTheOneDoor() throws {
         var starts: [String: Int] = [:]
@@ -267,7 +267,7 @@ struct RoutinePlaybackTests {
                 bare.append(file.name)
             }
         }
-        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1])
+        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1, "AppShortcuts.swift": 1])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("resuming: start.fromRule)"))

@@ -10,12 +10,14 @@ to an Audiobookshelf server again works the same way: the sign-in no
 longer carries the access of the server you used before, and a sign-in
 that fails leaves you connected as you were.
 
-**Siri plays your audiobooks, podcast episodes and stations (iOS 27
-with Apple Intelligence).** Ask Siri to play an audiobook of your
+**Siri plays your audiobooks, podcast episodes, stations and playlists
+(iOS 27 with Apple Intelligence).** Ask Siri to play an audiobook of your
 Audiobookshelf library in Mär by its title or author, an episode of a
 show you follow by its feed by its title or the show's name, a station
 you keep (a favorite, one you added by its address, or one of the last
-eight you heard) by its name, or just to play something in Mär to
+eight you heard) by its name, one of your own playlists or routines by
+its name (it starts like its Play button, from the first title; the
+playlists of a music server follow), or just to play something in Mär to
 continue what you listened to last, when that was an audiobook, such an
 episode or such a station; after music Siri finds nothing to continue
 for now. The app answers in the background and

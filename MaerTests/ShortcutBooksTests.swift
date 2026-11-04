@@ -231,6 +231,8 @@ struct ShortcutBooksTests {
         #expect(shortcuts.contains("let stations = AudioAsk.stations(for: ask, in: RadioStationQuery.stations(), lastPlayedId: lastPlayed)"),
                 "Siri's search does not ask the stations")
         #expect(shortcuts.contains("+ stations.map { .station(RadioStationEntity($0)) }"), "the stations found are not answered")
+        #expect(shortcuts.contains("let lists = AudioAsk.lists(for: ask, in: await PlaylistQuery.lists().playlists)"), "Siri's search does not ask the lists")
+        #expect(shortcuts.contains("+ lists.map { .playlist(PlaylistEntity($0)) }"), "the lists found are not answered")
         let radio = try FetchAnswerTests.squeezedSource("Sources/Models/RadioModels.swift")
         #expect(radio.contains("static func station(forId id: String, defaults: UserDefaults = .standard) -> RadioStation? { onHand(defaults: defaults).first { $0.id == id } }"),
                 "the lookup by id reads another list than the offer")
@@ -284,6 +286,85 @@ struct ShortcutBooksTests {
         #expect(AudioAsk.stations(for: .unnamed, in: [cafe, swr], lastPlayedId: "radio:manual:swr").map(\.id) == ["radio:manual:swr"])
         #expect(AudioAsk.stations(for: .unnamed, in: [cafe, swr], lastPlayedId: "rss:a:b").isEmpty, "an episode last is no station")
         #expect(AudioAsk.stations(for: .unanswered, in: [cafe, swr], lastPlayedId: nil).isEmpty)
+    }
+
+    /// Siri's ask finds a list by its name; nothing named continues a
+    /// title, never a list.
+    @Test("Siris Frage findet eigene Listen nach Name, nichts genannt keine Liste")
+    func theAskFindsLists() {
+        let morning = MaerPlaylists.Playlist(id: "l1", name: "Morgenrunde", updatedAt: 0, itemIds: [])
+        let road = MaerPlaylists.Playlist(id: "l2", name: "Autofahrt", updatedAt: 0, itemIds: [])
+        #expect(AudioAsk.lists(for: .search("morgen"), in: [morning, road]).map(\.id) == ["l1"])
+        #expect(AudioAsk.lists(for: .unnamed, in: [morning, road]).isEmpty, "nothing named continues a title")
+        #expect(AudioAsk.lists(for: .unanswered, in: [morning, road]).isEmpty)
+    }
+
+    /// What the app says for a list request: nothing when the list starts,
+    /// that it starts nothing, or that it is not here.
+    @Test("was die App zu einer Liste sagt: nichts, wenn sie startet, sonst warum")
+    @available(iOS 27, *)
+    func whatTheAppSaysForAList() {
+        let list = MaerPlaylists.Playlist(id: "l1", name: "Morgenrunde", updatedAt: 0, itemIds: [])
+        let nothing = PlaylistStart.sentence(for: .start(list), started: false)
+        let notHere = PlaylistStart.sentence(for: .missing, started: false)
+        #expect(PlaylistStart.sentence(for: .start(list), started: true) == nil)
+        #expect(nothing != nil && notHere != nil && nothing != notHere)
+        #expect(PlaylistStart.sentence(for: .wait, started: false) == notHere, "a list the start read has not reached is not here for Siri")
+    }
+
+    /// A list goes through the one start of lists in the background; the app
+    /// comes to the front only to say why nothing started.
+    @Test("Siris Liste startet durch den Start der Listen, nach vorn nur mit einem Satz")
+    @available(iOS 27, *)
+    @MainActor
+    func aListStartsThroughTheStartOfLists() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("siri-lists-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        let mine = store.create(name: "Morgenrunde")
+        let keptStart = PlaylistStart.start
+        let keptSay = PlaylistStart.say
+        defer {
+            PlaylistStart.start = keptStart
+            PlaylistStart.say = keptSay
+        }
+        var started: [String] = []
+        var said: [String] = []
+        var fronts = 0
+        var startsSomething = true
+        PlaylistStart.start = { list in
+            started.append(list.id)
+            return startsSomething
+        }
+        PlaylistStart.say = { said.append($0) }
+        let front: @MainActor () async throws -> Bool = {
+            fronts += 1
+            return true
+        }
+
+        try await PlaylistStart.run(listId: mine.id, in: store, bringsAppToFront: front)
+        #expect(started == [mine.id], "the list goes through the start of lists")
+        #expect(fronts == 0 && said.isEmpty, "a list that starts stays in the background")
+        startsSomething = false
+        try await PlaylistStart.run(listId: mine.id, in: store, bringsAppToFront: front)
+        #expect(fronts == 1 && said == [PlaylistStart.sentence(for: .start(mine), started: false)], "\(said)")
+        try await PlaylistStart.run(listId: "gone-\(UUID().uuidString)", in: store, bringsAppToFront: front)
+        #expect(started.count == 2, "a list that is not here starts nothing")
+        #expect(fronts == 2 && said.last == PlaylistStart.sentence(for: .missing, started: false), "\(said)")
+    }
+
+    @Test("der Bau exportiert die eigene Liste unter dem Schema der Audio-Domaene")
+    func theBuildExportsTheList() throws {
+        let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
+                                               subdirectory: "Metadata.appintents"))
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        let json = try #require(object as? [String: Any])
+        let entities = try #require(json["entities"] as? [String: Any])
+        let list = String(describing: try #require(entities["PlaylistEntity"], "the list is not exported"))
+        #expect(list.contains("PlaylistEntity") && list.contains("audio"), "\(list.prefix(300))")
     }
 
     @Test("der Bau exportiert den Sender unter dem Schema der Audio-Domaene")
@@ -342,9 +423,13 @@ struct ShortcutBooksTests {
     @Test("Siris Wiedergabe geht durch die eine Tuer des Weiterhoerens", .needsTheSources)
     func thePlayGoesThroughTheDoor() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
-        #expect(shortcuts.contains("try await ResumeListeningIntent.run(itemId: audioEntity.itemId)"),
+        #expect(shortcuts.contains("switch audioEntity.start { case .item(let itemId): try await ResumeListeningIntent.run(itemId: itemId)"),
                 "Siri's title does not go through the door")
-        #expect(shortcuts.contains("case .audiobook(let book): book.itemId case .episode(let episode): episode.id case .station(let station): station.id"),
+        #expect(shortcuts.contains("case .list(let listId): try await PlaylistStart.run(listId: listId, in: PlaylistQuery.lists())"),
+                "Siri's list does not go through the start of lists")
+        #expect(shortcuts.contains("await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)"),
+                "the start of a list is a way of its own")
+        #expect(shortcuts.contains("case .audiobook(let book): .item(book.itemId) case .episode(let episode): .item(episode.id) case .station(let station): .item(station.id) case .playlist(let list): .list(list.id)"),
                 "a kind starts something else than its id of the app")
         #expect(!shortcuts.contains("resume(namedItemId:"), "a way of its own beside the door")
         let widget = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
