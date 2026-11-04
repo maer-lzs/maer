@@ -52,63 +52,82 @@ struct BookEntity: AppEntity {
 }
 
 struct BookQuery: EntityStringQuery {
-    /// The books the rows hold; no rows or a failed read is no book.
-    nonisolated static func books(rows: LibraryRowStore?, tagOf: (String) -> String?) async -> [BookEntity] {
+    /// The items the rows hold; no rows or a failed read is no item.
+    nonisolated static func items(rows: LibraryRowStore?) async -> [LibraryItem] {
         guard let rows else { return [] }
         do {
-            return books(from: try await rows.loadAll()?.items ?? [], tagOf: tagOf)
+            return try await rows.loadAll()?.items ?? []
         } catch {
             Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public)")
             return []
         }
     }
 
-    /// The entities out of the rows' items: a book needs a title and an
-    /// outward id, so a book whose server the register does not name stays out.
+    /// The books the rows hold, each with its outward id.
+    nonisolated static func books(rows: LibraryRowStore?, tagOf: (String) -> String?) async -> [BookEntity] {
+        books(from: await items(rows: rows), tagOf: tagOf)
+    }
+
+    /// The entity of one item under `id`; an item without a title is no book.
+    nonisolated static func book(_ item: LibraryItem, id: String) -> BookEntity? {
+        guard let title = item.media?.metadata?.title else { return nil }
+        return BookEntity(id: id, itemId: item.id, title: title, author: item.author)
+    }
+
+    /// The entities on offer: a book needs a title and an outward id, so a
+    /// book whose server the register does not name stays out.
     nonisolated static func books(from items: [LibraryItem], tagOf: (String) -> String?) -> [BookEntity] {
         items.compactMap { item in
-            guard let title = item.media?.metadata?.title,
-                  let ref = OutwardItemRef.ref(itemId: item.id, serverTag: tagOf(item.id)) else { return nil }
-            return BookEntity(id: ref, itemId: item.id, title: title, author: item.author)
+            OutwardItemRef.ref(itemId: item.id, serverTag: tagOf(item.id)).flatMap { book(item, id: $0) }
         }
     }
 
     /// The books the identifiers name, in their order. An outward id finds
-    /// its book when this device knows its owner; an identifier that is no
+    /// its book when this device knows its owner. An identifier that is no
     /// outward id is a library id from an older shortcut and finds its book
-    /// directly.
-    nonisolated static func books(for identifiers: [String], in books: [BookEntity],
+    /// in the rows, without the register and without the salt; it carries
+    /// its outward id when there is one, else its own.
+    nonisolated static func books(for identifiers: [String], in items: [LibraryItem],
                                   tagOf: (String) -> String?) -> [BookEntity] {
         identifiers.compactMap { identifier in
-            let itemId = OutwardItemRef.parts(of: identifier) == nil
-                ? identifier
-                : OutwardItemRef.itemId(ref: identifier, tagOf: tagOf)
-            return itemId.flatMap { itemId in books.first { $0.itemId == itemId } }
+            guard OutwardItemRef.parts(of: identifier) != nil else {
+                return items.first { $0.id == identifier }.flatMap { item in
+                    book(item, id: OutwardItemRef.ref(itemId: item.id, serverTag: tagOf(item.id)) ?? identifier)
+                }
+            }
+            guard let itemId = OutwardItemRef.itemId(ref: identifier, tagOf: tagOf),
+                  let item = items.first(where: { $0.id == itemId }),
+                  let ref = OutwardItemRef.ref(itemId: itemId, serverTag: tagOf(itemId)) else { return nil }
+            return book(item, id: ref)
         }
     }
 
-    private func allBooks() async -> (books: [BookEntity], tagOf: (String) -> String?) {
-        guard let tagOf = OutwardServerTag.appTagOf() else { return ([], { _ in nil }) }
+    /// The rows' items and the tags of this device; without a salt or a
+    /// register no item has a tag.
+    private func current() async -> (items: [LibraryItem], tagOf: (String) -> String?) {
+        let tagOf = OutwardServerTag.appTagOf() ?? { _ in nil }
         var rows: LibraryRowStore?
         do {
             rows = try await MaerDatabase.libraryRows()
         } catch {
             Logger.library.error("SHORTCUT rows unavailable reason=\(String(describing: error), privacy: .public)")
         }
-        return (await Self.books(rows: rows, tagOf: tagOf), tagOf)
+        return (await Self.items(rows: rows), tagOf)
     }
 
     func entities(for identifiers: [String]) async throws -> [BookEntity] {
-        let all = await allBooks()
-        return Self.books(for: identifiers, in: all.books, tagOf: all.tagOf)
+        let now = await current()
+        return Self.books(for: identifiers, in: now.items, tagOf: now.tagOf)
     }
 
     func entities(matching string: String) async throws -> [BookEntity] {
-        await allBooks().books.filter { $0.title.localizedCaseInsensitiveContains(string) }
+        let now = await current()
+        return Self.books(from: now.items, tagOf: now.tagOf).filter { $0.title.localizedCaseInsensitiveContains(string) }
     }
 
     func suggestedEntities() async throws -> [BookEntity] {
-        Array(await allBooks().books.prefix(12))
+        let now = await current()
+        return Array(Self.books(from: now.items, tagOf: now.tagOf).prefix(12))
     }
 }
 

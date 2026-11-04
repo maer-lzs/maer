@@ -55,13 +55,27 @@ struct ShortcutBooksTests {
 
     @Test("die Kennung nach aussen, eine fremde und eine alte Kennung finden ihr Buch")
     func theIdentifiersFindTheirBooks() throws {
-        let books = BookQuery.books(from: [item("a", title: "Alpha"), item("b", title: "Beta")], tagOf: tagOf)
-        let own = try #require(books.first?.id)
+        let items = [item("a", title: "Alpha"), item("b", title: "Beta")]
+        let own = try #require(BookQuery.books(from: items, tagOf: tagOf).first?.id)
         let otherTag = try #require(OutwardServerTag.tag(owner: OutwardItemRefTests.serverA, salt: OutwardItemRefTests.saltB))
         let fromAnotherDevice = try #require(OutwardItemRef.ref(itemId: "b", serverTag: otherTag))
-        let found = BookQuery.books(for: [own, fromAnotherDevice, "a", "abs.\(otherTag).gone", "gone"], in: books, tagOf: tagOf)
+        let found = BookQuery.books(for: [own, fromAnotherDevice, "a", "abs.\(otherTag).gone", "gone"], in: items, tagOf: tagOf)
         #expect(found.map(\.itemId) == ["a", "b", "a"],
-                "an outward id, one from another device and a library id saved before the outward ids")
+                "an outward id, one from another device and a library id of an older shortcut")
+        #expect(found.last?.id == own, "an older id is answered with its outward id where there is one")
+    }
+
+    /// Without a register or without a salt no item has a tag: an older
+    /// shortcut still finds its book in the rows, an outward id does not.
+    @Test("eine alte Kennung findet ihr Buch ohne Register und ohne Salz")
+    func anOlderIdNeedsNoRegisterAndNoSalt() throws {
+        let items = [item("a", title: "Alpha"), item("c", title: nil)]
+        let noTag: (String) -> String? = { _ in nil }
+        let ref = try #require(OutwardItemRef.ref(itemId: "a", serverTag: tagOf("a")))
+        let found = BookQuery.books(for: ["a", ref, "c", "gone"], in: items, tagOf: noTag)
+        #expect(found.map(\.itemId) == ["a"], "the older id finds its book; the outward id, a book without a title and an unknown id do not")
+        #expect(found.first?.id == "a", "without a tag the book keeps the id the shortcut holds")
+        #expect(BookQuery.books(from: items, tagOf: noTag).isEmpty, "nothing new is offered without a tag")
     }
 }
 #endif
