@@ -560,10 +560,17 @@ nonisolated enum RadioStore {
         (defaults.dictionary(forKey: recentTimesKey) as? [String: Double]) ?? [:]
     }
 
+    /// Every station the person keeps (favorites, manual, recents), each
+    /// once, in that order: what resolves by id beyond this session.
+    static func onHand(defaults: UserDefaults = .standard) -> [RadioStation] {
+        var seen = Set<String>()
+        return (favorites(defaults: defaults) + manualStations(defaults: defaults) + recents(defaults: defaults))
+            .filter { seen.insert($0.id).inserted }
+    }
+
     /// Resolve any known station by id (favorites, manual, recents).
     static func station(forId id: String, defaults: UserDefaults = .standard) -> RadioStation? {
-        (favorites(defaults: defaults) + manualStations(defaults: defaults) + recents(defaults: defaults))
-            .first { $0.id == id }
+        onHand(defaults: defaults).first { $0.id == id }
     }
 
     /// A station's name from every stock that keeps one, the most-played

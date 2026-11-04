@@ -10,19 +10,21 @@ to an Audiobookshelf server again works the same way: the sign-in no
 longer carries the access of the server you used before, and a sign-in
 that fails leaves you connected as you were.
 
-**Siri plays your audiobooks and podcast episodes (iOS 27 with Apple
-Intelligence).** Ask Siri to play an audiobook of your Audiobookshelf
-library in Mär by its title or author, an episode of a show you follow
-by its feed by its title or the show's name, or just to play something
-in Mär to continue what you listened to last, when that was an
-audiobook or such an episode; after a station or music Siri finds
-nothing to continue for now. The app answers in the background and
+**Siri plays your audiobooks, podcast episodes and stations (iOS 27
+with Apple Intelligence).** Ask Siri to play an audiobook of your
+Audiobookshelf library in Mär by its title or author, an episode of a
+show you follow by its feed by its title or the show's name, a station
+you keep (a favorite, one you added by its address, or one of the last
+eight you heard) by its name, or just to play something in Mär to
+continue what you listened to last, when that was an audiobook, such an
+episode or such a station; after music Siri finds nothing to continue
+for now. The app answers in the background and
 comes to the front only to say that it found nothing. Shuffle, repeat
 and a place in the queue do not apply; a title plays from where you
 stand. Your audiobooks also appear in the search of the device
 (Spotlight) once the library has loaded, and leave it when you sign
 out; the shows you follow by their feed appear there too. Episodes of
-an Audiobookshelf server, radio and music follow.
+an Audiobookshelf server and music follow.
 Shortcuts you made with a book keep working. Siri on iOS 26 and
 earlier is unchanged.
 

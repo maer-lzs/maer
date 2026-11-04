@@ -222,6 +222,20 @@ struct ShortcutBooksTests {
         #expect(shortcuts.contains("let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)"))
     }
 
+    /// Siri's search asks the stations the door resolves, the one list the
+    /// lookup by id reads.
+    @Test("Siris Suche fragt die Sender, die die Tuer aufloest", .needsTheSources)
+    func theSearchAsksTheStations() throws {
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("static func stations() -> [RadioStation] { RadioStore.onHand() }"), "the offer is another list")
+        #expect(shortcuts.contains("let stations = AudioAsk.stations(for: ask, in: RadioStationQuery.stations(), lastPlayedId: lastPlayed)"),
+                "Siri's search does not ask the stations")
+        #expect(shortcuts.contains("+ stations.map { .station(RadioStationEntity($0)) }"), "the stations found are not answered")
+        let radio = try FetchAnswerTests.squeezedSource("Sources/Models/RadioModels.swift")
+        #expect(radio.contains("static func station(forId id: String, defaults: UserDefaults = .standard) -> RadioStation? { onHand(defaults: defaults).first { $0.id == id } }"),
+                "the lookup by id reads another list than the offer")
+    }
+
     @Test("der Bau exportiert Sendung und Folge unter dem Schema der Audio-Domaene")
     func theBuildExportsShowAndEpisode() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
@@ -234,6 +248,54 @@ struct ShortcutBooksTests {
         let episode = String(describing: try #require(entities["PodcastEpisodeEntity"], "the episode is not exported"))
         #expect(show.contains("PodcastShowEntity") && show.contains("audio"), "\(show.prefix(300))")
         #expect(episode.contains("PodcastEpisodeEntity") && episode.contains("audio"), "\(episode.prefix(300))")
+    }
+
+    /// The stations on offer are the ones that resolve by id beyond this
+    /// session: a catalog station held only for the session is not offered.
+    @Test("die Sender auf Angebot: Favorit, eigene Adresse, zuletzt gehoert, jeder einmal, keiner nur der Sitzung")
+    @MainActor
+    func theStationsOnOffer() {
+        let suiteName = "siri-stations-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let favorite = RadioStation(id: "radio:rb:fav-\(UUID().uuidString)", name: "Favorit", streamURL: "https://a.example/s")
+        let manual = RadioStation(id: "radio:manual:\(UUID().uuidString)", name: "Eigene", streamURL: "https://b.example/s")
+        let recent = RadioStation(id: "radio:rb:recent-\(UUID().uuidString)", name: "Zuletzt", streamURL: "https://c.example/s")
+        let session = RadioStation(id: "radio:rb:session-\(UUID().uuidString)", name: "Sitzung", streamURL: "https://d.example/s")
+        RadioStore.replaceFavorites([favorite], defaults: defaults)
+        RadioStore.addManual(manual, defaults: defaults)
+        RadioStore.recordRecent(recent, defaults: defaults)
+        RadioStore.recordRecent(favorite, defaults: defaults)
+        #expect(RadioStore.onHand(defaults: defaults).map(\.id) == [favorite.id, manual.id, recent.id],
+                "each station once, favorites first")
+        RadioProvider.shared.remember([session])
+        #expect(RadioProvider.shared.station(forId: session.id) != nil, "the session station resolves for now")
+        #expect(!RadioStore.onHand(defaults: defaults).contains { $0.id == session.id }, "a station of the session alone is not offered")
+        #expect(RadioStore.station(forId: recent.id, defaults: defaults)?.name == "Zuletzt", "the lookup reads the same list")
+    }
+
+    /// Siri's ask finds a station by its name, and nothing named continues
+    /// a station that played last.
+    @Test("Siris Frage findet Sender nach Name, nichts genannt setzt einen Sender fort")
+    func theAskFindsStations() {
+        let cafe = RadioStation(id: "radio:rb:cafe", name: "Radio Café", streamURL: "https://a.example/s")
+        let swr = RadioStation(id: "radio:manual:swr", name: "SWR3", streamURL: "https://b.example/s")
+        #expect(AudioAsk.stations(for: .search("cafe"), in: [cafe, swr], lastPlayedId: nil).map(\.id) == ["radio:rb:cafe"])
+        #expect(AudioAsk.stations(for: .unnamed, in: [cafe, swr], lastPlayedId: "radio:manual:swr").map(\.id) == ["radio:manual:swr"])
+        #expect(AudioAsk.stations(for: .unnamed, in: [cafe, swr], lastPlayedId: "rss:a:b").isEmpty, "an episode last is no station")
+        #expect(AudioAsk.stations(for: .unanswered, in: [cafe, swr], lastPlayedId: nil).isEmpty)
+    }
+
+    @Test("der Bau exportiert den Sender unter dem Schema der Audio-Domaene")
+    func theBuildExportsTheStation() throws {
+        let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
+                                               subdirectory: "Metadata.appintents"))
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        let json = try #require(object as? [String: Any])
+        let entities = try #require(json["entities"] as? [String: Any])
+        let station = String(describing: try #require(entities["RadioStationEntity"], "the station is not exported"))
+        #expect(station.contains("RadioStationEntity") && station.contains("audio"), "\(station.prefix(300))")
     }
 
     /// A shortcut's search and Siri's search are one search: title and
@@ -282,7 +344,7 @@ struct ShortcutBooksTests {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("try await ResumeListeningIntent.run(itemId: audioEntity.itemId)"),
                 "Siri's title does not go through the door")
-        #expect(shortcuts.contains("case .audiobook(let book): book.itemId case .episode(let episode): episode.id"),
+        #expect(shortcuts.contains("case .audiobook(let book): book.itemId case .episode(let episode): episode.id case .station(let station): station.id"),
                 "a kind starts something else than its id of the app")
         #expect(!shortcuts.contains("resume(namedItemId:"), "a way of its own beside the door")
         let widget = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")

@@ -251,6 +251,11 @@ nonisolated enum AudioAsk: Equatable, Sendable {
         found(for: ask, in: books, itemId: \.itemId, fields: { [$0.title, $0.author] }, lastPlayedId: lastPlayedId)
     }
 
+    /// The stations an ask finds, by name.
+    static func stations(for ask: AudioAsk, in stations: [RadioStation], lastPlayedId: String?) -> [RadioStation] {
+        found(for: ask, in: stations, itemId: \.id, fields: { [$0.name] }, lastPlayedId: lastPlayedId)
+    }
+
     /// The episodes an ask finds, by title and the show's title.
     static func episodes(for ask: AudioAsk, in episodes: [EpisodeOffer], lastPlayedId: String?) -> [EpisodeOffer] {
         found(for: ask, in: episodes, itemId: \.itemId, fields: { [$0.title, $0.showTitle] }, lastPlayedId: lastPlayedId)
@@ -410,6 +415,46 @@ struct PodcastEpisodeQuery: EntityStringQuery {
     }
 }
 
+/// A live station for the audio domain (`.audio.liveRadioStation`): one the
+/// person keeps (`RadioStore.onHand`), with the id of the app, which carries
+/// no address. A catalog station heard only in this session is not offered:
+/// it resolves by id only until the app ends.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.liveRadioStation)
+struct RadioStationEntity: AppEntity {
+    static let defaultQuery = RadioStationQuery()
+
+    let id: String
+    var title: String
+    /// Who broadcasts the station; the stored station names none.
+    var providerName: String?
+
+    init(_ station: RadioStation) {
+        id = station.id
+        title = station.name
+    }
+
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(title)") }
+}
+
+@available(iOS 27, *)
+struct RadioStationQuery: EntityStringQuery {
+    static func stations() -> [RadioStation] { RadioStore.onHand() }
+
+    func entities(for identifiers: [String]) async throws -> [RadioStationEntity] {
+        let stations = Self.stations()
+        return identifiers.compactMap { id in stations.first { $0.id == id } }.map(RadioStationEntity.init)
+    }
+
+    func entities(matching string: String) async throws -> [RadioStationEntity] {
+        AudioAsk.stations(for: .search(string), in: Self.stations(), lastPlayedId: nil).map(RadioStationEntity.init)
+    }
+
+    func suggestedEntities() async throws -> [RadioStationEntity] {
+        Self.stations().prefix(BookQuery.suggestionLimit).map(RadioStationEntity.init)
+    }
+}
+
 /// The kinds Siri may ask this app to play; each kind joins with its slice.
 /// A show is not one yet: what playing a whole show starts is open.
 @available(iOS 27, *)
@@ -417,12 +462,14 @@ struct PodcastEpisodeQuery: EntityStringQuery {
 enum PlayableAudio {
     case audiobook(AudiobookEntity)
     case episode(PodcastEpisodeEntity)
+    case station(RadioStationEntity)
 
     /// The id of the app the door starts.
     var itemId: String {
         switch self {
         case .audiobook(let book): book.itemId
         case .episode(let episode): episode.id
+        case .station(let station): station.id
         }
     }
 }
@@ -441,8 +488,10 @@ struct PlayableAudioSearch: IntentValueQuery {
         let now = await BookQuery.current()
         let books = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf), lastPlayedId: lastPlayed)
         let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)
-        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count)")
+        let stations = AudioAsk.stations(for: ask, in: RadioStationQuery.stations(), lastPlayedId: lastPlayed)
+        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count) stations=\(stations.count)")
         return books.map { .audiobook(AudiobookEntity($0)) } + episodes.map { .episode(PodcastEpisodeEntity($0)) }
+            + stations.map { .station(RadioStationEntity($0)) }
     }
 }
 
