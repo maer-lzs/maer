@@ -6,6 +6,7 @@
 import AppIntents
 import Foundation
 import MediaIntents
+import MediaPlayer
 import OSLog
 
 /// "Continue listening": opens the app and resumes the last played book. The
@@ -312,6 +313,38 @@ struct PlayAudioIntent: AppIntent {
             }
         }
         return .result()
+    }
+}
+
+/// The entity the lock screen's title stands for, so Siri knows what plays
+/// (`MPNowPlayingInfoPropertyAppEntityIdentifiers`): a book with its outward
+/// id. Worked out once per title, because the info is written on every
+/// event of the playback; a title without an outward id has none, also when
+/// its owner becomes known while it plays, until the next title.
+@available(iOS 27, *)
+@MainActor
+enum NowPlayingEntities {
+    private static var memo: (itemId: String?, identifiers: [MPAppEntityIdentifier])?
+
+    /// The outward id of the playing title, when it is a book on offer.
+    nonisolated static func ref(forItem itemId: String?, tagOf: (String) -> String?) -> String? {
+        guard let itemId, ItemNamespace.of(itemId) == nil else { return nil }
+        return OutwardItemRef.ref(itemId: itemId, serverTag: tagOf(itemId))
+    }
+
+    /// The identifiers for the playing title; the device's tags are read
+    /// only when the title changes, and only for a library id.
+    static func identifiers(forItem itemId: String?,
+                            tagOf: () -> ((String) -> String?)? = { OutwardServerTag.appTagOf() }) -> [MPAppEntityIdentifier] {
+        if let memo, memo.itemId == itemId { return memo.identifiers }
+        var identifiers: [MPAppEntityIdentifier] = []
+        if let itemId, ItemNamespace.of(itemId) == nil, let tags = tagOf(),
+           let ref = ref(forItem: itemId, tagOf: tags),
+           let identifier = MPAppEntityIdentifier(entityIdentifier: EntityIdentifier(for: AudiobookEntity.self, identifier: ref)) {
+            identifiers = [identifier]
+        }
+        memo = (itemId, identifiers)
+        return identifiers
     }
 }
 

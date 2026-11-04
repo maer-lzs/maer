@@ -258,6 +258,11 @@ extension PlayerViewModel {
             }
             info[MPMediaItemPropertyArtwork] = nowPlayingArtwork?.artwork
         }
+        // What plays, for Siri: the title's entity, when it has one.
+        if #available(iOS 27, *) {
+            let identifiers = NowPlayingEntities.identifiers(forItem: item?.id)
+            if !identifiers.isEmpty { info[MPNowPlayingInfoPropertyAppEntityIdentifiers] = identifiers }
+        }
         nowPlayingWrites += 1
         lastNowPlaying = NowPlayingRefresh.Written(fields: nowPlayingFields,
                                                    elapsed: playbackSpan.elapsed(absolute: currentTime),

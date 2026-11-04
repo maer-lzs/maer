@@ -160,5 +160,47 @@ struct ShortcutBooksTests {
         #expect(widget.contains("try await Self.run(itemId: itemId) { try await Self.opensApp(self) }"),
                 "the widget's command left the shared run")
     }
+
+    @Test("der laufende Titel nennt Siri sein Buch, nur mit Kennung nach aussen")
+    @available(iOS 27, *)
+    func thePlayingTitleNamesItsBook() {
+        #expect(NowPlayingEntities.ref(forItem: "a", tagOf: tagOf) == OutwardItemRef.ref(itemId: "a", serverTag: tagOf("a")))
+        #expect(NowPlayingEntities.ref(forItem: "a", tagOf: tagOf) != nil)
+        #expect(NowPlayingEntities.ref(forItem: "unowned", tagOf: tagOf) == nil, "a book without an owner")
+        #expect(NowPlayingEntities.ref(forItem: "rss:feed:episode", tagOf: tagOf) == nil, "an episode is no book")
+        #expect(NowPlayingEntities.ref(forItem: nil, tagOf: tagOf) == nil)
+    }
+
+    /// The info is written on every event of the playback: the device's
+    /// tags are read once per title, never for a title with a namespace.
+    @Test("die Kennung des laufenden Titels wird je Titel einmal gerechnet")
+    @available(iOS 27, *)
+    @MainActor
+    func theIdentifiersAreWorkedOutOncePerTitle() {
+        let owned = "li_\(UUID().uuidString)"
+        let other = "li_\(UUID().uuidString)"
+        let owners = OutwardItemRefTests.owners([owned: OutwardItemRefTests.serverA, other: OutwardItemRefTests.serverA])
+        var reads = 0
+        let tags: () -> ((String) -> String?)? = {
+            reads += 1
+            return OutwardServerTag.tagOf(owners: owners, salt: OutwardItemRefTests.saltA)
+        }
+        #expect(NowPlayingEntities.identifiers(forItem: owned, tagOf: tags).count == 1)
+        #expect(NowPlayingEntities.identifiers(forItem: owned, tagOf: tags).count == 1)
+        #expect(reads == 1, "the second write of the same title reads nothing")
+        #expect(NowPlayingEntities.identifiers(forItem: other, tagOf: tags).count == 1)
+        #expect(reads == 2, "another title is worked out anew")
+        #expect(NowPlayingEntities.identifiers(forItem: "rss:feed:\(UUID().uuidString)", tagOf: tags).isEmpty)
+        #expect(reads == 2, "a title with a namespace reads nothing")
+        #expect(NowPlayingEntities.identifiers(forItem: "li_\(UUID().uuidString)", tagOf: { nil }).isEmpty,
+                "without salt or register no entity")
+    }
+
+    @Test("die Angaben zum laufenden Titel tragen sein Buch", .needsTheSources)
+    func theNowPlayingInfoCarriesTheBook() throws {
+        let nowPlaying = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
+        #expect(nowPlaying.contains("let identifiers = NowPlayingEntities.identifiers(forItem: item?.id) if !identifiers.isEmpty { info[MPNowPlayingInfoPropertyAppEntityIdentifiers] = identifiers }"),
+                "the now playing info does not name the title's entity")
+    }
 }
 #endif
