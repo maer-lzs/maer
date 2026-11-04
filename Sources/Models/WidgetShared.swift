@@ -53,18 +53,27 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        guard let handler = Self.handler else {
+        try await Self.run(itemId: itemId) { try await Self.opensApp(self) }
+        return .result()
+    }
+
+    /// The work of every command that continues through the app's door
+    /// (this one and Siri's `playAudio`): the app's handler with the title,
+    /// and when it finds nothing, the app in front to say so. `bringsAppToFront`
+    /// is the running intent's own way to the front.
+    @MainActor
+    static func run(itemId: String?, bringsAppToFront: @MainActor () async throws -> Bool) async throws {
+        guard let handler else {
             WidgetLog.logger.notice("RESUME command without the app's handler")
-            return .result()
+            return
         }
         let found = await handler(itemId)
-        guard !found else { return .result() }
-        guard try await Self.opensApp(self) else {
+        guard !found else { return }
+        guard try await bringsAppToFront() else {
             WidgetLog.logger.notice("RESUME command found nothing; the system cannot bring the app to the front")
-            return .result()
+            return
         }
-        Self.saysNothing?()
-        return .result()
+        saysNothing?()
     }
 }
 

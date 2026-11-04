@@ -5,6 +5,7 @@
 
 import AppIntents
 import Foundation
+import MediaIntents
 import OSLog
 
 /// "Continue listening": opens the app and resumes the last played book. The
@@ -186,6 +187,131 @@ struct BookQuery: EntityStringQuery {
     func suggestedEntities() async throws -> [BookEntity] {
         let now = await Self.current()
         return Array(Self.books(from: now.items, tagOf: now.tagOf).prefix(12))
+    }
+}
+
+// MARK: - Siri's "play" in the audio domain (iOS 27)
+
+/// What Siri asks for when it asks this app to play: nothing named (the
+/// person said only "play something"), a search, or what the app does not
+/// answer (an address).
+nonisolated enum AudioAsk: Equatable, Sendable {
+    case unnamed
+    case search(String)
+    case unanswered
+
+    /// The kind of the ask for a log line; never the words of a search.
+    var kind: String {
+        switch self {
+        case .unnamed: "unnamed"
+        case .search: "search"
+        case .unanswered: "unanswered"
+        }
+    }
+
+    /// The books an ask finds. Nothing named is continue listening: the
+    /// last played title, when it is a book on offer. A search finds the
+    /// books whose title or author contains it, without case or accents.
+    static func books(for ask: AudioAsk, in books: [BookEntity], lastPlayedId: String?) -> [BookEntity] {
+        switch ask {
+        case .unnamed:
+            return books.filter { $0.itemId == lastPlayedId }
+        case .search(let text):
+            let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !query.isEmpty else { return [] }
+            let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+            return books.filter { book in
+                book.title.range(of: query, options: options) != nil
+                    || book.author?.range(of: query, options: options) != nil
+            }
+        case .unanswered:
+            return []
+        }
+    }
+}
+
+/// The kinds Siri may ask this app to play; each kind joins with its slice.
+@available(iOS 27, *)
+@UnionValue
+enum PlayableAudio {
+    case audiobook(AudiobookEntity)
+}
+
+/// Siri's search for what to play, over the books of this device.
+@available(iOS 27, *)
+struct PlayableAudioSearch: IntentValueQuery {
+    func values(for input: AudioSearch) async throws -> [PlayableAudio] {
+        let ask: AudioAsk = switch input.criteria {
+        case .unspecified: .unnamed
+        case .searchQuery(let text): .search(text)
+        case .url: .unanswered
+        @unknown default: .unanswered
+        }
+        let now = await BookQuery.current()
+        let found = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf),
+                                   lastPlayedId: AppStorageKeys.lastPlayedItemIdValue)
+        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) found=\(found.count)")
+        return found.map { .audiobook(AudiobookEntity($0)) }
+    }
+}
+
+/// How Siri may ask a title to be played; a book plays from where it stands.
+@available(iOS 27, *)
+@AppEnum(schema: .audio.playbackAttributes)
+enum AudioPlaybackAttribute: String, AppEnum {
+    case `repeat`, shuffle
+    static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [.repeat: "Repeat", .shuffle: "Shuffle"]
+}
+
+/// Where Siri may ask a title to go in the queue; this app plays it now.
+@available(iOS 27, *)
+@AppEnum(schema: .audio.queueInsertionLocation)
+enum AudioQueueLocation: String, AppEnum {
+    case next, tail
+    static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [.next: "Play Next", .tail: "Play Last"]
+}
+
+/// The schema's answer to a warm up of the queue; this app warms up nothing
+/// and finds none.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.warmupAudioQueueResult)
+struct AudioWarmupResult: AppEntity {
+    struct Query: EntityStringQuery {
+        func entities(for identifiers: [String]) async throws -> [AudioWarmupResult] { [] }
+        func entities(matching string: String) async throws -> [AudioWarmupResult] { [] }
+    }
+    static let defaultQuery = Query()
+    let id: String
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(id)") }
+}
+
+/// Siri's "play" for this app: the title goes through the one door of
+/// continue listening (`ResumeListeningIntent.run`), in the background,
+/// and the app comes to the front only to say it found nothing.
+@available(iOS 27, *)
+@AppIntent(schema: .audio.playAudio)
+struct PlayAudioIntent: AppIntent {
+    var audioEntity: PlayableAudio
+    var playbackAttributes: Set<AudioPlaybackAttribute>
+    var queueLocation: AudioQueueLocation?
+    var warmupAudioQueueResult: AudioWarmupResult?
+
+    static var supportedModes: IntentModes { [.background, .foreground(.dynamic)] }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        if !playbackAttributes.isEmpty || queueLocation != nil {
+            // A book plays from where it stands and now; the wish is noted, not followed.
+            Logger.library.notice("SIRI play attributes=\(playbackAttributes.map(\.rawValue).sorted(), privacy: .public) queue=\(queueLocation?.rawValue ?? "none", privacy: .public) not followed")
+        }
+        switch audioEntity {
+        case .audiobook(let book):
+            try await ResumeListeningIntent.run(itemId: book.itemId) {
+                try await continueInForeground(nil, alwaysConfirm: false)
+                return true
+            }
+        }
+        return .result()
     }
 }
 

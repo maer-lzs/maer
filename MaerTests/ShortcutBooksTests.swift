@@ -117,5 +117,48 @@ struct ShortcutBooksTests {
         let text = String(describing: entity)
         #expect(text.contains("MediaBookEntity") && text.contains("audio"), "not under the audio schema: \(text.prefix(300))")
     }
+
+    @Test("Siris Frage: nichts genannt ist Weiterhoeren, eine Suche findet Titel und Autor")
+    func whatSiriAsksFinds() {
+        let books = BookQuery.books(from: [item("a", title: "Der Zauberberg", author: "Thomas Mann"),
+                                           item("b", title: "Die unendliche Geschichte", author: "Michael Ende"),
+                                           item("c", title: "Effi Briest", author: "Theodor Fontane")], tagOf: tagOf)
+        let ids = { (ask: AudioAsk, last: String?) in AudioAsk.books(for: ask, in: books, lastPlayedId: last).map(\.itemId) }
+        #expect(ids(.unnamed, "c") == ["c"], "nothing named continues the last played book")
+        #expect(ids(.unnamed, "rss:feed:episode").isEmpty, "the last played title is no book on offer")
+        #expect(ids(.unnamed, nil).isEmpty)
+        #expect(ids(.search("zauberberg"), nil) == ["a"], "a search ignores case")
+        #expect(ids(.search("Fontané"), nil) == ["c"], "a search ignores accents and finds the author")
+        #expect(ids(.search("  "), nil).isEmpty, "an empty search finds nothing")
+        #expect(ids(.unanswered, "a").isEmpty, "an address is not answered")
+        #expect(AudioAsk.search("geheim").kind == "search", "the log line names the kind, never the words")
+    }
+
+    /// The build exports Siri's play under the audio schema, and its search.
+    @Test("der Bau exportiert Siris Wiedergabe unter dem Schema der Audio-Domaene")
+    func theBuildExportsThePlay() throws {
+        let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
+                                               subdirectory: "Metadata.appintents"))
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        let json = try #require(object as? [String: Any])
+        let actions = try #require(json["actions"] as? [String: Any])
+        let play = try #require(actions["PlayAudioIntent"], "Siri's play is not exported")
+        let text = String(describing: play)
+        #expect(text.contains("PlayAudioIntent") && text.contains("audio"), "not under the audio schema: \(text.prefix(300))")
+    }
+
+    /// Siri's play starts a title through the one door of continue
+    /// listening, never a way of its own.
+    @Test("Siris Wiedergabe geht durch die eine Tuer des Weiterhoerens", .needsTheSources)
+    func thePlayGoesThroughTheDoor() throws {
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("case .audiobook(let book): try await ResumeListeningIntent.run(itemId: book.itemId)"),
+                "the book does not go through the door")
+        #expect(!shortcuts.contains("resume(namedItemId:"), "a way of its own beside the door")
+        let widget = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
+        #expect(widget.contains("try await Self.run(itemId: itemId) { try await Self.opensApp(self) }"),
+                "the widget's command left the shared run")
+    }
 }
 #endif

@@ -9548,6 +9548,16 @@
         }
       }
     },
+    "Repeat" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholen"
+          }
+        }
+      }
+    },
     "Repeat new password" : {
       "localizations" : {
         "de" : {
