@@ -18,7 +18,9 @@ a station or music Siri finds nothing to continue for now. The app
 answers in the background and comes to the front only to say that it
 found nothing. Shuffle, repeat
 and a place in the queue do not apply to a book; it plays from where
-you stand. Podcasts, radio and music follow. Shortcuts you made with a
+you stand. Your audiobooks also appear in the search of the device
+(Spotlight) once the library has loaded, and leave it when you sign
+out. Podcasts, radio and music follow. Shortcuts you made with a
 book keep working. Siri on iOS 26 and earlier is unchanged.
 
 **Routines: a playlist that picks today's episodes.** On the page of a

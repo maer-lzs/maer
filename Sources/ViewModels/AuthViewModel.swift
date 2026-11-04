@@ -288,6 +288,9 @@ final class AuthViewModel: ObservableObject {
         Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
         Task { await ContinueRowsWriter.forget() }
+        if #available(iOS 27, *) {
+            Task { await SpotlightBooks.forget() }
+        }
     }
 
     private static func normalizedURL(from raw: String) -> URL? {

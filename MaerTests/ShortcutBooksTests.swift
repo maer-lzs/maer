@@ -9,6 +9,13 @@ import Foundation
 @testable import Maer
 
 /// The Siri book query reads the rows, the same books the library shows.
+/// The calls a stand-in for the system's search index received.
+@MainActor
+final class SpotlightRecorder {
+    var calls: [String] = []
+    var failAdd = false
+}
+
 struct ShortcutBooksTests {
     private func item(_ id: String, title: String?, author: String? = "A") -> LibraryItem {
         LibraryItem(
@@ -265,6 +272,79 @@ struct ShortcutBooksTests {
         let after = OutwardServerTag.registerGeneration
         shelf.write(ItemOwners(), afterCorruptRead: true)
         #expect(OutwardServerTag.registerGeneration == after, "a write that does not happen is no new stand")
+    }
+
+    @Test("Spotlight bleibt bei gleicher Menge, ersetzt bei jeder anderen")
+    @available(iOS 27, *)
+    func whenSpotlightChanges() {
+        #expect(SpotlightBooks.pass(offer: ["a", "b"], indexed: ["b", "a"]) == .keep)
+        #expect(SpotlightBooks.pass(offer: ["a"], indexed: ["a", "b"]) == .replace, "a book left")
+        #expect(SpotlightBooks.pass(offer: ["a", "c"], indexed: ["a"]) == .replace, "a book came")
+        #expect(SpotlightBooks.pass(offer: ["a"], indexed: nil) == .replace, "unknown is set anew")
+        #expect(SpotlightBooks.pass(offer: [], indexed: []) == .keep)
+    }
+
+    /// The index is set to what is on offer, through the one place, and a
+    /// sign out takes every book out; the system index stands in as a list.
+    @Test("Spotlight traegt genau die angebotenen Buecher, die Abmeldung nimmt alle heraus")
+    @available(iOS 27, *)
+    @MainActor
+    func spotlightCarriesTheOffer() async {
+        let kept = SpotlightBooks.index
+        defer { SpotlightBooks.index = kept }
+        let index = SpotlightRecorder()
+        SpotlightBooks.index = SpotlightBooks.Index(
+            removeAll: { index.calls.append("remove") },
+            add: { entities in
+                if index.failAdd { throw URLError(.cannotWriteToFile) }
+                index.calls.append("add " + entities.map(\.itemId).sorted().joined(separator: ","))
+            })
+        let shelf = [item("a", title: "Alpha"), item("b", title: "Beta"), item("unowned", title: "Ohne")]
+        var items = shelf
+        let tagOf = self.tagOf
+
+        await SpotlightBooks.forget()
+        index.calls = []
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        #expect(index.calls == ["remove", "add a,b"], "the books on offer replace the index, the one without an owner stays out")
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        #expect(index.calls == ["remove", "add a,b"], "the same books change nothing")
+        items = [shelf[0]]
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        #expect(index.calls == ["remove", "add a,b", "remove", "add a"], "a book that left goes out")
+        index.failAdd = true
+        items = shelf
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        index.failAdd = false
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        #expect(Array(index.calls.suffix(3)) == ["remove", "remove", "add a,b"], "after a failure the next pass sets the index again")
+        await SpotlightBooks.forget()
+        #expect(index.calls.last == "remove", "the sign out takes every book out")
+        let count = index.calls.count
+        await SpotlightBooks.reconcile(books: { [] })
+        #expect(index.calls.count == count, "nothing on offer after the sign out changes nothing")
+    }
+
+    /// One place adds books to the device's search and takes them out; it
+    /// runs after a full list and at the sign out.
+    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste und bei der Abmeldung", .needsTheSources)
+    func spotlightHasOnePlace() throws {
+        var writing: [String] = []
+        var reconciling: [String] = []
+        var forgetting: [String] = []
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            let squeezed = FetchAnswerTests.squeezed(text)
+            if squeezed.contains("indexAppEntities(") || squeezed.contains("deleteAppEntities(")
+                || squeezed.contains("CSSearchableIndex") { writing.append(file) }
+            if squeezed.contains("SpotlightBooks.reconcile(") { reconciling.append(file) }
+            if squeezed.contains("SpotlightBooks.forget(") { forgetting.append(file) }
+        }
+        #expect(writing == ["AppShortcuts.swift"], "the device's search is written elsewhere: \(writing)")
+        #expect(reconciling == ["LibraryViewModel.swift"], "\(reconciling)")
+        #expect(forgetting == ["AuthViewModel.swift"], "\(forgetting)")
+        let library = try FetchAnswerTests.squeezedSource("Sources/ViewModels/LibraryViewModel.swift")
+        #expect(library.contains("cleanUpPerBook(full: full, bookLibraries: libraries.count) if full != nil, #available(iOS 27, *) { Task { await SpotlightBooks.reconcile() } }"),
+                "the pass does not follow the full list")
     }
 
     @Test("die Angaben zum laufenden Titel tragen sein Buch", .needsTheSources)

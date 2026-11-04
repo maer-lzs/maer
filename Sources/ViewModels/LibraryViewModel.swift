@@ -850,6 +850,10 @@ final class LibraryViewModel: ObservableObject {
         }
         let full = try await loadContent(libraryId: library.id)
         cleanUpPerBook(full: full, bookLibraries: libraries.count)
+        // A full list sets the books of the device's search to what is on offer.
+        if full != nil, #available(iOS 27, *) {
+            Task { await SpotlightBooks.reconcile() }
+        }
     }
 
     /// The keys and rows of books that left the library go, only with a

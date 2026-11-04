@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import AppIntents
+import CoreSpotlight
 import Foundation
 import MediaIntents
 import MediaPlayer
@@ -364,6 +365,79 @@ enum NowPlayingEntities {
         }
         memo = (itemId, identifiers, generation, now)
         return identifiers
+    }
+}
+
+// MARK: - Spotlight (iOS 27)
+
+@available(iOS 27, *)
+extension AudiobookEntity: IndexedEntity {}
+
+/// The books in the device's search: the one place that adds them and takes
+/// them out. Each pass sets the index to what is on offer now (the books
+/// with an outward id): all books of this kind out, the ones on offer in.
+/// So a book that left, a server under a new name (a new tag) and a new
+/// server need no list of what was indexed; no store keeps an outward id.
+/// The set indexed last is kept in this process only, so a pass with the
+/// same books does nothing. A sign out takes every book out.
+@available(iOS 27, *)
+@MainActor
+enum SpotlightBooks {
+    /// What a pass does with the index.
+    enum Pass: Equatable {
+        case keep
+        case replace
+    }
+
+    /// The index as the app uses it; a witness stands in for the system.
+    struct Index {
+        var removeAll: @MainActor () async throws -> Void
+        var add: @MainActor ([AudiobookEntity]) async throws -> Void
+    }
+
+    static var index = Index(
+        removeAll: { try await CSSearchableIndex.default().deleteAppEntities(ofType: AudiobookEntity.self) },
+        add: { try await CSSearchableIndex.default().indexAppEntities($0) })
+
+    /// The outward ids indexed last in this process; nil when unknown.
+    private static var indexed: Set<String>?
+
+    /// Whether a pass with `offer` changes the index: not when it holds
+    /// exactly these ids already.
+    nonisolated static func pass(offer: Set<String>, indexed: Set<String>?) -> Pass {
+        offer == indexed ? .keep : .replace
+    }
+
+    /// Sets the index to the books on offer. A failure leaves the indexed
+    /// set unknown, so the next pass sets it again.
+    static func reconcile(books: () async -> [BookEntity] = {
+        let now = await BookQuery.current()
+        return BookQuery.books(from: now.items, tagOf: now.tagOf)
+    }) async {
+        let offer = await books().map(AudiobookEntity.init)
+        let ids = Set(offer.map(\.id))
+        guard pass(offer: ids, indexed: indexed) == .replace else { return }
+        indexed = nil
+        do {
+            try await index.removeAll()
+            if !offer.isEmpty { try await index.add(offer) }
+            indexed = ids
+            Logger.library.notice("SPOTLIGHT books indexed=\(ids.count)")
+        } catch {
+            Logger.library.error("SPOTLIGHT books not indexed: \(FailureReason.of(error), privacy: .public)")
+        }
+    }
+
+    /// Takes every book out of the index: the sign out.
+    static func forget() async {
+        indexed = nil
+        do {
+            try await index.removeAll()
+            indexed = []
+            Logger.library.notice("SPOTLIGHT books removed")
+        } catch {
+            Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
+        }
     }
 }
 
