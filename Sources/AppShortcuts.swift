@@ -377,7 +377,7 @@ extension AudiobookEntity: IndexedEntity {}
 /// them out. Each pass sets the index to what is on offer now (the books
 /// with an outward id): all books of this kind out, the ones on offer in.
 /// So a book that left, a server under a new name (a new tag) and a new
-/// server need no list of what was indexed; no store keeps an outward id.
+/// server need no list of the indexed books; no store keeps an outward id.
 /// The set indexed last is kept in this process only, so a pass with the
 /// same books does nothing. A sign out takes every book out.
 @available(iOS 27, *)
