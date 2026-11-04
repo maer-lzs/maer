@@ -225,32 +225,170 @@ nonisolated enum AudioAsk: Equatable, Sendable {
         }
     }
 
-    /// The books an ask finds. Nothing named is continue listening: the
-    /// last played title, when it is a book on offer. A search finds the
-    /// books whose title or author contains it, without case or accents.
-    static func books(for ask: AudioAsk, in books: [BookEntity], lastPlayedId: String?) -> [BookEntity] {
+    /// What an ask finds among `titles`, for every kind: nothing named is
+    /// continue listening, the last played title when it is on offer; a
+    /// search finds the titles one of whose `fields` contains it, without
+    /// case or accents.
+    static func found<Title>(for ask: AudioAsk, in titles: [Title], itemId: (Title) -> String,
+                             fields: (Title) -> [String?], lastPlayedId: String?) -> [Title] {
         switch ask {
         case .unnamed:
-            return books.filter { $0.itemId == lastPlayedId }
+            return titles.filter { itemId($0) == lastPlayedId }
         case .search(let text):
             let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !query.isEmpty else { return [] }
             let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
-            return books.filter { book in
-                book.title.range(of: query, options: options) != nil
-                    || book.author?.range(of: query, options: options) != nil
+            return titles.filter { title in
+                fields(title).contains { $0?.range(of: query, options: options) != nil }
             }
         case .unanswered:
             return []
         }
     }
+
+    /// The books an ask finds, by title and author.
+    static func books(for ask: AudioAsk, in books: [BookEntity], lastPlayedId: String?) -> [BookEntity] {
+        found(for: ask, in: books, itemId: \.itemId, fields: { [$0.title, $0.author] }, lastPlayedId: lastPlayedId)
+    }
+
+    /// The episodes an ask finds, by title and the show's title.
+    static func episodes(for ask: AudioAsk, in episodes: [EpisodeOffer], lastPlayedId: String?) -> [EpisodeOffer] {
+        found(for: ask, in: episodes, itemId: \.itemId, fields: { [$0.title, $0.showTitle] }, lastPlayedId: lastPlayedId)
+    }
+}
+
+/// An episode on offer to Siri, with its show: the episodes of the shows
+/// subscribed by their feed (`rss:` ids, the id of the app, which carries no
+/// address). An Audiobookshelf episode is not offered yet: the owner
+/// register names only library ids, so its server has no tag.
+nonisolated struct EpisodeOffer: Equatable, Sendable {
+    let itemId: String
+    let title: String
+    let showId: String
+    let showTitle: String
+    let released: Date?
+    let duration: Double?
+
+    /// The episodes of `shows` that are on offer, newest first per show.
+    static func episodes(from shows: [PodcastShow]) -> [EpisodeOffer] {
+        shows.flatMap { show in
+            show.episodes
+                .filter { ItemNamespace.of($0.guid) == "rss:" }
+                .sorted { $0.pubDate > $1.pubDate }
+                .map { episode in
+                    EpisodeOffer(itemId: episode.guid, title: episode.title, showId: show.id, showTitle: show.title,
+                                 released: episode.pubDate > 0 ? Date(timeIntervalSince1970: episode.pubDate / 1000) : nil,
+                                 duration: episode.duration > 0 ? episode.duration : nil)
+                }
+        }
+    }
+}
+
+/// A show for the audio domain (`.audio.podcastShow`), from the shows
+/// subscribed by their feed; its id is the show's id in the app.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.podcastShow)
+struct PodcastShowEntity: AppEntity {
+    static let defaultQuery = PodcastShowQuery()
+
+    let id: String
+    var title: String
+    var showDescription: String?
+
+    init(id: String, title: String) {
+        self.id = id
+        self.title = title
+    }
+
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(title)") }
+}
+
+@available(iOS 27, *)
+struct PodcastShowQuery: EntityStringQuery {
+    /// The shows on offer: those with an episode on offer.
+    @MainActor
+    static func shows() -> [PodcastShowEntity] {
+        let shows = PodcastShowSources.active()
+        let offered = Set(EpisodeOffer.episodes(from: shows).map(\.showId))
+        return shows.filter { offered.contains($0.id) }.map { PodcastShowEntity(id: $0.id, title: $0.title) }
+    }
+
+    func entities(for identifiers: [String]) async throws -> [PodcastShowEntity] {
+        let shows = await Self.shows()
+        return identifiers.compactMap { id in shows.first { $0.id == id } }
+    }
+
+    func entities(matching string: String) async throws -> [PodcastShowEntity] {
+        let shows = await Self.shows()
+        return AudioAsk.found(for: .search(string), in: shows, itemId: \.id, fields: { [$0.title] }, lastPlayedId: nil)
+    }
+
+    func suggestedEntities() async throws -> [PodcastShowEntity] {
+        Array(await Self.shows().prefix(BookQuery.suggestionLimit))
+    }
+}
+
+/// An episode for the audio domain (`.audio.podcastEpisode`), with its show.
+@available(iOS 27, *)
+@AppEntity(schema: .audio.podcastEpisode)
+struct PodcastEpisodeEntity: AppEntity {
+    static let defaultQuery = PodcastEpisodeQuery()
+
+    let id: String
+    var title: String
+    var show: PodcastShowEntity?
+    var showName: String?
+    var releaseDate: Date?
+    var duration: Double?
+
+    init(_ offer: EpisodeOffer) {
+        id = offer.itemId
+        title = offer.title
+        show = PodcastShowEntity(id: offer.showId, title: offer.showTitle)
+        showName = offer.showTitle
+        releaseDate = offer.released
+        duration = offer.duration
+    }
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(title)", subtitle: showName.map { "\($0)" })
+    }
+}
+
+@available(iOS 27, *)
+struct PodcastEpisodeQuery: EntityStringQuery {
+    @MainActor
+    static func episodes() -> [EpisodeOffer] { EpisodeOffer.episodes(from: PodcastShowSources.active()) }
+
+    func entities(for identifiers: [String]) async throws -> [PodcastEpisodeEntity] {
+        let episodes = await Self.episodes()
+        return identifiers.compactMap { id in episodes.first { $0.itemId == id } }.map(PodcastEpisodeEntity.init)
+    }
+
+    func entities(matching string: String) async throws -> [PodcastEpisodeEntity] {
+        AudioAsk.episodes(for: .search(string), in: await Self.episodes(), lastPlayedId: nil).map(PodcastEpisodeEntity.init)
+    }
+
+    func suggestedEntities() async throws -> [PodcastEpisodeEntity] {
+        Array(await Self.episodes().prefix(BookQuery.suggestionLimit)).map(PodcastEpisodeEntity.init)
+    }
 }
 
 /// The kinds Siri may ask this app to play; each kind joins with its slice.
+/// A show is not one yet: what playing a whole show starts is open.
 @available(iOS 27, *)
 @UnionValue
 enum PlayableAudio {
     case audiobook(AudiobookEntity)
+    case episode(PodcastEpisodeEntity)
+
+    /// The id of the app the door starts.
+    var itemId: String {
+        switch self {
+        case .audiobook(let book): book.itemId
+        case .episode(let episode): episode.id
+        }
+    }
 }
 
 /// Siri's search for what to play, over the books of this device.
@@ -263,11 +401,12 @@ struct PlayableAudioSearch: IntentValueQuery {
         case .url: .unanswered
         @unknown default: .unanswered
         }
+        let lastPlayed = AppStorageKeys.lastPlayedItemIdValue
         let now = await BookQuery.current()
-        let found = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf),
-                                   lastPlayedId: AppStorageKeys.lastPlayedItemIdValue)
-        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) found=\(found.count)")
-        return found.map { .audiobook(AudiobookEntity($0)) }
+        let books = AudioAsk.books(for: ask, in: BookQuery.books(from: now.items, tagOf: now.tagOf), lastPlayedId: lastPlayed)
+        let episodes = AudioAsk.episodes(for: ask, in: await PodcastEpisodeQuery.episodes(), lastPlayedId: lastPlayed)
+        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count)")
+        return books.map { .audiobook(AudiobookEntity($0)) } + episodes.map { .episode(PodcastEpisodeEntity($0)) }
     }
 }
 
@@ -320,12 +459,9 @@ struct PlayAudioIntent: AppIntent {
             // A book plays from where it stands and now; the wish is noted, not followed.
             Logger.library.notice("SIRI play attributes=\(playbackAttributes.map(\.rawValue).sorted(), privacy: .public) queue=\(queueLocation?.rawValue ?? "none", privacy: .public) not followed")
         }
-        switch audioEntity {
-        case .audiobook(let book):
-            try await ResumeListeningIntent.run(itemId: book.itemId) {
-                try await continueInForeground(nil, alwaysConfirm: false)
-                return true
-            }
+        try await ResumeListeningIntent.run(itemId: audioEntity.itemId) {
+            try await continueInForeground(nil, alwaysConfirm: false)
+            return true
         }
         return .result()
     }

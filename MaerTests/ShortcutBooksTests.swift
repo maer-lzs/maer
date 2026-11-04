@@ -162,6 +162,50 @@ struct ShortcutBooksTests {
         #expect(AudioAsk.search("geheim").kind == "search", "the log line names the kind, never the words")
     }
 
+    private func show(_ id: String, title: String, episodes: [(String, String, Double)]) -> PodcastShow {
+        PodcastShow(id: id, title: title, feedURL: "https://feeds.example.org/\(id)",
+                    episodes: episodes.map { PodcastEpisode(guid: $0.0, title: $0.1, audioURL: "https://x.example/a.mp3",
+                                                            pubDate: $0.2, duration: 0) })
+    }
+
+    @Test("Folgen der abonnierten Feeds, die neueste zuerst; Audiobookshelf noch nicht")
+    func theEpisodesOnOffer() {
+        let shows = [show("k1", title: "Zeitfragen", episodes: [("rss:k1:a", "Alt", 1_000_000), ("rss:k1:b", "Neu", 2_000_000)]),
+                     show("abs", title: "Server", episodes: [("abspod:s:e", "Vom Server", 3_000_000)])]
+        let offers = EpisodeOffer.episodes(from: shows)
+        #expect(offers.map(\.itemId) == ["rss:k1:b", "rss:k1:a"], "newest first, no episode of a server")
+        #expect(offers.first?.showTitle == "Zeitfragen")
+        #expect(offers.first?.released == Date(timeIntervalSince1970: 2_000), "the release from the feed's milliseconds")
+        #expect(offers.first?.duration == nil, "an unknown length stays empty")
+    }
+
+    @Test("Siris Frage findet Folgen nach Titel und Sendung, nichts genannt die zuletzt gehoerte")
+    func whatSiriAsksFindsEpisodes() {
+        let offers = EpisodeOffer.episodes(from: [
+            show("k1", title: "Forschung aktuell", episodes: [("rss:k1:a", "Café im Weltall", 1_000)]),
+            show("k2", title: "Zeitfragen", episodes: [("rss:k2:b", "Wasser", 2_000)])])
+        let ids = { (ask: AudioAsk, last: String?) in AudioAsk.episodes(for: ask, in: offers, lastPlayedId: last).map(\.itemId) }
+        #expect(ids(.unnamed, "rss:k2:b") == ["rss:k2:b"], "nothing named continues the last played episode")
+        #expect(ids(.unnamed, "a-book").isEmpty)
+        #expect(ids(.search("cafe"), nil) == ["rss:k1:a"], "the title, without accents")
+        #expect(ids(.search("zeitfragen"), nil) == ["rss:k2:b"], "the show's title")
+        #expect(ids(.unanswered, "rss:k1:a").isEmpty)
+    }
+
+    @Test("der Bau exportiert Sendung und Folge unter dem Schema der Audio-Domaene")
+    func theBuildExportsShowAndEpisode() throws {
+        let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
+                                               subdirectory: "Metadata.appintents"))
+        let data = try Data(contentsOf: url)
+        let object = try JSONSerialization.jsonObject(with: data)
+        let json = try #require(object as? [String: Any])
+        let entities = try #require(json["entities"] as? [String: Any])
+        let show = String(describing: try #require(entities["PodcastShowEntity"], "the show is not exported"))
+        let episode = String(describing: try #require(entities["PodcastEpisodeEntity"], "the episode is not exported"))
+        #expect(show.contains("PodcastShowEntity") && show.contains("audio"), "\(show.prefix(300))")
+        #expect(episode.contains("PodcastEpisodeEntity") && episode.contains("audio"), "\(episode.prefix(300))")
+    }
+
     /// A shortcut's search and Siri's search are one search: title and
     /// author, without case or accents, and one limit for suggestions.
     @Test("die Suche der Kurzbefehle ist die Suche von Siri, mit einer Grenze")
@@ -206,8 +250,10 @@ struct ShortcutBooksTests {
     @Test("Siris Wiedergabe geht durch die eine Tuer des Weiterhoerens", .needsTheSources)
     func thePlayGoesThroughTheDoor() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
-        #expect(shortcuts.contains("case .audiobook(let book): try await ResumeListeningIntent.run(itemId: book.itemId)"),
-                "the book does not go through the door")
+        #expect(shortcuts.contains("try await ResumeListeningIntent.run(itemId: audioEntity.itemId)"),
+                "Siri's title does not go through the door")
+        #expect(shortcuts.contains("case .audiobook(let book): book.itemId case .episode(let episode): episode.id"),
+                "a kind starts something else than its id of the app")
         #expect(!shortcuts.contains("resume(namedItemId:"), "a way of its own beside the door")
         let widget = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
         #expect(widget.contains("try await Self.run(itemId: itemId) { try await Self.opensApp(self) }"),
