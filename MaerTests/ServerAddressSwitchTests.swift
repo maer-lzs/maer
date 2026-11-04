@@ -38,6 +38,7 @@ struct ServerAddressSwitchTests {
             }
         }
         #expect(ServerAddressSwitch.serverKey(of: "") == nil)
+        #expect(ServerAddressSwitch.serverKey(of: "not a server") == nil, "an address that does not read has no key")
         #expect(ServerAddressSwitch.serverKey(of: "https://jf.a.example:8096/Jellyfin/") == "jf.a.example:8096/jellyfin")
     }
 

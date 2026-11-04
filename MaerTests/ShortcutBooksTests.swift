@@ -14,6 +14,27 @@ import Foundation
 final class SpotlightRecorder {
     var calls: [String] = []
     var failAdd = false
+    /// The items the offer is built from.
+    var items: [LibraryItem] = []
+    /// Holds the next removal until it is let go.
+    var holdNextRemoval = false
+    var held: CheckedContinuation<Void, Never>?
+
+    @available(iOS 27, *)
+    func index() -> SpotlightBooks.Index {
+        SpotlightBooks.Index(
+            removeAll: {
+                self.calls.append("remove")
+                if self.holdNextRemoval {
+                    self.holdNextRemoval = false
+                    await withCheckedContinuation { self.held = $0 }
+                }
+            },
+            add: { entities in
+                if self.failAdd { throw URLError(.cannotWriteToFile) }
+                self.calls.append("add " + entities.map(\.itemId).sorted().joined(separator: ","))
+            })
+    }
 }
 
 struct ShortcutBooksTests {
@@ -139,6 +160,31 @@ struct ShortcutBooksTests {
         #expect(ids(.search("  "), nil).isEmpty, "an empty search finds nothing")
         #expect(ids(.unanswered, "a").isEmpty, "an address is not answered")
         #expect(AudioAsk.search("geheim").kind == "search", "the log line names the kind, never the words")
+    }
+
+    /// A shortcut's search and Siri's search are one search: title and
+    /// author, without case or accents, and one limit for suggestions.
+    @Test("die Suche der Kurzbefehle ist die Suche von Siri, mit einer Grenze")
+    func theShortcutSearchIsSirisSearch() {
+        let books = BookQuery.books(from: [item("a", title: "Der Zauberberg", author: "Thomas Mann"),
+                                           item("c", title: "Effi Briest", author: "Theodor Fontane")], tagOf: tagOf)
+        #expect(BookQuery.matching("fontane", in: books).map(\.itemId) == ["c"], "the author is found")
+        #expect(BookQuery.matching("Fontané", in: books).map(\.itemId) == ["c"], "accents are folded")
+        #expect(BookQuery.matching("zauber", in: books).map(\.itemId) == ["a"])
+        #expect(BookQuery.matching("Fontané", in: books).map(\.itemId)
+                == AudioAsk.books(for: .search("Fontané"), in: books, lastPlayedId: nil).map(\.itemId))
+        let many = BookQuery.books(from: (0..<20).map { item("m\($0)", title: "T\($0)") },
+                                   tagOf: { _ in OutwardServerTag.tag(owner: OutwardItemRefTests.serverA, salt: OutwardItemRefTests.saltA) })
+        #expect(BookQuery.suggested(in: many).count == BookQuery.suggestionLimit)
+    }
+
+    @Test("beide Abfragen der Buecher fragen die eine Suche und die eine Grenze", .needsTheSources)
+    func bothQueriesAskTheOneSearch() throws {
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(!shortcuts.contains("title.localizedCaseInsensitiveContains"), "a book query searches on its own")
+        #expect(!shortcuts.contains("prefix(12)"), "the limit stands twice")
+        #expect(shortcuts.contains("return BookQuery.matching(string, in: BookQuery.books(from: now.items, tagOf: now.tagOf)).map(AudiobookEntity.init)"))
+        #expect(shortcuts.contains("return Self.matching(string, in: Self.books(from: now.items, tagOf: now.tagOf))"))
     }
 
     /// The build exports Siri's play under the audio schema, and its search.
@@ -293,36 +339,81 @@ struct ShortcutBooksTests {
         let kept = SpotlightBooks.index
         defer { SpotlightBooks.index = kept }
         let index = SpotlightRecorder()
-        SpotlightBooks.index = SpotlightBooks.Index(
-            removeAll: { index.calls.append("remove") },
-            add: { entities in
-                if index.failAdd { throw URLError(.cannotWriteToFile) }
-                index.calls.append("add " + entities.map(\.itemId).sorted().joined(separator: ","))
-            })
+        SpotlightBooks.index = index.index()
         let shelf = [item("a", title: "Alpha"), item("b", title: "Beta"), item("unowned", title: "Ohne")]
-        var items = shelf
+        index.items = shelf
         let tagOf = self.tagOf
+        let offer: @MainActor () async -> [BookEntity] = { BookQuery.books(from: index.items, tagOf: tagOf) }
+        let signedIn: @MainActor () -> Bool = { true }
 
         await SpotlightBooks.forget()
         index.calls = []
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b"], "the books on offer replace the index, the one without an owner stays out")
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b"], "the same books change nothing")
-        items = [shelf[0]]
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        index.items = [shelf[0]]
+        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
         #expect(index.calls == ["remove", "add a,b", "remove", "add a"], "a book that left goes out")
         index.failAdd = true
-        items = shelf
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        index.items = shelf
+        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
         index.failAdd = false
-        await SpotlightBooks.reconcile(books: { BookQuery.books(from: items, tagOf: tagOf) })
+        await SpotlightBooks.reconcile(books: offer, signedIn: signedIn)
         #expect(Array(index.calls.suffix(3)) == ["remove", "remove", "add a,b"], "after a failure the next pass sets the index again")
         await SpotlightBooks.forget()
         #expect(index.calls.last == "remove", "the sign out takes every book out")
         let count = index.calls.count
-        await SpotlightBooks.reconcile(books: { [] })
+        await SpotlightBooks.reconcile(books: { [] }, signedIn: signedIn)
         #expect(index.calls.count == count, "nothing on offer after the sign out changes nothing")
+    }
+
+    /// A pass that suspends at the index and a sign out asked meanwhile:
+    /// the sign out comes last, and nothing of the account stays in the
+    /// search.
+    @Test("die Abmeldung waehrend eines Durchgangs laesst kein Buch in der Suche")
+    @available(iOS 27, *)
+    @MainActor
+    func aSignOutDuringAPassLeavesNothing() async {
+        let kept = SpotlightBooks.index
+        defer { SpotlightBooks.index = kept }
+        let index = SpotlightRecorder()
+        SpotlightBooks.index = index.index()
+        index.items = [item("a", title: "Alpha"), item("b", title: "Beta")]
+        let tagOf = self.tagOf
+        await SpotlightBooks.forget()
+        index.calls = []
+
+        index.holdNextRemoval = true
+        let pass = Task { @MainActor in
+            await SpotlightBooks.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { true })
+        }
+        while index.held == nil { await Task.yield() }
+        let signOut = Task { @MainActor in await SpotlightBooks.forget() }
+        for _ in 0..<20 { await Task.yield() }
+        index.held?.resume()
+        index.held = nil
+        await pass.value
+        await signOut.value
+        #expect(index.calls == ["remove", "add a,b", "remove"], "the sign out runs after the pass: \(index.calls)")
+    }
+
+    /// A load still under way when the person signs out finishes later and
+    /// asks a pass: no one is signed in, so it adds nothing.
+    @Test("ein Durchgang nach der Abmeldung traegt nichts ein")
+    @available(iOS 27, *)
+    @MainActor
+    func aPassAfterTheSignOutAddsNothing() async {
+        let kept = SpotlightBooks.index
+        defer { SpotlightBooks.index = kept }
+        let index = SpotlightRecorder()
+        SpotlightBooks.index = index.index()
+        index.items = [item("a", title: "Alpha")]
+        let tagOf = self.tagOf
+        await SpotlightBooks.forget()
+        index.calls = []
+        await SpotlightBooks.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { false })
+        #expect(index.calls.isEmpty, "a pass without anyone signed in touches the index: \(index.calls)")
     }
 
     /// One place adds books to the device's search and takes them out; it

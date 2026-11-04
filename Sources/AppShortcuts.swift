@@ -101,13 +101,12 @@ struct AudiobookQuery: EntityStringQuery {
 
     func entities(matching string: String) async throws -> [AudiobookEntity] {
         let now = await BookQuery.current()
-        return BookQuery.books(from: now.items, tagOf: now.tagOf)
-            .filter { $0.title.localizedCaseInsensitiveContains(string) }.map(AudiobookEntity.init)
+        return BookQuery.matching(string, in: BookQuery.books(from: now.items, tagOf: now.tagOf)).map(AudiobookEntity.init)
     }
 
     func suggestedEntities() async throws -> [AudiobookEntity] {
         let now = await BookQuery.current()
-        return BookQuery.books(from: now.items, tagOf: now.tagOf).prefix(12).map(AudiobookEntity.init)
+        return BookQuery.suggested(in: BookQuery.books(from: now.items, tagOf: now.tagOf)).map(AudiobookEntity.init)
     }
 }
 
@@ -181,14 +180,29 @@ struct BookQuery: EntityStringQuery {
         return Self.books(for: identifiers, in: now.items, tagOf: now.tagOf)
     }
 
+    /// How many books a shortcut and Siri suggest.
+    nonisolated static let suggestionLimit = 12
+
+    /// The books a typed search finds: the one search for books, the one
+    /// Siri's play asks too (`AudioAsk`), over title and author, without
+    /// case or accents.
+    nonisolated static func matching(_ text: String, in books: [BookEntity]) -> [BookEntity] {
+        AudioAsk.books(for: .search(text), in: books, lastPlayedId: nil)
+    }
+
+    /// The books a shortcut and Siri suggest.
+    nonisolated static func suggested(in books: [BookEntity]) -> [BookEntity] {
+        Array(books.prefix(suggestionLimit))
+    }
+
     func entities(matching string: String) async throws -> [BookEntity] {
         let now = await Self.current()
-        return Self.books(from: now.items, tagOf: now.tagOf).filter { $0.title.localizedCaseInsensitiveContains(string) }
+        return Self.matching(string, in: Self.books(from: now.items, tagOf: now.tagOf))
     }
 
     func suggestedEntities() async throws -> [BookEntity] {
         let now = await Self.current()
-        return Array(Self.books(from: now.items, tagOf: now.tagOf).prefix(12))
+        return Self.suggested(in: Self.books(from: now.items, tagOf: now.tagOf))
     }
 }
 
@@ -380,9 +394,29 @@ extension AudiobookEntity: IndexedEntity {}
 /// server need no list of the indexed books; no store keeps an outward id.
 /// The set indexed last is kept in this process only, so a pass with the
 /// same books does nothing. A sign out takes every book out.
+///
+/// Passes and the sign out run one at a time, in the order they are asked
+/// (`line`): each waits for the one before. A pass that suspends at the
+/// index can so never write after a sign out that came later, and a pass
+/// that starts after the sign out, from a load still under way, finds no
+/// one signed in and adds nothing.
 @available(iOS 27, *)
 @MainActor
 enum SpotlightBooks {
+    /// The last pass or sign out asked for; the next one waits for it.
+    private static var line: Task<Void, Never>?
+
+    /// Runs `work` after everything asked before it.
+    private static func inLine(_ work: @escaping @MainActor () async -> Void) async {
+        let previous = line
+        let next = Task { @MainActor in
+            await previous?.value
+            await work()
+        }
+        line = next
+        await next.value
+    }
+
     /// What a pass does with the index.
     enum Pass: Equatable {
         case keep
@@ -408,35 +442,44 @@ enum SpotlightBooks {
         offer == indexed ? .keep : .replace
     }
 
-    /// Sets the index to the books on offer. A failure leaves the indexed
-    /// set unknown, so the next pass sets it again.
-    static func reconcile(books: () async -> [BookEntity] = {
+    /// Sets the index to the books on offer, in line. A failure leaves the
+    /// indexed set unknown, so the next pass sets it again. Without anyone
+    /// signed in a pass adds nothing.
+    static func reconcile(books: @escaping @MainActor () async -> [BookEntity] = {
         let now = await BookQuery.current()
         return BookQuery.books(from: now.items, tagOf: now.tagOf)
-    }) async {
-        let offer = await books().map(AudiobookEntity.init)
-        let ids = Set(offer.map(\.id))
-        guard pass(offer: ids, indexed: indexed) == .replace else { return }
-        indexed = nil
-        do {
-            try await index.removeAll()
-            if !offer.isEmpty { try await index.add(offer) }
-            indexed = ids
-            Logger.library.notice("SPOTLIGHT books indexed=\(ids.count)")
-        } catch {
-            Logger.library.error("SPOTLIGHT books not indexed: \(FailureReason.of(error), privacy: .public)")
+    }, signedIn: @escaping @MainActor () -> Bool = { AppSession.shared.authViewModel.isLoggedIn }) async {
+        await inLine {
+            guard signedIn() else {
+                Logger.library.notice("SPOTLIGHT pass skipped: no one signed in")
+                return
+            }
+            let offer = await books().map(AudiobookEntity.init)
+            let ids = Set(offer.map(\.id))
+            guard pass(offer: ids, indexed: indexed) == .replace else { return }
+            indexed = nil
+            do {
+                try await index.removeAll()
+                if !offer.isEmpty { try await index.add(offer) }
+                indexed = ids
+                Logger.library.notice("SPOTLIGHT books indexed=\(ids.count)")
+            } catch {
+                Logger.library.error("SPOTLIGHT books not indexed: \(FailureReason.of(error), privacy: .public)")
+            }
         }
     }
 
-    /// Takes every book out of the index: the sign out.
+    /// Takes every book out of the index, in line: the sign out.
     static func forget() async {
-        indexed = nil
-        do {
-            try await index.removeAll()
-            indexed = []
-            Logger.library.notice("SPOTLIGHT books removed")
-        } catch {
-            Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
+        await inLine {
+            indexed = nil
+            do {
+                try await index.removeAll()
+                indexed = []
+                Logger.library.notice("SPOTLIGHT books removed")
+            } catch {
+                Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
+            }
         }
     }
 }
