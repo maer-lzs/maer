@@ -814,6 +814,15 @@ enum SpotlightIndex {
             .joined(separator: "\u{1F}")
     }
 
+    /// The prints of `offer`, worked out off the main actor: a print reads
+    /// every field of every entity, too much for the actor that draws the
+    /// screen when the library is large.
+    nonisolated static func prints<Entity: Sendable>(of offer: [Entity]) async -> Set<String> {
+        // detached because a nonisolated async function runs on its caller's
+        // executor, and every pass runs on the main actor.
+        await Task.detached(priority: .userInitiated) { Set(offer.map(fingerprint)) }.value
+    }
+
     /// The pass of the shows asked and not begun yet; the writes of one
     /// turn ask one pass.
     private static var showsAsked: Task<Void, Never>?
@@ -859,17 +868,18 @@ enum SpotlightIndex {
 
     /// Sets `index` to `offer` unless it holds exactly these prints, and
     /// gives the prints it holds now. A failure gives nil, unknown, so the
-    /// next pass sets it again.
+    /// next pass sets it again. The pass stays in line while the prints are
+    /// worked out beside it.
     private static func replace<Entity: IndexedEntity>(
         _ offer: [Entity], in index: Index<Entity>, indexed: Set<String>?, kind: String
     ) async -> Set<String>? {
-        let prints = Set(offer.map(fingerprint))
-        guard pass(offer: prints, indexed: indexed) == .replace else { return indexed }
+        let printed = await Self.prints(of: offer)
+        guard pass(offer: printed, indexed: indexed) == .replace else { return indexed }
         do {
             try await index.removeAll()
             if !offer.isEmpty { try await index.add(offer) }
             Logger.library.notice("SPOTLIGHT \(kind, privacy: .public) indexed=\(offer.count)")
-            return prints
+            return printed
         } catch {
             Logger.library.error("SPOTLIGHT \(kind, privacy: .public) not indexed: \(FailureReason.of(error), privacy: .public)")
             return nil

@@ -222,6 +222,18 @@ struct ShortcutBooksTests {
         #expect(shortcuts.contains("let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)"))
     }
 
+    /// The prints of a pass are worked out off the main actor, for both
+    /// kinds through the one way, and the pass waits for them in line.
+    @Test("die Abdruecke eines Durchgangs werden neben dem Haupt-Akteur gebildet", .needsTheSources)
+    func thePrintsAreWorkedOutOffMain() throws {
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("nonisolated static func prints<Entity: Sendable>(of offer: [Entity]) async -> Set<String> { await Task.detached(priority: .userInitiated) { Set(offer.map(fingerprint)) }.value }"),
+                "the prints are not worked out off the main actor")
+        #expect(shortcuts.contains("let printed = await Self.prints(of: offer) guard pass(offer: printed, indexed: indexed) == .replace"),
+                "the pass does not take the prints from beside the main actor")
+        #expect(shortcuts.components(separatedBy: "map(fingerprint)").count == 2, "a print is worked out a second way")
+    }
+
     /// Siri's search asks the stations the door resolves, the one list the
     /// lookup by id reads.
     @Test("Siris Suche fragt die Sender, die die Tuer aufloest", .needsTheSources)
