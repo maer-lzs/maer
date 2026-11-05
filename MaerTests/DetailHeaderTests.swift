@@ -116,7 +116,7 @@ struct DetailHeaderTests {
         "Sources/Views/BookDetailScreen.swift": (1, "the book's chapter list"),
         "Sources/Views/Music/MusicBrowseViews.swift": (2, "the artist and playlist lists"),
         "Sources/Views/CatalogSourcePage.swift": (3, "the catalog's source, popular and shelf pages"),
-        "Sources/Views/Music/MusicLibraryPages.swift": (9, "the music library's list pages"),
+        "Sources/Views/Music/MusicLibraryPages.swift": (8, "the music library's list pages"),
     ]
 
     @Test("eine Seite mit Kopf traegt oben keinen Titel", .needsTheSources)

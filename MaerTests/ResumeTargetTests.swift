@@ -20,13 +20,13 @@ struct ResumeTargetTests {
         let rows: [Row] = [
             ("a", true, true, "b", true, false, .item("a")),
             ("a", false, true, "b", true, true, .waitForLibrary),
-            ("a", false, true, "b", true, false, .nothing(missing: "item")),
+            ("a", false, true, "b", true, false, .nothing(missing: .item)),
             (nil, false, true, "b", true, false, .resumeActive),
             (nil, false, true, nil, false, true, .resumeActive),
             (nil, false, false, "b", true, false, .lastPlayed("b")),
             (nil, false, false, "b", false, true, .waitForLibrary),
-            (nil, false, false, "b", false, false, .nothing(missing: "last played not found")),
-            (nil, false, false, nil, false, false, .nothing(missing: "no last played")),
+            (nil, false, false, "b", false, false, .nothing(missing: .lastPlayedNotFound)),
+            (nil, false, false, nil, false, false, .nothing(missing: .noLastPlayed)),
             (nil, false, false, nil, false, true, .waitForLibrary),
         ]
         for row in rows {
@@ -41,20 +41,38 @@ struct ResumeTargetTests {
     /// last played title says there is nothing to continue yet.
     @Test("nichts gefunden sagt je Fall den eigenen Schluessel: ohne Zeiger noch nichts zum Weiterhoeren, Zeiger ohne Titel und unbekannter Titel je einer")
     func eachNothingHasItsSentence() async {
-        #expect(ResumeTarget.nothingSentence(missing: "no last played").key == "Nothing to continue yet.")
-        #expect(ResumeTarget.nothingSentence(missing: "last played not found").key == "Nothing to resume: last played not found")
-        #expect(ResumeTarget.nothingSentence(missing: "item").key == "Nothing to resume: title not found")
+        #expect(ResumeTarget.Missing.noLastPlayed.sentence.key == "Nothing to continue yet.")
+        #expect(ResumeTarget.Missing.lastPlayedNotFound.sentence.key == "Nothing to resume: last played not found")
+        #expect(ResumeTarget.Missing.item.sentence.key == "Nothing to resume: title not found")
         // Nothing played yet is said with the info symbol, a title gone with the triangle.
-        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "no last played")).icon == "info.circle")
-        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "last played not found")).icon == "exclamationmark.triangle")
-        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "item")).icon == "exclamationmark.triangle")
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.Missing.noLastPlayed.cause).icon == "info.circle")
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.Missing.lastPlayedNotFound.cause).icon == "exclamationmark.triangle")
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.Missing.item.cause).icon == "exclamationmark.triangle")
+        // The log names each case by the word it had as text.
+        #expect([ResumeTarget.Missing.item, .noLastPlayed, .lastPlayedNotFound].map(\.rawValue)
+                    == ["item", "no last played", "last played not found"])
         // The door keeps its answer, so the view and the command say the
         // case they met.
         let coordinator = PlayerCoordinator(provider: MockProvider())
         let library = LibraryViewModel(provider: MockProvider())
         let target = await coordinator.resume(namedItemId: nil, by: .view, library: library, lastPlayedId: nil)
-        #expect(target == .nothing(missing: "no last played"))
+        #expect(target == .nothing(missing: .noLastPlayed))
         #expect(coordinator.lastResumeTarget == target, "the door forgot the case it met")
+    }
+
+    /// What was missing is a case of its own, never text: a new way of
+    /// finding nothing must name its sentence and its symbol, and no caller
+    /// can ask by a word the rule does not know.
+    @Test("was fehlte, ist ein eigener Fall mit Satz und Zeichen, kein Text", .needsTheSources)
+    func whatWasMissingIsACase() throws {
+        let rule = try FetchAnswerTests.squeezedSource("Sources/Models/ResumeTarget.swift")
+        #expect(rule.contains("case nothing(missing: Missing)"), "the nothing case carries text again")
+        #expect(!rule.contains("missing: String") && !rule.contains("missing: \""), "what was missing is text again")
+        let door = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator+Resume.swift")
+        for word in [ResumeTarget.Missing.item, .noLastPlayed, .lastPlayedNotFound].map(\.rawValue) {
+            #expect(!door.contains("\"\(word)\""), "the door names a case by its word: \(word)")
+            #expect(rule.components(separatedBy: "\"\(word)\"").count <= 2, "the rule asks by the word: \(word)")
+        }
     }
 
     /// The three sentences as the catalog holds them, each with its own
@@ -79,7 +97,7 @@ struct ResumeTargetTests {
         let library = LibraryViewModel(provider: MockProvider())
         library.entries = [LibraryEntry(item: LibraryItem(id: known, media: nil, addedAt: nil), progress: nil)]
         let unknown = "resume-unknown-\(UUID().uuidString)"
-        for (lastPlayed, want) in [(unknown, ResumeTarget.nothing(missing: "last played not found")), (known, .lastPlayed(known))] {
+        for (lastPlayed, want) in [(unknown, ResumeTarget.nothing(missing: .lastPlayedNotFound)), (known, .lastPlayed(known))] {
             var targets: [ResumeTarget] = []
             for caller in [PlayerCoordinator.ResumeCaller.view, .command] {
                 let coordinator = PlayerCoordinator(provider: MockProvider())
@@ -139,7 +157,7 @@ struct ResumeTargetTests {
             }
             #expect(coordinator.viewModel == nil, "the door opened a player for the show's newest episode")
         }
-        #expect(targets == [.nothing(missing: "last played not found"), .nothing(missing: "last played not found")],
+        #expect(targets == [.nothing(missing: .lastPlayedNotFound), .nothing(missing: .lastPlayedNotFound)],
                 "the door continued another title than the last played: \(targets)")
         #expect(targets.allSatisfy { $0.findsNothing }, "nothing found must bring the sentence")
     }
@@ -179,7 +197,7 @@ struct ResumeTargetTests {
         let coordinator = PlayerCoordinator(provider: MockProvider())
         let target = await coordinator.resume(namedItemId: nil, by: .command, library: library,
                                               lastPlayedId: "resume-none-\(UUID().uuidString)")
-        #expect(target == .nothing(missing: "last played not found"))
+        #expect(target == .nothing(missing: .lastPlayedNotFound))
         #expect(!ResumeRequest.pending && ResumeRequest.pendingItemId == nil, "the command left a request the view would play later")
         #expect(coordinator.viewModel == nil)
     }
@@ -214,7 +232,7 @@ struct ResumeTargetTests {
         ResumeListeningIntent.opensApp = { _ in steps.append("front"); return false }
         _ = try await ResumeListeningIntent().perform()
         #expect(steps == ["front"], "where the system cannot bring the app to the front, nothing is said into the dark")
-        #expect(ResumeTarget.nothing(missing: "item").findsNothing && !ResumeTarget.waitForLibrary.findsNothing
+        #expect(ResumeTarget.nothing(missing: .item).findsNothing && !ResumeTarget.waitForLibrary.findsNothing
                     && !ResumeTarget.lastPlayed("a").findsNothing && !ResumeTarget.resumeActive.findsNothing)
     }
 
@@ -277,7 +295,7 @@ struct ResumeTargetTests {
         #expect(view.contains("if target.findsNothing { playerCoordinator.sayNothingToResume() }"),
                 "the view says nothing found another way than the command")
         let sentence = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator+Resume.swift")
-        #expect(sentence.contains("sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: ResumeTarget.nothingCause(missing: missing), title: nil)"),
+        #expect(sentence.contains("sayOpenFailure(String(localized: missing.sentence), cause: missing.cause, title: nil)"),
                 "the sentence or its symbol for nothing found is not the one rule's")
         #expect(!sentence.contains("Audiobook could not be loaded."), "the door says a sentence of its own")
         #expect(door.contains("lastResumeTarget = target"), "the door does not keep the case it met")

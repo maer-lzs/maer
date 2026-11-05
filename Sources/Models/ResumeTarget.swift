@@ -15,29 +15,39 @@ nonisolated enum ResumeTarget: Equatable {
     case resumeActive
     case lastPlayed(String)
     case waitForLibrary
-    case nothing(missing: String)
+    case nothing(missing: Missing)
+
+    /// What a request that found nothing missed. The raw value is the word
+    /// the log line names it by.
+    enum Missing: String, Equatable, Sendable {
+        /// The title Siri or a row named is not on the device.
+        case item
+        /// The device has no last played title: a fresh device.
+        case noLastPlayed = "no last played"
+        /// The last played title no longer resolves.
+        case lastPlayedNotFound = "last played not found"
+
+        /// What the request says. Each case has its own catalog key, so one
+        /// sentence changes without the others.
+        var sentence: LocalizedStringResource {
+            switch self {
+            case .noLastPlayed: "Nothing to continue yet."
+            case .lastPlayedNotFound: "Nothing to resume: last played not found"
+            case .item: "Nothing to resume: title not found"
+            }
+        }
+
+        /// The symbol's cause for that sentence: a device without a last
+        /// played title is no fault, a title that no longer resolves is one.
+        var cause: NoticeCause {
+            self == .noLastPlayed ? .nothingYet : .unknown
+        }
+    }
 
     /// Nothing continues and nothing waits: the person is told.
     var findsNothing: Bool {
         if case .nothing = self { return true }
         return false
-    }
-
-    /// What a request that found nothing says, by what was missing. Each
-    /// case has its own catalog key, so one sentence changes without the
-    /// others.
-    static func nothingSentence(missing: String) -> LocalizedStringResource {
-        switch missing {
-        case "no last played": return "Nothing to continue yet."
-        case "last played not found": return "Nothing to resume: last played not found"
-        default: return "Nothing to resume: title not found"
-        }
-    }
-
-    /// The symbol's cause for that sentence: a device without a last played
-    /// title is no fault, a title that no longer resolves is one.
-    static func nothingCause(missing: String) -> NoticeCause {
-        missing == "no last played" ? .nothingYet : .unknown
     }
 
     /// The case without its id, for a log line.
@@ -55,16 +65,16 @@ nonisolated enum ResumeTarget: Equatable {
                      lastPlayedId: String?, lastPlayedKnown: Bool, libraryLoading: Bool) -> ResumeTarget {
         if let namedItemId {
             if namedItemKnown { return .item(namedItemId) }
-            return libraryLoading ? .waitForLibrary : .nothing(missing: "item")
+            return libraryLoading ? .waitForLibrary : .nothing(missing: .item)
         }
         if hasActivePlayer { return .resumeActive }
         // No pointer and a pointer nothing resolves are two findings: the
         // first is a fresh device, the second a title gone from its source.
         guard let lastPlayedId else {
-            return libraryLoading ? .waitForLibrary : .nothing(missing: "no last played")
+            return libraryLoading ? .waitForLibrary : .nothing(missing: .noLastPlayed)
         }
         guard lastPlayedKnown else {
-            return libraryLoading ? .waitForLibrary : .nothing(missing: "last played not found")
+            return libraryLoading ? .waitForLibrary : .nothing(missing: .lastPlayedNotFound)
         }
         return .lastPlayed(lastPlayedId)
     }

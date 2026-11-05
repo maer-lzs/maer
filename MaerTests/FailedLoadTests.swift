@@ -412,6 +412,49 @@ struct FailedLoadTests {
         model.stop()
     }
 
+    /// The same unreadable file, once with the network and once without: the
+    /// hint carries the file's own cause, and without network the network,
+    /// whose symbol says where to look.
+    @Test("ein Ladefehler ohne Netz zeigt das Netz als Ursache, mit Netz die Ursache der Datei", .needsAudio)
+    func aLoadFailureWithoutNetworkShowsTheNetwork() async throws {
+        let broken = try brokenFile()
+        defer { try? FileManager.default.removeItem(at: broken) }
+        var hints: [Bool: PlaybackNotice] = [:]
+        for online in [true, false] {
+            let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { online })
+            await model.load(item: detail([(broken.path, 5)]))
+            model.play()
+            await waitFor { model.sourceHint?.kind == .loadFailed }
+            hints[online] = model.sourceHint
+            #expect(!model.isPlaying, "online \(online): the failure stops playback")
+            model.stop()
+        }
+        let withNetwork = try #require(hints[true], "the precondition: the file fails to load")
+        #expect(withNetwork != .loadFailed(.network), "the file's own cause is the network: \(withNetwork)")
+        #expect(hints[false] == .loadFailed(.network), "without network: \(String(describing: hints[false]))")
+    }
+
+    /// A station whose stream cannot be loaded says that the station could
+    /// not be reached, not the sentence of a file.
+    @Test("ein Sender, dessen Strom nicht laedt, bekommt den Satz des Stroms", .needsAudio)
+    func aStationThatCannotLoadSaysTheStream() async throws {
+        let broken = try brokenFile()
+        defer { try? FileManager.default.removeItem(at: broken) }
+        let station = LibraryItemDetail(
+            id: "radio:\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 5, chapters: nil, tracks: [
+                ABSAudioTrack(index: 0, startOffset: 0, duration: 5, contentUrl: broken.path, metadata: nil),
+            ]),
+            userMediaProgress: nil)
+        let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: station)
+        model.play()
+        await waitFor { model.sourceHint != nil }
+        #expect(model.sourceHint == .streamFailed, "the station says \(String(describing: model.sourceHint))")
+        #expect(!model.isPlaying, "the failure stops the station")
+        model.stop()
+    }
+
     /// Bytes no decoder reads, under an audio name.
     private func brokenFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-\(UUID().uuidString).mp3")

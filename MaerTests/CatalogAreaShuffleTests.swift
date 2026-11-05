@@ -130,9 +130,9 @@ struct CatalogAreaShuffleTests {
             rowButtons += stripped.components(separatedBy: ".jamendoShuffle(").count - 1
         }
         #expect(labels == ["TabContentLayout.swift": 1], "\(labels)")
-        // The row buttons that stood before: the shellac rows, the netlabels
-        // and Jamendo rows of the music tab and of the music catalogue area.
-        #expect(rowButtons == 7)
+        // The row buttons that stood before: the shellac rows and the
+        // netlabels and Jamendo rows of the music tab.
+        #expect(rowButtons == 5)
     }
 }
 #endif

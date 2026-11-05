@@ -54,11 +54,6 @@ enum MusicRoute: Hashable {
     /// as on the catalog pages: the overview is rows, scrolling is a page of
     /// its own. ONE view, two roles.
     case archiveMusicPopular(String)
-    /// The small music-catalog page behind Start's mixed
-    /// "Entdecken · Musik" row. One source row per
-    /// active catalog (classical · Jamendo), each heading onto its existing
-    /// page. netlabels/78rpm/LMA grow in here later.
-    case freeCatalogArea
     /// The songs this person listened to, newest first (`ListenHistoryScreen`).
     case history
 
@@ -70,7 +65,7 @@ enum MusicRoute: Hashable {
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
              (.genres, .genres), (.shellacArea, .shellacArea),
-             (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea), (.history, .history):
+             (.freeJamendo, .freeJamendo), (.history, .history):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
@@ -102,7 +97,6 @@ enum MusicRoute: Hashable {
         case .maerPlaylist(let id): hasher.combine(16); hasher.combine(id)
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
-        case .freeCatalogArea:  hasher.combine(12)
         case .jamendoShelf(let k): hasher.combine(13); hasher.combine(k)
         case .archiveMusicShelf(let a, let sh):
             hasher.combine(17); hasher.combine(a); hasher.combine(sh)
@@ -130,7 +124,6 @@ enum MusicRoute: Hashable {
         case .maerPlaylist: return "music-route-maer-playlist"
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
-        case .freeCatalogArea: return "music-route-free-catalog-area"
         case .jamendoShelf: return "music-route-jamendo-shelf"
         case .archiveMusicShelf: return "music-route-archive-music-shelf"
         case .archiveMusicPopular: return "music-route-archive-music-popular"
@@ -201,8 +194,6 @@ extension View {
             case .catalogAlbum(let id):
                 ArchiveSeriesPage(itemId: id, flavor: .album,
                                   playerCoordinator: playerCoordinator)
-            case .freeCatalogArea:
-                MusicCatalogAreaPage(playerCoordinator: playerCoordinator)
             case .jamendoShelf(let key):
                 JamendoShelfPage(shelfKey: key, playerCoordinator: playerCoordinator)
             case .archiveMusicShelf(let areaKey, let shelfKey):
