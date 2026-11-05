@@ -93,7 +93,9 @@ the two titles heard last, or the newest of two sources you choose. The
 rows are what the start page shows under Continue and Listen Again, so
 titles from your other devices appear too once the start page has
 loaded. A tap on a row opens that title, its play button continues it
-without opening the app. At the largest text sizes the large widget
+without opening the app. Each row carries the mark of its kind before
+its title, the same as in the app's mixed rows, and VoiceOver names
+the kind with the row. At the largest text sizes the large widget
 keeps all four rows, each in full; the medium one shows one. Without
 rows the widget shows the last title, as before. An album nobody
 started shows its name and the artist under it, also at the largest

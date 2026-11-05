@@ -541,8 +541,41 @@ struct ContinueBySourceTests {
                 "a title nobody started shows its whole length as time left")
         #expect(widget.contains("rowDetail(row, compact: compact && started)"),
                 "the medium rows hide who made a title nobody started")
-        #expect(widget.contains("VStack(alignment: .leading, spacing: 2) { Text(row.title) .font(.caption.weight(.semibold)) .lineLimit(1) rowDetail(row, compact: compact && started)"),
+        #expect(widget.contains("VStack(alignment: .leading, spacing: 2) { HStack(alignment: .firstTextBaseline, spacing: 4) { rowKind(row) Text(row.title) .font(.caption.weight(.semibold)) .lineLimit(1) } rowDetail(row, compact: compact && started)"),
                 "a size hides who made a title nobody started")
+    }
+
+    /// Every row of Continue draws its kind before its title with the
+    /// symbol and the name the app's mark of a mixed row uses; Up Next shows
+    /// only episodes and draws none.
+    @Test("jede Zeile von Weiterhoeren zeigt das Zeichen ihrer Art vor dem Titel, wie das Zeichen der App, Als Naechstes keins", .needsTheSources)
+    func everyRowShowsItsKindMark() throws {
+        let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
+        #expect(widget.contains("HStack(alignment: .firstTextBaseline, spacing: 4) { rowKind(row) Text(row.title)"),
+                "a row's title stands without its kind before it")
+        #expect(widget.contains("if let kind = row.kind { Image(systemName: kind.systemImage) .font(.caption2) .foregroundStyle(.secondary) .accessibilityLabel(Text(verbatim: kind.label)) }"),
+                "the mark draws or reads another thing than the app's")
+        let glyph = try FetchAnswerTests.squeezedSource("Sources/Views/KindGlyph.swift")
+        #expect(glyph.contains("Image(systemName: kind.systemImage)") && glyph.contains(".accessibilityLabel(Text(verbatim: kind.label))"),
+                "the app's mark changed its symbol or its name, the widget's did not follow")
+        let upNext = try FetchAnswerTests.squeezedSource("LiveActivityWidget/PodcastUpNextWidget.swift")
+        #expect(!upNext.contains("kind.systemImage") && !upNext.contains("rowKind("), "Up Next draws a kind mark")
+    }
+
+    /// The kind of a row is the tab of its title, the kind the app's mark of
+    /// a mixed row asks, and its symbol the one the writer stores.
+    @Test("das Zeichen je Art: Buch, Folge, Album und Sender tragen die Art ihres Reiters, dieselbe wie das Zeichen der App")
+    func theKindOfEachRow() throws {
+        let kinds: [(id: String, kind: MediaType)] = [("li_book", .audiobooks), ("rss:feed#ep", .podcasts),
+                                                      ("sub:album:1", .music), ("radio:station", .radio)]
+        for (id, kind) in kinds {
+            let card = ContinueBySource.Card(title: "Titel", subtitle: nil, kindSymbol: MediaFamily.placeholderSymbol(for: id),
+                                             markedForm: nil, isLive: id.hasPrefix("radio:"))
+            let row = try #require(ContinueBySource.rows(of: [(id, 1)]) { _ in card }.first, "\(id): the precondition, a row")
+            #expect(row.kind == kind, "\(id): \(String(describing: row.kind))")
+            #expect(row.kind == MediaFamily.kind(for: id), "\(id): the widget's mark and the app's ask different kinds")
+            #expect(row.kind?.systemImage == row.kindSymbol, "\(id): the mark and the stored symbol differ")
+        }
     }
 
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)

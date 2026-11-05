@@ -81,6 +81,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Localizable.xcstrings,
+				Models/MediaType.swift,
 				Models/WidgetShared.swift,
 			);
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;

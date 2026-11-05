@@ -335,6 +335,11 @@ nonisolated struct WidgetSourceRow: Codable, Equatable, Sendable {
     /// somebody started. Without progress, or at 0, the row names who made
     /// it instead, like any other title without progress.
     var showsProgress: Bool { !isLive && (fraction ?? 0) > 0 }
+
+    /// The kind the row's mark shows before its title: its tab, whose symbol
+    /// and name are the ones the app's mark of a mixed row (`KindGlyph`)
+    /// draws and reads.
+    var kind: MediaType? { MediaType(rawValue: source.rawValue) }
 }
 
 /// Which rows a large or medium "Continue" shows, from its settings and

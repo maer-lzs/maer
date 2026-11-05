@@ -172,7 +172,8 @@ private struct ContinueListeningView: View {
     /// The title stands on one line. The medium rows and the accessibility
     /// sizes keep only the time in the line under it, and the accessibility
     /// sizes drop the cover. A title nobody started has no bar and no time;
-    /// under its name stands who made it, at every size.
+    /// under its name stands who made it, at every size. The kind's mark
+    /// stands before the title, on its line.
     private func sourceRow(_ row: WidgetSourceRow) -> some View {
         let large = family == .systemLarge
         let compact = !large || dynamicTypeSize.isAccessibilitySize
@@ -184,9 +185,12 @@ private struct ContinueListeningView: View {
                         rowCover(row, side: large ? 44 : 34)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(row.title)
-                            .font(.caption.weight(.semibold))
-                            .lineLimit(1)
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            rowKind(row)
+                            Text(row.title)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(1)
+                        }
                         rowDetail(row, compact: compact && started)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -208,6 +212,18 @@ private struct ContinueListeningView: View {
             .fixedSize()
             .accessibilityLabel(Text("Continue Listening"))
             .accessibilityValue(Text(row.title))
+        }
+    }
+
+    /// The row's kind in the colour of the line under the title: the
+    /// symbol and the name the app's mark of a mixed row draws and reads.
+    @ViewBuilder
+    private func rowKind(_ row: WidgetSourceRow) -> some View {
+        if let kind = row.kind {
+            Image(systemName: kind.systemImage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text(verbatim: kind.label))
         }
     }
 
