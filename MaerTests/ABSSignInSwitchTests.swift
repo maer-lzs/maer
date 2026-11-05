@@ -105,6 +105,38 @@ struct ABSSignInSwitchTests {
         #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-of-b")
     }
 
+    /// A sign-in to another server forgets the former server's titles in
+    /// the widget, as a sign out does; a sign-in again to the same server
+    /// keeps them. The widget's files are put back after the witness.
+    @Test("eine Anmeldung an einem anderen Server vergisst die Titel des Widgets, eine erneute an demselben nicht")
+    func aSignInToAnotherServerForgetsTheWidgetsTitles() async throws {
+        let stand = Stand()
+        defer { stand.restore() }
+        let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
+        let rowsURL = try #require(ContinueRows.url)
+        let keptSnapshot = try? Data(contentsOf: snapshotURL)
+        let keptRows = try? Data(contentsOf: rowsURL)
+        defer {
+            for (url, data) in [(snapshotURL, keptSnapshot), (rowsURL, keptRows)] {
+                if let data { try? data.write(to: url) } else { try? FileManager.default.removeItem(at: url) }
+            }
+        }
+        let server = try await ABSLoopback.start(login: .accept("token-new"), libraries: .accept)
+        defer { server.stop() }
+        let sameServer = server.address.replacingOccurrences(of: "http://", with: "https://")
+        for (stored, forgets) in [("https://abs.a.example", true), (sameServer, false)] {
+            WidgetSnapshot(itemId: "li_former", title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
+            let auth = signedInToA(stored)
+            auth.serverURLString = server.address
+            auth.loginMode = .password
+            auth.username = "hoerer"
+            auth.password = "passwort"
+            await auth.connect()
+            #expect(auth.errorMessage == nil, "\(stored): \(String(describing: auth.errorMessage)) \(server.diagnosis)")
+            #expect((WidgetSnapshot.load() == nil) == forgets, "\(stored): the title of the former server")
+        }
+    }
+
     @Test("dieselbe Adresse, nur anderes Schema: die Anmeldung uebernimmt wie bei jeder Adresse erst nach Erfolg")
     func theSameServerSignsInTheSameWay() async throws {
         let stand = Stand()

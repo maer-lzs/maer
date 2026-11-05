@@ -96,7 +96,9 @@ rows the widget shows the last title, as before. An album nobody
 started shows its name and the artist under it, without an empty bar
 or its whole length as time left. Signing out of the Audiobookshelf
 server also forgets the widget's last title when it came from that
-server; a station, an RSS episode or a catalogue title stays.
+server; a station, an RSS episode or a catalogue title stays. Signing in
+to another Audiobookshelf server through Sign In Again forgets them the
+same way; signing in again to the same server keeps them.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same

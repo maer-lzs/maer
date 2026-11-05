@@ -189,6 +189,9 @@ final class AuthViewModel: ObservableObject {
         trial.updateToken(token)
         do {
             _ = try await trial.fetchLibraries()
+            // Whether this is another server than the one signed in before,
+            // by the one rule of a switch.
+            let switched = ServerAddressSwitch.isSwitch(from: apiClient.baseURL.absoluteString, to: url.absoluteString)
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -211,6 +214,9 @@ final class AuthViewModel: ObservableObject {
             apiClient.accessUnknown = false
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
+            // The titles of the former server leave the widget, as at a
+            // sign out; a sign-in again to the same server keeps them.
+            if switched { await ContinueRowsWriter.forget() }
         } catch {
             errorMessage = Self.friendlyMessage(for: error)
         }
