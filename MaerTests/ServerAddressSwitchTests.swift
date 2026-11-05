@@ -9,8 +9,8 @@ import Testing
 @testable import Maer
 
 /// What one music server handed out goes to no other one: a new address
-/// for Jellyfin forgets the access token and the user id, a new address for
-/// a Subsonic server that signed in with its key forgets the key. Through
+/// for Jellyfin forgets the access token and the user id, and a new
+/// address for either forgets the stored password or key. Through
 /// the same steps the settings forms take, and through the client the app
 /// builds from what is stored.
 @MainActor
@@ -48,18 +48,57 @@ struct ServerAddressSwitchTests {
         let user = AppStorageKeys.jellyfinUsernameValue
         let userId = AppStorageKeys.jellyfinUserIdValue
         let token = AppStorageKeys.jellyfinTokenValue
+        let password = AppStorageKeys.jellyfinPasswordValue
         func restore() {
             AppStorageKeys.jellyfinServerURLValue = url
             AppStorageKeys.jellyfinUsernameValue = user
             AppStorageKeys.jellyfinUserIdValue = userId
             AppStorageKeys.setJellyfinToken(token)
+            AppStorageKeys.setJellyfinPassword(password)
         }
     }
 
-    /// The steps of the Jellyfin form for a new address: ask, then store.
-    private func saveJellyfin(_ url: String) {
+    /// The steps of the Jellyfin form for a new address: ask, then store;
+    /// gives the field's text after the save.
+    @discardableResult
+    private func saveJellyfin(_ url: String, field: String = "") -> String {
+        let kept = JellyfinProvider.passwordAfterAddress(url, typed: field)
         JellyfinProvider.forgetAccessOnSwitch(to: url)
         AppStorageKeys.jellyfinServerURLValue = url
+        if !kept.isEmpty { AppStorageKeys.setJellyfinPassword(kept) }
+        return kept
+    }
+
+    @Test("das Passwortfeld nach einer neuen Adresse: bei einem Wechsel leer, wenn es das gespeicherte zeigt, ein getipptes bleibt")
+    func thePasswordFieldAfterANewAddress() {
+        let a = "https://jf.a.example", b = "https://jf.b.example"
+        #expect(ServerAddressSwitch.password(typed: "pw-a", stored: "pw-a", from: a, to: b) == ("", true),
+                "the prefilled password of A goes to B")
+        #expect(ServerAddressSwitch.password(typed: "pw-b", stored: "pw-a", from: a, to: b) == ("pw-b", true),
+                "a password typed for B is lost")
+        #expect(ServerAddressSwitch.password(typed: "pw-a", stored: "pw-a", from: "http://jf.a.example", to: a) == ("pw-a", false),
+                "the same server under another scheme loses its password")
+        #expect(ServerAddressSwitch.password(typed: "pw-a", stored: "pw-a", from: "", to: b) == ("pw-a", false),
+                "a first address has nothing to forget")
+    }
+
+    @Test("Jellyfin: eine neue Adresse vergisst das Passwort von A, ein fuer B getipptes bleibt")
+    func aNewJellyfinAddressForgetsThePasswordOfA() {
+        let stand = JellyfinStand()
+        defer { stand.restore() }
+        AppStorageKeys.jellyfinServerURLValue = "https://jf.a.example"
+        AppStorageKeys.setJellyfinPassword("password-of-a")
+        #expect(saveJellyfin("https://jf.b.example", field: "password-of-a").isEmpty, "the field writes the password of A back")
+        #expect(AppStorageKeys.jellyfinPasswordValue.isEmpty, "the password of A is still stored")
+
+        AppStorageKeys.jellyfinServerURLValue = "https://jf.a.example"
+        AppStorageKeys.setJellyfinPassword("password-of-a")
+        #expect(saveJellyfin("https://jf.b.example", field: "password-of-b") == "password-of-b")
+        #expect(AppStorageKeys.jellyfinPasswordValue == "password-of-b")
+
+        AppStorageKeys.jellyfinServerURLValue = "http://jf.b.example"
+        #expect(saveJellyfin("https://jf.b.example", field: "password-of-b") == "password-of-b", "only the scheme keeps the password")
+        #expect(AppStorageKeys.jellyfinPasswordValue == "password-of-b")
     }
 
     @Test("Jellyfin: eine neue Adresse, keine Adresse des Clients traegt den Token von A")
@@ -170,24 +209,30 @@ struct ServerAddressSwitchTests {
         #expect(SubsonicProvider.passwordAfterAddress("https://\(serverB)", typed: "key-of-b") == "key-of-b")
     }
 
-    @Test("Subsonic mit Token: eine neue Adresse laesst das Passwort, es ist kein Geschenk eines Servers")
-    func aTokenServerKeepsThePassword() {
+    @Test("Subsonic mit Token: eine neue Adresse vergisst das Passwort von A, ein fuer B getipptes bleibt")
+    func aTokenServerForgetsThePasswordOfA() {
         let run = UUID().uuidString.prefix(6).lowercased()
         let serverA = "a-\(run).example/sub"
         let stand = SubsonicStand(servers: [serverA])
         defer { stand.restore() }
         AppStorageKeys.subsonicServerURLValue = "https://\(serverA)"
-        AppStorageKeys.setSubsonicPassword("password-of-the-person")
+        AppStorageKeys.setSubsonicPassword("password-of-a")
         AppStorageKeys.set(nil, for: "subsonicSignIn.\(serverA)")
-        #expect(SubsonicProvider.passwordAfterAddress("https://b-\(run).example/sub", typed: "password-of-the-person")
-                == "password-of-the-person")
-        #expect(AppStorageKeys.subsonicPasswordValue == "password-of-the-person")
+        #expect(SubsonicProvider.passwordAfterAddress("https://b-\(run).example/sub", typed: "password-of-a").isEmpty,
+                "the field writes the password of A back")
+        #expect(AppStorageKeys.subsonicPasswordValue.isEmpty, "the password of A is still stored")
+        AppStorageKeys.setSubsonicPassword("password-of-a")
+        #expect(SubsonicProvider.passwordAfterAddress("https://b-\(run).example/sub", typed: "password-of-b") == "password-of-b")
+        AppStorageKeys.setSubsonicPassword("password-of-a")
+        #expect(SubsonicProvider.passwordAfterAddress("http://\(serverA)", typed: "password-of-a") == "password-of-a",
+                "only the scheme keeps the password")
+        #expect(AppStorageKeys.subsonicPasswordValue == "password-of-a")
     }
 
     @Test("beide Formulare fragen die Regel, bevor sie eine Adresse schreiben, und nur sie schreiben eine", .needsTheSources)
     func bothFormsAskBeforeTheyWrite() throws {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
-        #expect(jellyfin.contains("JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
+        #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(trimmedURL, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
         let subsonic = try FetchAnswerTests.squeezedSource("Sources/Views/SubsonicSourceView.swift")
         #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
         var writers: [String] = []

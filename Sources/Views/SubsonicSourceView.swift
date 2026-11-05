@@ -181,8 +181,8 @@ struct SubsonicSourceView: View {
         // the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
         if !trimmedURL.isEmpty {
-            // The key of the stored server stays with it, also the one the
-            // field was filled with.
+            // The password of the stored server stays with it, also the one
+            // the field was filled with.
             password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password)
             AppStorageKeys.subsonicServerURLValue = trimmedURL
         }

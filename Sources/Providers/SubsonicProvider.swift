@@ -87,23 +87,19 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         AppStorageKeys.subsonicActive && client != nil
     }
 
-    /// Before a new address is stored: where the stored server signed in
-    /// with its key, the key was handed out by that server and is the stored
-    /// password (`SubsonicSignIn`). On a switch (`ServerAddressSwitch`) it is
-    /// forgotten, and the field's text is kept only when the person typed
-    /// another one for the new server; the form fills the field with the
-    /// stored key, and that one must not be written back. A server signed
-    /// in with the token keeps the password: what it carries is the
-    /// person's own, not a server's gift.
+    /// Before a new address is stored: on a switch (`ServerAddressSwitch`)
+    /// the stored password, or the key the stored server handed out, goes
+    /// with that server and is forgotten. The form fills the field with it,
+    /// so the field's text is kept only when the person typed another one
+    /// for the new server.
     static func passwordAfterAddress(_ newURL: String, typed: String) -> String {
-        let stored = AppStorageKeys.subsonicServerURLValue
-        guard ServerAddressSwitch.isSwitch(from: stored, to: newURL),
-              let old = SubsonicClient.address(stored),
-              SubsonicClient.negotiatedSignIn(server: SubsonicClient.serverKey(for: old)) == .apiKey else { return typed }
-        let key = AppStorageKeys.subsonicPasswordValue
-        AppStorageKeys.setSubsonicPassword("")
-        Logger.music.notice("SUBSONIC address switch: the key of the stored server is forgotten")
-        return typed == key ? "" : typed
+        let after = ServerAddressSwitch.password(typed: typed, stored: AppStorageKeys.subsonicPasswordValue,
+                                                 from: AppStorageKeys.subsonicServerURLValue, to: newURL)
+        if after.forgetsStored {
+            AppStorageKeys.setSubsonicPassword("")
+            Logger.music.notice("SUBSONIC address switch: the password of the stored server is forgotten")
+        }
+        return after.field
     }
 
     /// The client the stored settings describe; nil without an address or

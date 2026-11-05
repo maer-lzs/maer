@@ -103,7 +103,9 @@ struct JellyfinSourceView: View {
         // a source is done via the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
         if !trimmedURL.isEmpty {
-            // The access the stored server handed out goes to no other one.
+            // The access the stored server handed out, and its password,
+            // go to no other one.
+            password = JellyfinProvider.passwordAfterAddress(trimmedURL, typed: password)
             JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL)
             AppStorageKeys.jellyfinServerURLValue = trimmedURL
         }

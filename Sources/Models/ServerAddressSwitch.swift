@@ -25,6 +25,17 @@ nonisolated enum ServerAddressSwitch {
         return old != fresh
     }
 
+    /// The password field of a form after a new address, and whether the
+    /// stored password is forgotten. On a switch the stored password goes
+    /// with the stored server: a field that still shows it is emptied, so
+    /// the form does not write it back for the new one; a password typed
+    /// for the new server stays.
+    static func password(typed: String, stored: String,
+                         from storedAddress: String, to new: String) -> (field: String, forgetsStored: Bool) {
+        guard isSwitch(from: storedAddress, to: new) else { return (typed, false) }
+        return (typed == stored ? "" : typed, true)
+    }
+
     /// The one name of the server an address names by this rule: host,
     /// port and path; nil for an address that does not read. Two addresses
     /// with the same key are no switch.

@@ -91,6 +91,19 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return true
     }
 
+    /// Before a new address is stored: on a switch the stored password goes
+    /// with the stored server and is forgotten; the field's text is kept
+    /// only when the person typed another one for the new server.
+    static func passwordAfterAddress(_ newURL: String, typed: String) -> String {
+        let after = ServerAddressSwitch.password(typed: typed, stored: AppStorageKeys.jellyfinPasswordValue,
+                                                 from: AppStorageKeys.jellyfinServerURLValue, to: newURL)
+        if after.forgetsStored {
+            AppStorageKeys.setJellyfinPassword("")
+            Logger.music.notice("JELLYFIN address switch: the password of the stored server is forgotten")
+        }
+        return after.field
+    }
+
     /// The client the stored settings describe: address, user, password and
     /// the access the server handed out, if any is kept. A fresh sign-in is
     /// kept only while its server is still the stored one: a client of the

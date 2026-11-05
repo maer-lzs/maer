@@ -3,9 +3,11 @@
 ## Next build (not yet cut)
 
 **A new music server address signs in anew.** When you change the
-address of your Jellyfin server, or of a Subsonic server that signed you
-in with its key, the app forgets what the old server gave it and signs
-in to the new one, instead of sending the old access along. Signing in
+address of your Jellyfin or Subsonic server, the app forgets what the old
+server gave it and signs in to the new one, instead of sending the old
+access along. The password field empties too, so the password of the old
+server does not go to the new one; a password you type for the new
+server stays. Signing in
 to an Audiobookshelf server again works the same way: the sign-in no
 longer carries the access of the server you used before, and a sign-in
 that fails leaves you connected as you were.
