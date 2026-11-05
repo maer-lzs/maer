@@ -27,7 +27,7 @@ comes to the front only to say that it found nothing. Shuffle, repeat
 and a place in the queue do not apply; a title plays from where you
 stand. Your audiobooks also appear in the search of the device
 (Spotlight) once the library has loaded, and leave it when you sign
-out; the shows you follow by their feed appear there too. A book or a
+out or sign in to another Audiobookshelf server; the shows you follow by their feed appear there too. A book or a
 show under a new name carries it there once the library or the show is
 loaded again, and a show that also stands on your Audiobookshelf server
 follows the Podcasts tab. Episodes of

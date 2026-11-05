@@ -106,10 +106,20 @@ struct ABSSignInSwitchTests {
     }
 
     /// A sign-in to another server forgets the former server's titles in
-    /// the widget, as a sign out does; a sign-in again to the same server
-    /// keeps them. The widget's files are put back after the witness.
-    @Test("eine Anmeldung an einem anderen Server vergisst die Titel des Widgets, eine erneute an demselben nicht")
+    /// the widget, its rows and its snapshot, and from iOS 27 its books in
+    /// the device's search, as a sign out does; a sign-in again to the same
+    /// server keeps them. The widget's files and the index are put back
+    /// after the witness.
+    @Test("eine Anmeldung an einem anderen Server vergisst die Titel des Widgets und die Buecher der Suche, eine erneute an demselben nicht")
     func aSignInToAnotherServerForgetsTheWidgetsTitles() async throws {
+        let recorder = SpotlightRecorder()
+        var restoreIndex: () -> Void = {}
+        if #available(iOS 27, *) {
+            let kept = SpotlightIndex.index
+            SpotlightIndex.index = recorder.index()
+            restoreIndex = { SpotlightIndex.index = kept }
+        }
+        defer { restoreIndex() }
         let stand = Stand()
         defer { stand.restore() }
         let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
@@ -126,6 +136,10 @@ struct ABSSignInSwitchTests {
         let sameServer = server.address.replacingOccurrences(of: "http://", with: "https://")
         for (stored, forgets) in [("https://abs.a.example", true), (sameServer, false)] {
             WidgetSnapshot(itemId: "li_former", title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
+            let former = WidgetSourceRow(source: .audiobooks, itemId: "li_former", title: "Titel", subtitle: nil, fraction: 0.5,
+                                         remainingText: nil, isLive: false, kindSymbol: "book", cover: nil, playedAt: 1)
+            #expect(ContinueRows(rows: [former], passAtMs: 1).save(), "\(stored): the precondition, a row of the former server")
+            recorder.calls = []
             let auth = signedInToA(stored)
             auth.serverURLString = server.address
             auth.loginMode = .password
@@ -134,7 +148,28 @@ struct ABSSignInSwitchTests {
             await auth.connect()
             #expect(auth.errorMessage == nil, "\(stored): \(String(describing: auth.errorMessage)) \(server.diagnosis)")
             #expect((WidgetSnapshot.load() == nil) == forgets, "\(stored): the title of the former server")
+            let rows = ContinueRows.load()?.rows.map(\.itemId)
+            #expect(rows == (forgets ? [] : ["li_former"]), "\(stored): the widget's rows \(String(describing: rows))")
+            if #available(iOS 27, *) {
+                #expect(recorder.calls == (forgets ? ["remove"] : []), "\(stored): the books in the search \(recorder.calls)")
+            }
         }
+    }
+
+    /// One place forgets what a server leaves on the device; the sign out
+    /// and the switch both call it, the switch before the sources change.
+    @Test("der alte Server wird an einer Stelle vergessen, von der Abmeldung und vom Wechsel, beim Wechsel vor dem Anstoss der Quellen", .needsTheSources)
+    func theFormerServerIsForgottenInOnePlace() throws {
+        let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
+        #expect(auth.contains("static func forgetFormerServer() async { await ContinueRowsWriter.forget() if #available(iOS 27, *) { await SpotlightIndex.forget() } }"),
+                "the one place does not forget the widget's rows and the search")
+        for forget in ["ContinueRowsWriter.forget(", "SpotlightIndex.forget("] {
+            #expect(auth.components(separatedBy: forget).count == 2, "\(forget) is called past the one place")
+        }
+        #expect(auth.contains("AppSession.shared.notifySourcesChanged() Task { await Self.forgetFormerServer() } }"),
+                "the sign out does not forget the former server")
+        #expect(auth.contains("if switched { await Self.forgetFormerServer() } AppSession.shared.notifySourcesChanged() } catch {"),
+                "the switch does not forget the former server before the sources change")
     }
 
     @Test("dieselbe Adresse, nur anderes Schema: die Anmeldung uebernimmt wie bei jeder Adresse erst nach Erfolg")

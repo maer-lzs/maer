@@ -212,11 +212,13 @@ final class AuthViewModel: ObservableObject {
             needsReauth = false
             accessUnknown = false
             apiClient.accessUnknown = false
+            // The titles of the former server leave the widget and the
+            // device's search, as at a sign out, before the sources change,
+            // so a pass for the new server writes after them; a sign-in
+            // again to the same server keeps them.
+            if switched { await Self.forgetFormerServer() }
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
-            // The titles of the former server leave the widget, as at a
-            // sign out; a sign-in again to the same server keeps them.
-            if switched { await ContinueRowsWriter.forget() }
         } catch {
             errorMessage = Self.friendlyMessage(for: error)
         }
@@ -293,10 +295,15 @@ final class AuthViewModel: ObservableObject {
         apiClient.accessUnknown = false
         Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
-        Task { await ContinueRowsWriter.forget() }
-        if #available(iOS 27, *) {
-            Task { await SpotlightIndex.forget() }
-        }
+        Task { await Self.forgetFormerServer() }
+    }
+
+    /// What a server leaves on the device beside its token: the widget's
+    /// rows and the books in the device's search. A sign out and a sign-in
+    /// to another server both forget it here.
+    static func forgetFormerServer() async {
+        await ContinueRowsWriter.forget()
+        if #available(iOS 27, *) { await SpotlightIndex.forget() }
     }
 
     private static func normalizedURL(from raw: String) -> URL? {
