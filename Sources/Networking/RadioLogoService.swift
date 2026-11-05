@@ -412,6 +412,19 @@ actor RadioLogoService {
         case failed(String)
     }
 
+    /// The usable icon the root page of the station's host declares, for a
+    /// page that refused; nil when the page is the root itself, or the root
+    /// gives no usable icon.
+    private func rootIcon(of pageURL: URL) async -> ChainOutcome? {
+        guard let rootURL = RadioLogoLookup.rootPageURL(of: pageURL),
+              case .data(let data) = await fetch(rootURL),
+              let html = String(data: data, encoding: .utf8),
+              let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: rootURL),
+              case .data(let body) = await fetch(icon),
+              RadioLogoLookup.usableLogo(body) else { return nil }
+        return .hit(icon, commonsFile: nil, stage: "wurzel")
+    }
+
     /// The chain now REPORTS a failure instead of swallowing it.
     /// Rule: a `.noHit` may only be returned when every stage that ran
     /// answered cleanly; the first transport failure aborts with `.failed`,
@@ -490,7 +503,12 @@ actor RadioLogoService {
         // stage was dead for half the German catalog, measured).
         guard let pageURL = RadioLogoLookup.httpsPageURL(homepage) else { return .noHit }
         let page = await fetch(pageURL)
-        if case .failed = page { return .failed("homepage") }
+        if case .failed = page {
+            // A refusing page says nothing about the station, so nothing is
+            // booked from here. The root of the same host often answers
+            // where a deep page refuses, and its icon is the site's own mark.
+            return await rootIcon(of: pageURL) ?? .failed("homepage")
+        }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
             // Declared is not delivered: sites carry the tag while the

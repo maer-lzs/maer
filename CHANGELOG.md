@@ -112,6 +112,11 @@ title (a tap, the widget's button) was swallowed; it now plays.
 home screen widget showed it with a full bar and no time left; it now
 says "Live".
 
+**Stations whose own page turns the app away get their logo.** When a
+station's web page refuses the request, the app now takes the icon the
+front page of the same site shows, as for bigFM's stations. If that
+fails too, the station keeps its letters and is asked again later.
+
 **The statistics page shows no listening time it cannot assign.** When
 the device cannot read which part of its listening belongs to the
 account, the page says so and shows nothing of this device from the

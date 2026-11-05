@@ -322,6 +322,18 @@ nonisolated enum RadioLogoLookup {
         return comps.url
     }
 
+    /// The root page of the homepage's host, asked when the page itself
+    /// refuses; nil when the homepage already is the root, so the same
+    /// address is never asked twice.
+    static func rootPageURL(of homepage: URL) -> URL? {
+        guard var comps = URLComponents(url: homepage, resolvingAgainstBaseURL: false) else { return nil }
+        if (comps.path.isEmpty || comps.path == "/") && comps.query == nil { return nil }
+        comps.path = "/"
+        comps.query = nil
+        comps.fragment = nil
+        return comps.url
+    }
+
     // The booking probe `usableLogo` lives in `ImageProbe.swift` beside
     // the image chain: it needs ImageIO, and this core file stays
     // Foundation-only so it builds on a plain Linux toolchain.

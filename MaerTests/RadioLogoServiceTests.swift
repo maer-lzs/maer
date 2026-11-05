@@ -314,5 +314,83 @@ struct RadioLogoRefusalTests {
         #expect(broken.asked > 0)
         #expect(!broken.booked, "a server error leaves no negative memo")
     }
+
+    @Test("die Wurzel des Wirts ist die Adresse ohne Pfad, eine Seite an der Wurzel hat keine")
+    func theRootOfTheHost() {
+        let deep = URL(string: "https://www.radio.test/webradio/deutschrap?x=1#top")!
+        #expect(RadioLogoLookup.rootPageURL(of: deep)?.absoluteString == "https://www.radio.test/")
+        for root in ["https://www.radio.test", "https://www.radio.test/"] {
+            #expect(RadioLogoLookup.rootPageURL(of: URL(string: root)!) == nil, "\(root) is asked twice")
+        }
+        #expect(RadioLogoLookup.rootPageURL(of: URL(string: "https://www.radio.test/?stream=1")!)?.absoluteString
+                == "https://www.radio.test/")
+    }
+
+    /// A site whose station page refuses while its root page declares an
+    /// icon on another host; everything else is not there.
+    private actor Site {
+        let page: Int
+        let root: Int
+        let rootHTML: String
+        let icon: Data
+        private(set) var asked: [String] = []
+        init(page: Int, root: Int, rootHTML: String, icon: Data) {
+            self.page = page
+            self.root = root
+            self.rootHTML = rootHTML
+            self.icon = icon
+        }
+        func answer(_ request: URLRequest) -> (Data, HTTPURLResponse?) {
+            let url = request.url!
+            asked.append(url.absoluteString)
+            func reply(_ status: Int, _ body: Data = Data()) -> (Data, HTTPURLResponse?) {
+                (body, HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil))
+            }
+            switch (url.host, url.path) {
+            case ("www.radio.test", "/webradio/deutschrap"): return reply(page)
+            case ("www.radio.test", "/"): return reply(root, Data(rootHTML.utf8))
+            case ("file.radio.test", "/icon.png"): return reply(200, icon)
+            default: return reply(404)
+            }
+        }
+    }
+
+    private func png(side: Int) -> Data {
+        let ctx = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        let data = NSMutableData()
+        let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
+        CGImageDestinationFinalize(dest)
+        return data as Data
+    }
+
+    /// The station page refuses (403) and the root of the same host
+    /// declares an icon: the logo comes from the root. A refusing root, or
+    /// one without an icon, leaves the refusal as it was: nothing booked.
+    @Test("eine Seite, die abweist, nimmt das Icon der Wurzel desselben Wirts, und eine Abweisung bleibt ohne Befund")
+    func aRefusingPageTakesTheIconOfItsRoot() async {
+        let declared = #"<html><head><link rel="apple-touch-icon" sizes="512x512" href="https://file.radio.test/icon.png"></head></html>"#
+        let icon = png(side: 512)
+        #expect(RadioLogoLookup.usableLogo(icon), "the precondition: the icon clears the gate")
+        let homepage = "https://www.radio.test/webradio/deutschrap"
+        func audit(page: Int, root: Int, html: String) async -> (said: String, asked: [String]) {
+            let site = Site(page: page, root: root, rootHTML: html, icon: icon)
+            let service = RadioLogoService(wire: { await site.answer($0) }, suite: "radio-logo-root-\(UUID().uuidString)")
+            let said = await service.auditChain(name: "Zzzunknownwave Rap", homepage: homepage)
+            return (said, await site.asked)
+        }
+        let taken = await audit(page: 403, root: 200, html: declared)
+        #expect(taken.said == "TREFFER stufe=wurzel datei=https://file.radio.test/icon.png", "\(taken.said)")
+        #expect(taken.asked.contains("https://www.radio.test/webradio/deutschrap"), "the chain never asked the page")
+        let refused = await audit(page: 403, root: 403, html: declared)
+        #expect(refused.said == "FEHLSCHLAG stufe=homepage", "a refusing root: \(refused.said)")
+        let bare = await audit(page: 403, root: 200, html: "<html></html>")
+        #expect(bare.said == "FEHLSCHLAG stufe=homepage", "a root without an icon books a no: \(bare.said)")
+        let open = await audit(page: 200, root: 200, html: declared)
+        #expect(!open.asked.contains("https://www.radio.test/"), "a page that answers asks the root: \(open.asked)")
+    }
 }
 
