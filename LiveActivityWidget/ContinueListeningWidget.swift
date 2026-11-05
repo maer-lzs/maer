@@ -172,8 +172,7 @@ private struct ContinueListeningView: View {
     /// The title stands on one line. The medium rows and the accessibility
     /// sizes keep only the time in the line under it, and the accessibility
     /// sizes drop the cover. A title nobody started has no bar and no time;
-    /// under its name stands who made it, and at the accessibility sizes
-    /// only its name.
+    /// under its name stands who made it, at every size.
     private func sourceRow(_ row: WidgetSourceRow) -> some View {
         let large = family == .systemLarge
         let compact = !large || dynamicTypeSize.isAccessibilitySize
@@ -188,11 +187,9 @@ private struct ContinueListeningView: View {
                         Text(row.title)
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
-                        if started || !dynamicTypeSize.isAccessibilitySize {
-                            rowDetail(row, compact: compact && started)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        rowDetail(row, compact: compact && started)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                         if row.showsProgress {
                             ProgressView(value: row.fraction ?? 0)
                                 .tint(.orange)

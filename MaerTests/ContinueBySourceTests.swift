@@ -541,6 +541,8 @@ struct ContinueBySourceTests {
                 "a title nobody started shows its whole length as time left")
         #expect(widget.contains("rowDetail(row, compact: compact && started)"),
                 "the medium rows hide who made a title nobody started")
+        #expect(widget.contains("VStack(alignment: .leading, spacing: 2) { Text(row.title) .font(.caption.weight(.semibold)) .lineLimit(1) rowDetail(row, compact: compact && started)"),
+                "a size hides who made a title nobody started")
     }
 
     @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)
