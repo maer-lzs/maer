@@ -7678,13 +7678,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hörbuch konnte nicht geladen werden."
+            "value" : "Das zuletzt Gehörte ist nicht mehr verfügbar."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Audiobook could not be loaded."
+            "value" : "The last thing you played is no longer available."
           }
         }
       }
@@ -7695,13 +7695,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hörbuch konnte nicht geladen werden."
+            "value" : "Dieser Titel ist nicht mehr verfügbar."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Audiobook could not be loaded."
+            "value" : "This title is no longer available."
           }
         }
       }

@@ -57,9 +57,9 @@ struct ResumeTargetTests {
         #expect(coordinator.lastResumeTarget == target, "the door forgot the case it met")
     }
 
-    /// The new sentence and the two that keep the old wording until it is
-    /// decided, as the catalog holds them.
-    @Test("die Saetze fuer nichts gefunden im Katalog: der neue deutsch, die zwei anderen mit dem alten Wortlaut", .needsTheSources)
+    /// The three sentences as the catalog holds them, each with its own
+    /// wording in English and German.
+    @Test("die Saetze fuer nichts gefunden im Katalog: je Fall der eigene Wortlaut englisch und deutsch", .needsTheSources)
     func theNothingSentencesInTheCatalog() throws {
         let catalog = try StringCatalogOrderTests.entries()
         func value(_ key: String, _ language: String) -> String? {
@@ -67,10 +67,10 @@ struct ResumeTargetTests {
             return (localized?["stringUnit"] as? [String: Any])?["value"] as? String
         }
         #expect(value("Nothing to continue yet.", "de") == "Noch nichts zum Weiterhören.")
-        for key in ["Nothing to resume: last played not found", "Nothing to resume: title not found"] {
-            #expect(value(key, "de") == "Hörbuch konnte nicht geladen werden.", "\(key)")
-            #expect(value(key, "en") == "Audiobook could not be loaded.", "\(key)")
-        }
+        #expect(value("Nothing to resume: last played not found", "en") == "The last thing you played is no longer available.")
+        #expect(value("Nothing to resume: last played not found", "de") == "Das zuletzt Gehörte ist nicht mehr verfügbar.")
+        #expect(value("Nothing to resume: title not found", "en") == "This title is no longer available.")
+        #expect(value("Nothing to resume: title not found", "de") == "Dieser Titel ist nicht mehr verfügbar.")
     }
 
     @Test("Ansicht und Befehl treffen an der Tuer dieselbe Entscheidung: ein Titel der Bibliothek ist zuletzt gehoert, ein unbekannter ist nichts")

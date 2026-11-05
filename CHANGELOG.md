@@ -77,7 +77,10 @@ comes to the front and says so (from iOS 26 on; before, the tap does
 nothing). On a device that has not played anything yet, Siri, the quick
 action, the widget and its link now say "Nothing to continue yet."
 instead of "Audiobook could not be loaded.", with the info symbol
-instead of the warning triangle. Right
+instead of the warning triangle. When the last played title is gone,
+they say "The last thing you played is no longer available.", and when
+Siri or a widget row names a title that is gone, "This title is no
+longer available.". Right
 after the app starts, these and Siri's "Continue Listening" also find a
 last played song or Jellyfin title, which the app then asks its server
 for, the way it restores the mini player.
