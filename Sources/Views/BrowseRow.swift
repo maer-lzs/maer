@@ -320,6 +320,7 @@ struct BrowsePage: View {
         }
     }
 
+    /// A lane's heading leads to the surface its tiles come from.
     @ViewBuilder
     private func entry(_ section: BrowseSection) -> some View {
         switch section {
@@ -328,7 +329,7 @@ struct BrowsePage: View {
         case .charts:
             RowHeading.entry("Popular Radio-Play Podcasts", destination: PodcastRoute.charts)
         case .classical:
-            RowHeading.entry("Classical", destination: MusicRoute.freeCatalogArea)
+            RowHeading.entry("Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
         case .netlabels:
             RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
         case .oldRecords:

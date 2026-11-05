@@ -117,6 +117,10 @@ station's web page refuses the request, the app now takes the icon the
 front page of the same site shows, as for bigFM's stations. If that
 fails too, the station keeps its letters and is asked again later.
 
+**Classical on the Browse page opens the classical records.** The
+heading of the Classical row opened a music page without any classical
+row; it now opens the shelf Classical (78s), where its tiles come from.
+
 **The statistics page shows no listening time it cannot assign.** When
 the device cannot read which part of its listening belongs to the
 account, the page says so and shows nothing of this device from the

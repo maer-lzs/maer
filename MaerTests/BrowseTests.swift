@@ -218,5 +218,57 @@ struct BrowseTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/RowsSettingsView.swift"), encoding: .utf8))
         #expect(rows.contains("AppRows.groupTitle(group)"), "the rows page draws the shares without their title")
     }
+
+    /// The part of a section in one of the page's two switches.
+    private func arm(_ section: BrowseSection, in text: String, from start: String, to end: String) throws -> String {
+        let open = try #require(text.range(of: start), "the switch \(start) is gone")
+        let close = try #require(text.range(of: end, range: open.upperBound..<text.endIndex), "\(end) is gone")
+        let body = text[open.upperBound..<close.lowerBound]
+        let arms = body.components(separatedBy: "case .").filter { $0.hasPrefix("\(section.rawValue):") }
+        #expect(arms.count == 1, "\(section.rawValue): \(arms.count) arms in \(start)")
+        return arms.first ?? ""
+    }
+
+    /// Every lane's heading leads to the surface its tiles come from: per
+    /// section the heading's destination and the store its tiles read, and
+    /// for the two archive lanes the area the loader fills them from. A new
+    /// section has to name its pair here.
+    @Test("jede Ueberschrift einer Reihe auf Stoebern fuehrt auf die Flaeche, aus der ihre Kacheln kommen", .needsTheSources)
+    func everyHeadingLeadsWhereItsTilesComeFrom() throws {
+        let page = try FetchAnswerTests.squeezedSource("Sources/Views/BrowseRow.swift")
+        let pairs: [BrowseSection: (heading: String, tiles: String)] = [
+            .recommendations: ("destination: PodcastRoute.recommendations)", "excludingOwned(recommendations.results)"),
+            .charts: ("destination: PodcastRoute.charts)", "return charts.map(BrowseTile.recommendation)"),
+            .classical: ("destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))", "freeCatalogStore.rows.classical"),
+            .netlabels: ("destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))", "freeCatalogStore.rows.netlabels"),
+            .oldRecords: ("destination: MusicRoute.shellacArea)", "oldRecords.map(BrowseTile.music)"),
+            .jamendo: ("destination: MusicRoute.freeJamendo)", "freeCatalogStore.rows.freeMusic"),
+            .librivox: ("destination: FreeAudiobooksRoute.source(.librivox))", "sourceRows.librivoxPopular"),
+            .gutenberg: ("destination: FreeAudiobooksRoute.source(.gutenberg))", "sourceRows.gutenberg"),
+            .archiveBooks: ("destination: FreeAudiobooksRoute.source(.archiveBooks))", "sourceRows.archiveBooks"),
+            .oldTimeRadio: ("destination: FreeAudiobooksRoute.source(.oldTimeRadio))", "sourceRows.oldTimeRadio"),
+            .publicFeeds: ("destination: FreeAudiobooksRoute.oerrCountries)", "OERRLiveStore.feeds(for: .oerr,"),
+            .independentFeeds: ("destination: FreeAudiobooksRoute.source(.independents))", "OERRLiveStore.feeds(for: .independents,"),
+        ]
+        #expect(Set(pairs.keys) == Set(BrowseSection.allCases),
+                "a lane without its pair: \(Set(BrowseSection.allCases).subtracting(pairs.keys).map(\.rawValue))")
+        for section in BrowseSection.allCases {
+            let pair = try #require(pairs[section])
+            let heading = try arm(section, in: page, from: "private func entry(_ section: BrowseSection) -> some View { switch section {",
+                                  to: "enum BrowseLoad")
+            let tiles = try arm(section, in: page, from: "private func tiles(_ section: BrowseSection) -> [BrowseTile] {",
+                                to: "private static func title(")
+            #expect(heading.contains(pair.heading), "\(section.rawValue): the heading leads elsewhere: \(heading)")
+            #expect(tiles.contains(pair.tiles), "\(section.rawValue): the tiles come from elsewhere: \(tiles)")
+        }
+        let loader = try FetchAnswerTests.squeezedSource("Sources/ViewModels/FreeCatalogLoader.swift")
+        for area in ["classical", "netlabels"] {
+            let asked = try #require(loader.range(of: "popularMusic(ArchiveMusicCatalog.\(area), 12, page)"),
+                                     "the \(area) lane is filled from another area")
+            let filled = try #require(loader.range(of: "rows.\(area) = ", range: asked.upperBound..<loader.endIndex))
+            #expect(!loader[asked.upperBound..<filled.lowerBound].contains("popularMusic("),
+                    "the \(area) lane is filled from another area")
+        }
+    }
 }
 #endif
