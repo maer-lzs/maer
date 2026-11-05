@@ -125,14 +125,22 @@ nonisolated enum PlaybackNotice: Equatable, Sendable {
 /// Why an item could not be loaded, as far as its error tells. Only a cause
 /// that is surely the network gets the network symbol; a server, a file and
 /// an error nobody can read get the warning triangle, because not knowing
-/// is not the network.
+/// is not the network. A device that has played nothing yet is no fault and
+/// gets the info symbol.
 nonisolated enum NoticeCause: String, Equatable, Sendable, Codable {
     case network
     case server
     case file
     case unknown
+    case nothingYet
 
-    var icon: String { self == .network ? "wifi.exclamationmark" : "exclamationmark.triangle" }
+    var icon: String {
+        switch self {
+        case .network: "wifi.exclamationmark"
+        case .nothingYet: "info.circle"
+        case .server, .file, .unknown: "exclamationmark.triangle"
+        }
+    }
 
     /// URL loading codes that mean this device has no way out.
     private static let offlineCodes: Set<Int> = [

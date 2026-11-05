@@ -44,6 +44,10 @@ struct ResumeTargetTests {
         #expect(ResumeTarget.nothingSentence(missing: "no last played").key == "Nothing to continue yet.")
         #expect(ResumeTarget.nothingSentence(missing: "last played not found").key == "Nothing to resume: last played not found")
         #expect(ResumeTarget.nothingSentence(missing: "item").key == "Nothing to resume: title not found")
+        // Nothing played yet is said with the info symbol, a title gone with the triangle.
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "no last played")).icon == "info.circle")
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "last played not found")).icon == "exclamationmark.triangle")
+        #expect(PlaybackNotice.openFailed("", ResumeTarget.nothingCause(missing: "item")).icon == "exclamationmark.triangle")
         // The door keeps its answer, so the view and the command say the
         // case they met.
         let coordinator = PlayerCoordinator(provider: MockProvider())
@@ -273,8 +277,8 @@ struct ResumeTargetTests {
         #expect(view.contains("if target.findsNothing { playerCoordinator.sayNothingToResume() }"),
                 "the view says nothing found another way than the command")
         let sentence = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator+Resume.swift")
-        #expect(sentence.contains("sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: .unknown, title: nil)"),
-                "the sentence for nothing found is not the one rule's")
+        #expect(sentence.contains("sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: ResumeTarget.nothingCause(missing: missing), title: nil)"),
+                "the sentence or its symbol for nothing found is not the one rule's")
         #expect(!sentence.contains("Audiobook could not be loaded."), "the door says a sentence of its own")
         #expect(door.contains("lastResumeTarget = target"), "the door does not keep the case it met")
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")

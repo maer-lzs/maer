@@ -210,6 +210,7 @@ struct PlaybackNoticesTests {
         }
         #expect(NoticeCause.network.icon == "wifi.exclamationmark")
         for cause in [NoticeCause.server, .file, .unknown] { #expect(cause.icon == "exclamationmark.triangle") }
+        #expect(NoticeCause.nothingYet.icon == "info.circle", "nothing played yet draws a fault")
         #expect(PlaybackNotice.loadFailed(.unknown).icon == "exclamationmark.triangle", "not knowing drew the network")
     }
 

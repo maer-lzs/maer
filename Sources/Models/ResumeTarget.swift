@@ -34,6 +34,12 @@ nonisolated enum ResumeTarget: Equatable {
         }
     }
 
+    /// The symbol's cause for that sentence: a device without a last played
+    /// title is no fault, a title that no longer resolves is one.
+    static func nothingCause(missing: String) -> NoticeCause {
+        missing == "no last played" ? .nothingYet : .unknown
+    }
+
     /// The case without its id, for a log line.
     var name: String {
         switch self {

@@ -32,7 +32,8 @@ extension PlayerCoordinator {
     func sayNothingToResume() {
         Haptics.tap()
         let missing = if case .nothing(let missing) = lastResumeTarget { missing } else { "item" }
-        sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)), cause: .unknown, title: nil)
+        sayOpenFailure(String(localized: ResumeTarget.nothingSentence(missing: missing)),
+                       cause: ResumeTarget.nothingCause(missing: missing), title: nil)
     }
 
     /// Continues listening and says what it did. The command runs without

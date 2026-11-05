@@ -76,7 +76,8 @@ opens the app and resumes. When there is nothing to continue, the app
 comes to the front and says so (from iOS 26 on; before, the tap does
 nothing). On a device that has not played anything yet, Siri, the quick
 action, the widget and its link now say "Nothing to continue yet."
-instead of "Audiobook could not be loaded.". Right
+instead of "Audiobook could not be loaded.", with the info symbol
+instead of the warning triangle. Right
 after the app starts, these and Siri's "Continue Listening" also find a
 last played song or Jellyfin title, which the app then asks its server
 for, the way it restores the mini player.
