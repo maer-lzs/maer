@@ -106,17 +106,18 @@ last title when it came from that server; a station, an RSS episode or
 a catalogue title stays. A title of that server still playing stops at
 the sign out, also when the app goes on without a server, so it does
 not come back into the widget; a sentence that it could not be loaded
-goes with it.
+goes with it. Signing in to another Audiobookshelf server through Sign
+In Again forgets them the same way; signing in again to the same
+server keeps them. A new address for your Jellyfin or Subsonic server
+takes that server's titles out of the widget's rows, and its last
+title when it was one of them; a title of that server still playing
+stops first. The other rows and a playing station stay, and saving the
+same address keeps everything.
 
 **Descriptions read the same every time.** A book, show or episode
 description that writes a character in its escaped form (such as
 "&amp;lt;") now shows it the same way on every start; before, it showed
-as "<" on some starts and as "&lt;" on others. Signing in to another Audiobookshelf server
-through Sign In Again forgets them the same way; signing in again to
-the same server keeps them. A new address for your Jellyfin or
-Subsonic server takes that server's titles out of the widget's rows,
-and its last title when it was one of them; the other rows stay, and
-saving the same address keeps everything.
+as "<" on some starts and as "&lt;" on others.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same

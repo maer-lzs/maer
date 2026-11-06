@@ -299,12 +299,11 @@ final class AuthViewModel: ObservableObject {
     }
 
     /// What a server leaves on the device beside its token: a player on one
-    /// of its titles, the widget's rows and the books in the device's search.
-    /// A sign out and a sign-in to another server both forget it here. The
-    /// player ends first, so it writes no snapshot after the rows forgot it.
-    static func forgetFormerServer(player: PlayerCoordinator = AppSession.shared.playerCoordinator) async {
-        player.endPlayback(ownedBy: ItemNamespace.isAudiobookshelf)
-        await ContinueRowsWriter.forget()
+    /// of its titles and the widget's rows (`ServerLeaving`, every row, as
+    /// the welcome page follows), and the books in the device's search. A
+    /// sign out and a sign-in to another server both forget it here.
+    static func forgetFormerServer(player: PlayerCoordinator? = nil) async {
+        await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, allRows: true, player: player)
         if #available(iOS 27, *) { await SpotlightIndex.forget() }
     }
 

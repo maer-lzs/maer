@@ -476,12 +476,22 @@ struct ContinueBySourceTests {
             AppStorageKeys.subsonicServerURLValue = subsonic
         }
         let ids = ["jf:song:1", "sub:album:1", "rss:feed#ep", "li_book", "radio:rb:x"]
-        let families: [(name: String, owns: (String) -> Bool, store: (String) -> Void, forget: (String) -> Bool)] = [
+        let families: [(name: String, owns: (String) -> Bool, store: (String) -> Void,
+                        forget: (String, PlayerCoordinator) -> Bool)] = [
             ("Jellyfin", ItemNamespace.isJellyfin, { AppStorageKeys.jellyfinServerURLValue = $0 },
-             { JellyfinProvider.forgetAccessOnSwitch(to: $0) }),
+             { JellyfinProvider.forgetAccessOnSwitch(to: $0, player: $1) }),
             ("Subsonic", ItemNamespace.isSubsonic, { AppStorageKeys.subsonicServerURLValue = $0 },
-             { SubsonicProvider.forgetAccessOnSwitch(to: $0) }),
+             { SubsonicProvider.forgetAccessOnSwitch(to: $0, player: $1) }),
         ]
+        func playing(_ id: String) -> PlayerCoordinator {
+            let player = PlayerCoordinator(provider: MockProvider())
+            player._seedActivePlayerForUITest(item: LibraryItem(id: id, media: nil, addedAt: nil),
+                                              detail: LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 60, chapters: nil, tracks: nil),
+                                                                        userMediaProgress: nil),
+                                              chapters: [], currentChapterIndex: 0, isFallback: false)
+            player.loadError = "Der Titel konnte nicht geladen werden."
+            return player
+        }
         for family in families {
             for (to, switches) in [("https://old.example", false), ("https://new.example", true)] {
                 family.store("https://old.example")
@@ -490,7 +500,8 @@ struct ContinueBySourceTests {
                 let heard = try #require(ids.first(where: family.owns))
                 WidgetSnapshot(itemId: heard, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
                 try Data([0x89]).write(to: coverURL)
-                #expect(family.forget(to) == switches, "\(family.name) \(to): the switch")
+                let player = playing(heard)
+                #expect(family.forget(to, player) == switches, "\(family.name) \(to): the switch")
                 let want = ids.filter { !(switches && family.owns($0)) }
                 for _ in 0..<50 where ContinueRows.load()?.rows.map(\.itemId) != want {
                     try await Task.sleep(nanoseconds: 20_000_000)
@@ -498,7 +509,19 @@ struct ContinueBySourceTests {
                 #expect(ContinueRows.load()?.rows.map(\.itemId) == want, "\(family.name) \(to): the rows")
                 #expect((WidgetSnapshot.load() == nil) == switches, "\(family.name) \(to): the snapshot")
                 #expect(FileManager.default.fileExists(atPath: coverURL.path) == !switches, "\(family.name) \(to): its cover")
+                #expect((player.viewModel == nil) == switches && (player.activeItem == nil) == switches
+                        && (player.loadError == nil) == switches, "\(family.name) \(to): the player of the former server")
             }
+            // A player on a station stays when a music server changes its address.
+            family.store("https://old.example")
+            await ContinueRowsWriter.write(ids.enumerated().map { row($1, .music, at: Double(9 - $0) * 1_000) },
+                                           passAtMs: 10_000)
+            let station = playing("radio:rb:x")
+            #expect(family.forget("https://other.example", station))
+            for _ in 0..<50 where ContinueRows.load()?.rows.contains(where: { family.owns($0.itemId) }) == true {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            #expect(station.viewModel != nil && station.activeItem?.id == "radio:rb:x", "\(family.name): the station plays on")
         }
     }
 
@@ -518,10 +541,14 @@ struct ContinueBySourceTests {
                                         "gpodderServerURLValue": "GPodderSettingsView.swift"]
         let assignment = try NSRegularExpression(pattern: #"AppStorageKeys\.(\w+ServerURLValue) = "#)
         var found: [String] = []
+        var leaving: [String] = []
         var forgetting: [String] = []
+        var ending: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
             let squeezed = FetchAnswerTests.squeezed(text)
+            if squeezed.contains("ServerLeaving.forget(") { leaving.append(file) }
             if squeezed.contains("ContinueRowsWriter.forgetServer(") { forgetting.append(file) }
+            if squeezed.contains("endPlayback(ownedBy:") { ending.append(file) }
             let range = NSRange(squeezed.startIndex..., in: squeezed)
             for match in assignment.matches(in: squeezed, range: range) {
                 guard let keyRange = Range(match.range(at: 1), in: squeezed) else { continue }
@@ -538,17 +565,24 @@ struct ContinueBySourceTests {
         }
         #expect(Set(found) == Set(families.map { "\($1.writer) \($0)" } + others.map { "\($1) \($0)" }),
                 "the writers of an address are others than the fence names: \(found.sorted())")
-        #expect(Set(forgetting) == ["SubsonicProvider.swift", "JellyfinProvider.swift"],
-                "the former server's titles are forgotten elsewhere: \(forgetting.sorted())")
+        // Every place where a server leaves the device asks the one place,
+        // and only it ends the player and forgets the rows.
+        #expect(Set(leaving) == ["AuthViewModel.swift", "SubsonicProvider.swift", "JellyfinProvider.swift"],
+                "a server leaves the device past the one place: \(leaving.sorted())")
+        #expect(forgetting == ["ServerLeaving.swift"], "the former server's titles are forgotten elsewhere: \(forgetting.sorted())")
+        #expect(ending == ["ServerLeaving.swift"], "a server's player is ended elsewhere: \(ending.sorted())")
+        let one = try FetchAnswerTests.squeezedSource("Sources/Providers/ServerLeaving.swift")
+        #expect(one.contains("(player ?? AppSession.shared.playerCoordinator).endPlayback(ownedBy: owns) await ContinueRowsWriter.forgetServer(owns, allRows: allRows)"),
+                "the player does not end before the rows forget")
         for (key, family) in families {
             let place = try FetchAnswerTests.squeezedSource("Sources/Providers/\(family.place).swift")
-            #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String) -> Bool { guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.\(key), to: newURL) else { return false }"),
+            #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool { guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.\(key), to: newURL) else { return false }"),
                     "\(family.place) does not ask the switch first")
-            #expect(place.contains("Task { await ContinueRowsWriter.forgetServer(\(family.owns)) }"),
-                    "\(family.place) leaves the former server's titles in the rows")
+            #expect(place.contains("Task { await ServerLeaving.forget(\(family.owns), player: player) }"),
+                    "\(family.place) does not let the former server leave the device")
         }
         let writer = try FetchAnswerTests.squeezedSource("Sources/Providers/ContinueRowsWriter.swift")
-        #expect(writer.contains("static func forgetServer(_ owns: (String) -> Bool) async { dropSnapshot(ifOwnedBy: owns) let rows = (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }"),
+        #expect(writer.contains("static func forgetServer(_ owns: (String) -> Bool, allRows: Bool = false) async { dropSnapshot(ifOwnedBy: owns) let rows = allRows ? [] : (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }"),
                 "the rows keep the former server's titles")
     }
 

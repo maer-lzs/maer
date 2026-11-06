@@ -62,26 +62,17 @@ enum ContinueRowsWriter {
         if wrote { reload() }
     }
 
-    /// A server signed out: the app shows the welcome page and the home
-    /// page does not compute, so the rows of its last pass would stand.
-    /// They go, with the moment now, so a snapshot heard before stays out
-    /// too; the next pass writes anew. The player's snapshot goes with its
-    /// cover when its title is one of this server's
-    /// (`ItemNamespace.isAudiobookshelf`); a station, an RSS episode and a
-    /// catalogue title stay, as on the home page.
-    static func forget() async {
-        dropSnapshot(ifOwnedBy: ItemNamespace.isAudiobookshelf)
-        await write([], passAtMs: Date().timeIntervalSince1970 * 1000)
-    }
-
-    /// A music server's address changed: the titles of the former server
-    /// (`owns`, the family's namespace) go from the rows, and the player's
-    /// snapshot with its cover when it is one of them. The other rows stay,
-    /// as the home page still shows them; the moment is now, so a snapshot
-    /// heard before stays out too.
-    static func forgetServer(_ owns: (String) -> Bool) async {
+    /// A server left the device (`ServerLeaving`): its titles go from the
+    /// rows (`owns`, the family's namespace), and the player's snapshot
+    /// with its cover when it is one of them; a station, an RSS episode and
+    /// a catalogue title stay, as on the home page. The other rows stay as
+    /// the home page still shows them; `allRows` takes them too, for a sign
+    /// out after which the app shows the welcome page and the home page
+    /// does not compute. The moment is now, so a snapshot heard before
+    /// stays out too; the next pass writes anew.
+    static func forgetServer(_ owns: (String) -> Bool, allRows: Bool = false) async {
         dropSnapshot(ifOwnedBy: owns)
-        let rows = (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }
+        let rows = allRows ? [] : (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }
         await write(rows, passAtMs: Date().timeIntervalSince1970 * 1000)
     }
 

@@ -88,13 +88,13 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// Before a new address is stored: on a switch (`ServerAddressSwitch`)
-    /// the titles of the stored server leave the widget's rows, as with
-    /// Jellyfin; its password goes in `passwordAfterAddress`. Answers
-    /// whether anything was forgotten.
+    /// the stored server leaves the device (`ServerLeaving`: its player, its
+    /// rows), as with Jellyfin; its password goes in `passwordAfterAddress`.
+    /// Answers whether anything was forgotten.
     @discardableResult
-    static func forgetAccessOnSwitch(to newURL: String) -> Bool {
+    static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool {
         guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.subsonicServerURLValue, to: newURL) else { return false }
-        Task { await ContinueRowsWriter.forgetServer(ItemNamespace.isSubsonic) }
+        Task { await ServerLeaving.forget(ItemNamespace.isSubsonic, player: player) }
         Logger.music.notice("SUBSONIC address switch: the titles of the stored server are forgotten")
         return true
     }
