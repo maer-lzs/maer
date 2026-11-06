@@ -1,0 +1,173 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// A start without rows (a fresh install) publishes the statistics only
+/// after the carrier delivered the far side once: the far side may hold
+/// this device's own pot from before, and the start takes it back instead
+/// of replacing it unread. A carrier that never delivers ends the wait at
+/// its limit; the service reads the own pot it otherwise never lists.
+@MainActor
+struct StatsFirstStandTests {
+    /// A carrier whose far side arrives when the witness says so.
+    private final class LateCarrier: StatsCarrier {
+        let name = "late-fake"
+        let hasRoomLimit = false
+        var hasDeliveredFirst = false
+        var held: [String: ListeningStatsData] = [:]
+        var published: [ListeningStatsData] = []
+        var onChange: (@MainActor () -> Void)?
+        func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) { published.append(pot) }
+        func pots() -> [String: ListeningStatsData] { held }
+        func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    private static let old = ListeningStatsData(secondsPerDay: ["2026-01-02": 900],
+                                                secondsPerItem: ["rss:first-stand:old": 900])
+
+    private static func freshDatabase(_ name: String) throws -> (MaerDatabase, URL) {
+        let directory = try NavidromeRekeyTests.temporaryDirectory(name)
+        return (MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path), directory)
+    }
+
+    @Test("ein Start ohne Zeilen wartet auf den ersten Stand des Traegers, sonst nicht")
+    func whoWaits() {
+        let seen = ListeningStatsData(secondsPerDay: ["d": 1], secondsPerItem: [:])
+        let table: [(RowBase<ListeningStatsData>, Bool, Bool)] = [
+            (.fresh, false, true),
+            (.fresh, true, false),
+            (.unknown(seen: nil), false, true),
+            (.unknown(seen: seen), false, false),
+            (.known(seen), false, false),
+        ]
+        for (base, delivered, waits) in table {
+            #expect(ListeningStatsSync.waitsForFirstStand(base: base, delivered: delivered) == waits,
+                    "\(base.basis) delivered=\(delivered)")
+        }
+    }
+
+    @Test("nach einer Neuinstallation wird der spaet eintreffende eigene Topf zurueckgenommen, nicht ueberschrieben")
+    func aLatePotIsTakenBackNotReplaced() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let (database, directory) = try Self.freshDatabase("first-stand-late")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = LateCarrier()
+        let stats = ListeningStatsStore(carrier: carrier, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
+        stats.start()
+        stats.addSeconds(30, itemId: "rss:first-stand:new")
+        stats.flush()
+        await stats.awaitPendingWrites()
+        #expect(carrier.published.isEmpty, "nothing is published before the far side was read")
+
+        carrier.held[SyncHistoryStore.deviceId] = Self.old
+        carrier.hasDeliveredFirst = true
+        carrier.onChange?()
+        await stats.awaitPendingWrites()
+        #expect(stats.ownData.secondsPerItem["rss:first-stand:old"] == 900, "the pot from before is taken back")
+        #expect(stats.ownData.secondsPerItem["rss:first-stand:new"] == 30, "what this run counted stays")
+        let sent = try #require(carrier.published.last)
+        #expect(sent.secondsPerDay["2026-01-02"] == 900, "the published pot keeps the days from before")
+    }
+
+    @Test("ein Traeger, der nie liefert, haelt den Topf nur bis zur Frist")
+    func theWaitEndsAtItsLimit() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let (database, directory) = try Self.freshDatabase("first-stand-limit")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = LateCarrier()
+        let stats = ListeningStatsStore(carrier: carrier, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        firstStandLimit: .milliseconds(200))
+        stats.start()
+        stats.addSeconds(30, itemId: "rss:first-stand:limit")
+        stats.flush()
+        #expect(carrier.published.isEmpty, "the precondition: held at first")
+        try await Task.sleep(nanoseconds: 300_000_000)
+        stats.flush()
+        #expect(carrier.published.last?.secondsPerItem["rss:first-stand:limit"] == 30, "the next pause after the limit publishes")
+    }
+
+    @Test("CloudKit: der eigene Datensatz von vorher wird gelesen, bevor der neue Topf hinausgeht")
+    func cloudKitReadsTheOwnRecordFirst() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let (database, directory) = try Self.freshDatabase("first-stand-cloud")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let name = "first-stand-cloud-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let zone = CloudKitStatsCarrierTests.FakeZone()
+        let own = SyncHistoryStore.deviceId
+        zone.foreignWrite(CloudStatsRecord(deviceId: own, payload: try MaerSyncStatsWire.encode(Self.old), t: 1))
+        let carrier = CloudKitStatsCarrier(database: zone, fallback: KeyValueStatsCarrier(store: InMemoryCloudStore()),
+                                           defaults: defaults)
+        #expect(!carrier.hasDeliveredFirst, "the precondition: nothing fetched yet")
+        let stats = ListeningStatsStore(carrier: carrier, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
+        stats.start()
+        stats.addSeconds(30, itemId: "rss:first-stand:cloud")
+        stats.flush()
+        // The start's own round runs in a task of its own; the witness asks
+        // again until the published pot stands in the zone.
+        func standing() -> ListeningStatsData? {
+            zone.records[own].flatMap { MaerSyncStatsWire.decode($0.record.payload) }
+        }
+        // Before the cloud took the own record once the carrier has a
+        // ceiling, and only live items travel; the days travel whole.
+        func counted(_ pot: ListeningStatsData?) -> Int {
+            (pot?.secondsPerDay ?? [:]).filter { $0.key != "2026-01-02" }.values.reduce(0, +)
+        }
+        for _ in 0..<40 where counted(standing()) < 30 {
+            await carrier.refresh(by: "witness")
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        #expect(carrier.hasDeliveredFirst)
+        let pot = try #require(standing())
+        #expect(pot.secondsPerDay["2026-01-02"] == 900, "the record from before was replaced unread: \(pot.secondsPerDay)")
+        #expect(counted(pot) >= 30, "and this run's listening is in it")
+    }
+
+    @Test("Mär Sync: der eigene Topf von vorher wird einmal gelesen, und der naechste Schrieb nennt seine Fassung")
+    func theServiceReadsTheOwnPotOnce() async throws {
+        let name = "first-stand-service-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let stored = transport.foreignWrite(kind: MaerSyncSession.statsKind, scope: "dev-a",
+                                            body: try MaerSyncStatsWire.encode(Self.old))
+        let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
+        let session = MaerSyncSession(transport: transport, announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { access }, deviceId: { "dev-a" }, defaults: defaults)
+        let carrier = MaerSyncStatsCarrier(session: session)
+        carrier.start {}
+        #expect(!carrier.hasDeliveredFirst, "the precondition: not listed yet")
+        await session.refresh(by: "witness")
+        #expect(carrier.hasDeliveredFirst)
+        #expect(carrier.pots()["dev-a"] == Self.old, "the own pot from before is read")
+        var grown = Self.old
+        grown.secondsPerItem["rss:first-stand:service"] = 30
+        carrier.publish(grown, deviceId: "dev-a", by: "witness")
+        await session.refresh(by: "witness")
+        let write = try #require(transport.writes.last { $0.kind == MaerSyncSession.statsKind })
+        #expect(write.ifMatch == stored, "the write names the version it read")
+    }
+
+    @Test("der Schluessel-Speicher: der Speicher von iCloud wartet auf seine Meldung, einer im Speicher nicht")
+    func theKeyValueStoreWaitsOnlyForICloud() {
+        #expect(KeyValueStatsCarrier(store: InMemoryCloudStore()).hasDeliveredFirst, "a store in memory has no far side")
+        #expect(!KeyValueStatsCarrier(store: NSUbiquitousKeyValueStore.default).hasDeliveredFirst,
+                "the iCloud store has delivered nothing before its change note")
+    }
+}
+#endif

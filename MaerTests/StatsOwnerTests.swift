@@ -27,6 +27,7 @@ struct StatsOwnerTests {
         func stop() {}
         func refresh(by caller: String) async {}
         var hasRoomLimit: Bool { false }
+        var hasDeliveredFirst: Bool { true }
     }
 
     private struct Rig {

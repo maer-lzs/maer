@@ -161,6 +161,7 @@ struct AccessFollowersTests {
         var published: [ListeningStatsData] = []
         var onChange: (@MainActor () -> Void)?
         let hasRoomLimit = false
+        let hasDeliveredFirst = true
         init(_ name: String) { self.name = name }
         func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
             published.append(pot)

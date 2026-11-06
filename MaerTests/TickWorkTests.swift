@@ -175,6 +175,7 @@ struct TickWorkTests {
     private final class QuietCarrier: StatsCarrier {
         let name = "quiet-fake"
         var hasRoomLimit = false
+        let hasDeliveredFirst = true
         func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {}
         func pots() -> [String: ListeningStatsData] { [:] }
         func start(onChange: @escaping @MainActor () -> Void) {}

@@ -37,6 +37,12 @@ protocol StatsCarrier: AnyObject {
     /// room carries every item: the caps are a price for a ceiling, not a
     /// rule about listening.
     var hasRoomLimit: Bool { get }
+    /// Whether the far side's state has arrived at least once since
+    /// `start`. A store that starts with no rows publishes nothing before
+    /// it: the far side may hold this device's own pot from before, and a
+    /// pot written first would replace it unread. `onChange` fires when
+    /// it turns true.
+    var hasDeliveredFirst: Bool { get }
 }
 
 /// Which carrier the statistics run on: the Mär sync service when the
@@ -152,7 +158,13 @@ final class KeyValueStatsCarrier: StatsCarrier {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
         Task { @MainActor in
             CloudQuotaWatch.note(reason: reason)
+            self.deliveredExternally = true
             self.onChange?()
         }
     }
+
+    /// The iCloud store delivers the far side through its change note; a
+    /// store that is not iCloud's has no far side to wait for.
+    var hasDeliveredFirst: Bool { deliveredExternally || !(store is NSUbiquitousKeyValueStore) }
+    private var deliveredExternally = false
 }

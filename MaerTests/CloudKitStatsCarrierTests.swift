@@ -115,6 +115,11 @@ struct CloudKitStatsCarrierTests {
         var woken = 0
         carrier.start { woken += 1 }
         await carrier.refresh(by: "witness")
+        // The first whole fetch wakes once even with nothing in it: a store
+        // that holds its pot for the first state publishes then.
+        #expect(woken >= 1, "the first fetch is news")
+        #expect(carrier.hasDeliveredFirst)
+        woken = 0
 
         let old = ListeningStatsData(secondsPerDay: ["2026-09-01": 10], secondsPerItem: [:])
         store.set(try JSONEncoder().encode(old), forKey: ListeningStatsSync.key(forDeviceId: "dev-old"))

@@ -186,6 +186,9 @@ final class CloudKitStatsCarrier: StatsCarrier {
         guard await database.accountAvailable() else {
             fellBack = true
             Logger.library.notice("STATS cloud unavailable reason=noAccount by=\(caller, privacy: .public); the key-value pot carries on")
+            // A store that waits for the first state asks again: the
+            // key-value pot answers from now on.
+            onChange?()
             return
         }
         if !zoneReady {
@@ -279,13 +282,24 @@ final class CloudKitStatsCarrier: StatsCarrier {
         }
         persist()
         Logger.library.notice("STATS cloud fetch changed=\(changed) deleted=\(deleted) ms=\(Int(Date().timeIntervalSince(started) * 1000)) by=\(caller, privacy: .public)")
-        if changed > 0 || deleted > 0 { onChange?() }
+        // The first whole fetch is news even when it found nothing: a store
+        // that held its pot for it publishes now.
+        let first = !fetchedOnce
+        fetchedOnce = true
+        if changed > 0 || deleted > 0 || first { onChange?() }
     }
+
+    /// Whether one fetch ran to its end since the start. The records are
+    /// read before the own one is sent only when the store waits for this.
+    private var fetchedOnce = false
+
+    var hasDeliveredFirst: Bool { fellBack ? fallback.hasDeliveredFirst : fetchedOnce }
 
     private func note(_ error: Error, by caller: String) {
         if let failure = error as? CloudStandFailure, failure == .noAccount {
             fellBack = true
             Logger.library.notice("STATS cloud unavailable reason=noAccount by=\(caller, privacy: .public); the key-value pot carries on")
+            onChange?()
             return
         }
         Logger.library.error("STATS cloud failed reason=\(String(describing: error), privacy: .public) by=\(caller, privacy: .public); queued=\(self.queued == nil ? 0 : 1)")

@@ -19,6 +19,7 @@ struct StatsLocalPotTests {
     private final class FlippingCarrier: StatsCarrier {
         let name = "flip-fake"
         var hasRoomLimit = false
+        let hasDeliveredFirst = true
         var published: [ListeningStatsData] = []
         func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) { published.append(pot) }
         func pots() -> [String: ListeningStatsData] { [:] }

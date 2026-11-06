@@ -170,6 +170,12 @@ backup from now on no longer takes over that phone's name, so the two
 do not write into the same totals. Two devices that already share a
 name keep sharing it for now.
 
+**Listening statistics come back after you reinstall the app.** A
+device that starts with no statistics of its own waits until iCloud or
+your sync server has delivered what it held, takes its own totals from
+before back, and only then sends its totals again, instead of
+replacing the earlier ones with an empty start.
+
 **A device that used two Audiobookshelf servers tidies up again.** Since
 3.5.1 such a device kept the speed, position and other per-book data of
 every book that left a server, for good, so that nothing of the other

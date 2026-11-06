@@ -1117,6 +1117,9 @@ final class MaerSyncSession {
     /// Every device's statistics pot as bytes, by device; the carrier
     /// decodes, so the session knows nothing of what a pot is.
     var statsBodies: [String: Data] { statsFamily.bodies }
+    /// Whether the statistics pots were listed in this session yet, the
+    /// own one read when it stood there.
+    var statsListed: Bool { statsFamily.listed }
 
     /// This device's scope, from the ONE source the session itself uses.
     /// Exposed so a runner cannot pick a second answer to the same question
@@ -1226,6 +1229,17 @@ final class MaerSyncSession {
             seen.insert(entry.scope)
             guard family.versions[entry.scope] != entry.etag else { continue }
             if await take(family, scope: entry.scope, by: caller) { changed = true }
+        }
+        // The statistics read their own pot once while this run knows no
+        // version of it: after a fresh install it is the device's listening
+        // from before, which the store takes back before it publishes
+        // (`StatsCarrier.hasDeliveredFirst`); its version is what the next
+        // write names, so that write replaces the pot it read.
+        if family === statsFamily, family.ownVersion == nil, family.pending == nil,
+           listed.contains(where: { $0.scope == own }),
+           await take(family, scope: own, by: caller) {
+            family.ownVersion = family.versions[own]
+            changed = true
         }
         // A fetch of the loop may have come back under another account.
         guard stillAsked(generation, "\(family.kind) listing", by: caller) else { return }
@@ -1430,6 +1444,7 @@ final class MaerSyncStatsCarrier: StatsCarrier {
 
     var name: String { session.name }
     var hasRoomLimit: Bool { false }
+    var hasDeliveredFirst: Bool { session.statsListed }
 
     func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
         do {
