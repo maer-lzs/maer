@@ -121,9 +121,11 @@ home screen widget showed it with a full bar and no time left; it now
 says "Live".
 
 **Stations whose own page turns the app away get their logo.** When a
-station's web page refuses the request, the app now takes the icon the
-front page of the same site shows, as for bigFM's stations. If that
-fails too, the station keeps its letters and is asked again later.
+station's web page refuses the request or no longer exists, the app now
+takes the icon the front page of the same site shows, as for bigFM's
+stations. If that fails too, the station keeps its letters and is asked
+again later. A site that asks for a pause or fails is not asked again
+for its front page.
 
 **Classical on the Browse page opens the classical records.** The
 heading of the Classical row opened a music page without any classical

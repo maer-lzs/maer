@@ -322,9 +322,21 @@ nonisolated enum RadioLogoLookup {
         return comps.url
     }
 
+    /// Whether the root of the host is asked after the station's page
+    /// answered with this status: a refusal (401, 403) or a page that names
+    /// nothing (404, 410). A host that asked for a pause (429), a failing
+    /// host and no answer at all (nil) are not asked once more.
+    static func asksRoot(afterPageStatus status: Int?) -> Bool {
+        guard let status else { return false }
+        switch StatusMeaning.from(status: status) {
+        case .signIn, .notFound: return true
+        case .throttled, .server: return false
+        }
+    }
+
     /// The root page of the homepage's host, asked when the page itself
-    /// refuses; nil when the homepage already is the root, so the same
-    /// address is never asked twice.
+    /// refuses or names nothing (`asksRoot`); nil when the homepage already
+    /// is the root, so the same address is never asked twice.
     static func rootPageURL(of homepage: URL) -> URL? {
         guard var comps = URLComponents(url: homepage, resolvingAgainstBaseURL: false) else { return nil }
         if (comps.path.isEmpty || comps.path == "/") && comps.query == nil { return nil }

@@ -242,6 +242,11 @@ actor RadioLogoService {
     }
 
     private func fetch(_ url: URL) async -> FetchResult {
+        await fetchAnswer(url).result
+    }
+
+    /// The outcome with the status it came with; nil when no answer came.
+    private func fetchAnswer(_ url: URL) async -> (result: FetchResult, status: Int?) {
         // No spacing of its own: the host courtesy runs the Wikimedia hosts
         // one after the other and caps every other host.
         let request = URLRequest(url: url, timeoutInterval: 15)
@@ -249,11 +254,11 @@ actor RadioLogoService {
             // The stream lane: no retry, a logo host that stalls gets one try.
             let (data, http) = try await wire(request)
             if let http, !(200...299).contains(http.statusCode) {
-                return Self.fetchResult(forStatus: http.statusCode)
+                return (Self.fetchResult(forStatus: http.statusCode), http.statusCode)
             }
-            return data.isEmpty ? .empty : .data(data)
+            return (data.isEmpty ? .empty : .data(data), http?.statusCode)
         } catch {
-            return .failed
+            return (.failed, nil)
         }
     }
 
@@ -413,8 +418,8 @@ actor RadioLogoService {
     }
 
     /// The usable icon the root page of the station's host declares, for a
-    /// page that refused; nil when the page is the root itself, or the root
-    /// gives no usable icon.
+    /// page that refused or names nothing; nil when the page is the root
+    /// itself, or the root gives no usable icon.
     private func rootIcon(of pageURL: URL) async -> ChainOutcome? {
         guard let rootURL = RadioLogoLookup.rootPageURL(of: pageURL),
               case .data(let data) = await fetch(rootURL),
@@ -502,13 +507,15 @@ actor RadioLogoService {
         // request would be dropped by ATS before it leaves the device (the
         // stage was dead for half the German catalog, measured).
         guard let pageURL = RadioLogoLookup.httpsPageURL(homepage) else { return .noHit }
-        let page = await fetch(pageURL)
-        if case .failed = page {
-            // A refusing page says nothing about the station, so nothing is
-            // booked from here. The root of the same host often answers
-            // where a deep page refuses, and its icon is the site's own mark.
-            return await rootIcon(of: pageURL) ?? .failed("homepage")
+        let (page, status) = await fetchAnswer(pageURL)
+        // The root of the same host often answers where a deep page refuses
+        // or names nothing, and its icon is the site's own mark
+        // (`RadioLogoLookup.asksRoot`). A refusing page says nothing about
+        // the station, so without the root nothing is booked from here.
+        if RadioLogoLookup.asksRoot(afterPageStatus: status), let root = await rootIcon(of: pageURL) {
+            return root
         }
+        if case .failed = page { return .failed("homepage") }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
             // Declared is not delivered: sites carry the tag while the

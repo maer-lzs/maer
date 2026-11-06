@@ -27,6 +27,7 @@ struct StatusMeaningFenceTests {
         "PodcastSubscriptions.swift": "a feed pull that survived the ladder is marked with the meaning, the number beside it",
         "GPodderClient.swift": "a refusal that survived the login retry gets its own sentence, every other answer keeps its number",
         "RadioLogoService.swift": "only an absence is a clean no for the logo chain; a refusal books nothing for 14 days",
+        "RadioLogoLookup.swift": "the root of the host is asked after a refusal or an absence of the page, never after a pause or a failing host",
         "RadioBrowserClient.swift": "a pause that survived the ladder stops the walk over the mirrors, every other answer tries the next",
         "RadioArtworkService.swift": "only an absence is remembered as no cover for the session",
         "Artwork.swift": "only an absence is the one clean no for a picture; every other status leaves it unanswered",

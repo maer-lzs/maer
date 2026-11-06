@@ -391,6 +391,27 @@ struct RadioLogoRefusalTests {
         #expect(bare.said == "FEHLSCHLAG stufe=homepage", "a root without an icon books a no: \(bare.said)")
         let open = await audit(page: 200, root: 200, html: declared)
         #expect(!open.asked.contains("https://www.radio.test/"), "a page that answers asks the root: \(open.asked)")
+        // A page that names nothing asks the root too; a host that asked
+        // for a pause or fails is not asked once more.
+        for gone in [404, 410] {
+            let found = await audit(page: gone, root: 200, html: declared)
+            #expect(found.said == "TREFFER stufe=wurzel datei=https://file.radio.test/icon.png", "\(gone): \(found.said)")
+        }
+        for quiet in [429, 503] {
+            let held = await audit(page: quiet, root: 200, html: declared)
+            #expect(held.said == "FEHLSCHLAG stufe=homepage", "\(quiet): \(held.said)")
+            #expect(!held.asked.contains("https://www.radio.test/"), "\(quiet) asks the root: \(held.asked)")
+        }
+    }
+
+    /// When the root is asked, by the page's status alone.
+    @Test("die Wurzel wird nach Abweisung und nach nicht da gefragt, nach Pause, Serverfehler und ohne Antwort nicht")
+    func whenTheRootIsAsked() {
+        let table: [(Int?, Bool)] = [(401, true), (403, true), (404, true), (410, true),
+                                     (429, false), (500, false), (503, false), (200, false), (nil, false)]
+        for (status, asks) in table {
+            #expect(RadioLogoLookup.asksRoot(afterPageStatus: status) == asks, "\(String(describing: status))")
+        }
     }
 }
 
