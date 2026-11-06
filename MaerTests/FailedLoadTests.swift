@@ -282,8 +282,11 @@ struct FailedLoadTests {
         #expect(!model.isPlaying, "playback stops at the failed file")
         #expect(abs(model.currentTime - 1) < 0.01, "the position is the start of the failed file: \(model.currentTime)")
         #expect(furthest < 2, "the position never reached the file behind it: \(furthest)")
-        let left = model.player?.items().count ?? 0
-        #expect(left == 0, "nothing behind the failed file is left to play: \(left)")
+        // The file before the failed one may still stand in the queue for a
+        // moment after its end; what counts is that nothing behind it does.
+        let left = (model.player?.items() ?? []).map { ($0.asset as? AVURLAsset)?.url.lastPathComponent ?? "?" }
+        let behind = left.filter { $0 != first.lastPathComponent }
+        #expect(behind.isEmpty, "nothing behind the failed file is left to play: \(behind)")
 
         model.play()
         let rebuilt = model.player?.items().count ?? 0
