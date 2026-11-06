@@ -80,13 +80,15 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     /// Before a new address is stored: the access token and the user id
     /// were handed out by the stored server, and they go to no other one
-    /// (`ServerAddressSwitch`). The next request signs in anew. Answers
+    /// (`ServerAddressSwitch`). The next request signs in anew. The titles
+    /// of the stored server leave the widget's rows with it. Answers
     /// whether anything was forgotten.
     @discardableResult
     static func forgetAccessOnSwitch(to newURL: String) -> Bool {
         guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.jellyfinServerURLValue, to: newURL) else { return false }
         AppStorageKeys.setJellyfinToken("")
         AppStorageKeys.jellyfinUserIdValue = ""
+        Task { await ContinueRowsWriter.forgetServer(ItemNamespace.isJellyfin) }
         Logger.music.notice("JELLYFIN address switch: the access of the stored server is forgotten")
         return true
     }

@@ -184,6 +184,7 @@ struct SubsonicSourceView: View {
             // The password of the stored server stays with it, also the one
             // the field was filled with.
             password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password)
+            SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL)
             AppStorageKeys.subsonicServerURLValue = trimmedURL
         }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)

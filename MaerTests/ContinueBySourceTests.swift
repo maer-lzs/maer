@@ -452,6 +452,107 @@ struct ContinueBySourceTests {
         }
     }
 
+    /// A Jellyfin or Subsonic server whose address changes takes its titles
+    /// out of the widget's rows, and the player's snapshot with them, at
+    /// the family's one place; the same address changes nothing.
+    @Test("ein Wechsel der Adresse bei Jellyfin oder Subsonic nimmt Zeilen und Schnappschuss des alten Servers aus dem Widget, dieselbe Adresse nichts")
+    @MainActor
+    func anAddressSwitchForgetsTheFormerServersRows() async throws {
+        let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
+        let coverURL = try #require(WidgetSnapshot.coverURL)
+        let keptSnapshot = try? Data(contentsOf: snapshotURL)
+        let keptCover = try? Data(contentsOf: coverURL)
+        let rows = ContinueRows.load()
+        let jellyfin = (url: AppStorageKeys.jellyfinServerURLValue, token: AppStorageKeys.jellyfinTokenValue,
+                        user: AppStorageKeys.jellyfinUserIdValue)
+        let subsonic = AppStorageKeys.subsonicServerURLValue
+        defer {
+            for (url, data) in [(snapshotURL, keptSnapshot), (coverURL, keptCover)] {
+                if let data { try? data.write(to: url) } else { try? FileManager.default.removeItem(at: url) }
+            }
+            _ = rows?.save()
+            AppStorageKeys.jellyfinServerURLValue = jellyfin.url
+            AppStorageKeys.setJellyfinToken(jellyfin.token)
+            AppStorageKeys.jellyfinUserIdValue = jellyfin.user
+            AppStorageKeys.subsonicServerURLValue = subsonic
+        }
+        let ids = ["jf:song:1", "sub:album:1", "rss:feed#ep", "li_book", "radio:rb:x"]
+        let families: [(name: String, owns: (String) -> Bool, store: (String) -> Void, forget: (String) -> Bool)] = [
+            ("Jellyfin", ItemNamespace.isJellyfin, { AppStorageKeys.jellyfinServerURLValue = $0 },
+             { JellyfinProvider.forgetAccessOnSwitch(to: $0) }),
+            ("Subsonic", ItemNamespace.isSubsonic, { AppStorageKeys.subsonicServerURLValue = $0 },
+             { SubsonicProvider.forgetAccessOnSwitch(to: $0) }),
+        ]
+        for family in families {
+            for (to, switches) in [("https://old.example", false), ("https://new.example", true)] {
+                family.store("https://old.example")
+                await ContinueRowsWriter.write(ids.enumerated().map { row($1, .music, at: Double(9 - $0) * 1_000) },
+                                               passAtMs: 10_000)
+                let heard = try #require(ids.first(where: family.owns))
+                WidgetSnapshot(itemId: heard, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
+                try Data([0x89]).write(to: coverURL)
+                #expect(family.forget(to) == switches, "\(family.name) \(to): the switch")
+                let want = ids.filter { !(switches && family.owns($0)) }
+                for _ in 0..<50 where ContinueRows.load()?.rows.map(\.itemId) != want {
+                    try await Task.sleep(nanoseconds: 20_000_000)
+                }
+                #expect(ContinueRows.load()?.rows.map(\.itemId) == want, "\(family.name) \(to): the rows")
+                #expect((WidgetSnapshot.load() == nil) == switches, "\(family.name) \(to): the snapshot")
+                #expect(FileManager.default.fileExists(atPath: coverURL.path) == !switches, "\(family.name) \(to): its cover")
+            }
+        }
+    }
+
+    /// The question, not a file: every place that stores a music server's
+    /// address asks its family's one place right before, and that place
+    /// forgets the former server's titles by the family's namespace. A new
+    /// writer of an address fails here until it names its family.
+    @Test("wer die Adresse eines Musikservers schreibt, fragt vorher die eine Stelle der Familie, und die vergisst die Zeilen des alten Servers", .needsTheSources)
+    func anAddressWriterForgetsTheFormerServer() throws {
+        let families: [String: (writer: String, place: String, owns: String)] = [
+            "subsonicServerURLValue": ("SubsonicSourceView.swift", "SubsonicProvider", "ItemNamespace.isSubsonic"),
+            "jellyfinServerURLValue": ("JellyfinSourceView.swift", "JellyfinProvider", "ItemNamespace.isJellyfin"),
+        ]
+        // The harness seeds an address on a fresh device; gpodder keeps no
+        // titles in the rows.
+        let others: [String: String] = ["subsonicServerURLValue": "UITestSeed.swift",
+                                        "gpodderServerURLValue": "GPodderSettingsView.swift"]
+        let assignment = try NSRegularExpression(pattern: #"AppStorageKeys\.(\w+ServerURLValue) = "#)
+        var found: [String] = []
+        var forgetting: [String] = []
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            let squeezed = FetchAnswerTests.squeezed(text)
+            if squeezed.contains("ContinueRowsWriter.forgetServer(") { forgetting.append(file) }
+            let range = NSRange(squeezed.startIndex..., in: squeezed)
+            for match in assignment.matches(in: squeezed, range: range) {
+                guard let keyRange = Range(match.range(at: 1), in: squeezed) else { continue }
+                let key = String(squeezed[keyRange])
+                found.append("\(file) \(key)")
+                if others[key] == file { continue }
+                guard let family = families[key] else {
+                    Issue.record("\(file) writes \(key), an address of no family the fence knows"); continue
+                }
+                #expect(file == family.writer, "\(file) writes \(key) beside \(family.writer)")
+                #expect(squeezed.contains("\(family.place).forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.\(key) = trimmedURL"),
+                        "\(file) stores the address without asking \(family.place) right before")
+            }
+        }
+        #expect(Set(found) == Set(families.map { "\($1.writer) \($0)" } + others.map { "\($1) \($0)" }),
+                "the writers of an address are others than the fence names: \(found.sorted())")
+        #expect(Set(forgetting) == ["SubsonicProvider.swift", "JellyfinProvider.swift"],
+                "the former server's titles are forgotten elsewhere: \(forgetting.sorted())")
+        for (key, family) in families {
+            let place = try FetchAnswerTests.squeezedSource("Sources/Providers/\(family.place).swift")
+            #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String) -> Bool { guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.\(key), to: newURL) else { return false }"),
+                    "\(family.place) does not ask the switch first")
+            #expect(place.contains("Task { await ContinueRowsWriter.forgetServer(\(family.owns)) }"),
+                    "\(family.place) leaves the former server's titles in the rows")
+        }
+        let writer = try FetchAnswerTests.squeezedSource("Sources/Providers/ContinueRowsWriter.swift")
+        #expect(writer.contains("static func forgetServer(_ owns: (String) -> Bool) async { dropSnapshot(ifOwnedBy: owns) let rows = (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }"),
+                "the rows keep the former server's titles")
+    }
+
     @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)
     func thePlayerNeverWritesTheRows() throws {
         let home = [row("book", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]

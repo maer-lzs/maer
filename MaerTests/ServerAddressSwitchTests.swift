@@ -234,7 +234,7 @@ struct ServerAddressSwitchTests {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
         #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(trimmedURL, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
         let subsonic = try FetchAnswerTests.squeezedSource("Sources/Views/SubsonicSourceView.swift")
-        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
+        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
         var writers: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() where file != "UITestSeed.swift" {
             let squeezed = FetchAnswerTests.squeezed(text)

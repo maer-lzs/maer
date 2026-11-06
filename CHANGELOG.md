@@ -104,7 +104,10 @@ Signing out of the Audiobookshelf server also forgets the widget's
 last title when it came from that server; a station, an RSS episode or
 a catalogue title stays. Signing in to another Audiobookshelf server
 through Sign In Again forgets them the same way; signing in again to
-the same server keeps them.
+the same server keeps them. A new address for your Jellyfin or
+Subsonic server takes that server's titles out of the widget's rows,
+and its last title when it was one of them; the other rows stay, and
+saving the same address keeps everything.
 
 **Play is no longer lost while the app restores a title.** When the app
 was just bringing back the last title on its own, a play for that same

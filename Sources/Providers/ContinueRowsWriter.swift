@@ -70,11 +70,25 @@ enum ContinueRowsWriter {
     /// (`ItemNamespace.isAudiobookshelf`); a station, an RSS episode and a
     /// catalogue title stay, as on the home page.
     static func forget() async {
-        if let id = WidgetSnapshot.load()?.itemId, ItemNamespace.isAudiobookshelf(id) {
-            WidgetSnapshot.remove()
-            reload()
-        }
+        dropSnapshot(ifOwnedBy: ItemNamespace.isAudiobookshelf)
         await write([], passAtMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// A music server's address changed: the titles of the former server
+    /// (`owns`, the family's namespace) go from the rows, and the player's
+    /// snapshot with its cover when it is one of them. The other rows stay,
+    /// as the home page still shows them; the moment is now, so a snapshot
+    /// heard before stays out too.
+    static func forgetServer(_ owns: (String) -> Bool) async {
+        dropSnapshot(ifOwnedBy: owns)
+        let rows = (ContinueRows.load()?.rows ?? []).filter { !owns($0.itemId) }
+        await write(rows, passAtMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    private static func dropSnapshot(ifOwnedBy owns: (String) -> Bool) {
+        guard let id = WidgetSnapshot.load()?.itemId, owns(id) else { return }
+        WidgetSnapshot.remove()
+        reload()
     }
 
     /// A source switched or another device's choices adopted: a home pass
