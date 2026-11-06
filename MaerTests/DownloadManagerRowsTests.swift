@@ -307,19 +307,12 @@ struct DownloadManagerRowsTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("nach einem Neustart nennen Fegelauf und Loeschen das gesicherte Original, das nur die Sitzung kannte")
+    @Test("nach einem Neustart und nach einem Wechsel des Servers nennen Fegelauf und Loeschen die Cover, die der Download sicherte")
     func aRestartStillNamesTheKeptOriginal() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
         let grid = OriginalCoverProvider.grid
         let original = OriginalCoverProvider.original
-        // The rule: only a large form the grid's address does not lead to.
-        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: original) == [original])
-        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: grid).isEmpty)
-        #expect(DownloadManager.sessionCoverURLs(grid: grid, large: nil).isEmpty)
-        let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "5884"))
-        #expect(DownloadManager.sessionCoverURLs(grid: medium, large: CoverAddressHistory.large(medium)).isEmpty,
-                "the scan is built again from the medium form")
 
         let manager = home.manager()
         await manager.ensureScanned()
@@ -334,6 +327,14 @@ struct DownloadManagerRowsTests {
                                               idMovePending: { false })
         #expect(active.urls.contains(original), "the maintenance names the kept original: \(active.urls)")
         #expect(active.urls.contains(grid))
+
+        // Another server's client names its own host for the same id; the
+        // covers the download kept stay among the active ones.
+        let other = try #require(URL(string: "https://other-server.example/cover/session-witness"))
+        let switched = await again.activeCovers(address: { _ in other }, largeAddress: { _ in other },
+                                                idMovePending: { false })
+        #expect(switched.urls.contains(grid) && switched.urls.contains(original),
+                "after a switch the maintenance names the kept covers: \(switched.urls)")
 
         again.deleteDownload(itemId: "lva:session-witness")
         #expect(DownloadManager.readSessionCovers(from: Ablage(directory: home.directory)).isEmpty,

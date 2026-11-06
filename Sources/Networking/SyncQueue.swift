@@ -119,9 +119,10 @@ final class SyncQueue {
         /// ms epoch when queued. For "recently listened" in the library.
         /// Optional: entries from older app versions lack this field.
         var queuedAt: Double? = nil
-        /// The Audiobookshelf server a library id was queued under
-        /// (`ABSServerScope`). Optional: older entries and ids with a
-        /// namespace carry none.
+        /// The server the stand was queued under, of its family
+        /// (`ABSServerScope.QueueServers`): Audiobookshelf for a library id,
+        /// Jellyfin or Subsonic for their titles. Optional: older entries and
+        /// titles without a server of their own carry none.
         var server: String? = nil
     }
 
@@ -150,10 +151,19 @@ final class SyncQueue {
             duration: duration,
             isFinished: isFinished,
             queuedAt: Date().timeIntervalSince1970 * 1000,
-            server: ABSServerScope.server(of: itemId, signedIn: AppStorageKeys.string(AppStorageKeys.absSignedInServer))
+            server: ABSServerScope.server(of: itemId, in: Self.queueServers())
         )
         save(pending)
         await storage.awaitPendingWrites()
+    }
+
+    /// The servers a stand is queued under now: the signed-in
+    /// Audiobookshelf server and the stored Jellyfin and Subsonic addresses.
+    private static func queueServers() -> ABSServerScope.QueueServers {
+        func stored(_ address: String) -> String? { address.isEmpty ? nil : address }
+        return ABSServerScope.QueueServers(library: AppStorageKeys.string(AppStorageKeys.absSignedInServer),
+                                           jellyfin: stored(AppStorageKeys.jellyfinServerURLValue),
+                                           subsonic: stored(AppStorageKeys.subsonicServerURLValue))
     }
 
     /// All pending updates. For the library, so it can show the locally newest
@@ -265,17 +275,17 @@ final class SyncQueue {
         // missing entry reads as "no server state", not as "wrong server".
         var serverProgressPerTarget: [String: [String: BookProgress]] = [:]
         var unreachable: Set<String> = []
-        let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        let servers = Self.queueServers()
         let switchedAt = AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt)
         // An entry from before the stamp takes the server that owns its id
         // (`ItemOwners`); an id without an owner stays as before.
         let owners = ItemOwnerShelf.app?.read().value
         for (itemId, update) in pending {
-            // A stand queued under another Audiobookshelf server waits for
-            // it: the id carries no server, the one signed in now would
-            // take it or answer its absence.
+            // A stand queued under another server of its family waits for
+            // it: the id carries no server, the one there now would take it
+            // or answer its absence.
             let scope = ABSServerScope.queueFate(itemId: itemId, entryServer: update.server ?? owners?.owner(of: itemId),
-                                                 queuedAt: update.queuedAt, current: signedIn, switchedAt: switchedAt)
+                                                 queuedAt: update.queuedAt, current: servers, switchedAt: switchedAt)
             if scope == .wait {
                 Logger.library.notice("SYNCQUEUE waits, queued under another server item=\(itemId, privacy: .private(mask: .hash))")
                 continue

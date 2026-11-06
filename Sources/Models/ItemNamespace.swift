@@ -60,6 +60,19 @@ nonisolated enum ItemNamespace {
     static func isSubsonic(_ itemId: String) -> Bool { itemId.hasPrefix("sub:") }
     /// A title of the Jellyfin server; an address switch forgets what shows it.
     static func isJellyfin(_ itemId: String) -> Bool { itemId.hasPrefix("jf:") }
+
+    /// The server that owns a title, by its family: the library of the
+    /// Audiobookshelf server for an id without a namespace, Jellyfin,
+    /// Subsonic; nil for a title without a server of its own (feeds,
+    /// catalogues, stations, local files, the server's podcast episodes).
+    enum ServerFamily: Equatable, Sendable { case library, jellyfin, subsonic }
+
+    static func serverFamily(of itemId: String) -> ServerFamily? {
+        if of(itemId) == nil { return .library }
+        if isJellyfin(itemId) { return .jellyfin }
+        if isSubsonic(itemId) { return .subsonic }
+        return nil
+    }
     /// The server's own id behind a Jellyfin id of one kind
     /// (`jf:<kind>:<id>`), nil for another kind or namespace. Pure, so a
     /// rule in Models reads it without the provider.

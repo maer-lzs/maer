@@ -93,17 +93,51 @@ struct ABSServerSwitchTests {
         #expect(ABSServerScope.cleanup(lastFullLoad: nil, current: "https://b", moreThanOneServer: false) != .clean,
                 "the first load after the update")
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: nil, moreThanOneServer: false) != .clean)
+        let now = ABSServerScope.QueueServers(library: "https://b", jellyfin: "https://jelly-b", subsonic: "https://sub-b")
         let fate = { (id: String, server: String?, queued: Double?, switched: Double?) in
-            ABSServerScope.queueFate(itemId: id, entryServer: server, queuedAt: queued, current: "https://b", switchedAt: switched)
+            ABSServerScope.queueFate(itemId: id, entryServer: server, queuedAt: queued, current: now, switchedAt: switched)
         }
         #expect(fate("book", "https://b", 10, 5) == .send)
         #expect(fate("book", "https://a", 10, 5) == .wait)
         #expect(fate("book", nil, 1, 5) == .sendKeptOnAbsence, "an older entry from before the switch")
         #expect(fate("book", nil, 10, 5) == .send)
         #expect(fate("book", nil, 10, nil) == .send)
-        #expect(fate("sub:song:1", "https://a", 10, 5) == .send, "an id with a namespace names its source itself")
-        #expect(ABSServerScope.server(of: "book", signedIn: "https://a") == "https://a")
-        #expect(ABSServerScope.server(of: "jf:book:1", signedIn: "https://a") == nil)
+        // A title of a music server waits under another address of its
+        // family, not under another family's.
+        #expect(fate("jf:book:1", "https://jelly-a", 10, 5) == .wait)
+        #expect(fate("jf:book:1", "https://jelly-b", 10, 5) == .send)
+        #expect(fate("sub:album:1", "https://sub-a", 10, 5) == .wait)
+        #expect(fate("sub:album:1", "https://sub-b", 10, 5) == .send)
+        #expect(fate("sub:album:1", "https://jelly-b", 10, 5) == .wait, "the other family's server is not its own")
+        #expect(fate("sub:album:1", nil, 1, 5) == .send, "an entry from before the stamp goes, as before")
+        #expect(fate("rss:feed:ep", nil, 1, 5) == .send)
+        #expect(ABSServerScope.server(of: "book", in: now) == "https://b")
+        #expect(ABSServerScope.server(of: "jf:book:1", in: now) == "https://jelly-b")
+        #expect(ABSServerScope.server(of: "sub:album:1", in: now) == "https://sub-b")
+        #expect(ABSServerScope.server(of: "rss:feed:ep", in: now) == nil)
+        #expect(ABSServerScope.server(of: "jf:book:1", in: .init(library: "https://b")) == nil,
+                "no Jellyfin server stored, no stamp")
+    }
+
+    /// The queue stamps a title of Jellyfin or Subsonic with the address of
+    /// its server now, so the rule above can hold it after a switch.
+    @Test("die Warteschlange stempelt einen Titel von Jellyfin und Subsonic mit der Adresse seines Servers")
+    @MainActor
+    func theQueueStampsMusicServers() async {
+        let jellyfin = AppStorageKeys.jellyfinServerURLValue
+        let subsonic = AppStorageKeys.subsonicServerURLValue
+        defer {
+            AppStorageKeys.jellyfinServerURLValue = jellyfin
+            AppStorageKeys.subsonicServerURLValue = subsonic
+        }
+        AppStorageKeys.jellyfinServerURLValue = "https://Jelly-A.example/"
+        AppStorageKeys.subsonicServerURLValue = ""
+        let storage = MemoryQueue()
+        let queue = SyncQueue(storage: storage)
+        await queue.enqueue(itemId: "jf:book:1", currentTime: 600, duration: 600, isFinished: true)
+        await queue.enqueue(itemId: "sub:album:1", currentTime: 600, duration: 600, isFinished: true)
+        #expect(storage.entries["jf:book:1"]?.server == "https://jelly-a.example", "the mark carries its server")
+        #expect(storage.entries["sub:album:1"]?.server == nil, "no Subsonic server stored, no stamp")
     }
 
     @Test("ein Eintrag der Warteschlange aus der Zeit vor dem Server liest sich ohne Server")
@@ -346,7 +380,7 @@ struct ABSServerSwitchTests {
         #expect(!AppStorageKeys.bool(AppStorageKeys.absMoreThanOneServer, default: false),
                 "another spelling of the same server counted as a second one")
         #expect(AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt) == 1, "another spelling counted as a switch")
-        #expect(ABSServerScope.server(of: "book", signedIn: "https://Name:Secret@abs.example.com") == "https://abs.example.com",
+        #expect(ABSServerScope.server(of: "book", in: .init(library: "https://Name:Secret@abs.example.com")) == "https://abs.example.com",
                 "a queued stand carries the name")
     }
 
@@ -378,7 +412,7 @@ struct ABSServerSwitchTests {
         #expect(storage.entries["book"]?.currentTime == 321, "the stand itself moved")
         // The old raw value and the name are one server for the rule.
         #expect(ABSServerScope.queueFate(itemId: "book", entryServer: "https://Name:Secret@ABS.Example.com/",
-                                         queuedAt: 5, current: "https://abs.example.com", switchedAt: 1) == .send)
+                                         queuedAt: 5, current: .init(library: "https://abs.example.com"), switchedAt: 1) == .send)
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://ABS.example.com:443/", current: "https://abs.example.com",
                                        moreThanOneServer: false) == .clean)
     }

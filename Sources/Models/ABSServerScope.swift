@@ -97,20 +97,44 @@ nonisolated enum ABSServerScope {
         case wait
     }
 
-    /// The fate of a queued stand of `itemId`. Only a library id is scoped;
-    /// an id with a namespace names its source itself. An entry without a
-    /// server is from before the rule.
+    /// The addresses a stand can be queued under now, one per family that
+    /// owns titles (`ItemNamespace.serverFamily`).
+    struct QueueServers: Equatable, Sendable {
+        /// The signed-in Audiobookshelf server, for a library id.
+        var library: String?
+        var jellyfin: String?
+        var subsonic: String?
+
+        /// The address of the server that owns `itemId`, nil for a title
+        /// without a server of its own.
+        func address(of itemId: String) -> String? {
+            switch ItemNamespace.serverFamily(of: itemId) {
+            case .library: library
+            case .jellyfin: jellyfin
+            case .subsonic: subsonic
+            case nil: nil
+            }
+        }
+    }
+
+    /// The fate of a queued stand of `itemId`. A stand queued under another
+    /// server of its family waits for it, for a library id as for a title
+    /// of Jellyfin or Subsonic: its id carries no server, and the one there
+    /// now would take it or answer its absence. An entry without a server
+    /// is from before the rule; a library id without one is kept on an
+    /// absence answer when the server changed after it was queued.
     static func queueFate(itemId: String, entryServer: String?, queuedAt: Double?,
-                          current: String?, switchedAt: Double?) -> QueueFate {
-        guard ItemNamespace.of(itemId) == nil else { return .send }
-        if let entryServer { return identity(of: entryServer) == current.map(identity(of:)) ? .send : .wait }
-        guard let switchedAt else { return .send }
+                          current: QueueServers, switchedAt: Double?) -> QueueFate {
+        if let entryServer {
+            return identity(of: entryServer) == current.address(of: itemId).map(identity(of:)) ? .send : .wait
+        }
+        guard ItemNamespace.of(itemId) == nil, let switchedAt else { return .send }
         return (queuedAt ?? 0) < switchedAt ? .sendKeptOnAbsence : .send
     }
 
-    /// The server a stand of `itemId` is queued under: the signed-in one
-    /// for a library id, none for an id with a namespace.
-    static func server(of itemId: String, signedIn: String?) -> String? {
-        ItemNamespace.of(itemId) == nil ? signedIn.map(identity(of:)) : nil
+    /// The server a stand of `itemId` is queued under: the one of its family
+    /// now, none for a title without a server of its own.
+    static func server(of itemId: String, in servers: QueueServers) -> String? {
+        servers.address(of: itemId).map(identity(of:))
     }
 }

@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**A new music server address keeps what belongs to the old one.** An
+album or audiobook downloaded from now on keeps its cover offline after
+you change the address of your Jellyfin or Subsonic server or sign in to
+another Audiobookshelf server, and a
+"finished" mark that was still waiting to reach the old Jellyfin or
+Subsonic server waits for it instead of being sent to the new one and
+lost there.
+
 **A new music server address signs in anew.** When you change the
 address of your Jellyfin or Subsonic server, the app forgets what the old
 server gave it and signs in to the new one, instead of sending the old

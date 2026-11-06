@@ -143,11 +143,13 @@ final class DownloadManager {
     /// The kinds are a document of the app, so they go through the seam.
     private let kindsAblage: Ablage
     nonisolated static let kindsDocument = "download-kinds.json"
-    /// The cover addresses a download keeps that only the session that
-    /// stored it names (`sessionCoverURLs`), per item. An archive item names
-    /// its original only while the session holds its files; this small
-    /// document beside the kinds lets the delete and the cover maintenance
-    /// name the kept original after a restart.
+    /// The cover addresses a download kept when it was stored, per item
+    /// (`keptCoverURLs`). The addresses built now can name other ones: an
+    /// archive item names its original only while the session holds its
+    /// files, and after a switch of the music server the client of the new
+    /// server names its own host. This small document beside the kinds lets
+    /// the delete and the cover maintenance name the kept covers after a
+    /// restart and after a switch.
     private var sessionCovers: [String: [URL]] = [:]
     nonisolated static let sessionCoversDocument = "download-covers.json"
 
@@ -237,10 +239,10 @@ final class DownloadManager {
         }
     }
 
-    /// Remembers the session covers of a stored download, or forgets the
-    /// entry when it has none.
+    /// Remembers the kept covers of a stored download, or forgets the entry
+    /// when it has none.
     func noteSessionCovers(of itemId: String, grid: URL?, large: URL?) {
-        let urls = Self.sessionCoverURLs(grid: grid, large: large)
+        let urls = Self.keptCoverURLs(grid: grid, large: large)
         let entry: [URL]? = urls.isEmpty ? nil : urls
         guard sessionCovers[itemId] != entry else { return }
         sessionCovers[itemId] = entry
@@ -914,8 +916,9 @@ final class DownloadManager {
             }
 
             // Persist the cover in both forms (`keptCoverURLs`). Survives iOS
-            // cache purges offline. A form only this session names is
-            // remembered beside the downloads (`noteSessionCovers`).
+            // cache purges offline. Both forms are remembered beside the
+            // downloads (`noteSessionCovers`), so a later session or another
+            // server's client still names them.
             let grid = provider.coverURL(forItemId: itemId)
             let large = provider.largeCoverURL(forItemId: itemId)
             for url in Self.keptCoverURLs(grid: grid, large: large) {
@@ -1047,16 +1050,8 @@ final class DownloadManager {
         return urls
     }
 
-    /// The kept forms only the storing session names: the large form when
-    /// it is not the grid's own larger form (`CoverAddressHistory.large`),
-    /// which any session builds again from the grid's address.
-    nonisolated static func sessionCoverURLs(grid: URL?, large: URL?) -> [URL] {
-        guard let large, large != CoverAddressHistory.large(grid) else { return [] }
-        return [large]
-    }
-
-    /// Every cover a download holds: the forms built now and the ones only
-    /// an earlier session named.
+    /// Every cover a download holds: the forms built now and the ones it
+    /// kept when it was stored.
     private func coverURLs(of itemId: String, grid: URL?, large: URL?) -> [URL] {
         var urls = Self.keptCoverURLs(grid: grid, large: large)
         for url in sessionCovers[itemId] ?? [] where !urls.contains(url) { urls.append(url) }
