@@ -118,12 +118,6 @@ nonisolated enum ListeningStatsSync {
         return merged == own ? nil : merged
     }
 
-    /// Whether the start may WRITE an adopted pot. After a fresh start yes:
-    /// the table was read and is empty, nothing on disk is covered. While
-    /// the rows could not be read no: they still stand on disk and may hold
-    /// more than the pot, which lags them by every save since the last
-    /// publish. Then the pot is only shown and published, and the store
-    /// writes nothing until the rows are read (`rebuilt`).
     /// Whether a start holds its pot until the carrier delivered the far
     /// side once: the same starts that take the own pot back
     /// (`adoptedOwnPot`), since only they may hold less of this device than
@@ -136,6 +130,12 @@ nonisolated enum ListeningStatsSync {
         }
     }
 
+    /// Whether the start may WRITE an adopted pot. After a fresh start yes:
+    /// the table was read and is empty, nothing on disk is covered. While
+    /// the rows could not be read no: they still stand on disk and may hold
+    /// more than the pot, which lags them by every save since the last
+    /// publish. Then the pot is only shown and published, and the store
+    /// writes nothing until the rows are read (`rebuilt`).
     static func adoptionWrites(_ base: RowBase<ListeningStatsData>) -> Bool {
         if case .fresh = base { return true }
         return false
