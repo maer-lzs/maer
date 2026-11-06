@@ -331,12 +331,11 @@ final class ListeningStatsStore: ObservableObject {
     /// could not be read (`ListeningStatsSync.adoptedOwnPot`): written after
     /// a fresh start; over unread rows only shown and published, and held
     /// apart, so the read that comes later can tell the pot from what this
-    /// run counted (`rowsReadForWrite`). `asFreshStart` takes the rows as a
-    /// fresh start found them: a start that held for the first state may
-    /// have counted and written since.
+    /// run counted (`rowsReadForWrite`). `asFreshStart` is a fresh start
+    /// that held for the first state: it may have counted and written
+    /// since, and the pot is added to that and written.
     private func adoptOwnPot(asFreshStart: Bool) {
         let ownPot = carrier.pots()[SyncHistoryStore.deviceId]
-        let base = asFreshStart ? .fresh : rowBase
         // The published pot is the account's (`ownerPot`); the rows are the
         // device's. Without the ledger the two cannot be told apart.
         guard rereadLedgerIfUnread() else {
@@ -344,8 +343,14 @@ final class ListeningStatsStore: ObservableObject {
             return
         }
         let devicePot = ownPot.map { ListeningStatsSync.deviceSpace(pot: $0, carried: ledger.carried, since: ledger.since) }
-        if let adopted = ListeningStatsSync.adoptedOwnPot(base: base, own: ownData, pot: devicePot) {
-            let writes = ListeningStatsSync.adoptionWrites(base)
+        // A fresh start that held its publish adds the pot to what it
+        // counted since (`addedHeldPot`); every other start takes the
+        // larger value per key, as before.
+        let taken = asFreshStart
+            ? ListeningStatsSync.addedHeldPot(own: ownData, pot: devicePot)
+            : ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: devicePot)
+        if let adopted = taken {
+            let writes = asFreshStart || ListeningStatsSync.adoptionWrites(rowBase)
             Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0)) \(writes ? "written" : "held until the rows are read", privacy: .public)")
             if writes {
                 ownData = adopted

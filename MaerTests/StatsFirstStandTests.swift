@@ -79,6 +79,30 @@ struct StatsFirstStandTests {
         #expect(sent.secondsPerDay["2026-01-02"] == 900, "the published pot keeps the days from before")
     }
 
+    @Test("nach dem Halt kommt der Topf von vorher als Summe dazu: derselbe Tag und derselbe Titel ergeben 930")
+    func theHeldStartAddsThePot() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let (database, directory) = try Self.freshDatabase("first-stand-sum")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = LateCarrier()
+        let stats = ListeningStatsStore(carrier: carrier, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
+        stats.start()
+        let title = "rss:first-stand:same"
+        stats.addSeconds(30, itemId: title)
+        stats.flush()
+        await stats.awaitPendingWrites()
+        let today = try #require(stats.ownData.secondsPerDay.first { $0.value == 30 }?.key, "the precondition: one day counted")
+
+        carrier.held[SyncHistoryStore.deviceId] = ListeningStatsData(secondsPerDay: [today: 900], secondsPerItem: [title: 900])
+        carrier.hasDeliveredFirst = true
+        carrier.onChange?()
+        await stats.awaitPendingWrites()
+        #expect(stats.ownData.secondsPerDay[today] == 930, "the same day before and after")
+        #expect(stats.ownData.secondsPerItem[title] == 930, "the same title before and after")
+    }
+
     @Test("ein Traeger, der nie liefert, haelt den Topf nur bis zur Frist")
     func theWaitEndsAtItsLimit() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()

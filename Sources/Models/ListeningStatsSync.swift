@@ -118,6 +118,19 @@ nonisolated enum ListeningStatsSync {
         return merged == own ? nil : merged
     }
 
+    /// The own pot taken back after a fresh start that held its publish for
+    /// the carrier's first state: added to what this run counted since,
+    /// per key the sum. Nothing this run counted can be in the pot, since
+    /// nothing was published, and the larger value would drop this run's
+    /// seconds on a day or a title heard before and after. Nil = nothing
+    /// to add.
+    static func addedHeldPot(own: ListeningStatsData, pot: ListeningStatsData?) -> ListeningStatsData? {
+        guard let pot, !pot.secondsPerDay.isEmpty || !pot.secondsPerItem.isEmpty else { return nil }
+        return ListeningStatsData(
+            secondsPerDay: own.secondsPerDay.merging(pot.secondsPerDay, uniquingKeysWith: +),
+            secondsPerItem: own.secondsPerItem.merging(pot.secondsPerItem, uniquingKeysWith: +))
+    }
+
     /// Whether a start holds its pot until the carrier delivered the far
     /// side once: the same starts that take the own pot back
     /// (`adoptedOwnPot`), since only they may hold less of this device than
