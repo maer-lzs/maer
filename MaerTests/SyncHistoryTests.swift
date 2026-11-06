@@ -47,6 +47,43 @@ struct SyncHistoryTests {
         return Set(forms.flatMap { flat.matches(of: $0).map { String($0.1) } })
     }
 
+    /// The device id comes from the keychain alone: an id there holds, none
+    /// there mints one to save, an unreadable keychain an id for this
+    /// process. The rule takes no value from the defaults, so a device whose
+    /// id stood only there (or that a backup gave another device's) mints
+    /// its own and the old pot stays an orphan.
+    @Test("die Kennung des Geraets kommt nur aus dem Schluesselbund, ein Wert in den Einstellungen wird nie uebernommen")
+    func theDeviceIdComesFromTheKeychainAlone() {
+        let fresh = { "fresh-id" }
+        #expect(DeviceIdOrigin.of(.value("kept-id"), fresh: fresh) == .kept("kept-id"))
+        #expect(DeviceIdOrigin.of(.missing, fresh: fresh) == .minted("fresh-id"),
+                "a keychain without the id mints one, whatever the defaults hold")
+        #expect(DeviceIdOrigin.of(.value(""), fresh: fresh) == .minted("fresh-id"))
+        #expect(DeviceIdOrigin.of(.unreadable, fresh: fresh) == .forThisProcess("fresh-id"),
+                "a keychain not readable now is neither read as empty nor written over")
+        #expect(DeviceIdOrigin.of(.undecodable, fresh: fresh) == .forThisProcess("fresh-id"))
+        #expect(DeviceIdOrigin.forThisProcess("a").id == "a" && DeviceIdOrigin.minted("b").id == "b")
+    }
+
+    /// No place keeps the device id in the defaults any more: the one place
+    /// reads the keychain and removes the old copy, nothing sets it.
+    @Test("keine Stelle legt die Kennung des Geraets in die Einstellungen, die eine Stelle nimmt den alten Wert weg", .needsTheSources)
+    func noCopyOfTheDeviceIdInTheDefaults() throws {
+        var setting: [String] = []
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            let squeezed = FetchAnswerTests.squeezed(text)
+            // Set in the defaults, or read from them.
+            if squeezed.contains("for: \"syncHistoryDeviceId\")") || squeezed.contains("string(\"syncHistoryDeviceId\")") {
+                setting.append(file)
+            }
+        }
+        #expect(setting.isEmpty, "the device id is kept in or read from the defaults: \(setting)")
+        let store = try FetchAnswerTests.squeezedSource("Sources/Networking/SyncHistoryStore.swift")
+        #expect(store.contains("let origin = DeviceIdOrigin.of(KeychainStore.read(forKey: \"syncHistoryDeviceId\"), fresh: { UUID().uuidString })"))
+        #expect(store.contains("AppStorageKeys.remove(\"syncHistoryDeviceId\") return origin.id"),
+                "the old copy in the defaults stays")
+    }
+
     @Test("jeder Dienst, der den Verlauf schreibt, hat seinen Platz in der Kopfzeile, Ausnahmen mit Grund", .needsTheSources)
     func everyStampedServiceHasItsRank() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")

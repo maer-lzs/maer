@@ -144,6 +144,12 @@ account, the page says so and shows nothing of this device from the
 first look on, instead of the whole device's time until the next second
 was counted.
 
+**A device set up from another device's backup counts as its own.**
+Each device keeps the name it syncs its listening statistics under on
+the device itself only. A phone restored from another phone's backup
+no longer takes over that phone's name, so the two no longer write
+into the same totals.
+
 **A device that used two Audiobookshelf servers tidies up again.** Since
 3.5.1 such a device kept the speed, position and other per-book data of
 every book that left a server, for good, so that nothing of the other

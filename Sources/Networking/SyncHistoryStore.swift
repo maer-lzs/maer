@@ -115,35 +115,62 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     }
 
     /// Stable device id (persistent random UUID. Portable to non-Apple
-    /// platforms, unlike identifierForVendor). Keychain-first: the cloud pots
-    /// are keyed by this id and grow forever, so a REINSTALL must keep the
-    /// identity. Otherwise every reinstall orphans the old pot as a ghost
-    /// no device can ever claim again. The defaults copy stays as a fast
-    /// mirror and as the migration source for existing installs (their
-    /// current id moves INTO the keychain, nothing rotates).
-    /// Memoized: the resolution chain (defaults → keychain migration → mint)
-    /// runs ONCE per process. deviceId is read hot. Every diagnosis line,
-    /// every claim poll, the mini player's per-second subtitle body. And a
-    /// keychain round trip (IPC to securityd) per read is measurable load.
+    /// platforms, unlike identifierForVendor). It lives in the keychain only
+    /// (`DeviceIdOrigin`): the cloud pots are keyed by this id and grow
+    /// forever, so a REINSTALL must keep the identity, and a backup must
+    /// never hand it to a second device. Two devices sharing one pot id
+    /// would silently corrupt the sums.
+    /// Memoized: the keychain is read ONCE per process. deviceId is read
+    /// hot. Every diagnosis line, every claim poll, the mini player's
+    /// per-second subtitle body. And a keychain round trip (IPC to
+    /// securityd) per read is measurable load.
     static let deviceId: String = {
-        // ThisDeviceOnly: the id must survive a reinstall ON THIS DEVICE but
-        // must never travel to a second device through a backup restore.
-        // Two devices sharing one pot id would silently corrupt the sums.
-        let accessible = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        if let existing = AppStorageKeys.string("syncHistoryDeviceId") {
-            if KeychainStore.load(forKey: "syncHistoryDeviceId") == nil {
-                KeychainStore.save(existing, forKey: "syncHistoryDeviceId",
-                                   accessible: accessible)
+        let origin = DeviceIdOrigin.of(KeychainStore.read(forKey: "syncHistoryDeviceId"),
+                                       fresh: { UUID().uuidString })
+        switch origin {
+        case .kept:
+            break
+        case .minted(let id):
+            // ThisDeviceOnly: kept across a reinstall on this device, never
+            // restored onto another one.
+            if !KeychainStore.save(id, forKey: "syncHistoryDeviceId",
+                                   accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly) {
+                Logger.library.error("SYNC device id not saved to the keychain, it holds for this process")
             }
-            return existing
+        case .forThisProcess:
+            Logger.library.notice("SYNC device id: the keychain is not readable now, an id for this process only")
         }
-        if let kept = KeychainStore.load(forKey: "syncHistoryDeviceId") {
-            AppStorageKeys.set(kept, for: "syncHistoryDeviceId")
-            return kept
-        }
-        let fresh = UUID().uuidString
-        AppStorageKeys.set(fresh, for: "syncHistoryDeviceId")
-        KeychainStore.save(fresh, forKey: "syncHistoryDeviceId", accessible: accessible)
-        return fresh
+        // A copy in the defaults travels with a backup to another device.
+        AppStorageKeys.remove("syncHistoryDeviceId")
+        return origin.id
     }()
+}
+
+/// Where this device's sync id comes from: the keychain alone. A value in
+/// the defaults is never taken over, a restored backup brings the other
+/// device's there. A keychain that cannot be read now (before the first
+/// unlock) or holds bytes nothing reads gets an id for this process only,
+/// never saved, so the next process reads the keychain again and nothing
+/// overwrites the item that is there.
+nonisolated enum DeviceIdOrigin: Equatable {
+    /// The keychain holds it.
+    case kept(String)
+    /// The keychain holds none: a fresh id, to be saved on this device.
+    case minted(String)
+    /// The keychain says nothing now: a fresh id for this process.
+    case forThisProcess(String)
+
+    static func of(_ keychain: KeychainRead, fresh: () -> String) -> DeviceIdOrigin {
+        switch keychain {
+        case .value(let id) where !id.isEmpty: return .kept(id)
+        case .value, .missing: return .minted(fresh())
+        case .unreadable, .undecodable: return .forThisProcess(fresh())
+        }
+    }
+
+    var id: String {
+        switch self {
+        case .kept(let id), .minted(let id), .forThisProcess(let id): id
+        }
+    }
 }
