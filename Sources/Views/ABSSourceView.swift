@@ -65,7 +65,7 @@ struct ABSSourceView: View {
                         isSyncing = true
                         Task {
                             await SyncQueue.shared.flush(targetFor: AppSession.shared.progressTarget)
-                            pendingSyncCount = SyncQueue.shared.allPending().count
+                            pendingSyncCount = SyncQueue.shared.sendableCount(where: ItemNamespace.isAudiobookshelf)
                             isSyncing = false
                         }
                     } label: {
@@ -107,7 +107,7 @@ struct ABSSourceView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
-            pendingSyncCount = SyncQueue.shared.allPending().count
+            pendingSyncCount = SyncQueue.shared.sendableCount(where: ItemNamespace.isAudiobookshelf)
             await loadLibraries()
         }
         .sheet(isPresented: $showABSSetup) {

@@ -8,7 +8,9 @@ you change the address of your Jellyfin or Subsonic server or sign in to
 another Audiobookshelf server, and a
 "finished" mark that was still waiting to reach the old Jellyfin or
 Subsonic server waits for it instead of being sent to the new one and
-lost there.
+lost there. Pending Updates on the Audiobookshelf page counts only what
+that server can be sent now, not titles of other sources or marks
+waiting for another server.
 
 **A new music server address signs in anew.** When you change the
 address of your Jellyfin or Subsonic server, the app forgets what the old

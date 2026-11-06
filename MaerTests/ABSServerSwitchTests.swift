@@ -140,6 +140,43 @@ struct ABSServerSwitchTests {
         #expect(storage.entries["sub:album:1"]?.server == nil, "no Subsonic server stored, no stamp")
     }
 
+    /// A source's page counts what that source can send now: its own titles,
+    /// without a mark waiting for another server of its family.
+    @Test("die Zahl wartender Staende einer Quelle zaehlt nur, was sie jetzt senden kann")
+    @MainActor
+    func aSourceCountsWhatItCanSend() async {
+        let jellyfin = AppStorageKeys.jellyfinServerURLValue
+        let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        defer {
+            AppStorageKeys.jellyfinServerURLValue = jellyfin
+            AppStorageKeys.set(signedIn, for: AppStorageKeys.absSignedInServer)
+        }
+        AppStorageKeys.set("https://abs.example", for: AppStorageKeys.absSignedInServer)
+        AppStorageKeys.jellyfinServerURLValue = "https://jelly-a.example"
+        let storage = MemoryQueue()
+        let queue = SyncQueue(storage: storage)
+        await queue.enqueue(itemId: "book-sr", currentTime: 10, duration: 600, isFinished: false)
+        await queue.enqueue(itemId: "jf:book:sr", currentTime: 600, duration: 600, isFinished: true)
+        #expect(queue.sendableCount(where: ItemNamespace.isAudiobookshelf) == 1, "the Audiobookshelf page counts its own")
+        #expect(queue.sendableCount(where: { ItemNamespace.serverFamily(of: $0) == .jellyfin }) == 1)
+        AppStorageKeys.jellyfinServerURLValue = "https://jelly-b.example"
+        #expect(queue.sendableCount(where: { ItemNamespace.serverFamily(of: $0) == .jellyfin }) == 0,
+                "a mark waiting for its former server is nothing to send")
+        #expect(queue.sendableCount(where: ItemNamespace.isAudiobookshelf) == 1)
+        #expect(queue.allPending().count == 2, "the waiting mark stays queued")
+        AppStorageKeys.jellyfinServerURLValue = "https://jelly-a.example"
+        #expect(queue.sendableCount(where: { ItemNamespace.serverFamily(of: $0) == .jellyfin }) == 1, "back on its server it counts again")
+    }
+
+    /// The page shows the count of its own sendable stands, never the
+    /// whole queue.
+    @Test("die Seite des Audiobookshelf-Servers zeigt die Zahl, die sie senden kann, nie die ganze Warteschlange", .needsTheSources)
+    func theSourcePageCountsItsOwn() throws {
+        let page = try FetchAnswerTests.squeezedSource("Sources/Views/ABSSourceView.swift")
+        #expect(!page.contains("allPending().count"), "the page counts the whole queue")
+        #expect(page.components(separatedBy: "pendingSyncCount = SyncQueue.shared.sendableCount(where: ItemNamespace.isAudiobookshelf)").count - 1 == 2)
+    }
+
     @Test("ein Eintrag der Warteschlange aus der Zeit vor dem Server liest sich ohne Server")
     func anOlderEntryReadsWithoutAServer() throws {
         let old = Data(#"{"currentTime":321,"duration":1000,"isFinished":false,"queuedAt":5}"#.utf8)

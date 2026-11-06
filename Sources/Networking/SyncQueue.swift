@@ -166,6 +166,35 @@ final class SyncQueue {
                                            subsonic: stored(AppStorageKeys.subsonicServerURLValue))
     }
 
+    /// How the queue judges its entries now, read once for a pass or a
+    /// count: the servers of each family, the moment of the last switch of
+    /// the Audiobookshelf server, and the owners of library ids, which an
+    /// entry from before the stamp takes (`ItemOwners`).
+    private struct Judge {
+        let servers: ABSServerScope.QueueServers
+        let switchedAt: Double?
+        let owners: ItemOwners?
+
+        func fate(_ itemId: String, _ update: PendingUpdate) -> ABSServerScope.QueueFate {
+            ABSServerScope.queueFate(itemId: itemId, entryServer: update.server ?? owners?.owner(of: itemId),
+                                     queuedAt: update.queuedAt, current: servers, switchedAt: switchedAt)
+        }
+    }
+
+    private static func judge() -> Judge {
+        Judge(servers: queueServers(), switchedAt: AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt),
+              owners: ItemOwnerShelf.app?.read().value)
+    }
+
+    /// The stands a source can send now: its own titles (`owns`), without
+    /// the ones that wait for another server of their family. A source's
+    /// page counts these, so a mark held for a former server is not a
+    /// pending update there that its button cannot send.
+    func sendableCount(where owns: (String) -> Bool) -> Int {
+        let judge = Self.judge()
+        return loadAll().filter { owns($0.key) && judge.fate($0.key, $0.value) != .wait }.count
+    }
+
     /// All pending updates. For the library, so it can show the locally newest
     /// (not-yet-sent) state.
     func allPending() -> [String: PendingUpdate] {
@@ -275,17 +304,12 @@ final class SyncQueue {
         // missing entry reads as "no server state", not as "wrong server".
         var serverProgressPerTarget: [String: [String: BookProgress]] = [:]
         var unreachable: Set<String> = []
-        let servers = Self.queueServers()
-        let switchedAt = AppStorageKeys.double(AppStorageKeys.absServerSwitchedAt)
-        // An entry from before the stamp takes the server that owns its id
-        // (`ItemOwners`); an id without an owner stays as before.
-        let owners = ItemOwnerShelf.app?.read().value
+        let judge = Self.judge()
         for (itemId, update) in pending {
             // A stand queued under another server of its family waits for
             // it: the id carries no server, the one there now would take it
             // or answer its absence.
-            let scope = ABSServerScope.queueFate(itemId: itemId, entryServer: update.server ?? owners?.owner(of: itemId),
-                                                 queuedAt: update.queuedAt, current: servers, switchedAt: switchedAt)
+            let scope = judge.fate(itemId, update)
             if scope == .wait {
                 Logger.library.notice("SYNCQUEUE waits, queued under another server item=\(itemId, privacy: .private(mask: .hash))")
                 continue
