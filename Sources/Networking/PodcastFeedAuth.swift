@@ -13,10 +13,51 @@ import OSLog
 nonisolated enum PodcastFeedAuth {
     private static func key(_ feedKey: String) -> String { "\(prefix)\(feedKey)" }
 
+    /// What this device knows of a feed's sign-in now. `unknown` is a
+    /// stored item the keychain cannot give out at the moment (the device
+    /// not unlocked since it started): it is not the same as none, so a
+    /// writer that would keep something from "no sign-in" waits instead.
+    enum Access: Equatable, Sendable {
+        case present(user: String, password: String)
+        case absent
+        case unknown
+    }
+
+    #if DEBUG
+    /// A witness's keychain for the live items of this class: the read it
+    /// sets answers per feed key in place of the keychain, for the task
+    /// that set it and the tasks that task starts.
+    @TaskLocal static var reading: (@Sendable (String) -> KeychainRead)?
+    #endif
+
+    /// The ONE read of a feed's live sign-in. Every reader of the access
+    /// goes through here, so a locked keychain reads as `unknown` at every
+    /// place and never as "none" at one of them.
+    static func access(feedKey: String) -> Access {
+        #if DEBUG
+        if let reading { return access(from: reading(feedKey)) }
+        #endif
+        return access(from: KeychainStore.read(forKey: key(feedKey)))
+    }
+
+    /// The three answers from one read of the keychain, pure. Bytes that do
+    /// not decode, or a value without its separator, are no sign-in: reading
+    /// them again gives the same, so waiting for them would wait for ever.
+    static func access(from read: KeychainRead) -> Access {
+        switch read {
+        case .unreadable:
+            return .unknown
+        case .missing, .undecodable:
+            return .absent
+        case .value(let raw):
+            guard let sep = raw.firstIndex(of: "\n") else { return .absent }
+            return .present(user: String(raw[..<sep]), password: String(raw[raw.index(after: sep)...]))
+        }
+    }
+
     static func credentials(feedKey: String) -> (user: String, password: String)? {
-        guard let raw = KeychainStore.load(forKey: key(feedKey)),
-              let sep = raw.firstIndex(of: "\n") else { return nil }
-        return (String(raw[..<sep]), String(raw[raw.index(after: sep)...]))
+        guard case .present(let user, let password) = access(feedKey: feedKey) else { return nil }
+        return (user, password)
     }
 
     /// Feed credentials travel over exactly one way: the service when a
@@ -280,7 +321,9 @@ nonisolated enum PodcastFeedAuth {
         credentials(feedKey: feedKey) != nil
     }
 
-    /// `Authorization: Basic …` for a feed (empty when there are no credentials).
+    /// `Authorization: Basic …` for a feed (empty when there are no
+    /// credentials, or none can be read now). A request that must not go
+    /// out without its sign-in asks `access` first.
     static func authHeader(feedKey: String) -> [String: String] {
         guard let c = credentials(feedKey: feedKey) else { return [:] }
         let token = Data("\(c.user):\(c.password)".utf8).base64EncodedString()

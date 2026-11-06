@@ -656,18 +656,29 @@ final class PodcastSubscriptions: ObservableObject {
 
     nonisolated static func isPremiumFeed(_ feedURL: String,
                                           defaults: UserDefaults = .standard) -> Bool {
+        premiumAnswer(feedURL, defaults: defaults) ?? false
+    }
+
+    /// The premium rule with its third answer: nil while no other sign
+    /// says paid and the feed's stored sign-in cannot be read now. A
+    /// surface reads nil as free (the next pass after the unlock shows it
+    /// right); a writer that would keep something waits.
+    nonisolated static func premiumAnswer(_ feedURL: String,
+                                          defaults: UserDefaults = AppStorageKeys.store) -> Bool? {
         // A mirrored feed is NEVER premium. Its host login is
         // server infrastructure, not a paywall; its marking is the origin
         // capsule. First check, so no heuristic below can override it.
         if mirroredFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL)) { return false }
-        if PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey(feedURL)) { return true }
+        let access = PodcastFeedAuth.access(feedKey: PodcastIdentity.feedKey(feedURL))
+        if case .present = access { return true }
         if PodcastFeedAddress.isTokenFeedURL(feedURL) { return true }
         // The feed says it itself. Catches the path-token class
         // the query-param heuristic cannot see.
         if isFeedBlocked(feedURL, defaults: defaults) { return true }
         if manualPremiumFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
-        return premiumHosts.contains { lower.contains($0) }
+        if premiumHosts.contains(where: { lower.contains($0) }) { return true }
+        return access == .unknown ? nil : false
     }
 
     /// The mirrored-group feed keys (maintained in rebuildCaches).
@@ -775,12 +786,18 @@ final class PodcastSubscriptions: ObservableObject {
         /// Subscribed on Audiobookshelf and not here: an import follows it
         /// there and subscribes nothing locally.
         case onServer(title: String)
+        /// Not asked now: a sign-in the answer depends on cannot be read
+        /// (`PodcastFeedAuth.Access.unknown`). Nothing is held or marked,
+        /// and a later round asks again.
+        case notAsked
 
         /// What `subscribe` has always answered: yes for a held show and
         /// for a twin that was deliberately skipped.
         var isHeld: Bool {
-            if case .notFollowed = self { return false }
-            return true
+            switch self {
+            case .notFollowed, .notAsked: return false
+            case .followed, .freeTwin, .onServer: return true
+            }
         }
     }
 
@@ -799,6 +816,10 @@ final class PodcastSubscriptions: ObservableObject {
         } else {
             outcome = await Self.fetchOutcome(feedURL: url, patience: patience)
         }
+        if case .accessUnknown = outcome {
+            Logger.rss.notice("SUBSCRIBE not asked, the sign-in cannot be read now: \(PodcastIdentity.feedKey(url.absoluteString), privacy: .private(mask: .hash))")
+            return .notAsked
+        }
         guard case .show(let show) = outcome else {
             let reason: FeedAdoptionPending.Reason
             var status: Int?
@@ -811,7 +832,7 @@ final class PodcastSubscriptions: ObservableObject {
                 status = code
             case .failed(let why):
                 reason = why
-            case .show:
+            case .show, .accessUnknown:
                 reason = .unreadable
             }
             // Every failed adoption gets a visible reason, not a silent
@@ -837,6 +858,18 @@ final class PodcastSubscriptions: ObservableObject {
         // rule), so nothing the twin knew is lost. The person switching a
         // refused paid show to its free twin passes the paid show's id, and
         // only that one act follows the twin.
+        // Whether a held show is paid may wait on a sign-in the keychain
+        // cannot give out now: then the twin question has no answer, and
+        // following the feed would keep the free copy next to the paid one
+        // for good. Not asked and not marked; the next round asks again.
+        if paidShowId == nil, shows.first(where: { $0.id == show.id }) == nil,
+           shows.contains(where: {
+               Self.premiumAnswer($0.feedURL, defaults: defaults) == nil
+                   && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
+           }) {
+            Logger.rss.notice("SUBSCRIBE not asked, a twin's sign-in cannot be read now: \(show.id, privacy: .private(mask: .hash))")
+            return .notAsked
+        }
         if paidShowId == nil,
            shows.first(where: { $0.id == show.id }) == nil,
            !Self.isPremiumFeed(show.feedURL, defaults: defaults),
@@ -1981,9 +2014,10 @@ final class PodcastSubscriptions: ObservableObject {
         // The summary in source order, each feed by its own answer.
         for (index, feed) in feeds.enumerated() {
             switch outcomes[index] {
-            case nil:
-                // Never asked: the system ended the time first. Not a feed
-                // that failed, and not marked; the next run asks it.
+            case nil, .notAsked?:
+                // Never asked: the system ended the time first, or a sign-in
+                // the answer depends on cannot be read now. Not a feed that
+                // failed, and not marked; the next run asks it.
                 result.notAsked += 1
             case .freeTwin?:
                 result.freeTwinsSkipped += 1
@@ -2372,7 +2406,8 @@ final class PodcastSubscriptions: ObservableObject {
             // held, what the feed carried, what the union made. No count
             // takes an episode out of a show. Numbers and the show's hash,
             // never an address.
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) status=\(status ?? 0) merged=\(updated[index].episodes.count)")
+            let unasked = if case .accessUnknown? = outcome { true } else { false }
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(updated[index].episodes.count)")
         }
         shows = updated
         save()
@@ -2405,7 +2440,7 @@ final class PodcastSubscriptions: ObservableObject {
         switch outcome {
         case .show: answer = .success
         case .status(let code): answer = FeedRefusal.answer(status: code)
-        case .failed: answer = .other
+        case .failed, .accessUnknown: answer = .other
         }
         let key = PodcastIdentity.feedKey(show.feedURL)
         let wasRecorded = FeedRefusal.all(defaults: defaults)[key] != nil
@@ -2541,10 +2576,19 @@ final class PodcastSubscriptions: ObservableObject {
         // THE funnel for every feed request. The rule sits here so a call
         // site that builds its own URL cannot get cleartext past it.
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
-        // Private/premium feeds: send the Basic auth header if stored.
+        // Private/premium feeds: send the Basic auth header if stored. A
+        // stored sign-in that cannot be read now is not asked without it:
+        // the feed would refuse, and the refusal would count against an
+        // access that is there.
         var request = URLRequest(url: feedURL)
-        for (field, value) in PodcastFeedAuth.authHeader(feedKey: PodcastIdentity.feedKey(feedURL.absoluteString)) {
-            request.setValue(value, forHTTPHeaderField: field)
+        switch PodcastFeedAuth.access(feedKey: PodcastIdentity.feedKey(feedURL.absoluteString)) {
+        case .unknown:
+            return .accessUnknown
+        case .present(let user, let password):
+            let token = Data("\(user):\(password)".utf8).base64EncodedString()
+            request.setValue("Basic \(token)", forHTTPHeaderField: "Authorization")
+        case .absent:
+            break
         }
         // A bulk run waits a short silence, once. The value on the request
         // beats the session's 20 s.
@@ -2584,6 +2628,9 @@ nonisolated enum FeedFetchOutcome {
     case status(Int)
     /// Transport failure (timeout, unreachable) or an unparseable body.
     case failed(FeedAdoptionPending.Reason)
+    /// Not asked: the feed's stored sign-in cannot be read now
+    /// (`PodcastFeedAuth.Access.unknown`). Says nothing about the feed.
+    case accessUnknown
 }
 
 /// How long a feed fetch may wait. A person asking for ONE feed waits the

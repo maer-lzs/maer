@@ -1,0 +1,167 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// A feed's stored sign-in that the keychain cannot give out now (the
+/// device not unlocked since it started) is not "no sign-in": the fetch
+/// does not go out without it, a follow that depends on it is not asked
+/// and not marked, and a rule's picture stays home. With a sign-in there
+/// and with none, each way works as before.
+@MainActor
+struct FeedAccessUnknownTests {
+    /// The keychain of one feed for the witness: `read` for `feedKey`,
+    /// nothing for every other.
+    static func keychain(_ feedKey: String, _ read: KeychainRead) -> @Sendable (String) -> KeychainRead {
+        { $0 == feedKey ? read : .missing }
+    }
+
+    @Test("ein Zugang hat drei Antworten: da, keiner, gerade nicht lesbar")
+    func theThreeAnswers() {
+        let table: [(KeychainRead, PodcastFeedAuth.Access)] = [
+            (.value("anna\ngeheim"), .present(user: "anna", password: "geheim")),
+            (.value("ohne-trenner"), .absent),
+            (.missing, .absent),
+            (.undecodable, .absent),
+            (.unreadable, .unknown),
+        ]
+        for (read, access) in table {
+            #expect(PodcastFeedAuth.access(from: read) == access, "\(read) reads as \(access)")
+        }
+        let key = "feed-\(UUID().uuidString)"
+        PodcastFeedAuth.$reading.withValue(Self.keychain(key, .unreadable)) {
+            #expect(PodcastFeedAuth.access(feedKey: key) == .unknown)
+            #expect(!PodcastFeedAuth.hasCredentials(feedKey: key), "an unreadable sign-in is no sign-in to show")
+            #expect(PodcastFeedAuth.authHeader(feedKey: key).isEmpty)
+        }
+        PodcastFeedAuth.$reading.withValue(Self.keychain(key, .value("anna\ngeheim"))) {
+            #expect(PodcastFeedAuth.credentials(feedKey: key)?.user == "anna")
+            #expect(PodcastFeedAuth.authHeader(feedKey: key)["Authorization"] == "Basic YW5uYTpnZWhlaW0=")
+        }
+    }
+
+    @Test("ein Feed mit unlesbarem Zugang wird nicht ohne ihn gefragt")
+    func aFeedIsNotAskedWithoutItsSignIn() async throws {
+        // A closed port on the loopback: a request that goes out comes back
+        // as unreachable at once.
+        let url = try #require(URL(string: "https://127.0.0.1:9/feed-\(UUID().uuidString).xml"))
+        let key = PodcastIdentity.feedKey(PodcastFeedAddress.upgraded(url).absoluteString)
+        let locked = await PodcastFeedAuth.$reading.withValue(Self.keychain(key, .unreadable)) {
+            await PodcastSubscriptions.fetchOutcome(feedURL: url, patience: .bulk)
+        }
+        guard case .accessUnknown = locked else {
+            Issue.record("the feed was asked without its sign-in: \(locked)")
+            return
+        }
+        let none = await PodcastFeedAuth.$reading.withValue(Self.keychain(key, .missing)) {
+            await PodcastSubscriptions.fetchOutcome(feedURL: url, patience: .bulk)
+        }
+        if case .accessUnknown = none { Issue.record("a feed without a sign-in is asked as before") }
+    }
+
+    @Test("eine Uebernahme mit unlesbarem Zugang wird nicht gefragt und nicht vermerkt")
+    func anAdoptionWaitsUnmarked() async throws {
+        let (subs, defaults, cleanup) = try await BulkImportTests.storeAndDefaults()
+        defer { cleanup() }
+        let feed = "https://locked.example/\(UUID().uuidString.prefix(8))/feed.xml"
+        subs._testFeedFetcher = { _ in .accessUnknown }
+        let waiting = await subs.follow(urlString: feed, notesCloud: false, adopting: true, isSingleUserAct: false)
+        #expect(waiting == .notAsked)
+        #expect(FeedAdoptionPending.pending(defaults: defaults).isEmpty, "nothing marked, the next round asks again")
+        #expect(subs.shows.isEmpty)
+        // The control: a feed that was asked and failed is marked as before.
+        subs._testFeedFetcher = { _ in .failed(.timeout) }
+        _ = await subs.follow(urlString: feed, notesCloud: false, adopting: true, isSingleUserAct: false)
+        #expect(FeedAdoptionPending.pending(defaults: defaults)[PodcastIdentity.feedKey(feed)]?.reason == .timeout)
+    }
+
+    @Test("der freie Zwilling einer Sendung mit unlesbarem Zugang wird weder abonniert noch uebersprungen")
+    func aFreeTwinWaitsForThePaidShowsSignIn() async throws {
+        let run = UUID().uuidString.prefix(8)
+        let paid = "https://paid.example/\(run)/feed.xml"
+        let free = "https://free.example/\(run)/feed.xml"
+        let paidKey = PodcastIdentity.feedKey(paid)
+        func follow(_ read: KeychainRead) async throws -> (PodcastSubscriptions.FollowOutcome, Bool, Bool) {
+            let (subs, defaults, cleanup) = try await BulkImportTests.storeAndDefaults()
+            defer { cleanup() }
+            subs._testFeedFetcher = { url in .show(BulkImportTests.show(url, title: "Twin Show")) }
+            return try await PodcastFeedAuth.$reading.withValue(Self.keychain(paidKey, read)) {
+                try #require(await subs.subscribe(urlString: paid, notesCloud: false))
+                let outcome = await subs.follow(urlString: free, notesCloud: false, adopting: true, isSingleUserAct: false)
+                return (outcome, subs.shows.contains { $0.feedURL == free },
+                        FeedAdoptionPending.pending(defaults: defaults).isEmpty)
+            }
+        }
+        let locked = try await follow(.unreadable)
+        #expect(locked.0 == .notAsked)
+        #expect(!locked.1, "the free copy is not held next to the paid one")
+        #expect(locked.2, "and not marked: the next round asks again")
+        let signedIn = try await follow(.value("anna\ngeheim"))
+        guard case .freeTwin = signedIn.0 else {
+            Issue.record("with the sign-in read the twin is skipped as before: \(signedIn.0)")
+            return
+        }
+        let noSignIn = try await follow(.missing)
+        #expect(noSignIn.1, "without a sign-in the other show is followed as before")
+    }
+
+    @Test("das Abbild einer Regel laesst das Bild zu Hause, solange der Zugang unlesbar ist")
+    func aRulesPictureStaysHomeWhileTheSignInIsUnread() throws {
+        let feed = "https://paid.example/\(UUID().uuidString.prefix(8))/feed.xml"
+        let key = PodcastIdentity.feedKey(feed)
+        let id = try #require(RoutineRule(kind: .next(count: 2), feedKey: key)).id
+        let show = PodcastShow(id: key, title: "Morgen", author: nil,
+                               artworkURL: "https://cdn.example/cover.jpg", description: nil,
+                               feedURL: feed, episodes: [])
+        let answers: [(KeychainRead, Bool?)] = [(.unreadable, nil), (.value("anna\ngeheim"), true), (.missing, false)]
+        for (read, premium) in answers {
+            PodcastFeedAuth.$reading.withValue(Self.keychain(key, read)) {
+                #expect(PodcastSubscriptions.premiumAnswer(feed, defaults: UserDefaults()) == premium, "\(read)")
+            }
+        }
+        let unread = try #require(RoutinePlayback.snapshot(id, show: show, premium: nil))
+        #expect(unread.title == "Morgen", "the title travels")
+        #expect(unread.coverURL == nil, "the picture stays home while the paid state is unread")
+        #expect(RoutinePlayback.snapshot(id, show: show, premium: false)?.coverURL == "https://cdn.example/cover.jpg")
+    }
+
+    @Test("jeder Leser des Zugangs eines Feeds liest ihn ueber die eine Stelle", .needsTheSources)
+    func everyReaderOfAFeedsSignInGoesThroughTheOnePlace() throws {
+        func code(_ relative: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(relative), encoding: .utf8))
+        }
+        let source = try code("Sources/Networking/PodcastFeedAuth.swift")
+        // The live item is read in one place only, through the seam.
+        let liveReads = source.split(separator: "\n").filter {
+            $0.contains("KeychainStore.read(forKey: key(") || $0.contains("KeychainStore.load(forKey: key(")
+        }
+        #expect(liveReads.count == 1 && liveReads.first?.contains("KeychainStore.read(forKey: key(feedKey))") == true,
+                "one read of the live item: \(liveReads)")
+        let credentials = try #require(source.range(of: "static func credentials(feedKey: String)"))
+        let body = String(source[credentials.lowerBound...].prefix(300))
+        #expect(body.contains("access(feedKey: feedKey)") && !body.contains("KeychainStore"),
+                "the credentials come from the three answers")
+        // No other file can name the live item to read it past the place.
+        var namers: [String] = []
+        var seen: Set<String> = []
+        for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"))
+        where file.pathExtension == "swift" && file.lastPathComponent != "PodcastFeedAuth.swift" {
+            seen.insert(file.lastPathComponent)
+            if try String(contentsOf: file, encoding: .utf8).contains("\"feedAuth.") { namers.append(file.lastPathComponent) }
+        }
+        #expect(seen.contains("PodcastSubscriptions.swift") && seen.contains("FeedAuthSync.swift"),
+                "the readers of the access were among the files read")
+        #expect(namers.isEmpty, "the live item is named outside its place: \(namers)")
+        let subscriptions = try code("Sources/Providers/PodcastSubscriptions.swift")
+        let fetch = try #require(subscriptions.range(of: "static func fetchOutcome(feedURL rawURL: URL"))
+        let fetchBody = String(subscriptions[fetch.lowerBound...].prefix(1400))
+        #expect(fetchBody.contains("PodcastFeedAuth.access(feedKey:") && !fetchBody.contains("authHeader("),
+                "the fetch asks the three answers, not the header that reads unknown as none")
+    }
+}
+#endif

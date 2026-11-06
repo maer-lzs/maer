@@ -180,14 +180,16 @@ enum RoutinePlayback {
     /// part of it; every device says it in its own language from the id.
     static func carried(forRule itemId: String) -> CarriedItem? {
         guard let rule = RoutineRule(id: itemId), let show = show(feedKey: rule.feedKey) else { return nil }
-        return snapshot(itemId, show: show, premium: PodcastSubscriptions.isPremiumFeed(show.feedURL))
+        return snapshot(itemId, show: show, premium: PodcastSubscriptions.premiumAnswer(show.feedURL))
     }
 
     /// The snapshot from a show, pure. A premium feed's picture or a
-    /// picture address that carries access stays home.
-    nonisolated static func snapshot(_ itemId: String, show: PodcastShow, premium: Bool) -> CarriedItem? {
+    /// picture address that carries access stays home. `premium` is nil
+    /// while the feed's paid state cannot be read now; the picture stays
+    /// home then too, since one that travelled stays on the other devices.
+    nonisolated static func snapshot(_ itemId: String, show: PodcastShow, premium: Bool?) -> CarriedItem? {
         guard let title = SyncCarried.usableTitle(show.title, for: itemId) else { return nil }
-        let picture = show.artworkURL.flatMap { premium || PodcastFeedAddress.carriesAccess($0) ? nil : $0 }
+        let picture = show.artworkURL.flatMap { (premium ?? true) || PodcastFeedAddress.carriesAccess($0) ? nil : $0 }
         return CarriedItem(id: itemId, title: title, coverURL: picture)
     }
 

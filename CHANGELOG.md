@@ -12,6 +12,15 @@ lost there. Pending Updates on the Audiobookshelf page counts only what
 that server can be sent now, not titles of other sources or marks
 waiting for another server.
 
+**A private feed waits for its sign-in after a restart.** Until you
+unlock the device for the first time after it started, the app cannot
+read the sign-in of a private or paid feed. A refresh in that time no
+longer asks such a feed without it, so the feed is not counted as
+refusing you; the free copy of a paid show is not followed next to it;
+a show is not set aside as not followed; and the picture of a paid show
+in a routine does not travel to your other devices. The next refresh
+after the unlock asks again.
+
 **A new music server address signs in anew.** When you change the
 address of your Jellyfin or Subsonic server, the app forgets what the old
 server gave it and signs in to the new one, instead of sending the old
