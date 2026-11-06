@@ -49,4 +49,29 @@ struct BookDetailLayoutTests {
         #expect(!page.contains("HStack(spacing: 12) {\n                                downloadSection"))
     }
 }
+
+/// One plain text from the HTML of a description, for books, shows and
+/// episodes: the same answer every time, `&amp;` decoded last.
+struct HTMLPlainTextTests {
+    @Test("eine Beschreibung wird jedes Mal gleich zu Text, ein maskiertes Zeichen bleibt maskiert")
+    func theEntitiesDecodeInOneOrder() {
+        #expect(htmlPlainText("&amp;lt;b&amp;gt;") == "&lt;b&gt;", "an escaped entity stays the text it names")
+        #expect(htmlPlainText("<p>Kapitel&nbsp;1 &amp; 2</p><br/>&quot;Ja&quot;, sagt &apos;er&#39; &lt;leise&gt;")
+                == "Kapitel 1 & 2\n\n\n\"Ja\", sagt 'er' <leise>")
+        #expect(htmlEntities.last?.entity == "&amp;", "the ampersand goes last")
+    }
+
+    @Test("Buchseite und Podcastseiten nehmen eine Fassung der Ersetzung", .needsTheSources)
+    func oneVersionOfTheCleanup() throws {
+        var tables: [String] = []
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            // A table that decodes the entities, as pairs or as a dictionary.
+            let code = SyncContractFenceTests.stripped(text)
+            if code.contains(#""&lt;", "<""#) || code.contains(#""&lt;": "<""#) { tables.append(file) }
+        }
+        #expect(tables == ["PodcastHelpers.swift"], "the entities are decoded elsewhere too: \(tables)")
+        let book = try FetchAnswerTests.squeezedSource("Sources/Views/BookDetailScreen.swift")
+        #expect(book.contains("Text(htmlPlainText(description))"))
+    }
+}
 #endif

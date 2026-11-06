@@ -153,7 +153,7 @@ nonisolated enum MaerPlaylistMerge {
     /// the name by its own clock; titles and snapshots supplemented. A
     /// routine keeps one rule per show, the newer side's; `list` names the
     /// list in the line a dropped rule writes.
-    static func unite(_ a: Entry, _ b: Entry, list: String = "") -> Entry {
+    static func unite(_ a: Entry, _ b: Entry, list: String) -> Entry {
         let (newer, older) = b.updatedAt > a.updatedAt ? (b, a) : (a, b)
         let added = newer.added.merging(older.added, uniquingKeysWith: max)
         // A removal mark from either side, newest moment wins. A mark is

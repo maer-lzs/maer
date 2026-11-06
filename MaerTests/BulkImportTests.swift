@@ -302,6 +302,8 @@ struct BulkImportTests {
     /// An attempt is counted when its CONNECTION is accepted, not when its
     /// bytes are read: the read completes on another queue and, under load,
     /// after the client already gave up, so a count read at once raced it.
+    /// Unchecked because the count sits behind a lock and the listener and
+    /// its mode are set once.
     nonisolated final class Stand: @unchecked Sendable {
         enum Mode: Sendable {
             case silent, unavailable, trickle(bytes: Int, gapMs: Int)

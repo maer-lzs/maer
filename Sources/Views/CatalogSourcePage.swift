@@ -1085,7 +1085,7 @@ struct ArchiveSeriesPage: View {
                 // The leading heading repeats the title and leaves a
                 // hole underneath. Both go (measured, see tidiedDescription).
                 Text(verbatim: FreeCatalog.tidiedDescription(
-                    podcastPlainText(description),
+                    htmlPlainText(description),
                     title: detail.media.metadata?.title ?? ""))
                     .font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(6)

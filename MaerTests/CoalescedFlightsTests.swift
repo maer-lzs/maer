@@ -28,7 +28,8 @@ struct CoalescedFlightsTests {
         }
     }
 
-    /// Counts the callers that left.
+    /// Counts the callers that left. Unchecked because one lock guards the
+    /// count.
     nonisolated final class Left: @unchecked Sendable {
         private let lock = NSLock()
         private var value = 0

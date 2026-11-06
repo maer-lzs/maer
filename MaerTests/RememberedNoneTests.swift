@@ -14,6 +14,7 @@ import Foundation
 /// den Rest der Sitzung als gefragt.
 struct RememberedNoneTests {
     /// Zaehlt jede Frage an archive.org; antwortet je Kennung aus der Tabelle.
+    /// Unchecked because one lock guards the asks; the replies are set once.
     nonisolated final class Wire: @unchecked Sendable {
         /// `heldFirst`: the first question meets a holdback, later ones the files.
         /// `restingFor`: the first n questions meet a resting host.

@@ -394,25 +394,18 @@ struct ContinueBySourceTests {
                 "a change of sources no longer cuts the rows by the session's one answer")
     }
 
-    @Test("nach dem Abmelden vom Server stehen keine Zeilen mehr da, ueber den echten Weg der Person")
+    /// The one place a sign out calls (`theFormerServerIsForgottenInOnePlace`
+    /// holds that `logout` calls it), with a player of its own: the
+    /// session's client, flags and sources stay as the next test finds them.
+    @Test("nach dem Abmelden vom Server stehen keine Zeilen mehr da, ueber die eine Stelle, die das Abmelden ruft")
     @MainActor
     func aSignOutForgetsTheRows() async throws {
         let before = ContinueRows.load()
-        let auth = AppSession.shared.authViewModel
-        let wasSignedIn = auth.isLoggedIn
-        let token = KeychainStore.load(forKey: KeychainKey.apiToken)
-        defer {
-            _ = before?.save()
-            if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) }
-            auth.isLoggedIn = wasSignedIn
-        }
+        defer { _ = before?.save() }
         await ContinueRowsWriter.write([row("li_old-server", .audiobooks, at: 1_000)], passAtMs: 1_000)
         #expect(ContinueRows.load()?.rows.isEmpty == false, "the precondition: rows of the server")
         let signedOutAt = Date().timeIntervalSince1970 * 1000
-        auth.logout()
-        for _ in 0..<50 where ContinueRows.load()?.rows.isEmpty == false {
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await AuthViewModel.forgetFormerServer(player: PlayerCoordinator(provider: MockProvider()))
         let after = try #require(ContinueRows.load())
         #expect(after.rows.isEmpty, "the rows of the signed-out server stand: \(after.rows.map(\.itemId))")
         #expect((after.passAtMs ?? 0) >= signedOutAt, "the moment of the sign-out keeps an older snapshot out")
@@ -447,10 +440,12 @@ struct ContinueBySourceTests {
                                               detail: LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 60, chapters: nil, tracks: nil),
                                                                         userMediaProgress: nil),
                                               chapters: [], currentChapterIndex: 0, isFallback: false)
+            player.loadError = "Der Titel konnte nicht geladen werden."
             WidgetSnapshot(itemId: id, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
             try Data([0x89]).write(to: coverURL)
             await AuthViewModel.forgetFormerServer(player: player)
             #expect((player.viewModel == nil) == gone && (player.activeItem == nil) == gone, "\(id): the player")
+            #expect((player.loadError == nil) == gone, "\(id): the sentence of a failed load")
             #expect((WidgetSnapshot.load() == nil) == gone, "\(id): the snapshot")
             #expect(FileManager.default.fileExists(atPath: coverURL.path) == !gone, "\(id): its cover")
         }

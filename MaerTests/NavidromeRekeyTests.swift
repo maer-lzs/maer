@@ -421,7 +421,7 @@ struct NavidromeRekeyTests {
             titles: [oldId: "alt", newId: "neu"],
             snapshots: [oldId: CarriedItem(id: oldId, title: "alt")],
             added: [oldId: 1, newId: 3, "rss:f:e": 2])
-        let read = NavidromeRekey.playlist(entry, Self.map)
+        let read = NavidromeRekey.playlist(entry, list: "liste", Self.map)
         #expect(read.itemIds == [newId, "rss:f:e"])
         #expect(read.titles == [newId: "neu"], "the title already under the new key stays")
         #expect(read.snapshots[newId]?.id == newId, "a carried item names its id inside too")
@@ -431,12 +431,26 @@ struct NavidromeRekeyTests {
         // form carries a removal made after it was added.
         let back = MaerPlaylistMerge.Entry(name: "Liste", updatedAt: 20, itemIds: [oldId, "rss:f:e"],
                                            removed: [newId: 15], added: [oldId: 1])
-        #expect(NavidromeRekey.playlist(back, Self.map).itemIds == ["rss:f:e"], "removed is removed")
+        #expect(NavidromeRekey.playlist(back, list: "liste", Self.map).itemIds == ["rss:f:e"], "removed is removed")
 
         let untouched = MaerPlaylistMerge.Entry(name: "Liste", updatedAt: 5, itemIds: ["rss:f:e"],
                                                 titles: ["rss:gone": "a title of an id the list no longer holds"])
-        #expect(MaerPlaylistMerge.isSameVersion(NavidromeRekey.playlist(untouched, Self.map), untouched),
+        #expect(MaerPlaylistMerge.isSameVersion(NavidromeRekey.playlist(untouched, list: "liste", Self.map), untouched),
                 "a list in which no id changes is handed back as it is")
+    }
+
+    /// The line a dropped rule writes names its list: the merge takes the
+    /// list's id without a default, and the move hands it on.
+    @Test("die Zeile einer fallengelassenen Regel nennt ihre Liste, auch beim Umschluesseln", .needsTheSources)
+    func theMergeLineNamesItsList() throws {
+        let merge = try FetchAnswerTests.squeezedSource("Sources/Models/MaerPlaylistMerge.swift")
+        #expect(merge.contains("static func unite(_ a: Entry, _ b: Entry, list: String) -> Entry {"),
+                "the list's id has a default again, a caller may leave it out")
+        let rekey = try FetchAnswerTests.squeezedSource("Sources/Models/NavidromeRekey.swift")
+        #expect(rekey.contains("return MaerPlaylistMerge.unite(mapped, mapped, list: list)"))
+        #expect(rekey.contains("(id, playlist(entry, list: id, map))"), "the snapshot's lists pass on their ids")
+        let lists = try FetchAnswerTests.squeezedSource("Sources/Providers/MaerPlaylists.swift")
+        #expect(lists.contains("NavidromeRekey.playlist(Self.entry(of: list), list: list.id, map)"))
     }
 
     private final class RecordingPlaylistCarrier: PlaylistCarrier {

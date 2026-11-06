@@ -497,7 +497,7 @@ struct PodcastShowView: View {
         } facts: {
             VStack(alignment: .leading, spacing: 8) {
                 if let description = liveShow?.description, !description.isEmpty {
-                    Text(podcastPlainText(description))
+                    Text(htmlPlainText(description))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(descriptionExpanded ? nil : 3)

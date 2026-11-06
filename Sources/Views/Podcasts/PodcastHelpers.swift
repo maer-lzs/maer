@@ -450,19 +450,26 @@ func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
 
 // MARK: - Source-aware played state
 
-/// Reduce HTML from episode descriptions to plain text (tags/entities),
-/// analogous to `BookDetailScreen.plainText(fromHTML:)`.
-func podcastPlainText(_ html: String) -> String {
+/// Reduce the HTML of a description to plain text, for books, shows and
+/// episodes alike: paragraph and line breaks become real breaks, every
+/// other tag goes, and the common entities are decoded. A simple cleanup,
+/// not a render, which is enough for plain-text descriptions.
+func htmlPlainText(_ html: String) -> String {
     var text = html
     text = text.replacingOccurrences(of: "</p>", with: "\n\n", options: .caseInsensitive)
     text = text.replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: [.caseInsensitive, .regularExpression])
     text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-    let entities = ["&amp;": "&", "&nbsp;": " ", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&lt;": "<", "&gt;": ">"]
-    for (entity, replacement) in entities {
+    for (entity, replacement) in htmlEntities {
         text = text.replacingOccurrences(of: entity, with: replacement)
     }
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
+
+/// The entities in a fixed order, `&amp;` last: decoded first, it would
+/// turn "&amp;lt;" into "<" instead of the "&lt;" the text says.
+let htmlEntities: [(entity: String, text: String)] = [
+    ("&nbsp;", " "), ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'"), ("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&"),
+]
 
 /// "2 days ago", or "today 09:05" for an episode published ahead of time.
 /// From `addedAt` (pubDate), through the one rule `EpisodeDateLine`.

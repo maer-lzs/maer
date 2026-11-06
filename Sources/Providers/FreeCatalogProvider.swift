@@ -286,8 +286,8 @@ final class FreeCatalogProvider: AudioProvider {
                     // Jamendo delivers names HTML-encoded. Decode at the
                     // ONE intake through the existing text preparation, not
                     // in a second decoder. Title AND artist.
-                    title: FreeCatalog.shownTitle(track.name.map(podcastPlainText), itemId: id),
-                    authorName: track.artist_name.map(podcastPlainText),
+                    title: FreeCatalog.shownTitle(track.name.map(htmlPlainText), itemId: id),
+                    authorName: track.artist_name.map(htmlPlainText),
                     narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                 duration: track.duration.map(Double.init), chapters: nil, tracks: nil),

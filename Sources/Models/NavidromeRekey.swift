@@ -167,8 +167,10 @@ nonisolated enum NavidromeRekey {
     /// Then read by the merge's own rule, so an entry whose old form came
     /// back from a device on an older build, while its new form carries a
     /// removal, stands out as removed here and is not compared as present.
-    /// A list in which no id changes is handed back untouched.
-    static func playlist(_ entry: MaerPlaylistMerge.Entry, _ map: (String) -> String) -> MaerPlaylistMerge.Entry {
+    /// A list in which no id changes is handed back untouched. `list` is
+    /// the list's id, for the line the merge writes.
+    static func playlist(_ entry: MaerPlaylistMerge.Entry, list: String,
+                         _ map: (String) -> String) -> MaerPlaylistMerge.Entry {
         guard ids(of: entry).contains(where: { map($0) != $0 }) else { return entry }
         var mapped = entry
         mapped.itemIds = rekeyed(entry.itemIds, map)
@@ -180,13 +182,15 @@ nonisolated enum NavidromeRekey {
         }
         mapped.removed = moments(entry.removed, map)
         mapped.added = moments(entry.added, map)
-        return MaerPlaylistMerge.unite(mapped, mapped)
+        return MaerPlaylistMerge.unite(mapped, mapped, list: list)
     }
 
     /// Every list of a carrier's snapshot read in the new form.
     static func playlists(_ snapshot: MaerPlaylistMerge.Snapshot,
                           _ map: (String) -> String) -> MaerPlaylistMerge.Snapshot {
-        MaerPlaylistMerge.Snapshot(lists: snapshot.lists.mapValues { playlist($0, map) },
+        MaerPlaylistMerge.Snapshot(lists: Dictionary(uniqueKeysWithValues: snapshot.lists.map { id, entry in
+                                       (id, playlist(entry, list: id, map))
+                                   }),
                                    tombstones: snapshot.tombstones)
     }
 }

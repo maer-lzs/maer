@@ -424,7 +424,7 @@ struct BookDetailScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Description")
                     .font(.headline)
-                Text(Self.plainText(fromHTML: description))
+                Text(htmlPlainText(description))
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
@@ -729,26 +729,6 @@ struct BookDetailScreen: View {
 
     private func formattedDuration(_ seconds: Double) -> String {
         DurationText.length(seconds: seconds)
-    }
-
-    /// Server descriptions often contain raw HTML (`<p>`, `<br>`, …) instead of
-    /// plain text. Converts paragraph/line breaks into real breaks, removes all
-    /// remaining tags and decodes the most common HTML entities. Deliberately a
-    /// simple cleanup instead of a full HTML render, which is enough for
-    /// plain-text descriptions.
-    private static func plainText(fromHTML html: String) -> String {
-        var text = html
-        text = text.replacingOccurrences(of: "</p>", with: "\n\n", options: .caseInsensitive)
-        text = text.replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: [.caseInsensitive, .regularExpression])
-        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-        let entities: [String: String] = [
-            "&amp;": "&", "&nbsp;": " ", "&quot;": "\"",
-            "&#39;": "'", "&apos;": "'", "&lt;": "<", "&gt;": ">"
-        ]
-        for (entity, replacement) in entities {
-            text = text.replacingOccurrences(of: entity, with: replacement)
-        }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Mark as played

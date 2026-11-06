@@ -82,6 +82,23 @@ struct ConcurrencyFenceTests {
         return out
     }
 
+    /// The tests keep stand-ins of their own (counters, clocks, wires), so
+    /// there is no stock there; each one still says why it is unchecked,
+    /// on its line or in the four above, the sentence may start a comment.
+    @Test("@unchecked Sendable in den Tests nur mit Grund", .needsTheSources)
+    func uncheckedInTheTestsCarriesItsReason() {
+        var unreasoned: [String] = []
+        var sites = 0
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts(in: ["MaerTests"]) where file != "ConcurrencyFenceTests.swift" {
+            sites += Self.sites(of: "@unchecked Sendable", in: text)
+            if Self.unreasoned(token: "@unchecked sendable", marker: "unchecked because", in: text.lowercased()) > 0 {
+                unreasoned.append(file)
+            }
+        }
+        #expect(sites > 10, "the precondition: the tests were read, \(sites) sites")
+        #expect(unreasoned.isEmpty, "a stand-in in the tests says not why it is unchecked: \(unreasoned.sorted())")
+    }
+
     @Test("@unchecked Sendable nur mit Grund und nur im Bestand", .needsTheSources)
     func uncheckedSendableIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "@unchecked Sendable", marker: "unchecked because", stock: Self.uncheckedStock)

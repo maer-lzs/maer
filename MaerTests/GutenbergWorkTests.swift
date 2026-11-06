@@ -21,6 +21,8 @@ nonisolated enum GutenbergWitness {
     static let seconds5884 = [3597.1, 3183.6, 12385.8]
 
     /// Zaehlt jede Anfrage; die Dauern kommen aus der Tabelle je Dateiname.
+    /// Unchecked because one lock guards the counts; the answers, the status
+    /// and the fixture are written by the witness between its questions.
     nonisolated final class Wire: @unchecked Sendable {
         private let lock = NSLock()
         private var _records = 0
@@ -48,6 +50,7 @@ nonisolated enum GutenbergWitness {
         }
     }
 
+    /// Unchecked because one lock guards the count.
     nonisolated final class Asks: @unchecked Sendable {
         private let lock = NSLock()
         private var value = 0

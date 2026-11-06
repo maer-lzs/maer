@@ -507,7 +507,7 @@ final class MaerPlaylists: ObservableObject {
         if keeper.startReadFailed { return nil }
         var changed = 0
         let next = playlists.map { list -> Playlist in
-            let entry = NavidromeRekey.playlist(Self.entry(of: list), map)
+            let entry = NavidromeRekey.playlist(Self.entry(of: list), list: list.id, map)
             var moved = list
             moved.itemIds = entry.itemIds
             moved.titles = entry.titles

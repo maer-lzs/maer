@@ -377,7 +377,8 @@ struct CatalogPopularSourceWitnessTests {
 struct LibriVoxCoverLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    /// How often the stand-in feed was asked.
+    /// How often the stand-in feed was asked. Unchecked because one lock
+    /// guards the count.
     nonisolated final class Asks: @unchecked Sendable {
         private let lock = NSLock()
         private var value = 0

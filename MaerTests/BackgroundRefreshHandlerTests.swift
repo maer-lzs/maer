@@ -48,7 +48,7 @@ struct BackgroundRefreshHandlerTests {
 }
 
 /// Tiny lock box so the @Sendable closures can record across executors.
-/// `@unchecked Sendable`: all access goes through the NSLock below.
+/// Unchecked because all access goes through the NSLock below.
 private nonisolated final class LockedBox<T>: @unchecked Sendable {
     private var value: T
     private let lock = NSLock()

@@ -10,7 +10,8 @@ import Foundation
 
 /// A failed lookup is not asked again at once, and never kept as an answer.
 struct FetchHoldbackTests {
-    /// A clock the witness moves by hand.
+    /// A clock the witness moves by hand. Unchecked because one lock guards
+    /// the moment.
     nonisolated final class Clock: @unchecked Sendable {
         private let lock = NSLock()
         private var value = Date(timeIntervalSince1970: 1_000_000)
@@ -18,6 +19,7 @@ struct FetchHoldbackTests {
         func advance(_ seconds: TimeInterval) { lock.withLock { value += seconds } }
     }
 
+    /// Unchecked because one lock guards the count.
     nonisolated final class Count: @unchecked Sendable {
         private let lock = NSLock()
         private var value = 0

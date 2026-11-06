@@ -89,6 +89,8 @@ struct FeedAdoptionPendingTests {
         subs._testSetLoaded(true)
         let feedURL = "https://example.org/dismiss-\(UUID().uuidString.prefix(8))/feed.xml"
         let key = PodcastIdentity.feedKey(feedURL)
+        // Unchecked because the subscriptions call their fetcher seam on the
+        // main actor only, where the witness reads the count.
         final class Counter: @unchecked Sendable { var calls = 0 }
         let counter = Counter()
         subs._testFeedFetcher = { _ in counter.calls += 1; return .status(404) }
@@ -129,6 +131,8 @@ struct FeedAdoptionPendingTests {
         let stem = "https://example.org/adopt-\(UUID().uuidString.prefix(8))"
         let dead = "\(stem)/dead.xml", slow = "\(stem)/slow.xml", locked = "\(stem)/locked.xml"
         let keys = [dead, slow, locked].map { PodcastIdentity.feedKey($0) }
+        // Unchecked because the subscriptions call their fetcher seam on the
+        // main actor only, where the witness reads the calls.
         final class Counter: @unchecked Sendable { var calls: [String] = [] }
         let counter = Counter()
         var working = false

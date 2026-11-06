@@ -95,6 +95,8 @@ struct PlaylistPresentationTests {
     @MainActor
     func deviceCardAndPageShareTheMosaic() throws {
         let list = MaerPlaylists.Playlist(id: "l1", name: "Test", updatedAt: 1, itemIds: ["sub:song:1", "sub:song:2"])
+        // Unchecked because the witness and the router's closures it calls
+        // run on the main actor.
         final class Answers: @unchecked Sendable { var ready = false }
         let answers = Answers()
         var router = ItemRouter.empty
@@ -149,6 +151,8 @@ struct PlaylistPresentationTests {
     func deviceListLearnsItsCovers() async throws {
         let list = MaerPlaylists.Playlist(id: "l-learn", name: "Test", updatedAt: 1,
                                           itemIds: ["sub:song:tr-1", "sub:song:tr-2", "sub:song:tr-1"])
+        // Unchecked because the witness and the router's closures it hands
+        // over run on the main actor.
         final class Server: @unchecked Sendable {
             var named: [String: String] = [:]
             var asked: [[String]] = []

@@ -173,7 +173,7 @@ struct PodcastEpisodeDetailView: View {
                     if let description = notes ?? item.media?.metadata?.description, !description.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description").font(.headline).foregroundStyle(.white)
-                            Text(podcastPlainText(description))
+                            Text(htmlPlainText(description))
                                 .font(.body)
                                 .foregroundStyle(.white.opacity(0.85))
                         }

@@ -1182,21 +1182,25 @@ final class PlayerCoordinator: ObservableObject {
     /// stays: a sign out chooses nothing to hear, so nothing travels.
     func endPlayback(ownedBy owns: (String) -> Bool) {
         guard let id = activeItem?.id ?? viewModel?.item?.id, owns(id) else { return }
-        viewModel?.stop(caller: "its server signed out")
-        viewModel = nil
-        activeItem = nil
+        endSession(caller: "its server signed out")
     }
 
     /// Stops playback completely (the mini bar disappears).
     func close() {
-        viewModel?.stop()
-        viewModel = nil
-        activeItem = nil
-        loadError = nil
+        endSession(caller: "close")
         // Choice family: closing is a deliberate "nothing on standby". The
         // tombstone travels. The derived finished-clear in restoreLastSession
         // deliberately does NOT note: it is mechanics, each device derives it
         // from the synced numbers itself (adoption carries the same guard).
         setStandbyPointer(nil)
+    }
+
+    /// The one end of a session with its mini bar: the player stops, and
+    /// the title and the sentence of a failed load go with it.
+    private func endSession(caller: String) {
+        viewModel?.stop(caller: caller)
+        viewModel = nil
+        activeItem = nil
+        loadError = nil
     }
 }
