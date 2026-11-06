@@ -161,8 +161,8 @@ struct ABSSignInSwitchTests {
     @Test("der alte Server wird an einer Stelle vergessen, von der Abmeldung und vom Wechsel, beim Wechsel vor dem Anstoss der Quellen", .needsTheSources)
     func theFormerServerIsForgottenInOnePlace() throws {
         let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
-        #expect(auth.contains("static func forgetFormerServer() async { await ContinueRowsWriter.forget() if #available(iOS 27, *) { await SpotlightIndex.forget() } }"),
-                "the one place does not forget the widget's rows and the search")
+        #expect(auth.contains("static func forgetFormerServer(player: PlayerCoordinator = AppSession.shared.playerCoordinator) async { player.endPlayback(ownedBy: ItemNamespace.isAudiobookshelf) await ContinueRowsWriter.forget() if #available(iOS 27, *) { await SpotlightIndex.forget() } }"),
+                "the one place does not end the server's player first, or forgets not the widget's rows and the search")
         for forget in ["ContinueRowsWriter.forget(", "SpotlightIndex.forget("] {
             #expect(auth.components(separatedBy: forget).count == 2, "\(forget) is called past the one place")
         }

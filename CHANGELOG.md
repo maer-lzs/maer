@@ -63,8 +63,9 @@ with two or three covers the mosaic stays as it was.
 the list has no tracks, its songs could not be loaded or are not
 available offline, the card says so as the Shuffle button on the page
 does. A music server song the server answers without a cover is asked
-once a session instead of each time a list shows it; leaving the page
-or a lost connection does not count as such an answer. Right after
+once a session instead of each time a list shows it; leaving the page,
+a lost connection or a busy or failing server does not count as such
+an answer, only a server that says the song is not there. Right after
 the app starts a downloaded song keeps its cover.
 
 **Continue Listening on the lock screen.** The widget comes in a wide
@@ -102,7 +103,9 @@ started shows its name and the artist under it, also at the largest
 text sizes, without an empty bar or its whole length as time left.
 Signing out of the Audiobookshelf server also forgets the widget's
 last title when it came from that server; a station, an RSS episode or
-a catalogue title stays. Signing in to another Audiobookshelf server
+a catalogue title stays. A title of that server still playing stops at
+the sign out, also when the app goes on without a server, so it does
+not come back into the widget. Signing in to another Audiobookshelf server
 through Sign In Again forgets them the same way; signing in again to
 the same server keeps them. A new address for your Jellyfin or
 Subsonic server takes that server's titles out of the widget's rows,

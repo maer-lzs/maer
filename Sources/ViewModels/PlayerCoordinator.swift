@@ -1176,6 +1176,17 @@ final class PlayerCoordinator: ObservableObject {
         return "feed:\(parts[1])"
     }
 
+    /// A server signed out or another one took its place: a player on one
+    /// of its titles ends with the mini bar, as when the library view goes,
+    /// so it writes no snapshot of that title again. The standby pointer
+    /// stays: a sign out chooses nothing to hear, so nothing travels.
+    func endPlayback(ownedBy owns: (String) -> Bool) {
+        guard let id = activeItem?.id ?? viewModel?.item?.id, owns(id) else { return }
+        viewModel?.stop(caller: "its server signed out")
+        viewModel = nil
+        activeItem = nil
+    }
+
     /// Stops playback completely (the mini bar disappears).
     func close() {
         viewModel?.stop()

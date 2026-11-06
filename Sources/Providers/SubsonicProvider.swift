@@ -1071,8 +1071,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             } catch {
                 // Only the server's own reply notes a song. A cancelled pass
                 // or a question the network does not carry ends the pass and
-                // notes nothing, so the rest is asked on the next appearance.
-                guard SubsonicClient.isServersAnswer(error) else { break }
+                // notes nothing, so the rest is asked on the next appearance;
+                // the log says why, a cancelled pass needs no line.
+                guard SubsonicClient.isServersAnswer(error) else {
+                    if !SubsonicClient.isCancellation(error) {
+                        Logger.music.notice("COVER song cover pass ends reason=\(SubsonicClient.logName(error), privacy: .public)")
+                    }
+                    break
+                }
                 silent.append(songId)
             }
         }

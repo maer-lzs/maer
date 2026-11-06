@@ -86,8 +86,8 @@ struct SongCoverArtMemoTests {
         // the songs a device list holds that were met nowhere else.
         let learnSites = flat.components(separatedBy: "learnCovers(").count - 2
         #expect(learnSites == 7, "learnCovers call sites: \(learnSites)")
-        #expect(flat.contains("for songId in missing where !Task.isCancelled { do { if let song = try await client.song(id: songId) { songs.append(song) } else { silent.append(songId) } } catch { guard SubsonicClient.isServersAnswer(error) else { break } silent.append(songId) } }"),
-                "an answer without a song and the server's own failure note it; a cancelled pass or a lost network ends the pass")
+        #expect(flat.contains(#"for songId in missing where !Task.isCancelled { do { if let song = try await client.song(id: songId) { songs.append(song) } else { silent.append(songId) } } catch { guard SubsonicClient.isServersAnswer(error) else { if !SubsonicClient.isCancellation(error) { Logger.music.notice("COVER song cover pass ends reason=\(SubsonicClient.logName(error), privacy: .public)") } break } silent.append(songId) } }"#),
+                "an answer without a song and the server's refusal note it; anything else ends the pass, and the log names why unless it was cancelled")
         #expect(!flat.contains("try? await client.song("))
         #expect(flat.contains("let missing = UnansweredSongs.toAsk(itemIds.compactMap { Self.id($0, kind: \"song\") }, known: { memo.coverArt(of: $0) != nil }, asking: songCoversAsking, unanswered: songCoversUnanswered, limit: Self.songCoverPassLimit)"),
                 "only songs without a named cover, each once, at most one pass's worth")
@@ -140,13 +140,22 @@ struct SongCoverArtMemoTests {
     /// The set notes what the server answered and nothing else: leaving a
     /// page cancels the pass, and a network that does not carry the question
     /// says nothing about the song.
-    @Test("Ohne Antwort heisst: der Server hat geantwortet; Abbruch und Netz merken nichts")
+    @Test("Ohne Antwort heisst: der Server sagt, das Lied gibt es nicht; Abbruch, Netz und ein ueberlasteter Server merken nichts")
     func onlyTheServersReplyNotesASong() {
         typealias Failure = SubsonicClient.SubsonicError
         let table: [(Error, Bool)] = [
             (Failure.http(404), true),
+            (Failure.http(410), true),
             (Failure.api(code: 70, message: "not found"), true),
             (Failure.decoding, true),
+            // A busy or failing server, or another code of its own, says
+            // nothing about the song.
+            (Failure.http(429), false),
+            (Failure.http(500), false),
+            (Failure.http(503), false),
+            (Failure.http(401), false),
+            (Failure.api(code: 0, message: "generic"), false),
+            (Failure.api(code: 50, message: "not authorized"), false),
             (Failure.network, false),
             (Failure.blockedHere, false),
             (Failure.badURL, false),
@@ -157,6 +166,23 @@ struct SongCoverArtMemoTests {
         ]
         for (error, noted) in table {
             #expect(SubsonicClient.isServersAnswer(error) == noted, "\(error)")
+        }
+    }
+
+    /// The line that ends a pass names the failure by its case and number,
+    /// never by the server's message.
+    @Test("die Zeile zum Ende eines Durchgangs nennt Fall und Nummer, nie den Text des Servers")
+    func theEndOfAPassNamesItsReason() {
+        typealias Failure = SubsonicClient.SubsonicError
+        let table: [(Error, String)] = [
+            (Failure.http(503), "http=503"),
+            (Failure.api(code: 0, message: "secret at host"), "api=0"),
+            (Failure.network, "network"),
+            (Failure.decoding, "decoding"),
+            (URLError(.timedOut), "urlError=-1001"),
+        ]
+        for (error, name) in table {
+            #expect(SubsonicClient.logName(error) == name, "\(error)")
         }
     }
 

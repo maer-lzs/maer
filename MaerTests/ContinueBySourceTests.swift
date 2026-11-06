@@ -418,7 +418,11 @@ struct ContinueBySourceTests {
         #expect((after.passAtMs ?? 0) >= signedOutAt, "the moment of the sign-out keeps an older snapshot out")
     }
 
-    @Test("das Abmelden vergisst den Schnappschuss samt Cover nur bei einem Titel dieses Servers; ein Sender bleibt")
+    /// The one place of a sign out, without signing the session out: a
+    /// player on a title of the server ends before the rows forget, so no
+    /// snapshot of that title comes back; a station plays on and keeps its
+    /// snapshot.
+    @Test("das Abmelden vergisst den Schnappschuss samt Cover nur bei einem Titel dieses Servers und beendet dessen Player zuerst; ein Sender bleibt")
     @MainActor
     func aSignOutForgetsOnlyThisServersSnapshot() async throws {
         let ids: [(String, Bool)] = [("li_book", true), ("abspod:show#ep", true), ("radio:rb:x", false), ("rss:feed#ep", false),
@@ -431,22 +435,22 @@ struct ContinueBySourceTests {
         let keptSnapshot = try? Data(contentsOf: snapshotURL)
         let keptCover = try? Data(contentsOf: coverURL)
         let rows = ContinueRows.load()
-        let auth = AppSession.shared.authViewModel
-        let wasSignedIn = auth.isLoggedIn
-        let token = KeychainStore.load(forKey: KeychainKey.apiToken)
         defer {
             for (url, data) in [(snapshotURL, keptSnapshot), (coverURL, keptCover)] {
                 if let data { try? data.write(to: url) } else { try? FileManager.default.removeItem(at: url) }
             }
             _ = rows?.save()
-            if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) }
-            auth.isLoggedIn = wasSignedIn
         }
         for (id, gone) in [("li_old-server", true), ("radio:rb:station", false)] {
+            let player = PlayerCoordinator(provider: MockProvider())
+            player._seedActivePlayerForUITest(item: LibraryItem(id: id, media: nil, addedAt: nil),
+                                              detail: LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 60, chapters: nil, tracks: nil),
+                                                                        userMediaProgress: nil),
+                                              chapters: [], currentChapterIndex: 0, isFallback: false)
             WidgetSnapshot(itemId: id, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
             try Data([0x89]).write(to: coverURL)
-            auth.logout()
-            await ContinueRowsWriter.forget()
+            await AuthViewModel.forgetFormerServer(player: player)
+            #expect((player.viewModel == nil) == gone && (player.activeItem == nil) == gone, "\(id): the player")
             #expect((WidgetSnapshot.load() == nil) == gone, "\(id): the snapshot")
             #expect(FileManager.default.fileExists(atPath: coverURL.path) == !gone, "\(id): its cover")
         }

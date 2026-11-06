@@ -267,15 +267,34 @@ struct SubsonicClient {
         error is CancellationError || (error as? URLError)?.code == .cancelled
     }
 
-    /// Whether a failed question is the server's answer: an error status,
-    /// the server's own failure, a body nothing reads. A cancelled request,
-    /// a network that does not carry the question, or a request this device
-    /// does not send says nothing about what was asked.
+    /// Whether a failed question is the server's answer about what was
+    /// asked: the thing is not there (HTTP 404 or 410, Subsonic's code 70)
+    /// or the body nothing reads. A busy or failing server (429, 5xx), any
+    /// other code of the server, a cancelled request, a network that does
+    /// not carry the question, or a request this device does not send says
+    /// nothing about it, so it is asked again later.
     nonisolated static func isServersAnswer(_ error: Error) -> Bool {
         guard !isCancellation(error), let failure = error as? SubsonicError else { return false }
         switch failure {
-        case .http, .api, .decoding: return true
+        case .http(let code): return code == 404 || code == 410
+        case .api(let code, _): return code == 70
+        case .decoding: return true
         case .badURL, .network, .blockedHere, .keySignInNeedsEncryption: return false
+        }
+    }
+
+    /// A failure for a log line: the case and its number, never the
+    /// server's message, which is free text.
+    nonisolated static func logName(_ error: Error) -> String {
+        guard let failure = error as? SubsonicError else { return FailureReason.of(error) }
+        switch failure {
+        case .http(let code): return "http=\(code)"
+        case .api(let code, _): return "api=\(code)"
+        case .badURL: return "badURL"
+        case .network: return "network"
+        case .blockedHere: return "blockedHere"
+        case .keySignInNeedsEncryption: return "keySignInNeedsEncryption"
+        case .decoding: return "decoding"
         }
     }
 
