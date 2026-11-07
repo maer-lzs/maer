@@ -352,5 +352,111 @@ struct PositionStockTests {
             #expect(at.lowerBound > retire.lowerBound && at.lowerBound < afterRetire, "only in the retirement: \(removal)")
         }
     }
+
+    /// A defaults object that counts its walks over the whole domain.
+    nonisolated final class WalkCountingDefaults: UserDefaults {
+        let walks = Mutex(0)
+        override func dictionaryRepresentation() -> [String: Any] {
+            walks.withLock { $0 += 1 }
+            return super.dictionaryRepresentation()
+        }
+    }
+
+    /// After the move a stock with rows, and a mirror that starts on it.
+    private func movedStock(_ name: String, rows: [String: [Double]]) async throws
+        -> (WalkCountingDefaults, StandStore, @Sendable () throws -> ListeningStore.Stock?, URL) {
+        let defaults = try #require(WalkCountingDefaults(suiteName: name))
+        let (store, loadNow, file) = try await fileTable()
+        for (id, entry) in rows { try await store.upsert(try #require(Stand(itemId: id, entry: entry))) }
+        defaults.set(true, forKey: ListeningStore.movedKey)
+        defaults.set(true, forKey: ListeningStore.moveStartedKey)
+        return (defaults, store, loadNow, file)
+    }
+
+    @Test("nach dem Umzug liest das Laden des Bestands die Domaene nicht, nur die Kette liest die alten Schluessel einmal")
+    func afterTheMoveTheStartWalksNothing() async throws {
+        let name = "position-walks-\(UUID().uuidString)"
+        let (defaults, store, loadNow, file) = try await movedStock(name, rows: ["rss:walk:a": [100, 1_000]])
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        ListeningStore.installTable(for: defaults, load: loadNow)
+        defaults.walks.withLock { $0 = 0 }
+        #expect(ListeningStore.positions(in: defaults)["rss:walk:a"] == [100, 1_000], "the stock is the table")
+        #expect(defaults.walks.withLock { $0 } == 0, "loading the stock walked the domain")
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        #expect(defaults.walks.withLock { $0 } == 1, "the old keys are read once, on the chain")
+    }
+
+    @Test("ein spaeter Altschluessel geht in den Bestand, wenn er neuer ist als die Zeile; bei Gleichstand gewinnt die Zeile und sein Schluessel bleibt")
+    func aLateOldKeyNewerThanItsRowIsAdopted() async throws {
+        let name = "position-late-\(UUID().uuidString)"
+        let (defaults, store, loadNow, file) = try await movedStock(name, rows: ["rss:late:newer": [100, 1_000],
+                                                                            "rss:late:tie": [100, 1_000]])
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        // What a build that writes old keys left after the move.
+        defaults.set([250.0, 2_000.0], forKey: AppStorageKeys.localPosition("rss:late:newer"))
+        defaults.set([180.0, 1_000.0], forKey: AppStorageKeys.localPosition("rss:late:tie"))
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        await mirror.awaitPendingWrites()
+        #expect(ListeningStore.backup("rss:late:newer", in: defaults) == [250, 2_000], "the later listening is not in the stock")
+        #expect(try await store.stand(for: "rss:late:newer")?.entry == [250, 2_000], "the row did not follow")
+        #expect(ListeningStore.backup("rss:late:tie", in: defaults) == [100, 1_000], "on a tie the row wins")
+        #expect(try await store.stand(for: "rss:late:tie")?.entry == [100, 1_000])
+        #expect(defaults.object(forKey: AppStorageKeys.localPosition("rss:late:newer")) == nil, "the adopted key stays")
+        // Another entry at the same moment is not covered: its key stays,
+        // as before.
+        #expect(defaults.object(forKey: AppStorageKeys.localPosition("rss:late:tie")) as? [Double] == [180, 1_000],
+                "the key of a tie went")
+    }
+
+    @Test("ein Altschluessel ohne Zeile kommt nur zurueck, wenn er nach dem letzten Gang geschrieben wurde; ein frueherer belebt keinen geraeumten Stand und behaelt seinen Schluessel")
+    func anOldKeyWithoutARowComesBackOnlyWhenWrittenSince() async throws {
+        let name = "position-norow-\(UUID().uuidString)"
+        let (defaults, store, loadNow, file) = try await movedStock(name, rows: [:])
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        defaults.set(5_000.0, forKey: ListeningStore.legacyWalkKey)
+        defaults.set([300.0, 6_000.0], forKey: AppStorageKeys.localPosition("rss:norow:since"))
+        defaults.set([400.0, 4_000.0], forKey: AppStorageKeys.localPosition("rss:norow:before"))
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        await mirror.awaitPendingWrites()
+        #expect(ListeningStore.backup("rss:norow:since", in: defaults) == [300, 6_000], "listening written since is lost")
+        #expect(try await store.stand(for: "rss:norow:since")?.entry == [300, 6_000])
+        #expect(ListeningStore.backup("rss:norow:before", in: defaults) == nil, "a removed state came back")
+        #expect(try await store.stand(for: "rss:norow:before") == nil)
+        #expect(defaults.object(forKey: AppStorageKeys.localPosition("rss:norow:since")) == nil, "the adopted key stays")
+        #expect(defaults.object(forKey: AppStorageKeys.localPosition("rss:norow:before")) as? [Double] == [400, 4_000],
+                "a key the table lacks went")
+        #expect((defaults.object(forKey: ListeningStore.legacyWalkKey) as? Double ?? 0) > 5_000, "the walk is not noted")
+    }
+
+    @Test("die Regel der spaeten Altschluessel als Tabelle")
+    func theLateRuleAsATable() {
+        let table: [String: [Double]] = ["rss:r:row": [10, 1_000]]
+        let legacy: [String: [Double]] = ["rss:r:row": [20, 1_001], "rss:r:new": [5, 3_000],
+                                          "rss:r:old": [5, 1_500], "radio:live": [5, 9_000]]
+        let withWalk = ListeningStore.lateAdoption(legacy: legacy, table: table, lastWalkMs: 2_000)
+        #expect(withWalk == ["rss:r:row": [20, 1_001], "rss:r:new": [5, 3_000]])
+        let noWalk = ListeningStore.lateAdoption(legacy: legacy, table: table, lastWalkMs: nil)
+        #expect(noWalk == ["rss:r:row": [20, 1_001]], "before any walk nothing without a row comes back")
+        let tie = ListeningStore.lateAdoption(legacy: ["rss:r:row": [99, 1_000]], table: table, lastWalkMs: nil)
+        #expect(tie.isEmpty, "on a tie the row wins")
+    }
 }
 #endif

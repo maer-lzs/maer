@@ -1,5 +1,13 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Listening on an older version of the app is kept.** If you went back
+to version 3.2 or older and listened there, that listening now shows up
+after you update again, wherever it is newer than what the app held.
+A title the app held nothing of comes back when you listened to it
+there after this version first started. The app also no longer reads these old entries before its first screen.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An

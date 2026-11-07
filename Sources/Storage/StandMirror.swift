@@ -114,12 +114,11 @@ nonisolated final class StandMirror: Sendable {
         let resumes = movesNow && ListeningStore.isMoveStarted(in: defaults)
         if let loadNow { ListeningStore.installTable(for: defaults, resumes: resumes, load: loadNow) }
         if movesNow { ListeningStore.markMoveStarted(in: defaults) }
-        let walk = PerfSignpost.walkPositions()
-        let walkStarted = ContinuousClock.now
-        let legacy = ListeningStore.legacyEntries(in: defaults)
+        // Before the move the old keys are the stock and are read here, once
+        // per device. After it the stock is the table, and the old keys are
+        // read on the chain, after the first frame.
+        let startWalk: ListeningStore.Stock? = moved ? nil : Self.walkedLegacy(defaults)
         let entries = ListeningStore.positions(in: defaults)
-        walk.end()
-        Logger.library.notice("STARTUP walk=positions ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
         let flushed = ListeningStore.allFlushed(in: defaults)
         let unread = resumes && ListeningStore.readFailed(in: defaults)
         enqueue { store in
@@ -134,10 +133,36 @@ nonisolated final class StandMirror: Sendable {
                 Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed) resumed=\(resumes)")
                 if movesNow { ListeningStore.markMoved(for: followed) }
             }
-            guard movesNow || moved,
-                  !legacy.backups.isEmpty || !legacy.flushed.isEmpty else { return }
-            let table = ListeningStore.Stock(backups: try await store.all().mapValues(\.entry),
+            guard movesNow || moved else { return }
+            var lastWalkMs: Double?
+            let legacy: ListeningStore.Stock
+            if let startWalk {
+                legacy = startWalk
+            } else {
+                let walk = PerfSignpost.walkPositions()
+                let walkStarted = ContinuousClock.now
+                guard let walked = ListeningStore.legacyWalk(for: followed, nowMs: Date().timeIntervalSince1970 * 1000)
+                else { walk.end(); return }
+                walk.end()
+                Logger.library.notice("STARTUP walk=positions ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
+                legacy = walked.legacy
+                lastWalkMs = walked.lastWalkMs
+            }
+            guard !legacy.backups.isEmpty || !legacy.flushed.isEmpty else { return }
+            var table = ListeningStore.Stock(backups: try await store.all().mapValues(\.entry),
                                              flushed: try await store.allFlushed())
+            // After the move an old key written since is listening a build
+            // that writes old keys did: newer than its row, or newer than the
+            // walk before when it has none, it goes into the stock. Its key
+            // then is covered and goes like any other.
+            if moved {
+                let late = ListeningStore.lateAdoption(legacy: legacy.backups, table: table.backups, lastWalkMs: lastWalkMs)
+                if !late.isEmpty {
+                    let adopted = ListeningStore.adoptLate(late, for: followed)
+                    for (id, entry) in late { table.backups[id] = entry }
+                    Logger.library.notice("STAND old keys adopted=\(adopted) of=\(late.count)")
+                }
+            }
             let check = ListeningStore.legacyCovered(legacy: legacy, table: table)
             ListeningStore.retireLegacyKeys(check.retire, for: followed)
             Logger.library.notice("STAND old keys retired=\(check.retire.backups.count) flushed=\(check.retire.flushed.count)")
@@ -145,6 +170,16 @@ nonisolated final class StandMirror: Sendable {
                 Logger.library.error("STAND old keys kept missing=\(check.missing.count) of=\(legacy.backups.count + legacy.flushed.count)")
             }
         }
+    }
+
+    /// The old keys read at a start before the move, measured.
+    private static func walkedLegacy(_ defaults: UserDefaults) -> ListeningStore.Stock {
+        let walk = PerfSignpost.walkPositions()
+        let walkStarted = ContinuousClock.now
+        let legacy = ListeningStore.legacyEntries(in: defaults)
+        walk.end()
+        Logger.library.notice("STARTUP walk=positions ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
+        return legacy
     }
 
     /// A replacement of the stock at a change of account: one write of the

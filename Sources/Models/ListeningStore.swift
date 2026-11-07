@@ -130,23 +130,24 @@ nonisolated enum ListeningStore {
 
     /// The stock at its first question: the table once the move is done,
     /// old keys and table together when a broken move resumes, the old keys
-    /// before the move or without a table.
+    /// before the move or without a table. The old keys are read only where
+    /// they answer: after the move a readable table is the stock, and a walk
+    /// over the whole domain for them would find nothing to use.
     private static func load(_ defaults: UserDefaults) -> Stock {
-        let legacy = loadFromDefaults(defaults)
-        guard let table = tables.withLock({ $0[ObjectIdentifier(defaults)] }) else { return legacy }
+        guard let table = tables.withLock({ $0[ObjectIdentifier(defaults)] }) else { return loadFromDefaults(defaults) }
         let moved = defaults.bool(forKey: movedKey)
-        guard moved || table.resumes else { return legacy }
+        guard moved || table.resumes else { return loadFromDefaults(defaults) }
         do {
             guard let rows = try table.read() else {
                 Logger.library.error("STAND load: no database; the old keys answer")
-                return legacy
+                return loadFromDefaults(defaults)
             }
             if rows.skippedRows > 0 { rowsMissed.withLock { _ = $0.insert(ObjectIdentifier(defaults)) } }
-            return moved ? rows : merged(legacy, rows)
+            return moved ? rows : merged(loadFromDefaults(defaults), rows)
         } catch {
             readFailures.withLock { _ = $0.insert(ObjectIdentifier(defaults)) }
             Logger.library.error("STAND load failed reason=\(FailureReason.of(error), privacy: .public); the old keys answer")
-            return legacy
+            return loadFromDefaults(defaults)
         }
     }
 
@@ -215,6 +216,62 @@ nonisolated enum ListeningStore {
         stocks.withLock { _ in anchors[owner]?.set(true, forKey: movedKey) }
     }
 
+    /// The moment (milliseconds since 1970) of the last walk over the old
+    /// keys after the move. A build that writes old keys (3.2 and older)
+    /// does not know it: an old key written later is that build's listening.
+    static let legacyWalkKey = "positionsLegacyWalkAt"
+
+    /// The old keys of the defaults object `owner` names, read after the
+    /// move on the mirror's chain, off the start, with the moment of the
+    /// walk before; this walk's moment is noted. Nil without that object.
+    static func legacyWalk(for owner: ObjectIdentifier, nowMs: Double) -> (legacy: Stock, lastWalkMs: Double?)? {
+        guard let defaults = anchored(owner) else { return nil }
+        let last = defaults.double(forKey: legacyWalkKey)
+        let legacy = loadFromDefaults(defaults)
+        defaults.set(nowMs, forKey: legacyWalkKey)
+        return (legacy, last > 0 ? last : nil)
+    }
+
+    /// Which old position entries found after the move go into the stock:
+    /// one newer than its row (a moment is the only order; on a tie the row
+    /// wins and nothing is written); one without a row only when it is
+    /// newer than the walk before, so a build that writes old keys wrote it
+    /// since. One without a row from before that walk, or from before any
+    /// noted walk, may be a state the app removed since (a cleared or
+    /// forgotten title) and does not come back; its key stays, as a missing
+    /// entry's key always did. Pure.
+    static func lateAdoption(legacy: [String: [Double]], table: [String: [Double]],
+                             lastWalkMs: Double?) -> [String: [Double]] {
+        var adopt: [String: [Double]] = [:]
+        for (id, entry) in legacy where entry.count >= 2 && ListeningClasses.keepsPosition(id) {
+            guard let time = ProgressMark.timestamp(entry) else { continue }
+            if let row = table[id] {
+                if let rowTime = ProgressMark.timestamp(row), time > rowTime { adopt[id] = entry }
+            } else if let lastWalkMs, time > lastWalkMs {
+                adopt[id] = entry
+            }
+        }
+        return adopt
+    }
+
+    /// Takes late old entries into the stock of `owner` like any position
+    /// write (the row follows through the listener), each only while it is
+    /// newer than what the stock holds then. Returns how many were written.
+    @discardableResult
+    static func adoptLate(_ entries: [String: [Double]], for owner: ObjectIdentifier) -> Int {
+        guard let defaults = anchored(owner) else { return 0 }
+        var written = 0
+        for (id, entry) in entries {
+            let stored = merge(id, epoch: nil, in: defaults) { current in
+                guard let current else { return entry }
+                guard let held = ProgressMark.timestamp(current), let time = ProgressMark.timestamp(entry) else { return nil }
+                return time > held ? entry : nil
+            }
+            if stored != nil { written += 1 }
+        }
+        return written
+    }
+
     /// Counts every old entry against the table: it is covered by the same
     /// entry or a newer one (a moment is the only order; a tombstone is an
     /// entry like any other). An old entry that is no listening state (fewer
@@ -252,15 +309,22 @@ nonisolated enum ListeningStore {
     /// names: the one place the old keys are removed, and it is handed only
     /// the entries the table was found to cover.
     static func retireLegacyKeys(_ legacy: Stock, for owner: ObjectIdentifier) {
-        // Taken under the lock, used outside it: removing tens of thousands
-        // of keys took about 0.45 ms each in the simulator, seconds in all,
-        // and the readers must not wait for it. unsafe because the SDK says
-        // `UserDefaults` is thread-safe (its header), and only the missing
-        // `Sendable` mark keeps it from leaving the lock plainly.
-        nonisolated(unsafe) let defaults = stocks.withLock { _ in anchors[owner] }
-        guard let defaults else { return }
+        // Used outside the lock: removing tens of thousands of keys took
+        // about 0.45 ms each in the simulator, seconds in all, and the
+        // readers must not wait for it.
+        guard let defaults = anchored(owner) else { return }
         for id in legacy.backups.keys { defaults.removeObject(forKey: AppStorageKeys.localPosition(id)) }
         for id in legacy.flushed.keys { defaults.removeObject(forKey: AppStorageKeys.flushedPosition(id)) }
+    }
+
+    /// The defaults object `owner` names, taken under the lock for use
+    /// outside it.
+    private static func anchored(_ owner: ObjectIdentifier) -> UserDefaults? {
+        // unsafe because the SDK says `UserDefaults` is thread-safe (its
+        // header), and only the missing `Sendable` mark keeps it from
+        // leaving the lock plainly.
+        nonisolated(unsafe) let defaults = stocks.withLock { _ in anchors[owner] }
+        return defaults
     }
 
     /// The one read of the position keys from the defaults: the whole old
