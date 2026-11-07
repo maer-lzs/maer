@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An
 album or audiobook downloaded from now on keeps its cover offline after
