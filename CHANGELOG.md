@@ -21,8 +21,9 @@ a show is not set aside as not followed; and the picture of a paid show
 in a routine does not travel to your other devices. An episode of such a
 feed is not downloaded or streamed without its sign-in either: an
 automatic download takes it at the next refresh after the unlock, and a
-start in that time shows the load error. The next
-refresh after the unlock asks again.
+start in that time asks you to unlock the device once instead of saying
+the episode could not be loaded. The next refresh after the unlock asks
+again.
 
 **Downloads keep their covers when your server moves.** A cover from
 your Audiobookshelf, Jellyfin or Subsonic server is now stored by the

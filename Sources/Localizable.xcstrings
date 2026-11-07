@@ -13220,6 +13220,16 @@
         }
       }
     },
+    "Unlock this device once to play this episode." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entsperre dieses Gerät einmal, dann spielt diese Folge."
+          }
+        }
+      }
+    },
     "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time." : {
       "localizations" : {
         "de" : {

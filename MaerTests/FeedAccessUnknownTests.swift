@@ -74,8 +74,14 @@ struct FeedAccessUnknownTests {
     /// A source whose headers answer as set, counting every address it gives.
     final class LockedProvider: AudioProvider {
         let headers: [String: String]?
+        /// False: the source gives no address, a start fails for another
+        /// reason than the sign-in.
+        let givesAddresses: Bool
         private(set) var addressesAsked = 0
-        init(headers: [String: String]?) { self.headers = headers }
+        init(headers: [String: String]?, givesAddresses: Bool = true) {
+            self.headers = headers
+            self.givesAddresses = givesAddresses
+        }
         var providerId: String { "locked" }
         var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [.downloadable] }
@@ -89,7 +95,7 @@ struct FeedAccessUnknownTests {
         func coverURL(forItemId itemId: String) -> URL? { nil }
         func streamURL(forContentPath contentPath: String) -> URL? {
             addressesAsked += 1
-            return URL(string: "http://127.0.0.1:1/\(contentPath)")
+            return givesAddresses ? URL(string: "http://127.0.0.1:1/\(contentPath)") : nil
         }
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
@@ -132,6 +138,31 @@ struct FeedAccessUnknownTests {
         let open = PlayerViewModel(provider: LockedProvider(headers: [:]))
         await open.load(item: detail)
         #expect(open.player != nil, "with the sign-in read the queue is built")
+    }
+
+    /// The sentence a start that cannot play shows, or nil.
+    private static func cannotPlaySentence(_ model: PlayerViewModel) -> String? {
+        if case .cannotPlay(let sentence) = model.sourceHint { return sentence }
+        return nil
+    }
+
+    @Test("ein Start mit unlesbarem Zugang sagt, dass das Geraet einmal entsperrt werden muss; ohne Zugang und bei einem anderen Fehler bleibt es bei den bisherigen")
+    func aLockedStartSaysToUnlock() async {
+        let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 600, contentUrl: "episode.mp3", metadata: nil)
+        let detail = LibraryItemDetail(
+            id: "locked-\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 600, chapters: nil, tracks: [track]),
+            userMediaProgress: nil)
+        let unknown = PlayerViewModel(provider: LockedProvider(headers: nil))
+        await unknown.load(item: detail)
+        #expect(Self.cannotPlaySentence(unknown) == String(localized: "Unlock this device once to play this episode."))
+        let absent = PlayerViewModel(provider: LockedProvider(headers: [:]))
+        await absent.load(item: detail)
+        #expect(Self.cannotPlaySentence(absent) == nil, "without a sign-in the start goes on as before")
+        let failed = PlayerViewModel(provider: LockedProvider(headers: [:], givesAddresses: false))
+        await failed.load(item: detail)
+        #expect(Self.cannotPlaySentence(failed) == String(localized: "Audiobook could not be loaded."),
+                "another failure keeps its sentence")
     }
 
     @Test("ein Feed mit unlesbarem Zugang wird nicht ohne ihn gefragt")

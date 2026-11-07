@@ -186,6 +186,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The playing item failed to load and playback stopped for it; the
     /// next play or the network's return builds the queue anew.
     private var loadFailureNoted = false
+    /// The last queue left out a track because the sign-in its stream needs
+    /// cannot be read now (before the first unlock): a start that ends
+    /// without a track says so in its own sentence.
+    private var queueWaitedForSignIn = false
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
 
@@ -594,7 +598,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
-            cannotPlay(String(localized: "Audiobook could not be loaded."))
+            cannotPlay(queueWaitedForSignIn
+                       ? String(localized: "Unlock this device once to play this episode.")
+                       : String(localized: "Audiobook could not be loaded."))
             return
         }
 
@@ -813,6 +819,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // be read now: no track of it is requested without it, and a queue
         // without a track fails the way an unloadable one does.
         let streamHeaders = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
+        queueWaitedForSignIn = false
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {
@@ -836,6 +843,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 item = AVPlayerItem(asset: asset)
             } else {
                 Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")
+                queueWaitedForSignIn = true
                 continue
             }
             // Live radio. Tap the in-stream ICY metadata (song title)
