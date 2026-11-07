@@ -1201,7 +1201,17 @@ final class MaerSyncSession {
                     // what this device holds now is newer than anything it
                     // wrote before.
                     attempt += 1
-                    if let current {
+                    if family === statsFamily {
+                        // The statistics read what stands under the own scope
+                        // before they write over it: a pot another device
+                        // wrote there is the one sign of a shared id, and
+                        // the store judges it (`noteOwnPot`). Left, the id
+                        // writes nothing more.
+                        guard await take(family, scope: scope, by: caller) else { return }
+                        family.ownVersion = family.versions[scope]
+                        family.onChange?()
+                        guard deviceId() == scope else { return }
+                    } else if let current {
                         family.ownVersion = current
                     } else {
                         let stored = try await transport.fetch(kind: family.kind, scope: scope, access: access)?.etag

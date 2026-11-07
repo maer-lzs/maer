@@ -168,7 +168,9 @@ its own.** Each device keeps the name it syncs its listening statistics
 under on the device itself only. A phone restored from another phone's
 backup from now on no longer takes over that phone's name, so the two
 do not write into the same totals. Two devices that already share a
-name keep sharing it for now. When the app starts in the background
+name are told apart: the one that sees the other's listening arrive
+under the shared name takes a name of its own from its next start, and
+your other devices then count each of them once. When the app starts in the background
 after a restart, before you first unlock the device, it no longer
 counts as a new device in your statistics on your other devices, and
 sends its listening, what it plays and its other sync data under its

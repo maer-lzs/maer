@@ -131,6 +131,23 @@ nonisolated enum ListeningStatsSync {
             secondsPerItem: own.secondsPerItem.merging(pot.secondsPerItem, uniquingKeysWith: +))
     }
 
+    /// Whether another device writes under this device's id. The pot the
+    /// carrier holds under it now (`observed`) has grown since the last
+    /// reading in this process (`previous`) on a day or a title, beyond
+    /// what this device holds there (`own`). A first reading has nothing
+    /// to grow from, so a pot from before a reinstall, which nobody writes
+    /// any more, never counts; an echo of an older own pot holds no more
+    /// than the device does.
+    static func anotherDeviceWrites(observed: ListeningStatsData, previous: ListeningStatsData?,
+                                    own: ListeningStatsData) -> Bool {
+        guard let previous, observed != previous else { return false }
+        func grew(_ now: [String: Int], _ before: [String: Int], _ mine: [String: Int]) -> Bool {
+            now.contains { key, seconds in seconds > (before[key] ?? 0) && seconds > (mine[key] ?? 0) }
+        }
+        return grew(observed.secondsPerDay, previous.secondsPerDay, own.secondsPerDay)
+            || grew(observed.secondsPerItem, previous.secondsPerItem, own.secondsPerItem)
+    }
+
     /// Whether a start holds its pot until the carrier delivered the far
     /// side once: the same starts that take the own pot back
     /// (`adoptedOwnPot`), since only they may hold less of this device than

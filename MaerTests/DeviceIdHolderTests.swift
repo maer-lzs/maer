@@ -121,7 +121,7 @@ struct DeviceIdHolderTests {
         let box = Box()
         let stats = ListeningStatsStore(carrier: carrier, database: database,
                                         history: ListeningStatsSyncTests.RecordingHistory(),
-                                        lastingDeviceId: { box.id })
+                                        deviceIds: StatsDeviceIds(lasting: { box.id }, leave: { false }))
         stats.start()
         stats.addSeconds(30, itemId: "rss:device-id:new")
         stats.flush()

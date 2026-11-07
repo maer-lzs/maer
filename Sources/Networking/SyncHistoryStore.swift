@@ -153,6 +153,16 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         return true
     }
 
+    /// Another device writes under this device's id: a fresh id is saved
+    /// for the next start, and this process writes nothing lasting from
+    /// now on (`DeviceIdHolder.leave`).
+    @discardableResult
+    static func leaveSharedDeviceId(by caller: String) -> Bool {
+        guard holder.leave() else { return false }
+        Logger.library.notice("SYNC two devices under one id, a fresh id holds from the next start by=\(caller, privacy: .public)")
+        return true
+    }
+
     /// The id a sign-in to the service names: read again first, since a
     /// person who typed the sign-in has unlocked the device.
     static func deviceIdForSignIn() -> String {
@@ -168,6 +178,14 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     }()
 }
 
+extension StatsDeviceIds {
+    /// The app's: the holder's lasting id, and leaving it for a fresh one.
+    static var live: StatsDeviceIds {
+        StatsDeviceIds(lasting: { SyncHistoryStore.lastingDeviceId },
+                       leave: { SyncHistoryStore.leaveSharedDeviceId(by: "stats") })
+    }
+}
+
 /// The device id of one keychain item, held for the process: the lasting
 /// id once the keychain gave it, and until then an id for this process
 /// only. A failed save of a fresh id leaves it for this process too, so
@@ -176,6 +194,9 @@ nonisolated final class DeviceIdHolder: Sendable {
     private struct State {
         var lasting: String?
         var process: String
+        /// The id was given up in this process (`leave`): the fresh one
+        /// stands in the keychain and holds from the next start.
+        var left = false
     }
 
     private let account: String
@@ -202,7 +223,7 @@ nonisolated final class DeviceIdHolder: Sendable {
 
     /// One more read while no lasting id is held; true when it arrived now.
     func reread() -> Bool {
-        guard lasting == nil else { return false }
+        guard lasting == nil, !state.withLock({ $0.left }) else { return false }
         let process = state.withLock { $0.process }
         let next = Self.resolve(account: account, reading: reading, saving: saving, process: process)
         return state.withLock { held in
@@ -210,6 +231,21 @@ nonisolated final class DeviceIdHolder: Sendable {
             held = State(lasting: id, process: id)
             return true
         }
+    }
+
+    /// Gives the lasting id up: another device writes under it. A fresh id
+    /// is saved for the next start; this process holds no lasting id from
+    /// now on, so nothing more is written under the shared one, and its
+    /// own pots and claims count as foreign. False when the save failed:
+    /// then nothing changes and the next finding tries again.
+    func leave() -> Bool {
+        let fresh = UUID().uuidString
+        guard saving(account, fresh) else {
+            Logger.library.error("SYNC shared device id kept: the fresh id was not saved")
+            return false
+        }
+        state.withLock { $0 = State(lasting: nil, process: UUID().uuidString, left: true) }
+        return true
     }
 
     private static func resolve(account: String, reading: (String) -> KeychainRead,

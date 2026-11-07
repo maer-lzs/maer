@@ -36,6 +36,17 @@ nonisolated struct ListeningStatsData: Codable, Equatable {
     }
 }
 
+/// The device id the statistics write under, and the step when another
+/// device writes under it: the app's answer from the sync history's holder
+/// (`StatsDeviceIds.live`), a witness's of its own.
+@MainActor
+struct StatsDeviceIds {
+    /// The lasting device id, nil while the keychain does not give it out.
+    var lasting: () -> String?
+    /// Gives the shared id up; false when the fresh one was not saved.
+    var leave: () -> Bool
+}
+
 /// Records listening time (1-second ticks from the player time observer) and
 /// answers the stats page's questions. Disk writes throttled and in the
 /// background. Ticking must cost nothing.
@@ -118,28 +129,28 @@ final class ListeningStatsStore: ObservableObject {
 
     /// The carrier is chosen at start-up and again when the access changes
     /// (`follow`); a witness hands in a recording one, and a short
-    /// `firstStandLimit` for a carrier that never delivers, and the lasting
-    /// device id (`SyncHistoryStore.lastingDeviceId`).
+    /// `firstStandLimit` for a carrier that never delivers, and the device
+    /// ids (`StatsDeviceIds`).
     convenience init(carrier: any StatsCarrier = StatsCarriers.make(), database: MaerDatabase = .shared,
                      history: any SyncHistoryStoring = SyncHistoryStore.shared,
                      identity: @escaping () -> String? = { nil }, shelf: RestingShelf? = nil,
                      firstStandLimit: Duration = ListeningStatsStore.firstStandLimit,
-                     lastingDeviceId: @escaping () -> String? = { SyncHistoryStore.lastingDeviceId }) {
+                     deviceIds: StatsDeviceIds = .live) {
         self.init(carrier: carrier, database: database, history: history, startReadFails: false,
-                  identity: identity, shelf: shelf, firstStandLimit: firstStandLimit, lastingDeviceId: lastingDeviceId)
+                  identity: identity, shelf: shelf, firstStandLimit: firstStandLimit, deviceIds: deviceIds)
     }
 
     private init(carrier: any StatsCarrier, database: MaerDatabase, history: any SyncHistoryStoring, startReadFails: Bool,
                  identity: @escaping () -> String? = { nil }, shelf: RestingShelf? = nil,
                  firstStandLimit: Duration = ListeningStatsStore.firstStandLimit,
-                 lastingDeviceId: @escaping () -> String? = { SyncHistoryStore.lastingDeviceId }) {
+                 deviceIds: StatsDeviceIds = .live) {
         self.carrier = carrier
         self.database = database
         self.history = history
         self.identity = identity
         self.shelf = shelf
         self.firstStandWait = firstStandLimit
-        self.lastingDeviceId = lastingDeviceId
+        self.deviceIds = deviceIds
         // The ledger is the shelf's; an unreadable one holds every hand-over
         // and publish, since without it the device's whole history would
         // count as the account's.
@@ -308,11 +319,29 @@ final class ListeningStatsStore: ObservableObject {
         cloudChanged()
     }
 
+    /// The lasting device id and the step when another device writes
+    /// under it.
+    private let deviceIds: StatsDeviceIds
     /// The lasting device id, nil while the keychain does not give it out.
-    private let lastingDeviceId: () -> String?
+    private func lastingDeviceId() -> String? { deviceIds.lasting() }
     /// The id that tells own pots from foreign ones: the lasting one, before
     /// it an id for this process.
     private var ownDeviceId: String { lastingDeviceId() ?? SyncHistoryStore.deviceId }
+    /// The pot the carrier held under the lasting id at the last reading
+    /// in this process: what another device's writing grows from.
+    private var ownPotSeen: ListeningStatsData?
+
+    /// Another device writes under this device's id
+    /// (`ListeningStatsSync.anotherDeviceWrites`): this device takes a fresh
+    /// id from the next start and writes nothing under the shared one
+    /// before. The pot under it stays: it is the other device's.
+    private func noteOwnPot(_ pots: [String: ListeningStatsData]) {
+        guard firstStandUntil == nil, let lasting = lastingDeviceId(), let observed = pots[lasting] else { return }
+        defer { ownPotSeen = observed }
+        guard ListeningStatsSync.anotherDeviceWrites(observed: observed, previous: ownPotSeen, own: ownerPot) else { return }
+        Logger.library.notice("STATS another device writes under this device's id, it is left")
+        _ = deviceIds.leave()
+    }
 
     /// Whether the held start may end now: the lasting id is held, and the
     /// carrier delivered or the limit passed. The limit never ends a hold
@@ -578,6 +607,7 @@ final class ListeningStatsStore: ObservableObject {
     func cloudChanged() {
         if firstStandMayEnd() { endFirstStandHold(by: carrier.hasDeliveredFirst ? "delivered" : "limit") }
         foreign = carrier.pots()
+        noteOwnPot(foreign)
         recompose()
     }
 
