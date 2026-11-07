@@ -29,11 +29,11 @@ your Audiobookshelf, Jellyfin or Subsonic server is now stored by the
 picture it shows, not by the server's address. When the server gets a
 new address, a downloaded title keeps its cover offline. Covers from
 before this update are still shown and move over on their own. When
-you switch to another server or sign out of Audiobookshelf, the covers of the former one that are
-not part of a download are removed, so no title of the new server
-shows one of them. When several views ask for the same cover of a
-Subsonic server at once, they now share one download, and its colors
-are worked out once.
+you switch to another server or sign out of Audiobookshelf, the
+covers of the former one that are not part of a download are removed,
+so no title of the new server shows one of them. When several views
+ask for the same cover of a Subsonic server at once, they now share
+one download, and its colors are worked out once.
 
 **The list of downloaded covers keeps no sign-in.** The app remembers
 which covers your downloads keep, and that list held each cover's full
