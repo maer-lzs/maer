@@ -48,7 +48,10 @@ final class MaerSyncSession {
     private let announcer: any MaerSyncAnnouncer
     private let loadAccess: () -> MaerSyncAccess?
     private let loadIdentity: () -> MaerSyncIdentity?
-    private let deviceId: () -> String
+    /// This device's scope: the lasting device id, nil while the keychain
+    /// does not give it out. Without it no scope is written or listed,
+    /// since a document under an id for this process would stand for good.
+    private let deviceId: () -> String?
     private let defaults: UserDefaults
     private let rows: CarrierStandRows
     private let documentRows: CarrierDocumentRows
@@ -275,7 +278,7 @@ final class MaerSyncSession {
          access: @escaping () -> MaerSyncAccess?,
          identity: @escaping () -> MaerSyncIdentity? = { nil },
          accessUnknown: @escaping () -> Bool = { false },
-         deviceId: @escaping () -> String,
+         deviceId: @escaping () -> String?,
          defaults: UserDefaults = AppStorageKeys.store,
          rows: CarrierStandRows? = nil,
          documents: CarrierDocumentRows? = nil,
@@ -510,6 +513,15 @@ final class MaerSyncSession {
         // path is dropped and a round opens a new one and fetches what was
         // missed. An event, not a timer.
         path?.onChange { [weak self] new in self?.pathChanged(new) }
+        // The lasting device id arriving: what waited for it is listed and
+        // written in one round.
+        NotificationCenter.default.addObserver(forName: SyncHistoryStore.deviceIdArrived, object: nil,
+                                               queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                Task { await self.refresh(by: "device id") }
+            }
+        }
         startRound(by: "start")
     }
 
@@ -1124,7 +1136,7 @@ final class MaerSyncSession {
     /// This device's scope, from the ONE source the session itself uses.
     /// Exposed so a runner cannot pick a second answer to the same question
     /// and silently write into a scope the session then treats as foreign.
-    var ownDeviceId: String { deviceId() }
+    var ownDeviceId: String? { deviceId() }
 
     /// Every device's sealed feed block, by device. The session never looks
     /// inside: it carries bytes it cannot read, which is the point.
@@ -1164,7 +1176,11 @@ final class MaerSyncSession {
     private func send(_ family: ScopedFamily, by caller: String) async {
         guard !halted, !unreadKinds.contains(family.kind) else { return }
         let generation = identityGeneration
-        let scope = deviceId()
+        // The pending document waits for the lasting id and goes then.
+        guard let scope = deviceId() else {
+            Logger.library.notice("MAERSYNC \(family.kind, privacy: .public) write held: no lasting device id by=\(caller, privacy: .public)")
+            return
+        }
         var attempt = 0
         while generation == identityGeneration, let access, let body = family.pending, attempt < Self.writeAttempts {
             do {
@@ -1211,6 +1227,12 @@ final class MaerSyncSession {
     /// has not seen is fetched. A scope no longer listed is gone.
     private func take(_ family: ScopedFamily, by caller: String) async {
         guard let access else { return }
+        // Without the lasting id a listing cannot tell the own documents
+        // from foreign ones; it runs once the id arrived.
+        guard let own = deviceId() else {
+            Logger.library.notice("MAERSYNC \(family.kind, privacy: .public) listing held: no lasting device id by=\(caller, privacy: .public)")
+            return
+        }
         let generation = identityGeneration
         let listed: [MaerSyncListed]
         do {
@@ -1222,7 +1244,6 @@ final class MaerSyncSession {
         }
         guard stillAsked(generation, "\(family.kind) listing", by: caller) else { return }
         unreadKinds.remove(family.kind)
-        let own = deviceId()
         var changed = false
         var seen: Set<String> = [own]
         for entry in listed where entry.scope != own {
@@ -1714,6 +1735,6 @@ enum MaerSyncCarriers {
                                          access: { MaerSyncAccess.stored() },
                                          identity: { MaerSyncIdentity.stored() },
                                          accessUnknown: { MaerSyncAccess.read() == .unknown },
-                                         deviceId: { SyncHistoryStore.deviceId },
+                                         deviceId: { SyncHistoryStore.lastingDeviceId },
                                          path: NetworkMonitor.shared)
 }

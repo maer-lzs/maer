@@ -35,6 +35,12 @@ enum AppHousekeeping {
 
     /// Does the server have podcast libraries, and the iCloud services.
     static func startServices() async {
+        // The first unlock after a restart gives the keychain's device id
+        // to a process that started without it.
+        NotificationCenter.default.addObserver(forName: UIApplication.protectedDataDidBecomeAvailableNotification,
+                                               object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { SyncHistoryStore.rereadDeviceIdIfUnknown(by: "first unlock") }
+        }
         // The podcast tab appears even without local RSS subscriptions
         // (1 request, no full load).
         await AppSession.shared.absPodcastProvider.refreshAvailability()
@@ -132,6 +138,9 @@ enum AppHousekeeping {
         DriveModeController.shared.scenePhaseChanged(active: phase == .active)
         switch phase {
         case .active:
+            // The device id the keychain did not give at start is read
+            // again: the writers that held send under it.
+            SyncHistoryStore.rereadDeviceIdIfUnknown(by: "scene active")
             // First: a sync access unreadable at start is read again, so the
             // pull below already goes over the service.
             AccessFollowers.followOnceTheAccessReads(by: "scene active")

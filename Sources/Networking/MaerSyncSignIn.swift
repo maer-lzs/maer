@@ -132,7 +132,7 @@ enum MaerSyncSignIn {
     /// sign-in stops there and nothing of the password travels.
     static func perform(address: String, owner: String, password: String,
                         acceptingKey: String? = nil,
-                        device: String = SyncHistoryStore.deviceId,
+                        device: String = SyncHistoryStore.deviceIdForSignIn(),
                         transport: any MaerSyncTransport = MaerSyncHTTP()) async -> Outcome {
         let account = owner.trimmingCharacters(in: .whitespaces)
         guard !address.trimmingCharacters(in: .whitespaces).isEmpty, !account.isEmpty, !password.isEmpty else {
@@ -184,7 +184,7 @@ enum MaerSyncSignIn {
     /// reached the service. Its rule is checked before anything is asked.
     static func changePassword(address: String, owner: String, current currentPassword: String,
                                new newPassword: String, repeated: String, acceptingKey: String? = nil,
-                               device: String = SyncHistoryStore.deviceId,
+                               device: String = SyncHistoryStore.deviceIdForSignIn(),
                                transport: any MaerSyncTransport = MaerSyncHTTP(),
                                freshSalt: () -> Data? = SignInDerivation.freshSalt) async -> Outcome {
         let account = owner.trimmingCharacters(in: .whitespaces)

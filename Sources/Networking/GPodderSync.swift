@@ -406,7 +406,7 @@ final class GPodderSync {
             duration: Date().timeIntervalSince(syncStarted),
             error: report.error, guardNote: report.warning,
             removedFeeds: report.removedFeeds,
-            deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted),
+            deviceId: SyncHistoryStore.entryDeviceId, startedAt: syncStarted),
             moved: changed || report.error != nil || report.warning != nil)
         return report
     }

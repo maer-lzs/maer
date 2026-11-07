@@ -297,7 +297,7 @@ final class PodcastCloudSync {
             counters: [.init(key: .positionsDown, value: moved?.down ?? 0),
                        .init(key: .positionsUp, value: moved?.up ?? 0)],
             duration: 0,
-            deviceId: SyncHistoryStore.deviceId), moved: moved != nil)
+            deviceId: SyncHistoryStore.entryDeviceId), moved: moved != nil)
         if let moved {
             Logger.library.notice("SYNC history icloud down=\(moved.down) up=\(moved.up) by=\(caller, privacy: .public)")
         } else {

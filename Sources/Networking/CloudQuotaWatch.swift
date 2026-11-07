@@ -80,7 +80,7 @@ final class CloudQuotaWatch {
     private static func record(_ error: String) {
         SyncHistoryStore.shared.append(SyncHistory.entry(
             service: .iCloud, direction: .up, counters: [], duration: 0,
-            error: error, deviceId: SyncHistoryStore.deviceId))
+            error: error, deviceId: SyncHistoryStore.entryDeviceId))
     }
 
     /// Whether a reason code means "the channel is full". Named so a caller

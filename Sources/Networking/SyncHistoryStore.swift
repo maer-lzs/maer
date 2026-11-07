@@ -6,6 +6,7 @@
 import Foundation
 import Combine
 import OSLog
+import Synchronization
 
 /// Narrow storage seam for the sync history. Stage 2 (iCloud mirror) and
 /// the Android long-term goal swap the implementation behind this protocol;
@@ -120,38 +121,122 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     /// forever, so a REINSTALL must keep the identity, and a backup must
     /// never hand it to a second device. Two devices sharing one pot id
     /// would silently corrupt the sums.
-    /// Memoized: the keychain is read ONCE per process. deviceId is read
-    /// hot. Every diagnosis line, every claim poll, the mini player's
-    /// per-second subtitle body. And a keychain round trip (IPC to
-    /// securityd) per read is measurable load.
-    static let deviceId: String = {
-        let origin = DeviceIdOrigin.of(KeychainStore.read(forKey: "syncHistoryDeviceId"),
-                                       fresh: { UUID().uuidString })
-        switch origin {
-        case .kept:
-            break
-        case .minted(let id):
-            // ThisDeviceOnly: kept across a reinstall on this device, never
-            // restored onto another one.
-            if !KeychainStore.save(id, forKey: "syncHistoryDeviceId",
-                                   accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly) {
-                Logger.library.error("SYNC device id not saved to the keychain, it holds for this process")
-            }
-        case .forThisProcess:
-            Logger.library.notice("SYNC device id: the keychain is not readable now, an id for this process only")
-        }
+    /// Held: the keychain is read once per process while it gives the id,
+    /// and again only while it does not (`rereadDeviceIdIfUnknown`).
+    /// deviceId is read hot. Every diagnosis line, every claim poll, the
+    /// mini player's per-second subtitle body. And a keychain round trip
+    /// (IPC to securityd) per read is measurable load.
+    /// This one tells own from foreign: the lasting id once it is held,
+    /// before that an id for this process.
+    nonisolated static var deviceId: String { holder.current }
+
+    /// The id that may stand under anything that lasts (a pot, a claim, a
+    /// document of the service, a row of this history): the keychain's,
+    /// nil while the keychain does not give it out (before the first
+    /// unlock). Nothing that lasts is written under an id for this process.
+    nonisolated static var lastingDeviceId: String? { holder.lasting }
+
+    /// What a history row carries: the lasting id, empty while none is held.
+    nonisolated static var entryDeviceId: String { lastingDeviceId ?? "" }
+
+    /// Posted on the main actor when the lasting id arrived in a process
+    /// that ran without it; the writers that held send what waited.
+    nonisolated static let deviceIdArrived = Notification.Name("SyncDeviceIdArrived")
+
+    /// Reads the keychain again while no lasting id is held, and says so
+    /// once it arrived. Called at the first unlock and at every return.
+    @discardableResult
+    static func rereadDeviceIdIfUnknown(by caller: String) -> Bool {
+        guard holder.reread() else { return false }
+        Logger.library.notice("SYNC device id arrived by=\(caller, privacy: .public)")
+        NotificationCenter.default.post(name: deviceIdArrived, object: nil)
+        return true
+    }
+
+    /// The id a sign-in to the service names: read again first, since a
+    /// person who typed the sign-in has unlocked the device.
+    static func deviceIdForSignIn() -> String {
+        rereadDeviceIdIfUnknown(by: "sign-in")
+        return deviceId
+    }
+
+    nonisolated private static let holder: DeviceIdHolder = {
+        let holder = DeviceIdHolder(account: "syncHistoryDeviceId")
         // A copy in the defaults travels with a backup to another device.
         AppStorageKeys.remove("syncHistoryDeviceId")
-        return origin.id
+        return holder
     }()
+}
+
+/// The device id of one keychain item, held for the process: the lasting
+/// id once the keychain gave it, and until then an id for this process
+/// only. A failed save of a fresh id leaves it for this process too, so
+/// nothing lasts under an id the next process does not find.
+nonisolated final class DeviceIdHolder: Sendable {
+    private struct State {
+        var lasting: String?
+        var process: String
+    }
+
+    private let account: String
+    private let reading: @Sendable (String) -> KeychainRead
+    private let saving: @Sendable (String, String) -> Bool
+    private let state: Mutex<State>
+
+    /// `reading` and `saving` are the keychain; a witness hands in its own.
+    init(account: String,
+         reading: @escaping @Sendable (String) -> KeychainRead = { KeychainStore.read(forKey: $0) },
+         saving: @escaping @Sendable (String, String) -> Bool = { account, id in
+             // ThisDeviceOnly: kept across a reinstall on this device, never
+             // restored onto another one.
+             KeychainStore.save(id, forKey: account, accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+         }) {
+        self.account = account
+        self.reading = reading
+        self.saving = saving
+        state = Mutex(Self.resolve(account: account, reading: reading, saving: saving, process: nil))
+    }
+
+    var current: String { state.withLock { $0.lasting ?? $0.process } }
+    var lasting: String? { state.withLock { $0.lasting } }
+
+    /// One more read while no lasting id is held; true when it arrived now.
+    func reread() -> Bool {
+        guard lasting == nil else { return false }
+        let process = state.withLock { $0.process }
+        let next = Self.resolve(account: account, reading: reading, saving: saving, process: process)
+        return state.withLock { held in
+            guard held.lasting == nil, let id = next.lasting else { return false }
+            held = State(lasting: id, process: id)
+            return true
+        }
+    }
+
+    private static func resolve(account: String, reading: (String) -> KeychainRead,
+                                saving: (String, String) -> Bool, process: String?) -> State {
+        let origin = DeviceIdOrigin.of(reading(account), fresh: { UUID().uuidString })
+        switch origin {
+        case .kept(let id):
+            return State(lasting: id, process: id)
+        case .minted(let id):
+            guard saving(account, id) else {
+                Logger.library.error("SYNC device id not saved to the keychain, an id for this process only")
+                return State(lasting: nil, process: process ?? id)
+            }
+            return State(lasting: id, process: id)
+        case .forThisProcess(let id):
+            Logger.library.notice("SYNC device id: the keychain is not readable now, an id for this process only")
+            return State(lasting: nil, process: process ?? id)
+        }
+    }
 }
 
 /// Where this device's sync id comes from: the keychain alone. A value in
 /// the defaults is never taken over, a restored backup brings the other
 /// device's there. A keychain that cannot be read now (before the first
-/// unlock) or holds bytes nothing reads gets an id for this process only,
-/// never saved, so the next process reads the keychain again and nothing
-/// overwrites the item that is there.
+/// unlock) gets an id for this process only, never saved, so a later read
+/// finds the item that is there. Bytes nothing reads are no id: reading
+/// them again gives the same, so a fresh id is saved over them.
 nonisolated enum DeviceIdOrigin: Equatable {
     /// The keychain holds it.
     case kept(String)
@@ -163,8 +248,8 @@ nonisolated enum DeviceIdOrigin: Equatable {
     static func of(_ keychain: KeychainRead, fresh: () -> String) -> DeviceIdOrigin {
         switch keychain {
         case .value(let id) where !id.isEmpty: return .kept(id)
-        case .value, .missing: return .minted(fresh())
-        case .unreadable, .undecodable: return .forThisProcess(fresh())
+        case .value, .missing, .undecodable: return .minted(fresh())
+        case .unreadable: return .forThisProcess(fresh())
         }
     }
 

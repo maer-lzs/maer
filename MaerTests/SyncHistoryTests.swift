@@ -61,7 +61,8 @@ struct SyncHistoryTests {
         #expect(DeviceIdOrigin.of(.value(""), fresh: fresh) == .minted("fresh-id"))
         #expect(DeviceIdOrigin.of(.unreadable, fresh: fresh) == .forThisProcess("fresh-id"),
                 "a keychain not readable now is neither read as empty nor written over")
-        #expect(DeviceIdOrigin.of(.undecodable, fresh: fresh) == .forThisProcess("fresh-id"))
+        #expect(DeviceIdOrigin.of(.undecodable, fresh: fresh) == .minted("fresh-id"),
+                "bytes nothing reads are no id, and a fresh one is saved over them")
         #expect(DeviceIdOrigin.forThisProcess("a").id == "a" && DeviceIdOrigin.minted("b").id == "b")
     }
 
@@ -79,8 +80,11 @@ struct SyncHistoryTests {
         }
         #expect(setting.isEmpty, "the device id is kept in or read from the defaults: \(setting)")
         let store = try FetchAnswerTests.squeezedSource("Sources/Networking/SyncHistoryStore.swift")
-        #expect(store.contains("let origin = DeviceIdOrigin.of(KeychainStore.read(forKey: \"syncHistoryDeviceId\"), fresh: { UUID().uuidString })"))
-        #expect(store.contains("AppStorageKeys.remove(\"syncHistoryDeviceId\") return origin.id"),
+        #expect(store.contains("let holder = DeviceIdHolder(account: \"syncHistoryDeviceId\")"),
+                "the one place holds the id of the keychain item")
+        #expect(store.contains("reading: @escaping @Sendable (String) -> KeychainRead = { KeychainStore.read(forKey: $0) }"),
+                "and reads the keychain")
+        #expect(store.contains("AppStorageKeys.remove(\"syncHistoryDeviceId\") return holder"),
                 "the old copy in the defaults stays")
     }
 

@@ -389,7 +389,7 @@ final class SyncQueue {
             service: .absProgress, direction: .up,
             counters: [.init(key: .positionsUp, value: sent)],
             duration: Date().timeIntervalSince(flushStarted),
-            deviceId: SyncHistoryStore.deviceId, startedAt: flushStarted), moved: sent > 0)
+            deviceId: SyncHistoryStore.entryDeviceId, startedAt: flushStarted), moved: sent > 0)
     }
 
     /// The HTTP status a progress write failed with, from any of the three

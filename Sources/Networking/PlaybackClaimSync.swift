@@ -62,7 +62,12 @@ final class PlaybackClaimSync: ObservableObject {
     /// here and not in the player: the runner knows the carrier's beat,
     /// the player only knows that it plays.
     private(set) var lastClaimAtMs: Double = 0
-    private let deviceId: () -> String
+    /// The lasting device id, nil while the keychain does not give it out:
+    /// then no claim is written, since one under an id for this process
+    /// would stand as another device's until it ages out.
+    private let deviceId: () -> String?
+    /// The id that tells own claims from foreign ones.
+    private var ownDeviceId: String { deviceId() ?? SyncHistoryStore.deviceId }
     private let deviceName: () -> String
     private let now: () -> Double
     /// The owner epoch of the stock now (`ListeningStore.ownerEpoch`); a
@@ -71,7 +76,7 @@ final class PlaybackClaimSync: ObservableObject {
     private var didStart = false
 
     init(carrier: any ClaimCarrier = ClaimCarriers.make(),
-         deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
+         deviceId: @escaping () -> String? = { SyncHistoryStore.lastingDeviceId },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
          ownerEpoch: @escaping () -> Int = { ListeningStore.ownerEpoch() }) {
@@ -98,6 +103,12 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { poll(); return }
         didStart = true
+        // The lasting device id arriving: the claims are judged again
+        // under it, and the next play writes the own one.
+        NotificationCenter.default.addObserver(forName: SyncHistoryStore.deviceIdArrived, object: nil,
+                                               queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.poll() }
+        }
         startCarrier(by: "start")
         poll()
     }
@@ -148,9 +159,13 @@ final class PlaybackClaimSync: ObservableObject {
                playAt: Double? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        guard let lasting = deviceId() else {
+            Logger.player.notice("CLAIM held: no lasting device id")
+            return
+        }
         let signpost = PerfSignpost.syncRound(.claim, signpostCarrier)
         defer { signpost.end() }
-        let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
+        let claim = PlaybackClaim(deviceId: lasting, itemId: itemId, t: now(),
                                   position: position, duration: duration, title: title,
                                   playAt: playAt, deviceName: deviceName())
         // The write is the witness of the takeover chain: the other
@@ -186,9 +201,10 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         lastOwnClaim = nil
         lastWriter = nil
+        guard let lasting = deviceId() else { return }
         // The release carries the final stand: the taking-over device
         // catches up to it when it arrives after playback started there.
-        let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId,
+        let claim = PlaybackClaim(deviceId: lasting, itemId: itemId,
                                   t: now(), released: true,
                                   position: position, duration: duration)
         current = claim
@@ -203,7 +219,9 @@ final class PlaybackClaimSync: ObservableObject {
         let nowMs = now()
         var claims: [PlaybackClaim] = []
         for claim in carrier.claims() {
-            if claim.deviceId != deviceId(), nowMs - claim.t > Self.orphanSeconds * 1000 {
+            // Without the lasting id the own claim from before would look
+            // foreign: nothing is removed then.
+            if let own = deviceId(), claim.deviceId != own, nowMs - claim.t > Self.orphanSeconds * 1000 {
                 carrier.remove(deviceId: claim.deviceId)
                 continue
             }
@@ -221,11 +239,11 @@ final class PlaybackClaimSync: ObservableObject {
         let signpost = PerfSignpost.syncRound(.claimPoll, signpostCarrier)
         defer { signpost.end() }
         let foreign = PlaybackClaimRules.dominantForeign(
-            claims: allClaims(), ownDeviceId: deviceId(), nowMs: now())
+            claims: allClaims(), ownDeviceId: ownDeviceId, nowMs: now())
         if let foreign {
             if foreign != current { current = foreign }
             onForeignClaim?(foreign)
-        } else if current?.deviceId != deviceId() {
+        } else if current?.deviceId != ownDeviceId {
             current = nil
         }
         refreshHint()
@@ -233,7 +251,7 @@ final class PlaybackClaimSync: ObservableObject {
 
     /// Publishes only a change, so a quiet poll costs no render.
     private func refreshHint() {
-        let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: deviceId(), nowMs: now())
+        let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: ownDeviceId, nowMs: now())
         if resolved != hint { hint = resolved }
     }
 }

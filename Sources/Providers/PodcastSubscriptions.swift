@@ -1154,7 +1154,7 @@ final class PodcastSubscriptions: ObservableObject {
                                .init(key: .subscriptionsNeedingSignIn, value: needSignIn),
                                .init(key: .subscriptionsNotFollowed, value: otherFailures)],
                     duration: 0, removedFeeds: removedTitles,
-                    deviceId: SyncHistoryStore.deviceId))
+                    deviceId: SyncHistoryStore.entryDeviceId))
             }
         }
     }

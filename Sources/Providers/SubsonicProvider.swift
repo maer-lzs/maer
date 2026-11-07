@@ -219,7 +219,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                 counters: [.init(key: .albumsUpdated, value: albums.count),
                            .init(key: .songsUpdated, value: songs)],
                 duration: Date().timeIntervalSince(started),
-                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+                deviceId: SyncHistoryStore.entryDeviceId, startedAt: started))
             Logger.music.notice("music sync ok: \(albums.count) albums, \(songs) songs — history entry appended")
             librarySynced.send()
             return nil
@@ -229,7 +229,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                 service: .music, direction: .down, counters: [],
                 duration: Date().timeIntervalSince(started),
                 error: message,
-                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+                deviceId: SyncHistoryStore.entryDeviceId, startedAt: started))
             Logger.music.error("music sync failed: \(message, privacy: .public) — error entry appended")
             return message
         }

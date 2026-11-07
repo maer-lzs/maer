@@ -245,7 +245,12 @@ final class FeedAuthSync: ObservableObject {
             Logger.library.notice("FEEDAUTH keychain not listable, round skipped by=\(caller, privacy: .public)")
             return
         }
-        let own = session.ownDeviceId
+        // The block stands under the lasting device id only; without it the
+        // round waits, and the id's arrival starts the next one.
+        guard let own = session.ownDeviceId else {
+            Logger.library.notice("FEEDAUTH round held: no lasting device id by=\(caller, privacy: .public)")
+            return
+        }
         var openings: [FeedAuthBlock.Opening] = []
         var theirs: [[String: FeedAuthBlock.Entry]] = []
         for (device, body) in session.feedAuthBodies where device != own {

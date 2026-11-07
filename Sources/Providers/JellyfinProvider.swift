@@ -210,7 +210,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                 service: .music, direction: .down,
                 counters: [.init(key: .albumsUpdated, value: albums.count)],
                 duration: Date().timeIntervalSince(started),
-                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+                deviceId: SyncHistoryStore.entryDeviceId, startedAt: started))
             Logger.music.notice("jellyfin sync ok: \(albums.count) albums")
             librarySynced.send()
             return nil
@@ -219,7 +219,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             historyStore.append(SyncHistory.entry(
                 service: .music, direction: .down, counters: [],
                 duration: Date().timeIntervalSince(started), error: message,
-                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+                deviceId: SyncHistoryStore.entryDeviceId, startedAt: started))
             Logger.music.error("jellyfin sync failed: \(message, privacy: .public)")
             return message
         }
