@@ -73,5 +73,39 @@ struct HTMLPlainTextTests {
         let book = try FetchAnswerTests.squeezedSource("Sources/Views/BookDetailScreen.swift")
         #expect(book.contains("Text(htmlPlainText(description))"))
     }
+
+    @Test("Biografie und Albumnotizen werden zu demselben Klartext wie eine Buchbeschreibung, leer ist nichts", .needsTheSources)
+    func musicNotesTakeThePlainText() throws {
+        let note = "<p>Rock &amp; Roll</p>Peter&#39;s <a href=\"https://example.org\">Band</a>"
+        #expect(htmlPlainTextOrNil(note) == htmlPlainText(note))
+        #expect(htmlPlainTextOrNil(note) == "Rock & Roll\n\nPeter's Band")
+        #expect(htmlPlainTextOrNil(nil) == nil)
+        #expect(htmlPlainTextOrNil("") == nil)
+        #expect(htmlPlainTextOrNil("<p> </p>") == nil, "only tags is no text")
+        let artist = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicBrowseViews.swift")
+        #expect(artist.contains("htmlPlainTextOrNil(info?.biography)"), "the artist page takes the one plain text")
+        let album = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicAlbumView.swift")
+        #expect(album.contains("htmlPlainTextOrNil(info?.notes)"), "the album page takes the one plain text")
+    }
+
+    /// The files that remove tags with the pattern, each with its reason.
+    static let tagStrippers: [String: (count: Int, reason: String)] = [
+        "PodcastHelpers.swift": (1, "htmlPlainText, the one plain text of a description"),
+        "APIClient.swift": (1, "APIError.sanitize, a server's error page as one short line of a message, not a description"),
+    ]
+
+    @Test("das Muster fuer Tags steht nur in der einen Fassung und im Fehlertext", .needsTheSources)
+    func theTagPatternStandsInOnePlace() {
+        var found: [String: Int] = [:]
+        var seen = false
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            if file == "MusicAlbumView.swift" { seen = true }
+            let count = SyncContractFenceTests.stripped(text).components(separatedBy: #""<[^>]+>""#).count - 1
+            if count > 0 { found[file, default: 0] += count }
+        }
+        #expect(seen, "the music pages were among the files read")
+        #expect(found == Self.tagStrippers.mapValues(\.count),
+                "tags are removed by hand outside the one plain text: \(found)")
+    }
 }
 #endif

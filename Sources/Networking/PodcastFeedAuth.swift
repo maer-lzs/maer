@@ -321,19 +321,26 @@ nonisolated enum PodcastFeedAuth {
         credentials(feedKey: feedKey) != nil
     }
 
-    /// `Authorization: Basic …` for a feed (empty when there are no
-    /// credentials, or none can be read now). A request that must not go
-    /// out without its sign-in asks `access` first.
-    static func authHeader(feedKey: String) -> [String: String] {
-        guard let c = credentials(feedKey: feedKey) else { return [:] }
-        let token = Data("\(c.user):\(c.password)".utf8).base64EncodedString()
-        return ["Authorization": "Basic \(token)"]
-    }
-
-    /// Auth header from an `rss:<feedKey>:<guid>` item id (empty otherwise).
-    static func authHeader(forItemId id: String) -> [String: String] {
+    /// The stream and download headers of an `rss:<feedKey>:<guid>` item
+    /// id from the three answers: `Authorization: Basic …` with a sign-in,
+    /// empty without one (and for any other id), nil while it cannot be
+    /// read now, so the request waits instead of going out without it.
+    static func streamHeaders(forItemId id: String) -> [String: String]? {
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count >= 2, parts[0] == "rss" else { return [:] }
-        return authHeader(feedKey: String(parts[1]))
+        return headers(for: access(feedKey: String(parts[1])))
+    }
+
+    /// The headers for one answer of the access, pure.
+    static func headers(for access: Access) -> [String: String]? {
+        switch access {
+        case .present(let user, let password):
+            let token = Data("\(user):\(password)".utf8).base64EncodedString()
+            return ["Authorization": "Basic \(token)"]
+        case .absent:
+            return [:]
+        case .unknown:
+            return nil
+        }
     }
 }

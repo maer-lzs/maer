@@ -18,8 +18,15 @@ read the sign-in of a private or paid feed. A refresh in that time no
 longer asks such a feed without it, so the feed is not counted as
 refusing you; the free copy of a paid show is not followed next to it;
 a show is not set aside as not followed; and the picture of a paid show
-in a routine does not travel to your other devices. The next refresh
-after the unlock asks again.
+in a routine does not travel to your other devices. An episode of such a
+feed is not downloaded or streamed without its sign-in either: an
+automatic download takes it at the next refresh after the unlock, and a
+start in that time shows the load error. The next
+refresh after the unlock asks again.
+
+**Artist biographies and album notes read like other descriptions.**
+Characters a music server sends as codes, such as "&amp;" or "&#39;",
+show as the characters they stand for, and paragraphs stay paragraphs.
 
 **A new music server address signs in anew.** When you change the
 address of your Jellyfin or Subsonic server, the app forgets what the old

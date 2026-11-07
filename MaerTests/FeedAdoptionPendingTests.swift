@@ -24,7 +24,8 @@ struct FeedAdoptionPendingTests {
         #expect(FeedAdoptionPending.outcome(ok: true, held: false, reason: nil) == "twin",
                 "yes without holding it is the free twin of a held premium feed")
         #expect(FeedAdoptionPending.outcome(ok: false, held: false, reason: .timeout) == "marked reason=timeout")
-        #expect(FeedAdoptionPending.outcome(ok: false, held: false, reason: nil) == "marked reason=none")
+        #expect(FeedAdoptionPending.outcome(ok: false, held: false, reason: nil) == "notAsked",
+                "not followed and not marked is the follow that was not asked")
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let store = try String(contentsOf: root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8)
         #expect(store.contains("ok=\\(ok) outcome=\\(outcome, privacy: .public)"), "the adoption line names the outcome")

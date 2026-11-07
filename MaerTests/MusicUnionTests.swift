@@ -125,6 +125,9 @@ struct MusicUnionTests {
         func coverURL(forItemId itemId: String) -> URL? { nil }
         func streamURL(forContentPath contentPath: String) -> URL? { nil }
         var streamAuthHeaders: [String: String] { [:] }
+        /// The answer per title: nil plays a sign-in that cannot be read now.
+        var itemHeaders: [String: String]? = [:]
+        func streamAuthHeaders(forItemId itemId: String) -> [String: String]? { itemHeaders }
         func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
         func createBookmark(itemId: String, time: Double, title: String) async throws {}
         func deleteBookmark(itemId: String, time: Double) async throws {}

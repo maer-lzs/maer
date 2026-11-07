@@ -69,9 +69,11 @@ nonisolated enum FeedAdoptionPending {
     /// the log line: followed, skipped as the free twin of a held premium
     /// feed (the store answers yes without holding it), or marked with the
     /// reason. One reading per offer, so a feed that does not arrive says
-    /// why on the device, not only in the code.
+    /// why on the device, not only in the code. Not followed without a mark
+    /// is the follow that was not asked (a sign-in it depends on cannot be
+    /// read now): nothing is marked, and a later round asks again.
     static func outcome(ok: Bool, held: Bool, reason: Reason?) -> String {
-        guard ok else { return "marked reason=\(reason?.rawValue ?? "none")" }
+        guard ok else { return reason.map { "marked reason=\($0.rawValue)" } ?? "notAsked" }
         return held ? "followed" : "twin"
     }
 

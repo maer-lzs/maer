@@ -412,7 +412,7 @@ final class MusicUnion: MusicProvider {
     func coverURL(forItemId itemId: String) -> URL? { source(for: itemId).coverURL(forItemId: itemId) }
     func streamURL(forContentPath contentPath: String) -> URL? { sources[0].streamURL(forContentPath: contentPath) }
     var streamAuthHeaders: [String: String] { sources[0].streamAuthHeaders }
-    func streamAuthHeaders(forItemId itemId: String) -> [String: String] {
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String]? {
         source(for: itemId).streamAuthHeaders(forItemId: itemId)
     }
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] {

@@ -144,9 +144,13 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// the source needs no auth (local files).
     var streamAuthHeaders: [String: String] { get }
 
-    /// Item-specific streaming/download headers. Default = `streamAuthHeaders`;
-    /// RSS overrides for private/premium feeds (per-feed Basic auth).
-    func streamAuthHeaders(forItemId itemId: String) -> [String: String]
+    /// Item-specific streaming/download headers, with three answers: the
+    /// headers, none (empty), or nil while a sign-in they depend on cannot
+    /// be read now. Nil sends no request, so a paid feed is never asked
+    /// without its sign-in. Default = `streamAuthHeaders`, always known; RSS
+    /// answers per feed (Basic auth), and a type that forwards to a source
+    /// returns the source's answer as it is.
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String]?
 
     // MARK: Bookmarks (only call with the `.bookmarks` capability)
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
@@ -160,7 +164,7 @@ extension AudioProvider {
     }
 
     /// Default: item-independent source headers.
-    func streamAuthHeaders(forItemId itemId: String) -> [String: String] { streamAuthHeaders }
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String]? { streamAuthHeaders }
 
     /// Default: no real server paging. The whole (small) list as one page.
     /// ABS overrides this with real `limit`/`page`.
