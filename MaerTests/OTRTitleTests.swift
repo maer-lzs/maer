@@ -54,7 +54,7 @@ struct OTRTitleTests {
         #expect(FreeCatalog.isoAirDate("nonsense") == nil)
     }
 
-    @Test("O-P2: the description's repeated heading and its hole are gone")
+    @Test("the description's repeated heading and its hole are gone")
     func descriptionHeadingAndHole() {
         // The real shape (measured): a centred heading repeating the title,
         // then blank lines, then the text. The author field carries the
@@ -70,7 +70,7 @@ struct OTRTitleTests {
         #expect(other == "A detective drama.\n\nSecond line.")
     }
 
-    @Test("O-P3: collection housekeeping leaves the work title")
+    @Test("collection housekeeping leaves the work title")
     func collectionSuffixes() {
         // Measured: 12 of the top 25 OTR collections carry such a suffix.
         #expect(FreeCatalog.normalizedCollectionTitle("Yours Truly, Johnny Dollar - Single Episodes")

@@ -19,7 +19,7 @@ struct MaerSyncVersion6Tests {
 
     // MARK: - The answers
 
-    @Test("Fassung 6: 428, 429 mit Retry-After und das zurueckgezogene Zeichen haben je ihren Namen")
+    @Test("428, 429 mit Retry-After und das zurueckgezogene Zeichen haben je ihren Namen")
     func versionSixAnswersHaveTheirNames() throws {
         #expect(failure { _ = try MaerSyncAnswer.token(MaerSyncReply(status: 428)) } == .operatorSetPassword)
         #expect(failure { _ = try MaerSyncAnswer.token(MaerSyncReply(status: 429, retryAfter: "120")) } == .tooManyAttempts(retryAfter: 120))
@@ -33,7 +33,7 @@ struct MaerSyncVersion6Tests {
         #expect(failure { _ = try MaerSyncAnswer.document(MaerSyncReply(status: 401)) } == .unauthorized, "a plain 401 stays what it was")
     }
 
-    @Test("Fassung 6: das Salz wird gelesen, eine fremde Dehnung ist unlesbar, der Schluessel nennt seine Fassung")
+    @Test("das Salz wird gelesen, eine fremde Dehnung ist unlesbar, der Schluessel nennt seine Fassung")
     func saltAndKeyAreRead() throws {
         let body = Data("{\"salt\": \"AAECAwQFBgcICQoLDA0ODw==\", \"kdf\": \"pbkdf2-hmac-sha256\", \"rounds\": 600000, \"form\": \"secret\"}".utf8)
         let salt = try MaerSyncAnswer.salt(MaerSyncReply(status: 200, body: body))
@@ -73,7 +73,7 @@ struct MaerSyncVersion6Tests {
         try await body()
     }
 
-    @Test("Fassung 6: angemeldet wird nur mit dem Beweis, und er ist die Ableitung aus Passwort und Salz")
+    @Test("angemeldet wird nur mit dem Beweis, und er ist die Ableitung aus Passwort und Salz")
     @MainActor
     func signInSendsOnlyTheProof() async throws {
         try await withCleanPin {
@@ -88,7 +88,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("Fassung 6: ein Konto in Form secret meldet sich nicht an, und nichts vom Passwort reist")
+    @Test("ein Konto in Form secret meldet sich nicht an, und nichts vom Passwort reist")
     @MainActor
     func formSecretStopsBeforeAnythingTravels() async {
         await withCleanPin {
@@ -100,7 +100,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("Fassung 6: ein neuerer Dienst wird gesagt, bevor das Salz gefragt wird")
+    @Test("ein neuerer Dienst wird gesagt, bevor das Salz gefragt wird")
     @MainActor
     func aNewerServiceIsSaidFirst() async {
         await withCleanPin {
@@ -111,7 +111,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("Fassung 6: eine Dehnung, die das Geraet nicht annimmt, und zu viele Fehlversuche haben ihren Ausgang")
+    @Test("eine Dehnung, die das Geraet nicht annimmt, und zu viele Fehlversuche haben ihren Ausgang")
     @MainActor
     func refusedParametersAndTooManyAttempts() async {
         await withCleanPin {
@@ -306,13 +306,13 @@ struct MaerSyncVersion6Tests {
         return out
     }
 
-    @Test("Fassung 6: die Fall-Datei ist die, gegen die der Dienst laeuft", .needsTheTests)
+    @Test("die Fall-Datei ist die, gegen die der Dienst laeuft", .needsTheTests)
     func theCasesAreTheServicesFile() throws {
         let digest = SHA256.hash(data: try Data(contentsOf: Self.casesURL())).map { String(format: "%02x", $0) }.joined()
         #expect(digest == Self.casesDigest)
     }
 
-    @Test("Fassung 6: jede Anmelde-Anfrage der Faelle, die die App bauen darf, baut die echte Tuer genauso", .needsTheTests)
+    @Test("jede Anmelde-Anfrage der Faelle, die die App bauen darf, baut die echte Tuer genauso", .needsTheTests)
     @MainActor
     func theDoorBuildsTheCasesRequests() async throws {
         let base = URL(string: "https://\(UUID().uuidString.lowercased()).test")!

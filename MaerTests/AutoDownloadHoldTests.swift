@@ -57,7 +57,7 @@ struct AutoDownloadHoldTests {
         (defaults.persistentDomain(forName: name) ?? [:]) as NSDictionary
     }
 
-    @Test("I6: der alte eine Wert wird beim Lesen zerlegt, jede Form behaelt ihre Wirkung, und nichts wird geschrieben")
+    @Test("der alte eine Wert wird beim Lesen zerlegt, jede Form behaelt ihre Wirkung, und nichts wird geschrieben")
     func theOldValueSplitsWhenRead() {
         let (defaults, name) = suite()
         defer { UserDefaults().removePersistentDomain(forName: name) }
@@ -88,7 +88,7 @@ struct AutoDownloadHoldTests {
         #expect(snapshot(defaults, name) == before, "reading the old value wrote nothing")
     }
 
-    @Test("I6: ein neuer Wert gewinnt ueber den alten, eine reisende Richtung schlaegt den alten Wert des Geraets")
+    @Test("ein neuer Wert gewinnt ueber den alten, eine reisende Richtung schlaegt den alten Wert des Geraets")
     func aNewValueWins() {
         let (defaults, name) = suite()
         defer { UserDefaults().removePersistentDomain(forName: name) }
@@ -131,8 +131,8 @@ struct AutoDownloadHoldTests {
         a.sync.reconcile()
         b.sync.reconcile()
 
-        #expect(PodcastAutoDownload.direction(show, defaults: b.defaults) == .inOrder, "I7: the direction of A stands on B")
-        #expect(PodcastAutoDownload.isEnabled(show, defaults: b.defaults) == false, "I8: B stays off")
+        #expect(PodcastAutoDownload.direction(show, defaults: b.defaults) == .inOrder, "the direction of A stands on B")
+        #expect(PodcastAutoDownload.isEnabled(show, defaults: b.defaults) == false, "B stays off")
         #expect(PodcastAutoDownload.keep(show, defaults: b.defaults) == 5, "B keeps its own count")
         #expect(PodcastAutoDownload.keep(show, defaults: a.defaults) == 10)
         let document = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
@@ -148,7 +148,7 @@ struct AutoDownloadHoldTests {
         #expect(cloud.writes == 0, "settled: two more rounds on both devices write nothing")
     }
 
-    @Test("I8: die Automatik laeuft nur ueber Sendungen, die auf diesem Geraet an sind, und an fragt nur die Geraete-Werte", .needsTheSources)
+    @Test("die Automatik laeuft nur ueber Sendungen, die auf diesem Geraet an sind, und an fragt nur die Geraete-Werte", .needsTheSources)
     func offNeverLoads() throws {
         let helpers = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHelpers.swift"), encoding: .utf8))

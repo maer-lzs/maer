@@ -52,7 +52,7 @@ struct RSSFeedParserTests {
         #expect(mmss.episodes[0].duration == 750)
     }
 
-    @Test("R1: Item ohne Audio-Enclosure bleibt als Nur-Text-Folge erhalten")
+    @Test("Item ohne Audio-Enclosure bleibt als Nur-Text-Folge erhalten")
     func keepsItemsWithoutAudio() throws {
         let show = try #require(parse("""
         <rss><channel><title>S</title>
@@ -95,7 +95,7 @@ struct RSSFeedParserTests {
 
     // MARK: - Pure helpers
 
-    @Test("R2: enclosure acceptance — audio/video/octet-stream heuristic")
+    @Test("enclosure acceptance — audio/video/octet-stream heuristic")
     func enclosureAcceptance() {
         #expect(RSSFeedParser.acceptsEnclosure(type: "audio/mpeg", url: "https://x.example/a.mp3"))
         #expect(RSSFeedParser.acceptsEnclosure(type: "video/mp4", url: "https://x.example/v.mp4"))
@@ -110,7 +110,7 @@ struct RSSFeedParserTests {
         #expect(!RSSFeedParser.acceptsEnclosure(type: "image/jpeg", url: "https://x.example/c.jpg"))
     }
 
-    @Test("R3: URL resolution against the feed base")
+    @Test("URL resolution against the feed base")
     func urlResolution() {
         let base = "https://example.com/podcast/feed.xml"
         #expect(RSSFeedParser.resolved("media/ep1.mp3", against: base)

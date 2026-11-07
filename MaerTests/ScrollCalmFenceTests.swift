@@ -110,7 +110,7 @@ struct ScrollCalmFenceTests {
         return nil
     }
 
-    @Test("Weg B: Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger", .needsTheSources)
+    @Test("Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger", .needsTheSources)
     func storesThatScheduleUIWorkOnlyShrink() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {

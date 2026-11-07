@@ -1112,7 +1112,7 @@ struct FeedAuthStartTests {
 
     /// The far side is "not asked yet" until the first listing,
     /// and that listing wakes the runner even when it finds nothing.
-    @Test("P4-1: vor der ersten Auflistung gilt die Gegenseite als ungefragt, die erste weckt den Laeufer auch leer, ein neuer Zugang fragt neu")
+    @Test("vor der ersten Auflistung gilt die Gegenseite als ungefragt, die erste weckt den Laeufer auch leer, ein neuer Zugang fragt neu")
     @MainActor func theFirstListingIsWaitedFor() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }

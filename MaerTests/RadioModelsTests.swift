@@ -33,7 +33,7 @@ struct RadioModelsTests {
         #expect(stations.first?.tags == ["jazz", "news"])
     }
 
-    @Test("Y57: codec/bitrate variants of one station fold to the best single hit")
+    @Test("codec/bitrate variants of one station fold to the best single hit")
     func collapsesVariants() {
         // Three variants of the same station (distinct uuids, different urls).
         // Highest bitrate wins; a genuinely different station stays.
@@ -47,7 +47,7 @@ struct RadioModelsTests {
         #expect(stations.first?.bitrate == 128)
     }
 
-    @Test("Y59: inconsistent country codes on one station still collapse to one")
+    @Test("inconsistent country codes on one station still collapse to one")
     func collapseInconsistentCountry() {
         // Radio Browser reports the SAME station's country as "DE", empty and
         // "de " across its codec variants. They must still fold to ONE.
@@ -75,7 +75,7 @@ struct RadioModelsTests {
         #expect(withEmpty.count == 2)
     }
 
-    @Test("R26: spacing variants fold ONLY with the same homepage domain as witness")
+    @Test("spacing variants fold ONLY with the same homepage domain as witness")
     func spacingVariantsFoldWithDomainWitness() {
         // Iran International (NEWS) vs iraninternational (IRAN): same brand,
         // same domain. ONE row.
@@ -103,7 +103,7 @@ struct RadioModelsTests {
         #expect(noWitness.count == 2)
     }
 
-    @Test("b10aa93: the popular fill excludes core stations by NAME too (Swiss-Pop twice)")
+    @Test("the popular fill excludes core stations by NAME too (Swiss-Pop twice)")
     func coreFillExcludesByName() {
         // The core entry resolved a different host (stream fallback) than the
         // catalog copy. The identity key differs, the folded name must catch it.
@@ -117,7 +117,7 @@ struct RadioModelsTests {
         #expect(row.filter { RadioMapping.displayName($0.name) == "Radio Swiss Pop" }.count == 1)
     }
 
-    @Test("R28: expanded family sorts games numerically, unnumbered members behind")
+    @Test("expanded family sorts games numerically, unnumbered members behind")
     func familyGamesSortNumerically() {
         func s(_ id: String, _ name: String) -> RadioStation {
             RadioStation(id: "radio:rb:\(id)", name: name,
@@ -207,7 +207,7 @@ struct RadioModelsTests {
         #expect(recents.first?.id == "radio:rb:b")
     }
 
-    @Test("Teil 3: RadioRanking orders by play count, drops zero, breaks ties by recency, caps")
+    @Test("RadioRanking orders by play count, drops zero, breaks ties by recency, caps")
     func mostPlayedRanking() {
         func s(_ id: String) -> RadioStation { RadioStation(id: "radio:rb:\(id)", name: id, streamURL: "https://s/\(id)") }
         // Store order (append = more recent): a, b, c, d. Counts as noted.
@@ -224,7 +224,7 @@ struct RadioModelsTests {
         #expect(tie.map(\.name) == ["b", "a"])
     }
 
-    @Test("Teil 3: recordPlay counts plays; mostPlayed reflects frequency and persists")
+    @Test("recordPlay counts plays; mostPlayed reflects frequency and persists")
     func recordPlayStore() {
         let name = "radio-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -238,7 +238,7 @@ struct RadioModelsTests {
         #expect(RadioStore.mostPlayed(limit: 2, defaults: defaults).map(\.name) == ["A", "C"])
     }
 
-    @Test("Teil 1: collapse keeps the best as default and attaches all variants (self included, flattened)")
+    @Test("collapse keeps the best as default and attaches all variants (self included, flattened)")
     func variantsAttached() {
         let raw = [
             RadioStation(id: "radio:rb:hi", name: "Radio X 192k MP3", streamURL: "https://s/hi",
@@ -254,7 +254,7 @@ struct RadioModelsTests {
         #expect(RadioMapping.collapseVariants([raw[0]])[0].variantList.isEmpty) // lone station → no picker
     }
 
-    @Test("Teil 1: qualityLabel formats bitrate and codec")
+    @Test("qualityLabel formats bitrate and codec")
     func qualityLabels() {
         func st(_ b: Int?, _ c: String?) -> RadioStation {
             RadioStation(id: "x", name: "X", streamURL: "https://s", bitrate: b, codec: c)
@@ -265,7 +265,7 @@ struct RadioModelsTests {
         #expect(!st(nil, nil).qualityLabel.isEmpty)   // generic fallback (localized)
     }
 
-    @Test("Teil 1: variant selection persists per station (stable key) and resolves the effective stream")
+    @Test("variant selection persists per station (stable key) and resolves the effective stream")
     func variantSelection() {
         let name = "radio-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -294,7 +294,7 @@ struct RadioModelsTests {
         #expect(RadioMapping.effectiveStreamURL(for: station, selectedURL: "https://gone") == "https://s/hi")
     }
 
-    @Test("Teil 2: ICY artwork lookup gates on artist+title and builds a MusicBrainz query")
+    @Test("ICY artwork lookup gates on artist+title and builds a MusicBrainz query")
     func icyArtworkLookup() {
         #expect(!RadioArtworkLookup.shouldLookup(artist: nil, title: "Song"))
         #expect(!RadioArtworkLookup.shouldLookup(artist: "  ", title: "Song"))
@@ -312,7 +312,7 @@ struct RadioModelsTests {
               == "recording:\"One More Time\" AND artist:\"Daft Punk\"")
     }
 
-    @Test("Teil 2: first release MBID is picked across the returned recordings")
+    @Test("first release MBID is picked across the returned recordings")
     func firstReleaseMBID() {
         let json = Data(#"{"recordings":[{"releases":[]},{"releases":[{"id":"mbid-1"},{"id":"mbid-2"}]}]}"#.utf8)
         let decoded = try! JSONDecoder().decode(MBRecordingResponse.self, from: json)
@@ -321,7 +321,7 @@ struct RadioModelsTests {
         #expect(RadioArtworkLookup.firstReleaseMBID(empty) == nil)
     }
 
-    @Test("F4-discovery: catalog query construction per endpoint")
+    @Test("catalog query construction per endpoint")
     func catalogQueries() {
         func params(_ q: RadioBrowserClient.Query) -> [String: String] {
             Dictionary(uniqueKeysWithValues: q.queryItems.map { ($0.name, $0.value ?? "") })
@@ -376,7 +376,7 @@ struct RadioModelsTests {
         #expect(params(search)["limit"] == "50")
     }
 
-    @Test("F4-discovery: curated genre list maps display names to Radio Browser tags")
+    @Test("curated genre list maps display names to Radio Browser tags")
     func curatedGenres() {
         let tags = RadioCatalog.genres.map(\.tag)
         #expect(tags.contains("news"))
@@ -388,7 +388,7 @@ struct RadioModelsTests {
         #expect(RadioCatalog.genres.allSatisfy { !$0.systemImage.isEmpty && !$0.title.isEmpty })
     }
 
-    @Test("F4-discovery: section-visibility gates (offline / region / genres)")
+    @Test("section-visibility gates (offline / region / genres)")
     func discoveryGates() {
         let one = [RadioStation(id: "radio:rb:a", name: "A", streamURL: "https://s/a")]
         // Popular: online + non-empty.
@@ -408,7 +408,7 @@ struct RadioModelsTests {
         #expect(RadioCatalog.deviceRegionCode(locale: Locale(identifier: "en")) == nil)
     }
 
-    @Test("F3: radio never enqueues — play only replaces the active playback")
+    @Test("radio never enqueues — play only replaces the active playback")
     func queueVeto() {
         #expect(!PlayQueue.canEnqueue("radio:rb:abc"))
         #expect(!PlayQueue.canEnqueue("radio:manual:xyz"))
@@ -473,7 +473,7 @@ struct RadioStateQueryTests {
         #expect(byState.queryItems.contains(.init(name: "limit", value: "40")))
     }
 
-    @Test("86cf180: icy-name rough match — folded containment, slogans pass, absence passes")
+    @Test("icy-name rough match — folded containment, slogans pass, absence passes")
     func icyRoughMatch() {
         #expect(RadioDiagnostics.roughlyMatches(
             expectedName: "ROCK ANTENNE", icyName: "ROCK ANTENNE - der beste Rock nonstop"))
@@ -485,7 +485,7 @@ struct RadioStateQueryTests {
             expectedName: "ROCK ANTENNE", icyName: "Radio Studio Piu Italia"))
     }
 
-    @Test("6b3a35d: display name — pipe junk trimmed, short heads keep the full name")
+    @Test("display name — pipe junk trimmed, short heads keep the full name")
     func displayNames() {
         #expect(RadioMapping.displayName("Deutschlandfunk Kultur | DLF | 128k")
                 == "Deutschlandfunk Kultur")
@@ -513,7 +513,7 @@ struct RadioStateQueryTests {
         #expect(RadioMapping.displayName("Radio Aachen") == "Radio Aachen")
     }
 
-    @Test("e4bd910: logo chain pure pieces — conservative entity match, P154, touch icon")
+    @Test("logo chain pure pieces — conservative entity match, P154, touch icon")
     func logoLookup() throws {
         // Conservative Wikidata match: label must fold-contain the name.
         let search = Data("""
@@ -608,7 +608,7 @@ struct RadioStateQueryTests {
                                                  label: "Radio Harmony"))
     }
 
-    @Test("e4bd910: display dedupe — variants fold by name+domain, foreigners and siblings never")
+    @Test("display dedupe — variants fold by name+domain, foreigners and siblings never")
     func displayDedupe() {
         func st(_ id: String, _ name: String, _ home: String?, bitrate: Int?, codec: String?) -> RadioStation {
             RadioStation(id: id, name: name, streamURL: "https://cdn\(id).example/stream",
@@ -844,7 +844,7 @@ struct RadioStateQueryTests {
                      tags: [], bitrate: bitrate, codec: "MP3")
     }
 
-    @Test("e4bd910: rotation — socket constant, same seed identical, new day differs")
+    @Test("rotation — socket constant, same seed identical, new day differs")
     func rotation() {
         func st(_ id: String) -> RadioStation {
             RadioStation(id: id, name: "S\(id)", streamURL: "https://h\(id).example/s",
@@ -870,7 +870,7 @@ struct RadioStateQueryTests {
         #expect(RadioRotation.seed(day: 1, countryCode: "DE") != RadioRotation.seed(day: 1, countryCode: "AT"))
     }
 
-    @Test("71b277f: regional socket sits on VOTES; trend needs the votes floor")
+    @Test("regional socket sits on VOTES; trend needs the votes floor")
     func regionalSocket() {
         func st(_ id: String, votes: Int) -> RadioStation {
             RadioStation(id: id, name: "S\(id)", streamURL: "https://h\(id).example/s",
@@ -894,7 +894,7 @@ struct RadioStateQueryTests {
         #expect(national.prefix(3).map(\.id) == ["eifellounge", "teuto", "technolovers"])
     }
 
-    @Test("26b2c13: discovery cache round-trips the composed rows for frame 1")
+    @Test("discovery cache round-trips the composed rows for frame 1")
     func discoveryCache() {
         let defaults = UserDefaults(suiteName: "discovery-cache-test")!
         defaults.removePersistentDomain(forName: "discovery-cache-test")
@@ -921,7 +921,7 @@ struct RadioStateQueryTests {
         defaults.removePersistentDomain(forName: "discovery-cache-test")
     }
 
-    @Test("95c5c16: the frame-1 cache round-trip keeps favicon and homepage")
+    @Test("the frame-1 cache round-trip keeps favicon and homepage")
     func discoveryCacheKeepsArtworkFields() {
         let defaults = UserDefaults(suiteName: "discovery-roundtrip-test")!
         defaults.removePersistentDomain(forName: "discovery-roundtrip-test")
@@ -944,7 +944,7 @@ struct RadioStateQueryTests {
         defaults.removePersistentDomain(forName: "discovery-roundtrip-test")
     }
 
-    @Test("a4e747e: a country-filtered list drops foreign entries, keeps empty codes")
+    @Test("a country-filtered list drops foreign entries, keeps empty codes")
     func countryContext() {
         let de = RadioStation(id: "radio:rb:de", name: "Rock Antenne",
                               streamURL: "https://de/stream", countryCode: "DE",

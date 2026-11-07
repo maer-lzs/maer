@@ -47,7 +47,7 @@ struct ForeignStateMatcherTests {
         ForeignStateMatcher.plan(states: states, targets: targets, twinBridge: twin, feedKeyOf: key)
     }
 
-    @Test("Sprosse 1: die GUID trifft, auch wenn Enclosure und Titel abweichen")
+    @Test("die GUID trifft, auch wenn Enclosure und Titel abweichen")
     func guidRung() {
         let t = target("e1", guid: "guid-1", enclosure: "https://cdn/1.mp3", title: "One")
         let p = plan([state(guid: "guid-1", enclosure: "https://other/x.mp3", title: "Other")], [t])
@@ -63,7 +63,7 @@ struct ForeignStateMatcherTests {
         #expect(ForeignStateMatcher.rawGUID(storedGUID: "something-else") == "something-else")
     }
 
-    @Test("Sprosse 2: die Enclosure trifft ueber Schema, Query und Schlussstrich hinweg")
+    @Test("die Enclosure trifft ueber Schema, Query und Schlussstrich hinweg")
     func enclosureRung() {
         let t = target("e1", enclosure: "https://cdn.example/1.mp3", title: "One")
         let p = plan([state(enclosure: "http://CDN.example/1.mp3/?token=abc")], [t])
@@ -71,7 +71,7 @@ struct ForeignStateMatcherTests {
         #expect(p.matches.first?.step == .enclosure)
     }
 
-    @Test("Sprosse 3: die Zwillingsbruecke fuehrt eine freie Enclosure auf die Premium-Folge")
+    @Test("die Zwillingsbruecke fuehrt eine freie Enclosure auf die Premium-Folge")
     func twinRung() {
         let premium = target("p1", enclosure: "https://premium.example/1.mp3?token=x", title: "One")
         let p = plan([state(enclosure: "https://free.example/1.mp3")], [premium],
@@ -80,7 +80,7 @@ struct ForeignStateMatcherTests {
         #expect(p.matches.first?.step == .twin)
     }
 
-    @Test("Sprosse 4: der Link trifft den Folgen-Link und die Permalink-GUID")
+    @Test("der Link trifft den Folgen-Link und die Permalink-GUID")
     func linkRung() {
         let byLink = target("e1", enclosure: "https://cdn/1.mp3", link: "https://a.example/episodes/1", title: "One")
         let byPermalink = target("e2", guid: "https://a.example/episodes/2", enclosure: "https://cdn/2.mp3", title: "Two")
@@ -91,7 +91,7 @@ struct ForeignStateMatcherTests {
         #expect(p.matches.allSatisfy { $0.step == .link })
     }
 
-    @Test("Sprosse 5: der Titel trifft nur, wenn er in Quelle UND Bestand einmalig ist")
+    @Test("der Titel trifft nur, wenn er in Quelle UND Bestand einmalig ist")
     func titleRung() {
         let one = target("e1", enclosure: "https://cdn/1.mp3", title: "  Folge Eins ")
         let twinA = target("e2", enclosure: "https://cdn/2.mp3", title: "Doppelt")

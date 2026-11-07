@@ -226,7 +226,7 @@ struct PodcastShowSettingsReachTests {
         return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
     }
 
-    @Test("GT-15: eine Wahl im Blatt schreibt ueber die eine Regel, und angesehen schreibt sie nichts")
+    @Test("eine Wahl im Blatt schreibt ueber die eine Regel, und angesehen schreibt sie nichts")
     func aChoiceWritesThroughTheOneRule() throws {
         let suite = "showsettings-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -264,7 +264,7 @@ struct PodcastShowSettingsReachTests {
         #expect(notes.said.isEmpty, "dieselbe Wahl noch einmal reist nicht")
     }
 
-    @Test("TF-5a: eine Geste schreibt und sagt nur ihre Wahl, ein fremd uebernommener Wert bleibt")
+    @Test("eine Geste schreibt und sagt nur ihre Wahl, ein fremd uebernommener Wert bleibt")
     func aGestureWritesOnlyItsChoice() throws {
         let suite = "showsettings-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

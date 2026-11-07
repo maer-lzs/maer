@@ -12,7 +12,7 @@ import Foundation
 /// audiobooks that are gone, and nothing of any other source.
 @Suite(.serialized)
 struct BookCleanupTests {
-    @Test("TF-12: die Aufraeumung entfernt nur rohe Hoerbuch-Kennungen, Position und Geschwindigkeit gleich")
+    @Test("die Aufraeumung entfernt nur rohe Hoerbuch-Kennungen, Position und Geschwindigkeit gleich")
     @MainActor
     func onlyRawBookIdsGo() {
         let name = "book-cleanup-\(UUID().uuidString)"
@@ -46,7 +46,7 @@ struct BookCleanupTests {
         }
     }
 
-    @Test("TF-12: die Regel ist positiv, eine Kennung ohne Namensraum und nicht in der Bibliothek")
+    @Test("die Regel ist positiv, eine Kennung ohne Namensraum und nicht in der Bibliothek")
     func theRuleIsPositive() {
         let valid: Set<String> = ["li_kept"]
         #expect(AppStorageKeys.prunedByBookCleanup("li_gone", validItemIds: valid))

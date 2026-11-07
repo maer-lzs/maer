@@ -30,7 +30,7 @@ struct SongListOrderTests {
 
     // MARK: - The order
 
-    @Test("GT-2: jede Ordnung der Alben ordnet auch Titel, Unbekanntes zuletzt, Gleichstand nach Titel und Kennung")
+    @Test("jede Ordnung der Alben ordnet auch Titel, Unbekanntes zuletzt, Gleichstand nach Titel und Kennung")
     func everySortOrdersSongs() {
         let songs = [
             Self.song("s1", "Zebra", artist: "Beta", added: 100, played: 50, plays: 3),
@@ -52,7 +52,7 @@ struct SongListOrderTests {
                 "most plays first, a tie by title, no count last")
     }
 
-    @Test("GT-2: eine sortierte und eine unsortiert gegebene Quelle ergeben im Verbund eine geordnete Liste, in jeder Ordnung")
+    @Test("eine sortierte und eine unsortiert gegebene Quelle ergeben im Verbund eine geordnete Liste, in jeder Ordnung")
     func twoServersMergeIntoOneOrder() async throws {
         let sub = MusicUnionTests.Stand(prefix: "sub:", titles: [])
         let jf = MusicUnionTests.Stand(prefix: "jf:", titles: [])
@@ -75,7 +75,7 @@ struct SongListOrderTests {
         }
     }
 
-    @Test("GT-2: Serverdaten mit neun Nachkommastellen, mit und ohne Zone, Unlesbares ist nil")
+    @Test("Serverdaten mit neun Nachkommastellen, mit und ohne Zone, Unlesbares ist nil")
     func serverDatesAreRead() {
         let navidrome = SongOrder.seconds("2025-03-26T22:26:49.315688846Z")
         #expect(navidrome == SongOrder.seconds("2025-03-26T22:26:49Z"))
@@ -94,7 +94,7 @@ struct SongListOrderTests {
         }, wholeAt: whole, serverCount: count, serverLastScan: scan)
     }
 
-    @Test("GT-2: einmal ganz, danach nur Neues; weniger Titel, sieben Tage oder kein Wasserzeichen heisst ganz")
+    @Test("einmal ganz, danach nur Neues; weniger Titel, sieben Tage oder kein Wasserzeichen heisst ganz")
     func theKeptListStep() {
         let day = 86_400.0
         let now = 1_800_000_000.0
@@ -119,7 +119,7 @@ struct SongListOrderTests {
         #expect(SongCatalogRule.step(kept: Self.catalog(created: [], whole: now), count: 3, lastScan: "s1", now: now) == .whole)
     }
 
-    @Test("GT-2: Neues kommt dazu, ein schon gehaltener Titel wird ersetzt, der Stand des Servers wird vermerkt")
+    @Test("Neues kommt dazu, ein schon gehaltener Titel wird ersetzt, der Stand des Servers wird vermerkt")
     func addingNewSongs() {
         let kept = Self.catalog(created: ["2025-03-26T22:26:49Z", nil], whole: 5)
         let replaced = SongCatalog.Entry(id: "1", title: "neu", artist: nil, album: nil, albumId: nil,
@@ -135,7 +135,7 @@ struct SongListOrderTests {
 
     // MARK: - The servers and the page
 
-    @Test("GT-2: Jellyfin sortiert am Server nach derselben Regel, der Name zuletzt und aufsteigend, nie SortName")
+    @Test("Jellyfin sortiert am Server nach derselben Regel, der Name zuletzt und aufsteigend, nie SortName")
     func jellyfinSortsTheSameWay() {
         #expect(JellyfinProvider.songSort(.nameAZ) == ("Name", "Ascending"))
         #expect(JellyfinProvider.songSort(.kuenstler) == ("Artist,Name", "Ascending,Ascending"))
@@ -167,7 +167,7 @@ struct SongListOrderTests {
         return (1..<songs.count).filter { SongOrder.inOrder(songs[$0], songs[$0 - 1], by: sort) }.count
     }
 
-    @Test("GT2-1: die Seite des Pruefstands, durch den Anbieter gegeben, ist in jeder Ordnung dieselbe wie nach SongOrder", .needsTheTests)
+    @Test("die Seite des Pruefstands, durch den Anbieter gegeben, ist in jeder Ordnung dieselbe wie nach SongOrder", .needsTheTests)
     func theBenchPageIsInSongOrder() throws {
         var serverMisordered = 0
         for (sort, file) in Self.benchFiles {
@@ -183,7 +183,7 @@ struct SongListOrderTests {
         #expect(serverMisordered == 17, "measured: 5, 1, 0, 5 and 6 pairs in the server's Name order")
     }
 
-    @Test("GT-2: Navidrome sortiert auf dem Geraet, ein Fehlschlag ist ein Satz, die Seite nennt den Stand", .needsTheSources)
+    @Test("Navidrome sortiert auf dem Geraet, ein Fehlschlag ist ein Satz, die Seite nennt den Stand", .needsTheSources)
     func theWiring() throws {
         let subsonic = try Self.source("Sources/Providers/SubsonicProvider.swift")
         #expect(subsonic.contains("sorted = SongOrder.sorted(catalog.entries.map(Self.topSong(from:)), by: sort)"))

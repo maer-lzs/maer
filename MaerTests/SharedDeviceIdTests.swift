@@ -146,7 +146,7 @@ struct SharedDeviceIdTests {
         #expect(third.secondsPerItem.values.reduce(0, +) == 150)
     }
 
-    @Test("Auflage 3: ein teilendes Geraet wird neu installiert und nimmt den Topf des anderen; das dritte zaehlt dessen Sekunden zweimal")
+    @Test("ein teilendes Geraet wird neu installiert und nimmt den Topf des anderen; das dritte zaehlt dessen Sekunden zweimal")
     func aSharingDeviceReinstalled() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }

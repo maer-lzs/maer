@@ -25,7 +25,7 @@ struct RecentlyPlayedRowTests {
                         .station(id: "st3"), .album(id: "alb1")])
     }
 
-    @Test("die Abnahme: Album spielen, dann Sender ⇒ Sender zuerst")
+    @Test("Album spielen, dann Sender ⇒ Sender zuerst")
     func acceptanceCase() {
         let out = RecentlyPlayedRow.merged(
             albums: ["alb"], albumTimes: ["alb": 1000],

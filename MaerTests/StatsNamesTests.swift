@@ -41,7 +41,7 @@ struct StatsNamesTests {
         #expect(PodcastIdentity.showTitle(for: showId, in: shows, heard: heard) == c["expect"]?.string, "\(c.slug)")
     }
 
-    @Test("GT-25: ein Sender, der aus Wieder hoeren gefallen ist, behaelt seinen Namen aus Meistgespielt")
+    @Test("ein Sender, der aus Wieder hoeren gefallen ist, behaelt seinen Namen aus Meistgespielt")
     func aStationOutOfListenAgainKeepsItsName() {
         let name = "stats-names-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -54,7 +54,7 @@ struct StatsNamesTests {
         #expect(RadioStore.stationName(forId: "radio:rb:none", defaults: defaults) == nil)
     }
 
-    @Test("GT-26: unter einer Minute steht nichts in meistgehoert und nimmt keinen Platz")
+    @Test("unter einer Minute steht nichts in meistgehoert und nimmt keinen Platz")
     @MainActor func nothingUnderAMinute() throws {
         #expect(StatsView.shortest == 60)
         // The limit leaves room, so only the floor can keep the 59 out.

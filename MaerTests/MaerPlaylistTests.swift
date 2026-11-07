@@ -184,7 +184,7 @@ struct PlaylistSongSemanticsTests {
         }
     }
 
-    @Test("F5b-5: eine Server-Playlist bekommt nur Titel ihres Servers, gemischte nur das Geraet")
+    @Test("eine Server-Playlist bekommt nur Titel ihres Servers, gemischte nur das Geraet")
     func serversForEntries() {
         typealias S = MusicSourceRule.Server
         let both: [S] = [.subsonic, .jellyfin]
@@ -211,7 +211,7 @@ struct PlaylistSongSemanticsTests {
         #expect(MusicSourceRule.owner("lv:176") == nil)
     }
 
-    @Test("F5b-5: vorgewaehlt ist der Server, dessen Playlist zuletzt geaendert wurde")
+    @Test("vorgewaehlt ist der Server, dessen Playlist zuletzt geaendert wurde")
     func lastChangedServer() {
         #expect(PlaylistDestination.lastChanged([(.subsonic, 10), (.jellyfin, 30), (.subsonic, 20)]) == .jellyfin)
         #expect(PlaylistDestination.lastChanged([(.subsonic, nil), (.jellyfin, nil)]) == nil)

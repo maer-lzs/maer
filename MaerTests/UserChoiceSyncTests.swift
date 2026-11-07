@@ -24,7 +24,7 @@ struct UserChoiceMergeTests {
                                        cloud: entry(.string("b"), 200)) == .push(300))
     }
 
-    @Test("TF-1b: der Abgleich zaehlt Abos hier, im Dokument, geloescht und im Dokument, aber hier nicht gehalten")
+    @Test("der Abgleich zaehlt Abos hier, im Dokument, geloescht und im Dokument, aber hier nicht gehalten")
     func subscriptionsCounted() {
         let prefix = UserChoiceCatalog.subscriptionPrefix
         let blob: [String: Any] = [
@@ -48,7 +48,7 @@ struct UserChoiceMergeTests {
                 == .init(local: 1, document: 2, removed: 1, unheld: 1, push: 1))
     }
 
-    @Test("TF-1b: der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich", .needsTheSources)
+    @Test("der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich", .needsTheSources)
     func theCountsAreSaid() throws {
         let flat = FetchAnswerTests.squeezedSource
         let choices = try flat("Sources/Networking/UserChoiceCloudSync.swift")
@@ -201,7 +201,7 @@ struct UserChoiceCloudSyncTests {
         return (sync, defaults, suite)
     }
 
-    @Test("TF-5: Sortierung und Filter je Sendung reisen zum zweiten Geraet, ein Loeschen als Grabstein")
+    @Test("Sortierung und Filter je Sendung reisen zum zweiten Geraet, ein Loeschen als Grabstein")
     func showSortAndFilterTravel() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -295,7 +295,7 @@ struct UserChoiceCloudSyncTests {
 
         b.sync.reconcile()
         let announced = heard.withLock { $0.flatMap { $0 } }
-        #expect(PodcastShowPreferences.adoptionTouches(announced, showId: show), "I1: the open page is told")
+        #expect(PodcastShowPreferences.adoptionTouches(announced, showId: show), "the open page is told")
         #expect(!PodcastShowPreferences.adoptionTouches(announced, showId: show + "-other"), "I3: another show is not")
         #expect(PodcastShowPreferences.load(showId: show, mode: .subscribed, defaults: b.defaults) == chosen,
                 "reading again shows what A chose")
@@ -925,7 +925,7 @@ struct UserChoiceGateTests {
     /// no decision behind it. This one reads the whole source tree: a key
     /// family built as `"name.\(id)"` anywhere carries a class, or it is
     /// named here as no key at all.
-    @Test("TF-5: jede Schluessel-Familie im ganzen Quellbaum hat eine Klasse", .needsTheSources)
+    @Test("jede Schluessel-Familie im ganzen Quellbaum hat eine Klasse", .needsTheSources)
     func everyKeyFamilyInTheSourcesIsClassified() throws {
         let notKeys: [String: String] = [
             "gobackward.": "an SF Symbol name for the skip button, never stored",

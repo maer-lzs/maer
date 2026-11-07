@@ -277,7 +277,7 @@ struct FeedAuthBlockTests {
         #expect(p.putUp == nil)
     }
 
-    @Test("P4-1: vor der ersten Auflistung geht nichts hoch, auch wenn der Speicher leer aussieht")
+    @Test("vor der ersten Auflistung geht nichts hoch, auch wenn der Speicher leer aussieht")
     func nothingGoesUpBeforeTheFirstListing() {
         // Measured on 24.09.: signed in, the session's store empty, and the
         // block went up 4 ms later, before a single foreign one was seen.
@@ -289,7 +289,7 @@ struct FeedAuthBlockTests {
         #expect(after.putUp?.count == 1 && after.hold == nil, "listed and empty: the first device writes")
     }
 
-    @Test("P4-2: jeder Grund zurueckzuhalten hat seine eigenen Worte, ein neueres Format ist kein fremder Code")
+    @Test("jeder Grund zurueckzuhalten hat seine eigenen Worte, ein neueres Format ist kein fremder Code")
     func eachHoldNamesItsReason() {
         #expect(plan(openings: [.sealedForAnother]).hold == .sealedForAnother)
         #expect(plan(openings: [.newerFormat(9), .sealedForAnother]).hold == .newerFormat(9))
@@ -299,7 +299,7 @@ struct FeedAuthBlockTests {
         #expect(FeedAuthRound.Hold.notListedYet.logReason == "the other devices' blocks are not listed yet")
     }
 
-    @Test("P4: der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log", .needsTheSources)
+    @Test("der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log", .needsTheSources)
     func theRunnerWiresListingAndReason() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
@@ -379,7 +379,7 @@ struct FeedAuthBlockTests {
         #expect(text.contains("FeedAuthStanding.notice("), "die Seite entscheidet den Hinweis selbst")
     }
 
-    @Test("S3: die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher", .needsTheSources)
+    @Test("die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher", .needsTheSources)
     func thePageShowsNoCodeAndThePriceComesFirst() throws {
         let text = try settingsPage()
         // Der Code ist abgeschafft: nichts zu kopieren, nichts zu tippen,
@@ -401,7 +401,7 @@ struct FeedAuthBlockTests {
             .components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    @Test("S3: nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends", .needsTheSources)
+    @Test("nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends", .needsTheSources)
     func theRunnerFollowsTheSignIn() throws {
         let code = try settingsCode()
         // The sign-in reaches the runner through the one place that writes
@@ -455,7 +455,7 @@ struct FeedAuthBlockTests {
         #expect(code[signOut.upperBound...].prefix(200).contains("refreshFromSession()"), "signing out does not read the session again")
     }
 
-    @Test("GT-24: waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert", .needsTheSources)
+    @Test("waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert", .needsTheSources)
     func thePasswordInForceMovesIntoTheSection() throws {
         let code = try settingsCode()
         #expect(code.contains("if!settingNewPassword{CredentialField.secret(\"Password\",text:$secret,id:\"maer-sync-password\")}"),

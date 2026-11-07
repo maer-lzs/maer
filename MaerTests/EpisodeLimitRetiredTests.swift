@@ -70,7 +70,7 @@ struct EpisodeLimitRetiredTests {
         cloud.storage[UserChoiceCloudSync.blobKey] = document
     }
 
-    @Test("I1: ein Auffrischen nimmt keiner Sendung eine Folge, auch mit einer alten Grenze auf dem Geraet, und eine angefangene bleibt")
+    @Test("ein Auffrischen nimmt keiner Sendung eine Folge, auch mit einer alten Grenze auf dem Geraet, und eine angefangene bleibt")
     func aRefreshTakesNothing() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("limit-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -133,7 +133,7 @@ struct EpisodeLimitRetiredTests {
         #expect(subs.shows.first?.episodes.count == 30, "the feed carries all thirty, the union holds them")
     }
 
-    @Test("I1: die Grenze reist nicht mehr, zwei Geraete raeumen sie ohne Grabstein und schreiben danach nichts")
+    @Test("die Grenze reist nicht mehr, zwei Geraete raeumen sie ohne Grabstein und schreiben danach nichts")
     func twoDevicesRetireTheLimit() throws {
         let cloud = CountingChoiceCloud()
         let a = device(cloud, now: 10_000)
@@ -185,7 +185,7 @@ struct EpisodeLimitRetiredTests {
         #expect(blob(cloud)["freeCatalogsMasterEnabled"] == nil, "the retired master switch came back")
     }
 
-    @Test("I1: die Schluessel der Grenze stehen nur noch im Ruhestand des Katalogs, kein Pfad schneidet", .needsTheSources)
+    @Test("die Schluessel der Grenze stehen nur noch im Ruhestand des Katalogs, kein Pfad schneidet", .needsTheSources)
     func nothingTrimsAnyMore() throws {
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimit.feed:x"))
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimitAll"))
@@ -242,7 +242,7 @@ struct EpisodeLimitRetiredTests {
         }
     }
 
-    @Test("I5: die ganze Geschichte einer gestoeberten Sendung liefert Folgen oder einen Fehlschlag, und schreibt nichts")
+    @Test("die ganze Geschichte einer gestoeberten Sendung liefert Folgen oder einen Fehlschlag, und schreibt nichts")
     func browsedHistoryAnswers() async throws {
         let url = try #require(URL(string: "https://limit.example/browsed/feed.xml"))
         let key = PodcastIdentity.feedKey(url.absoluteString)
@@ -272,7 +272,7 @@ struct EpisodeLimitRetiredTests {
         #expect(failed == nil, "a failed lookup is no finding")
     }
 
-    @Test("I5: die Seite laedt fuer eine gestoeberte Sendung ueber den Weg fuer den Besuch, nie ueber den Abo-Speicher", .needsTheSources)
+    @Test("die Seite laedt fuer eine gestoeberte Sendung ueber den Weg fuer den Besuch, nie ueber den Abo-Speicher", .needsTheSources)
     func thePageLoadsTheBrowsedHistory() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))

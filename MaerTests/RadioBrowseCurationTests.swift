@@ -81,7 +81,7 @@ struct RadioBrowseCurationTests {
         #expect(RadioBrowseCuration.filtered(curated, query: " ").count == curated.count)
     }
 
-    @Test("cd5cc4a: DE canon — aliases pool onto one entry, raw names kept for bystateexact")
+    @Test("DE canon — aliases pool onto one entry, raw names kept for bystateexact")
     func canonAliases() {
         let raw = [
             RadioBrowseEntry(name: "NRW", stationCount: 12),
@@ -106,7 +106,7 @@ struct RadioBrowseCurationTests {
         #expect(curated.first?.display == "Nordrhein-Westfalen")
     }
 
-    @Test("cd5cc4a: canon fallback — no table means nil (generic curation stays)")
+    @Test("canon fallback — no table means nil (generic curation stays)")
     func canonFallback() {
         let raw = [RadioBrowseEntry(name: "Bretagne", stationCount: 5)]
         #expect(RadioRegionCanon.curated(raw, countryCode: "FR", otherLabel: "Other") == nil)
@@ -121,7 +121,7 @@ struct RadioBrowseCurationTests {
         #expect(ch.first { $0.display == "Zürich" }?.queryNames == [" Zürich"])
     }
 
-    @Test("cd5cc4a: favicon gate — size bounds and placeholder initials")
+    @Test("favicon gate — size bounds and placeholder initials")
     func faviconGate() {
         #expect(RadioFaviconGate.acceptable(pixelWidth: 64, pixelHeight: 64))
         #expect(RadioFaviconGate.acceptable(pixelWidth: 512, pixelHeight: 64))

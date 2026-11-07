@@ -17,14 +17,14 @@ struct PodcastGeneralRuleTests {
         return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
     }
 
-    @Test("D5: ohne eigenen Wert folgt die Sendung, und ein Wert gleich dem allgemeinen ist keine eigene Einstellung")
+    @Test("ohne eigenen Wert folgt die Sendung, und ein Wert gleich dem allgemeinen ist keine eigene Einstellung")
     func whoFollows() {
         #expect(PodcastGeneralRule.effective(stored: nil, general: "latest") == "latest")
         #expect(PodcastGeneralRule.effective(stored: "off", general: "latest") == "off")
         #expect(PodcastGeneralRule.own(stored: ["a": "latest", "b": "all", "c": "off"], general: "all") == ["a", "c"])
     }
 
-    @Test("D6: Alle ueberschreiben nimmt jede eigene, Nur ohne eigene nimmt nur die Kopien des alten Werts")
+    @Test("Alle ueberschreiben nimmt jede eigene, Nur ohne eigene nimmt nur die Kopien des alten Werts")
     func whatAChangeClears() {
         let stored = ["a": "latest", "b": "all"]
         #expect(PodcastGeneralRule.cleared(stored: stored, old: "all", answer: .overwriteAll) == ["a", "b"])

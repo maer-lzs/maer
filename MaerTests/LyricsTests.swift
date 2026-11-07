@@ -91,7 +91,7 @@ struct LyricsTests {
         #expect(AppUserAgent.value.contains("http"))
     }
 
-    @Test("e3dabb3: fromWeb survives the cache roundtrip; old entries decode as server")
+    @Test("fromWeb survives the cache roundtrip; old entries decode as server")
     func fromWebRoundtrip() throws {
         var lyrics = SongLyrics(synced: false, lines: [LyricsLine(start: nil, text: "x")])
         lyrics.fromWeb = true

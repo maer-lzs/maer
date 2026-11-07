@@ -15,7 +15,7 @@ struct ErrorSentenceTests {
     struct Worded: LocalizedError { var errorDescription: String? { "A sentence of its own." } }
     struct Silent: LocalizedError { var errorDescription: String? { nil } }
 
-    @Test("TF-7: ein Fehler mit Satz behaelt ihn, ein Plattformfehler seinen, alles andere heisst nach seiner Art")
+    @Test("ein Fehler mit Satz behaelt ihn, ein Plattformfehler seinen, alles andere heisst nach seiner Art")
     func eachErrorGetsASentence() throws {
         #expect(ErrorSentence.of(Worded()) == "A sentence of its own.")
         #expect(ErrorSentence.of(ItemNotHere.fileGone) == ItemNotHere.fileGone.errorDescription)
@@ -42,7 +42,7 @@ struct ErrorSentenceTests {
         }
     }
 
-    @Test("TF-7: offline heisst an jeder Stelle dasselbe")
+    @Test("offline heisst an jeder Stelle dasselbe")
     func offlineIsOneDefinition() {
         for code in NetworkReach.offlineCodes {
             #expect(NetworkStatus.isOfflineError(URLError(URLError.Code(rawValue: code))))
@@ -54,7 +54,7 @@ struct ErrorSentenceTests {
     /// The question is which text reaches a person, not which folder
     /// builds it. A download phase, a connection test and a sync history
     /// entry are built in Networking and Providers and shown on a page.
-    @Test("TF-7b: kein Text im ganzen Quellbaum nimmt localizedDescription, ausser namentlich mit Grund", .needsTheSources)
+    @Test("kein Text im ganzen Quellbaum nimmt localizedDescription, ausser namentlich mit Grund", .needsTheSources)
     func noScreenReadsTheSystemsText() throws {
         // Each exception names its file and says why.
         let exceptions: [String: String] = [

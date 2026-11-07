@@ -55,7 +55,7 @@ struct LocalFileRootTests {
         return Home(directory: directory)
     }
 
-    @Test("E1a: ohne eigene Wurzel liegt alles im Container, wie vorher")
+    @Test("ohne eigene Wurzel liegt alles im Container, wie vorher")
     func theContainerBehavesAsBefore() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -75,7 +75,7 @@ struct LocalFileRootTests {
         await library.awaitPendingWrites()
     }
 
-    @Test("E1a: jede Lesung und jedes Entfernen fragt die Wurzel, nie den Container selbst")
+    @Test("jede Lesung und jedes Entfernen fragt die Wurzel, nie den Container selbst")
     func everyReadAndRemovalAsksTheRoot() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -115,7 +115,7 @@ struct LocalFileRootTests {
         }.count
     }
 
-    @Test("E1a-Zaun: kein Pfad an der Wurzel vorbei, der Container-Name an einer Stelle, Entfernen ueber die Wurzel",
+    @Test("kein Pfad an der Wurzel vorbei, der Container-Name an einer Stelle, Entfernen ueber die Wurzel",
           .needsTheSources)
     func nobodyReachesPastTheRoot() throws {
         var namesTheContainer: [String] = []

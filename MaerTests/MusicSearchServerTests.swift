@@ -12,7 +12,7 @@ import Foundation
 /// Musik auf einen der zwei Server eingrenzen, nach der Quelle des Treffers.
 @MainActor
 struct MusicSearchServerTests {
-    @Test("GT-3: ohne Wahl bleibt jeder Treffer, mit Wahl nur die Treffer dieses Servers, nach der Kennung")
+    @Test("ohne Wahl bleibt jeder Treffer, mit Wahl nur die Treffer dieses Servers, nach der Kennung")
     func narrowingByTheHitsServer() {
         for id in ["sub:song:1", "jf:song:1", "freecatalog:jamendo:1"] {
             #expect(MusicSourceRule.keeps(id, chosen: nil), "\(id)")
@@ -24,7 +24,7 @@ struct MusicSearchServerTests {
                 "a hit no music server holds is not that server's")
     }
 
-    @Test("GT-3: die Reihe gibt es nur mit zwei Musik-Servern, in ihrer Ordnung und mit dem Namen der Kapsel")
+    @Test("die Reihe gibt es nur mit zwei Musik-Servern, in ihrer Ordnung und mit dem Namen der Kapsel")
     func choicesOnlyWithTwoServers() {
         let names = ["sub": "Navidrome", "jf": "Jellyfin"]
         #expect(MusicSourceRule.searchChoices(serving: .one(.jellyfin), active: [.jellyfin], names: names).isEmpty)
@@ -59,7 +59,7 @@ struct MusicSearchServerTests {
                 "a failure has its own page")
     }
 
-    @Test("GT-3: die Seite grenzt nach der Kennung ein, nur unter Musik, und der Katalog springt nur ein, wenn die Bibliothek nichts hat", .needsTheSources)
+    @Test("die Seite grenzt nach der Kennung ein, nur unter Musik, und der Katalog springt nur ein, wenn die Bibliothek nichts hat", .needsTheSources)
     func theScreenIsWired() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let screen = try String(contentsOf: root.appendingPathComponent("Sources/Views/SearchScreen.swift"), encoding: .utf8)

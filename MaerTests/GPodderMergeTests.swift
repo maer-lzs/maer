@@ -165,7 +165,7 @@ struct GPodderMergeTests {
         #expect(m.mayUpdatePrevState)
     }
 
-    @Test("593d177 R1: loss signature adopts the server wholesale — pull only")
+    @Test("loss signature adopts the server wholesale — pull only")
     func lossSignatureRecovery() {
         let server: Set<String> = Set((1...44).map { "feed\($0)" })
         let merge = GPodderSubscriptionMerge.compute(local: [], server: server, prev: server)
@@ -181,7 +181,7 @@ struct GPodderMergeTests {
         #expect(!fresh.recoveredFromServer)
     }
 
-    @Test("486b293: R1 respects user intents — the last unsubscribe is never resurrected")
+    @Test("R1 respects user intents — the last unsubscribe is never resurrected")
     func recoveryRespectsIntent() {
         // Last-feed unsubscribe: emptiness fully user-explained → NO recovery,
         // the intent remove propagates instead (and only once).
@@ -207,7 +207,7 @@ struct GPodderMergeTests {
         #expect(all.warning == nil)
     }
 
-    @Test("593d177 R2: derived single removes wait for the second sync; user intent applies at once")
+    @Test("derived single removes wait for the second sync; user intent applies at once")
     func derivedSinglesPend() {
         // SERVER side: a derived single (state diff, no user intent) PENDS.
         let derived = GPodderSubscriptionMerge.confirmRemovals(
@@ -232,7 +232,7 @@ struct GPodderMergeTests {
         #expect(localSingle.apply == ["feedX"])
     }
 
-    @Test("593d177: wipe guard — an empty snapshot never overwrites data")
+    @Test("wipe guard — an empty snapshot never overwrites data")
     @MainActor
     func wipeGuard() async throws {
         let subs = PodcastSubscriptions.shared

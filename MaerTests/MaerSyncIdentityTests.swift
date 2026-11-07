@@ -77,7 +77,7 @@ struct MaerSyncIdentityTests {
 
     /// Case 2 of the measurement: B's pot stood at the same version as A's,
     /// and A's mirror replaced it.
-    @Test("Fall 2: B's Topf in gleicher Fassung wird nie durch A's Abbild ersetzt, A's Schlange bleibt bei A")
+    @Test("B's Topf in gleicher Fassung wird nie durch A's Abbild ersetzt, A's Schlange bleibt bei A")
     func anEqualVersionNeverReplacesB() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -103,7 +103,7 @@ struct MaerSyncIdentityTests {
 
     /// Case 1 of the measurement: B had no pot, and A's whole mirror became
     /// B's first document.
-    @Test("Fall 1: ein leeres B bekommt nur, was unter B geschieht")
+    @Test("ein leeres B bekommt nur, was unter B geschieht")
     func anEmptyBGetsOnlyWhatHappensUnderB() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }

@@ -59,7 +59,7 @@ struct ChapterModelTests {
         #expect(v.map(\.id) == [0, 1, 2])
     }
 
-    @Test("TF4: BookFeaturedCard.chapterTitle memo helper resolves the current chapter (nil past the end / no inputs)")
+    @Test("BookFeaturedCard.chapterTitle memo helper resolves the current chapter (nil past the end / no inputs)")
     func featuredCardChapterTitle() {
         let raw = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
         #expect(BookFeaturedCard.chapterTitle(raw: raw, currentTime: 150, duration: 300) == "C1")
@@ -225,7 +225,7 @@ struct ChapterModelTests {
 
     /// The SAME partial-coverage chapters: a BOOK gets the fallback/rest marker,
     /// a PODCAST keeps them as-is (segment markers are legitimate there).
-    @Test("T9b: partial coverage — book falls back, podcast is kept as-is")
+    @Test("partial coverage — book falls back, podcast is kept as-is")
     func partialCoverageByMediaType() {
         let raw = [ch(0, 0, 100), ch(1, 100, 300)]   // ends at 300 of 1000 = 30%
         let book = ChapterModel.resolved(chapters: raw, tracks: [trk(0, 0, 1000)], duration: 1000,
@@ -239,7 +239,7 @@ struct ChapterModelTests {
         #expect(podcast.chapters.map(\.id) == [0, 1]) // NO rest marker appended
     }
 
-    @Test("T9b: podcast with NO chapters stays empty (no track fallback)")
+    @Test("podcast with NO chapters stays empty (no track fallback)")
     func podcastNoChapters() {
         let r = ChapterModel.resolved(chapters: [], tracks: [trk(0, 0, 500), trk(1, 500, 500)],
                                       duration: 1000, isPodcast: true)
@@ -251,7 +251,7 @@ struct ChapterModelTests {
     /// the raw server chapters. "Letzte Flotte" shape: chapters cover only the
     /// first ~30% of the book; past that, the raw `last(where: t >= start)` names
     /// a phantom chapter, while validated `current` correctly returns nil.
-    @Test("V6: raw chapters name a phantom chapter past coverage; validated does not")
+    @Test("raw chapters name a phantom chapter past coverage; validated does not")
     func v6CoverageFallbackChapterLabel() {
         let raw = [ch(0, 0, 100), ch(1, 100, 300)]   // covers 30% of a 1000s book
         // The old bug (raw): position 500 → last chapter whose start <= 500 is chapter 1.
@@ -266,7 +266,7 @@ struct ChapterModelTests {
     // NOTE: these assert LOCALE-INDEPENDENT facts (positions, times, counts).
     // The marker titles are localized ("from"→"ab", "Part N of M"→"Teil N von M").
 
-    @Test("T9d: single-file tail marks are labelled by their start time")
+    @Test("single-file tail marks are labelled by their start time")
     func timeMarkLabelledByPosition() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)
         #expect(r.isFallback == true)
@@ -274,7 +274,7 @@ struct ChapterModelTests {
         #expect(r.chapters.last?.title.contains("1:40") == true)
     }
 
-    @Test("T9d: track fallback is one entry per track, named (not empty)")
+    @Test("track fallback is one entry per track, named (not empty)")
     func trackFallbackNaming() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)],
                                       tracks: [trk(0, 0, 500), trk(1, 500, 500)], duration: 1000)
@@ -283,7 +283,7 @@ struct ChapterModelTests {
         #expect(r.chapters.first?.title.isEmpty == false)    // named "Part 1 of 2"/"Teil 1 von 2"
     }
 
-    @Test("T9d: a large m4b tail gets 15-minute jump marks, not one lump")
+    @Test("a large m4b tail gets 15-minute jump marks, not one lump")
     func timeMarksForLargeTail() {
         // Real chapters cover 0..600 of a 3600s book; the 50-min tail gets marks.
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 300), ch(1, 300, 600)],
@@ -295,7 +295,7 @@ struct ChapterModelTests {
         #expect(marks.first?.title.contains("10:00") == true) // timeLabel(600) == "10:00"
     }
 
-    @Test("X23: one selector label — tracks for music, parts for fallback, chapters otherwise")
+    @Test("one selector label — tracks for music, parts for fallback, chapters otherwise")
     func selectorLabel() {
         // Keys, not localized values. Locale-independent.
         #expect(ChapterModel.selectorLabel(isMusic: true, isFallback: false)

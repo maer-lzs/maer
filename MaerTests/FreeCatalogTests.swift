@@ -72,7 +72,7 @@ struct FreeCatalogTests {
         #expect(tracks[1].startOffset == 30)
     }
 
-    @Test("f374330: ISO-639-3 clause — variants ORed, unmapped codes drop, none maps → nil")
+    @Test("ISO-639-3 clause — variants ORed, unmapped codes drop, none maps → nil")
     func languageClause() {
         #expect(FreeCatalog.archiveLanguageClause(codes: ["de"])
                 == "(language:\"deu\" OR language:\"ger\")")
@@ -91,7 +91,7 @@ struct FreeCatalogTests {
                 == "https://archive.org/services/img/abc")
     }
 
-    @Test("b395e5f: itunes:image extraction — one tag scan, no full parse")
+    @Test("itunes:image extraction — one tag scan, no full parse")
     func itunesImage() {
         let rss = """
         <?xml version="1.0"?><rss><channel><title>X</title>
@@ -106,7 +106,7 @@ struct FreeCatalogTests {
         #expect(FreeCatalog.extractItunesImage(Data("<itunes:image href=\"ftp://x\"/>".utf8)) == nil)
     }
 
-    @Test("aed5d25: artifact deny — meta items drop, real books pass")
+    @Test("artifact deny — meta items drop, real books pass")
     func artifactFilter() {
         #expect(FreeCatalog.isArtifactDoc(identifier: "cdcoverartarchive", title: nil))
         #expect(FreeCatalog.isArtifactDoc(identifier: "librivox_test_item", title: nil))
@@ -116,7 +116,7 @@ struct FreeCatalogTests {
         #expect(!FreeCatalog.isArtifactDoc(identifier: nil, title: nil))
     }
 
-    @Test("aed5d25: track-count plausibility bounds")
+    @Test("track-count plausibility bounds")
     func trackPlausibility() {
         #expect(FreeCatalog.trackCountPlausible(1))
         #expect(FreeCatalog.trackCountPlausible(200))
@@ -124,7 +124,7 @@ struct FreeCatalogTests {
         #expect(!FreeCatalog.trackCountPlausible(201))
     }
 
-    @Test("3ac9183: creator String OR Array — both decode, first leads, join for detail")
+    @Test("creator String OR Array — both decode, first leads, join for detail")
     func creatorArray() throws {
         let data = try CorpusFixture.data("creator-array", ext: "json", subdirectory: "WireCorpus")
         let docs = try ArchiveDecoder.decodePopular(data)
@@ -149,7 +149,7 @@ struct FreeCatalogTests {
         #expect(throws: (any Error).self) { _ = try ArchiveDecoder.decodePopular(broken) }
     }
 
-    @Test("37e4a23: format chain — VBR-only georgeblood plays, FLAC/thumb skipped, 64kb still first")
+    @Test("format chain — VBR-only georgeblood plays, FLAC/thumb skipped, 64kb still first")
     func formatChain() throws {
         let data = try CorpusFixture.data("georgeblood-vbr", ext: "json", subdirectory: "WireCorpus")
         let meta = try JSONDecoder().decode(ArchiveDecoder.MetadataResponse.self, from: data)
@@ -229,7 +229,7 @@ struct FreeCatalogTests {
         #expect(FreeCatalog.preferredAudioFiles(withVBR).map(\.name) == ["a_vbr.mp3"])
     }
 
-    @Test("37e4a23: path-segment encoding — umlauts, apostrophes, brackets, spaces")
+    @Test("path-segment encoding — umlauts, apostrophes, brackets, spaces")
     func pathEncoding() {
         #expect(FreeCatalog.encodedPathSegment("Grieg - Solveig's Lied (Solvejgs sang).mp3")
                 == "Grieg%20-%20Solveig%27s%20Lied%20%28Solvejgs%20sang%29.mp3")
@@ -346,7 +346,7 @@ struct FreeCatalogTests {
         #expect(ohneJamendo == ["jamendo"])
     }
 
-    @Test("31974ef: importer state — failed stays at ITS book, cancel is neutral, busy refuses, and a book without audio asks no server")
+    @Test("importer state — failed stays at ITS book, cancel is neutral, busy refuses, and a book without audio asks no server")
     @MainActor
     func importerState() async throws {
         let importer = LibriVoxImporter.shared
@@ -558,7 +558,7 @@ struct FreeCatalogSelectionTests {
         #expect(FreeCatalog.interleaveByLanguage([[String]](), limit: 3) { $0 }.isEmpty)
     }
 
-    @Test("fbcff9f: the ring reads the import phase; terminal states end it")
+    @Test("the ring reads the import phase; terminal states end it")
     func ringFraction() {
         #expect(LibriVoxImporter.ringFraction(.downloading(section: 1, of: 4)) == 0.25)
         #expect(LibriVoxImporter.ringFraction(.downloading(section: 4, of: 4)) == 1)
@@ -574,7 +574,7 @@ struct FreeCatalogSelectionTests {
         #expect(LibriVoxImporter.ringFraction(.failed("x")) == nil)
     }
 
-    @Test("b81949f: runtime from the item file list — largest format group wins")
+    @Test("runtime from the item file list — largest format group wins")
     func runtimeFromFiles() {
         // The measured shape: only ONE derivative set carries lengths, the
         // others ship without. Ogg and MP3 both complete ⇒ same total.
@@ -622,7 +622,7 @@ struct FreeCatalogSelectionTests {
         #expect(!code.contains("seconds(file.length)"), "the track list reads the length another way again")
     }
 
-    @Test("b81949f: the shared resolution cache never stores a FAILED lookup")
+    @Test("the shared resolution cache never stores a FAILED lookup")
     func resolutionCacheRule() {
         let suite = "resolution-cache-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -647,7 +647,7 @@ struct FreeCatalogSelectionTests {
         #expect(afterNegativeTTL.keys.contains("b") == false)
     }
 
-    @Test("b4fdc36: the cover-cache cap adapts to free space, within bounds")
+    @Test("the cover-cache cap adapts to free space, within bounds")
     func adaptiveCacheCap() {
         let mb: Int64 = 1024 * 1024
         // Roomy device: 5 % of 40 GB = 2 GB ⇒ clamped to the 500 MB ceiling.
@@ -823,7 +823,7 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["  SCIENCE FICTION "]) == ["scifi"])
     }
 
-    @Test("e948444: licence labels stay honest — no blanket 'public domain'")
+    @Test("licence labels stay honest — no blanket 'public domain'")
     func licenceLabels() {
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-nd/2.5/")
                 == "CC BY-NC-ND")
@@ -859,7 +859,7 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.licenceLabel("") == FreeCatalog.unstatedRights)
     }
 
-    @Test("e948444: the track bound is a parameter — series bundles are the unit there")
+    @Test("the track bound is a parameter — series bundles are the unit there")
     func trackCaps() {
         // The measured reality: Gunsmoke 487, Suspense 911 episodes per item.
         #expect(!FreeCatalog.trackCountPlausible(487))
@@ -897,7 +897,7 @@ struct CatalogGenreAxisTests {
                 "the series question is asked outside the one bound: \(askers.sorted())")
     }
 
-    @Test("0ce5df3: Gutenberg path filter — readings in, music examples out")
+    @Test("Gutenberg path filter — readings in, music examples out")
     func gutenbergAudiobookFilter() {
         // Measured on the full stock: readings live under /mp3/ (885) and
         // /<id>-m/ (184); music examples inside scholarly texts under
@@ -934,7 +934,7 @@ struct CatalogGenreAxisTests {
         #expect(!OERRCuration.isFiction(categories: []))
     }
 
-    @Test("L2: broadcasters carry their own search terms, others keep the language term")
+    @Test("broadcasters carry their own search terms, others keep the language term")
     func oerrBroadcasterSearchTerms() {
         let all = OERRCuration.broadcasters
         let abc = all.first { $0.country == .australia }
@@ -947,7 +947,7 @@ struct CatalogGenreAxisTests {
         #expect(de.allSatisfy { $0.searchTerms.isEmpty })
     }
 
-    @Test("bca2d20: LibriVox compilations are excluded — no content twice")
+    @Test("LibriVox compilations are excluded — no content twice")
     func libriVoxDuplicateFilter() {
         func doc(_ id: String, title: String = "T", creator: String = "C") -> ArchivePopularDoc {
             ArchivePopularDoc(identifier: id, title: ArchiveStringList([title]),
@@ -1292,7 +1292,7 @@ struct CatalogGenreAxisTests {
         #expect(Set(mixed.map(\.id)) == Set(lane.map(\.id)))
     }
 
-    @Test("Auftrag O: Track-Titel aus dem Dateinamen, Position -> Folgen-Index")
+    @Test("Track-Titel aus dem Dateinamen, Position -> Folgen-Index")
     func archiveSeriesHelpers() {
         // File name is the episode title: percent-decoded, extension dropped,
         // underscores become spaces.
@@ -1314,7 +1314,7 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.trackIndex(at: 42, tracks: []) == nil)
     }
 
-    @Test("P1: Sprach-Rueckfall ist Sitzungszustand — Seite 2 blaettert ungefiltert weiter")
+    @Test("Sprach-Rueckfall ist Sitzungszustand — Seite 2 blaettert ungefiltert weiter")
     func archiveFallbackPagesOn() async throws {
         // Page 1: the language-filtered query is empty, the base query has
         // stock. The call reports the fallback.
@@ -1342,7 +1342,7 @@ struct CatalogGenreAxisTests {
         #expect(end.docs.isEmpty && !end.unfiltered)
     }
 
-    @Test("P4: Sperrliste — die sechs Kennungen fallen, Nachbarn bleiben")
+    @Test("Sperrliste — die sechs Kennungen fallen, Nachbarn bleiben")
     func curatedExclusions() {
         func doc(_ id: String) -> ArchivePopularDoc {
             ArchivePopularDoc(identifier: id, title: nil, creator: nil,
@@ -1364,7 +1364,7 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["old time radio", "otrr set"]).isEmpty)
     }
 
-    @Test("Befund W: Jamendo-Namen dekodieren HTML-Entities an der Einlese-Stelle")
+    @Test("Jamendo-Namen dekodieren HTML-Entities an der Einlese-Stelle")
     func jamendoEntitiesDecode() {
         let track = JamendoTrack(id: "w1", name: "Song &quot;Alpha&quot;",
                                  artist_name: "Bessonn&amp;sa", image: nil,
@@ -1374,7 +1374,7 @@ struct CatalogGenreAxisTests {
         #expect(item?.author == "Bessonn&sa")
     }
 
-    @Test("P8: Musik-Achse — Faltung aufs Eltern-Regal, Server-Tags je Regal")
+    @Test("Musik-Achse — Faltung aufs Eltern-Regal, Server-Tags je Regal")
     func musicAxisFolding() {
         // Die gefaltete Achse: der Name des Fachs FUEHRT, der Rest folgt
         // alphabetisch und gedeckelt. (Ein rein alphabetischer Schnitt haette
@@ -1393,7 +1393,7 @@ struct CatalogGenreAxisTests {
         }
     }
 
-    @Test("Q2: Titel-Normalisierung — Artikel zurueck, by-Anhang ab, Version als Feld")
+    @Test("Titel-Normalisierung — Artikel zurueck, by-Anhang ab, Version als Feld")
     func titleNormalization() {
         let full = FreeCatalog.normalizedTitle("Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894)")
         #expect(full.title == "Der Struwwelpeter")
@@ -1412,7 +1412,7 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.normalizedTitle("Dracula").title == "Dracula")
     }
 
-    @Test("Q3: Metazeile traegt die Lesung dezent")
+    @Test("Metazeile traegt die Lesung dezent")
     func metaLineCarriesReading() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min", readingVersion: 2)
                 == "1927 · 42 min · " + String(localized: "Reading \(2)"))

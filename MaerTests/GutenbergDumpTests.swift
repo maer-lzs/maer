@@ -79,7 +79,7 @@ struct GutenbergDumpTests {
         return (CatalogStockFetch.DumpPartial(surface: "gutenberg", directory: folder), folder)
     }
 
-    @Test("I1: das Teilstueck bleibt nach dem Lesen stehen, und ein zweiter Lauf liest es von der Platte statt neu zu holen")
+    @Test("das Teilstueck bleibt nach dem Lesen stehen, und ein zweiter Lauf liest es von der Platte statt neu zu holen")
     func theFileStaysUntilTheStockStands() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -154,7 +154,7 @@ struct GutenbergDumpTests {
         #expect(after.isEmpty, "left after the lever: \(after)")
     }
 
-    @Test("I1: eine Datei, die sich zwischen zwei Scheiben oben aendert, faengt neu an und wird fertig")
+    @Test("eine Datei, die sich zwischen zwei Scheiben oben aendert, faengt neu an und wird fertig")
     func aFileRewrittenUpstreamStartsOverAndFinishes() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -167,7 +167,7 @@ struct GutenbergDumpTests {
         #expect(wire.requests == 5, "one slice, the slice that names the change, then three slices of the file as it is now")
     }
 
-    @Test("I2: eine ganze Datei ohne ein einziges Werk scheitert laut, bleibt einmal fuer den naechsten Lauf und geht beim zweiten leeren Lesen")
+    @Test("eine ganze Datei ohne ein einziges Werk scheitert laut, bleibt einmal fuer den naechsten Lauf und geht beim zweiten leeren Lesen")
     func aFileWithoutAWorkFailsAloud() async throws {
         let (partial, folder) = try partial()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -225,7 +225,7 @@ struct GutenbergDumpTests {
         #expect(archive.map(\.id) == ["lva:librivox-work"], "an archive entry keeps its prefix")
     }
 
-    @Test("I2: jeder Ausgang von ensureStock und ein leeres Ende von finish schreiben eine Zeile; das Teilstueck geht erst nach dem Bestand", .needsTheSources)
+    @Test("jeder Ausgang von ensureStock und ein leeres Ende von finish schreiben eine Zeile; das Teilstueck geht erst nach dem Bestand", .needsTheSources)
     func everyEndSaysWhy() throws {
         let service = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/CatalogStockService.swift"), encoding: .utf8))

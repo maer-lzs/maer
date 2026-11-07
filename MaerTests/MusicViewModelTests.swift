@@ -208,7 +208,7 @@ struct MusicViewModelTests {
         #expect(vm.albums.count == 1)
     }
 
-    @Test("S5: pages the catalog until a partial page arrives")
+    @Test("pages the catalog until a partial page arrives")
     func pagesUntilPartial() async {
         let controls = Controls()
         let vm = MusicViewModel(source: MusicSource(
@@ -312,7 +312,7 @@ struct MusicViewModelTests {
 
     final class SortRec { var calls: [(sort: MusicSortOption, offset: Int)] = [] }
 
-    @Test("Teil 2: switching the album sort re-queries from offset 0 with the new sort")
+    @Test("switching the album sort re-queries from offset 0 with the new sort")
     func sortResetsPaging() async {
         let rec = SortRec()
         let vm = MusicViewModel(source: MusicSource(
@@ -386,7 +386,7 @@ struct MusicViewModelTests {
         #expect(!vm.isLoading, "the loading state is cleared, not left spinning")
     }
 
-    @Test("Teil 2: the sort maps to the expected neutral shelf")
+    @Test("the sort maps to the expected neutral shelf")
     func sortTypeMapping() {
         #expect(MusicSortOption.nameAZ.shelf == .alphabetical)
         #expect(MusicSortOption.kuenstler.shelf == .byArtist)

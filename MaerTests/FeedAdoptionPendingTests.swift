@@ -18,7 +18,7 @@ struct FeedAdoptionPendingTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("TF-3: jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund", .needsTheSources)
+    @Test("jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund", .needsTheSources)
     func eachOfferSaysItsOutcome() throws {
         #expect(FeedAdoptionPending.outcome(ok: true, held: true, reason: nil) == "followed")
         #expect(FeedAdoptionPending.outcome(ok: true, held: false, reason: nil) == "twin",

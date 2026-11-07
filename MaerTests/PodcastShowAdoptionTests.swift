@@ -68,13 +68,13 @@ struct PodcastShowAdoptionTests {
             #expect(body.contains("PodcastShowPreferences.adoptionTouches("), "each asks the rule first")
             #expect(["PodcastShowPreferences.load(", "reloadFromStore()", "readPreferences()"].contains { body.contains($0) },
                     "and reads")
-            #expect(!writes.contains { body.contains($0) }, "I2: the handler writes nothing: \(body)")
+            #expect(!writes.contains { body.contains($0) }, "the handler writes nothing: \(body)")
         }
         #expect(page.contains(".task(id: preferencesSlot) { readPreferences() }"), "the page opens and adopts through the same read")
         let read = try #require(functionBody(of: "private func readPreferences() {", in: page))
-        #expect(!writes.contains { read.contains($0) }, "I2: the page's read writes nothing")
+        #expect(!writes.contains { read.contains($0) }, "the page's read writes nothing")
         let reload = try #require(functionBody(of: "private func reloadFromStore() {", in: sheet))
-        #expect(!writes.contains { reload.contains($0) }, "I2: the sheet's read writes nothing")
+        #expect(!writes.contains { reload.contains($0) }, "the sheet's read writes nothing")
         let appear = try #require(sheet.range(of: ".onAppear { reloadFromStore() }"))
         #expect(!appear.isEmpty, "opening and adopting read the same way")
     }

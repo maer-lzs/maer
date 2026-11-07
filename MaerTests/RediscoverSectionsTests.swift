@@ -110,7 +110,7 @@ struct DiscoverFilterTests {
         #expect(out.map(\.title) == ["A", "C"])
     }
 
-    @Test("fb94905: the free twin of a premium subscription is excluded by SHOW identity")
+    @Test("the free twin of a premium subscription is excluded by SHOW identity")
     func excludesByShowIdentity() {
         // The reported case: premium feed subscribed (podcatcher URL), the
         // free Simplecast variant shows up in the pool. Different URL, same
@@ -156,7 +156,7 @@ struct AuthorPortraitRuleTests {
         #expect(LibraryViewModel.authorFilterEnabled(workCount: 12))
     }
 
-    @Test("5dcbf21: dormant shows join with a share cap and the shared threshold")
+    @Test("dormant shows join with a share cap and the shared threshold")
     func dormantShows() {
         let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
         let old = now.timeIntervalSince1970 - 30 * 24 * 3600   // > pausedAfter
@@ -183,7 +183,7 @@ struct AuthorPortraitRuleTests {
         #expect(plain.map(\.id) == ["b"])
     }
 
-    @Test("49dc2c3: unknown last listen means DORMANT, never excluded; proven pauses rank first")
+    @Test("unknown last listen means DORMANT, never excluded; proven pauses rank first")
     func dormantUnknownJoins() {
         let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
         let fresh = now.timeIntervalSince1970 - 2 * 24 * 3600     // heard recently
@@ -207,7 +207,7 @@ struct AuthorPortraitRuleTests {
         #expect(picks.dropFirst().allSatisfy { $0.reason == .showDormantUnknown })
     }
 
-    @Test("49dc2c3: unknown shows count against the SAME share cap")
+    @Test("unknown shows count against the SAME share cap")
     func unknownSharesTheCap() {
         let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
         let old = now.timeIntervalSince1970 - 30 * 24 * 3600
@@ -313,7 +313,7 @@ struct PodcastCategoryMappingTests {
         #expect(FreeCatalog.gutenbergCoverURL(formats: ["image/jpeg": "http://x/c.jpg"]) == nil)
     }
 
-    @Test("6fcb301: one cap for every preview row, chevron only when there is more")
+    @Test("one cap for every preview row, chevron only when there is more")
     func rowPreview() {
         #expect(RowPreview.limit == 12)
         // The cut never grows the collection and never exceeds the cap.
@@ -341,7 +341,7 @@ struct PodcastCategoryMappingTests {
         #expect(!code.contains("total > shown {"), "the heading compares the counts itself")
     }
 
-    @Test("757e2eb: a language spans several storefronts, primary always first")
+    @Test("a language spans several storefronts, primary always first")
     func storefronts() {
         // English deviates by up to 56 % between US and NZ. Asking only the
         // US chart hid that half.

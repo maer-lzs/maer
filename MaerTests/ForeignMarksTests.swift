@@ -75,7 +75,7 @@ struct ForeignMarksTests {
         #expect(PodcastIdentity.showTitle(for: "feed:\(key)", in: [show]) == "Found")
     }
 
-    @Test("S2b I2: ein Wiedergabe-Tick liest die Markenliste nicht und schreibt nur, wenn die Folge markiert war")
+    @Test("ein Wiedergabe-Tick liest die Markenliste nicht und schreibt nur, wenn die Folge markiert war")
     func aTickReadsNoList() {
         ForeignMarks.markImported((0..<500).map { "rss:marks:\($0)" }, in: defaults)
         #expect(ForeignMarks.importedIDs(in: defaults).count == 500)
@@ -98,7 +98,7 @@ struct ForeignMarksTests {
         #expect(left.count == 499 && !left.contains("rss:marks:7"))
     }
 
-    @Test("S2b I4: eine Markenliste von vor dem Stempel wird gelesen, wie sie liegt, und nichts geht verloren")
+    @Test("eine Markenliste von vor dem Stempel wird gelesen, wie sie liegt, und nichts geht verloren")
     func aListFromBeforeTheStampIsReadAsItLies() {
         let earlier = (0..<22_000).map { "rss:earlier:\($0)" }.sorted()
         defaults.set(earlier, forKey: ForeignMarks.importedKey)
@@ -127,7 +127,7 @@ struct ForeignMarksTests {
         }
     }
 
-    @Test("TF-11 I1: ein Wiedergabe-Tick liest nach dem ersten Laden keinen Marken-Schluessel, auch keinen Stempel")
+    @Test("ein Wiedergabe-Tick liest nach dem ersten Laden keinen Marken-Schluessel, auch keinen Stempel")
     func aTickReadsNoMarkKeyAtAll() throws {
         let suite = "tf11-counting-\(UUID().uuidString)"
         let counting = try #require(CountingDefaults(suiteName: suite))
@@ -147,7 +147,7 @@ struct ForeignMarksTests {
         #expect(markReads.isEmpty, "no mark key read after the first load: \(markReads.prefix(5))")
     }
 
-    @Test("TF-11 I2: eine Aenderung von aussen und entfernte Marken werden gesehen")
+    @Test("eine Aenderung von aussen und entfernte Marken werden gesehen")
     func anOutsideChangeIsSeen() throws {
         let suite = "tf11-outside-\(UUID().uuidString)"
         let own = try #require(UserDefaults(suiteName: suite))
@@ -173,7 +173,7 @@ struct ForeignMarksTests {
     /// (measured: the held copy survived it). The app never removes one,
     /// and this keeps it so; a new place that does would need the held
     /// lists to hear it first.
-    @Test("TF-11 I2: die App loescht keine ganze Domaene, die die gehaltenen Marken nicht hoeren", .needsTheSources)
+    @Test("die App loescht keine ganze Domaene, die die gehaltenen Marken nicht hoeren", .needsTheSources)
     func theAppRemovesNoDomain() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.contains { $0.lastPathComponent == "ForeignMarks.swift" },
@@ -189,7 +189,7 @@ struct ForeignMarksTests {
         #expect(hits.isEmpty, "\(hits)")
     }
 
-    @Test("TF-11 I3: viele Grabsteine in einem Abgleich schreiben jede Liste einmal")
+    @Test("viele Grabsteine in einem Abgleich schreiben jede Liste einmal")
     func tombstonesInMassWriteEachListOnce() {
         let ids = (0..<300).map { "rss:tomb:\($0)" }
         ForeignMarks.markImported(ids, in: defaults)
@@ -204,7 +204,7 @@ struct ForeignMarksTests {
         #expect(ids.filter { ForeignMarks.isArchived($0, in: defaults) }.isEmpty)
     }
 
-    @Test("TF-11 I3: der Abgleich und Alle-markieren raeumen in einem Zug", .needsTheSources)
+    @Test("der Abgleich und Alle-markieren raeumen in einem Zug", .needsTheSources)
     func theMassPathsClearTogether() throws {
         for path in ["Sources/Networking/PodcastCloudSync.swift", "Sources/Views/Podcasts/PodcastShowView.swift"] {
             let source = SyncContractFenceTests.stripped(try String(

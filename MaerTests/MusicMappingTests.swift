@@ -82,20 +82,20 @@ struct ArtistPortraitLookupTests {
 
 /// Play-count bars beside each track (pure).
 struct MusicPopularityTests {
-    @Test("GT-18: drei Balken ab zwei Dritteln, zwei ab einem Drittel, einer darunter, keiner bei null, die Grenzen eingeschlossen")
+    @Test("drei Balken ab zwei Dritteln, zwei ab einem Drittel, einer darunter, keiner bei null, die Grenzen eingeschlossen")
     func barsByThirds() {
         #expect(MusicPopularity.bars(playCounts: [9, 6, 5, 3, 2, 1, 0, nil]) == [3, 3, 2, 2, 1, 1, 0, 0],
                 "6 of 9 is exactly two thirds, 3 of 9 exactly one third")
         #expect(MusicPopularity.bars(playCounts: [4]) == [3], "the most played has three")
     }
 
-    @Test("GT-18: ohne Zahlen vom Server keine Balken, und jeder Titel behaelt seinen Platz")
+    @Test("ohne Zahlen vom Server keine Balken, und jeder Titel behaelt seinen Platz")
     func noCountsNoBars() {
         #expect(MusicPopularity.bars(playCounts: [nil, nil, 0]) == [0, 0, 0])
         #expect(MusicPopularity.bars(playCounts: []) == [])
     }
 
-    @Test("GT-18: die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg", .needsTheSources)
+    @Test("die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg", .needsTheSources)
     func thePageWiresTheBars() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicAlbumView.swift")
         #expect(flat.contains("MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))"))
@@ -104,7 +104,7 @@ struct MusicPopularityTests {
         #expect(PopularityBars.label(3) != PopularityBars.label(1), "the level is said in words")
     }
 
-    @Test("GT-18: bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter", .needsTheSources)
+    @Test("bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter", .needsTheSources)
     func theRowGivesTheTitleItsLine() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PopularityBars.swift")
         let large = try #require(flat.range(of: "if typeSize.isAccessibilitySize {"))

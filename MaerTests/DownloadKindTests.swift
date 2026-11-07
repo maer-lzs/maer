@@ -131,7 +131,7 @@ struct DownloadKindTests {
                 "alles auf einmal loeschen darf nur die eine Zeile in den Einstellungen: \(callers)")
     }
 
-    @Test("P8 C: jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein Alle Downloads loeschen und eine Art nur, solange ihr Reiter fehlt", .needsTheSources)
+    @Test("jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein Alle Downloads loeschen und eine Art nur, solange ihr Reiter fehlt", .needsTheSources)
     func eachKindIsDeletedInItsOwnPill() throws {
         let pills = SettingsView.Tab.allCases.compactMap(\.downloads)
         #expect(pills.sorted { $0.rawValue < $1.rawValue } == DownloadKind.allCases.sorted { $0.rawValue < $1.rawValue },

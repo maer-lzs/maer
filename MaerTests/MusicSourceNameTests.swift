@@ -44,7 +44,7 @@ struct MusicSourceNameTests {
         #expect(MusicSourceName.capsule(serving: .one(.jellyfin), name: "Jellyfin") == nil)
     }
 
-    @Test("F5b-4b: nur eine Kennung eines Musikservers traegt die Kapsel, ein Katalog-Titel nie")
+    @Test("nur eine Kennung eines Musikservers traegt die Kapsel, ein Katalog-Titel nie")
     func capsuleOnlyForServerIds() {
         #expect(MusicSourceName.capsule(forItemId: "jf:album:1", serving: .both, name: "Jellyfin") == "Jellyfin")
         #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .both, name: "Navidrome") == "Navidrome")
@@ -59,7 +59,7 @@ struct MusicSourceNameTests {
         #expect(MusicSourceName.capsule(forItemId: "jf:song:2", serving: .both, name: "Jellyfin") == "Jellyfin")
     }
 
-    @Test("F5b-4b: Zelle, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
+    @Test("Zelle, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
     func surfacesAskTheOneQuestion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         // Through the router's door, not the session: the growth fence
@@ -86,7 +86,7 @@ struct MusicSourceNameTests {
         #expect(ItemRouter.empty.sourceLabel("jf:album:1") == nil, "der leere Router antwortet nichts")
     }
 
-    @Test("F5b-4c: jede Musik-Zeile, die zwei Server mischen kann, fragt die Kapsel, je Typ", .needsTheSources)
+    @Test("jede Musik-Zeile, die zwei Server mischen kann, fragt die Kapsel, je Typ", .needsTheSources)
     func rowsAskTheOneQuestion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func body(_ type: String, _ path: String) throws -> String {
@@ -118,7 +118,7 @@ struct MusicSourceNameTests {
         #expect(carPlay.contains("session.musicSourceLabel(forItemId: item.id)"), "die CarPlay-Nebenzeile nennt den Server nicht")
     }
 
-    @Test("F5b-4c: die Zeilen-Kapsel behaelt ihre Vorgabe, ihre alten Rufer aendern sich nicht")
+    @Test("die Zeilen-Kapsel behaelt ihre Vorgabe, ihre alten Rufer aendern sich nicht")
     func originCapsuleKeepsItsDefault() {
         let capsule = OriginCapsule()
         #expect(capsule.text == "YouTube")
@@ -126,7 +126,7 @@ struct MusicSourceNameTests {
         #expect(OriginCapsule(compact: true, text: "Navidrome", systemImage: nil).systemImage == nil)
     }
 
-    @Test("F5b-4b: eine Cover-Kapsel, keine Datei zeichnet sie selbst", .needsTheSources)
+    @Test("eine Cover-Kapsel, keine Datei zeichnet sie selbst", .needsTheSources)
     func oneCoverCapsuleLook() throws {
         // The look as it stands and as it stood (pill), so neither form
         // comes back as a copy.

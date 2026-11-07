@@ -97,7 +97,7 @@ struct LibraryDerivedListsTests {
         #expect(index["missing"] == nil)
     }
 
-    @Test("TF1: multi-file frozen server fraction → makeEntry recomputes from currentTime / local duration")
+    @Test("multi-file frozen server fraction → makeEntry recomputes from currentTime / local duration")
     func tf1MultiFileProgress() {
         let item = entry(id: "mf", title: "Multi").item   // media.duration = 100
         func frac(_ p: BookProgress) -> Double {
@@ -228,7 +228,7 @@ struct LibraryDerivedListsTests {
         }
     }
 
-    @Test("J1-Zaehlregel: Vorschau zaehlt BUECHER — ein Serien-Stapel seine Mitglieder")
+    @Test("Vorschau zaehlt BUECHER — ein Serien-Stapel seine Mitglieder")
     func allBooksPreviewCountsBooks() {
         let entries: [LibraryViewModel.GridEntry] = [
             .series(name: "Saga", entries: [entry(id: "a", title: "A"),
@@ -280,7 +280,7 @@ struct LibraryDerivedListsTests {
         }
     }
 
-    @Test("66f974c: time line ALWAYS filled — remaining when started, total runtime otherwise")
+    @Test("time line ALWAYS filled — remaining when started, total runtime otherwise")
     func timeLine() {
         // Locale-robust (the suite runs on the de sim): assert the NUMBERS
         // and non-emptiness, not localized words.

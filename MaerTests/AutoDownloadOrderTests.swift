@@ -55,7 +55,7 @@ struct AutoDownloadOrderTests {
         }
     }
 
-    @Test("G14-1: angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut", .needsTheSources)
+    @Test("angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut", .needsTheSources)
     func begunMeansHalfAMinute() throws {
         #expect(PodcastAutoDownloadRules.startedAtLeast == 30)
         #expect(PodcastAutoDownloadRules.runGap == 3)

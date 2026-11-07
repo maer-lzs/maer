@@ -84,7 +84,7 @@ struct DownloadedGlyphFenceTests {
         #expect(Self.checksAfterDownloadQuestions(in: far).isEmpty)
     }
 
-    @Test("P3-3: EIN Geladen-Zeichen, das Symbol eine Konstante, an jeder Stelle dieselbe Komponente, nie grau", .needsTheSources)
+    @Test("EIN Geladen-Zeichen, das Symbol eine Konstante, an jeder Stelle dieselbe Komponente, nie grau", .needsTheSources)
     func oneDownloadedMark() throws {
         var literal: [String] = []
         var marks: [String: Int] = [:]

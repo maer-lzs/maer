@@ -1944,6 +1944,81 @@ extension ProjectFileIntegrityTests {
         #expect(drift.isEmpty, "a test comment notes a decision, or a test file carries fewer and its stock is not lowered: \(drift)")
     }
 
+    /// The first string of a test's name or of a message, per line: right
+    /// after the bracket of `@Test(`, `@Suite(`, `#expect(`, `#require(` and
+    /// `Issue.record(`, or after the first comma when the part before holds
+    /// no string. A message behind a condition that holds a string itself
+    /// is not read.
+    nonisolated static let labelPattern =
+        #"(?:@Test|@Suite|#expect|#require|Issue\.record)\((?:[^"\n]*?,\s*)?"((?:[^"\\]|\\.)*)""#
+
+    /// A shorthand before a colon at the start: a commit (`e4bd910:`), a
+    /// mark with a number (`TF-9:`, `S3:`, `F5b-4b:`), a word with a number
+    /// or a letter (`Teil 2:`, `Weg B:`), or a short capital word.
+    nonisolated static let shorthandPattern =
+        #"^(?:[A-Za-z]{1,4}-?[0-9][0-9A-Za-z]*(?:-[0-9A-Za-z]+)*|[A-Z]{1,4}(?:-[0-9A-Za-z]+)+|[0-9a-f]{7,}|[A-Z][a-z]+ [0-9A-Z][0-9a-z]{0,2}|[A-Z]{2,4})(?: [A-Z0-9][0-9A-Za-z]{0,2})*:(?=\s|$)"#
+
+    /// The words that name only the history of a change, and the form of a
+    /// mark of the channel.
+    nonisolated static let historyPattern = #"(?i:auflage|abnahme|nachbesserung)|(?<![A-Za-z])K-[A-Z0-9]"#
+
+    /// Short capital words in front that name the thing, each with why. This
+    /// list grows by hand only.
+    nonisolated static let shorthandsOfTheThing: [String: String] = [
+        "ABS": "the service the names are read from",
+        "CH": "the country whose city names are merged",
+        "SRT": "the transcript format the cues are read in",
+        "VTT": "the transcript format the cues are read in",
+    ]
+
+    /// What a name or a message notes of the history instead of the thing.
+    static func historyMarks(in label: String) -> [String] {
+        var marks = matches(of: Self.shorthandPattern, in: label).filter {
+            Self.shorthandsOfTheThing[String($0.dropLast())] == nil
+        }
+        marks += matches(of: Self.historyPattern, in: label)
+        return marks
+    }
+
+    /// The names and messages of a file with their one-based line.
+    static func labels(in text: String) -> [(line: Int, label: String)] {
+        guard let regex = try? NSRegularExpression(pattern: Self.labelPattern) else {
+            Issue.record("the label pattern does not compile")
+            return []
+        }
+        var out: [(Int, String)] = []
+        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = String(line)
+            for match in regex.matches(in: line, range: NSRange(line.startIndex..., in: line)) {
+                if let range = Range(match.range(at: 1), in: line) { out.append((index + 1, String(line[range]))) }
+            }
+        }
+        return out
+    }
+
+    @Test("Namen und Meldungen der Pruefungen nennen die Sache: kein Kuerzel vorn, keine Geschichte", .needsTheTests)
+    func testLabelsNameTheThing() throws {
+        let files = Self.sourceTexts(in: ["MaerTests", "MaerUITests"])
+        try #require(files.count > 100, "the fence read no test file")
+        var found: [String] = []
+        for (name, text) in files {
+            for (line, label) in Self.labels(in: text) where !Self.historyMarks(in: label).isEmpty {
+                found.append("\(name):\(line) \(label.prefix(60))")
+            }
+        }
+        #expect(found.isEmpty, "a name or a message notes the history, not the thing: \(found)")
+    }
+
+    @Test("der Leser der Namen greift beide Formen und laesst die Sache stehen")
+    func historyMarksReadBothForms() {
+        let noted = ["W-1: x", "e4bd910: x", "Teil 2: x", "S2b I1: x", "kurz, Abnahme folgt", "nach K-W4902", "TF-9 Z2: x"]
+        for label in noted { #expect(!Self.historyMarks(in: label).isEmpty, "\(label)") }
+        let thing = ["CH: variants merge", "SRT: cues", "Stand 59:00 von 60:00", "Mär Sync: x", "die Regel: x", "Musik: x"]
+        for label in thing { #expect(Self.historyMarks(in: label).isEmpty, "\(label)") }
+        let text = "    @Test(\"S3: a\")\n    #expect(x, \"I1: b\")\n    #expect(y == \"z\", \"c\")"
+        #expect(Self.labels(in: text).map(\.label) == ["S3: a", "I1: b"])
+    }
+
     /// A step of a plan (`3b`, `4b`): the older comments still carry some,
     /// so this form has a stock that may only fall.
     static func planSteps(in line: String) -> [String] {

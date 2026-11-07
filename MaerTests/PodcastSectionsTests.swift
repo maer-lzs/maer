@@ -155,7 +155,7 @@ struct PodcastSectionsTests {
         #expect(result.downloaded.map(\.id) == ["s1e2", "s1e1"])
     }
 
-    @Test("S2: snapshot-based off-main compute equals the closure-based compute")
+    @Test("snapshot-based off-main compute equals the closure-based compute")
     func snapshotComputeMatchesClosureCompute() async {
         let shows = [
             show("s1", episodes: [episode("s1e1", pubDate: 100), episode("s1e2", pubDate: 300),
@@ -215,7 +215,7 @@ struct PodcastSectionsTests {
 
     // MARK: - Teil 2: grid sort + filter
 
-    @Test("Paket B: gespiegelte Shows wandern in die Gruppe, nicht ins Abo-Raster")
+    @Test("gespiegelte Shows wandern in die Gruppe, nicht ins Abo-Raster")
     func mirroredShowsSplitIntoTheirGroup() {
         var mirrored = show("m1", episodes: [episode("m1e1", pubDate: 100)])
         mirrored.origin = "pinchflat:tube.example"
@@ -246,7 +246,7 @@ struct PodcastSectionsTests {
         #expect(guids.contains(item.id))
     }
 
-    @Test("Teil 2: compute derives unplayedCount from the play-state snapshot")
+    @Test("compute derives unplayedCount from the play-state snapshot")
     func computeDerivesUnplayedCount() {
         // show a: 2 episodes both unplayed; show b: 1 played.
         let shows = [

@@ -67,7 +67,7 @@ struct DriveModeTests {
             connectedUIDs: ["car-1"], isActive: true) == nil)
     }
 
-    @Test("a74c903: numbered skip glyph for SF-supported intervals, nil else")
+    @Test("numbered skip glyph for SF-supported intervals, nil else")
     func skipGlyphs() {
         #expect(DriveModeView.skipGlyphName(interval: 30, forward: true) == "goforward.30")
         #expect(DriveModeView.skipGlyphName(interval: 15, forward: false) == "gobackward.15")
@@ -144,7 +144,7 @@ struct PodcastListenLogTests {
         #expect(log.entries[guid2] == nil)
     }
 
-    @Test("49dc2c3: bulk-booked entries answer no WHEN; a real transition upgrades them")
+    @Test("bulk-booked entries answer no WHEN; a real transition upgrades them")
     func synthesizedStamps() {
         let log = PodcastListenLog.shared
         log._resetForTest()
@@ -168,7 +168,7 @@ struct PodcastListenLogTests {
         #expect(log.entries[guid]?.hasObservedTime == true)
     }
 
-    @Test("b81949f: the picker unites connected route, paired inputs and the remembered device")
+    @Test("the picker unites connected route, paired inputs and the remembered device")
     func pickerList() {
         let route = [(uid: "car-1", name: "VW Golf", portType: "CarAudio"),
                      (uid: "spk", name: "Speaker", portType: "Speaker")]
@@ -194,7 +194,7 @@ struct PodcastListenLogTests {
                                                remembered: (uid: "", name: "")).isEmpty)
     }
 
-    @Test("01fab43: car-audio candidates — external routes only, built-ins drop")
+    @Test("car-audio candidates — external routes only, built-ins drop")
     func carCandidates() {
         let outputs = [
             (uid: "bt1", name: "VW Golf", portType: "BluetoothA2DPOutput"),

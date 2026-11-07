@@ -81,7 +81,7 @@ struct StandbyLiveRefreshTests {
     /// was opened at t+2 s, and the mirror swapped the book against the
     /// episode in the 1.5 s before `play()` (six times in 25 s). An own
     /// open younger than the adopted pointer is this device's session.
-    @Test("E83: ein eigenes Oeffnen, juenger als der adoptierte Zeiger, wird nie getauscht")
+    @Test("ein eigenes Oeffnen, juenger als der adoptierte Zeiger, wird nie getauscht")
     func ownOpenYoungerThanForeignPointerIsKept() {
         let verdict = PlayerCoordinator.standbyVerdict(
             stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,

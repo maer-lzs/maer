@@ -179,7 +179,7 @@ struct PlaylistPresentationTests {
         #expect(page.contains("letround=coverRound"), "the page's body reads the round")
     }
 
-    @Test("TF2: realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
+    @Test("realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
     func realPlaylistsFilter() {
         func pl(_ id: String, _ name: String?, songs: Int? = 0) -> MusicPlaylist {
             MusicPlaylist(id: id, itemId: id, name: name, songCount: songs, duration: nil, changedAt: nil)

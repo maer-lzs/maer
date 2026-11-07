@@ -69,7 +69,7 @@ struct MaerSyncSilenceTests {
                                body: try MaerSyncStandsWire.encode(["rss:b:2": [300, 7_000]]))
     }
 
-    @Test("I1: nach einem Wechsel des Netzwegs ist die Verbindung neu und das Verpasste geholt, ohne weiteres Zutun")
+    @Test("nach einem Wechsel des Netzwegs ist die Verbindung neu und das Verpasste geholt, ohne weiteres Zutun")
     func aChangedPathReopensAndFetches() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -92,7 +92,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here")
     }
 
-    @Test("I2: ein stummer Socket beim Spielen wird am ausbleibenden Echo des eigenen Anspruchs erkannt und neu verbunden")
+    @Test("ein stummer Socket beim Spielen wird am ausbleibenden Echo des eigenen Anspruchs erkannt und neu verbunden")
     func aSilentSocketIsFoundByTheMissingEcho() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -117,7 +117,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "and what was missed is fetched")
     }
 
-    @Test("I2: das Echo, das kommt, beweist den Socket; es wird nichts neu verbunden")
+    @Test("das Echo, das kommt, beweist den Socket; es wird nichts neu verbunden")
     func anArrivingEchoProvesTheSocket() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -223,7 +223,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.isOpen, "the next occasion opened the socket again")
     }
 
-    @Test("I6: in einem Netz, das nichts durchlaesst, oeffnet eine Minute Anlaesse im Sekundentakt hoechstens sechsmal; danach genau ein Nachholen")
+    @Test("in einem Netz, das nichts durchlaesst, oeffnet eine Minute Anlaesse im Sekundentakt hoechstens sechsmal; danach genau ein Nachholen")
     func aDyingNetworkIsNotRushed() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -319,7 +319,7 @@ struct MaerSyncSilenceTests {
         #expect(socket.contains("cause=\\(MaerSyncLiveness.Cause.closed.rawValue"))
     }
 
-    @Test("I3: in Ruhe fragt die Sitzung nichts, auch nicht nach langer Zeit")
+    @Test("in Ruhe fragt die Sitzung nichts, auch nicht nach langer Zeit")
     func restAsksNothing() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -361,7 +361,7 @@ struct MaerSyncSilenceTests {
     /// Sign in, sign out, sign in again in one run: `start()` runs once per
     /// process, so the second sign-in must fetch and open on its own, with
     /// no foreground, tick or path change in between.
-    @Test("W4: an, ab, an im selben Lauf: die zweite Anmeldung holt sofort und oeffnet den Socket")
+    @Test("an, ab, an im selben Lauf: die zweite Anmeldung holt sofort und oeffnet den Socket")
     func aSecondSignInFetchesRightAway() async throws {
         let suite = "maer-silence-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

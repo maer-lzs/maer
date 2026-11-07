@@ -236,7 +236,7 @@ struct PodcastAutoContinueTests {
         #expect(picked?.id == "e3")
     }
 
-    @Test("K7: same pubDate (batch release) continues via guid tiebreak")
+    @Test("same pubDate (batch release) continues via guid tiebreak")
     func samePubDateTiebreak() {
         let shows = [show("s", feed: "f", episodes: [ep("a", 100), ep("b", 100), ep("c", 100)])]
         let picked = PodcastAutoContinue.pick(
@@ -249,7 +249,7 @@ struct PodcastAutoContinueTests {
         #expect(picked?.id == "c")
     }
 
-    @Test("K6: finished rss: id finds its show via the bridge (abspod catalog)")
+    @Test("finished rss: id finds its show via the bridge (abspod catalog)")
     func bridgeNormalization() {
         let shows = [show("abs", feed: "f", episodes: [ep("abspod:x:1", 100), ep("abspod:x:2", 200)])]
         let bridge = ["rss:f:orig1": ["rss:f:orig1", "abspod:x:1"],

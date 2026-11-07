@@ -131,7 +131,7 @@ struct PodcastTokenFeedTests {
         #expect(!PodcastSubscriptions.isPremiumFeed("https://h.example/feed"))
     }
 
-    @Test("97b1f7c: twins in the stock — free+premium of the same show pair up")
+    @Test("twins in the stock — free+premium of the same show pair up")
     func twinDetection() {
         let shows = [
             (id: "f1", title: "Servus. Grüezi. Hallo.", feedURL: "https://feeds.simplecast.com/abc"),
@@ -149,7 +149,7 @@ struct PodcastTokenFeedTests {
             "https://premium-feed.zeit.de/x/rss-podcatcher?freebie=TOKEN"))
     }
 
-    @Test("92e25d6: manual marking feeds the ONE premium truth")
+    @Test("manual marking feeds the ONE premium truth")
     func manualMarking() {
         let defaults = UserDefaults(suiteName: "premium-marking-test")!
         defaults.removePersistentDomain(forName: "premium-marking-test")
@@ -162,7 +162,7 @@ struct PodcastTokenFeedTests {
         #expect(PodcastSubscriptions.manualPremiumFeedKeys(defaults: defaults).isEmpty)
     }
 
-    @Test("f4f1b46: token-rotation twins collapse at bootstrap — one survivor, progress moved")
+    @Test("token-rotation twins collapse at bootstrap — one survivor, progress moved")
     func identityCollapse() {
         func show(_ token: String, episodes: Int, played: Int = 0) -> PodcastShow {
             let url = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=\(token)"
@@ -203,7 +203,7 @@ struct PodcastTokenFeedTests {
         #expect(two.count == 2)
     }
 
-    @Test("e4b1467: twin offer once per PAIR; suppressed while identity twins exist")
+    @Test("twin offer once per PAIR; suppressed while identity twins exist")
     func twinOfferGuard() {
         let free = (id: "free", title: "Servus. Grüezi. Hallo.", feedURL: "https://feeds.simplecast.com/sgh")
         let p1 = (id: "p1", title: "Servus. Grüezi. Hallo.", feedURL: "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=AAA")
@@ -313,7 +313,7 @@ struct ProviderTokenChainTests {
         #expect(offers.first?.premiumId == "premium")
     }
 
-    @Test("c493143: no 'one feed = one token' assumption is wired in")
+    @Test("no 'one feed = one token' assumption is wired in")
     func formOpen() {
         // TWO shows of the same provider with DIFFERENT tokens stay two
         // independent premium feeds. The measured ZEIT form.
@@ -336,7 +336,7 @@ struct ProviderTokenChainTests {
         #expect(offers.isEmpty)
     }
 
-    @Test("T2-Zaun: gespiegelter Feed traegt NIE Premium — auch mit Host-Credentials")
+    @Test("gespiegelter Feed traegt NIE Premium — auch mit Host-Credentials")
     func mirroredFeedIsNeverPremium() {
         let feedURL = "https://tube.example/sources/abc/feed.xml"
         let key = PodcastIdentity.feedKey(feedURL)
@@ -381,7 +381,7 @@ struct ProviderTokenChainTests {
         #expect(PodcastIdentity.merge(show("b", episodes: 2), show("b", episodes: 5)).origin == nil)
     }
 
-    @Test("U4-Zaun: Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
+    @Test("Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
     func artworkFailureIsNotAbsence() async {
         let service = FeedArtworkService()
         // The service persists its POSITIVE results in the real
@@ -415,7 +415,7 @@ struct ProviderTokenChainTests {
         #expect(empty == nil)
     }
 
-    @Test("S1: Schema-lose Pinchflat-Adressen normalisieren auf denselben Host")
+    @Test("Schema-lose Pinchflat-Adressen normalisieren auf denselben Host")
     func pinchflatAddressNormalization() {
         let hosts = ["tube.x.y", "https://tube.x.y", "  tube.x.y  ", "http://tube.x.y"]
             .map { PinchflatClient.normalizedServerURL(from: $0)?.host }
