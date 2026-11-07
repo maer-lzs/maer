@@ -179,7 +179,9 @@ own name once you unlock.
 device that starts with no statistics of its own waits until iCloud or
 your sync server has delivered what it held, takes its own totals from
 before back, and only then sends its totals again, instead of
-replacing the earlier ones with an empty start.
+replacing the earlier ones with an empty start. If it moves between
+iCloud and your sync server soon after, a day both of them hold counts
+once, not twice.
 
 **A device that used two Audiobookshelf servers tidies up again.** Since
 3.5.1 such a device kept the speed, position and other per-book data of

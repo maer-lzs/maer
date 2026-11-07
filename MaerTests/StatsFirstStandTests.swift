@@ -49,8 +49,28 @@ struct StatsFirstStandTests {
             (.known(seen), false, false),
         ]
         for (base, delivered, waits) in table {
-            #expect(ListeningStatsSync.waitsForFirstStand(base: base, delivered: delivered) == waits,
+            let takesBack = ListeningStatsSync.takesOwnPotBack(base)
+            #expect(ListeningStatsSync.waitsForFirstStand(takesBack: takesBack, delivered: delivered) == waits,
                     "\(base.basis) delivered=\(delivered)")
+        }
+    }
+
+    @Test("dieselbe Frage fuer Halt und Zuruecknehmen: nur ein Start, der keine Zeile lesen konnte, nimmt den Topf zurueck")
+    func whoTakesThePotBack() {
+        let seen = ListeningStatsData(secondsPerDay: ["d": 1], secondsPerItem: [:])
+        let pot = ListeningStatsData(secondsPerDay: ["d": 5], secondsPerItem: [:])
+        let table: [(RowBase<ListeningStatsData>, Bool)] = [
+            (.fresh, true),
+            (.unknown(seen: nil), true),
+            (.unknown(seen: seen), false),
+            (.known(seen), false),
+        ]
+        for (base, takes) in table {
+            let takesBack = ListeningStatsSync.takesOwnPotBack(base)
+            #expect(takesBack == takes, "\(base.basis)")
+            #expect(ListeningStatsSync.waitsForFirstStand(takesBack: takesBack, delivered: false) == takes, "\(base.basis)")
+            #expect((ListeningStatsSync.adoptedOwnPot(takesBack: takesBack, own: seen, pot: pot) != nil) == takes,
+                    "\(base.basis)")
         }
     }
 
@@ -101,6 +121,64 @@ struct StatsFirstStandTests {
         await stats.awaitPendingWrites()
         #expect(stats.ownData.secondsPerDay[today] == 930, "the same day before and after")
         #expect(stats.ownData.secondsPerItem[title] == 930, "the same title before and after")
+    }
+
+    /// A fresh start, held, takes the first carrier's pot back as a sum and
+    /// publishes; the write has not landed, so the rows still count as
+    /// fresh, and the store takes another carrier holding the same history.
+    /// Returns the store and the day counted.
+    private func secondCarrierAfterSum(firstPot: (String) -> ListeningStatsData?,
+                                       secondPot: (String) -> ListeningStatsData,
+                                       name: String) throws -> (ListeningStatsStore, String, URL) {
+        let (database, directory) = try Self.freshDatabase(name)
+        let first = LateCarrier()
+        let stats = ListeningStatsStore(carrier: first, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory())
+        stats.start()
+        stats.addSeconds(30, itemId: "rss:first-stand:same")
+        let today = try #require(stats.ownData.secondsPerDay.first { $0.value == 30 }?.key, "the precondition: one day counted")
+        first.held[SyncHistoryStore.deviceId] = firstPot(today)
+        first.hasDeliveredFirst = true
+        first.onChange?()
+        #expect(!first.published.isEmpty, "the precondition: the first carrier got the pot")
+
+        let second = LateCarrier()
+        stats.follow(second, signedIn: true, by: "witness")
+        second.held[SyncHistoryStore.deviceId] = secondPot(today)
+        second.hasDeliveredFirst = true
+        second.onChange?()
+        return (stats, today, directory)
+    }
+
+    @Test("nach dem ersten Veroeffentlichen addiert kein Halt mehr: ein zweiter Traeger mit demselben Tag zaehlt ihn einmal")
+    func theSumRunsBeforeTheFirstPublishOnly() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let title = "rss:first-stand:same"
+        let history = { (day: String) in ListeningStatsData(secondsPerDay: [day: 900], secondsPerItem: [title: 900]) }
+        let (stats, today, directory) = try secondCarrierAfterSum(firstPot: history, secondPot: history,
+                                                                 name: "first-stand-twice")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        await stats.awaitPendingWrites()
+        #expect(stats.ownData.secondsPerDay[today] == 930, "the day counts once, not 1830")
+        #expect(stats.ownData.secondsPerItem[title] == 930, "the title counts once, not 1830")
+    }
+
+    @Test("ein leerer erster Topf: nach dem Veroeffentlichen nimmt der zweite Traeger das Maximum, dieser Lauf faellt auf einem gemeinsamen Tag weg")
+    func anEmptyFirstPotTakesTheLargerValueLater() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let title = "rss:first-stand:same"
+        let (stats, today, directory) = try secondCarrierAfterSum(
+            firstPot: { _ in nil },
+            secondPot: { day in ListeningStatsData(secondsPerDay: [day: 900], secondsPerItem: [title: 900]) },
+            name: "first-stand-empty")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        await stats.awaitPendingWrites()
+        // Chosen: the sum would be right only while the second carrier holds
+        // nothing of this run; a switch back to the first would count it twice.
+        #expect(stats.ownData.secondsPerDay[today] == 900, "the larger value, this run's 30 s are under it")
+        #expect(stats.ownData.secondsPerItem[title] == 900)
     }
 
     @Test("ein Traeger, der nie liefert, haelt den Topf nur bis zur Frist")

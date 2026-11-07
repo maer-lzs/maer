@@ -66,7 +66,7 @@ struct ModelsLayerFenceTests {
         "Sources/Models/FreeTwin.swift": 1,
         "Sources/Models/LibraryRowDiff.swift": 1,
         "Sources/Models/ListeningStats.swift": 30,
-        "Sources/Models/ListeningStatsSync.swift": 3,
+        "Sources/Models/ListeningStatsSync.swift": 2,
         "Sources/Models/MediaDownloadOffer.swift": 1,
         "Sources/Models/PlaylistDestination.swift": 1,
         "Sources/Models/RadioGenreSources.swift": 8,

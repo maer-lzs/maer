@@ -309,7 +309,8 @@ final class ListeningStatsStore: ObservableObject {
         carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
             self?.cloudChanged()
         })
-        if ListeningStatsSync.waitsForFirstStand(base: rowBase, delivered: carrier.hasDeliveredFirst)
+        if ListeningStatsSync.waitsForFirstStand(takesBack: ListeningStatsSync.takesOwnPotBack(rowBase),
+                                                 delivered: carrier.hasDeliveredFirst)
             || lastingDeviceId() == nil {
             holdForFirstStand()
         } else {
@@ -368,15 +369,20 @@ final class ListeningStatsStore: ObservableObject {
     /// next publish, so a carrier that never delivers holds nothing past
     /// the first pause after it.
     private var firstStandUntil: ContinuousClock.Instant?
-    /// Whether the held start found the rows fresh: then the pot taken back
-    /// is written, though this run may have counted and written since.
-    private var heldStartWasFresh = false
+    /// Whether the held start adds the pot to what this run counted
+    /// (`addedHeldPot`): it found the rows fresh, and this process has not
+    /// published yet, so no pot holds anything of this run. Written either
+    /// way, though this run may have counted and written since.
+    private var heldStartAddsPot = false
+    /// Whether this process sent its pot to a carrier: from then on a pot
+    /// may hold this run's seconds, and no hold adds a pot any more.
+    private var publishedInThisProcess = false
 
     /// Nothing is published until the carrier delivered the far side once
     /// or the limit passed; then the own pot is taken back as at a start.
     private func holdForFirstStand() {
         firstStandUntil = ContinuousClock.now + firstStandWait
-        if case .fresh = rowBase { heldStartWasFresh = true } else { heldStartWasFresh = false }
+        if case .fresh = rowBase, !publishedInThisProcess { heldStartAddsPot = true } else { heldStartAddsPot = false }
         Logger.library.notice("STATS publish held: the carrier=\(self.carrier.name, privacy: .public) has not delivered its first state")
     }
 
@@ -384,7 +390,7 @@ final class ListeningStatsStore: ObservableObject {
         guard firstStandUntil != nil else { return }
         firstStandUntil = nil
         Logger.library.notice("STATS first state by=\(caller, privacy: .public) carrier=\(self.carrier.name, privacy: .public)")
-        adoptOwnPot(asFreshStart: heldStartWasFresh)
+        adoptOwnPot(asFreshStart: heldStartAddsPot)
         publish()
         recompose()
     }
@@ -394,8 +400,9 @@ final class ListeningStatsStore: ObservableObject {
     /// a fresh start; over unread rows only shown and published, and held
     /// apart, so the read that comes later can tell the pot from what this
     /// run counted (`rowsReadForWrite`). `asFreshStart` is a fresh start
-    /// that held for the first state: it may have counted and written
-    /// since, and the pot is added to that and written.
+    /// that held for the first state before this process published: it may
+    /// have counted and written since, and the pot is added to that and
+    /// written.
     private func adoptOwnPot(asFreshStart: Bool) {
         // Taken back under the lasting id only: under an id for this
         // process the carrier holds nothing of this device.
@@ -408,12 +415,13 @@ final class ListeningStatsStore: ObservableObject {
             return
         }
         let devicePot = ownPot.map { ListeningStatsSync.deviceSpace(pot: $0, carried: ledger.carried, since: ledger.since) }
-        // A fresh start that held its publish adds the pot to what it
-        // counted since (`addedHeldPot`); every other start takes the
-        // larger value per key, as before.
+        // A fresh start that held its publish before this process published
+        // adds the pot to what it counted since (`addedHeldPot`); every
+        // other start takes the larger value per key.
         let taken = asFreshStart
             ? ListeningStatsSync.addedHeldPot(own: ownData, pot: devicePot)
-            : ListeningStatsSync.adoptedOwnPot(base: rowBase, own: ownData, pot: devicePot)
+            : ListeningStatsSync.adoptedOwnPot(takesBack: ListeningStatsSync.takesOwnPotBack(rowBase),
+                                               own: ownData, pot: devicePot)
         if let adopted = taken {
             let writes = asFreshStart || ListeningStatsSync.adoptionWrites(rowBase)
             Logger.library.notice("listening stats: local rows not read (plan=\(String(describing: self.rowBase.plan), privacy: .public)), merging this device's own published pot (days=\(ownPot?.secondsPerDay.count ?? 0) items=\(ownPot?.secondsPerItem.count ?? 0)) \(writes ? "written" : "held until the rows are read", privacy: .public)")
@@ -652,6 +660,7 @@ final class ListeningStatsStore: ObservableObject {
             ? ListeningStatsSync.publishable(owned, itemCap: ListeningStatsSync.itemPotCap)
             : owned
         carrier.publish(pot, deviceId: lasting, by: "stats")
+        publishedInThisProcess = true
     }
 
     /// How often the pots were merged, counted for the witness of the

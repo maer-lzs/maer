@@ -97,20 +97,27 @@ nonisolated enum ListeningStatsSync {
             secondsPerItem: itemCap.map { cappedItems(live, limit: $0) } ?? live)
     }
 
-    /// Whether a start takes this device's own published pot back, and the
-    /// stock it then holds; nil = nothing to adopt. Only when the start
-    /// could not read the local rows at all (a fresh file, or a read that
-    /// failed as a whole): a table that was read, empty or not, is the local
-    /// truth, and a pot taken over it would remove read rows on the next
-    /// write. The pot is a part by construction (`publishable`: live items
-    /// only, capped), so it is merged into what the device holds, per key the
-    /// larger value, never written as the whole stock.
-    static func adoptedOwnPot(base: RowBase<ListeningStatsData>, own: ListeningStatsData,
-                              pot: ListeningStatsData?) -> ListeningStatsData? {
+    /// Whether a start takes this device's own published pot back: only
+    /// when it could not read the local rows at all (a fresh file, or a read
+    /// that failed as a whole). A table that was read, empty or not, is the
+    /// local truth, and a pot taken over it would remove read rows on the
+    /// next write. The one answer for the taking back (`adoptedOwnPot`) and
+    /// the hold before it (`waitsForFirstStand`), so both mean the same starts.
+    static func takesOwnPotBack(_ base: RowBase<ListeningStatsData>) -> Bool {
         switch base {
-        case .fresh, .unknown(seen: nil): break
-        case .known, .unknown: return nil
+        case .fresh, .unknown(seen: nil): return true
+        case .known, .unknown: return false
         }
+    }
+
+    /// The stock a start holds when it takes its own published pot back;
+    /// nil = nothing to adopt, or a start that does not take it back
+    /// (`takesOwnPotBack`). The pot is a part by construction (`publishable`:
+    /// live items only, capped), so it is merged into what the device holds,
+    /// per key the larger value, never written as the whole stock.
+    static func adoptedOwnPot(takesBack: Bool, own: ListeningStatsData,
+                              pot: ListeningStatsData?) -> ListeningStatsData? {
+        guard takesBack else { return nil }
         guard let pot, !pot.secondsPerDay.isEmpty || !pot.secondsPerItem.isEmpty else { return nil }
         let merged = ListeningStatsData(
             secondsPerDay: own.secondsPerDay.merging(pot.secondsPerDay, uniquingKeysWith: max),
@@ -119,11 +126,12 @@ nonisolated enum ListeningStatsSync {
     }
 
     /// The own pot taken back after a fresh start that held its publish for
-    /// the carrier's first state: added to what this run counted since,
-    /// per key the sum. Nothing this run counted can be in the pot, since
-    /// nothing was published, and the larger value would drop this run's
-    /// seconds on a day or a title heard before and after. Nil = nothing
-    /// to add.
+    /// the carrier's first state, before this process published anything:
+    /// added to what this run counted since, per key the sum. Nothing this
+    /// run counted can be in the pot then, and the larger value would drop
+    /// this run's seconds on a day or a title heard before and after. Once
+    /// the process published, a pot may hold this run, so a later hold
+    /// takes the larger value (`adoptedOwnPot`). Nil = nothing to add.
     static func addedHeldPot(own: ListeningStatsData, pot: ListeningStatsData?) -> ListeningStatsData? {
         guard let pot, !pot.secondsPerDay.isEmpty || !pot.secondsPerItem.isEmpty else { return nil }
         return ListeningStatsData(
@@ -149,15 +157,11 @@ nonisolated enum ListeningStatsSync {
     }
 
     /// Whether a start holds its pot until the carrier delivered the far
-    /// side once: the same starts that take the own pot back
-    /// (`adoptedOwnPot`), since only they may hold less of this device than
-    /// the far side, and only while the carrier has not delivered.
-    static func waitsForFirstStand(base: RowBase<ListeningStatsData>, delivered: Bool) -> Bool {
-        guard !delivered else { return false }
-        switch base {
-        case .fresh, .unknown(seen: nil): return true
-        case .known, .unknown: return false
-        }
+    /// side once: the starts that take the own pot back (`takesOwnPotBack`),
+    /// since only they may hold less of this device than the far side, and
+    /// only while the carrier has not delivered.
+    static func waitsForFirstStand(takesBack: Bool, delivered: Bool) -> Bool {
+        takesBack && !delivered
     }
 
     /// Whether the start may WRITE an adopted pot. After a fresh start yes:

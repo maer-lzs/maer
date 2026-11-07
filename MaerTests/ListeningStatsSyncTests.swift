@@ -154,10 +154,12 @@ struct ListeningStatsSyncTests {
         let read = ListeningStatsData(secondsPerDay: [:], secondsPerItem: ["abs:book": 900, "radio:rb:x": 60])
         let base = RowBase<ListeningStatsData>.unknown(seen: read)
         let pot = ListeningStatsData(secondsPerDay: ["2026-10-04": 120], secondsPerItem: ["radio:rb:x": 60])
-        #expect(ListeningStatsSync.adoptedOwnPot(base: base, own: read, pot: pot) == nil, "the pot replaced a read table")
+        #expect(ListeningStatsSync.adoptedOwnPot(takesBack: ListeningStatsSync.takesOwnPotBack(base), own: read, pot: pot) == nil,
+                "the pot replaced a read table")
         // What the next write would remove with the stock it keeps: nothing.
         #expect(base.map(\.secondsPerItem).previous(for: read.secondsPerItem).isEmpty)
-        #expect(ListeningStatsSync.adoptedOwnPot(base: .known(read), own: read, pot: pot) == nil)
+        #expect(ListeningStatsSync.adoptedOwnPot(takesBack: ListeningStatsSync.takesOwnPotBack(.known(read)),
+                                                 own: read, pot: pot) == nil)
     }
 
     /// Nothing could be read (a fresh file after a reset, or the read failed
@@ -168,12 +170,14 @@ struct ListeningStatsSyncTests {
         let pot = ListeningStatsData(secondsPerDay: ["2026-10-03": 3600, "2026-10-04": 120],
                                      secondsPerItem: ["radio:rb:x": 60])
         let counted = ListeningStatsData(secondsPerDay: ["2026-10-04": 300], secondsPerItem: [:])
-        let merged = ListeningStatsSync.adoptedOwnPot(base: .unknown(seen: nil), own: counted, pot: pot)
+        #expect(ListeningStatsSync.takesOwnPotBack(.unknown(seen: nil)))
+        #expect(ListeningStatsSync.takesOwnPotBack(.fresh))
+        let merged = ListeningStatsSync.adoptedOwnPot(takesBack: true, own: counted, pot: pot)
         #expect(merged == ListeningStatsData(secondsPerDay: ["2026-10-03": 3600, "2026-10-04": 300],
                                              secondsPerItem: ["radio:rb:x": 60]))
-        #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: ListeningStatsData(), pot: pot) == pot)
-        #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: ListeningStatsData(), pot: nil) == nil)
-        #expect(ListeningStatsSync.adoptedOwnPot(base: .fresh, own: pot, pot: pot) == nil, "a second run changes nothing")
+        #expect(ListeningStatsSync.adoptedOwnPot(takesBack: true, own: ListeningStatsData(), pot: pot) == pot)
+        #expect(ListeningStatsSync.adoptedOwnPot(takesBack: true, own: ListeningStatsData(), pot: nil) == nil)
+        #expect(ListeningStatsSync.adoptedOwnPot(takesBack: true, own: pot, pot: pot) == nil, "a second run changes nothing")
     }
 
     /// The measured loss, with real rows in a database of its own: at the
