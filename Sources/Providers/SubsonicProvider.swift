@@ -94,7 +94,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     @discardableResult
     static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool {
         guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.subsonicServerURLValue, to: newURL) else { return false }
-        Task { await ServerLeaving.forget(ItemNamespace.isSubsonic, player: player) }
+        Task { await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player) }
         Logger.music.notice("SUBSONIC address switch: the titles of the stored server are forgotten")
         return true
     }

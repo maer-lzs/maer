@@ -252,6 +252,11 @@ enum Artwork {
         ServicePlaceholderCovers.forgetAll()
     }
 
+    /// The purgeable covers of a kind of server that left the device.
+    static func forgetServerCovers(of kind: ImageCache.ServerImageKind) {
+        tiers.forgetCovers(of: kind)
+    }
+
     // MARK: - The one network path
 
     /// A picture fresh from the network, at the size the cell asked for: a

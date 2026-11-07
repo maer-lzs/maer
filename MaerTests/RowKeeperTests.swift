@@ -34,8 +34,11 @@ struct RowKeeperTests {
         let reader = try #require(try database.readerNow())
         #expect(try KeyedRowStore<[String]>.loadNow(table: .playQueue, reader: reader).rows["k"] == ["a", "b"],
                 "after awaitAll the last write has landed")
+        // Counted again right before the drop: across the wait above, other
+        // suites running in parallel create keepers of their own.
+        let alive = RowKeepers.count
         keeper = nil
-        #expect(RowKeepers.count == before, "a dead keeper is forgotten")
+        #expect(RowKeepers.count == alive - 1, "a dead keeper is forgotten")
     }
 
     /// The totals keep a chain of their own; it writes to the rows, so the

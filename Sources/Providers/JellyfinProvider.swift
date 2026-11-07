@@ -88,7 +88,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.jellyfinServerURLValue, to: newURL) else { return false }
         AppStorageKeys.setJellyfinToken("")
         AppStorageKeys.jellyfinUserIdValue = ""
-        Task { await ServerLeaving.forget(ItemNamespace.isJellyfin, player: player) }
+        Task { await ServerLeaving.forget(ItemNamespace.isJellyfin, covers: .jellyfin, player: player) }
         Logger.music.notice("JELLYFIN address switch: the access of the stored server is forgotten")
         return true
     }

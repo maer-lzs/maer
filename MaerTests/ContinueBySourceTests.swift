@@ -532,8 +532,8 @@ struct ContinueBySourceTests {
     @Test("wer die Adresse eines Musikservers schreibt, fragt vorher die eine Stelle der Familie, und die vergisst die Zeilen des alten Servers", .needsTheSources)
     func anAddressWriterForgetsTheFormerServer() throws {
         let families: [String: (writer: String, place: String, owns: String)] = [
-            "subsonicServerURLValue": ("SubsonicSourceView.swift", "SubsonicProvider", "ItemNamespace.isSubsonic"),
-            "jellyfinServerURLValue": ("JellyfinSourceView.swift", "JellyfinProvider", "ItemNamespace.isJellyfin"),
+            "subsonicServerURLValue": ("SubsonicSourceView.swift", "SubsonicProvider", "ItemNamespace.isSubsonic, covers: .subsonic"),
+            "jellyfinServerURLValue": ("JellyfinSourceView.swift", "JellyfinProvider", "ItemNamespace.isJellyfin, covers: .jellyfin"),
         ]
         // The harness seeds an address on a fresh device; gpodder keeps no
         // titles in the rows.
@@ -572,8 +572,8 @@ struct ContinueBySourceTests {
         #expect(forgetting == ["ServerLeaving.swift"], "the former server's titles are forgotten elsewhere: \(forgetting.sorted())")
         #expect(ending == ["ServerLeaving.swift"], "a server's player is ended elsewhere: \(ending.sorted())")
         let one = try FetchAnswerTests.squeezedSource("Sources/Providers/ServerLeaving.swift")
-        #expect(one.contains("(player ?? AppSession.shared.playerCoordinator).endPlayback(ownedBy: owns) await ContinueRowsWriter.forgetServer(owns, allRows: allRows)"),
-                "the player does not end before the rows forget")
+        #expect(one.contains("(player ?? AppSession.shared.playerCoordinator).endPlayback(ownedBy: owns) await ContinueRowsWriter.forgetServer(owns, allRows: allRows) Artwork.forgetServerCovers(of: covers)"),
+                "the player does not end before the rows forget, or the purgeable covers of the kind stay")
         for (key, family) in families {
             let place = try FetchAnswerTests.squeezedSource("Sources/Providers/\(family.place).swift")
             #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool { guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.\(key), to: newURL) else { return false }"),

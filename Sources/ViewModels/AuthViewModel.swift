@@ -303,7 +303,7 @@ final class AuthViewModel: ObservableObject {
     /// the welcome page follows), and the books in the device's search. A
     /// sign out and a sign-in to another server both forget it here.
     static func forgetFormerServer(player: PlayerCoordinator? = nil) async {
-        await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, allRows: true, player: player)
+        await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player)
         if #available(iOS 27, *) { await SpotlightIndex.forget() }
     }
 

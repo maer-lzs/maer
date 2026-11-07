@@ -10,13 +10,16 @@ import Foundation
 /// player on one of its titles ends first, with the mini bar (the standby
 /// pointer stays), so it writes no snapshot of that title again; then its
 /// titles leave the widget's rows, and the player's snapshot goes with its
-/// cover when it is one of them. `owns` is the family's namespace;
-/// `allRows` takes every row, for a sign out the home page computes
-/// nothing after.
+/// cover when it is one of them; last, the purgeable covers of its kind go
+/// (`Artwork.forgetServerCovers`), since the next server of the kind may
+/// name another picture alike. `owns` is the family's namespace, `covers`
+/// its kind of cover names; `allRows` takes every row, for a sign out the
+/// home page computes nothing after.
 enum ServerLeaving {
-    static func forget(_ owns: (String) -> Bool, allRows: Bool = false,
+    static func forget(_ owns: (String) -> Bool, covers: ImageCache.ServerImageKind, allRows: Bool = false,
                        player: PlayerCoordinator? = nil) async {
         (player ?? AppSession.shared.playerCoordinator).endPlayback(ownedBy: owns)
         await ContinueRowsWriter.forgetServer(owns, allRows: allRows)
+        Artwork.forgetServerCovers(of: covers)
     }
 }

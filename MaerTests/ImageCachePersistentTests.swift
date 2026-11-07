@@ -145,6 +145,32 @@ struct ImageCachePersistentTests {
         #expect(!ImageCache.shared.testIsPersistent(named: byAddress))
     }
 
+    /// Two servers of one kind after each other hand out the same id for
+    /// different pictures. When the first leaves, the purgeable covers of
+    /// its kind go, so the second's address reads nothing of the first's;
+    /// other kinds, public addresses and the kept folder stay. In a folder
+    /// of its own: the real purgeable folder is shared with parallel
+    /// witnesses.
+    @Test("nach dem Wechsel auf einen zweiten Server derselben Art liest dessen Adresse nichts aus der leerbaren Ablage des ersten")
+    func aSecondServerOfTheKindReadsNothingOfTheFirst() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("covers-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let first = URL(string: "https://gonic-a.example/rest/getCoverArt.view?id=al-12&size=600&t=T1&s=S1")!
+        let second = URL(string: "https://gonic-b.example/rest/getCoverArt.view?id=al-12&size=600&t=T2&s=S2")!
+        let stay = [URL(string: "https://jf.example/Items/al-12/Images/Primary?maxWidth=600")!,
+                    URL(string: "https://archive.org/services/img/librivox_book")!]
+        for url in [first] + stay {
+            try png(8).write(to: folder.appendingPathComponent(ImageCache.fileKey(for: url)))
+        }
+        let read = { (url: URL) in FileManager.default.fileExists(atPath: folder.appendingPathComponent(ImageCache.fileKey(for: url)).path) }
+        #expect(read(second), "the precondition: the second server's address reads the first's cover")
+
+        #expect(ImageCache.removeCovers(of: .subsonic, in: folder) == 1)
+        #expect(!read(second), "the second server's address still reads the first's cover")
+        for url in stay { #expect(read(url), "\(url) went with the server") }
+    }
+
     /// A kept cover an older build named with the key in it: the next sweep
     /// renames it, without the network, and it stays kept under today's name.
     /// The key in the old name is one the server no longer knows (the user

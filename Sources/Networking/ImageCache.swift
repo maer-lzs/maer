@@ -414,18 +414,27 @@ final class ImageCache {
         let path = url.path
         let drops: (String) -> Bool = { dropsFromName($0, clientImage: true) }
         if let match = path.firstMatch(of: #/api/(items|authors)/([^/]+)/(?:cover|image)$/#) {
-            return joinedName(["abs", String(match.1), String(match.2)] + form(of: url, drops: drops))
+            return joinedName([ServerImageKind.audiobookshelf.rawValue, String(match.1), String(match.2)]
+                              + form(of: url, drops: drops))
         }
         if let match = path.firstMatch(of: #/Items/([^/]+)/Images/([^/]+)(?:/([^/]+))?$/#) {
             let index = match.3.map { [String($0)] } ?? []
-            return joinedName(["jf", String(match.1), String(match.2)] + index + form(of: url, drops: drops))
+            return joinedName([ServerImageKind.jellyfin.rawValue, String(match.1), String(match.2)] + index
+                              + form(of: url, drops: drops))
         }
         if SubsonicClient.buildsImage(path: path) {
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             guard let id = items.first(where: { $0.name == "id" })?.value, !id.isEmpty else { return nil }
-            return joinedName(["sub", id] + form(of: url) { drops($0) || $0 == "id" })
+            return joinedName([ServerImageKind.subsonic.rawValue, id] + form(of: url) { drops($0) || $0 == "id" })
         }
         return nil
+    }
+
+    /// The kinds of server a picture is named by, the first part of its name.
+    nonisolated enum ServerImageKind: String, Sendable {
+        case audiobookshelf = "abs"
+        case subsonic = "sub"
+        case jellyfin = "jf"
     }
 
     /// Parts joined into one file name; a name beyond `keyByteCeiling`
@@ -1538,6 +1547,45 @@ final class ImageCache {
     /// and there it is the answer being shown, so paying for it is the
     /// point. Nothing on a render path may ask it.
     func cacheSizeBytes() -> Int64 { Self.directoryBytes(diskDirectory) }
+
+    /// The purgeable covers of one kind of server, when a server of that
+    /// kind leaves the device (`ServerLeaving`). A picture is named by its
+    /// id without the host, so the next server of the kind could hand out
+    /// the same id for another picture, and a hit never loads again. The
+    /// kept covers of downloads stay with their downloads. The memory tiers
+    /// are emptied whole: they cannot be listed by name.
+    func forgetCovers(of kind: ServerImageKind) {
+        memoryCache.removeAllObjects()
+        thumbCache.removeAllObjects()
+        let removed = Self.removeCovers(of: kind, in: diskDirectory)
+        Logger.library.notice("COVERCACHE server left kind=\(kind.rawValue, privacy: .public) removed=\(removed)")
+    }
+
+    /// Removes every cover of the kind from one folder; answers how many went.
+    /// A folder that cannot be listed or a file that does not go is a line:
+    /// such a cover would still answer the next server of the kind.
+    nonisolated static func removeCovers(of kind: ServerImageKind, in directory: URL) -> Int {
+        let prefix = kind.rawValue + "_"
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        } catch {
+            Logger.library.error("COVERCACHE server left, the folder is not listed: \(FailureReason.of(error), privacy: .public)")
+            return 0
+        }
+        var removed = 0
+        var failed = 0
+        for file in files where file.lastPathComponent.hasPrefix(prefix) {
+            do {
+                try FileManager.default.removeItem(at: file)
+                removed += 1
+            } catch {
+                failed += 1
+            }
+        }
+        if failed > 0 { Logger.library.error("COVERCACHE server left, covers that stayed=\(failed)") }
+        return removed
+    }
 
     /// Clears the purgeable cover cache (persistent download covers stay).
     func clearCache() {
