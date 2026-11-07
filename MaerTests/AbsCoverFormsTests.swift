@@ -53,8 +53,11 @@ struct AbsCoverFormsTests {
         let cache = ImageCache.shared
         let names = cache.formerNames(for: grid)
         #expect(names.first == cache.testKey(for: large))
-        #expect(names.count == 2)
-        #expect(cache.formerNames(for: large) == [names[1]], "the original leads to the name from before 57")
+        #expect(Array(names.dropFirst().prefix(2)) == [ImageCache.addressName(for: grid), ImageCache.addressName(for: large)],
+                "then both forms by their address, as before the names by id")
+        #expect(names.count == 4)
+        #expect(cache.formerNames(for: large) == [ImageCache.addressName(for: large), names[3]],
+                "the original leads to its name by address, then to the name from before 57")
     }
 
     @Test("offline dekodiert die Rasterzelle das gesicherte grosse Bild verkleinert")

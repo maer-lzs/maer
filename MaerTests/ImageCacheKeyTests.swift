@@ -117,10 +117,11 @@ struct ImageCacheKeyTests {
     }
 
     /// A name an older build wrote with the key in it becomes exactly the
-    /// name the rule gives today.
-    @Test("ein alter Name mit Schluessel wird genau der heutige Name")
+    /// name by address without it, which the read and the sweep know as a
+    /// former name (`formerNames`, `legacyMoves`).
+    @Test("ein alter Name mit Schluessel wird genau der Name nach Adresse ohne ihn")
     func anOldNameWithTheKeyBecomesTodaysName() {
-        let today = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600")
+        let today = ImageCache.addressName(for: URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600")!)
         let old = "nc.example.lan__rest_getCoverArt.view_apiKey=SECRETKEY1_id=al-1_size=600"
         #expect(ImageCache.nameWithoutSignIn(old) == today)
         #expect(ImageCache.nameWithoutSignIn(today) == nil, "a name without a sign-in part stays")
@@ -130,7 +131,7 @@ struct ImageCacheKeyTests {
     /// its pieces go with the sign-in part, no piece of the key stays.
     @Test("ein Schluessel mit Unterstrich, Schraegstrich oder Doppelpunkt verschwindet ganz aus dem alten Namen")
     func aKeyWithSeparatorsLeavesNoPiece() {
-        let today = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=ab_cd/e:f&id=al-1&size=600")
+        let today = ImageCache.addressName(for: URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=ab_cd/e:f&id=al-1&size=600")!)
         let old = "nc.example.lan__rest_getCoverArt.view_apiKey=ab_cd_e_f_id=al-1_size=600"
         let renamed = ImageCache.nameWithoutSignIn(old)
         #expect(renamed == today)
@@ -188,6 +189,94 @@ struct ImageCacheKeyTests {
         let built = try #require(subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]))
         let name = ImageCache.shared.testKey(for: built)
         #expect(!name.contains("t=") && !name.contains("s=") && !name.contains("u=hoerer"), "a sign-in part entered: \(name)")
+    }
+
+    @Test("ein Bild der eigenen Server heisst nach Art, Kennung und Form, auf jedem Wirt und unter jedem Pfad gleich")
+    func aServerPictureIsNamedByItsId() throws {
+        let table: [(String, String, String)] = [
+            ("https://abs.example.lan/api/items/li_1/cover?width=400&token=A",
+             "https://books.other.example/abs/api/items/li_1/cover?width=400&token=B", "abs_items_li_1_width=400"),
+            ("https://abs.example.lan/api/items/li_1/cover?raw=1&token=A",
+             "http://10.0.0.2:13378/api/items/li_1/cover?raw=1", "abs_items_li_1_raw=1"),
+            ("https://abs.example.lan/api/authors/aut_1/image?token=A",
+             "https://new.example/api/authors/aut_1/image", "abs_authors_aut_1"),
+            ("https://music.example.lan/rest/getCoverArt.view?id=al-1&size=600&u=a&t=T1&s=S1&v=1&c=Maer&f=json",
+             "https://nd.other.example/sub/rest/getCoverArt.view?id=al-1&size=600&apiKey=K&v=1&c=Maer&f=json",
+             "sub_al-1_size=600"),
+            ("https://jf.example.lan/Items/it1/Images/Primary?maxWidth=600&ApiKey=A",
+             "https://media.other.example/jellyfin/Items/it1/Images/Primary?maxWidth=600&ApiKey=B",
+             "jf_it1_Primary_maxWidth=600"),
+            ("https://jf.example.lan/Items/it1/Images/Backdrop/0?ApiKey=A",
+             "https://media.other.example/Items/it1/Images/Backdrop/0", "jf_it1_Backdrop_0"),
+        ]
+        for (first, moved, expected) in table {
+            #expect(key(first) == expected, "\(first)")
+            #expect(key(moved) == expected, "a move of the server renamed \(moved)")
+        }
+        let primary = key("https://jf.example.lan/Items/it1/Images/Primary?ApiKey=A")
+        #expect(primary != key("https://jf.example.lan/Items/it1/Images/Backdrop/0?ApiKey=A"),
+                "two types of one item share a name")
+        #expect(key("https://music.example.lan/rest/getCoverArt.view?id=al-1&size=300")
+                != key("https://music.example.lan/rest/getCoverArt.view?id=al-1&size=600"), "two sizes share a name")
+        #expect(key("https://music.example.lan/rest/getCoverArt.view?id=al-1")
+                != key("https://jf.example.lan/Items/al-1/Images/Primary"), "two kinds of server share a name")
+    }
+
+    @Test("eine oeffentliche Adresse heisst weiter nach Wirt, Pfad und Abfrage")
+    func aPublicAddressKeepsItsName() {
+        let address = "https://archive.org/services/img/librivox_book"
+        #expect(ImageCache.serverImageName(URL(string: address)!) == nil)
+        #expect(key(address) == "archive.org__services_img_librivox_book")
+        #expect(key("https://media.npr.org/assets/img/show.jpg?s=1400") == "media.npr.org__assets_img_show.jpg_s=1400")
+    }
+
+    @Test("jede Bild-Adresse, die ein Klient baut, heisst ohne Wirt")
+    func everyBuiltServerPictureIsNamedWithoutItsHost() throws {
+        let subsonic = try #require(SubsonicClient(serverURL: "https://music.example.lan/sub", username: "hoerer", password: "geheim-42"))
+        let abs = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "jwt-1")
+        let jellyfin = JellyfinClient(serverURL: "https://jf.example.lan", username: "u", password: "p",
+                                      deviceId: "d", accessToken: "tok", userId: "user")
+        let built = [subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]),
+                     abs.coverURL(forItemId: "li_1"), abs.largeCoverURL(forItemId: "li_1"),
+                     abs.authorImageURL(authorId: "aut_1"),
+                     jellyfin.imageURL(itemId: "it1", maxWidth: 600)].compactMap { $0 }
+        #expect(built.count == 5, "a client built no address")
+        for url in built {
+            let name = try #require(ImageCache.serverImageName(url), "\(url) is not read as a server picture")
+            #expect(!name.contains("example") && name == key(url.absoluteString), "\(name)")
+        }
+    }
+
+    /// A fetch that counts its runs and holds until it is opened.
+    @MainActor
+    private final class Runs {
+        private(set) var count = 0
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+        private var isOpen = false
+        func run() async -> Artwork.Fetched {
+            count += 1
+            if !isOpen { await withCheckedContinuation { waiting.append($0) } }
+            return .unanswered
+        }
+        func open() {
+            isOpen = true
+            waiting.forEach { $0.resume() }
+            waiting = []
+        }
+    }
+
+    @Test("zwei Adressen desselben Covers mit anderem Salz sind derselbe Name und ein Abruf")
+    func oneCoverWithTwoSaltsIsOneFetch() async throws {
+        let one = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-9&size=600&t=T1&s=S1")!
+        let two = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-9&size=600&t=T2&s=S2")!
+        #expect(ImageCache.fileKey(for: one) == ImageCache.fileKey(for: two))
+        let runs = Runs()
+        let first = Task { await CoverFetchCoalescer.fetch(one) { await runs.run() } }
+        let second = Task { await CoverFetchCoalescer.fetch(two) { await runs.run() } }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        runs.open()
+        _ = await (first.value, second.value)
+        #expect(runs.count == 1, "two salts fetched twice")
     }
 }
 #endif

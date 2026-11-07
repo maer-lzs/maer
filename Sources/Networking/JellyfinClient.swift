@@ -112,9 +112,10 @@ final class JellyfinClient {
     nonisolated static let mediaAuthQueryName = "ApiKey"
 
     /// Whether a path is one of this client's image addresses
-    /// (`Items/<id>/Images/<type>`, see `imageURL(itemId:maxWidth:)`).
+    /// (`Items/<id>/Images/<type>`, see `imageURL(itemId:maxWidth:)`, and
+    /// the indexed form `Items/<id>/Images/<type>/<index>`).
     nonisolated static func buildsImage(path: String) -> Bool {
-        path.range(of: #"/Items/[^/]+/Images/[^/]+$"#, options: .regularExpression) != nil
+        path.range(of: #"/Items/[^/]+/Images/[^/]+(/[0-9]+)?$"#, options: .regularExpression) != nil
     }
 
     private func base() throws -> URL {

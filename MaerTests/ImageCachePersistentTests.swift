@@ -98,6 +98,53 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: new) != nil, "the read paths find it under the new address")
     }
 
+    /// A server picture of a download, kept, after the server moved to
+    /// another host and base path: its name is the same, so the read finds
+    /// it without the network (the new host does not answer).
+    @Test("nach einem Umzug des Servers findet ein Download sein Cover ohne Netz")
+    func aMovedServerKeepsTheCover() async {
+        let tag = UUID().uuidString.prefix(8)
+        let before = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
+        let after = URL(string: "https://moved.invalid/navidrome/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T2&s=S2")!
+        await ImageCache.shared.makePersistent(coverURL: before, data: png(64))
+        defer { ImageCache.shared.removePersistent(coverURL: after) }
+        #expect(ImageCache.shared.testIsPersistent(after), "the moved address names another file")
+        #expect(await ImageCache.shared.thumbnail(for: after) != nil, "the read did not find the kept cover")
+    }
+
+    /// A kept cover from before server pictures were named by their id
+    /// stands under its name by address: it is read, and the sweep moves it
+    /// to the name by id, without the network.
+    @Test("ein geschuetztes Cover unter dem Namen nach Adresse wird gelesen und zieht im Fegelauf unter den Namen nach Bild")
+    func aKeptCoverByAddressMovesToItsNameById() async {
+        let tag = UUID().uuidString.prefix(8)
+        let url = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
+        let byAddress = "music.example.lan__rest_getCoverArt.view_id=al-\(tag)_size=600"
+        #expect(ImageCache.shared.testPlacePersistent(png(64), named: byAddress), "the precondition: kept by address")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        #expect(!ImageCache.shared.testIsPersistent(url), "the precondition: not yet under the name by id")
+        #expect(await ImageCache.shared.thumbnail(for: url) != nil, "the kept cover was not read under its former name")
+        await ImageCache.shared.testMoveLegacyNames(activeCoverURLs: [url])
+        #expect(ImageCache.shared.testIsPersistent(url), "the sweep left it under the name by address")
+        #expect(!ImageCache.shared.testIsPersistent(named: byAddress))
+    }
+
+    /// The id move of a music server right after the update: the kept cover
+    /// still stands under its name by address and takes the new name by id.
+    @Test("eine Umschluesselung benennt auch ein Cover um, das noch unter dem Namen nach Adresse steht")
+    func anIdMoveRenamesACoverStillByAddress() async {
+        let tag = UUID().uuidString.prefix(8)
+        let old = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=old-\(tag)&size=600&t=T1")!
+        let new = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=new-\(tag)&size=600&t=T2")!
+        let byAddress = "music.example.lan__rest_getCoverArt.view_id=old-\(tag)_size=600"
+        #expect(ImageCache.shared.testPlacePersistent(png(64), named: byAddress), "the precondition: kept by address")
+        defer { ImageCache.shared.removePersistent(coverURL: new) }
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        await ImageCache.shared.testDiskSettled(new)
+        #expect(ImageCache.shared.testIsPersistent(new), "the cover did not take the new name")
+        #expect(!ImageCache.shared.testIsPersistent(named: byAddress))
+    }
+
     /// A kept cover an older build named with the key in it: the next sweep
     /// renames it, without the network, and it stays kept under today's name.
     /// The key in the old name is one the server no longer knows (the user
@@ -112,8 +159,10 @@ struct ImageCachePersistentTests {
         #expect(!ImageCache.shared.testIsPersistent(url), "the precondition: not yet under today's name")
         // An incomplete answer, so the pass demotes nothing of its neighbours.
         await ImageCache.shared.performMaintenance(activeCoverURLs: [], knowsAll: false).value
-        #expect(ImageCache.shared.testIsPersistent(url), "the cover stands kept under the name without the key")
+        #expect(ImageCache.shared.testIsPersistent(named: ImageCache.addressName(for: url)),
+                "the cover stands kept under the name without the key")
         #expect(!ImageCache.shared.testIsPersistent(named: old), "no name carries the key any more")
+        #expect(await ImageCache.shared.thumbnail(for: url) != nil, "the read does not find it under its former name")
     }
 
     /// The kept cover of a downloaded episode with a foreign cover address

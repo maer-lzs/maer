@@ -40,12 +40,14 @@ final class CoverColorLoader: ObservableObject {
     /// Ready-made colors per cover URL. Computed once, then instantly available.
     /// Takes the color work out of scrolling (cards that reappear hit the cache
     /// instead of recomputing).
-    private static var colorCache: [URL: (accent: Color, top: Color, bottom: Color)] = [:]
+    /// Keyed by the cover's name (`ImageCache.fileKey`), so an address whose
+    /// sign-in changes per request still hits.
+    private static var colorCache: [String: (accent: Color, top: Color, bottom: Color)] = [:]
 
     func load(from url: URL?) async {
         guard let url else { return }
         await Self.prewarm(url: url)   // ensures the color is in the cache
-        if let cached = Self.colorCache[url] {
+        if let cached = Self.colorCache[ImageCache.fileKey(for: url)] {
             accent = cached.accent
             topAccent = cached.top
             bottomAccent = cached.bottom
@@ -72,12 +74,14 @@ final class CoverColorLoader: ObservableObject {
     /// the list, so NOTHING happens while scrolling the cards. No-op if already
     /// cached.
     static func prewarm(url: URL?) async {
-        guard let url, colorCache[url] == nil else { return }
+        guard let url else { return }
+        let name = ImageCache.fileKey(for: url)
+        guard colorCache[name] == nil else { return }
         // The one door: cache first, the cover lane second, cached after.
         guard let image = await Artwork.image(for: url)?.image else { return }
         // Color computation (CGContext draw) runs off-main (nonisolated async).
         if let colors = await colors(from: image) {
-            colorCache[url] = colors
+            colorCache[name] = colors
         }
     }
 

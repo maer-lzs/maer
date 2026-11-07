@@ -22,7 +22,8 @@ final class ImageCache {
     private let memoryCache = NSCache<NSString, UIImage>()
     /// Is a prefetch running for this cover? Prevents loading the same cover
     /// multiple times in parallel (prefetch + visible cell).
-    private var inFlight = Set<URL>()
+    /// The covers a preload fetches now, by name (`fileKey`).
+    private var inFlight = Set<String>()
     /// Small tier derived from the full covers for grid/row cells: decoding
     /// the full ~2000 px cover for a ~150 pt cell costs ~16 MB RAM per image
     /// and stutters scrolling with large libraries. Memory-only. Always
@@ -326,12 +327,17 @@ final class ImageCache {
     /// the disk cache the way the token did.
     nonisolated private static let keyByteCeiling = 200
 
-    /// Host + path + the STABLE query params (e.g. Subsonic `id`/`size`). Path
-    /// alone collided every Subsonic cover onto one key. Their identifying
-    /// `id` lives in the query, so all albums shared a single cached file.
-    nonisolated private func key(for url: URL) -> String {
-        let clientImage = Self.isClientImage(url)
-        return Self.fileName(for: url) { Self.dropsFromName($0, clientImage: clientImage) }
+    /// A picture of our servers by its kind, id and form
+    /// (`serverImageName`); any other address by host + path + the STABLE
+    /// query params. Path alone collided every Subsonic cover onto one key:
+    /// their identifying `id` lives in the query.
+    nonisolated private func key(for url: URL) -> String { Self.fileKey(for: url) }
+
+    /// The name by host, path and query: every address before server
+    /// pictures were named by their id, and every public address still.
+    nonisolated static func addressName(for url: URL) -> String {
+        let clientImage = isClientImage(url)
+        return fileName(for: url) { dropsFromName($0, clientImage: clientImage) }
     }
 
     /// The names a cover may stand under from before, in the order they are
@@ -339,22 +345,38 @@ final class ImageCache {
     /// (`CoverAddressHistory`); an Audiobookshelf grid cover
     /// (`APIClient.coverWidthName`) under the unscaled name a download keeps,
     /// then under the name from before 3.5 (57); an unscaled one under that
-    /// name. A downloaded title's kept cover stands there until today's has
-    /// arrived. Empty for every other address.
+    /// name. A picture of our servers also under the name by its address
+    /// it had before it was named by its id (`addressName`), so a kept
+    /// cover is read offline until today's has arrived under the new name.
+    /// Empty for every other address.
     nonisolated func formerNames(for url: URL) -> [String] {
         if let former = CoverAddressHistory.formerAddress(of: url) { return [key(for: former)] }
+        var names: [String] = []
+        if let unscaled = Self.absUnscaled(url) { names.append(key(for: unscaled)) }
+        if Self.serverImageName(url) != nil {
+            names.append(Self.addressName(for: url))
+            if let unscaled = Self.absUnscaled(url) { names.append(Self.addressName(for: unscaled)) }
+        }
+        if APIClient.buildsImage(path: url.path),
+           let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+           items.contains(where: { [APIClient.coverWidthName, APIClient.coverOriginalName].contains($0.name) }) {
+            let forms: Set<String> = [APIClient.coverOriginalName, APIClient.coverWidthName]
+            names.append(Self.fileName(for: url) { Self.dropsFromName($0, clientImage: true) || forms.contains($0) })
+        }
+        var seen: Set<String> = [key(for: url)]
+        return names.filter { seen.insert($0).inserted }
+    }
+
+    /// The unscaled form of an Audiobookshelf grid cover, which a download
+    /// keeps; nil for every other address.
+    nonisolated private static func absUnscaled(_ url: URL) -> URL? {
         guard APIClient.buildsImage(path: url.path),
               var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let items = components.queryItems else { return [] }
-        let forms: Set<String> = [APIClient.coverOriginalName, APIClient.coverWidthName]
-        let plain = Self.fileName(for: url) { Self.dropsFromName($0, clientImage: true) || forms.contains($0) }
-        if items.contains(where: { $0.name == APIClient.coverWidthName }) {
-            components.setQuery(items.filter { $0.name != APIClient.coverWidthName }
-                                + [URLQueryItem(name: APIClient.coverOriginalName, value: "1")])
-            guard let unscaled = components.url else { return [plain] }
-            return [key(for: unscaled), plain]
-        }
-        return items.contains(where: { $0.name == APIClient.coverOriginalName }) ? [plain] : []
+              let items = components.queryItems,
+              items.contains(where: { $0.name == APIClient.coverWidthName }) else { return nil }
+        components.setQuery(items.filter { $0.name != APIClient.coverWidthName }
+                            + [URLQueryItem(name: APIClient.coverOriginalName, value: "1")])
+        return components.url
     }
 
     /// The name an address had under the earlier rule, which dropped every
@@ -367,14 +389,48 @@ final class ImageCache {
     /// The file name of an address with the query names `drops` names left
     /// out.
     nonisolated private static func fileName(for url: URL, drops: (String) -> Bool) -> String {
-        var parts = [url.host ?? "", url.path]
-        if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
-            let stable = items
-                .filter { !drops($0.name) }
-                .sorted { $0.name < $1.name }
-                .map { "\($0.name)=\($0.value ?? "")" }
-            parts.append(contentsOf: stable)
+        joinedName([url.host ?? "", url.path] + form(of: url, drops: drops))
+    }
+
+    /// The query parts of an address that name its picture or its form,
+    /// sorted, each as `name=value`.
+    nonisolated private static func form(of url: URL, drops: (String) -> Bool) -> [String] {
+        (URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? [])
+            .filter { !drops($0.name) }
+            .sorted { $0.name < $1.name }
+            .map { "\($0.name)=\($0.value ?? "")" }
+    }
+
+    /// The name of a picture one of our servers serves: the kind of its
+    /// source, the picture's id and its form, without host, base path or
+    /// sign-in. A server that moves keeps every name, offline covers of
+    /// downloads included. The kind is the one the music sources are told
+    /// apart by (`MusicUnion.source(for:)` asks the `sub:` and `jf:`
+    /// prefixes), so two servers held at once never share a name. Nil for
+    /// every other address: a public address is its picture's identity and
+    /// keeps its name (`fileName`).
+    nonisolated static func serverImageName(_ url: URL) -> String? {
+        guard isClientImage(url) else { return nil }
+        let path = url.path
+        let drops: (String) -> Bool = { dropsFromName($0, clientImage: true) }
+        if let match = path.firstMatch(of: #/api/(items|authors)/([^/]+)/(?:cover|image)$/#) {
+            return joinedName(["abs", String(match.1), String(match.2)] + form(of: url, drops: drops))
         }
+        if let match = path.firstMatch(of: #/Items/([^/]+)/Images/([^/]+)(?:/([^/]+))?$/#) {
+            let index = match.3.map { [String($0)] } ?? []
+            return joinedName(["jf", String(match.1), String(match.2)] + index + form(of: url, drops: drops))
+        }
+        if SubsonicClient.buildsImage(path: path) {
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            guard let id = items.first(where: { $0.name == "id" })?.value, !id.isEmpty else { return nil }
+            return joinedName(["sub", id] + form(of: url) { drops($0) || $0 == "id" })
+        }
+        return nil
+    }
+
+    /// Parts joined into one file name; a name beyond `keyByteCeiling`
+    /// becomes its digest.
+    nonisolated private static func joinedName(_ parts: [String]) -> String {
         let raw = parts.joined(separator: "_")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
@@ -387,7 +443,12 @@ final class ImageCache {
     /// store alike. A second derivation from the item id (without host)
     /// once wrote persistent covers under a name no read path looked up,
     /// so the offline cover of a downloaded book never existed.
-    nonisolated func fileKey(for url: URL) -> String { key(for: url) }
+    /// Also the name the tables of a session key a cover by: an address
+    /// whose sign-in changes per request (Subsonic's salt) is the same
+    /// cover every time.
+    nonisolated static func fileKey(for url: URL) -> String {
+        serverImageName(url) ?? addressName(for: url)
+    }
 
     #if DEBUG
     /// Test seam for the pure key derivation.
@@ -1100,6 +1161,9 @@ final class ImageCache {
         let newKey = key(for: new)
         let kept = persistentDirectory.appendingPathComponent(oldKey)
         let demoted = diskDirectory.appendingPathComponent(oldKey)
+        // A kept cover not yet read under its name by id stands under its
+        // name by address (`formerNames`).
+        let keptByAddress = persistentDirectory.appendingPathComponent(Self.addressName(for: old))
         let target = persistentDirectory.appendingPathComponent(newKey)
         let newCached = diskDirectory.appendingPathComponent(newKey)
         onDisk([oldKey, newKey]) { [self] in
@@ -1109,9 +1173,9 @@ final class ImageCache {
             }
             // The demoted cache file of a waiting address may be the picture
             // from before its invalidation; it does not go up (`makePersistent`).
-            let source = fm.fileExists(atPath: kept.path) ? kept : demoted
+            let source = [kept, demoted, keptByAddress].first { fm.fileExists(atPath: $0.path) } ?? kept
             guard source != target, fm.fileExists(atPath: source.path),
-                  source == kept || !oldWaits else { return }
+                  source != demoted || !oldWaits else { return }
             // Fresh bytes of the new address in the cache make the carried
             // copy from before the old address's invalidation the one too
             // many: it goes, and the new address does not wait (`invalidate`
@@ -1498,9 +1562,10 @@ final class ImageCache {
     func preload(_ url: URL) async {
         // Existence check only. No need to decode the image just to know the
         // cover is already cached.
-        guard !isCached(url), !inFlight.contains(url) else { return }
-        inFlight.insert(url)
-        defer { inFlight.remove(url) }
+        let name = key(for: url)
+        guard !isCached(url), !inFlight.contains(name) else { return }
+        inFlight.insert(name)
+        defer { inFlight.remove(name) }
         let startedAt = invalidationCount(for: url)
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return }

@@ -459,35 +459,38 @@ enum CoverFetchCoalescer {
         let task: Task<Artwork.Fetched, Never>
         var waiting: Int
     }
-    private static var inFlight: [URL: Flight] = [:]
+    /// The flights by the cover's name (`ImageCache.fileKey`): two addresses
+    /// of one cover that differ only in their sign-in share one fetch.
+    private static var inFlight: [String: Flight] = [:]
 
     static func fetch(_ url: URL, work: @escaping () async -> Artwork.Fetched) async -> Artwork.Fetched {
+        let name = ImageCache.fileKey(for: url)
         let task: Task<Artwork.Fetched, Never>
-        if var flight = inFlight[url] {
+        if var flight = inFlight[name] {
             flight.waiting += 1
-            inFlight[url] = flight
+            inFlight[name] = flight
             task = flight.task
         } else {
             task = Task { await work() }
-            inFlight[url] = Flight(task: task, waiting: 1)
+            inFlight[name] = Flight(task: task, waiting: 1)
         }
         let fetched = await withTaskCancellationHandler {
             await task.value
         } onCancel: {
-            Task { @MainActor in leave(url, task) }
+            Task { @MainActor in leave(name, task) }
         }
-        if inFlight[url]?.task == task { inFlight[url] = nil }
+        if inFlight[name]?.task == task { inFlight[name] = nil }
         return fetched
     }
 
     /// A tile left: one fewer waits; with none left, the fetch is cancelled.
-    private static func leave(_ url: URL, _ task: Task<Artwork.Fetched, Never>) {
-        guard var flight = inFlight[url], flight.task == task else { return }
+    private static func leave(_ name: String, _ task: Task<Artwork.Fetched, Never>) {
+        guard var flight = inFlight[name], flight.task == task else { return }
         flight.waiting -= 1
         if flight.waiting > 0 {
-            inFlight[url] = flight
+            inFlight[name] = flight
         } else {
-            inFlight[url] = nil
+            inFlight[name] = nil
             task.cancel()
         }
     }
@@ -508,7 +511,8 @@ enum CoverTraceLog {
     /// picks an exit so every exit can name it.
     static func attempt(for url: URL) -> Int {
         if counter.trackedAddresses >= CoverTrace.addressCeiling { counter.reset() }
-        return counter.next(for: url)
+        // Without its sign-in, so a salt per request is the same address.
+        return counter.next(for: ImageCache.addressWithoutSignIn(url))
     }
 
     static func note(pot: CoverTrace.Pot, outcome: CoverTrace.Outcome,

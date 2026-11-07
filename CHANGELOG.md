@@ -24,6 +24,15 @@ automatic download takes it at the next refresh after the unlock, and a
 start in that time shows the load error. The next
 refresh after the unlock asks again.
 
+**Covers stay when your server moves.** A cover from your
+Audiobookshelf, Jellyfin or Subsonic server is now stored by the
+picture it shows, not by the server's address. When the server gets a
+new address, the covers you have stay, and a downloaded title keeps
+its cover offline. Covers from before this update are still shown and
+move over on their own. When several views ask for the same cover of
+a Subsonic server at once, they now share one download, and its
+colors are worked out once.
+
 **The list of downloaded covers keeps no sign-in.** The app remembers
 which covers your downloads keep, and that list held each cover's full
 address, with the sign-in your server adds to it. It now keeps the

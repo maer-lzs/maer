@@ -36,12 +36,13 @@ struct FormerCoverNameTests {
         image.map { $0.size.width * $0.scale }
     }
 
-    @Test("der fruehere Name ist der Name der Adresse ohne raw, nur fuer Audiobookshelf-Cover")
+    @Test("die frueheren Namen eines Audiobookshelf-Covers: der Name nach Adresse, dann der Name der Adresse ohne raw")
     func theFormerNameIsTheNameWithoutRaw() {
         let tag = UUID().uuidString
         let cache = ImageCache.shared
-        #expect(cache.formerNames(for: address(tag, raw: true)) == [cache.testKey(for: address(tag, raw: false))])
-        #expect(cache.formerNames(for: address(tag, raw: false)).isEmpty)
+        #expect(cache.formerNames(for: address(tag, raw: true))
+                == [ImageCache.addressName(for: address(tag, raw: true)), ImageCache.addressName(for: address(tag, raw: false))])
+        #expect(cache.formerNames(for: address(tag, raw: false)) == [ImageCache.addressName(for: address(tag, raw: false))])
         #expect(cache.formerNames(for: URL(string: "https://nd.example.lan/rest/getCoverArt?id=al-1&raw=1")!).isEmpty)
     }
 
