@@ -114,8 +114,12 @@ nonisolated final class StandMirror: Sendable {
         let resumes = movesNow && ListeningStore.isMoveStarted(in: defaults)
         if let loadNow { ListeningStore.installTable(for: defaults, resumes: resumes, load: loadNow) }
         if movesNow { ListeningStore.markMoveStarted(in: defaults) }
+        let walk = PerfSignpost.walkPositions()
+        let walkStarted = ContinuousClock.now
         let legacy = ListeningStore.legacyEntries(in: defaults)
         let entries = ListeningStore.positions(in: defaults)
+        walk.end()
+        Logger.library.notice("STARTUP walk=positions ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
         let flushed = ListeningStore.allFlushed(in: defaults)
         let unread = resumes && ListeningStore.readFailed(in: defaults)
         enqueue { store in

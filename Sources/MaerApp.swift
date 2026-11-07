@@ -265,6 +265,8 @@ struct MaerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // The end of the start for the start's lines.
+                .onAppear { Logger.library.notice("STARTUP first view") }
                 // App-wide accent color: the dark-gray brand accent
                 // instead of system blue.
                 .tint(AppTheme.accent)

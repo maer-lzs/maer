@@ -101,7 +101,7 @@ struct MetricGateTests {
     @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
     func theLogLineCarriesNumbers() {
         let record = Self.record(daysAgo: 1)
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200/writes=-,tick=3600/cpu=12.0000/mean=0.0035/writes=- unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200/writes=-,tick=3600/cpu=12.0000/mean=0.0035/writes=- unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip,walkPositions,walkRetiredChoices,walkChoices")
     }
 
     /// MetricKit keeps only so many signpost names a day, a limit not

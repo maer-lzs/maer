@@ -202,7 +202,13 @@ final class UserChoiceCloudSync {
     /// Removed without a note: its feature is gone, so there is no choice to
     /// tell the other devices about.
     func forgetRetired() {
-        let local = defaults.dictionaryRepresentation().keys.filter(UserChoiceCatalog.isRetired)
+        let walk = PerfSignpost.walkRetiredChoices()
+        let walkStarted = ContinuousClock.now
+        let domain = defaults.dictionaryRepresentation()
+        let local = domain.keys.filter(UserChoiceCatalog.isRetired)
+        walk.end()
+        // The number of keys is the measure of the domain, never a key or a value.
+        Logger.library.notice("STARTUP walk=retiredChoices ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1))) keys=\(domain.count)")
         for key in local { defaults.removeObject(forKey: key) }
         if !local.isEmpty {
             Logger.library.notice("CHOICE retired local=\(local.count)")
@@ -877,11 +883,15 @@ final class UserChoiceCloudSync {
         for key in UserChoiceCatalog.travelingScalars {
             addRead(key, defaults.object(forKey: key))
         }
+        let walk = PerfSignpost.walkChoices()
+        let walkStarted = ContinuousClock.now
         for (key, raw) in defaults.dictionaryRepresentation() {
             guard UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) })
             else { continue }
             addRead(key, raw)
         }
+        walk.end()
+        Logger.library.notice("STARTUP walk=choices ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
         if !unknownKinds.isEmpty {
             Logger.library.error("CHOICE local values of an unknown kind kept out count=\(unknownKinds.count)")
         }

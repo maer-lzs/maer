@@ -53,7 +53,8 @@ nonisolated enum PerfSignpost {
     /// names the ones that did not come back.
     static let names = ["tick", "nowPlaying", "statsMerge", "syncLoop", "syncRound", "syncRoundOf", "standMerge",
                         "standMergeOf", "feedParse", "thumb-hit", "decode", "originalCached", "downloadedEntries-recompute",
-                        "standingRead", "accessRead", "barCollapsedFlip"]
+                        "standingRead", "accessRead", "barCollapsedFlip", "walkPositions", "walkRetiredChoices",
+                        "walkChoices"]
 
     /// An open interval; `end()` closes it under the name it was opened
     /// with, on the log it was opened on.
@@ -162,6 +163,30 @@ nonisolated enum PerfSignpost {
     /// The service access read from the keychain.
     static func accessRead() -> Interval {
         snapshotInterval(.standing, "accessRead")
+    }
+
+    // MARK: - Walks over the defaults
+
+    /// The two walks over the whole defaults domain that read the listening
+    /// positions at the start (`StandMirror.start`), before the first frame.
+    static func walkPositions() -> Interval {
+        let library = signposter(.library)
+        let state = library.beginInterval("walkPositions", id: library.makeSignpostID())
+        return Interval { library.endInterval("walkPositions", state) }
+    }
+
+    /// The walk that removes retired choices, at every start of the choices.
+    static func walkRetiredChoices() -> Interval {
+        let sync = signposter(.sync)
+        let state = sync.beginInterval("walkRetiredChoices", id: sync.makeSignpostID())
+        return Interval { sync.endInterval("walkRetiredChoices", state) }
+    }
+
+    /// The walk that collects the traveling choices, at every reconcile.
+    static func walkChoices() -> Interval {
+        let sync = signposter(.sync)
+        let state = sync.beginInterval("walkChoices", id: sync.makeSignpostID())
+        return Interval { sync.endInterval("walkChoices", state) }
     }
 
     // MARK: - Bottom bar
