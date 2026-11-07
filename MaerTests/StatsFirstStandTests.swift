@@ -164,6 +164,48 @@ struct StatsFirstStandTests {
         #expect(stats.ownData.secondsPerItem[title] == 930, "the title counts once, not 1830")
     }
 
+    /// The publish after the sum waits: the stock belongs to another account
+    /// than the one signed in, and the shelf the handing over writes to is
+    /// not writable. The sum stands in the stock all the same, so the second
+    /// carrier's pot with the same history is not added again.
+    @Test("haelt das Veroeffentlichen nach der Summe, weil der Besitzer wartet, addiert der naechste Traeger nicht noch einmal")
+    func aWaitingOwnerKeepsTheSumOnce() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let (database, directory) = try Self.freshDatabase("first-stand-owner")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let shelf = try #require(database.restingShelf)
+        try shelf.setHolding(.init(owner: "account-a"), of: "stats")
+        let manager = FileManager.default
+        let locked = [shelf.directory.appendingPathComponent("stats"), shelf.directory]
+        for folder in locked { try manager.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path) }
+        defer { for folder in locked { try? manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path) } }
+
+        let first = LateCarrier()
+        let stats = ListeningStatsStore(carrier: first, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        identity: { "account-b" }, shelf: shelf)
+        stats.start()
+        let title = "rss:first-stand:same"
+        stats.addSeconds(30, itemId: title)
+        let today = try #require(stats.ownData.secondsPerDay.first { $0.value == 30 }?.key, "the precondition: one day counted")
+        let history = ListeningStatsData(secondsPerDay: [today: 900], secondsPerItem: [title: 900])
+        first.held[SyncHistoryStore.deviceId] = history
+        first.hasDeliveredFirst = true
+        first.onChange?()
+        #expect(stats.ownData.secondsPerDay[today] == 930, "the precondition: the sum")
+        #expect(first.published.isEmpty, "the precondition: the publish waits for the owner")
+
+        let second = LateCarrier()
+        stats.follow(second, signedIn: true, by: "witness")
+        second.held[SyncHistoryStore.deviceId] = history
+        second.hasDeliveredFirst = true
+        second.onChange?()
+        await stats.awaitPendingWrites()
+        #expect(stats.ownData.secondsPerDay[today] == 930, "the day counts once, not 1830")
+        #expect(stats.ownData.secondsPerItem[title] == 930, "the title counts once, not 1830")
+    }
+
     @Test("ein leerer erster Topf: nach dem Veroeffentlichen nimmt der zweite Traeger das Maximum, dieser Lauf faellt auf einem gemeinsamen Tag weg")
     func anEmptyFirstPotTakesTheLargerValueLater() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()

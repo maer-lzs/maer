@@ -126,12 +126,13 @@ nonisolated enum ListeningStatsSync {
     }
 
     /// The own pot taken back after a fresh start that held its publish for
-    /// the carrier's first state, before this process published anything:
-    /// added to what this run counted since, per key the sum. Nothing this
-    /// run counted can be in the pot then, and the larger value would drop
-    /// this run's seconds on a day or a title heard before and after. Once
-    /// the process published, a pot may hold this run, so a later hold
-    /// takes the larger value (`adoptedOwnPot`). Nil = nothing to add.
+    /// the carrier's first state, before this process published or added a
+    /// pot: added to what this run counted since, per key the sum. Nothing
+    /// this run counted can be in the pot then, and the larger value would
+    /// drop this run's seconds on a day or a title heard before and after.
+    /// Once the process published, a pot may hold this run, and once a pot
+    /// was added, the stock holds it; a later hold takes the larger value
+    /// (`adoptedOwnPot`). Nil = nothing to add.
     static func addedHeldPot(own: ListeningStatsData, pot: ListeningStatsData?) -> ListeningStatsData? {
         guard let pot, !pot.secondsPerDay.isEmpty || !pot.secondsPerItem.isEmpty else { return nil }
         return ListeningStatsData(
