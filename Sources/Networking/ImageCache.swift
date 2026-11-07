@@ -169,6 +169,19 @@ final class ImageCache {
         unambiguousSignInNames.contains(name) || (clientImage && signInQueryNames.contains(name))
     }
 
+    /// An address without the parts that stay out of its name: the form a
+    /// cover address may be kept in on the disk. It names the same file as
+    /// the address it came from, and it carries no sign-in.
+    nonisolated static func addressWithoutSignIn(_ url: URL) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = components.queryItems else { return url }
+        let clientImage = isClientImage(url)
+        let kept = items.filter { !dropsFromName($0.name, clientImage: clientImage) }
+        guard kept.count != items.count else { return url }
+        components.setQuery(kept.isEmpty ? nil : kept)
+        return components.url ?? url
+    }
+
     /// A cover's file name as a build that kept a sign-in part in it wrote it,
     /// without that part, or nil when the name carries none. The parts of a
     /// clear name are joined by `_`, a query part reads `name=value`, and the

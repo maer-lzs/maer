@@ -340,5 +340,59 @@ struct DownloadManagerRowsTests {
         #expect(DownloadManager.readSessionCovers(from: Ablage(directory: home.directory)).isEmpty,
                 "the remembered original leaves with the download")
     }
+
+    /// Cover addresses as the three clients build them, each with its
+    /// sign-in parts.
+    private static let signedCovers: [URL] = [
+        "https://abs.example/api/items/li_1/cover?width=400&token=SECRET-ABS",
+        "https://abs.example/api/items/li_1/cover?raw=1&token=SECRET-ABS",
+        "https://music.example/rest/getCoverArt.view?id=al-1&size=600&u=anna&t=SECRET-T&s=SECRET-S&v=1.16.1&c=Maer&f=json",
+        "https://music.example/rest/getCoverArt.view?id=al-2&size=600&apiKey=SECRET-KEY&v=1.16.1&c=Maer&f=json",
+        "https://jf.example/Items/abc/Images/Primary?maxWidth=600&ApiKey=SECRET-JF",
+    ].compactMap(URL.init(string:))
+
+    /// The sign-in parts of the three clients, in the document as names.
+    private static func signInParts(in directory: URL) throws -> [String] {
+        let data = try Data(contentsOf: directory.appendingPathComponent(DownloadManager.sessionCoversDocument))
+        let text = String(decoding: data, as: UTF8.self)
+        let stored = try JSONDecoder().decode([String: [String]].self, from: data)
+        let names = stored.values.flatMap { $0 }.compactMap(URLComponents.init(string:))
+            .flatMap { $0.queryItems ?? [] }.map(\.name)
+        let signIn: Set<String> = ["token", "u", "t", "s", "apiKey", "ApiKey"]
+        return names.filter(signIn.contains) + (text.contains("SECRET") ? ["a value"] : [])
+    }
+
+    @Test("das Dokument der gesicherten Cover haelt keinen Anmeldeteil eines Clients, und jede Adresse nennt dieselbe Datei")
+    func keptCoversCarryNoSignIn() throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let manager = home.manager()
+        manager.noteSessionCovers(of: "li_1", grid: Self.signedCovers[0], large: Self.signedCovers[1])
+        manager.noteSessionCovers(of: "sub:song", grid: Self.signedCovers[2], large: Self.signedCovers[3])
+        manager.noteSessionCovers(of: "jf:abc", grid: Self.signedCovers[4], large: nil)
+        #expect(try Self.signInParts(in: home.directory).isEmpty, "a sign-in part reached the disk")
+
+        let kept = DownloadManager.readSessionCovers(from: Ablage(directory: home.directory)).values.flatMap { $0 }
+        #expect(kept.count == Self.signedCovers.count)
+        for url in Self.signedCovers {
+            let name = ImageCache.shared.testKey(for: url)
+            #expect(kept.contains { ImageCache.shared.testKey(for: $0) == name }, "no kept address names \(name)")
+        }
+    }
+
+    @Test("ein Dokument eines frueheren Baus mit Anmeldeteilen liest sich und wird beim Start ohne sie neu geschrieben")
+    func anEarlierDocumentIsRewrittenWithoutSignIn() throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        try Ablage(directory: home.directory).saveNow(["li_1": Self.signedCovers.map(\.absoluteString)],
+                                                    name: DownloadManager.sessionCoversDocument)
+        #expect(try !Self.signInParts(in: home.directory).isEmpty, "the precondition: the earlier document")
+
+        _ = home.manager()
+        #expect(try Self.signInParts(in: home.directory).isEmpty, "the start left the sign-in parts on the disk")
+        let kept = DownloadManager.readSessionCovers(from: Ablage(directory: home.directory))["li_1"] ?? []
+        #expect(Set(kept.map { ImageCache.shared.testKey(for: $0) })
+                == Set(Self.signedCovers.map { ImageCache.shared.testKey(for: $0) }))
+    }
 }
 #endif

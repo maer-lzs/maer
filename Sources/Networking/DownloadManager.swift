@@ -159,7 +159,11 @@ final class DownloadManager {
         self.kindsAblage = Ablage(directory: documents)
         loadDetails()
         kinds = Self.readKinds(from: kindsAblage)
-        sessionCovers = Self.readSessionCovers(from: kindsAblage)
+        let readCovers = Self.readSessionCovers(from: kindsAblage)
+        sessionCovers = Self.keptForm(readCovers)
+        // A document of an earlier build kept the sign-in parts of the
+        // addresses: rewritten at once without them.
+        if sessionCovers != readCovers { writeSessionCovers() }
         // The full filesystem walk (every download folder + every file's size)
         // used to run synchronously here. On the main actor, BEFORE first
         // paint, scaling with the number of downloads. Scan off-main instead
@@ -227,10 +231,21 @@ final class DownloadManager {
             .filter { !$0.value.isEmpty }
     }
 
+    /// The kept covers in the form the document holds: each address without
+    /// its sign-in parts (`ImageCache.addressWithoutSignIn`). It names the
+    /// same file, and no token, key or salt reaches the disk.
+    nonisolated static func keptForm(_ covers: [String: [URL]]) -> [String: [URL]] {
+        covers.mapValues { urls in
+            var kept: [URL] = []
+            for url in urls.map(ImageCache.addressWithoutSignIn) where !kept.contains(url) { kept.append(url) }
+            return kept
+        }
+    }
+
     /// Written right away, like the kinds.
     private func writeSessionCovers() {
         do {
-            try kindsAblage.saveNow(sessionCovers.mapValues { $0.map(\.absoluteString) },
+            try kindsAblage.saveNow(Self.keptForm(sessionCovers).mapValues { $0.map(\.absoluteString) },
                                     name: Self.sessionCoversDocument)
         } catch {
             // Dropping is bearable, because the seam has already logged the
@@ -242,7 +257,7 @@ final class DownloadManager {
     /// Remembers the kept covers of a stored download, or forgets the entry
     /// when it has none.
     func noteSessionCovers(of itemId: String, grid: URL?, large: URL?) {
-        let urls = Self.keptCoverURLs(grid: grid, large: large)
+        let urls = Self.keptForm([itemId: Self.keptCoverURLs(grid: grid, large: large)])[itemId] ?? []
         let entry: [URL]? = urls.isEmpty ? nil : urls
         guard sessionCovers[itemId] != entry else { return }
         sessionCovers[itemId] = entry
@@ -1062,7 +1077,8 @@ final class DownloadManager {
     /// kept when it was stored.
     private func coverURLs(of itemId: String, grid: URL?, large: URL?) -> [URL] {
         var urls = Self.keptCoverURLs(grid: grid, large: large)
-        for url in sessionCovers[itemId] ?? [] where !urls.contains(url) { urls.append(url) }
+        let builtKept = urls.map(ImageCache.addressWithoutSignIn)
+        for url in sessionCovers[itemId] ?? [] where !builtKept.contains(url) { urls.append(url) }
         return urls
     }
 

@@ -24,6 +24,12 @@ automatic download takes it at the next refresh after the unlock, and a
 start in that time shows the load error. The next
 refresh after the unlock asks again.
 
+**The list of downloaded covers keeps no sign-in.** The app remembers
+which covers your downloads keep, and that list held each cover's full
+address, with the sign-in your server adds to it. It now keeps the
+address without it, and a list from an earlier build is rewritten
+without it at the next start.
+
 **Artist biographies and album notes read like other descriptions.**
 Characters a music server sends as codes, such as "&amp;" or "&#39;",
 show as the characters they stand for, and paragraphs stay paragraphs.
