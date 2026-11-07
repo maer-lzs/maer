@@ -328,8 +328,11 @@ final class ListeningStatsStore: ObservableObject {
     /// it an id for this process.
     private var ownDeviceId: String { lastingDeviceId() ?? SyncHistoryStore.deviceId }
     /// The pot the carrier held under the lasting id at the last reading
-    /// in this process: what another device's writing grows from.
-    private var ownPotSeen: ListeningStatsData?
+    /// in this process, with the carrier and the owner it was read under:
+    /// what another device's writing grows from. A reading under another
+    /// carrier or another owner is no such base, so the first reading
+    /// after a change of either never counts as growth.
+    private var ownPotSeen: (pot: ListeningStatsData, carrier: Int, owner: String?)?
 
     /// Another device writes under this device's id
     /// (`ListeningStatsSync.anotherDeviceWrites`): this device takes a fresh
@@ -337,8 +340,11 @@ final class ListeningStatsStore: ObservableObject {
     /// before. The pot under it stays: it is the other device's.
     private func noteOwnPot(_ pots: [String: ListeningStatsData]) {
         guard firstStandUntil == nil, let lasting = lastingDeviceId(), let observed = pots[lasting] else { return }
-        defer { ownPotSeen = observed }
-        guard ListeningStatsSync.anotherDeviceWrites(observed: observed, previous: ownPotSeen, own: ownerPot) else { return }
+        let carrierNow = generation.current
+        let ownerNow = identity()
+        let previous = ownPotSeen.flatMap { $0.carrier == carrierNow && $0.owner == ownerNow ? $0.pot : nil }
+        defer { ownPotSeen = (observed, carrierNow, ownerNow) }
+        guard ListeningStatsSync.anotherDeviceWrites(observed: observed, previous: previous, own: ownerPot) else { return }
         Logger.library.notice("STATS another device writes under this device's id, it is left")
         _ = deviceIds.leave()
     }

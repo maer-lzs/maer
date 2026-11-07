@@ -172,6 +172,89 @@ struct SharedDeviceIdTests {
                 "what the third device counts: the first device's seconds twice, under its new id and in the other's pot")
     }
 
+    @Test("nur der Tag waechst: das andere Geraet hoert einen Titel, den dieses laenger hoerte, an einem Tag ueber das Eigene hinaus")
+    func onlyTheDayGrows() {
+        let own = ListeningStatsData(secondsPerDay: ["d": 100], secondsPerItem: ["t": 200])
+        let other = ListeningStatsData(secondsPerDay: ["d": 150], secondsPerItem: ["t": 150])
+        #expect(ListeningStatsSync.anotherDeviceWrites(observed: other, previous: own, own: own),
+                "the day grew beyond this device's, the title did not")
+    }
+
+    /// A carrier that holds a pot from earlier under the id and has not
+    /// taken this device's write yet: a far side still delivering.
+    private final class LaggingView: StatsCarrier {
+        let name = "lagging-fake"
+        let hasRoomLimit = false
+        let hasDeliveredFirst = true
+        var held: [String: ListeningStatsData]
+        init(_ held: [String: ListeningStatsData]) { self.held = held }
+        func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {}
+        func pots() -> [String: ListeningStatsData] { held }
+        func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    private static let earlier = ListeningStatsData(secondsPerDay: ["2026-01-02": 500],
+                                                    secondsPerItem: ["rss:share:earlier": 500])
+
+    @Test("ein neuer Traeger: seine erste Lesung unter der eigenen Kennung waechst nicht gegen die des alten")
+    func aNewCarrierStartsFresh() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let shared = Shared()
+        let device = try Device(shared, id: "shared", name: "share-carrier")
+        defer { try? FileManager.default.removeItem(at: device.directory) }
+        await device.listen(100, "rss:share:a")
+        device.store.cloudChanged()
+        device.store.follow(LaggingView(["shared": Self.earlier]), signedIn: true, by: "witness")
+        device.store.cloudChanged()
+        #expect(!device.left, "the pot the new carrier held from earlier is no other device writing")
+    }
+
+    /// One set of pots per account, as the service keeps them.
+    private final class AccountView: StatsCarrier {
+        let name = "account-fake"
+        let hasRoomLimit = false
+        let hasDeliveredFirst = true
+        let scope: () -> String?
+        var byAccount: [String: [String: ListeningStatsData]] = [:]
+        init(scope: @escaping () -> String?) { self.scope = scope }
+        func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
+            byAccount[scope() ?? "-", default: [:]][deviceId] = pot
+        }
+        func pots() -> [String: ListeningStatsData] { byAccount[scope() ?? "-"] ?? [:] }
+        func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    @Test("ein neuer Besitzer: die erste Lesung unter seinem Konto waechst nicht gegen die des alten")
+    func aNewOwnerStartsFresh() async throws {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        let folder = try NavidromeRekeyTests.temporaryDirectory("share-owner")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let database = MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path)
+        var scope: String? = "account-a"
+        var left = false
+        let carrier = AccountView(scope: { scope })
+        carrier.byAccount["account-b"] = ["shared": Self.earlier]
+        let stats = ListeningStatsStore(carrier: carrier, database: database,
+                                        history: ListeningStatsSyncTests.RecordingHistory(),
+                                        identity: { scope }, shelf: database.restingShelf,
+                                        deviceIds: StatsDeviceIds(lasting: { "shared" }, leave: { left = true; return true }))
+        stats.start()
+        stats.addSeconds(100, itemId: "rss:share:a")
+        stats.flush()
+        stats.cloudChanged()
+        // The account changes; the service delivers the other account's
+        // pots before this device writes under it.
+        scope = "account-b"
+        stats.cloudChanged()
+        #expect(!left, "the pot of another owner is no other device writing")
+    }
+
     @Test("der Halter gibt die Kennung ab: eine neue fuer den naechsten Start, in diesem Prozess keine bleibende mehr")
     func theHolderLeavesTheSharedId() {
         let keychain = DeviceIdHolderTests.FakeKeychain()
