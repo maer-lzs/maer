@@ -465,6 +465,14 @@ func htmlPlainText(_ html: String) -> String {
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
+/// `htmlPlainText` for a text a server may leave out (an artist's
+/// biography, an album's notes): nil when there is none or nothing is left.
+func htmlPlainTextOrNil(_ html: String?) -> String? {
+    guard let html else { return nil }
+    let text = htmlPlainText(html)
+    return text.isEmpty ? nil : text
+}
+
 /// The entities in a fixed order, `&amp;` last: decoded first, it would
 /// turn "&amp;lt;" into "<" instead of the "&lt;" the text says.
 let htmlEntities: [(entity: String, text: String)] = [

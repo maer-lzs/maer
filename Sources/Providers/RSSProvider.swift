@@ -27,9 +27,10 @@ final class RSSProvider: AudioProvider {
     var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
-    /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the item id).
-    func streamAuthHeaders(forItemId itemId: String) -> [String: String] {
-        PodcastFeedAuth.authHeader(forItemId: itemId)
+    /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the
+    /// item id), nil while the feed's sign-in cannot be read now.
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String]? {
+        PodcastFeedAuth.streamHeaders(forItemId: itemId)
     }
 
     func fetchLibraries() async throws -> [ABSLibrary] {

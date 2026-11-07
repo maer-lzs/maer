@@ -787,6 +787,14 @@ final class DownloadManager {
            Self.trackMap(in: itemDirectory(itemId)).count >= tracks.count {
             return
         }
+        // A sign-in the tracks need that cannot be read now sends nothing
+        // without it, and nothing failed: no request, no phase. A later
+        // start asks again; the automatic run picks every episode it wants
+        // that is not on the disk.
+        guard let headers = provider.streamAuthHeaders(forItemId: itemId) else {
+            Logger.library.notice("DOWNLOAD waits, the sign-in cannot be read now: \(itemId, privacy: .public)")
+            return
+        }
         // Fail fast when the disk clearly cannot hold the remaining tracks.
         // A mid-download abort would otherwise surface as a cryptic write
         // error. Tracks without size metadata are skipped in the sum; 200 MB
@@ -860,7 +868,7 @@ final class DownloadManager {
                 }
 
                 var request = URLRequest(url: remoteURL)
-                for (field, value) in provider.streamAuthHeaders(forItemId: itemId) {
+                for (field, value) in headers {
                     request.setValue(value, forHTTPHeaderField: field)
                 }
 

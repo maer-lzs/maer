@@ -346,20 +346,12 @@ struct MusicAlbumView: View {
                 // Notes + (via release MBID) a high-res cover. Both
                 // best-effort, on demand only.
                 let info = await music.albumInfo(itemId: item.id)
-                albumNotes = Self.stripped(info?.notes)
+                albumNotes = htmlPlainTextOrNil(info?.notes)
                 if let mbid = info?.musicBrainzId, !mbid.isEmpty {
                     highResCover = await CoverArtArchive.shared.frontCover(mbid: mbid)
                 }
             }
         }
-    }
-
-    /// Album notes often carry HTML fragments. Strip tags for display.
-    private static func stripped(_ raw: String?) -> String? {
-        guard let raw, !raw.isEmpty else { return nil }
-        let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? nil : text
     }
 
     private var header: some View {

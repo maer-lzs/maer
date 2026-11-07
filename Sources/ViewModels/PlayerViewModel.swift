@@ -809,6 +809,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         icyStreamTitle = nil   // never carry a song title across items
         icySongArtwork = nil   // nor its resolved cover
         stationArtwork = nil   // Teil 2: the next station loads its own logo
+        // Asked once per queue. Nil while a sign-in the stream needs cannot
+        // be read now: no track of it is requested without it, and a queue
+        // without a track fails the way an unloadable one does.
+        let streamHeaders = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {
@@ -821,16 +825,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let item: AVPlayerItem
             if url.isFileURL {
                 item = AVPlayerItem(asset: AVURLAsset(url: url))
-            } else {
+            } else if let streamHeaders {
                 // The stream names the app like every other request. Measured
                 // on eight hosts (archive.org, gutenberg.org, three live
                 // stations, two podcast CDNs): none answers the app's name
                 // differently from CoreMedia's, and the download of the same
                 // episode already carried it.
-                let headers = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
-                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers,
+                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": streamHeaders,
                                                           AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
                 item = AVPlayerItem(asset: asset)
+            } else {
+                Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")
+                continue
             }
             // Live radio. Tap the in-stream ICY metadata (song title)
             // for the player UI and the lock screen.

@@ -264,13 +264,9 @@ struct MusicArtistView: View {
         }
     }
 
-    /// Server bios often carry HTML fragments/attribution links. Strip tags.
-    private var strippedBio: String? {
-        guard let raw = info?.biography, !raw.isEmpty else { return nil }
-        let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? nil : text
-    }
+    /// Server bios often carry HTML fragments and attribution links: plain
+    /// text the way a book's description gets it.
+    private var strippedBio: String? { htmlPlainTextOrNil(info?.biography) }
 
     @ViewBuilder
     private var topSongsSection: some View {
