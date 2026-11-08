@@ -1475,6 +1475,12 @@ struct LibraryView: View {
         if recentRowVisible, !viewModel.recentlyAdded.isEmpty {
             recentlyAddedGrid
         }
+        playlistsSection
+    }
+
+    /// The device lists that hold only audiobooks, as the one name list.
+    private var playlistsSection: some View {
+        PlaylistHomeSection(home: .library, playerCoordinator: playerCoordinator)
     }
 
     private var content: some View {

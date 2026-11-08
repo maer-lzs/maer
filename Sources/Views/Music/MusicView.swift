@@ -410,9 +410,10 @@ struct MusicView: View {
     /// the capsule "Mär" so one still knows what another client
     /// of the same server will see (server titles only) and what may mix
     /// everything. A second row per world was two rows for one question.
-    /// The device lists the Music tab shows: every one but a routine,
-    /// which stands on Start.
-    private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { !$0.isRoutine } }
+    /// The device lists the Music tab shows: those whose home is music
+    /// (`PlaylistHome`); the others stand on Start, in Podcasts or in the
+    /// library.
+    private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { $0.home == .music } }
 
     private var playlistSources: [PlaylistCardSource] {
         let server = sortedPlaylists.map { PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId)) }

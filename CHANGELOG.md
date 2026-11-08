@@ -18,6 +18,12 @@ position when it goes to the background or closes the player. Playing
 on from AirPods, the lock screen, CarPlay or after a call first looks
 for a newer position, as the play button does.
 
+**Playlists stand where they belong.** A playlist of music stays in
+Music, one of podcasts appears in Podcasts and one of audiobooks in the
+library, each as a short list with a way to all of them. Routines and
+playlists that mix kinds stand on Start as a list with a play button on
+each line, so Start keeps one row of large cards.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An
