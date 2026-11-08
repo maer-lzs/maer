@@ -27,7 +27,23 @@ struct WidgetCoverTintTests {
         #expect(tint.count == 4)
         #expect(abs(tint[0] - 0.7) < 0.03 && tint[1] < 0.03 && tint[2] < 0.03, "not the darkened bottom red: \(tint)")
         let light = try #require(CoverColorLoader.bottomComponents(of: Self.cover(top: .black, bottom: .white)))
-        #expect(light.prefix(3).allSatisfy { abs($0 - 0.7) < 0.03 }, "a light bottom is not darkened: \(light)")
+        #expect(TextContrast.againstWhite(red: light[0], green: light[1], blue: light[2]) >= TextContrast.readable,
+                "white text does not read on a light bottom: \(light)")
+        #expect(abs(light[0] - light[1]) < 0.01 && abs(light[1] - light[2]) < 0.01, "a grey bottom left its tone: \(light)")
+    }
+
+    @Test("ein helles Cover wird in seinem Ton abgedunkelt, bis weisse Schrift 4,5:1 hat; ein dunkles bleibt")
+    func aLightTintDarkensInItsTone() {
+        let cream = TextContrast.darkenedForWhite([0.98, 0.95, 0.85, 1])
+        #expect(TextContrast.againstWhite(red: cream[0], green: cream[1], blue: cream[2]) >= 4.5)
+        #expect(TextContrast.againstWhite(red: cream[0], green: cream[1], blue: cream[2]) < 4.6, "darker than it needs: \(cream)")
+        #expect(abs(cream[0] / cream[2] - 0.98 / 0.85) < 0.01 && abs(cream[1] / cream[2] - 0.95 / 0.85) < 0.01,
+                "the tone changed: \(cream)")
+        #expect(cream[3] == 1)
+        let navy = [0.05, 0.08, 0.2, 1.0]
+        #expect(TextContrast.darkenedForWhite(navy) == navy, "a dark tint was changed")
+        #expect(abs(TextContrast.againstWhite(red: 1, green: 1, blue: 1) - 1) < 0.001)
+        #expect(abs(TextContrast.againstWhite(red: 0, green: 0, blue: 0) - 21) < 0.001)
     }
 
     @Test("ein Schnappschuss ohne Farbe liest sich, einer mit Farbe traegt sie")
