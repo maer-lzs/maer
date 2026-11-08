@@ -1150,14 +1150,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
-        ownStandMs = Date().timeIntervalSince1970 * 1000
+        // Only a pause of a running piece is the device's own stand; on a
+        // device that only held the item (a pause from the lock screen or
+        // a media key) a stand from another device keeps its weight.
+        if wasPlaying { ownStandMs = Date().timeIntervalSince1970 * 1000 }
         // Pausing withdraws the claim actively, with the final stand for
-        // the device that takes over. The other device's hint line dies
-        // in delivery seconds, the 90-s ageing stays the fallback for the
-        // paths without a clean pause.
+        // the device that takes over, when there is one. The other device's
+        // hint line dies in delivery seconds, the 90-s ageing stays the
+        // fallback for the paths without a clean pause.
         if let item {
-            PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
-                                             duration: duration, epoch: standEpoch)
+            PlaybackClaimSync.shared.release(
+                itemId: item.id,
+                position: PlaybackClaimRules.releasePosition(wasPlaying: wasPlaying, currentTime: currentTime),
+                duration: duration, epoch: standEpoch)
         }
         updateNowPlayingInfo()
         updateWidgetSnapshot()

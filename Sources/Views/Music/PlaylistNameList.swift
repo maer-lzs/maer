@@ -30,21 +30,30 @@ struct PlaylistHomeSection: View {
         let lists = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter { $0.home == home }) {
             Date(timeIntervalSince1970: $0.updatedAt)
         }
+        // Start shows routines under their own name until a mixed list joins
+        // them; the page of all lists carries the same name.
+        let title: LocalizedStringKey = lists.allSatisfy(\.isRoutine) ? "Routines" : "Playlists"
         if !lists.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                // Start shows routines under their own name until a mixed
-                // list joins them.
-                let title: LocalizedStringKey = lists.allSatisfy(\.isRoutine) ? "Routines" : "Playlists"
-                RowHeading.plain(title)
-                ForEach(limit.map { Array(lists.prefix($0)) } ?? lists) { list in
-                    PlaylistNameRow(list: list, playsInPlace: home == .start,
-                                    playerCoordinator: playerCoordinator)
-                }
-                if let limit {
-                    ShowAllRow(total: lists.count, hasMore: lists.count > limit,
-                               destination: MusicRoute.maerPlaylists(home),
-                               accessibilityId: "playlists-show-all-\(home.rawValue)")
-                }
+            if limit == nil {
+                section(lists, title: title)
+                    .navigationTitle(title)
+            } else {
+                section(lists, title: title)
+            }
+        }
+    }
+
+    private func section(_ lists: [MaerPlaylists.Playlist], title: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            RowHeading.plain(title)
+            ForEach(limit.map { Array(lists.prefix($0)) } ?? lists) { list in
+                PlaylistNameRow(list: list, playsInPlace: home == .start,
+                                playerCoordinator: playerCoordinator)
+            }
+            if let limit {
+                ShowAllRow(total: lists.count, hasMore: lists.count > limit,
+                           destination: MusicRoute.maerPlaylists(home),
+                           accessibilityId: "playlists-show-all-\(home.rawValue)")
             }
         }
     }
@@ -107,9 +116,9 @@ struct MaerPlaylistsPage: View {
 
     var body: some View {
         ScrollView {
+            // The section names the page as it names itself.
             PlaylistHomeSection(home: home, playerCoordinator: playerCoordinator, limit: nil)
                 .padding(.vertical)
         }
-        .navigationTitle("Playlists")
     }
 }

@@ -101,6 +101,13 @@ nonisolated enum PlaybackClaimRules {
         forced || nowMs - lastClaimAtMs >= heartbeatSeconds * 1000
     }
 
+    /// The stand a pause's release carries: the position of a piece that
+    /// was playing; none on a device that only held the item, whose
+    /// position no other device may start from.
+    static func releasePosition(wasPlaying: Bool, currentTime: Double) -> Double? {
+        wasPlaying ? currentTime : nil
+    }
+
     /// The position the taking-over device starts at: the other device's
     /// claim on the same item, with a position, not older than the
     /// validity window. Released or not, both carry the freshest stand

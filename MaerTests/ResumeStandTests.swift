@@ -35,6 +35,7 @@ struct ResumeStandTests {
         let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
                                     localTracks: { _ in [:] }, isOnline: { true })
         await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
+        model.isPlaying = true
         model.currentTime = 9
         model.pause()
         let paused = try #require(model.ownStandMs, "the precondition: the pause is the player's own stand")
@@ -53,6 +54,7 @@ struct ResumeStandTests {
         let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
                                     localTracks: { _ in [:] }, isOnline: { true })
         await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
+        model.isPlaying = true
         model.currentTime = 9
         model.pause()
         let paused = try #require(model.ownStandMs, "the precondition: the pause is the player's own stand")
@@ -60,6 +62,35 @@ struct ResumeStandTests {
         #expect(model.storedStandTarget() == 3, "the other device's later stand did not move the player")
         #expect(model.ownStandMs == paused + 1_000, "the taken stand is the player's stand from now on")
         model.stop()
+    }
+
+    @Test("ueber den echten Player: eine Pause auf einem stillen Geraet ist kein eigener Stand, der Stand des anderen bewegt es danach", .needsAudio)
+    func aSilentPauseIsNoOwnStand() async throws {
+        let ticks = TickWorkTests()
+        let file = try ticks.tone(seconds: 12)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "rss:resume-\(UUID().uuidString):ep"
+        let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
+        model.currentTime = 9
+        #expect(!model.isPlaying, "the precondition: the device only holds the item")
+        model.pause()
+        #expect(model.ownStandMs == nil, "a pause on a silent device made its stand its own")
+        ListeningStore.record(id, position: 3, duration: 12, atMs: Date().timeIntervalSince1970 * 1000 - 60_000)
+        #expect(model.storedStandTarget() == 3, "the other device's stand from a minute ago did not move it")
+        model.stop()
+    }
+
+    @Test("die Ruecknahme einer Pause traegt nur den Stand eines laufenden Stuecks; die Pause fragt die Regel")
+    func aSilentReleaseCarriesNoPosition() throws {
+        #expect(PlaybackClaimRules.releasePosition(wasPlaying: true, currentTime: 42) == 42)
+        #expect(PlaybackClaimRules.releasePosition(wasPlaying: false, currentTime: 42) == nil)
+        let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(text.contains("position: PlaybackClaimRules.releasePosition(wasPlaying: wasPlaying, currentTime: currentTime),"),
+                "the pause's release carries the position without asking")
+        #expect(text.contains("if wasPlaying { ownStandMs = Date().timeIntervalSince1970 * 1000 }"),
+                "a pause makes the stand its own without having played")
     }
 
     @Test("Weiterspielen fragt die Regel und keinen blossen Abstand der Positionen", .needsTheSources)
