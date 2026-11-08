@@ -14,6 +14,9 @@ import WidgetKit
 /// playing the widget runs on by itself from the snapshot's steps.
 extension PlayerViewModel {
     private static var lastWidgetCoverItemId: String?
+    /// The bottom colour of the cover the shared file holds, for the item of
+    /// `lastWidgetCoverItemId`.
+    private static var lastWidgetCoverTint: [Double]?
 
     /// How far ahead the widget runs on by itself while playing.
     static let widgetMinutesAhead = 60
@@ -29,7 +32,7 @@ extension PlayerViewModel {
         // A live station's duration grows with its position, so it is
         // written as live and never by its length.
         let markedForm = ListeningStore.startedForm(item.id)
-        guard let snapshot = WidgetSnapshot.of(
+        guard var snapshot = WidgetSnapshot.of(
             itemId: item.id,
             title: item.media.metadata?.title ?? "",
             author: item.media.metadata?.authorName,
@@ -40,6 +43,7 @@ extension PlayerViewModel {
             position: currentTime, duration: duration, rate: Double(playbackRate), isPlaying: isPlaying, now: now,
             minutesAhead: Self.widgetMinutesAhead, remaining: Self.widgetRemainingText
         ) else { return }
+        if Self.lastWidgetCoverItemId == item.id { snapshot.coverTint = Self.lastWidgetCoverTint }
         widgetWrites += 1
         // Only a snapshot with steps needs renewing.
         widgetPlayingSavedAt = snapshot.steps == nil ? nil : now
@@ -51,11 +55,10 @@ extension PlayerViewModel {
             let itemId = item.id
             let coverURL = provider.coverURL(forItemId: item.id)
             Task { @MainActor in
-                var data: Data?
-                if let coverURL, let thumb = await Artwork.thumbnail(for: coverURL) { data = thumb.pngData() }
-                let written = Self.writeSharedCover(data)
-                Self.lastWidgetCoverItemId = Self.coverMark(previous: Self.lastWidgetCoverItemId,
-                                                            current: itemId, written: written)
+                var image: UIImage?
+                if let coverURL { image = await Artwork.thumbnail(for: coverURL) }
+                let written = Self.writeSharedCover(image?.pngData())
+                Self.noteSharedCover(itemId: itemId, image: written ? image : nil)
                 WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
             }
         }
@@ -103,10 +106,22 @@ extension PlayerViewModel {
         let thumb = Self.downscaled(image, maxPixel: 300)
         let written = Self.writeSharedCover(thumb.pngData())
         if let itemId = item?.id {
-            Self.lastWidgetCoverItemId = Self.coverMark(previous: Self.lastWidgetCoverItemId,
-                                                        current: itemId, written: written)
+            Self.noteSharedCover(itemId: itemId, image: written ? thumb : nil)
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
+    }
+
+    /// After a write of the shared cover: the item the file holds, and its
+    /// bottom colour into the saved snapshot of that item, so the widget's
+    /// gradient follows the cover without computing it. A failed write
+    /// (`image` nil) keeps the mark, so the next update tries again.
+    private static func noteSharedCover(itemId: String, image: UIImage?) {
+        lastWidgetCoverItemId = coverMark(previous: lastWidgetCoverItemId, current: itemId, written: image != nil)
+        guard let image else { return }
+        lastWidgetCoverTint = CoverColorLoader.bottomComponents(of: image)
+        guard var saved = WidgetSnapshot.load(), saved.itemId == itemId else { return }
+        saved.coverTint = lastWidgetCoverTint
+        saved.save()
     }
 
     /// Aspect-preserving downscale so the shared cover PNG stays small.

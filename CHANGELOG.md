@@ -24,6 +24,14 @@ library, each as a short list with a way to all of them. Routines and
 playlists that mix kinds stand on Start as a list with a play button on
 each line, so Start keeps one row of large cards.
 
+**The Continue Listening widget uses its whole height.** In the medium
+and large widget the titles share the space under the heading instead of
+standing at the top, and their covers grow with them. Where the cover
+fills the widget, the title stands on a gradient in the colour of the
+cover's lower edge, as on the cards on Start, so it stays readable.
+While something plays, the medium widget shows it on its cover in the
+left half and the other titles to continue in the right half.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An
