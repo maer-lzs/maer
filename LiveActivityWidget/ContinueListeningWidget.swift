@@ -181,7 +181,7 @@ private struct ContinueListeningView: View {
         Link(destination: ResumeLink.url(itemId: snapshot.itemId)) {
             Color.clear
                 .overlay { coverImage }
-                .overlay { coverGradient(startingAt: 0.2) }
+                .overlay { coverGradient }
                 .overlay(alignment: .bottomLeading) {
                     small(WidgetLine.of(snapshot, at: entry.date))
                         .padding(10)
@@ -431,17 +431,18 @@ private struct ContinueListeningView: View {
     private var coverBackground: some View {
         ZStack {
             coverImage
-            coverGradient(startingAt: isWide ? 0 : 0.2)
+            coverGradient
         }
     }
 
     /// As the cards on Start: from clear to the colour of the cover's own
-    /// bottom edge, which the app wrote into the snapshot; a snapshot
-    /// without it keeps a dark gradient.
-    private func coverGradient(startingAt start: Double) -> some View {
+    /// bottom edge, which the app wrote into the snapshot, over the lowest
+    /// quarter only, so the cover stays visible; a snapshot without it keeps
+    /// a dark gradient.
+    private var coverGradient: some View {
         let tint = entry.snapshot?.coverTint.flatMap(Self.color(of:)) ?? .black.opacity(0.75)
-        return LinearGradient(stops: [.init(color: .clear, location: start),
-                                      .init(color: tint, location: 0.75),
+        return LinearGradient(stops: [.init(color: .clear, location: 0.75),
+                                      .init(color: tint, location: 0.9),
                                       .init(color: tint, location: 1)],
                               startPoint: .top, endPoint: .bottom)
     }
