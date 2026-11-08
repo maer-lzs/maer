@@ -2,14 +2,6 @@
 
 ## Next build (not yet cut)
 
-**Covers from servers reached over http appear again.** Audiobookshelf,
-Jellyfin, Subsonic and Navidrome servers you reach only over http, for
-example over Tailscale or at home without a certificate, showed no covers
-while their audio played. The app asked them over https. A server you
-entered now keeps the address you entered for its covers, and a Pinchflat
-feed on such a server loads too. Covers and feeds from elsewhere still go
-over https.
-
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
@@ -36,6 +28,38 @@ another device, in gpodder, on your Audiobookshelf, Jellyfin or Subsonic
 server, or one an import marks as heard, now leaves Up Next, as it does
 when you mark it here. One you put back into Up Next after hearing it
 stays until it is marked again.
+
+## v3.6.1 (Build 60)
+
+**Covers from servers reached over http appear again.** Audiobookshelf,
+Jellyfin, Subsonic and Navidrome servers you reach only over http, for
+example over Tailscale or at home without a certificate, showed no covers
+while their audio played. The app asked them over https. A server you
+entered now keeps the address you entered for its covers, and a Pinchflat
+feed on such a server loads too. Covers and feeds from elsewhere still go
+over https.
+
+**Your place no longer jumps back with several devices.** Playing on
+after a pause no longer moves you back to a position this device saved
+before; only a newer position from another device moves it. A device
+that only has the player open, like a Mac, no longer sends its old
+position when it goes to the background or closes the player. Playing
+on from AirPods, the lock screen, CarPlay or after a call first looks
+for a newer position, as the play button does.
+
+**Playlists stand where they belong.** A playlist of music stays in
+Music, one of podcasts appears in Podcasts and one of audiobooks in the
+library, each as a short list with a way to all of them. Routines and
+playlists that mix kinds stand on Start as a list with a play button on
+each line, so Start keeps one row of large cards.
+
+**The Continue Listening widget uses its whole height.** In the medium
+and large widget the titles share the space under the heading instead of
+standing at the top, and their covers grow with them. Where the cover
+fills the widget, the title stands on a gradient in the colour of the
+cover's lower edge, as on the cards on Start, so it stays readable.
+While something plays, the medium widget shows it on its cover in the
+left half and the other titles to continue in the right half.
 
 ## v3.6 (Build 59)
 

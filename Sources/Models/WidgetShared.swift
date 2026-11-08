@@ -154,6 +154,11 @@ nonisolated struct WidgetSnapshot: Codable {
     /// device, or by marking it heard. A write of the snapshot without any
     /// of them (a restore at start, a change of speed) leaves it.
     var heardAtMs: Double?
+    /// The colour of the cover's bottom edge as RGBA, computed by the app
+    /// when it writes the cover (`CoverColorLoader.bottomComponents`); the
+    /// widget's gradient under the text ends in it. Nil in a snapshot that
+    /// does not carry it.
+    var coverTint: [Double]?
 
     /// The moment the title counts as heard: while it plays, the later of
     /// its position's moment and this write (playing starts before the
@@ -443,6 +448,29 @@ nonisolated enum WidgetRows {
             let picked = (first == second ? [first] : [first, second]).compactMap(newest)
             return Array(picked.prefix(limit(large: false, accessibilitySize: accessibilitySize)))
         }
+    }
+
+    /// The height of each row when the rows share the space under the
+    /// heading, each the same, with `spacing` between them.
+    static func rowHeight(available: CGFloat, rows: Int, spacing: CGFloat) -> CGFloat {
+        guard rows > 0 else { return 0 }
+        return max(0, (available - spacing * CGFloat(rows - 1)) / CGFloat(rows))
+    }
+
+    /// The rows of the medium widget's right half while a title plays: the
+    /// settings' rows without the playing title.
+    static func besidePlaying(_ rows: [WidgetSourceRow], playing itemId: String,
+                              layout: Layout, accessibilitySize: Bool) -> [WidgetSourceRow] {
+        shown(rows.filter { $0.itemId != itemId }, layout: layout, accessibilitySize: accessibilitySize)
+    }
+
+    /// Whether the medium widget splits in half while a title plays: the
+    /// title on its cover at the left, the rows beside it at the right. Only
+    /// when a row stands beside it; the accessibility sizes keep the whole
+    /// width for the rows.
+    static func splitsWhilePlaying(isMedium: Bool, isPlaying: Bool, accessibilitySize: Bool,
+                                   besideCount: Int) -> Bool {
+        isMedium && isPlaying && !accessibilitySize && besideCount > 0
     }
 }
 

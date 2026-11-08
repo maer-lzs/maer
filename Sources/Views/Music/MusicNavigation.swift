@@ -39,6 +39,8 @@ enum MusicRoute: Hashable {
     case catalogAlbum(String)
     /// One playlist, across sources and across the devices.
     case maerPlaylist(String)
+    /// Every device list of one home (`PlaylistHome`).
+    case maerPlaylists(PlaylistHome)
     /// A shelf row's full page. Recent/newest as a grid. ONE parameterised
     /// page; Home's "Recently Played (Music)" row targets the same .recent
     /// page, so there is no duplicate surface.
@@ -74,6 +76,7 @@ enum MusicRoute: Hashable {
         case let (.archiveMusic(a), .archiveMusic(b)): return a == b
         case let (.catalogAlbum(a), .catalogAlbum(b)): return a == b
         case let (.maerPlaylist(a), .maerPlaylist(b)): return a == b
+        case let (.maerPlaylists(a), .maerPlaylists(b)): return a == b
         case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
@@ -95,6 +98,7 @@ enum MusicRoute: Hashable {
         case .shellacArea:      hasher.combine(14)
         case .catalogAlbum(let id): hasher.combine(15); hasher.combine(id)
         case .maerPlaylist(let id): hasher.combine(16); hasher.combine(id)
+        case .maerPlaylists(let home): hasher.combine(20); hasher.combine(home)
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
         case .jamendoShelf(let k): hasher.combine(13); hasher.combine(k)
@@ -122,6 +126,7 @@ enum MusicRoute: Hashable {
         case .shellacArea: return "music-route-shellac-area"
         case .catalogAlbum: return "music-route-catalog-album"
         case .maerPlaylist: return "music-route-maer-playlist"
+        case .maerPlaylists(let home): return "music-route-maer-playlists-\(home.rawValue)"
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
         case .jamendoShelf: return "music-route-jamendo-shelf"
@@ -191,6 +196,8 @@ extension View {
                 ShellacShelvesPage(playerCoordinator: playerCoordinator)
             case .maerPlaylist(let id):
                 MaerPlaylistPage(playlistId: id, playerCoordinator: playerCoordinator)
+            case .maerPlaylists(let home):
+                MaerPlaylistsPage(home: home, playerCoordinator: playerCoordinator)
             case .catalogAlbum(let id):
                 ArchiveSeriesPage(itemId: id, flavor: .album,
                                   playerCoordinator: playerCoordinator)

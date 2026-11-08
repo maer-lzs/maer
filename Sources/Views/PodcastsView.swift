@@ -153,6 +153,7 @@ struct PodcastsView: View {
                     pinchflatGroupSection
                     premiumSection
                     recentlyUpdatedSection
+                    playlistsSection
                     downloadedShelf
                     coListenedSection
                     // Own stock before the shop window: the curation of
@@ -481,6 +482,11 @@ RowHeading(title: "Recommended",
     }
 
     // MARK: - Latest episodes (the SHARED grid, identical on Home)
+
+    /// The device lists that hold only podcasts, as the one name list.
+    private var playlistsSection: some View {
+        PlaylistHomeSection(home: .podcasts, playerCoordinator: playerCoordinator)
+    }
 
     @ViewBuilder
     private var latestEpisodesSection: some View {

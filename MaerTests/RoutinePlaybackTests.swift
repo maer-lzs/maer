@@ -379,22 +379,22 @@ struct RoutinePlaybackTests {
     }
 
     /// Routines stand on Start and nowhere in the Music tab: its row and
-    /// its deck read the device lists through the one filter.
+    /// its deck read the device lists through the one rule of the home.
     @Test("Routinen stehen auf Start und nicht im Musik-Reiter, weder in der Reihe noch in der Zaehlung", .needsTheSources)
     func routinesStandOnStartOnly() throws {
         let music = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
-        #expect(music.contains("private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { !$0.isRoutine } }"))
+        #expect(music.contains("private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { $0.home == .music } }"))
         #expect(music.components(separatedBy: "maerPlaylists.playlists").count - 1 == 1, "every reader goes through musicLists")
         #expect(music.contains("let device = musicLists.map"))
         #expect(music.contains("count: vm.playlists.count + musicLists.count"))
+        #expect(PlaylistHome.of(kinds: [.music], isRoutine: true) == .start, "a routine stands on Start whatever it holds")
         let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
-        #expect(home.contains("maerPlaylists.playlists.filter(\\.isRoutine)"))
-        #expect(home.contains("PlaylistCard(source: PlaylistCardSource.device(list, router: router)"))
-        // Only the row observes the lists; Start's root does not redraw for them.
-        let row = home.components(separatedBy: "struct HomeRoutinesRow: View {").dropFirst().first ?? ""
-        #expect(row.contains("@ObservedObject private var maerPlaylists = MaerPlaylists.shared"))
-        #expect(home.components(separatedBy: "MaerPlaylists.shared").count - 1 == 1, "the row is the one observer on Start")
-        #expect(home.contains("private var routinesSection: some View { HomeRoutinesRow(playerCoordinator: playerCoordinator) }"))
+        #expect(home.contains("private var routinesSection: some View { PlaylistHomeSection(home: .start, playerCoordinator: playerCoordinator) }"))
+        // Only the section observes the lists; Start's root does not redraw for them.
+        #expect(!home.contains("MaerPlaylists.shared"), "Start observes the lists itself")
+        let list = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistNameList.swift")
+        let section = list.components(separatedBy: "struct PlaylistHomeSection: View {").dropFirst().first ?? ""
+        #expect(section.contains("@ObservedObject private var maerPlaylists = MaerPlaylists.shared"))
     }
 
     // MARK: - The shortcut

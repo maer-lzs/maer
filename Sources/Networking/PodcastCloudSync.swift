@@ -261,6 +261,7 @@ final class PodcastCloudSync {
                 // written past it would escape the row copy and the rules
                 // every other write path carries.
                 ListeningStore.store(id, entry: value, in: defaults)
+                Self.noteAdoption(id, before: local[id], after: value, by: caller, onlyBackward: true)
             }
         }
         // What no longer travels is not written back either; otherwise
@@ -398,6 +399,18 @@ final class PodcastCloudSync {
         case none
     }
 
+    /// One line per stand taken from the carrier, with both sides, so a
+    /// resume that jumps back is traced to the stand that came in. The full
+    /// scan names only stands that move a position back; forward is its
+    /// normal case.
+    private static func noteAdoption(_ id: String, before: [Double]?, after: [Double],
+                                     by caller: String, onlyBackward: Bool = false) {
+        let old = before?.first ?? -1
+        let new = after.first ?? -1
+        if onlyBackward, old <= new + 2 { return }
+        Logger.library.notice("STAND adopt item=\(id, privacy: .private(mask: .hash)) old=\(Int(old))@\(Int(ProgressMark.timestamp(before) ?? -1)) new=\(Int(new))@\(Int(ProgressMark.timestamp(after) ?? -1)) by=\(caller, privacy: .public)")
+    }
+
     nonisolated static func mergeSingle(local: [Double]?, cloud: [Double]?) -> SingleMergeOutcome {
         let lts = ProgressMark.timestamp(local) ?? -1
         let cts = ProgressMark.timestamp(cloud) ?? -1
@@ -434,6 +447,7 @@ final class PodcastCloudSync {
         switch Self.mergeSingle(local: localArr, cloud: cloudArr) {
         case .adoptCloud(let value):
             ListeningStore.store(id, entry: value, in: defaults)
+            Self.noteAdoption(id, before: localArr, after: value, by: caller)
             reloadProgress()
             PodcastListenLog.shared.noteReconciled(guids: [id], before: localArr.map { [id: $0] } ?? [:])
         case .pushLocal(let value):

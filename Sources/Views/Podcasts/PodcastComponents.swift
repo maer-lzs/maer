@@ -559,7 +559,7 @@ struct EpisodeRowPlayButton: View {
         if isPlayingThis {
             playerCoordinator.viewModel?.pause()
         } else if isCurrent {
-            playerCoordinator.viewModel?.play()
+            await playerCoordinator.viewModel?.playWithServerCheck(caller: "episode row")
         } else if !playable {
             return
         } else if podcastRestartsOnPlay(item) {

@@ -117,9 +117,30 @@ private struct ContinueListeningView: View {
         ContinueFace.of(showsRowsAtThisSize: isWide, hasRows: !rows.isEmpty, hasSnapshot: entry.snapshot != nil)
     }
 
+    /// The medium widget while a title plays: the title and the rows beside
+    /// it (`WidgetRows.splitsWhilePlaying`); nil keeps the one face.
+    private var playingSplit: (snapshot: WidgetSnapshot, beside: [WidgetSourceRow])? {
+        guard let snapshot = entry.snapshot else { return nil }
+        let accessibility = dynamicTypeSize.isAccessibilitySize
+        let beside = WidgetRows.besidePlaying(entry.homeRows, playing: snapshot.itemId,
+                                              layout: entry.layout, accessibilitySize: accessibility)
+        guard WidgetRows.splitsWhilePlaying(isMedium: family == .systemMedium, isPlaying: snapshot.isPlaying,
+                                            accessibilitySize: accessibility, besideCount: beside.count) else {
+            return nil
+        }
+        return (snapshot, beside)
+    }
+
     var body: some View {
         Group {
-            if face == .rows {
+            if let split = playingSplit {
+                HStack(spacing: 12) {
+                    playingHalf(split.snapshot)
+                    // The half shows its cover already; the rows beside it
+                    // give their width to the title.
+                    rowsFace(split.beside, covers: false)
+                }
+            } else if face == .rows {
                 rowsFace(rows)
             } else if face == .oneTitle, let snapshot = entry.snapshot {
                 let line = WidgetLine.of(snapshot, at: entry.date)
@@ -153,18 +174,46 @@ private struct ContinueListeningView: View {
         family == .accessoryRectangular || family == .accessoryCircular
     }
 
-    /// Large and medium with rows: a heading, then one row per title. A
+    /// The playing title in the medium widget's left half: its cover to the
+    /// half's edges under the gradient, title and bar as in the small widget.
+    /// A tap opens the app with the title.
+    private func playingHalf(_ snapshot: WidgetSnapshot) -> some View {
+        Link(destination: ResumeLink.url(itemId: snapshot.itemId)) {
+            Color.clear
+                .overlay { coverImage }
+                .overlay { coverGradient(startingAt: 0.2) }
+                .overlay(alignment: .bottomLeading) {
+                    small(WidgetLine.of(snapshot, at: entry.date))
+                        .padding(10)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Large and medium with rows: a heading, then one row per title. The
+    /// rows share the whole height under the heading, each the same. A
     /// tap on a row opens the app with that title; its button continues
     /// the title without opening the app.
-    private func rowsFace(_ rows: [WidgetSourceRow]) -> some View {
-        VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 8) {
+    private func rowsFace(_ rows: [WidgetSourceRow], covers: Bool = true) -> some View {
+        let spacing: CGFloat = family == .systemLarge ? 12 : 8
+        return VStack(alignment: .leading, spacing: spacing) {
             Label("Continue Listening", systemImage: "headphones")
                 .font(.caption.bold())
                 .foregroundStyle(.orange)
-            ForEach(rows, id: \.itemId) { row in
-                sourceRow(row)
+            GeometryReader { space in
+                let height = WidgetRows.rowHeight(available: space.size.height, rows: rows.count, spacing: spacing)
+                // Square, as tall as the row; the cap keeps the title its
+                // room when one row has the whole widget.
+                let side: CGFloat? = covers && !dynamicTypeSize.isAccessibilitySize
+                    ? min(height, family == .systemLarge ? 140 : 96) : nil
+                VStack(alignment: .leading, spacing: spacing) {
+                    ForEach(rows, id: \.itemId) { row in
+                        sourceRow(row, coverSide: side)
+                            .frame(height: height)
+                    }
+                }
             }
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -174,15 +223,16 @@ private struct ContinueListeningView: View {
     /// sizes drop the cover. A title nobody started has no bar and no time;
     /// under its name stands who made it, at every size. The kind's mark
     /// stands before the title, on its line.
-    private func sourceRow(_ row: WidgetSourceRow) -> some View {
+    private func sourceRow(_ row: WidgetSourceRow, coverSide: CGFloat?) -> some View {
         let large = family == .systemLarge
         let compact = !large || dynamicTypeSize.isAccessibilitySize
         let started = row.isLive || row.showsProgress
         return HStack(spacing: 8) {
             Link(destination: ResumeLink.url(itemId: row.itemId)) {
                 HStack(spacing: 8) {
-                    if !dynamicTypeSize.isAccessibilitySize {
-                        rowCover(row, side: large ? 44 : 34)
+                    if let coverSide {
+                        rowCover(row)
+                            .frame(width: coverSide, height: coverSide)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -200,7 +250,7 @@ private struct ContinueListeningView: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
             .accessibilityElement(children: .combine)
             Button(intent: ResumeListeningIntent(itemId: row.itemId)) {
@@ -255,20 +305,22 @@ private struct ContinueListeningView: View {
         return row.itemId == entry.snapshot?.itemId ? entry.cover : nil
     }
 
-    private func rowCover(_ row: WidgetSourceRow, side: CGFloat) -> some View {
-        Group {
-            if let image = rowImage(row) {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Rectangle()
-                    .fill(.quaternary)
-                    .overlay(Image(systemName: row.kindSymbol).font(.caption).foregroundStyle(.secondary))
+    /// Square at the size the row offers.
+    private func rowCover(_ row: WidgetSourceRow) -> some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                if let image = rowImage(row) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Rectangle()
+                        .fill(.quaternary)
+                        .overlay(Image(systemName: row.kindSymbol).font(.caption).foregroundStyle(.secondary))
+                }
             }
-        }
-        .frame(width: side, height: side)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 
     /// Small and medium: the cover is the widget's background, which the
@@ -379,11 +431,25 @@ private struct ContinueListeningView: View {
     private var coverBackground: some View {
         ZStack {
             coverImage
-            LinearGradient(
-                colors: isWide ? [.black.opacity(0.2), .black.opacity(0.8)] : [.clear, .black.opacity(0.75)],
-                startPoint: isWide ? .top : .center, endPoint: .bottom
-            )
+            coverGradient(startingAt: isWide ? 0 : 0.2)
         }
+    }
+
+    /// As the cards on Start: from clear to the colour of the cover's own
+    /// bottom edge, which the app wrote into the snapshot; a snapshot
+    /// without it keeps a dark gradient.
+    private func coverGradient(startingAt start: Double) -> some View {
+        let tint = entry.snapshot?.coverTint.flatMap(Self.color(of:)) ?? .black.opacity(0.75)
+        return LinearGradient(stops: [.init(color: .clear, location: start),
+                                      .init(color: tint, location: 0.75),
+                                      .init(color: tint, location: 1)],
+                              startPoint: .top, endPoint: .bottom)
+    }
+
+    /// A colour from RGBA components; nil for any other count.
+    private static func color(of components: [Double]) -> Color? {
+        guard components.count == 4 else { return nil }
+        return Color(red: components[0], green: components[1], blue: components[2], opacity: components[3])
     }
 
     /// Medium, and large without rows: title, author, remaining time and

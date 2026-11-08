@@ -21,6 +21,10 @@ nonisolated struct SyncState: Equatable, Sendable {
     var progressSync: Bool
     var podcastEpisode: Bool
     var potCarries: Bool
+    /// The device plays, or it stopped a running piece and the write of
+    /// that stand has not landed yet. A device that only holds the item
+    /// owes no stand.
+    var owesStand: Bool = true
 }
 
 /// Everything a sync does, decided before it does it. The player only
@@ -35,6 +39,10 @@ nonisolated struct SyncPlan: Equatable, Sendable {
         /// A backward jump the user did not ask for is never written
         /// silently. `raise` is false while a conflict is already shown.
         case conflict(raise: Bool)
+        /// A pause, stop, background or interruption on a device that owes
+        /// no stand: it would stamp a stand it did not hear anew and carry
+        /// it over another device's newer one.
+        case noOwnStand
     }
 
     enum Local: Equatable, Sendable {
@@ -74,15 +82,16 @@ nonisolated struct SyncPlan: Equatable, Sendable {
 }
 
 nonisolated extension SyncRules {
-    /// The plan of one sync. The occasion decides only what `force` decided:
-    /// a deliberate occasion passes the five-second threshold and sends the
-    /// pot at once. Any further distinction by occasion would change how
-    /// positions are written.
+    /// The plan of one sync. A deliberate occasion passes the five-second
+    /// threshold and sends the pot at once; an occasion that needs its own
+    /// stand writes only on a device that owes one.
     static func plan(origin: SyncOrigin, state: SyncState) -> SyncPlan {
         let deliberate = origin.isDeliberate
         let gate: SyncPlan.Gate
         if !mayPushProgress(startSourceResolved: state.startSourceResolved) {
             gate = .unresolvedStart
+        } else if origin.needsOwnStand, !state.owesStand {
+            gate = .noOwnStand
         } else if !(deliberate || abs(state.currentTime - state.lastSyncedTime) >= 5) {
             // In the former form on purpose: `< 5` is the same for every
             // number but not for NaN, where a tick used to stop and would

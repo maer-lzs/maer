@@ -103,6 +103,20 @@ final class CoverColorLoader: ObservableObject {
         return (Color(base), Color(top), Color(bottom))
     }
 
+    /// The colour of a cover's bottom edge as RGBA, the rule of
+    /// `bottomAccent`: the average of the lowest 30 percent, darkened for
+    /// white text, and further in its own tone until white text reads on it
+    /// (`TextContrast.darkenedForWhite`). The widget's snapshot carries it,
+    /// so the widget computes nothing.
+    nonisolated static func bottomComponents(of image: UIImage) -> [Double]? {
+        guard let color = crop(image, toBottom: 0.3).flatMap({ averageColor(of: $0) }) ?? averageColor(of: image) else {
+            return nil
+        }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return TextContrast.darkenedForWhite([Double(r), Double(g), Double(b), Double(a)])
+    }
+
     /// Crops the top/bottom image portion. Deliberately via `UIImage.draw(at:)`
     /// (UIKit coordinates, unambiguously top to bottom) rather than a raw
     /// `CGContext`: its coordinate system runs bottom to top, which for a

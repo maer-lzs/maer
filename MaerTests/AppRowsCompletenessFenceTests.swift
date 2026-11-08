@@ -59,6 +59,7 @@ struct AppRowsCompletenessFenceTests {
         "books.continue": [Site(owner: "LibraryView", name: "continueFeaturedSection")],
         "books.recentlyAdded": [Site(owner: "LibraryView", name: "recentlyAddedGrid")],
         "books.downloaded": [Site(owner: "LibraryView", name: "downloadedSection")],
+        "books.playlists": [Site(owner: "LibraryView", name: "playlistsSection")],
         "books.allBooks": [Site(owner: "LibraryView", name: "allBooksSection")],
 
         "music.netlabels": [Site(owner: "MusicView", name: "catalogSections", anchor: "\"Netlabels\""),
@@ -84,6 +85,7 @@ struct AppRowsCompletenessFenceTests {
         "podcasts.notFollowed": [Site(owner: "PodcastsView", name: "needsSignInSection")],
         "podcasts.premium": [Site(owner: "PodcastsView", name: "premiumSection")],
         "podcasts.downloaded": [Site(owner: "PodcastsView", name: "downloadedShelf")],
+        "podcasts.playlists": [Site(owner: "PodcastsView", name: "playlistsSection")],
 
         "radio.myStations": [Site(owner: "RadioView", name: "body", anchor: "RadioFeaturedCardRow(")],
         "radio.catalog": [Site(owner: "RadioView", name: "body", anchor: "RowHeading<RadioRoute>("),
@@ -104,7 +106,7 @@ struct AppRowsCompletenessFenceTests {
     /// What heads a row: the shared heading, a heading set by hand, and
     /// the parts that carry their own heading.
     static let heading = try! NSRegularExpression(
-        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|HomeRoutinesRow\("#)
+        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|PlaylistHomeSection\("#)
     static let declaration = try! NSRegularExpression(
         pattern: #"^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|static|nonisolated)\s+)*(?:var|func)\s+(\w+)"#)
 
@@ -241,7 +243,8 @@ struct AppRowsCompletenessFenceTests {
                       ("browseOffer", "books.catalog"), ("bookTabDeck", nil), ("historySection", nil)]),
         Order(file: "Sources/Views/LibraryView.swift",
               from: "private var stockSections: some View {",
-              steps: [("downloadedSection", "books.downloaded"), ("recentlyAddedGrid", "books.recentlyAdded")]),
+              steps: [("downloadedSection", "books.downloaded"), ("recentlyAddedGrid", "books.recentlyAdded"),
+                      ("playlistsSection", "books.playlists")]),
         Order(file: "Sources/Views/Music/MusicView.swift",
               from: "private var content: some View {",
               steps: [("playlistRow", "music.playlists"), ("vm.errorText", nil),
@@ -257,6 +260,7 @@ struct AppRowsCompletenessFenceTests {
               steps: [("nextUpSection", "podcasts.continue"), ("needsSignInSection", "podcasts.notFollowed"),
                       ("latestEpisodesSection", "podcasts.latestEpisodes"), ("pinchflatGroupSection", "podcasts.pinchflat"),
                       ("premiumSection", "podcasts.premium"), ("recentlyUpdatedSection", "podcasts.subscriptions"),
+                      ("playlistsSection", "podcasts.playlists"),
                       ("downloadedShelf", "podcasts.downloaded"), ("coListenedSection", "podcasts.coListened"),
                       ("case .row: browseRow", nil), ("case .sections: catalogSections", nil),
                       ("historyRow", nil),

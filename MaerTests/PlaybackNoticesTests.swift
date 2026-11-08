@@ -258,7 +258,8 @@ struct PlaybackNoticesTests {
         #expect(model.components(separatedBy: "notePlayback(\"play\"").count - 1 == 1, "a second start beside play()")
         #expect(model.contains("playbackStarts.send()"))
         let remote = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+NowPlaying.swift"), encoding: .utf8))
-        #expect(remote.contains("self?.play()"), "the remote command starts past play()")
+        #expect(remote.contains("self?.playWithServerCheck(caller: \"remote play\")"),
+                "the remote command starts past play() and its check")
     }
 
     @Test("das Protokoll reist nicht: sein Dokument steht in keinem Traeger und keiner Wahl", .needsTheSources)

@@ -95,7 +95,8 @@ extension PlayerViewModel {
                   conflictPending: pendingServerConflict != nil,
                   progressSync: provider.capabilities.contains(.progressSync),
                   podcastEpisode: ItemNamespace.isPodcastEpisode(item.id),
-                  potCarries: PodcastCloudSync.potCarries(item.id))
+                  potCarries: PodcastCloudSync.potCarries(item.id),
+                  owesStand: isPlaying || pauseRecordPending)
     }
 
     /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
@@ -112,6 +113,9 @@ extension PlayerViewModel {
             // forced: at 00:00 in a fresh session this would overwrite a
             // server that is hours ahead, and the suspicious-drop guard has
             // no reference value to catch it.
+            return false
+        case .noOwnStand:
+            Logger.player.notice("SYNC held origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash)): this device owes no stand")
             return false
         case .conflict(let raise):
             // Core rule: a backward jump the user did NOT initiate is never
@@ -210,9 +214,11 @@ extension PlayerViewModel {
                 // finished episode as started again. `advancing`, not
                 // `entry`. With an unknown duration this must not drop a
                 // reference point that is already there.
+                let recordedAtMs = Date().timeIntervalSince1970 * 1000
                 ListeningStore.record(item.id, position: currentTime,
                                       duration: duration,
-                                      atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
+                                      atMs: recordedAtMs, epoch: standEpoch)
+                ownStandMs = recordedAtMs
                 // gpodder: push the podcast position too (periodically + on
                 // pause/stop/seek). No-op without config; abspod: is mapped
                 // via the feed-guid bridge.
@@ -442,6 +448,7 @@ extension PlayerViewModel {
         // `localPosition`. Set or remove it directly here.
         if !provider.capabilities.contains(.progressSync) {
             let nowMs = Date().timeIntervalSince1970 * 1000
+            ownStandMs = nowMs
             if target {
                 // With an unknown duration `entry(position: 0, duration: 0)`
                 // wrote `[0, now]`. Which READS as unplayed. Same sentinel as

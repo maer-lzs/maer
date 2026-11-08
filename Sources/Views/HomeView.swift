@@ -291,10 +291,11 @@ struct HomeView: View {
                          libraryViewModel: libraryViewModel)
     }
 
-    /// "Routines", its own view (`HomeRoutinesRow`): only the row observes
-    /// the device lists.
+    /// Routines and the lists that mix kinds, as the one name list
+    /// (`PlaylistHomeSection`, home `.start`): Start keeps one row of large
+    /// cards, Keep Listening. Only the section observes the device lists.
     private var routinesSection: some View {
-        HomeRoutinesRow(playerCoordinator: playerCoordinator)
+        PlaylistHomeSection(home: .start, playerCoordinator: playerCoordinator)
     }
 
     /// "Up Next". The global PlayQueue, same row component as the queue page.
@@ -1079,37 +1080,6 @@ struct RediscoverPoolPage: View {
                     }
                 }
                 .padding(.horizontal)
-            }
-        }
-    }
-}
-
-/// "Routines" on Start: every device list with a rule, newest change first,
-/// as the Music tab's playlist cards. Own holdings and few, so the row shows
-/// them all and has no page of its own. The row observes the lists itself:
-/// a list that gains or loses its rule redraws this row, not all of Start.
-struct HomeRoutinesRow: View {
-    @Environment(\.itemRouter) private var router
-    let playerCoordinator: PlayerCoordinator
-    @ObservedObject private var maerPlaylists = MaerPlaylists.shared
-
-    var body: some View {
-        let routines = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter(\.isRoutine)) {
-            Date(timeIntervalSince1970: $0.updatedAt)
-        }
-        if !routines.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                RowHeading.plain("Routines")
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 16) {
-                        ForEach(routines) { list in
-                            PlaylistCard(source: PlaylistCardSource.device(list, router: router),
-                                         playerCoordinator: playerCoordinator)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .rowReachesUnderSideColumn()
             }
         }
     }

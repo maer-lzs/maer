@@ -70,6 +70,26 @@ nonisolated enum SyncRules {
         ProgressMark.reachedEnd(position: currentTime, duration: duration)
     }
 
+    /// How the stand in the local store relates to the player's own before
+    /// it plays on. `ownStandMs` is the moment of the player's own stand of
+    /// the loaded item (its last own write or its pause), nil while it has
+    /// not listened since the load.
+    enum StoredStand: Equatable {
+        /// Within the tolerance of where the player stands.
+        case same
+        /// Stamped at or before the player's own stand: it never moves it.
+        case older
+        /// Stamped after it, so another device wrote it: the player moves.
+        case newer
+    }
+
+    static func storedStand(position: Double, atMs: Double, ownStandMs: Double?,
+                            currentTime: Double, tolerance: Double = 2) -> StoredStand {
+        guard abs(position - currentTime) > tolerance else { return .same }
+        guard let ownStandMs else { return .newer }
+        return atMs > ownStandMs ? .newer : .older
+    }
+
     /// Device reconcile: adopt the server state?
     /// With timestamp: newer entry + noticeable difference (also backwards).
     /// Without timestamp (old servers): forward only.
