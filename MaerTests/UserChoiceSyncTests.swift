@@ -1006,6 +1006,9 @@ struct UserChoiceGateTests {
             // How close to the end counts as played, for all shows and books
             // (decided 28.09.2026).
             "playedTailSeconds",
+            // Where new episodes go in Up Next, for all shows, travels like
+            // "Show in New Episodes" (decided 08.11.2026).
+            "podcastUpNextAddAll",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -1035,6 +1038,8 @@ struct UserChoiceGateTests {
             // The free feed of a paid show travels like a subscription
             // attribute (decided 28.09.2026).
             "podcastFreeTwin.",
+            // Where a show's new episodes go in Up Next (decided 08.11.2026).
+            "podcastUpNextAdd.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))
@@ -1065,6 +1070,9 @@ struct UserChoiceGateTests {
             // the builds before is only read.
             "podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll",
             "podcastAutoDownloadOnAll", "podcastAutoDownloadKeepAll",
+            // Up Next stays on each device, so the moment its new episodes
+            // count from is the device's own (decided 08.11.2026).
+            "podcastUpNextAddAllSince",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

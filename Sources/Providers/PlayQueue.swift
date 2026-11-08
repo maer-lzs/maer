@@ -126,6 +126,22 @@ final class PlayQueue: ObservableObject {
         save()
     }
 
+    /// New episodes a refresh brought (`UpNextAuto.plan`): the top block
+    /// before everything, the end block after, each in its own order, one
+    /// write. Unlike `playNext`, nothing already queued moves: an entry that
+    /// is there under any face is left where the person put it.
+    func addArrivals(_ plan: UpNextAuto.Plan) {
+        let fits = { (id: String) in self.isQueueable(id) && Self.canHold(id) && !self.contains(id) }
+        var top: [String] = []
+        for id in plan.top where fits(id) && !top.contains(id) { top.append(id) }
+        var end: [String] = []
+        for id in plan.end where fits(id) && !top.contains(id) && !end.contains(id) { end.append(id) }
+        guard !top.isEmpty || !end.isEmpty else { return }
+        ids = top + ids + end
+        save()
+        Logger.library.notice("QUEUE new episodes top=\(top.count) end=\(end.count)")
+    }
+
     /// Remove an item and its equivalents from the queue.
     func remove(_ id: String) {
         guard contains(id) else { return }

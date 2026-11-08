@@ -153,6 +153,11 @@ nonisolated enum UserChoiceCatalog {
         // The value for all shows travels like the per-show value it
         // stands behind.
         "podcastInboxModeAll": .travels,
+        // Where new episodes go in Up Next travels like "Show in New
+        // Episodes"; Up Next itself and the moment the choice went on stay
+        // on the device that fills its own queue.
+        "podcastUpNextAddAll": .travels,
+        "podcastUpNextAddAllSince": .device,
         // Automatic downloads stay on the device that downloads (decided
         // 06.09.2026), for all shows as for each show: whether they run and
         // how many they keep. The direction is how the person listens and
@@ -271,6 +276,8 @@ nonisolated enum UserChoiceCatalog {
         // The free feed of a paid show: an address, the same on every device.
         "podcastFreeTwin.": .travels,
         "podcastInboxMode.": .travels,
+        "podcastUpNextAdd.": .travels,
+        "podcastUpNextAddSince.": .device,
         "podcastNotify.": .travels,
         // Every per-show setting travels; the show rate was the one
         // device-class exception without a stated reason, and the rate
@@ -336,10 +343,11 @@ nonisolated enum UserChoiceCatalog {
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         "podcastNewEpisodeNotifications",
         "podcastInboxModeAll", "podcastAutoDownloadDirectionAll", "playedTailSeconds",
+        "podcastUpNextAddAll",
     ]
 
     static let travelingPrefixes: [String] = [
-        "playbackRate.", "podcastInboxMode.", "podcastNotify.",
+        "playbackRate.", "podcastInboxMode.", "podcastUpNextAdd.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
         "playedTail.", "podcastFreeTwin.",
     ]

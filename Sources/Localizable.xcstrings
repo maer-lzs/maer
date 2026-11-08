@@ -2270,6 +2270,16 @@
         }
       }
     },
+    "Bottom" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinten"
+          }
+        }
+      }
+    },
     "Bring your listening history" : {
       "localizations" : {
         "de" : {
@@ -4004,6 +4014,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folgen"
+          }
+        }
+      }
+    },
+    "Episodes that come out after you switch this on go into Up Next when this device refreshes the show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen, die nach dem Einschalten erscheinen, kommen in „Als Nächstes“, wenn dieses Gerät die Sendung aktualisiert."
           }
         }
       }
@@ -6612,6 +6632,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue Folgen"
+          }
+        }
+      }
+    },
+    "New Episodes to Up Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Folgen zu Als Nächstes"
           }
         }
       }
@@ -12909,6 +12939,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zu viele Fehlversuche. Versuche es später erneut."
+          }
+        }
+      }
+    },
+    "Top" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben"
           }
         }
       }

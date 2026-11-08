@@ -45,13 +45,14 @@ struct PodcastGeneralRuleTests {
     func nothingChangesWithoutAChoice() throws {
         try #require(UserDefaults.standard.object(forKey: AppStorageKeys.podcastInboxModeAll) == nil)
         for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadOnAll",
-                    "podcastAutoDownloadDirectionAll", "podcastAutoDownloadKeepAll"] {
+                    "podcastAutoDownloadDirectionAll", "podcastAutoDownloadKeepAll", UpNextAuto.generalKey] {
             try #require(UserDefaults.standard.object(forKey: key) == nil, "\(key) is set, the case measures nothing")
         }
         let showId = "rss:unchosen-\(UUID().uuidString)"
         #expect(AppStorageKeys.podcastInboxModeValue(showId) == "all")
         #expect(!PodcastAutoDownload.isEnabled(showId))
-        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "newest", "3", "60"])
+        #expect(UpNextAutoChoice.placement(showId) == .off, "new episodes go nowhere until the person chooses")
+        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "off", "newest", "3", "60"])
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 
@@ -88,7 +89,7 @@ struct PodcastGeneralRuleTests {
         let music = try #require(settings.range(of: "case .music:", range: podcasts.upperBound..<settings.endIndex))
         #expect(settings[podcasts.upperBound..<music.lowerBound].contains("PodcastGeneralSection()"))
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
-        for field in ["newEpisodes", "autoDownload", "direction", "keepDownloaded"] {
+        for field in ["newEpisodes", "upNext", "autoDownload", "direction", "keepDownloaded"] {
             #expect(sheet.contains("generalPicker(.\(field))"), "\(field) has the way back")
         }
         let picker = try #require(functionBody(of: "private func generalPicker(", in: sheet))

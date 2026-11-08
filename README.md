@@ -105,7 +105,7 @@ Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts 
 - **Export with listening states:** the OPML export writes your positions and played marks in the extended format Overcast reads, with a `guid` per episode, so Mär reads its own file back complete on another device; premium feeds stay out together with their states
 - **Apple-Podcasts-style home:** a “Keep Listening” row of rich featured cards (remaining time · last played · chapter), usage-driven recommendations, the up-next queue, a premium row, downloaded episodes, and a “Subscriptions” show grid whose red badge counts all unplayed episodes, as Apple Podcasts and Pocket Casts do; Settings → Podcasts offers “new since last played” or off instead
 - **Usage-driven recommendations:** language-aware and themed from your own library and listening time, expanded by author/publisher and round-robin mixed so no single publisher dominates; each suggestion says which of your shows it came from, and shows you heard without following them get a "Co-listened" row of their own
-- **Per-show settings:** inbox mode, auto-download of new episodes, and new-episode notifications per show
+- **Per-show settings:** inbox mode, new episodes into Up Next (at the top, at the bottom or not at all), auto-download of new episodes, and new-episode notifications per show
 - **Premium feeds** via per-feed HTTP Basic auth, stored in the keychain
 - **Rich metadata** from RSS / Podcasting 2.0 and the PodcastIndex API: seasons, episode type, explicit flag, guests/persons, transcripts, funding links, categories
 - **Background refresh** (`BGAppRefreshTask`) with one notification per refresh that names the shows with new episodes, offline downloads, a play queue, chapters, transcripts in the player, high-resolution feed covers, CarPlay, and the home-screen widgets “Up Next” and “Continue Listening”, which show books, music and episodes; Continue Listening also shows stations, one row per source in its large form, and stands on the lock screen
@@ -297,6 +297,7 @@ Sources/
 │   ├── PodcastRecommendationsStore.swift  Usage-driven, themed recommendation ranking
 │   ├── ProviderSearch.swift        SearchableProvider capability + per-source search
 │   ├── PlayQueue.swift             Global cross-media up-next queue (one row)
+│   ├── UpNextArrivals.swift        New episodes of a show into Up Next after a refresh
 │   ├── PlaybackContext.swift       The rest of a collection start (one row), not the queue
 │   └── PodcastImport.swift         Apple Podcasts, Overcast, AntennaPod and OPML import
 ├── CarPlay/
@@ -317,6 +318,7 @@ Sources/
 │   ├── AppStorageKeys.swift        Central UserDefaults keys, one activation answer per source
 │   ├── SourceMap.swift             Pure: the five areas and what each needs (map states)
 │   ├── MaerPlaylistMerge.swift     Pure: per-list merge, rescued version, tombstones
+│   ├── UpNextAuto.swift            Pure: which new episodes go into Up Next, and where
 │   └── PodcastAutoDownloadRules.swift  Pure: what the automatic download may clean up
 ├── Networking/
 │   ├── APIClient.swift             Audiobookshelf HTTP calls

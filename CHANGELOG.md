@@ -14,6 +14,15 @@ switch to another Audiobookshelf, Jellyfin or Subsonic server, the
 player no longer takes its background colors from a cover of the old
 one until the app restarts.
 
+**New episodes can go into Up Next by themselves.** Each show's settings
+have "New Episodes to Up Next": Off, Top or Bottom, and the podcast
+settings set it for all shows. An episode that comes out after you switch
+it on goes into Up Next when the app refreshes your feeds, unless you
+heard or started it. One you take out of Up Next does not come back.
+Switching it on adds nothing that is already there. The choice reaches
+your other devices; Up Next stays on each device, so each adds on its own
+refresh. Shows from your Audiobookshelf server follow in a later build.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An

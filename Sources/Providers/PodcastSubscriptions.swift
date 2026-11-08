@@ -27,7 +27,7 @@ final class PodcastSubscriptions: ObservableObject {
     static let shared = PodcastSubscriptions(
         fileURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("podcast_subscriptions.json"),
-        database: .shared, defaults: .standard, isTheApp: true)
+        database: .shared, defaults: .standard, isTheApp: true, upNext: PlayQueue.shared)
 
     /// Every way into the stock passes here: the shownotes leave it for the
     /// database (`PodcastNotes`) before the one assignment, so a change
@@ -91,6 +91,10 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Test seam: replaces the network fetch of the adoption path.
     var _testFeedFetcher: ((URL) async -> FeedFetchOutcome)?
+
+    /// The Up Next a refresh's new episodes go into: the app's for the app's
+    /// store, a test's own for a test, none for any other store.
+    private let upNext: PlayQueue?
 
     /// Subscribed feeds whose access is lastingly refused (`FeedRefusal`):
     /// the show says so and offers a new link or a sign-in; the tile
@@ -293,11 +297,12 @@ final class PodcastSubscriptions: ObservableObject {
     /// never wipe the good file with the still-empty in-memory state.
     private(set) var isLoaded = false
 
-    init(fileURL: URL, database: MaerDatabase, defaults: UserDefaults, isTheApp: Bool) {
+    init(fileURL: URL, database: MaerDatabase, defaults: UserDefaults, isTheApp: Bool, upNext: PlayQueue? = nil) {
         self.fileURL = fileURL
         self.database = database
         self.defaults = defaults
         self.isTheApp = isTheApp
+        self.upNext = upNext
         feedsNotFollowed = FeedAdoptionPending.pending(defaults: defaults)
         refusedFeedKeys = FeedRefusal.lasting(defaults: defaults)
         // The subscription family of the choice sync reads the list through
@@ -1473,10 +1478,12 @@ final class PodcastSubscriptions: ObservableObject {
     func absorb(_ fresh: PodcastShow, showId: String) async -> Int? {
         await ensureLoaded()
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
-        let before = shows[idx].episodes.count
-        shows[idx] = PodcastIdentity.merge(shows[idx], fresh)
+        let stored = shows[idx]
+        shows[idx] = PodcastIdentity.merge(stored, fresh)
         save()
-        return shows[idx].episodes.count - before
+        // What arrived here would not arrive again at the next refresh.
+        UpNextArrivals.take([(stored: stored, merged: shows[idx])], queue: upNext, store: defaults)
+        return shows[idx].episodes.count - stored.episodes.count
     }
 
     /// Load a show's full history via PodcastIndex (if a key is set) and merge
@@ -2409,8 +2416,10 @@ final class PodcastSubscriptions: ObservableObject {
             let unasked = if case .accessUnknown? = outcome { true } else { false }
             Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(updated[index].episodes.count)")
         }
+        let pairs = zip(shows, updated).map { (stored: $0, merged: $1) }
         shows = updated
         save()
+        UpNextArrivals.take(pairs, queue: upNext, store: defaults)
         healStoredProgress()
         // A paid show whose refusal is now lasting looks for its free twin,
         // once; the notice asks the person only when one is known.
@@ -2475,8 +2484,10 @@ final class PodcastSubscriptions: ObservableObject {
         let outcome = await fetchForRefresh(url)
         noteRefusal(show, outcome)
         if case .show(let fresh) = outcome, let index = shows.firstIndex(where: { $0.id == showId }) {
-            shows[index] = PodcastIdentity.merge(shows[index], fresh)
+            let stored = shows[index]
+            shows[index] = PodcastIdentity.merge(stored, fresh)
             save()
+            UpNextArrivals.take([(stored: stored, merged: shows[index])], queue: upNext, store: defaults)
         }
     }
 

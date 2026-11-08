@@ -15,11 +15,11 @@ import Foundation
 /// nothing, and an adoption for another show reads nothing.
 struct PodcastShowAdoptionTests {
 
-    @Test("Die Regel: eine Uebernahme beruehrt genau die acht reisenden Werte ihrer Sendung")
+    @Test("Die Regel: eine Uebernahme beruehrt genau die neun reisenden Werte ihrer Sendung")
     func theRule() {
         let show = "feed:adopt-a"
         let keys = PodcastShowPreferences.travellingKeys(showId: show)
-        #expect(keys.count == 8)
+        #expect(keys.count == 9)
         for key in keys {
             #expect(PodcastShowPreferences.adoptionTouches([key], showId: show), "\(key) is this show's")
             #expect(!PodcastShowPreferences.adoptionTouches([key], showId: "feed:adopt-b"), "I3: another show reads nothing")

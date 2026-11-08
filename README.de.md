@@ -105,7 +105,7 @@ Version 2.0 macht Mär zu einem vollen **Podcast-Client** neben Hörbüchern. Po
 - **Export mit Hörständen:** der OPML-Export schreibt deine Positionen und Gehört-Marken in dem erweiterten Format, das Overcast liest, mit einer `guid` je Folge, damit Mär seine eigene Datei auf einem anderen Gerät vollständig zurückliest; Premium-Feeds bleiben samt ihren Ständen draußen
 - **Startseite im Stil von Apple Podcasts:** eine Reihe „Weiterhören“ aus großen Karten (Restzeit · zuletzt gehört · Kapitel), nutzungsbasierte Empfehlungen, die Als-Nächstes-Warteschlange, eine Premium-Reihe, geladene Folgen und ein Sendungs-Raster „Abos“, dessen rotes Badge alle ungehörten Folgen zählt, wie bei Apple Podcasts und Pocket Casts; Einstellungen → Podcasts bietet stattdessen „neu seit zuletzt gehört“ oder aus
 - **Nutzungsbasierte Empfehlungen:** sprachbewusst und thematisch aus deiner eigenen Bibliothek und Hörzeit, erweitert über Autor/Verlag und reihum gemischt, damit kein einzelner Verlag überwiegt; jeder Vorschlag sagt, aus welcher deiner Sendungen er kommt, und Sendungen, die du gehört hast, ohne ihnen zu folgen, bekommen eine eigene Reihe „Mitgehört“
-- **Einstellungen je Sendung:** Eingangs-Modus, automatischer Download neuer Folgen und Benachrichtigungen über neue Folgen je Sendung
+- **Einstellungen je Sendung:** Eingangs-Modus, neue Folgen in „Als Nächstes“ (oben, hinten oder gar nicht), automatischer Download neuer Folgen und Benachrichtigungen über neue Folgen je Sendung
 - **Premium-Feeds** über HTTP-Basic-Auth je Feed, im Schlüsselbund gespeichert
 - **Reiche Metadaten** aus RSS / Podcasting 2.0 und der PodcastIndex-API: Staffeln, Folgentyp, Explizit-Markierung, Gäste/Personen, Transkripte, Unterstützungs-Links, Kategorien
 - **Hintergrund-Aktualisierung** (`BGAppRefreshTask`) mit einer Benachrichtigung je Aktualisierung, die die Sendungen mit neuen Folgen nennt, Offline-Downloads, eine Wiedergabe-Warteschlange, Kapitel, Transkripte im Player, hochaufgelöste Feed-Cover, CarPlay und die Home-Bildschirm-Widgets „Als Nächstes“ und „Weiter hören“, die Bücher, Musik und Folgen zeigen; „Weiter hören“ zeigt auch Sender, in der großen Form eine Zeile je Quelle, und steht auf dem Sperrbildschirm
@@ -297,6 +297,7 @@ Sources/
 │   ├── PodcastRecommendationsStore.swift  Nutzungsbasiertes, thematisches Empfehlungs-Ranking
 │   ├── ProviderSearch.swift        SearchableProvider-Fähigkeit + Suche je Quelle
 │   ├── PlayQueue.swift             Globale medienübergreifende Als-Nächstes-Warteschlange (eine Zeile)
+│   ├── UpNextArrivals.swift        Neue Folgen einer Sendung nach dem Aktualisieren in Als Nächstes
 │   ├── PlaybackContext.swift       Der Rest eines Sammlungs-Starts (eine Zeile), nicht die Warteschlange
 │   └── PodcastImport.swift         Import aus Apple Podcasts, Overcast, AntennaPod und OPML
 ├── CarPlay/
@@ -317,6 +318,7 @@ Sources/
 │   ├── AppStorageKeys.swift        Zentrale UserDefaults-Schlüssel, eine Aktivierungs-Antwort je Quelle
 │   ├── SourceMap.swift             Pur: die fünf Bereiche und was jeder braucht (Zustände der Karte)
 │   ├── MaerPlaylistMerge.swift     Pur: Zusammenführen je Liste, gerettete Fassung, Grabsteine
+│   ├── UpNextAuto.swift            Pur: welche neuen Folgen in Als Nächstes kommen, und wohin
 │   └── PodcastAutoDownloadRules.swift  Pur: was der automatische Download aufräumen darf
 ├── Networking/
 │   ├── APIClient.swift             HTTP-Aufrufe an Audiobookshelf

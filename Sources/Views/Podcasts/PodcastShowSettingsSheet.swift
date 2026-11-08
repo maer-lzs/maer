@@ -185,11 +185,17 @@ struct PodcastShowSettingsSheet: View {
                 }
                 Section {
                     generalPicker(.newEpisodes)
+                    generalPicker(.upNext)
                     AppSwitch("Notify About New Episodes", isOn: $notify)
                 } header: {
                     Text("New Episodes")
                 } footer: {
-                    Text("For high-frequency shows, set this to Latest only or Off so they don't flood New Episodes, and turn off notifications.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("For high-frequency shows, set this to Latest only or Off so they don't flood New Episodes, and turn off notifications.")
+                        // The choice travels, the queue does not: each device
+                        // adds on its own refresh.
+                        Text("Episodes that come out after you switch this on go into Up Next when this device refreshes the show.")
+                    }
                 }
                 Section {
                     // A choice, not a direction for everyone: news shows want
