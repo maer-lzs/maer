@@ -125,6 +125,22 @@ nonisolated enum KnownServers {
             + list.filter { $0.service != service && sameKind($0.service, service) }
     }
 
+    /// The hosts of the person's own servers, lowercased: the one answer to
+    /// "is this host one the person entered".
+    static func hosts(defaults: UserDefaults? = nil) -> Set<String> {
+        Set(all(defaults: defaults ?? AppStorageKeys.store).compactMap { host(of: $0.url) })
+    }
+
+    /// The host of a stored address. An entry is kept as it was typed, so
+    /// one without a scheme (`100.64.0.7:13378`, `nas.local:4533`) names its
+    /// host too.
+    static func host(of raw: String) -> String? {
+        let text = normalized(raw)
+        if let host = URL(string: text)?.host(), !host.isEmpty { return host.lowercased() }
+        guard let host = URL(string: "http://" + text)?.host(), !host.isEmpty else { return nil }
+        return host.lowercased()
+    }
+
     /// Whether two stored addresses name the same server, by its one name.
     static func sameServer(_ a: String, _ b: String) -> Bool {
         ABSServerScope.identity(of: a) == ABSServerScope.identity(of: b)

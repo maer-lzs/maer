@@ -5,24 +5,25 @@
 
 import Foundation
 
-/// The address a feed request actually goes to. One rule, one place.
+/// The address a feed or a cover request actually goes to. One rule, one
+/// place.
 ///
-/// App Transport Security allows cleartext for MEDIA only (a deliberate
-/// decision for radio streams); every `URLSession` call needs https. Podcast
-/// directories still hand out `http://` addresses for feeds that answer
-/// identically over https, so an unchanged request made a LIVING feed look
-/// dead: the fetch never left the device, and the surface reported "could not
-/// be loaded".
+/// Podcast directories still hand out `http://` addresses for feeds and
+/// covers that answer identically over https, so they are raised. A server
+/// the person entered (`KnownServers`) keeps the scheme it was entered
+/// with: a server reached only over http (a mesh address, a home network
+/// without a certificate) answers nothing over https. App Transport Security
+/// lets cleartext through (`NSAllowsArbitraryLoads` alone).
 ///
-/// There is deliberately NO fallback to http when https fails. Under ATS
-/// cleartext can never succeed, so a fallback would only trade a clear failure
-/// for a confusing one.
+/// There is deliberately NO fallback to http when https fails for a foreign
+/// host: it would trade a clear failure for a confusing one.
 nonisolated enum PodcastFeedAddress {
 
     /// The URL to request for a stored or directory-supplied feed address.
     /// Scheme-less input is assumed to be https (the same assumption the
-    /// subscribe path always made); `http://` is raised to https.
-    static func requestURL(_ raw: String) -> URL? {
+    /// subscribe path always made); `http://` is raised to https unless the
+    /// host is one of the person's own servers (`ownHosts`).
+    static func requestURL(_ raw: String, ownHosts: Set<String> = KnownServers.hosts()) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if let scheme = URL(string: trimmed)?.scheme?.lowercased(),
@@ -31,18 +32,23 @@ nonisolated enum PodcastFeedAddress {
             // Handing it to URLSession is not this rule's business.
             return URL(string: trimmed)
         }
+        if let url = URL(string: trimmed), url.scheme?.lowercased() == "http",
+           let host = url.host()?.lowercased(), ownHosts.contains(host) {
+            return url
+        }
         return URL(string: upgradedString(trimmed))
     }
 
     /// The same rule for an address that is already a `URL`. The funnel every
-    /// feed fetch passes through, so a call site that builds its URL itself
-    /// cannot sneak cleartext past the rule.
-    static func upgraded(_ url: URL) -> URL {
+    /// feed and cover fetch passes through, so a call site that builds its URL
+    /// itself cannot sneak cleartext past the rule.
+    static func upgraded(_ url: URL, ownHosts: Set<String> = KnownServers.hosts()) -> URL {
         guard url.scheme?.lowercased() == "http" else { return url }
         // The device itself is no service: no certificate names it, and a
         // witness's stand on the loopback is reached over the same door as
-        // the open net. Every other host is raised.
-        if let host = url.host()?.lowercased(), loopback.contains(host) { return url }
+        // the open net. A server the person entered keeps its scheme. Every
+        // other host is raised.
+        if let host = url.host()?.lowercased(), loopback.contains(host) || ownHosts.contains(host) { return url }
         return URL(string: upgradedString(url.absoluteString)) ?? url
     }
 

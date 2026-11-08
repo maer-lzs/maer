@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Covers from servers reached over http appear again.** Audiobookshelf,
+Jellyfin, Subsonic and Navidrome servers you reach only over http, for
+example over Tailscale or at home without a certificate, showed no covers
+while their audio played. The app asked them over https. A server you
+entered now keeps the address you entered for its covers, and a Pinchflat
+feed on such a server loads too. Covers and feeds from elsewhere still go
+over https.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An

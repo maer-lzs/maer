@@ -90,7 +90,7 @@ actor HostCourtesy {
     }
 
     nonisolated static func knownServerHosts() -> Set<String> {
-        Set(KnownServers.all().compactMap { URL(string: $0.url)?.host()?.lowercased() })
+        KnownServers.hosts()
     }
 
     static let loopback: Set<String> = ["localhost", "127.0.0.1", "::1"]
