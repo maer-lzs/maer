@@ -67,6 +67,9 @@ struct WidgetCoverTintTests {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("entry.snapshot?.coverTint.flatMap(Self.color(of:))"), "the widget's gradient ignores the colour")
         #expect(!widget.contains("bottomComponents"), "the widget computes the colour itself")
+        #expect(widget.contains(".frame(height: space.size.height * 0.75) .overlay { coverImage } .clipped()"),
+                "the cover no longer takes three quarters of the small widget")
+        #expect(widget.contains(".overlay { coverWithBand }"), "the playing half lays its text over the cover again")
     }
 }
 #endif

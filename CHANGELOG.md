@@ -27,9 +27,10 @@ each line, so Start keeps one row of large cards.
 
 **The Continue Listening widget uses its whole height.** In the medium
 and large widget the titles share the space under the heading instead of
-standing at the top, and their covers grow with them. Where the cover
-fills the widget, the title stands on a gradient in the colour of the
-cover's lower edge, as on the cards on Start, so it stays readable.
+standing at the top, and their covers grow with them. In the small
+widget the cover takes three quarters of the height, and the title
+stands below it on the colour of the cover's lower edge, as on the cards
+on Start, so it stays readable.
 While something plays, the medium widget shows it on its cover in the
 left half and the other titles to continue in the right half.
 
