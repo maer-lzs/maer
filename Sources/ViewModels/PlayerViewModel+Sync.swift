@@ -210,9 +210,11 @@ extension PlayerViewModel {
                 // finished episode as started again. `advancing`, not
                 // `entry`. With an unknown duration this must not drop a
                 // reference point that is already there.
+                let recordedAtMs = Date().timeIntervalSince1970 * 1000
                 ListeningStore.record(item.id, position: currentTime,
                                       duration: duration,
-                                      atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
+                                      atMs: recordedAtMs, epoch: standEpoch)
+                ownStandMs = recordedAtMs
                 // gpodder: push the podcast position too (periodically + on
                 // pause/stop/seek). No-op without config; abspod: is mapped
                 // via the feed-guid bridge.
@@ -442,6 +444,7 @@ extension PlayerViewModel {
         // `localPosition`. Set or remove it directly here.
         if !provider.capabilities.contains(.progressSync) {
             let nowMs = Date().timeIntervalSince1970 * 1000
+            ownStandMs = nowMs
             if target {
                 // With an unknown duration `entry(position: 0, duration: 0)`
                 // wrote `[0, now]`. Which READS as unplayed. Same sentinel as

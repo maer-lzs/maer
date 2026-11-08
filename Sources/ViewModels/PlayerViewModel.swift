@@ -97,6 +97,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// flush reads it: a merely-loaded episode must not re-stamp its old
     /// position as new (the reviver).
     var eventSinceLoad = false
+    /// The moment of this player's own stand of the loaded item: its last
+    /// own write into the store or its pause, nil until it listened since
+    /// the load. A stand in the store stamped at or before it never moves
+    /// the player (`SyncRules.storedStand`).
+    var ownStandMs: Double?
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
@@ -479,6 +484,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // A fresh load starts with NO event. Restoring is loading,
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
+        ownStandMs = nil
         self.item = item
         applySkipInterval(forItemId: item.id)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
@@ -1046,9 +1052,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // For EVERY class whose stand lives in the pot: a catalogue book
             // used to start at the mark of the last full reconcile.
             PodcastCloudSync.shared.reconcile(changedId: item.id, pushing: false)
-            if let mark = ListeningStore.mark(item.id),
-               abs(mark.position - currentTime) > 2 {
-                await seek(to: mark.position, userInitiated: false)
+            if let target = storedStandTarget() {
+                await seek(to: target, userInitiated: false)
             }
         }
         // The takeover start for every source: the other device's claim
@@ -1078,6 +1083,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
             group.cancelAll()
         }
         play()
+    }
+
+    /// Where the stand in the store moves the player before it plays on, or
+    /// nil. Only a stand stamped after the player's own one moves it; every
+    /// stand that differs leaves a line with both sides.
+    func storedStandTarget() -> Double? {
+        guard let item, let mark = ListeningStore.mark(item.id) else { return nil }
+        let verdict = SyncRules.storedStand(position: mark.position, atMs: mark.updatedAtMs,
+                                            ownStandMs: ownStandMs, currentTime: currentTime)
+        guard verdict != .same else { return nil }
+        Logger.player.notice("RESUME stand item=\(item.id, privacy: .private(mask: .hash)) stand=\(Int(mark.position)) standMs=\(Int(mark.updatedAtMs)) local=\(Int(self.currentTime)) ownMs=\(Int(self.ownStandMs ?? -1)) moves=\(verdict == .newer)")
+        guard verdict == .newer else { return nil }
+        ownStandMs = mark.updatedAtMs
+        return mark.position
     }
 
     /// The claim with the current stand: on the carrier's heartbeat while
@@ -1113,8 +1132,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func holdForAccountSwitch() {
         guard AccountSwitchHold.records(isPlaying: isPlaying, pauseRecordPending: pauseRecordPending) else { return }
         if let id = item?.id {
+            let nowMs = Date().timeIntervalSince1970 * 1000
             ListeningStore.record(id, position: currentTime, duration: duration,
-                                  atMs: Date().timeIntervalSince1970 * 1000, epoch: standEpoch)
+                                  atMs: nowMs, epoch: standEpoch)
+            ownStandMs = nowMs
         }
         if isPlaying { pause(caller: "account switch") }
     }
@@ -1125,6 +1146,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
+        ownStandMs = Date().timeIntervalSince1970 * 1000
         // Pausing withdraws the claim actively, with the final stand for
         // the device that takes over. The other device's hint line dies
         // in delivery seconds, the 90-s ageing stays the fallback for the
@@ -1425,6 +1447,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     ListeningStore.record(id, position: self.currentTime,
                                           duration: self.duration, atMs: now * 1000, epoch: self.standEpoch)
+                    self.ownStandMs = now * 1000
                     let phaseAfter = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     self.noteListeningHistory(id: id, phaseBefore: phaseBefore, phaseAfter: phaseAfter)
                     if ItemNamespace.isPodcastEpisode(id), phaseAfter != phaseBefore {

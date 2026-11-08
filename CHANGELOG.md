@@ -10,6 +10,10 @@ entered now keeps the address you entered for its covers, and a Pinchflat
 feed on such a server loads too. Covers and feeds from elsewhere still go
 over https.
 
+**Your place no longer jumps back with several devices.** Playing on
+after a pause no longer moves you back to a position this device saved
+before; only a newer position from another device moves it.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An
