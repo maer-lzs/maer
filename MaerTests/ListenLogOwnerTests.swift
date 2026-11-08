@@ -244,7 +244,8 @@ struct ListenLogOwnerTests {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         #expect(try code("Sources/Storage/PodcastListenLog.swift")
-            .contains("static let shared = AccessFollowers.enrolled(PodcastListenLog())"), "the log hears no change of account")
+            .contains("static let shared = AccessFollowers.enrolled(PodcastListenLog(upNext: PlayQueue.shared))"),
+                "the log hears no change of account")
         #expect(try code("Sources/ViewModels/AppHousekeeping.swift").contains("PodcastListenLog.shared.followAtStart()"),
                 "the log is not built and followed at start")
     }

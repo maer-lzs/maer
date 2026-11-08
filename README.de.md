@@ -319,6 +319,7 @@ Sources/
 │   ├── SourceMap.swift             Pur: die fünf Bereiche und was jeder braucht (Zustände der Karte)
 │   ├── MaerPlaylistMerge.swift     Pur: Zusammenführen je Liste, gerettete Fassung, Grabsteine
 │   ├── UpNextAuto.swift            Pur: welche neuen Folgen in Als Nächstes kommen, und wohin
+│   ├── HeardElsewhere.swift        Pur: eine Marke von anderswo, die einen Titel gehört machte
 │   └── PodcastAutoDownloadRules.swift  Pur: was der automatische Download aufräumen darf
 ├── Networking/
 │   ├── APIClient.swift             HTTP-Aufrufe an Audiobookshelf

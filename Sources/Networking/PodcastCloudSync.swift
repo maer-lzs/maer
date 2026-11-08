@@ -283,7 +283,7 @@ final class PodcastCloudSync {
             // Have the UI/sections and ABS provider display re-evaluate.
             reloadProgress()
             // Personen-Ebene: reconciled transitions land in the listen log.
-            PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
+            PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys, before: local)
         }
         // Record only what MOVED: positions taken in, positions actually
         // pushed. A receive-only pass (every foreign claim beat while the
@@ -435,7 +435,7 @@ final class PodcastCloudSync {
         case .adoptCloud(let value):
             ListeningStore.store(id, entry: value, in: defaults)
             reloadProgress()
-            PodcastListenLog.shared.noteReconciled(guids: [id])
+            PodcastListenLog.shared.noteReconciled(guids: [id], before: localArr.map { [id: $0] } ?? [:])
         case .pushLocal(let value):
             guard pushing else { break }
             // EVERY write path runs through the travel rule, or this one

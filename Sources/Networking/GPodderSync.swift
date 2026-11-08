@@ -653,15 +653,21 @@ final class GPodderSync {
         // notifications hop back afterwards, once.
         // detached because the merge is CPU work off the MainActor
         let outcome = await Task.detached(priority: .userInitiated) {
-            () -> (pulledGuids: [String], supplemented: Int, accountChanged: Bool) in
+            () -> (pulledGuids: [String], before: [String: [Double]], supplemented: Int, accountChanged: Bool) in
             var pulledGuids: [String] = []
+            // Each adopted guid's entry before its first adoption in this
+            // round: only an episode that became played leaves Up Next.
+            var before: [String: [Double]] = [:]
+            var adopted: Set<String> = []
             var supplemented = 0
             for play in plays {
-                if ListeningStore.ownerEpoch() != epoch { return (pulledGuids, supplemented, true) }
+                if ListeningStore.ownerEpoch() != epoch { return (pulledGuids, before, supplemented, true) }
                 // Read and write as one under the stock's lock: a position
                 // the player writes meanwhile is the entry the rule decides on.
                 var path: GPodderMergePath?
+                var held: [Double]?
                 ListeningStore.merge(play.guid, epoch: epoch) { localArr in
+                    held = localArr
                     path = GPodderMergePath.of(local: localArr, serverTsMs: play.tsMs, serverTotal: play.total)
                     switch path {
                     case .adopt:
@@ -688,12 +694,14 @@ final class GPodderSync {
                     }
                 }
                 switch path {
-                case .adopt: pulledGuids.append(play.guid)
+                case .adopt:
+                    if adopted.insert(play.guid).inserted, let held { before[play.guid] = held }
+                    pulledGuids.append(play.guid)
                 case .supplement: supplemented += 1
                 case nil: break
                 }
             }
-            return (pulledGuids, supplemented, ListeningStore.ownerEpoch() != epoch)
+            return (pulledGuids, before, supplemented, ListeningStore.ownerEpoch() != epoch)
         }.value
         if outcome.accountChanged {
             Logger.rss.notice("GPODDER round stopped writing: the account changed while it ran, applied=\(outcome.pulledGuids.count + outcome.supplemented) of=\(plays.count)")
@@ -710,7 +718,7 @@ final class GPodderSync {
             // Personen-Ebene: gpodder-applied transitions feed the log,
             // gathered ONCE and chunked so the main actor breathes between
             // chunks instead of standing for the whole history.
-            await PodcastListenLog.shared.noteReconciled(batched: outcome.pulledGuids)
+            await PodcastListenLog.shared.noteReconciled(batched: outcome.pulledGuids, before: outcome.before)
         }
 
         // --- Push: local → server (only changed since the last push) ---

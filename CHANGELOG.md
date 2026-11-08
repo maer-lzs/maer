@@ -23,6 +23,12 @@ Switching it on adds nothing that is already there. The choice reaches
 your other devices; Up Next stays on each device, so each adds on its own
 refresh. Shows from your Audiobookshelf server follow in a later build.
 
+**Finished elsewhere leaves Up Next.** An episode or book you finish on
+another device, in gpodder, on your Audiobookshelf, Jellyfin or Subsonic
+server, or one an import marks as heard, now leaves Up Next, as it does
+when you mark it here. One you put back into Up Next after hearing it
+stays until it is marked again.
+
 ## v3.6 (Build 59)
 
 **A new music server address keeps what belongs to the old one.** An

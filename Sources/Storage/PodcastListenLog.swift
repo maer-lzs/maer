@@ -19,7 +19,7 @@ import OSLog
 final class PodcastListenLog {
     /// Enrolled where it is built, so a change of account reaches the log
     /// at its moment (`followOwner`); built at start (`followAtStart`).
-    static let shared = AccessFollowers.enrolled(PodcastListenLog())
+    static let shared = AccessFollowers.enrolled(PodcastListenLog(upNext: PlayQueue.shared))
 
     nonisolated struct Entry: Codable, Equatable {
         let guid: String
@@ -71,7 +71,7 @@ final class PodcastListenLog {
     private var hold = HandOverHold<@MainActor () -> Void>()
     /// Waiting notes after their hand-over, written in chunks with a yield
     /// between them and one write at the end, like the bulk entry
-    /// (`noteReconciled(batched:)`). A next hand-over writes what is left
+    /// (`noteReconciled(batched:before:)`). A next hand-over writes what is left
     /// first, so no note lands under the account after.
     private var replayQueue: [@MainActor () -> Void] = []
     private var replaying: Task<Void, Never>?
@@ -79,9 +79,15 @@ final class PodcastListenLog {
     private(set) var rowWrites = 0
     nonisolated static let shelfFamily = "listen-log"
 
-    init(database: MaerDatabase = .shared, identity: @escaping () -> String? = { AccessFollowers.identity }) {
+    /// The Up Next a played mark adopted from elsewhere takes its episode
+    /// out of; none for a log built without one.
+    private let upNext: PlayQueue?
+
+    init(database: MaerDatabase = .shared, identity: @escaping () -> String? = { AccessFollowers.identity },
+         upNext: PlayQueue? = nil) {
         self.database = database
         self.identity = identity
+        self.upNext = upNext
         keeper = RowKeeper(database: database, table: .listenLog, label: "LISTENLOG", logsSaves: true)
         let follower = database.restingShelf.map { ShelfFollower(family: Self.shelfFamily, shelf: $0, label: "LISTENLOG") }
         self.follower = follower
@@ -306,22 +312,39 @@ final class PodcastListenLog {
     /// below, chunked with yields so the main actor breathes between
     /// chunks instead of standing for the entire history; that stand was
     /// a measured watchdog kill on the settings surface.
-    func noteReconciled(batched guids: [String]) async {
+    /// `before`: each guid's entry as it was before the adoption (a missing
+    /// key had none). Up Next is written once for the whole history.
+    func noteReconciled(batched guids: [String], before: [String: [Double]]) async {
+        var heard: [String] = []
         var index = 0
         while index < guids.count {
             let end = min(index + 200, guids.count)
-            noteReconciled(guids: guids[index..<end])
+            heard += noteChunk(guids[index..<end], before: before)
             index = end
             await Task.yield()
         }
+        if !heard.isEmpty { upNext?.markedPlayed(heard) }
     }
 
-    func noteReconciled(guids: some Sequence<String>) {
+    /// `before`: each guid's entry as it was before the adoption (a missing
+    /// key had none). Only an episode that became played leaves Up Next
+    /// (`HeardElsewhere`).
+    func noteReconciled(guids: some Sequence<String>, before: [String: [Double]]) {
+        let heard = noteChunk(guids, before: before)
+        if !heard.isEmpty { upNext?.markedPlayed(heard) }
+    }
+
+    /// The log's part of an adoption; answers the episodes that became played.
+    private func noteChunk(_ guids: some Sequence<String>, before: [String: [Double]]) -> [String] {
+        var heard: [String] = []
         for guid in guids {
             let resolved = PodcastSubscriptions.shared.episode(guid: guid)
             let duration = resolved?.episode.duration ?? 0
             switch PodcastProgressStore.shared.state(guid: guid, duration: duration) {
             case .played:
+                let was = HeardElsewhere.isPlayed(before[guid], duration: duration,
+                                                  tail: PlayedTail.seconds(forItemId: guid))
+                if HeardElsewhere.became(wasPlayed: was, isPlayed: true) { heard.append(guid) }
                 noteIfPlayed(guid: guid, duration: duration,
                              episodeTitle: resolved?.episode.title ?? "",
                              showTitle: resolved?.show.title ?? "",
@@ -337,6 +360,7 @@ final class PodcastListenLog {
                 break
             }
         }
+        return heard
     }
 
     /// Targeted re-scan of specific shows (Apple import: metadata is present

@@ -319,6 +319,7 @@ Sources/
 │   ├── SourceMap.swift             Pure: the five areas and what each needs (map states)
 │   ├── MaerPlaylistMerge.swift     Pure: per-list merge, rescued version, tombstones
 │   ├── UpNextAuto.swift            Pure: which new episodes go into Up Next, and where
+│   ├── HeardElsewhere.swift        Pure: a mark from elsewhere that made a title played
 │   └── PodcastAutoDownloadRules.swift  Pure: what the automatic download may clean up
 ├── Networking/
 │   ├── APIClient.swift             Audiobookshelf HTTP calls

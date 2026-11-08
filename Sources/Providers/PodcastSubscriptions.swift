@@ -2229,6 +2229,9 @@ final class PodcastSubscriptions: ObservableObject {
         let appliedBefore = tally.applied
         var importedMarks: [String] = []
         var archivedMarks: [String] = []
+        // The episodes the import made played that were not: they leave Up
+        // Next as with a mark set here (`HeardElsewhere`), in one write.
+        var heard: [String] = []
         // Every local entry is read before the first write. Each position
         // is its own defaults key, and a read right after a write on a
         // domain of tens of thousands of keys cost about 11 ms in the
@@ -2261,6 +2264,11 @@ final class PodcastSubscriptions: ObservableObject {
                 adoption = (entry, reason)
             }
             ListeningStore.store(match.targetID, entry: adoption.entry, in: defaults)
+            let tail = PlayedTail.seconds(forItemId: match.targetID, defaults: defaults)
+            if HeardElsewhere.became(wasPlayed: HeardElsewhere.isPlayed(local, duration: duration, tail: tail),
+                                     isPlayed: HeardElsewhere.isPlayed(adoption.entry, duration: duration, tail: tail)) {
+                heard.append(match.targetID)
+            }
             // The marks: imported keeps it out of the listening time until
             // it is heard here; archived travels back out with an export.
             // Written together after the loop, one write per list.
@@ -2277,6 +2285,7 @@ final class PodcastSubscriptions: ObservableObject {
         }
         ForeignMarks.markImported(importedMarks, in: defaults)
         ForeignMarks.markArchived(archivedMarks, in: defaults)
+        if !heard.isEmpty { upNext?.markedPlayed(heard) }
         tally.lookedUp += plan.matches.filter(\.state.handleFromLookup).map(\.state)
         if tally.applied > appliedBefore {
             shows = updated

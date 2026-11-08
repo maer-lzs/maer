@@ -20,7 +20,7 @@ import WidgetKit
 /// (see `markedPlayed`).
 @MainActor
 final class PlayQueue: ObservableObject {
-    static let shared = PlayQueue(
+    static let shared: PlayQueue = PlayQueue(
         persists: true,
         database: MaerDatabase.shared,
         equivalents: { ABSPodcastProvider.shared.equivalentIds($0) }
@@ -153,6 +153,19 @@ final class PlayQueue: ObservableObject {
     /// playback end, or on an auto-continue jump) leaves the queue. Same effect
     /// as `remove`, named for intent at the mark-played call sites.
     func markedPlayed(_ id: String) { remove(id) }
+
+    /// Several titles marked played elsewhere at once (a sync, an import):
+    /// all of them and their equivalents leave, with one write.
+    func markedPlayed(_ ids: [String]) {
+        var kept = self.ids
+        for id in ids {
+            let eq = Set(equivalents(id))
+            kept.removeAll { eq.contains($0) || $0 == id }
+        }
+        guard kept != self.ids else { return }
+        self.ids = kept
+        save()
+    }
 
     func move(from source: IndexSet, to destination: Int) {
         ids.move(fromOffsets: source, toOffset: destination)

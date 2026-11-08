@@ -327,7 +327,7 @@ final class AppSession: ObservableObject {
         return resolve(forId: itemId, carried: nil).item
     }
 
-    private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
+    private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider, upNext: PlayQueue.shared)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 
     private init() {}

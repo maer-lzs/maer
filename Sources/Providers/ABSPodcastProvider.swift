@@ -27,9 +27,22 @@ struct FeedEpisode: Identifiable {
 /// across all devices.
 @MainActor
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
-    static let shared = ABSPodcastProvider()
-    private init() {
+    static let shared: ABSPodcastProvider = ABSPodcastProvider(upNext: PlayQueue.shared)
+    private init(upNext: PlayQueue?) {
+        self.upNext = upNext
         archivedShowIds = Set(AppStorageKeys.stringArray(Self.archiveKey) ?? [])
+    }
+
+    /// The Up Next an episode finished on the server leaves.
+    private let upNext: PlayQueue?
+
+    /// The server's progress replaces the held one; an episode it finished
+    /// that it held as unfinished before leaves Up Next, its RSS twin with it
+    /// (`HeardElsewhere`, `equivalentIds`).
+    private func adoptEpisodeProgress(_ fresh: [String: BookProgress]) {
+        let finished = HeardElsewhere.newlyFinished(before: episodeProgress, after: fresh)
+        episodeProgress = fresh
+        if !finished.isEmpty { upNext?.markedPlayed(finished) }
     }
 
     private static let archiveKey = "abspod.archivedShows"
@@ -247,7 +260,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         // Progress of all episodes in one go (for the played state); a
         // failure keeps the progress held and is logged.
         do {
-            episodeProgress = try await client.fetchPodcastEpisodeProgress()
+            adoptEpisodeProgress(try await client.fetchPodcastEpisodeProgress())
         } catch {
             Logger.library.error("ABSPOD progress failed, kept: \(FailureReason.of(error), privacy: .public)")
         }
@@ -422,7 +435,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// the token: the surface would show the old state as a fresh one.
     func freshEpisodeProgress() async -> [String: BookProgress]? {
         do {
-            episodeProgress = try await client.fetchPodcastEpisodeProgress()
+            adoptEpisodeProgress(try await client.fetchPodcastEpisodeProgress())
             changeToken += 1
             return episodeProgress
         } catch {

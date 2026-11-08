@@ -231,10 +231,12 @@ final class LibraryViewModel: ObservableObject {
 
     init(
         provider: any AudioProvider,
-        database: MaerDatabase = .shared
+        database: MaerDatabase = .shared,
+        upNext: PlayQueue? = nil
     ) {
         self.provider = provider
         self.database = database
+        self.upNext = upNext
 
         // Important: keep `resolvedSortOption` as a local variable, don't read it
         // back via `self.sortOption`. Swift forbids any access via self on
@@ -1176,6 +1178,10 @@ final class LibraryViewModel: ObservableObject {
     /// server answer keeps (otherwise all bars and Continue would blank out).
     private var lastProgress: [String: BookProgress] = [:]
 
+    /// The Up Next a book finished on the server leaves; none for a model
+    /// built without one.
+    private let upNext: PlayQueue?
+
     /// Everything the off-main rebuild computation needs, as a value snapshot.
     /// Started titles outside the server library. Resolved
     /// HERE because the item lookup is main-actor bound, then handed to the
@@ -1334,7 +1340,11 @@ final class LibraryViewModel: ObservableObject {
         // an empty library and a wiped one look the same.
         Logger.library.notice("LIBRARY rebuild items=\(items.count) progress=\(progress.count) local=\(self.localCache.count) before=\(self.entries.count)")
         cachedItems = items
+        // A book the server's answer finished that the answer before held
+        // as unfinished leaves Up Next, as with a mark set here.
+        let finished = HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
         lastProgress = progress
+        if !finished.isEmpty { upNext?.markedPlayed(finished) }
         let input = rebuildInput(items: items, progress: progress)
         // detached because the rebuild is CPU work and the view model is MainActor by default
         let output = await Task.detached(priority: .userInitiated) {
