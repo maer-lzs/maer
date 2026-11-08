@@ -44,6 +44,14 @@ struct PlaylistHomeTests {
         #expect(Self.home(["lva:x"]) == .library)
     }
 
+    @Test("die Seite aller Listen traegt den Namen ihres Abschnitts, Routinen oder Playlisten", .needsTheSources)
+    func thePageTakesTheSectionsName() throws {
+        let text = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistNameList.swift")
+        #expect(text.contains("if limit == nil { section(lists, title: title) .navigationTitle(title) }"),
+                "the page of all lists has a name of its own")
+        #expect(!text.contains(".navigationTitle(\"Playlists\")"), "the page is always called Playlists")
+    }
+
     @Test("eine Liste, deren Inhalt wechselt, wandert mit")
     func aListMovesWithItsContent() {
         var ids = ["rss:feed:ep1"]

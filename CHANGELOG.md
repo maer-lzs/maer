@@ -43,7 +43,8 @@ over https.
 after a pause no longer moves you back to a position this device saved
 before; only a newer position from another device moves it. A device
 that only has the player open, like a Mac, no longer sends its old
-position when it goes to the background or closes the player. Playing
+position when it goes to the background, closes the player or gets a
+pause from the lock screen or a media key. Playing
 on from AirPods, the lock screen, CarPlay or after a call first looks
 for a newer position, as the play button does.
 
@@ -55,9 +56,10 @@ each line, so Start keeps one row of large cards.
 
 **The Continue Listening widget uses its whole height.** In the medium
 and large widget the titles share the space under the heading instead of
-standing at the top, and their covers grow with them. Where the cover
-fills the widget, the title stands on a gradient in the colour of the
-cover's lower edge, as on the cards on Start, so it stays readable.
+standing at the top, and their covers grow with them. In the small
+widget the cover takes three quarters of the height, and the title
+stands below it on the colour of the cover's lower edge, as on the cards
+on Start, so it stays readable.
 While something plays, the medium widget shows it on its cover in the
 left half and the other titles to continue in the right half.
 

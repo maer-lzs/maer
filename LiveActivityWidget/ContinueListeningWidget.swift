@@ -174,14 +174,13 @@ private struct ContinueListeningView: View {
         family == .accessoryRectangular || family == .accessoryCircular
     }
 
-    /// The playing title in the medium widget's left half: its cover to the
-    /// half's edges under the gradient, title and bar as in the small widget.
-    /// A tap opens the app with the title.
+    /// The playing title in the medium widget's left half: its cover over
+    /// three quarters, title and bar in the band under it as in the small
+    /// widget. A tap opens the app with the title.
     private func playingHalf(_ snapshot: WidgetSnapshot) -> some View {
         Link(destination: ResumeLink.url(itemId: snapshot.itemId)) {
             Color.clear
-                .overlay { coverImage }
-                .overlay { coverGradient(startingAt: 0.2) }
+                .overlay { coverWithBand }
                 .overlay(alignment: .bottomLeading) {
                     small(WidgetLine.of(snapshot, at: entry.date))
                         .padding(10)
@@ -330,10 +329,11 @@ private struct ContinueListeningView: View {
     private func small(_ line: WidgetLine) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Spacer(minLength: 0)
+            // One line: title and bar stand in the band under the cover.
             Text(line.title)
                 .font(.caption.bold())
                 .foregroundStyle(.white)
-                .lineLimit(2)
+                .lineLimit(1)
             if line.isLive {
                 liveMark
             } else {
@@ -428,20 +428,48 @@ private struct ContinueListeningView: View {
 
     /// The cover with the shade that keeps the text readable. Medium and
     /// large carry four lines of text, so their shade starts at the top.
+    @ViewBuilder
     private var coverBackground: some View {
-        ZStack {
-            coverImage
-            coverGradient(startingAt: isWide ? 0 : 0.2)
+        if isWide {
+            ZStack {
+                coverImage
+                coverGradient
+            }
+        } else {
+            coverWithBand
         }
     }
 
-    /// As the cards on Start: from clear to the colour of the cover's own
-    /// bottom edge, which the app wrote into the snapshot; a snapshot
+    /// The small widget and the playing half: the cover over the top three
+    /// quarters, the colour of its own bottom edge in the lowest quarter
+    /// under it, where title and bar stand, as the cards on Start carry
+    /// their text below the cover; a short gradient blends the cover into
+    /// the band.
+    private var coverWithBand: some View {
+        let tint = entry.snapshot?.coverTint.flatMap(Self.color(of:)) ?? Color(white: 0.15)
+        return GeometryReader { space in
+            VStack(spacing: 0) {
+                Color.clear
+                    .frame(height: space.size.height * 0.75)
+                    .overlay { coverImage }
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint], startPoint: .top, endPoint: .bottom)
+                            .frame(height: space.size.height * 0.1)
+                    }
+                tint
+            }
+        }
+    }
+
+    /// The medium widget with one title: from clear to the colour of the
+    /// cover's own bottom edge, which the app wrote into the snapshot, over
+    /// the lowest quarter only, so the cover stays visible; a snapshot
     /// without it keeps a dark gradient.
-    private func coverGradient(startingAt start: Double) -> some View {
+    private var coverGradient: some View {
         let tint = entry.snapshot?.coverTint.flatMap(Self.color(of:)) ?? .black.opacity(0.75)
-        return LinearGradient(stops: [.init(color: .clear, location: start),
-                                      .init(color: tint, location: 0.75),
+        return LinearGradient(stops: [.init(color: .clear, location: 0.75),
+                                      .init(color: tint, location: 0.9),
                                       .init(color: tint, location: 1)],
                               startPoint: .top, endPoint: .bottom)
     }
