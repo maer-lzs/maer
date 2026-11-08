@@ -23,7 +23,7 @@ enum PinchflatClient {
 
     private static func tokenKey(_ host: String) -> String { "pinchflat.routeToken.\(host)" }
     private static func loginKey(_ host: String) -> String { "pinchflat.login.\(host)" }
-    private static let serverDefaultsKey = "pinchflatServerURL"
+    private static let serverDefaultsKey = AppStorageKeys.pinchflatServerURL
 
     /// The configured server base URL (UserDefaults. It is an address, not a
     /// secret; the secrets live in the keychain).

@@ -23,7 +23,7 @@ nonisolated enum PodcastFeedAddress {
     /// Scheme-less input is assumed to be https (the same assumption the
     /// subscribe path always made); `http://` is raised to https unless the
     /// host is one of the person's own servers (`ownHosts`).
-    static func requestURL(_ raw: String, ownHosts: Set<String> = KnownServers.hosts()) -> URL? {
+    static func requestURL(_ raw: String, ownHosts: Set<String> = KnownServers.ownHosts()) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if let scheme = URL(string: trimmed)?.scheme?.lowercased(),
@@ -42,7 +42,7 @@ nonisolated enum PodcastFeedAddress {
     /// The same rule for an address that is already a `URL`. The funnel every
     /// feed and cover fetch passes through, so a call site that builds its URL
     /// itself cannot sneak cleartext past the rule.
-    static func upgraded(_ url: URL, ownHosts: Set<String> = KnownServers.hosts()) -> URL {
+    static func upgraded(_ url: URL, ownHosts: Set<String> = KnownServers.ownHosts()) -> URL {
         guard url.scheme?.lowercased() == "http" else { return url }
         // The device itself is no service: no certificate names it, and a
         // witness's stand on the loopback is reached over the same door as

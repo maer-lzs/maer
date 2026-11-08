@@ -776,13 +776,7 @@ struct LibraryView: View {
             // One-off backfill. The addresses already
             // configured move into the register, so the memory is not empty
             // on the first launch after the update.
-            KnownServers.backfill([
-                (KeychainStore.load(forKey: KeychainKey.serverURL) ?? "", .audiobookshelf),
-                (AppStorageKeys.subsonicServerURLValue, .subsonic),
-                (AppStorageKeys.jellyfinServerURLValue, .jellyfin),
-                (AppStorageKeys.gpodderServerURLValue, .gpodder),
-                (PinchflatClient.serverURL?.absoluteString ?? "", .pinchflat),
-            ].filter { !$0.0.isEmpty })
+            KnownServers.backfill(KnownServers.configuredAddresses())
         }
         .fullScreenCover(isPresented: Binding(
             get: { driveMode.isActive },
