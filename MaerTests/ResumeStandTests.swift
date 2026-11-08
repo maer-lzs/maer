@@ -64,11 +64,56 @@ struct ResumeStandTests {
     @Test("Weiterspielen fragt die Regel und keinen blossen Abstand der Positionen", .needsTheSources)
     func playingOnAsksTheRule() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
-        let start = try #require(text.range(of: "func playWithServerCheck() async {"), "playWithServerCheck is gone")
+        let start = try #require(text.range(of: "func playWithServerCheck(caller: String = #function) async {"), "playWithServerCheck is gone")
         let rest = text[start.upperBound...]
         let body = String(rest[..<(rest.range(of: " func ")?.lowerBound ?? rest.endIndex)])
         #expect(body.contains("if let target = storedStandTarget() {"), "playing on does not ask the rule")
         #expect(!body.contains("abs(mark.position - currentTime)"), "playing on moves by distance alone")
+    }
+
+    /// Every call of the player's `play` in the sources, by file: a call
+    /// on a model (`self`, `vm`, `viewModel`) anywhere, and a bare call
+    /// inside the player's own files. Comments are stripped first.
+    static func playCalls() -> [String: Int] {
+        let onModel = try! NSRegularExpression(pattern: #"(?:self|vm|viewModel)\??\.play\("#)
+        let bare = try! NSRegularExpression(pattern: #"(?<!func )(?<![A-Za-z0-9_.])play\((?:caller:[^)]*)?\)"#)
+        var out: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
+            let text = SyncContractFenceTests.stripped(file.text)
+            let range = NSRange(text.startIndex..., in: text)
+            var count = onModel.numberOfMatches(in: text, range: range)
+            if file.name.hasPrefix("PlayerViewModel") {
+                count += bare.numberOfMatches(in: text, range: range)
+            }
+            if count > 0 { out[file.name] = count }
+        }
+        return out
+    }
+
+    @Test("jeder Weg zum Weiterhoeren fragt erst den Abgleich; nur ein bewusster Sprung (Kapitel, von vorn) startet sofort", .needsTheSources)
+    func everyWayToPlayOnAsksFirst() throws {
+        #expect(ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]).count > 100, "the fence did not read the sources")
+        #expect(Self.playCalls() == ["PlayerViewModel.swift": 1, "BookDetailScreen.swift": 2],
+                "a way to play on starts without the check: \(Self.playCalls())")
+        let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(text.contains("play(caller: caller) }"), "the one bare call is not the end of playWithServerCheck")
+    }
+
+    @Test("zwei Geraete: Weiterhoeren ueber den Abgleich startet auf dem spaeteren Stand des anderen Geraets", .needsAudio)
+    func playingOnStartsAtTheLaterStand() async throws {
+        let file = try TickWorkTests().tone(seconds: 60)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "resume-remote-\(UUID().uuidString)"
+        let server = SharedServer(file: file.path, position: 5)
+        let first = try await Self.device(server, id)
+        let second = try await Self.device(server, id)
+        try await Self.playAndPause(first, to: 25, server)
+        try await Self.playAndPause(second, to: 45, server)
+        Self.asOwnStore(first, id)
+        await first.playWithServerCheck(caller: "remote play")
+        #expect(first.currentTime == 45, "playing on started at the old stand: \(first.currentTime)")
+        first.stop()
+        second.stop()
     }
 
     @Test("der Plan: Pause, Stopp, Hintergrund und Unterbrechung schreiben nur einen geschuldeten Stand, eigene Handlungen immer")

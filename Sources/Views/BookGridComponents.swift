@@ -386,7 +386,7 @@ struct BookDownloadRow: View {
     private var playButton: some View {
         Button {
             if isPlayingThis { playerCoordinator.viewModel?.pause() }
-            else if isCurrent { playerCoordinator.viewModel?.play() }
+            else if isCurrent { Task { await playerCoordinator.viewModel?.playWithServerCheck(caller: "grid tile") } }
             else { Task { await playerCoordinator.open(item: entry.item) } }
         } label: {
             Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")

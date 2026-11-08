@@ -428,7 +428,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             updateNowPlayingInfo()
         } else {
             if resumeAfterInterruption, shouldResume {
-                play()
+                Task { await playWithServerCheck(caller: "interruption ended") }
             }
             resumeAfterInterruption = false
         }
@@ -1042,8 +1042,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Covers the device switch: if you pause on the iPhone and want to continue
     /// on the iPad seconds later, the iPad jumps to the newer server state before
     /// playing. Instead of starting from the old local state and overwriting the
-    /// fresh progress.
-    func playWithServerCheck() async {
+    /// fresh progress. Every way to play on goes through here (a fence
+    /// counts the callers of `play`); only a deliberate jump plays at once.
+    func playWithServerCheck(caller: String = #function) async {
         // Podcast/KVS half of the device switch: the freshest state of a
         // podcast episode lives in the iCloud blob, not behind
         // `reconcileWithServer`. One targeted pull, then adopt a newer mark
@@ -1085,7 +1086,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             await group.next()
             group.cancelAll()
         }
-        play()
+        play(caller: caller)
     }
 
     /// Where the stand in the store moves the player before it plays on, or

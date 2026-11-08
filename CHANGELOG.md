@@ -14,7 +14,9 @@ over https.
 after a pause no longer moves you back to a position this device saved
 before; only a newer position from another device moves it. A device
 that only has the player open, like a Mac, no longer sends its old
-position when it goes to the background or closes the player.
+position when it goes to the background or closes the player. Playing
+on from AirPods, the lock screen, CarPlay or after a call first looks
+for a newer position, as the play button does.
 
 ## v3.6 (Build 59)
 

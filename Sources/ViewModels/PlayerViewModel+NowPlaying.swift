@@ -119,7 +119,7 @@ extension PlayerViewModel {
         // the main actor. Behaviour is unchanged since each body already hops via
         // `Task { @MainActor }` and touches `self` only inside it.
         commandCenter.playCommand.addTarget { @Sendable [weak self] _ in
-            Task { @MainActor in self?.play() }
+            Task { @MainActor in await self?.playWithServerCheck(caller: "remote play") }
             return .success
         }
         commandCenter.pauseCommand.addTarget { @Sendable [weak self] _ in
