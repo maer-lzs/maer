@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.6.1 (Build 60)
 
 **Covers from servers reached over http appear again.** Audiobookshelf,
 Jellyfin, Subsonic and Navidrome servers you reach only over http, for
