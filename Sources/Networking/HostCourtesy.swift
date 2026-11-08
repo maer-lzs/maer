@@ -90,7 +90,7 @@ actor HostCourtesy {
     }
 
     nonisolated static func knownServerHosts() -> Set<String> {
-        KnownServers.hosts()
+        KnownServers.ownHosts()
     }
 
     static let loopback: Set<String> = ["localhost", "127.0.0.1", "::1"]

@@ -125,10 +125,31 @@ nonisolated enum KnownServers {
             + list.filter { $0.service != service && sameKind($0.service, service) }
     }
 
-    /// The hosts of the person's own servers, lowercased: the one answer to
-    /// "is this host one the person entered".
+    /// The hosts in the register, lowercased.
     static func hosts(defaults: UserDefaults? = nil) -> Set<String> {
         Set(all(defaults: defaults ?? AppStorageKeys.store).compactMap { host(of: $0.url) })
+    }
+
+    /// The hosts of the person's own servers, lowercased: the one answer to
+    /// "is this host one the person entered". The register and the sources
+    /// set up now together, so a server whose suggestion was removed, here
+    /// or on another device, stays own while it is set up. `configured` is
+    /// a witness's list in place of the sources'.
+    static func ownHosts(defaults: UserDefaults? = nil, configured: [String]? = nil) -> Set<String> {
+        let addresses = configured ?? configuredAddresses().map(\.url)
+        return hosts(defaults: defaults).union(addresses.compactMap(host(of:)))
+    }
+
+    /// The addresses of the sources set up now. The Mär sync service is not
+    /// among them: its requests go over the `api` lane, which is never raised.
+    static func configuredAddresses() -> [(url: String, service: KnownServer.Service)] {
+        [
+            (AppStorageKeys.string(AppStorageKeys.absSignedInServer) ?? "", .audiobookshelf),
+            (AppStorageKeys.subsonicServerURLValue, .subsonic),
+            (AppStorageKeys.jellyfinServerURLValue, .jellyfin),
+            (AppStorageKeys.gpodderServerURLValue, .gpodder),
+            (AppStorageKeys.string(AppStorageKeys.pinchflatServerURL) ?? "", .pinchflat),
+        ].filter { !$0.url.isEmpty }
     }
 
     /// The host of a stored address. An entry is kept as it was typed, so

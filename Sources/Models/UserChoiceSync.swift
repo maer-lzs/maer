@@ -197,6 +197,7 @@ nonisolated enum UserChoiceCatalog {
         "subsonicUsername": .machine,
         "jellyfinServerURL": .machine,
         "jellyfinUsername": .machine,
+        "pinchflatServerURL": .machine,
         "jellyfinUserId": .machine,
         "jellyfinDeviceId": .machine,
         "jamendoClientId": .machine,

@@ -62,6 +62,30 @@ struct PodcastFeedAddressTests {
         #expect(KnownServers.hosts(defaults: defaults) == ["100.64.0.7", "nas.local"])
     }
 
+    @Test("ein eingerichteter Server, dessen Vorschlag entfernt ist, bleibt eigen und behaelt http")
+    func aSetUpServerStaysOwnWithoutItsSuggestion() throws {
+        let defaults = try #require(UserDefaults(suiteName: "own-hosts-\(UUID().uuidString)"))
+        let entry = KnownServer(url: "http://100.64.0.7:13378", service: .audiobookshelf, lastSuccessAt: 1)
+        KnownServers.remember(entry.url, service: entry.service, now: 1, defaults: defaults)
+        KnownServers.forget(entry, defaults: defaults)
+        #expect(KnownServers.hosts(defaults: defaults).isEmpty, "the suggestion is still in the register")
+        let own = KnownServers.ownHosts(defaults: defaults, configured: ["http://100.64.0.7:13378", "nas.local:4533"])
+        #expect(own == ["100.64.0.7", "nas.local"])
+        let cover = try #require(URL(string: "http://100.64.0.7:13378/api/items/1/cover"))
+        #expect(PodcastFeedAddress.upgraded(cover, ownHosts: own) == cover, "the set-up server's cover was raised")
+    }
+
+    @Test("Messung: die eigenen Hosts je Cover-Anfrage, 200 Aufrufe hintereinander")
+    func theOwnHostsCostPerRequest() {
+        let started = ContinuousClock.now
+        var hosts = 0
+        for _ in 0..<200 { hosts += KnownServers.ownHosts().count }
+        let elapsed = ContinuousClock.now - started
+        let micros = Double(elapsed.components.seconds) * 1e6 + Double(elapsed.components.attoseconds) / 1e12
+        print(String(format: "COVERHOSTS calls=200 us_per_call=%.1f hosts=%d", micros / 200, hosts / 200))
+        #expect(micros / 200 < 1000, "over a millisecond per cover request: a held image of the hosts belongs in")
+    }
+
     @Test("eine http-Adresse geht als https-Anfrage raus")
     func cleartextIsRaised() {
         #expect(PodcastFeedAddress.requestURL("http://feeds.example.org/show", ownHosts: [])?.absoluteString

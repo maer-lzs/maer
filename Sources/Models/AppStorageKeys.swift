@@ -880,6 +880,8 @@ nonisolated enum AppStorageKeys {
 
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
+    /// The Pinchflat server's address (`PinchflatClient.serverURL`).
+    static let pinchflatServerURL = "pinchflatServerURL"
     /// The Audiobookshelf server signed in now and the server of the last
     /// full library load, as normalized addresses, and when the signed-in
     /// server last changed (ms). `ABSServerScope` decides on them.
