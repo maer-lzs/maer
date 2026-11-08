@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 #if canImport(Testing)
+import AVFoundation
 import Foundation
 import Testing
 @testable import Maer
@@ -213,6 +214,25 @@ struct ResumeStandTests {
         await playing.reconcileWithServer()
         #expect(playing.currentTime == 25, "the playing device jumped back to \(playing.currentTime)")
         playing.stop()
+    }
+
+    @Test("eine Unterbrechung waehrend des Hoerens schreibt den Stand, den das Geraet schuldet", .needsAudio)
+    func anInterruptionWritesTheOwedStand() async throws {
+        let file = try TickWorkTests().tone(seconds: 60)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "resume-call-\(UUID().uuidString)"
+        let server = SharedServer(file: file.path, position: 5)
+        let model = try await Self.device(server, id)
+        let before = server.writes
+        model.isPlaying = true
+        model.currentTime = 25
+        NotificationCenter.default.post(
+            name: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance(),
+            userInfo: [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue])
+        for _ in 0..<100 where server.writes == before { try await Task.sleep(nanoseconds: 50_000_000) }
+        #expect(!model.isPlaying, "the precondition: the interruption halted the player")
+        #expect(server.writes == before + 1 && server.position == 25, "the interruption lost the stand: \(server.position)")
+        model.stop()
     }
 
     @Test("zwei Geraete: spielt das andere wirklich weiter, springt das erste danach auf dessen Stand", .needsAudio)
