@@ -9,9 +9,9 @@ import Foundation
 /// occasion; before, only "forced or not" arrived, and a position written on
 /// a device could not be traced back to a pause, a seek or the background.
 ///
-/// Only `isDeliberate` decides anything, exactly what `force` decided:
-/// every occasion except the timer tick is deliberate. Telling occasions
-/// apart beyond that would change how positions are written.
+/// Two questions decide: `isDeliberate`, every occasion except the timer
+/// tick, and `needsOwnStand`, the occasions that write only a stand the
+/// device heard itself.
 nonisolated enum SyncOrigin: String, CaseIterable, Sendable {
     /// The periodic timer tick while the player is loaded.
     case tick
@@ -36,4 +36,14 @@ nonisolated enum SyncOrigin: String, CaseIterable, Sendable {
     /// A deliberate occasion forces the write: past the five-second
     /// threshold, and as a follow-up round when a write is in flight.
     var isDeliberate: Bool { self != .tick }
+
+    /// The occasions that only carry the stand the device heard: they write
+    /// only when it owes one (`SyncState.owesStand`). The person's own acts
+    /// (a jump, a restart, a confirmation) write in any state.
+    var needsOwnStand: Bool {
+        switch self {
+        case .pause, .stop, .background, .interruption: return true
+        default: return false
+        }
+    }
 }

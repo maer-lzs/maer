@@ -95,7 +95,8 @@ extension PlayerViewModel {
                   conflictPending: pendingServerConflict != nil,
                   progressSync: provider.capabilities.contains(.progressSync),
                   podcastEpisode: ItemNamespace.isPodcastEpisode(item.id),
-                  potCarries: PodcastCloudSync.potCarries(item.id))
+                  potCarries: PodcastCloudSync.potCarries(item.id),
+                  owesStand: isPlaying || pauseRecordPending)
     }
 
     /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
@@ -112,6 +113,9 @@ extension PlayerViewModel {
             // forced: at 00:00 in a fresh session this would overwrite a
             // server that is hours ahead, and the suspicious-drop guard has
             // no reference value to catch it.
+            return false
+        case .noOwnStand:
+            Logger.player.notice("SYNC held origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash)): this device owes no stand")
             return false
         case .conflict(let raise):
             // Core rule: a backward jump the user did NOT initiate is never

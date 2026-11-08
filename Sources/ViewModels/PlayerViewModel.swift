@@ -260,10 +260,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A deliberate sync arrived while one was running. Re-run once
     /// afterwards, under the last occasion that asked.
     var syncFollowUpOrigin: SyncOrigin?
-    /// A pause of a running piece asked for its sync, and the run that
-    /// records its stand has not ended yet (the record follows the server's
-    /// answer). A change of account in that window holds this stand too
-    /// (`AccountSwitchHold`).
+    /// A pause, stop or interruption of a running piece asked for its sync,
+    /// and the run that records its stand has not ended yet (the record
+    /// follows the server's answer). A change of account in that window
+    /// holds this stand too (`AccountSwitchHold`), and the sync writes the
+    /// stand only while it is owed (`SyncState.owesStand`).
     var pauseRecordPending = false
 
     /// Seconds before the timer end over which the volume fades gently. No hard
@@ -413,9 +414,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if isPlaying {
                 resumeAfterInterruption = true
                 // Same bookkeeping as pause(), minus player.pause() (the
-                // system already halted the audio): Smart-Rewind anchor and a
-                // prompt sync while we still have CPU.
+                // system already halted the audio): Smart-Rewind anchor, the
+                // stand this device owes, and a prompt sync while we still
+                // have CPU.
                 pausedAt = Date()
+                pauseRecordPending = true
                 Task { await syncProgress(.interruption) }
             }
             // Mirror the halt in our state (also fixes the play/pause
@@ -1771,6 +1774,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if isPlaying, let item {
             PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
                                              duration: duration, epoch: standEpoch)
+            pauseRecordPending = true
         }
         Task { await syncProgress(.stop) }
         player?.pause()
