@@ -792,6 +792,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// (chapter, scrubber, device switch) the queue must be rebuilt.
     @discardableResult
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
+        // A queue that is not built waited for no sign-in either.
+        queueWaitedForSignIn = false
         guard startIndex >= 0, startIndex < tracks.count else { return false }
         // A new queue holds new items: a noted load failure is healed by it.
         loadFailureNoted = false
@@ -819,7 +821,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // be read now: no track of it is requested without it, and a queue
         // without a track fails the way an unloadable one does.
         let streamHeaders = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
-        queueWaitedForSignIn = false
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {

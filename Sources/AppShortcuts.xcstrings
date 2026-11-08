@@ -1,35 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "${applicationName} drive mode" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringSet" : {
-            "state" : "translated",
-            "values" : [
-              "${applicationName} Fahrmodus",
-              "Fahrmodus in der ${applicationName}-App",
-              "Fahrmodus der App ${applicationName}",
-              "${applicationName} drive mode",
-              "Drive mode in the ${applicationName} app"
-            ]
-          }
-        },
-        "en" : {
-          "stringSet" : {
-            "state" : "new",
-            "values" : [
-              "${applicationName} drive mode",
-              "Drive mode in the ${applicationName} app",
-              "${applicationName} Fahrmodus",
-              "Fahrmodus in der ${applicationName}-App",
-              "Fahrmodus der App ${applicationName}"
-            ]
-          }
-        }
-      }
-    },
     "Continue listening in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

@@ -55,9 +55,6 @@ struct AppShortcutPhrasesTests {
         #expect(!Self.namesTheApp("Höre mein Hörbuch in Maer weiter, appetitlich"), "a word containing app is not the word")
     }
 
-    /// Drive mode's first phrase as the catalog spells it.
-    nonisolated static let driveModeKey = "${applicationName} drive mode"
-
     /// A phrase as the catalog spells it: the literal without its quotes and
     /// comma, the app name and the book parameter as catalog placeholders.
     nonisolated static func catalogForm(_ line: String) -> String {
@@ -83,13 +80,12 @@ struct AppShortcutPhrasesTests {
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.xcstrings"))
         let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let strings = try #require(catalog?["strings"] as? [String: Any], "the catalog has no strings")
-        // A stale key is a shortcut the source does not offer now. Only drive
-        // mode may wait so, and only while its gate is closed.
+        // A stale key is a shortcut the source does not offer now; the
+        // archive warns of it. A shortcut that comes back brings its
+        // phrases back with it.
         let stale = Set(strings.filter { ($0.value as? [String: Any])?["extractionState"] as? String == "stale" }.keys)
-        #expect(stale == (DriveModeGate.isOpen ? [] : [Self.driveModeKey]),
-                "a stale shortcut that is not drive mode behind its closed gate: \(stale.sorted())")
-        let live = strings.filter { !stale.contains($0.key) }
-        #expect(Set(live.keys) == Set(blocks.compactMap(\.first)), "one key per shortcut, its first phrase: \(live.keys.sorted())")
+        #expect(stale.isEmpty, "a stale shortcut: \(stale.sorted())")
+        #expect(Set(strings.keys) == Set(blocks.compactMap(\.first)), "one key per shortcut, its first phrase: \(strings.keys.sorted())")
         for block in blocks {
             let key = try #require(block.first)
             let entry = strings[key] as? [String: Any]

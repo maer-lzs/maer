@@ -7,6 +7,7 @@
 import Testing
 import Foundation
 import UIKit
+import SwiftUI
 @testable import Maer
 
 /// The persistent cover of a downloaded item must be found by the same
@@ -169,6 +170,37 @@ struct ImageCachePersistentTests {
         #expect(ImageCache.removeCovers(of: .subsonic, in: folder) == 1)
         #expect(!read(second), "the second server's address still reads the first's cover")
         for url in stay { #expect(read(url), "\(url) went with the server") }
+    }
+
+    /// The colors taken from a cover are kept by its name too: the second
+    /// server's album would take the first's colors for the player.
+    @Test("nach dem Wechsel auf einen zweiten Server derselben Art traegt dessen Adresse keine Farben des ersten")
+    func aSecondServerOfTheKindTakesNoColorsOfTheFirst() {
+        let tag = UUID().uuidString.prefix(8)
+        let first = URL(string: "https://gonic-a.example/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
+        let second = URL(string: "https://gonic-b.example/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T2&s=S2")!
+        let stay = [URL(string: "https://jf.example/Items/al-\(tag)/Images/Primary?maxWidth=600")!,
+                    URL(string: "https://archive.org/services/img/librivox_\(tag)")!]
+        for url in [first] + stay {
+            CoverColorLoader.colorCache[ImageCache.fileKey(for: url)] = (.red, .green, .blue)
+        }
+        defer { for url in stay { CoverColorLoader.colorCache[ImageCache.fileKey(for: url)] = nil } }
+        let held = { (url: URL) in CoverColorLoader.colorCache[ImageCache.fileKey(for: url)] != nil }
+        #expect(held(second), "the precondition: the second server's address finds the first's colors")
+
+        CoverColorLoader.forgetColors(of: .subsonic)
+        #expect(!held(second), "the second server's address still finds the first's colors")
+        for url in stay { #expect(held(url), "the colors of \(url) went with the server") }
+    }
+
+    @Test("das Raeumen der Cover einer Art raeumt ihre Farben mit", .needsTheSources)
+    func forgettingTheCoversOfAKindForgetsTheirColors() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "ImageCache.swift" })
+        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let start = try #require(source.range(of: "func forgetCovers(of kind: ServerImageKind)"))
+        let end = try #require(source.range(of: "\n    }\n", range: start.upperBound..<source.endIndex))
+        #expect(source[start.upperBound..<end.lowerBound].contains("CoverColorLoader.forgetColors(of: kind)"),
+                "the colors of the kind stay when its covers go")
     }
 
     /// A kept cover an older build named with the key in it: the next sweep

@@ -165,6 +165,20 @@ struct FeedAccessUnknownTests {
                 "another failure keeps its sentence")
     }
 
+    /// A start without a track ends before the queue is built ("No playable
+    /// track found."), so no start reaches a queue that is not built today.
+    /// The fence keeps the mark of the queue before its first way out, so a
+    /// queue that is not built never answers with the mark of the one before.
+    @Test("die Marke der Warteschlange faellt vor ihrem ersten Ausgang", .needsTheSources)
+    func theQueueMarkFallsBeforeItsFirstWayOut() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PlayerViewModel.swift" })
+        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let start = try #require(source.range(of: "private func buildQueue(startingAtTrackIndex"))
+        let reset = try #require(source.range(of: "queueWaitedForSignIn = false", range: start.upperBound..<source.endIndex))
+        let firstGuard = try #require(source.range(of: "guard ", range: start.upperBound..<source.endIndex))
+        #expect(reset.lowerBound < firstGuard.lowerBound, "the mark of the queue before stays past its first way out")
+    }
+
     @Test("ein Feed mit unlesbarem Zugang wird nicht ohne ihn gefragt")
     func aFeedIsNotAskedWithoutItsSignIn() async throws {
         // A closed port on the loopback: a request that goes out comes back

@@ -42,7 +42,13 @@ final class CoverColorLoader: ObservableObject {
     /// instead of recomputing).
     /// Keyed by the cover's name (`ImageCache.fileKey`), so an address whose
     /// sign-in changes per request still hits.
-    private static var colorCache: [String: (accent: Color, top: Color, bottom: Color)] = [:]
+    static var colorCache: [String: (accent: Color, top: Color, bottom: Color)] = [:]
+
+    /// The colors of one kind of server's covers, when a server of that kind
+    /// leaves the device: the next one may give another picture the same name.
+    static func forgetColors(of kind: ImageCache.ServerImageKind) {
+        colorCache = colorCache.filter { !kind.names($0.key) }
+    }
 
     func load(from url: URL?) async {
         guard let url else { return }

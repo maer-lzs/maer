@@ -6,7 +6,13 @@
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
 A title the app held nothing of comes back when you listened to it
-there after this version first started. The app also no longer reads these old entries before its first screen.
+there after this version first started. The app also no longer reads
+these old entries before its first screen.
+
+**A new server of the same kind brings its own colors.** After you
+switch to another Audiobookshelf, Jellyfin or Subsonic server, the
+player no longer takes its background colors from a cover of the old
+one until the app restarts.
 
 ## v3.6 (Build 59)
 

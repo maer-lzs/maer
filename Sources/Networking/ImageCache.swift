@@ -435,6 +435,11 @@ final class ImageCache {
         case audiobookshelf = "abs"
         case subsonic = "sub"
         case jellyfin = "jf"
+
+        /// Whether a cover's name (`fileKey`) or file name is of this kind.
+        func names(_ name: String) -> Bool {
+            name.hasPrefix(rawValue + "_")
+        }
     }
 
     /// Parts joined into one file name; a name beyond `keyByteCeiling`
@@ -1553,10 +1558,12 @@ final class ImageCache {
     /// id without the host, so the next server of the kind could hand out
     /// the same id for another picture, and a hit never loads again. The
     /// kept covers of downloads stay with their downloads. The memory tiers
-    /// are emptied whole: they cannot be listed by name.
+    /// are emptied whole: they cannot be listed by name. The colors taken
+    /// from the covers are kept by name and go by kind.
     func forgetCovers(of kind: ServerImageKind) {
         memoryCache.removeAllObjects()
         thumbCache.removeAllObjects()
+        CoverColorLoader.forgetColors(of: kind)
         let removed = Self.removeCovers(of: kind, in: diskDirectory)
         Logger.library.notice("COVERCACHE server left kind=\(kind.rawValue, privacy: .public) removed=\(removed)")
     }
@@ -1565,7 +1572,6 @@ final class ImageCache {
     /// A folder that cannot be listed or a file that does not go is a line:
     /// such a cover would still answer the next server of the kind.
     nonisolated static func removeCovers(of kind: ServerImageKind, in directory: URL) -> Int {
-        let prefix = kind.rawValue + "_"
         let files: [URL]
         do {
             files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
@@ -1575,7 +1581,7 @@ final class ImageCache {
         }
         var removed = 0
         var failed = 0
-        for file in files where file.lastPathComponent.hasPrefix(prefix) {
+        for file in files where kind.names(file.lastPathComponent) {
             do {
                 try FileManager.default.removeItem(at: file)
                 removed += 1
