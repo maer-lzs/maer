@@ -1048,10 +1048,9 @@ extension ProjectFileIntegrityTests {
 
     // MARK: - Feed-Anfragen gehen nie im Klartext raus
 
-    /// A feed request built straight from a stored/directory address. ATS
-    /// allows cleartext for MEDIA only, so such a request can never succeed.
-    /// It just makes a living feed look dead. Statement-based, because the
-    /// guards span lines.
+    /// A feed request built straight from a stored/directory address, past
+    /// the one rule that raises it (`PodcastFeedAddress`). Statement-based,
+    /// because the guards span lines.
     static func rawFeedRequestSites(in text: String) -> Int {
         let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
         return ["URL(string:feedURL)", "URL(string:show.feedURL)", "URL(string:urlString)"]

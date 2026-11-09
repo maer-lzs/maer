@@ -290,13 +290,10 @@ nonisolated enum RadioLogoLookup {
             .first { $0.scheme?.hasPrefix("http") == true }
     }
 
-    /// The catalog's homepage often carries `http://`. And under ATS
-    /// (`NSAllowsArbitraryMediaLoads`: clear text for MEDIA only) such a
-    /// request never leaves the device. The homepage stage of the logo chain
-    /// was therefore DEAD for every such station, measured: 101 of the 200
-    /// most-voted German stations. Same class and same cure as the podcast
-    /// feeds (`PodcastFeedAddress`): raise to https in the funnel, and NO
-    /// fallback to http. The fallback is what ATS refuses anyway.
+    /// The catalog's homepage often carries `http://` (measured: 101 of the
+    /// 200 most-voted German stations). Same cure as the podcast feeds
+    /// (`PodcastFeedAddress`): raise to https in the funnel, and NO fallback
+    /// to http, which would trade a clear failure for a confusing one.
     ///
     /// Only the scheme changes; host and path stay untouched, so a station
     /// whose site truly only serves http fails visibly (empty/failed) instead

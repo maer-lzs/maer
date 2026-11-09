@@ -93,7 +93,7 @@ actor HostCourtesy {
         KnownServers.ownHosts()
     }
 
-    static let loopback: Set<String> = ["localhost", "127.0.0.1", "::1"]
+    static let loopback = PodcastFeedAddress.loopback
 
     // MARK: - The two calls
 

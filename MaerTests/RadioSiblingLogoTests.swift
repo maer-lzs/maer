@@ -126,10 +126,8 @@ import Foundation
         #expect(icon?.absoluteString == "https://file.atsw.de/icons/icon_512.png")
     }
 
-    /// The catalog's homepage is often `http://`. And under ATS
-    /// (clear text for MEDIA only) that request never leaves the device, so
-    /// the homepage stage was dead for half the German catalog (measured:
-    /// 101 of the top 200). The funnel raises to https; no http fallback.
+    /// The catalog's homepage is often `http://` (measured: 101 of the top
+    /// 200 German stations). The funnel raises to https; no http fallback.
     @Test("die Homepage-Stufe hebt auf https an — kein Rueckfall")
     func homepageIsRaisedToHTTPS() {
         #expect(RadioLogoLookup.httpsPageURL("http://www.bigfm.de/webradio/deutschrap")?

@@ -75,14 +75,25 @@ struct PodcastFeedAddressTests {
         #expect(PodcastFeedAddress.upgraded(cover, ownHosts: own) == cover, "the set-up server's cover was raised")
     }
 
-    @Test("Messung: die eigenen Hosts je Cover-Anfrage, 200 Aufrufe hintereinander")
-    func theOwnHostsCostPerRequest() {
+    /// Measured on a register of its own with twelve entries, so every call
+    /// decodes a filled register and not the empty one of the test's host.
+    @Test("Messung: die eigenen Hosts je Cover-Anfrage, 200 Aufrufe hintereinander, mit zwoelf Eintraegen im Register")
+    func theOwnHostsCostPerRequest() throws {
+        let defaults = try #require(UserDefaults(suiteName: "own-hosts-cost-\(UUID().uuidString)"))
+        let services: [KnownServer.Service] = [.audiobookshelf, .subsonic, .jellyfin, .gpodder, .pinchflat, .maerSync]
+        for index in 0..<12 {
+            let address = index.isMultiple(of: 2) ? "http://server\(index).home.example:\(4000 + index)"
+                                                  : "100.64.0.\(index):13378"
+            KnownServers.remember(address, service: services[index % services.count], now: Double(index), defaults: defaults)
+        }
+        try #require(KnownServers.hosts(defaults: defaults).count == 12, "the register is not filled")
         let started = ContinuousClock.now
         var hosts = 0
-        for _ in 0..<200 { hosts += KnownServers.ownHosts().count }
+        for _ in 0..<200 { hosts += KnownServers.ownHosts(defaults: defaults).count }
         let elapsed = ContinuousClock.now - started
         let micros = Double(elapsed.components.seconds) * 1e6 + Double(elapsed.components.attoseconds) / 1e12
-        print(String(format: "COVERHOSTS calls=200 us_per_call=%.1f hosts=%d", micros / 200, hosts / 200))
+        print(String(format: "COVERHOSTS calls=200 us_per_call=%.1f hosts=%d registered=12", micros / 200, hosts / 200))
+        #expect(hosts / 200 >= 12, "the measured calls did not read the filled register")
         #expect(micros / 200 < 1000, "over a millisecond per cover request: a held image of the hosts belongs in")
     }
 
