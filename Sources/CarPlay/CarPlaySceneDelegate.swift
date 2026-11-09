@@ -34,14 +34,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var radioOnStart = false
     private var signals: Set<AnyCancellable> = []
     private var pendingRebuild: Task<Void, Never>?
+    /// The speed of the player that plays now; a new player replaces it.
+    private var rateSignal: AnyCancellable?
     // The stores the car reads, held once.
     private let session = AppSession.shared
     private let queue = PlayQueue.shared
     private let playlistStore = MaerPlaylists.shared
+    private let context = PlaybackContext.shared
     private let nowPlaying = CPNowPlayingTemplate.shared
-    private lazy var rateButton = CPNowPlayingPlaybackRateButton { [weak self] _ in
-        Task { @MainActor [weak self] in self?.stepRate() }
-    }
 
     func templateApplicationScene(
         _ templateApplicationScene: CPTemplateApplicationScene,
@@ -63,6 +63,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         didDisconnectInterfaceController interfaceController: CPInterfaceController
     ) {
         signals.removeAll()
+        rateSignal = nil
         pendingRebuild?.cancel()
         nowPlaying.remove(self)
         self.interfaceController = nil
@@ -99,10 +100,19 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
             .sink { [weak self] in self?.scheduleRebuild() }
             .store(in: &signals)
+        // The player's extras follow the title, the orders, the rest of what was started, the player that
+        // carries the title and that player's speed. The player arrives
+        // after its title, so it is a signal of its own.
         session.playerCoordinator.$activeItem
-            .combineLatest(queue.$ids)
+            .combineLatest(queue.$ids, context.$ids, session.playerCoordinator.$viewModel)
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updatePlayerExtras() }
+            .sink { [weak self] _, _, _, model in
+                self?.rateSignal = model?.$playbackRate
+                    .removeDuplicates()
+                    .receive(on: RunLoop.main)
+                    .sink { [weak self] _ in self?.updatePlayerExtras() }
+                self?.updatePlayerExtras()
+            }
             .store(in: &signals)
     }
 
@@ -307,11 +317,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             recent = answer.value ?? []
             recentFailed = answer.failed
         }
-        let played: [LibraryItem] = SharedRows.musicRecentlyPlayed(serverRecent: recent).compactMap { entry in
+        var played: [LibraryItem] = []
+        for entry in SharedRows.musicRecentlyPlayed(serverRecent: recent)
+        where played.count < CarPlayLayout.sectionLimit {
             switch entry {
-            case .album(let id): return recent.first { $0.id == id }
-            case .catalogTrack(let id): return session.playableItem(forId: id)
-            case .station: return nil
+            case .album(let id): if let album = recent.first(where: { $0.id == id }) { played.append(album) }
+            case .catalogTrack(let id): if let title = await catalogTitle(id) { played.append(title) }
+            case .station: break
             }
         }
         var sections: [CPListSection] = []
@@ -334,6 +346,24 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             },
         ]))
         return sections
+    }
+
+    /// A catalogue title by its name: what the device knows of it, else
+    /// asked from its source, as the title's tile in the app does. Without
+    /// a name it is left out of the row; the next rebuild asks again.
+    private func catalogTitle(_ id: String) async -> LibraryItem? {
+        if let known = session.libraryItem(forId: id), known.media != nil { return known }
+        do {
+            _ = try await LookupOccasion.automatic {
+                try await ItemRouter.live.provider(id).fetchItemDetail(itemId: id)
+            }
+        } catch {
+            guard let reason = FreeCatalog.logReason(error) else { return nil }
+            Logger.library.error("CARPLAY catalogue title \(id, privacy: .public) FAILED: \(reason, privacy: .public)")
+            return nil
+        }
+        guard let named = session.libraryItem(forId: id), named.media != nil else { return nil }
+        return named
     }
 
     /// The music tab's one playlist row; a list opens its titles.
@@ -551,7 +581,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// Playable row: tap starts the title via the coordinator.
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
-        let image = await cover(forItemId: item.id)
+        // A title without a cover keeps the place of one, so every title of
+        // a list starts at the same edge.
+        let image = await cover(forItemId: item.id) ?? UIImage(systemName: "headphones")
         // The side line carries the server's name with two music servers:
         // "Artist · Navidrome". Episodes carry none.
         let detail = [item.media?.metadata?.authorName, session.musicSourceLabel(forItemId: item.id)]
@@ -585,16 +617,42 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     // MARK: - Player
 
-    /// Up Next and the speed while a book or an episode plays.
+    /// Up Next while something waits behind the title, the speed while a
+    /// book or an episode plays.
     private func updatePlayerExtras() {
         let coordinator = session.playerCoordinator
-        let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id,
-                                                markedForm: coordinator.viewModel?.playingForm)
-        nowPlaying.isUpNextButtonEnabled = spoken && !queue.isEmpty
-        nowPlaying.updateNowPlayingButtons(spoken ? [rateButton] : [])
+        let form = coordinator.viewModel?.playingForm
+        let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id, markedForm: form)
+        nowPlaying.isUpNextButtonEnabled = CarPlayLayout.offersUpNext(
+            for: coordinator.activeItem?.id, markedForm: form, waiting: queue.ids.count + context.ids.count)
+        guard spoken, let rate = coordinator.viewModel?.playbackRate else {
+            nowPlaying.updateNowPlayingButtons([])
+            return
+        }
+        nowPlaying.updateNowPlayingButtons([rateButton(showing: Double(rate))])
     }
 
-    /// The next of the app's speeds.
+    /// The speed button with the app's own label for the speed. The
+    /// system's rate button reads no speed from the app and shows 0x.
+    private func rateButton(showing rate: Double) -> CPNowPlayingButton {
+        let label = SpeedMenu.label(rate) + "×"
+        let size = CPNowPlayingButtonMaximumImageSize
+        let font = UIFont.systemFont(ofSize: size.height * 0.62, weight: .semibold)
+        let text = NSAttributedString(string: label, attributes: [.font: font, .foregroundColor: UIColor.white])
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            let fit = min(1, size.width / max(text.size().width, 1))
+            let scaled = NSAttributedString(string: label, attributes: [
+                .font: font.withSize(font.pointSize * fit), .foregroundColor: UIColor.white,
+            ])
+            let box = scaled.size()
+            scaled.draw(at: CGPoint(x: (size.width - box.width) / 2, y: (size.height - box.height) / 2))
+        }
+        return CPNowPlayingImageButton(image: image.withRenderingMode(.alwaysTemplate)) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.stepRate() }
+        }
+    }
+
+    /// The next of the app's speeds; the button then shows it.
     private func stepRate() {
         guard let model = session.playerCoordinator.viewModel else { return }
         let next = CarPlayLayout.nextRate(after: Double(model.playbackRate), rates: SpeedMenu.rates)
@@ -602,7 +660,25 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
-        Task { await pushList(String(localized: "Up Next"), upNextItems()) }
+        Task { await pushUpNext() }
+    }
+
+    /// What plays after the title, as the app's queue page lists it: the
+    /// orders first, then the rest of what was started, named by its source.
+    private func pushUpNext() async {
+        var sections: [CPListSection] = []
+        let orders = upNextItems()
+        if !orders.isEmpty {
+            sections.append(await section(String(localized: "Up Next"),
+                                          orders.prefix(Int(CPListTemplate.maximumItemCount))))
+        }
+        let rest = context.ids.compactMap { session.playableItem(forId: $0) }
+        if !rest.isEmpty {
+            let header = context.sourceTitle.map { String(localized: "Continuing from \($0)") }
+                ?? String(localized: "Continuing")
+            sections.append(await section(header, rest.prefix(Int(CPListTemplate.maximumItemCount))))
+        }
+        push(CPListTemplate(title: String(localized: "Up Next"), sections: sections))
     }
 
     func nowPlayingTemplateAlbumArtistButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {}

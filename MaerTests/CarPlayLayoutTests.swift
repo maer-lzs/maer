@@ -100,6 +100,26 @@ struct CarPlayLayoutTests {
                 "a failed page does not say so")
     }
 
+    @Test("Als Naechstes im Player, sobald etwas hinter dem Titel wartet, nie bei einem Sender")
+    func upNextWheneverSomethingWaits() {
+        #expect(CarPlayLayout.offersUpNext(for: "book-1", waiting: 1))
+        #expect(CarPlayLayout.offersUpNext(for: "sub:song-1", waiting: 3))
+        #expect(!CarPlayLayout.offersUpNext(for: "book-1", waiting: 0))
+        #expect(!CarPlayLayout.offersUpNext(for: "radio:rb:station", waiting: 2))
+        #expect(!CarPlayLayout.offersUpNext(for: nil, waiting: 2))
+    }
+
+    @Test("ein Katalogtitel ohne Namen steht nicht im Auto, der Knopf der Geschwindigkeit traegt die Zahl der App",
+          .needsTheSources)
+    func noNamelessTitleAndTheChosenSpeedWhilePaused() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(car.contains("case .catalogTrack(let id): if let title = await catalogTitle(id)"),
+                "a catalogue title goes into the row without its name")
+        #expect(!car.contains("session.playableItem(forId: id)"), "the car shows a title it cannot name")
+        #expect(car.contains("let label = SpeedMenu.label(rate) + \"×\""), "the speed button does not carry the app's label")
+        #expect(!car.contains("CPNowPlayingPlaybackRateButton {"), "the system's rate button shows no speed of the app")
+    }
+
     @Test("CarPlay folgt jeder Aenderung, solange das Auto verbunden ist", .needsTheSources)
     func theCarFollowsEveryChange() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")

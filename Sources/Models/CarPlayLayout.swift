@@ -46,11 +46,20 @@ nonisolated enum CarPlayLayout {
         failed ? .noAnswer : .nothing
     }
 
-    /// Up Next and the speed in the car's player: spoken titles only, books
-    /// and episodes, by the same kind the remote commands follow.
+    /// The speed in the car's player: spoken titles only, books and
+    /// episodes, by the same kind the remote commands follow.
     static func playerExtras(for itemId: String?, markedForm: ProgressMark.StartedForm? = nil) -> Bool {
         guard let itemId else { return false }
         return RemoteCommandRule.kind(forItem: itemId, markedForm: markedForm) == .spoken
+    }
+
+    /// Up Next in the car's player: whenever something waits behind the
+    /// title, the orders or the rest of what was started, for books,
+    /// episodes and songs alike. A live stream has nothing behind it.
+    static func offersUpNext(for itemId: String?, markedForm: ProgressMark.StartedForm? = nil,
+                             waiting: Int) -> Bool {
+        guard itemId != nil, waiting > 0 else { return false }
+        return RemoteCommandRule.kind(forItem: itemId, markedForm: markedForm) != .live
     }
 
     /// The next speed after `rate` among `rates`, back to the first after
