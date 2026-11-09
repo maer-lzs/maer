@@ -200,8 +200,11 @@ enum PinchflatSync {
         let login = PinchflatClient.credentials(host: host)
         for feedURL in diff.toSubscribe {
             // The feeds authenticate via Basic Auth (verified at the stand).
-            // Each mirrored feed INHERITS the server login before the fetch.
-            if let login {
+            // A mirrored feed on the server's own host INHERITS the server
+            // login before the fetch; a feed the list names on another host
+            // gets none.
+            if let login, let address = PodcastFeedAddress.requestURL(feedURL),
+               SignInReach.mayCarry(own: PinchflatClient.serverURL, target: address) {
                 PodcastFeedAuth.set(feedKey: PodcastIdentity.feedKey(feedURL),
                                     user: login.user, password: login.password)
             }

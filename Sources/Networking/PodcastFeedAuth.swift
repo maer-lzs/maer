@@ -331,6 +331,20 @@ nonisolated enum PodcastFeedAuth {
         return headers(for: access(feedKey: String(parts[1])))
     }
 
+    /// Whether a feed's sign-in may travel to `target`: the one rule of
+    /// every source (`SignInReach`), with the feed's address as its own.
+    nonisolated static func mayCarry(feed: URL?, target: URL) -> Bool {
+        SignInReach.mayCarry(own: feed, target: target)
+    }
+
+    /// The headers of an `rss:` item for ONE address: the sign-in only
+    /// where `mayCarry` lets it travel, empty for every other address, nil
+    /// while the sign-in an own address needs cannot be read now.
+    static func streamHeaders(forItemId id: String, feed: URL?, to target: URL) -> [String: String]? {
+        guard mayCarry(feed: feed, target: target) else { return [:] }
+        return streamHeaders(forItemId: id)
+    }
+
     /// The headers for one answer of the access, pure.
     static func headers(for access: Access) -> [String: String]? {
         switch access {

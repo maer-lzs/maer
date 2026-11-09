@@ -13,6 +13,13 @@ Radio gets its own tab where the car allows one more. The lists keep up
 while you drive. The player offers Up Next whenever something waits
 behind the title, and the speed for books and podcasts.
 
+**A sign-in stays with its own server.** The sign-in of a private feed,
+the token of your Audiobookshelf server and the sign-in of Pinchflat now
+go only to the server they belong to, and never from https down to http.
+Before, the sign-in of a private feed went along to every server an
+episode's audio file was hosted on. A private feed whose files need the
+same sign-in on a different server no longer plays from there.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.

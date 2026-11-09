@@ -826,12 +826,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         icyStreamTitle = nil   // never carry a song title across items
         icySongArtwork = nil   // nor its resolved cover
         stationArtwork = nil   // Teil 2: the next station loads its own logo
-        // Asked once per queue. Nil while a sign-in the stream needs cannot
-        // be read now: no track of it is requested without it, and a queue
-        // without a track fails the way an unloadable one does.
-        let streamHeaders = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
+        // Asked per track, for the address the track is fetched from: a
+        // sign-in bound to a host travels only there. Nil while a sign-in
+        // the address needs cannot be read now: the track is not requested
+        // without it, and a queue without a track fails the way an
+        // unloadable one does.
+        let itemId = self.item?.id ?? ""
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
+            let streamHeaders = url.isFileURL ? [:] : provider.streamAuthHeaders(forItemId: itemId, to: url)
             if isRadio {
                 // Persistent breadcrumb. A station that never plays leaves
                 // the resolved stream URL and, below, its load error in the log.

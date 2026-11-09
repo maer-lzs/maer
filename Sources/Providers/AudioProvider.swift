@@ -151,6 +151,10 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// answers per feed (Basic auth), and a type that forwards to a source
     /// returns the source's answer as it is.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]?
+    /// The same three answers for ONE address of the item, the form every
+    /// request asks: a sign-in bound to a host travels only there. Default
+    /// = the answer for the item; RSS answers per address.
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]?
 
     // MARK: Bookmarks (only call with the `.bookmarks` capability)
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
@@ -165,6 +169,11 @@ extension AudioProvider {
 
     /// Default: item-independent source headers.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]? { streamAuthHeaders }
+
+    /// Default: the item's answer for every address of it.
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
+        streamAuthHeaders(forItemId: itemId)
+    }
 
     /// Default: no real server paging. The whole (small) list as one page.
     /// ABS overrides this with real `limit`/`page`.

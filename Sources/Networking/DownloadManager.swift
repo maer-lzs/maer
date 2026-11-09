@@ -806,7 +806,7 @@ final class DownloadManager {
         // without it, and nothing failed: no request, no phase. A later
         // start asks again; the automatic run picks every episode it wants
         // that is not on the disk.
-        guard let headers = provider.streamAuthHeaders(forItemId: itemId) else {
+        guard provider.streamAuthHeaders(forItemId: itemId) != nil else {
             Logger.library.notice("DOWNLOAD waits, the sign-in cannot be read now: \(itemId, privacy: .public)")
             return
         }
@@ -883,7 +883,15 @@ final class DownloadManager {
                 }
 
                 var request = URLRequest(url: remoteURL)
-                for (field, value) in headers {
+                // The headers for THIS address: a sign-in bound to a host
+                // travels only there. A sign-in that stops being readable
+                // between two tracks holds the download like a pause: the
+                // track is not requested without it.
+                guard let trackHeaders = provider.streamAuthHeaders(forItemId: itemId, to: remoteURL) else {
+                    Logger.library.notice("DOWNLOAD holds, the sign-in cannot be read now: \(itemId, privacy: .public) track=\(index)")
+                    throw DownloadCancelledError(resumeData: nil)
+                }
+                for (field, value) in trackHeaders {
                     request.setValue(value, forHTTPHeaderField: field)
                 }
 

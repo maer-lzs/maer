@@ -415,6 +415,9 @@ final class MusicUnion: MusicProvider {
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]? {
         source(for: itemId).streamAuthHeaders(forItemId: itemId)
     }
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
+        source(for: itemId).streamAuthHeaders(forItemId: itemId, to: url)
+    }
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] {
         try await source(for: itemId).fetchBookmarks(itemId: itemId)
     }

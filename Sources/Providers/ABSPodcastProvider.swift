@@ -99,6 +99,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     var keepsMarksOnDevice: Bool { false }
     var capabilities: ProviderCapabilities { [.progressSync, .downloadable, .downloadsTheOriginalFile] }
     var streamAuthHeaders: [String: String] { client.streamAuthHeaders }
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
+        client.streamAuthHeaders(forItemId: itemId, to: url)
+    }
     /// Only when the user explicitly enabled ABS as a podcast source.
     var isAvailable: Bool { AppStorageKeys.absPodcastsActive && hasPodcasts }
 

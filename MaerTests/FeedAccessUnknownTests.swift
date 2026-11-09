@@ -61,7 +61,9 @@ struct FeedAccessUnknownTests {
             #expect(rss.streamAuthHeaders(forItemId: episode) == [:])
         }
         PodcastFeedAuth.$reading.withValue(Self.keychain(key, .value("anna\ngeheim"))) {
-            #expect(rss.streamAuthHeaders(forItemId: episode)?["Authorization"] == "Basic YW5uYTpnZWhlaW0=")
+            // Without an address the answer is only whether it can be read.
+            #expect(rss.streamAuthHeaders(forItemId: episode) == [:])
+            #expect(PodcastFeedAuth.streamHeaders(forItemId: episode)?["Authorization"] == "Basic YW5uYTpnZWhlaW0=")
         }
         #expect(PodcastFeedAuth.streamHeaders(forItemId: "sub:song:1") == [:], "a title that is no episode needs none")
         let (union, _, jf) = MusicUnionTests.pair()
@@ -301,9 +303,11 @@ struct FeedAccessUnknownTests {
     /// The files that answer the headers per title, each declaration with
     /// the three answers.
     static let headerAnswerers: [String: (count: Int, reason: String)] = [
-        "AudioProvider.swift": (2, "the requirement and its default, the source's own headers, always known"),
-        "MusicUnion.swift": (1, "forwards to the title's own source and returns its answer as it is"),
-        "RSSProvider.swift": (1, "a feed's Basic auth through PodcastFeedAuth.streamHeaders"),
+        "AudioProvider.swift": (4, "the requirement per title and per address, each with its default: the source's own headers, always known"),
+        "MusicUnion.swift": (2, "forwards both forms to the title's own source and returns its answer as it is"),
+        "ABSProvider.swift": (1, "per address: the token only to the server's own host"),
+        "ABSPodcastProvider.swift": (1, "per address: forwards to the server's client"),
+        "RSSProvider.swift": (2, "per title only whether the sign-in can be read; per address a feed's Basic auth through PodcastFeedAuth.streamHeaders"),
     ]
 
     /// The readers of a feed's sign-in outside its place that read an

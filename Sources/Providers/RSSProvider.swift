@@ -27,10 +27,30 @@ final class RSSProvider: AudioProvider {
     var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
-    /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the
-    /// item id), nil while the feed's sign-in cannot be read now.
+    /// Whether the sign-in of the item's feed can be read now: nil while it
+    /// cannot, empty otherwise. Never the sign-in itself: without an
+    /// address nobody can say where it would travel.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]? {
-        PodcastFeedAuth.streamHeaders(forItemId: itemId)
+        PodcastFeedAuth.streamHeaders(forItemId: itemId) == nil ? nil : [:]
+    }
+
+    /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the
+    /// item id), only for an address on the feed's own host and never from
+    /// https down to http; nil while the sign-in such an address needs
+    /// cannot be read now.
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
+        PodcastFeedAuth.streamHeaders(forItemId: itemId, feed: feedAddress(ofItemId: itemId), to: url)
+    }
+
+    /// The address of the feed an `rss:<feedKey>:<guid>` item belongs to.
+    private func feedAddress(ofItemId itemId: String) -> URL? {
+        let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count >= 2, parts[0] == "rss" else { return nil }
+        let key = String(parts[1])
+        let held = subs.shows.first { PodcastIdentity.feedKey($0.feedURL) == key }?.feedURL
+            ?? subs.feedURL(forEpisodeId: itemId)
+            ?? (parts.count == 3 ? subs.feedURL(forEpisodeId: String(parts[2])) : nil)
+        return held.flatMap { URL(string: $0) }
     }
 
     func fetchLibraries() async throws -> [ABSLibrary] {

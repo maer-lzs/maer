@@ -21,4 +21,10 @@ extension APIClient: AudioProvider {
         guard let token, !token.isEmpty else { return [:] }
         return ["Authorization": "Bearer \(token)"]
     }
+
+    /// The token travels only to this server: an absolute address the
+    /// server names on another host is asked without it.
+    func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
+        SignInReach.mayCarry(own: baseURL, target: url) ? streamAuthHeaders : [:]
+    }
 }
