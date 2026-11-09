@@ -147,6 +147,22 @@ struct LibraryDerivedListsTests {
 
     // MARK: - Memoization stays fresh across every mutation
 
+    @Test("die Liste ohne eigenen Filter traegt alle Buecher, auch wenn der Filter der App steht")
+    func theListWithoutAFilterHoldsEveryBook() {
+        withCleanSortDefaults { vm in
+            vm.sortOption = .titel
+            vm.entries = fixtureEntries
+            for filter in FilterOption.allCases {
+                vm.filterOption = filter
+                #expect(vm.sortedEntries.map(\.id).sorted() == ["b1", "b2", "b3", "b4", "b5"], "filter \(filter.rawValue)")
+            }
+            vm.filterOption = .fertig
+            #expect(vm.sortedFilteredEntries.map(\.id) == ["b2"], "the app's own list keeps its filter")
+            vm.filterOption = .alle
+            #expect(vm.sortedEntries.map(\.id) == vm.sortedFilteredEntries.map(\.id), "the same order as the app")
+        }
+    }
+
     @Test func memoMatchesFreshComputationAcrossMutations() {
         withCleanSortDefaults { vm in
             vm.sortOption = .titel

@@ -329,6 +329,13 @@ final class LibraryViewModel: ObservableObject {
         return value
     }
 
+    /// Every book in the current sort and direction, whatever the filter:
+    /// the list of a surface that has no filter of its own.
+    var sortedEntries: [LibraryEntry] {
+        Self.sortedFiltered(entries: entries, sort: sortOption, ascending: sortAscending,
+                            filter: .alle, downloadedIds: [])
+    }
+
     /// Internal (not private) so tests can compare the memoized accessor
     /// against a fresh computation.
     func computeSortedFilteredEntries() -> [LibraryEntry] {

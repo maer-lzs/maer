@@ -78,6 +78,28 @@ struct CarPlayLayoutTests {
         }
     }
 
+    @Test("Alle Buecher im Auto fragt die Liste ohne Filter", .needsTheSources)
+    func allBooksInTheCarIgnoresTheAppsFilter() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(car.contains("library.sortedEntries.map("), "All Books does not ask the list without a filter")
+        #expect(!car.contains("sortedFilteredEntries"), "the car inherits the app's filter")
+    }
+
+    @Test("eine gescheiterte Abfrage ist im Auto keine leere Bibliothek", .needsTheSources)
+    func aFailedFetchIsNoEmptyLibraryInTheCar() throws {
+        #expect(CarPlayLayout.emptyNote(failed: true) == .noAnswer)
+        #expect(CarPlayLayout.emptyNote(failed: false) == .nothing)
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        let fetches = car.components(separatedBy: "FetchAnswer.of(").count - 1
+        let asked = car.components(separatedBy: ".failed").count - 1
+        #expect(fetches == 6, "the car's fetches: \(fetches)")
+        #expect(asked == fetches, "\(fetches) fetches, \(asked) ask whether theirs failed")
+        #expect(!car.contains("}.value"), "a fetch drops its failure")
+        #expect(car.contains("CarPlayLayout.emptyNote(failed: failed)"), "the page does not ask the rule")
+        #expect(car.contains("case .noAnswer: template.emptyViewTitleVariants = [Self.noAnswer]"),
+                "a failed page does not say so")
+    }
+
     @Test("CarPlay folgt jeder Aenderung, solange das Auto verbunden ist", .needsTheSources)
     func theCarFollowsEveryChange() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")

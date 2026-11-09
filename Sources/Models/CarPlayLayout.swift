@@ -35,6 +35,17 @@ nonisolated enum CarPlayLayout {
     /// content. A tap on the content plays.
     static let levels = 2
 
+    /// What a page says about rows it does not show: a fetch that failed is
+    /// no empty library, so it gets a line of its own.
+    enum EmptyNote: Equatable {
+        case nothing
+        case noAnswer
+    }
+
+    static func emptyNote(failed: Bool) -> EmptyNote {
+        failed ? .noAnswer : .nothing
+    }
+
     /// Up Next and the speed in the car's player: spoken titles only, books
     /// and episodes, by the same kind the remote commands follow.
     static func playerExtras(for itemId: String?, markedForm: ProgressMark.StartedForm? = nil) -> Bool {

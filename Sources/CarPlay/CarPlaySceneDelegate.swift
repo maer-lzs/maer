@@ -244,7 +244,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                                      emptyTitle: String(localized: "No books here yet."))
             },
             pageRow(String(localized: "All Books"), symbol: "books.vertical") { [weak self] in
-                await self?.pushList(String(localized: "All Books"), library.sortedFilteredEntries.map(\.item),
+                await self?.pushList(String(localized: "All Books"), library.sortedEntries.map(\.item),
                                      emptyTitle: String(localized: "No books here yet."))
             },
         ]))
@@ -293,16 +293,19 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     // MARK: - Music
 
     /// Recently Played as the music tab merges it, then the pages of
-    /// playlists, albums and artists. The car has no place for a failure
-    /// line: a list that failed is left out and the failure stands in the
-    /// log (`FetchAnswer`).
+    /// playlists, albums and artists. A fetch that failed says so in a line
+    /// of its own, apart from a library that holds nothing; every opening
+    /// asks again.
     private func musicSections() async -> [CPListSection] {
         let provider = session.musicProvider
         var recent: [LibraryItem] = []
+        var recentFailed = false
         if AppStorageKeys.musicServerActive {
-            recent = await FetchAnswer.of("carplay recent albums", logger: .music) {
+            let answer = await FetchAnswer.of("carplay recent albums", logger: .music) {
                 try await provider.albumShelf(shelf: .recent, size: 20)
-            }.value ?? []
+            }
+            recent = answer.value ?? []
+            recentFailed = answer.failed
         }
         let played: [LibraryItem] = SharedRows.musicRecentlyPlayed(serverRecent: recent).compactMap { entry in
             switch entry {
@@ -315,6 +318,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         if !played.isEmpty {
             sections.append(await section(String(localized: "Recently Played"),
                                           played.prefix(CarPlayLayout.sectionLimit)))
+        }
+        if CarPlayLayout.emptyNote(failed: recentFailed) == .noAnswer {
+            sections.append(CPListSection(items: [noAnswerRow()]))
         }
         sections.append(CPListSection(items: [
             pageRow(String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
@@ -333,10 +339,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// The music tab's one playlist row; a list opens its titles.
     private func pushPlaylists() async {
         let provider = session.musicProvider
-        let server = await FetchAnswer.of("carplay playlists", logger: .music) {
+        let answer = await FetchAnswer.of("carplay playlists", logger: .music) {
             try await provider.allPlaylists()
-        }.value ?? []
-        let rows = SharedRows.musicPlaylists(server: server)
+        }
+        let rows = SharedRows.musicPlaylists(server: answer.value ?? [])
             .prefix(Int(CPListTemplate.maximumItemCount))
             .map { source in
                 let row = CPListItem(text: source.title, detailText: source.placeCapsule)
@@ -353,7 +359,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 }
                 return row
             }
-        push(CPListTemplate(title: String(localized: "Playlists"), sections: [CPListSection(items: rows)]))
+        pushRows(String(localized: "Playlists"), Array(rows), failed: answer.failed)
     }
 
     /// A device list's entries; a tap plays the entry, as on its page.
@@ -366,11 +372,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func pushAlbums() async {
         let provider = session.musicProvider
-        let albums = await FetchAnswer.of("carplay albums", logger: .music) {
+        let answer = await FetchAnswer.of("carplay albums", logger: .music) {
             try await provider.albumPage(sort: .nameAZ, offset: 0, size: Int(CPListTemplate.maximumItemCount))
-        }.value ?? []
+        }
         var rows: [CPListItem] = []
-        for album in albums {
+        for album in answer.value ?? [] {
             let row = await playableItem(album)
             row.accessoryType = .disclosureIndicator
             row.handler = { [weak self] _, completion in
@@ -381,17 +387,17 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             }
             rows.append(row)
         }
-        push(CPListTemplate(title: String(localized: "Albums"), sections: [CPListSection(items: rows)]))
+        pushRows(String(localized: "Albums"), rows, failed: answer.failed)
     }
 
     /// An album's or a server list's songs; a tap plays from that song, as
     /// on the album page.
     private func pushTitles(of item: LibraryItem) async {
         let session = self.session
-        let detail = await FetchAnswer.of("carplay album titles", logger: .music) {
+        let answer = await FetchAnswer.of("carplay album titles", logger: .music) {
             try await ItemRouter.live.provider(item.id).fetchItemDetail(itemId: item.id)
-        }.value
-        let tracks = detail.map { MusicAlbumView.trackList(of: $0).chapters } ?? []
+        }
+        let tracks = answer.value.map { MusicAlbumView.trackList(of: $0).chapters } ?? []
         let rows = tracks.prefix(Int(CPListTemplate.maximumItemCount)).map { track in
             let row = CPListItem(text: track.title, detailText: nil)
             row.handler = { [weak self] _, completion in
@@ -404,17 +410,17 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             }
             return row
         }
-        push(CPListTemplate(title: item.title, sections: [CPListSection(items: Array(rows))]))
+        pushRows(item.title, Array(rows), failed: answer.failed)
     }
 
     /// The artists; an artist opens its albums, an album plays.
     private func pushArtists() async {
         let session = self.session
         let provider = session.musicProvider
-        let artists = await FetchAnswer.of("carplay artists", logger: .music) {
+        let answer = await FetchAnswer.of("carplay artists", logger: .music) {
             try await provider.allArtists()
-        }.value ?? []
-        let rows = artists.prefix(Int(CPListTemplate.maximumItemCount)).map { artist in
+        }
+        let rows = (answer.value ?? []).prefix(Int(CPListTemplate.maximumItemCount)).map { artist in
             let row = CPListItem(text: artist.name ?? "", detailText: nil)
             row.accessoryType = .disclosureIndicator
             row.handler = { [weak self] _, completion in
@@ -422,14 +428,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                     let music = session.musicProvider(for: artist.itemId)
                     let albums = await FetchAnswer.of("carplay artist albums", logger: .music) {
                         try await music.artistAlbums(artistId: artist.id)
-                    }.value ?? []
-                    await self?.pushList(artist.name ?? "", albums)
+                    }
+                    await self?.pushList(artist.name ?? "", albums.value ?? [], failed: albums.failed)
                     completion()
                 }
             }
             return row
         }
-        push(CPListTemplate(title: String(localized: "Artists"), sections: [CPListSection(items: Array(rows))]))
+        pushRows(String(localized: "Artists"), Array(rows), failed: answer.failed)
     }
 
     // MARK: - Radio
@@ -509,11 +515,34 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     /// A page of playable titles.
-    private func pushList(_ title: String, _ items: [LibraryItem], emptyTitle: String? = nil) async {
-        let section = await section("", items.prefix(Int(CPListTemplate.maximumItemCount)))
-        let template = CPListTemplate(title: title, sections: [CPListSection(items: section.items)])
-        if let emptyTitle { template.emptyViewTitleVariants = [emptyTitle] }
+    private func pushList(_ title: String, _ items: [LibraryItem], failed: Bool = false,
+                          emptyTitle: String? = nil) async {
+        var rows: [CPListItem] = []
+        for item in items.prefix(Int(CPListTemplate.maximumItemCount)) { rows.append(await playableItem(item)) }
+        pushRows(title, rows, failed: failed, emptyTitle: emptyTitle)
+    }
+
+    /// A page of rows. A fetch that failed says so: alone on a page without
+    /// rows, as a last line below rows from elsewhere. A page that only
+    /// holds nothing says `emptyTitle`.
+    private func pushRows(_ title: String, _ rows: [CPListItem], failed: Bool, emptyTitle: String? = nil) {
+        let note = CarPlayLayout.emptyNote(failed: failed)
+        let shown = note == .noAnswer && !rows.isEmpty ? rows + [noAnswerRow()] : rows
+        let template = CPListTemplate(title: title, sections: shown.isEmpty ? [] : [CPListSection(items: shown)])
+        switch note {
+        case .noAnswer: template.emptyViewTitleVariants = [Self.noAnswer]
+        case .nothing: if let emptyTitle { template.emptyViewTitleVariants = [emptyTitle] }
+        }
         push(template)
+    }
+
+    private static var noAnswer: String { String(localized: "The source did not answer.") }
+
+    /// The line of a fetch that failed, among rows; it does nothing on a tap.
+    private func noAnswerRow() -> CPListItem {
+        let row = CPListItem(text: Self.noAnswer, detailText: nil)
+        row.isEnabled = false
+        return row
     }
 
     private func push(_ template: CPTemplate) {
