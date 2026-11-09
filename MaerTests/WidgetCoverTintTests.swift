@@ -70,6 +70,9 @@ struct WidgetCoverTintTests {
         #expect(widget.contains(".frame(height: space.size.height * 0.75) .overlay(alignment: .top) { coverImage } .clipped()"),
                 "the cover no longer takes three quarters of the small widget, closed with its top edge")
         #expect(widget.contains(".overlay { coverWithBand }"), "the playing half lays its text over the cover again")
+        let player = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
+        #expect(player.contains("if self.item?.id == stationID { self.refreshSharedCover(from: image) }"),
+                "the widget gets a station's favicon instead of the picture the player shows")
     }
 }
 #endif

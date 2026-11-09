@@ -366,6 +366,9 @@ extension PlayerViewModel {
                     self.artworkImage = image
                     self.stationArtwork = image
                     self.updateNowPlayingInfo()
+                    // The widget shows the station's picture the player
+                    // shows, not the small favicon behind its cover address.
+                    if self.item?.id == stationID { self.refreshSharedCover(from: image) }
                 }
             }
             return
