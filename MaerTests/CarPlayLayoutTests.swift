@@ -93,7 +93,9 @@ struct CarPlayLayoutTests {
         let fetches = car.components(separatedBy: "FetchAnswer.of(").count - 1
         let asked = car.components(separatedBy: ".failed").count - 1
         #expect(fetches == 6, "the car's fetches: \(fetches)")
-        #expect(asked == fetches, "\(fetches) fetches, \(asked) ask whether theirs failed")
+        // Every fetch is asked once, the playlists twice: by the music
+        // tab's row of covers and by the page of all playlists.
+        #expect(asked == fetches + 1, "\(fetches) fetches, \(asked) ask whether theirs failed")
         #expect(!car.contains("}.value"), "a fetch drops its failure")
         #expect(car.contains("CarPlayLayout.emptyNote(failed: failed)"), "the page does not ask the rule")
         #expect(car.contains("case .noAnswer: template.emptyViewTitleVariants = [Self.noAnswer]"),
@@ -122,6 +124,10 @@ struct CarPlayLayoutTests {
         let lists = try #require(car.range(of: "coverRow(String(localized: \"Playlists\"), cards)", range: music.upperBound..<car.endIndex))
         let played = try #require(car.range(of: "section(String(localized: \"Recently Played\")", range: music.upperBound..<car.endIndex))
         #expect(lists.lowerBound < played.lowerBound, "the music tab does not begin with its playlists")
+        // The lists of the podcast tab and of the book library stand in
+        // their tabs, as the music tab carries its own.
+        #expect(car.contains("sections += await listSections(at: .podcasts)"), "the podcast tab shows no lists")
+        #expect(car.contains("sections += await listSections(at: .library)"), "the audiobook tab shows no lists")
         // A station shows the app's logo and the app's name for it.
         #expect(car.contains("RadioArtwork.gatedImage(for:"))
         #expect(car.contains("RadioMapping.displayName(station.name)"))

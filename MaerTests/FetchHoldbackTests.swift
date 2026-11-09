@@ -109,6 +109,7 @@ struct FetchHoldbackTests {
         "BookFeaturedCard.swift": (1, "the featured card loads its chapters when it appears"),
         "ArchiveRuntimeService.swift": (1, "a tile asks for its runtime when it appears"),
         "MaerPlaylists.swift": (1, "a playlist heals missing titles in the background"),
+        "CarPlaySceneDelegate.swift": (1, "the car's Recently Played resolves a catalogue title's name when it rebuilds"),
     ]
 
     @Test("die automatische Marke steht nur an den benannten Stellen", .needsTheSources)

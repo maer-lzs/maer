@@ -204,12 +204,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let lists = SharedRows.playlists(at: .start)
         var listRows: [CPListItem] = []
         if !lists.isEmpty {
-            let title = lists.allSatisfy(\.isRoutine) ? String(localized: "Routines") : String(localized: "Playlists")
             if CarPlayLayout.coversCarryNames {
-                rows.append(coverRow(title, lists.map(listTile)) { [weak self] in
-                    self?.pushRows(title, lists.prefix(Int(CPListTemplate.maximumItemCount)).compactMap { self?.playlistRow($0) },
-                                   failed: false)
-                })
+                rows.append(await listCovers(lists))
             } else {
                 listRows = lists.prefix(CarPlayLayout.sectionLimit).map(playlistRow)
             }
@@ -367,16 +363,109 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         }
     }
 
-    /// A routine or a mixed list as a cover: a tap plays it, as its card
-    /// on Start.
-    private func listTile(_ list: MaerPlaylists.Playlist) -> Tile {
+    /// The name the app gives a group of device lists: Routines when every
+    /// one is a routine, Playlists otherwise.
+    private static func listsName(_ lists: [MaerPlaylists.Playlist]) -> String {
+        lists.allSatisfy(\.isRoutine) ? String(localized: "Routines") : String(localized: "Playlists")
+    }
+
+    /// Device lists as a row of covers: a cover plays its list, the row's
+    /// name opens the lists, each with its entries.
+    private func listCovers(_ lists: [MaerPlaylists.Playlist]) async -> CPListImageRowItem {
+        var tiles: [Tile] = []
+        for list in lists.prefix(Int(CPMaximumNumberOfGridImages)) { tiles.append(await listTile(list)) }
+        let name = Self.listsName(lists)
+        return coverRow(name, tiles) { [weak self] in self?.pushLists(name, lists) }
+    }
+
+    /// The device lists that stand at `home`, as a tab shows them: a row of
+    /// covers where a cover carries its name, rows of text otherwise.
+    private func listSections(at home: PlaylistHome) async -> [CPListSection] {
+        let lists = SharedRows.playlists(at: home)
+        guard !lists.isEmpty else { return [] }
+        if CarPlayLayout.coversCarryNames { return [CPListSection(items: [await listCovers(lists)])] }
+        return [CPListSection(items: lists.prefix(CarPlayLayout.sectionLimit).map(playlistRow),
+                              header: Self.listsName(lists), sectionIndexTitle: nil)]
+    }
+
+    /// The page of a group of device lists: a list opens its entries.
+    private func pushLists(_ name: String, _ lists: [MaerPlaylists.Playlist]) {
+        let rows = lists.prefix(Int(CPListTemplate.maximumItemCount)).map { list in
+            let row = CPListItem(text: list.name, detailText: nil, image: Self.listSymbol)
+            row.accessoryType = .disclosureIndicator
+            row.handler = { [weak self] _, completion in
+                Task { @MainActor [weak self] in
+                    await self?.pushDeviceList(list.id)
+                    completion()
+                }
+            }
+            return row
+        }
+        pushRows(name, Array(rows), failed: false)
+    }
+
+    /// A routine or a list as a cover, its picture from the covers of its
+    /// entries: a tap plays it, as its card in the app.
+    private func listTile(_ list: MaerPlaylists.Playlist) async -> Tile {
         let session = self.session
         let store = playlistStore
-        let symbol = list.isRoutine ? "repeat" : "music.note.list"
-        return Tile(image: Self.square(symbol: symbol), title: list.name, subtitle: nil) { [weak self] in
+        let covers = list.itemIds.prefix(8).compactMap { session.coverURL(forItemId: $0) }
+        let picture = await mosaic(Array(covers.prefix(4)))
+            ?? Self.square(symbol: list.isRoutine ? "repeat" : "music.note.list")
+        return Tile(image: picture, title: list.name, subtitle: nil) { [weak self] in
             await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
             self?.showNowPlaying()
         }
+    }
+
+    // MARK: - Pages
+
+    /// A fixed page of a tab: its name, its symbol and what opens it.
+    private struct Page: Sendable {
+        let title: String
+        let symbol: String
+        let open: @MainActor @Sendable () async -> Void
+    }
+
+    /// The fixed pages of a tab, in their order.
+    private func pages(for tab: CarPlayLayout.Tab) -> [Page] {
+        switch tab {
+        case .audiobooks:
+            let library = session.libraryViewModel
+            return [
+                Page(title: String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
+                    await self?.pushList(String(localized: "Downloads list"), library.downloadedEntries.map(\.item),
+                                         emptyTitle: String(localized: "No books here yet."))
+                },
+                Page(title: String(localized: "All Books"), symbol: "books.vertical") { [weak self] in
+                    await self?.pushList(String(localized: "All Books"), library.sortedEntries.map(\.item),
+                                         emptyTitle: String(localized: "No books here yet."))
+                },
+            ]
+        case .podcasts:
+            return [Page(title: String(localized: "Shows"), symbol: "square.stack") { [weak self] in await self?.pushShows() }]
+        case .music:
+            let lists = CarPlayLayout.coversCarryNames ? [] : [
+                Page(title: String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
+                    await self?.pushPlaylists()
+                },
+            ]
+            return lists + [
+                Page(title: String(localized: "Albums"), symbol: "square.stack") { [weak self] in await self?.pushAlbums() },
+                Page(title: String(localized: "Artists"), symbol: "music.mic") { [weak self] in await self?.pushArtists() },
+            ]
+        case .start, .radio:
+            return []
+        }
+    }
+
+    /// The pages as rows below a tab's content. The system's buttons on top
+    /// of a list take a third of the screen's height, so the pages stay
+    /// rows.
+    private func pageSections(for tab: CarPlayLayout.Tab) -> [CPListSection] {
+        let pages = pages(for: tab)
+        guard !pages.isEmpty else { return [] }
+        return [CPListSection(items: pages.map { pageRow($0.title, symbol: $0.symbol, open: $0.open) })]
     }
 
     /// Listen Again as Start merges it: an album opens its titles, a
@@ -420,17 +509,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             sections.append(await section(String(localized: "Continue Listening"),
                                           continued.prefix(CarPlayLayout.sectionLimit)))
         }
-        sections.append(CPListSection(items: [
-            pageRow(String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
-                await self?.pushList(String(localized: "Downloads list"), library.downloadedEntries.map(\.item),
-                                     emptyTitle: String(localized: "No books here yet."))
-            },
-            pageRow(String(localized: "All Books"), symbol: "books.vertical") { [weak self] in
-                await self?.pushList(String(localized: "All Books"), library.sortedEntries.map(\.item),
-                                     emptyTitle: String(localized: "No books here yet."))
-            },
-        ]))
-        return sections
+        sections += await listSections(at: .library)
+        return sections + pageSections(for: .audiobooks)
     }
 
     // MARK: - Podcasts
@@ -443,6 +523,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         if !continued.isEmpty {
             sections.append(await section(String(localized: "Continue Listening"), continued[...]))
         }
+        sections += await listSections(at: .podcasts)
         let queue = upNextItems()
         if !queue.isEmpty {
             sections.append(await section(String(localized: "Up Next"), queue.prefix(CarPlayLayout.sectionLimit)))
@@ -452,12 +533,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         if !latest.isEmpty {
             sections.append(await section(String(localized: "New Episodes"), latest[...]))
         }
-        sections.append(CPListSection(items: [
-            pageRow(String(localized: "Shows"), symbol: "square.stack") { [weak self] in
-                await self?.pushShows()
-            },
-        ]))
-        return sections
+        return sections + pageSections(for: .podcasts)
     }
 
     private func pushShows() async {
@@ -513,7 +589,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         var sections: [CPListSection] = []
         // The tab's order: the playlists on top, then what was heard.
         var listsFailed = false
-        var pages: [CPListItem] = []
         if CarPlayLayout.coversCarryNames {
             let lists = await serverPlaylists()
             listsFailed = lists.failed
@@ -523,10 +598,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                     coverRow(String(localized: "Playlists"), cards) { [weak self] in await self?.pushPlaylists() },
                 ]))
             }
-        } else {
-            pages.append(pageRow(String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
-                await self?.pushPlaylists()
-            })
         }
         if !played.isEmpty {
             sections.append(await section(String(localized: "Recently Played"),
@@ -535,15 +606,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         if CarPlayLayout.emptyNote(failed: recentFailed || listsFailed) == .noAnswer {
             sections.append(CPListSection(items: [noAnswerRow()]))
         }
-        sections.append(CPListSection(items: pages + [
-            pageRow(String(localized: "Albums"), symbol: "square.stack") { [weak self] in
-                await self?.pushAlbums()
-            },
-            pageRow(String(localized: "Artists"), symbol: "music.mic") { [weak self] in
-                await self?.pushArtists()
-            },
-        ]))
-        return sections
+        return sections + pageSections(for: .music)
     }
 
     /// A catalogue title by its name: what the device knows of it, else
