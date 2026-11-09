@@ -101,8 +101,7 @@ enum SharedRows {
     /// lists whose home is music, newest change first.
     static func musicPlaylists(server: [MusicPlaylist], router: ItemRouter = .live) -> [PlaylistCardSource] {
         let serverSources = server.map { PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId)) }
-        let device = MaerPlaylists.shared.playlists.filter { $0.home == .music }
-            .map { PlaylistCardSource.device($0, router: router) }
+        let device = playlists(at: .music).map { PlaylistCardSource.device($0, router: router) }
         return PlaylistPresentation.sortedByChanged(serverSources + device) {
             $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
         }

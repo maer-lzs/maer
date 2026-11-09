@@ -34,8 +34,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var radioOnStart = false
     private var signals: Set<AnyCancellable> = []
     private var pendingRebuild: Task<Void, Never>?
-    private let rateButton = CPNowPlayingPlaybackRateButton { _ in
-        Task { @MainActor in CarPlaySceneDelegate.stepRate() }
+    // The stores the car reads, held once.
+    private let session = AppSession.shared
+    private let queue = PlayQueue.shared
+    private let playlistStore = MaerPlaylists.shared
+    private let nowPlaying = CPNowPlayingTemplate.shared
+    private lazy var rateButton = CPNowPlayingPlaybackRateButton { [weak self] _ in
+        Task { @MainActor [weak self] in self?.stepRate() }
     }
 
     func templateApplicationScene(
@@ -43,8 +48,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         didConnect interfaceController: CPInterfaceController
     ) {
         self.interfaceController = interfaceController
-        CPNowPlayingTemplate.shared.add(self)
-        CPNowPlayingTemplate.shared.upNextTitle = String(localized: "Up Next")
+        nowPlaying.add(self)
+        nowPlaying.upNextTitle = String(localized: "Up Next")
         Task {
             await self.prepare()
             await self.rebuild()
@@ -59,7 +64,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     ) {
         signals.removeAll()
         pendingRebuild?.cancel()
-        CPNowPlayingTemplate.shared.remove(self)
+        nowPlaying.remove(self)
         self.interfaceController = nil
         tabBar = nil
         roots = [:]
@@ -70,7 +75,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// cold start (car scene only, no UI) wait for them, or the podcast tab
     /// would silently be missing. Same for the download scan.
     private func prepare() async {
-        let session = AppSession.shared
         await PodcastSubscriptions.shared.ensureLoaded()
         await DownloadManager.shared.ensureScanned()
         if session.libraryViewModel.entries.isEmpty {
@@ -83,46 +87,42 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// Every store a list reads: a change rebuilds the lists once, a moment
     /// later, so a burst of changes costs one rebuild.
     private func observe() {
-        let session = AppSession.shared
         let changes: [AnyPublisher<Void, Never>] = [
             ListeningRevision.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
-            PlayQueue.shared.$ids.map { _ in () }.eraseToAnyPublisher(),
-            MaerPlaylists.shared.$playlists.map { _ in () }.eraseToAnyPublisher(),
+            queue.$ids.map { _ in () }.eraseToAnyPublisher(),
+            playlistStore.$playlists.map { _ in () }.eraseToAnyPublisher(),
             PodcastSubscriptions.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             session.libraryViewModel.$continueListening.map { _ in () }.eraseToAnyPublisher(),
             session.$sourcesVersion.map { _ in () }.eraseToAnyPublisher(),
         ]
         Publishers.MergeMany(changes)
-            .receive(on: RunLoop.main)
+            .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
             .sink { [weak self] in self?.scheduleRebuild() }
             .store(in: &signals)
         session.playerCoordinator.$activeItem
-            .combineLatest(PlayQueue.shared.$ids)
+            .combineLatest(queue.$ids)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updatePlayerExtras() }
             .store(in: &signals)
     }
 
+    /// A newer rebuild replaces one still running; the old one stops
+    /// before it writes another tab.
     private func scheduleRebuild() {
         pendingRebuild?.cancel()
-        pendingRebuild = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            guard !Task.isCancelled else { return }
-            await self?.rebuild()
-        }
+        pendingRebuild = Task { [weak self] in await self?.rebuild() }
     }
 
     /// The tabs for the sources set up now, each filled anew. A tab that
     /// stays keeps its template, so the car does not jump back to the top.
     private func rebuild() async {
         guard interfaceController != nil else { return }
-        let session = AppSession.shared
-        let music = session.musicProvider
+        let musicSource = session.musicProvider
         let maximum = CPTabBarTemplate.maximumTabCount
         let layout = CarPlayLayout.tabs(
             audiobooks: MediaType.audiobooks.userMasterEnabled && !session.libraryViewModel.entries.isEmpty,
             podcasts: MediaType.podcasts.userMasterEnabled && !PodcastShowSources.active().isEmpty,
-            music: MediaType.music.userMasterEnabled && music.isAvailable && music.mediaTypes.contains(.music),
+            music: MediaType.music.userMasterEnabled && musicSource.isAvailable && musicSource.mediaTypes.contains(.music),
             radio: MediaType.radio.userMasterEnabled
                 && !(RadioStore.favorites().isEmpty && RadioStore.recents().isEmpty),
             maximumTabCount: maximum)
@@ -131,7 +131,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         for tab in layout.tabs {
             let template = roots[tab] ?? rootTemplate(tab)
             roots[tab] = template
-            template.updateSections(await sections(for: tab))
+            let filled = await sections(for: tab)
+            guard !Task.isCancelled else { return }
+            template.updateSections(filled)
         }
         let templates = layout.tabs.compactMap { roots[$0] }
         if let tabBar, shownTabs != layout.tabs {
@@ -173,7 +175,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// routines and mixed lists of Start, and the radio favourites while
     /// Radio has no tab.
     private func startSections() async -> [CPListSection] {
-        let session = AppSession.shared
         var sections: [CPListSection] = []
         let continued = await SharedRows.continueIds(limit: 10).compactMap { session.playableItem(forId: $0) }
         if !continued.isEmpty {
@@ -203,6 +204,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// The Continue row as covers; a cover plays its title, the row's name
     /// opens the whole list.
     private func coverRow(_ items: [LibraryItem]) async -> CPListImageRowItem {
+        let session = self.session
         let shown = Array(items.prefix(Int(CPMaximumNumberOfGridImages)))
         var images: [UIImage] = []
         for item in shown {
@@ -211,14 +213,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let row = CPListImageRowItem(text: String(localized: "Continue Listening"), images: images)
         row.listImageRowHandler = { [weak self] _, index, completion in
             Task { @MainActor [weak self] in
-                if shown.indices.contains(index) { await self?.play(shown[index]) }
+                if shown.indices.contains(index) { await self?.openTitle(shown[index]) }
                 completion()
             }
         }
         row.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
                 let all = await SharedRows.continueIds(limit: Int(CPListTemplate.maximumItemCount))
-                    .compactMap { AppSession.shared.playableItem(forId: $0) }
+                    .compactMap { session.playableItem(forId: $0) }
                 await self?.pushList(String(localized: "Continue Listening"), all)
                 completion()
             }
@@ -229,7 +231,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     // MARK: - Audiobooks
 
     private func audiobookSections() async -> [CPListSection] {
-        let library = AppSession.shared.libraryViewModel
+        let library = session.libraryViewModel
         var sections: [CPListSection] = []
         let continued = library.continueListening.map(\.item)
         if !continued.isEmpty {
@@ -252,7 +254,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     // MARK: - Podcasts
 
     private func podcastSections() async -> [CPListSection] {
-        let session = AppSession.shared
         var sections: [CPListSection] = []
         let queue = upNextItems()
         if !queue.isEmpty {
@@ -296,7 +297,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// line: a list that failed is left out and the failure stands in the
     /// log (`FetchAnswer`).
     private func musicSections() async -> [CPListSection] {
-        let session = AppSession.shared
         let provider = session.musicProvider
         var recent: [LibraryItem] = []
         if AppStorageKeys.musicServerActive {
@@ -332,7 +332,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// The music tab's one playlist row; a list opens its titles.
     private func pushPlaylists() async {
-        let provider = AppSession.shared.musicProvider
+        let provider = session.musicProvider
         let server = await FetchAnswer.of("carplay playlists", logger: .music) {
             try await provider.allPlaylists()
         }.value ?? []
@@ -358,14 +358,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// A device list's entries; a tap plays the entry, as on its page.
     private func pushDeviceList(_ id: String) async {
-        let store = MaerPlaylists.shared
+        let store = playlistStore
         guard let list = store.playlist(id: id) else { return }
         let items = list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
         await pushList(list.name, items)
     }
 
     private func pushAlbums() async {
-        let provider = AppSession.shared.musicProvider
+        let provider = session.musicProvider
         let albums = await FetchAnswer.of("carplay albums", logger: .music) {
             try await provider.albumPage(sort: .nameAZ, offset: 0, size: Int(CPListTemplate.maximumItemCount))
         }.value ?? []
@@ -387,6 +387,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// An album's or a server list's songs; a tap plays from that song, as
     /// on the album page.
     private func pushTitles(of item: LibraryItem) async {
+        let session = self.session
         let detail = await FetchAnswer.of("carplay album titles", logger: .music) {
             try await ItemRouter.live.provider(item.id).fetchItemDetail(itemId: item.id)
         }.value
@@ -396,7 +397,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             row.handler = { [weak self] _, completion in
                 Task { @MainActor [weak self] in
                     await SharedRows.playAlbum(item, fromTrackAt: track.start,
-                                               on: AppSession.shared.playerCoordinator)
+                                               on: session.playerCoordinator)
                     self?.showNowPlaying()
                     completion()
                 }
@@ -408,7 +409,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// The artists; an artist opens its albums, an album plays.
     private func pushArtists() async {
-        let provider = AppSession.shared.musicProvider
+        let session = self.session
+        let provider = session.musicProvider
         let artists = await FetchAnswer.of("carplay artists", logger: .music) {
             try await provider.allArtists()
         }.value ?? []
@@ -417,7 +419,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             row.accessoryType = .disclosureIndicator
             row.handler = { [weak self] _, completion in
                 Task { @MainActor [weak self] in
-                    let music = AppSession.shared.musicProvider(for: artist.itemId)
+                    let music = session.musicProvider(for: artist.itemId)
                     let albums = await FetchAnswer.of("carplay artist albums", logger: .music) {
                         try await music.artistAlbums(artistId: artist.id)
                     }.value ?? []
@@ -447,13 +449,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func stationSection(_ title: String, _ stations: [RadioStation]) async -> CPListSection {
+        let session = self.session
         var rows: [CPListItem] = []
         for station in stations.prefix(Int(CPListTemplate.maximumItemCount)) {
             let image = await artwork(station.faviconURL)
             let row = CPListItem(text: station.name, detailText: nil, image: image)
             row.handler = { [weak self] _, completion in
                 Task { @MainActor [weak self] in
-                    RadioPlay.play(station, playerCoordinator: AppSession.shared.playerCoordinator)
+                    RadioPlay.play(station, playerCoordinator: session.playerCoordinator)
                     self?.showNowPlaying()
                     completion()
                 }
@@ -468,7 +471,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// Up Next: a cold catalogue entry stays IN the car's queue and plays on
     /// tap (open resolves it); until then it carries the placeholder title.
     private func upNextItems() -> [LibraryItem] {
-        PlayQueue.shared.ids.compactMap { AppSession.shared.playableItem(forId: $0) }
+        queue.ids.compactMap { session.playableItem(forId: $0) }
     }
 
     private func section(_ title: String, _ items: ArraySlice<LibraryItem>) async -> CPListSection {
@@ -479,10 +482,12 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// A routine or a mixed list: a tap plays it, as its card on Start.
     private func playlistRow(_ list: MaerPlaylists.Playlist) -> CPListItem {
+        let session = self.session
+        let store = playlistStore
         let row = CPListItem(text: list.name, detailText: nil, image: UIImage(systemName: "music.note.list"))
         row.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
-                await RoutinePlayback.start(list, in: MaerPlaylists.shared, on: AppSession.shared.playerCoordinator)
+                await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
                 self?.showNowPlaying()
                 completion()
             }
@@ -517,7 +522,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// Playable row: tap starts the title via the coordinator.
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
-        let session = AppSession.shared
         let image = await cover(forItemId: item.id)
         // The side line carries the server's name with two music servers:
         // "Artist · Navidrome". Episodes carry none.
@@ -526,7 +530,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let row = CPListItem(text: item.title, detailText: detail.isEmpty ? nil : detail, image: image)
         row.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
-                await self?.play(item)
+                await self?.openTitle(item)
                 completion()
             }
         }
@@ -536,7 +540,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// Covers come from the ImageCache thumbnail tier (already decoded
     /// small, just right for the car).
     private func cover(forItemId id: String) async -> UIImage? {
-        guard let url = AppSession.shared.coverURL(forItemId: id) else { return nil }
+        guard let url = session.coverURL(forItemId: id) else { return nil }
         return await Artwork.thumbnail(for: url)
     }
 
@@ -545,8 +549,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return await Artwork.thumbnail(for: url)
     }
 
-    private func play(_ item: LibraryItem) async {
-        await AppSession.shared.playerCoordinator.open(item: item)
+    private func openTitle(_ item: LibraryItem) async {
+        await session.playerCoordinator.open(item: item)
         showNowPlaying()
     }
 
@@ -554,17 +558,16 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// Up Next and the speed while a book or an episode plays.
     private func updatePlayerExtras() {
-        let coordinator = AppSession.shared.playerCoordinator
+        let coordinator = session.playerCoordinator
         let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id,
                                                 markedForm: coordinator.viewModel?.playingForm)
-        let nowPlaying = CPNowPlayingTemplate.shared
-        nowPlaying.isUpNextButtonEnabled = spoken && !PlayQueue.shared.isEmpty
+        nowPlaying.isUpNextButtonEnabled = spoken && !queue.isEmpty
         nowPlaying.updateNowPlayingButtons(spoken ? [rateButton] : [])
     }
 
     /// The next of the app's speeds.
-    private static func stepRate() {
-        guard let model = AppSession.shared.playerCoordinator.viewModel else { return }
+    private func stepRate() {
+        guard let model = session.playerCoordinator.viewModel else { return }
         let next = CarPlayLayout.nextRate(after: Double(model.playbackRate), rates: SpeedMenu.rates)
         model.setPlaybackRate(Float(next))
     }
@@ -577,7 +580,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func showNowPlaying() {
         guard let interfaceController else { return }
-        let nowPlaying = CPNowPlayingTemplate.shared
         // Don't push twice if Now Playing is already on top.
         if interfaceController.topTemplate != nowPlaying {
             interfaceController.pushTemplate(nowPlaying, animated: true, completion: nil)

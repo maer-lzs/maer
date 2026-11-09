@@ -59,15 +59,19 @@ struct ListeningMomentTests {
             #expect(try code(card).contains(words), "\(card) takes its words from the one place")
         }
         // And the row hands the playing moment in, on every stream.
+        // The row takes its book and episode streams from the one place the
+        // car asks too, and the music stream stays on Home.
         let home = try code("Sources/Views/HomeView.swift")
-        #expect(home.components(separatedBy: "playingNowMs: PlayingNow.momentMs(").count - 1 >= 3,
+        let streams = try code("Sources/ViewModels/SharedRows.swift")
+        #expect(home.contains("SharedRows.continueStreams("), "the row builds its own streams")
+        #expect((home + streams).components(separatedBy: "playingNowMs: PlayingNow.momentMs(").count - 1 >= 3,
                 "books, episodes and music all know what plays")
         // The books stream itself, not just its neighbours: the statement
         // is "the row's own sources ask the one clock". Rediscover keeps
         // the plain stands on purpose (it looks for what PAUSED), so the
         // form is not forbidden, its place is what counts.
-        let books = home.components(separatedBy: "let books = libraryViewModel.continueListening")
-        #expect(books.count == 2, "one books stream")
+        let books = streams.components(separatedBy: "let bookStream = books.map")
+        try #require(books.count == 2, "one books stream")
         #expect(books[1].prefix(400).contains("playingNowMs: PlayingNow.momentMs("),
                 "the books stream hands the playing moment in")
     }

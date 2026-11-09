@@ -37,10 +37,11 @@ struct MixedRowGlyphTests {
     ]
 
     static let mixers: [String: (callers: [String: Int], reason: String)] = [
-        "HomeSections.byRecency(": (["Sources/Views/HomeView.swift": 2], "Keep Listening, row and page ids"),
+        "HomeSections.byRecency(": (["Sources/Views/HomeView.swift": 2, "Sources/ViewModels/SharedRows.swift": 1],
+                                    "Keep Listening, row and page ids; the car's cover row, which draws covers only and has no place for a mark"),
         "RecentlyPlayedRow.merged(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/MixedMediaPage.swift": 1,
-                                       "Sources/Views/Music/MusicView.swift": 1],
-                                      "Listen Again, row and page; the music tab's Recently Played holds music only and carries no marks"),
+                                       "Sources/ViewModels/SharedRows.swift": 1],
+                                      "Listen Again, row and page; the music tab's Recently Played (asked by the tab and the car) holds music only and carries no marks"),
         "BrowseMix.interleave(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/BrowseRow.swift": 1],
                                   "the Browse row's three shares on Start; a tab's lanes of its area, drawn by the same row"),
         "computeRediscover(": (["Sources/Views/HomeView.swift": 1], "Rediscover, row and pool"),

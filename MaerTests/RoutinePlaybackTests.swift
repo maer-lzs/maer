@@ -267,7 +267,9 @@ struct RoutinePlaybackTests {
                 bare.append(file.name)
             }
         }
-        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1, "AppShortcuts.swift": 1])
+        // The car's row of a routine or a mixed list is one more button.
+        #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1, "AppShortcuts.swift": 1,
+                           "CarPlaySceneDelegate.swift": 1])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("resuming: start.fromRule)"))
@@ -385,7 +387,11 @@ struct RoutinePlaybackTests {
         let music = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
         #expect(music.contains("private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { $0.home == .music } }"))
         #expect(music.components(separatedBy: "maerPlaylists.playlists").count - 1 == 1, "every reader goes through musicLists")
-        #expect(music.contains("let device = musicLists.map"))
+        // The playlist row is built where the tab and the car ask it, from
+        // the lists whose home is music.
+        #expect(music.contains("SharedRows.musicPlaylists(server: sortedPlaylists, router: router)"))
+        #expect(try FetchAnswerTests.squeezedSource("Sources/ViewModels/SharedRows.swift")
+            .contains("let device = playlists(at: .music).map"))
         #expect(music.contains("count: vm.playlists.count + musicLists.count"))
         #expect(PlaylistHome.of(kinds: [.music], isRoutine: true) == .start, "a routine stands on Start whatever it holds")
         let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")

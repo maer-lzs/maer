@@ -77,9 +77,12 @@ struct MusicSourceNameTests {
         // only, so it asks no capsule.
         #expect(try !text("Sources/Views/MixedMediaPage.swift").contains("router.sourceLabel("),
                 "die Hoer-Kachel fragt eine Kapsel, die fuer ihre Titel nie antwortet")
-        #expect(try text("Sources/Views/Music/MusicView.swift")
+        #expect(try text("Sources/ViewModels/SharedRows.swift")
                     .contains("PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId))"),
                 "die Playlist-Reihe reicht den Namen nicht")
+        #expect(try text("Sources/Views/Music/MusicView.swift")
+                    .contains("SharedRows.musicPlaylists(server: sortedPlaylists, router: router)"),
+                "der Musik-Reiter fragt die geteilte Playlist-Reihe nicht")
         let card = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/PlaylistCard.swift"),
                               encoding: .utf8)
         #expect(card.contains("placeCapsule: sourceLabel"), "die Server-Karte traegt den gereichten Namen nicht")

@@ -56,7 +56,7 @@ struct CarPlayLayoutTests {
         for asked in ["CarPlayLayout.tabs(", "SharedRows.continueIds(", "SharedRows.playlists(at: .start)",
                       "SharedRows.newEpisodeIds(", "SharedRows.showEpisodes(", "SharedRows.musicRecentlyPlayed(",
                       "SharedRows.musicPlaylists(", "SharedRows.playAlbum(", "RoutinePlayback.start(",
-                      "PlayQueue.shared.ids", "RadioPlay.play(", "CarPlayLayout.playerExtras("] {
+                      "queue.ids", "RadioPlay.play(", "CarPlayLayout.playerExtras("] {
             #expect(car.contains(asked), "the car does not ask \(asked)")
         }
         for copy in ["podcastPlayState(", ".sorted {", "newestPerShow(", "byRecency("] {
@@ -81,8 +81,8 @@ struct CarPlayLayoutTests {
     @Test("CarPlay folgt jeder Aenderung, solange das Auto verbunden ist", .needsTheSources)
     func theCarFollowsEveryChange() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
-        for signal in ["ListeningRevision.shared.objectWillChange", "PlayQueue.shared.$ids",
-                       "MaerPlaylists.shared.$playlists", "PodcastSubscriptions.shared.objectWillChange",
+        for signal in ["ListeningRevision.shared.objectWillChange", "queue.$ids",
+                       "playlistStore.$playlists", "PodcastSubscriptions.shared.objectWillChange",
                        "session.libraryViewModel.$continueListening", "session.$sourcesVersion",
                        "template.updateSections(", "tabBar.updateTemplates("] {
             #expect(car.contains(signal), "the car does not follow \(signal)")

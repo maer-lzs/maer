@@ -74,7 +74,10 @@ struct SharedGrowthFenceTests {
     /// rose and was written back as measured instead of hidden behind a default.
     nonisolated static let stock = 367
 
-    /// The same count over all of `Sources`, measured 747 (a played mark
+    /// The same count over all of `Sources`, measured 746 (the car holds the
+    /// stores it reads once, where it reached them line by line; the rows
+    /// the car and the tabs share reach three stores in one place; before
+    /// that 747: a played mark
     /// taken from elsewhere takes its title out of Up Next: the listen log,
     /// the book library and the Audiobookshelf podcasts are each handed the
     /// one queue where they are built, three grips, nothing in their
@@ -121,7 +124,7 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 747
+    nonisolated static let sourcesStock = 746
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

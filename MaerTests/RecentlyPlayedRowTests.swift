@@ -172,7 +172,8 @@ struct RecentlyPlayedRowTests {
     /// eine dritte nicht stumm danebenlaeuft.
     @Test("keine Flaeche beantwortet die Frage ein zweites Mal", .needsTheSources)
     func noSurfaceAnswersTheQuestionASecondTime() throws {
-        let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "MusicView.swift"]
+        // The music tab's row is asked by the tab and the car in one place.
+        let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "SharedRows.swift"]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
