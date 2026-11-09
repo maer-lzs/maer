@@ -1158,7 +1158,11 @@ woertlich) und **einmal ein FREMDER Sender: „BIGFM NEW LOGO 2019.png" ist das
 INDISCHE Big FM** (Hindi-Claim), durch Namens-Wache UND Generik-Regel
 gerutscht. Die Hochformat-Regel des Generators entfiel mit der Auswahl unter
 Kandidaten: der Generator nimmt nur noch das gebundene Logo (siehe „Eine Datei
-je Sender").
+je Sender"). Eine Ausnahme mit Liste (`SQUARE_MARKS` im Generator): traegt ein
+gebundener Sender als Logo eine Wortmarke und veroeffentlicht sein Haus daneben
+eine quadratische Marke, steht die quadratische in der Tabelle, sie besteht
+dieselbe Tabellen-Probe und dasselbe Kachel-Tor. Heute Deutschlandfunk und
+Deutschlandfunk Kultur, je „… Logo klein.png".
 
 **DLF-Familie (f837dc0):** Kultur und Nova standen in KEINER Kern-Tabelle —
 der Generator kannte sie nie. Jetzt: `EXTRA_NAMES` im Generator (Namen, die

@@ -413,9 +413,22 @@ def bound_file(name, fact, radio, isos, search=search, entities=entities):
     return data["logo"], entity_id, None, False
 
 
+# A station whose declared logo (P154) is a word mark, and whose house
+# publishes a square mark beside it: the square mark stands in the table. A
+# word mark is a thin line on a tile, in the player's round picture and in
+# the car. The binding to the station object stays the condition, and the
+# square mark passes the same table probe and tile gate as a bound file.
+SQUARE_MARKS = {
+    "Deutschlandfunk": "Deutschlandfunk Logo klein.png",
+    "Deutschlandfunk Kultur": "Deutschlandfunk Kultur Logo klein.png",
+}
+
+
 def resolve(name, fact, radio, isos, held):
     """The verdict of one name: (file, object, status, reason, failed)."""
     file_name, entity_id, reason, failed = bound_file(name, fact, radio, isos)
+    if file_name:
+        file_name = SQUARE_MARKS.get(name, file_name)
     if file_name and not label_ok(name, file_name, held):
         reason, file_name = f"probe: {file_name}", None
     if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):

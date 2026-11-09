@@ -113,6 +113,10 @@ struct RadioLogoDataTests {
         // An OWN entry always wins (the DLF-Kultur guard, by order):
         #expect(RadioLogoService.curatedFile(forName: "Deutschlandfunk Kultur")
                 == RadioLogoData.commonsFile(forName: "Deutschlandfunk Kultur"))
+        // The two stations carry their house's square mark, not the word
+        // mark their object declares.
+        #expect(RadioLogoData.commonsFile(forName: "Deutschlandfunk") == "Deutschlandfunk Logo klein.png")
+        #expect(RadioLogoData.commonsFile(forName: "Deutschlandfunk Kultur") == "Deutschlandfunk Kultur Logo klein.png")
         // Word boundary: a name CONTINUING the head in the same word is no kin.
         #expect(RadioLogoService.curatedFile(forName: "SWR3X") == nil)
         // No head, no answer.
