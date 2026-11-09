@@ -27,9 +27,8 @@ struct PlaylistHomeSection: View {
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
 
     var body: some View {
-        let lists = PlaylistPresentation.sortedByChanged(maerPlaylists.playlists.filter { $0.home == home }) {
-            Date(timeIntervalSince1970: $0.updatedAt)
-        }
+        // The observed store redraws this on every change of the lists.
+        let lists = SharedRows.playlists(at: home)
         // Start shows routines under their own name until a mixed list joins
         // them; the page of all lists carries the same name.
         let title: LocalizedStringKey = lists.allSatisfy(\.isRoutine) ? "Routines" : "Playlists"

@@ -50,15 +50,6 @@ struct MusicView: View {
     /// The one seam every listening row hangs on: a bump re-renders the
     /// tab, and the stock below is read again.
     @ObservedObject private var revision = ListeningRevision.shared
-    /// The catalogue titles started as album TRACKS. The same stock
-    /// Home's "Listen Again" reads (`positionless`), never a second source;
-    /// here they stand in "Recently Played".
-    private var catalogTracks: [ContinueSources.Extra] {
-        _ = revision.value
-        return ContinueSources.positionless(positions: ListeningStore.positions(),
-                                            serverKnows: [],
-                                            hiddenMarkers: ContinueHiddenStore.markers())
-    }
     private var shellacArea: Bool { AppStorageKeys.shellacActive }
 
     private var sortedPlaylists: [MusicPlaylist] {
@@ -339,14 +330,8 @@ struct MusicView: View {
     /// only elsewhere stays undated and keeps the server's order behind the
     /// dated ones. No stations: the radio has its own tab.
     private var recentlyPlayedEntries: [RecentlyPlayedRow.Entry] {
-        let albums = serverConfigured ? vm.recent.map(\.id) : []
-        let tracks = catalogTracks
-        return RecentlyPlayedRow.merged(
-            albums: albums,
-            albumTimes: RecentlyPlayedRow.deviceTimes(albums, positions: ListeningStore.positions()),
-            continued: [], stations: [], stationTimes: [:],
-            catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
-            limit: Int.max)
+        _ = revision.value
+        return SharedRows.musicRecentlyPlayed(serverRecent: vm.recent)
     }
 
     @ViewBuilder
@@ -416,11 +401,7 @@ struct MusicView: View {
     private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { $0.home == .music } }
 
     private var playlistSources: [PlaylistCardSource] {
-        let server = sortedPlaylists.map { PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId)) }
-        let device = musicLists.map { PlaylistCardSource.device($0, router: router) }
-        return PlaylistPresentation.sortedByChanged(server + device) {
-            $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
-        }
+        SharedRows.musicPlaylists(server: sortedPlaylists, router: router)
     }
 
     private var playlistRow: some View {

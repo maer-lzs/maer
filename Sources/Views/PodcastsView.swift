@@ -267,7 +267,7 @@ struct PodcastsView: View {
             // The measurement logs what the row SHOWS (the capped preview),
             // not the whole set the section computed.
             Self.logRecentShows(Array(sections.recentShows.prefix(Self.recentShowsPreviewCap)), surface: "recent")
-            let latest = PodcastSections.newestPerShow(shows: allShows + CoListenedShows.shows())
+            let latest = SharedRows.newEpisodeIds()
                 .compactMap { router.item($0) }
             let coListened = CoListenedShows.rowItems()
             let initialFill = !sectionsReady

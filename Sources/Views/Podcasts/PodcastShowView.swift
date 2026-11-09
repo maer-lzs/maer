@@ -139,7 +139,11 @@ struct PodcastShowView: View {
     /// source has to be asked.
     private var sortedItems: [LibraryItem] {
         guard let show = liveShow else { return [] }
-        let newestFirst = preferences.newestFirst
+        return Self.ordered(show, newestFirst: preferences.newestFirst)
+    }
+
+    /// A show's episodes in the page's order; the car asks the same.
+    static func ordered(_ show: PodcastShow, newestFirst: Bool) -> [LibraryItem] {
         let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
         let chronological = items.sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0

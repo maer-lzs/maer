@@ -498,8 +498,7 @@ struct MusicAlbumView: View {
 
     /// Plays the album and jumps to the song at `start` (its chapter offset).
     private func play(fromTrackAt start: Double) async {
-        await playerCoordinator.open(item: item)
-        await playerCoordinator.viewModel?.seek(to: start)
+        await SharedRows.playAlbum(item, fromTrackAt: start, on: playerCoordinator)
     }
 
     static func duration(_ seconds: Double) -> String {

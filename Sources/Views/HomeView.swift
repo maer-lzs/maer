@@ -678,12 +678,9 @@ RowHeading(title: "Rediscover",
         let hidden = ContinueHiddenStore.markers()
         // Every source on ONE clock (ms), so the row ranks by the real
         // moment across books, episodes and albums.
-        let books = libraryViewModel.continueListening.map {
-            (id: $0.id, ts: HomeSections.lastPlayedMs(
-                local: localTimestamp($0.id),
-                server: $0.progress?.lastUpdate ?? 0,
-                playingNowMs: PlayingNow.momentMs(forId: $0.id)))
-        }
+        let streams = SharedRows.continueStreams(books: libraryViewModel.continueListening,
+                                                 episodes: sections.nextUp, hidden: hidden)
+        let books = streams.books
         // Rediscover's "paused" source needs exactly what Continue DROPPED, so
         // it reads the unfiltered list. Feeding it the filtered one (as it did
         // once) silently emptied that source: the age
@@ -700,19 +697,8 @@ RowHeading(title: "Rediscover",
                                                markers: hidden) }
             // Rediscover asks for what PAUSED: the stands, never "playing".
             .map { (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0)) }
-        // The same moment the episode card names (local or server stand,
-        // whichever is newer), so the row cannot rank by one clock and
-        // show another.
+        let episodes = streams.episodes
         let episodeProgress = ABSPodcastProvider.shared.episodeProgress
-        let episodes = sections.nextUp.map {
-            (id: $0.id, ts: HomeSections.lastPlayedMs(
-                local: localTimestamp($0.id),
-                server: episodeProgress[$0.id]?.lastUpdate ?? 0,
-                // What plays IS the newest thing: its stand is written every
-                // thirty seconds, and between two writes a stand arriving
-                // from the other device used to push it down the row.
-                playingNowMs: PlayingNow.momentMs(forId: $0.id)))
-        }
         // The music server is the source that vanished with the Tiny. Its
         // absence must cost the start page nothing but the music rows.
         let musicProgressAnswer = await musicProgressTask
@@ -730,12 +716,7 @@ RowHeading(title: "Rediscover",
                 playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
         let startedAlbumIds = Set(startedMusic.filter { !HomeSections.continueAccepts($0.id) }.map(\.id))
         // Row limit 10 (landscape/iPad show 4–5 cards).
-        // The marker acts on the WHOLE mixed row, so hiding works the same
-        // for a book and an episode. Books are already filtered in the view
-        // model; episodes are filtered here, where the streams meet.
-        let episodesShown = episodes.filter {
-            !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
-        }
+        let episodesShown = streams.episodesShown
         let rankedContinue = HomeSections.byRecency([books, episodesShown], limit: 10)
         // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
@@ -761,7 +742,7 @@ RowHeading(title: "Rediscover",
         // "Latest Episodes": the newest episode of each show, newest first.
         // The shared pure derivation, capped at 30 so the six-row expansion
         // has content (a cap of 8 starved it).
-        let episodeIds = PodcastSections.newestPerShow(shows: shows + CoListenedShows.shows())
+        let episodeIds = SharedRows.newEpisodeIds()
 
         // "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort. Empty without a music server). Both inputs
@@ -945,12 +926,6 @@ RowHeading(title: "Rediscover",
     /// ABS timestamps are milliseconds since 1970. Normalize to seconds.
     private static func seconds(_ ts: Double) -> Double {
         ts > 4_000_000_000 ? ts / 1000 : ts
-    }
-
-    /// Last-played timestamp of an item from the local position store (same
-    /// source podcast auto-continue uses), 0 if none.
-    private func localTimestamp(_ id: String) -> Double {
-        ProgressMark.timestamp(ListeningStore.backup(id)) ?? 0
     }
 }
 
