@@ -444,14 +444,15 @@ private struct ContinueListeningView: View {
     /// quarters, the colour of its own bottom edge in the lowest quarter
     /// under it, where title and bar stand, as the cards on Start carry
     /// their text below the cover; a short gradient blends the cover into
-    /// the band.
+    /// the band. The cover closes with the top edge: what does not fit is
+    /// cut at the bottom, where the gradient lies.
     private var coverWithBand: some View {
         let tint = entry.snapshot?.coverTint.flatMap(Self.color(of:)) ?? Color(white: 0.15)
         return GeometryReader { space in
             VStack(spacing: 0) {
                 Color.clear
                     .frame(height: space.size.height * 0.75)
-                    .overlay { coverImage }
+                    .overlay(alignment: .top) { coverImage }
                     .clipped()
                     .overlay(alignment: .bottom) {
                         LinearGradient(colors: [.clear, tint], startPoint: .top, endPoint: .bottom)
