@@ -2,14 +2,16 @@
 
 ## Next build (not yet cut)
 
-**CarPlay is new, for every medium.** Home comes first with Continue
-Listening as a row of covers, Up Next, your routines and mixed playlists,
-and your radio favorites. Audiobooks, Podcasts and Music each have a tab
-when you use them: books you are listening to, your downloads and all
-books; Up Next, new episodes and your shows; recently played, playlists,
-albums and artists. Radio gets its own tab where the car allows one more.
-The lists keep up while you drive, and the player offers Up Next and the
-speed for books and podcasts.
+**CarPlay is new, for every medium.** Home comes first and carries the
+rows of Home in the app, each as a row of covers: Continue Listening,
+your routines, Up Next, Listen Again and the latest episodes. Audiobooks,
+Podcasts and Music each have a tab when you use them, and each begins as
+it does in the app: the books and the episodes you are listening to, and
+your playlists with their covers; below them your downloads and all
+books, new episodes and your shows, recently played, albums and artists.
+Radio gets its own tab where the car allows one more. The lists keep up
+while you drive. The player offers Up Next whenever something waits
+behind the title, and the speed for books and podcasts.
 
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up

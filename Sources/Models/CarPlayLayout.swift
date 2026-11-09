@@ -35,6 +35,14 @@ nonisolated enum CarPlayLayout {
     /// content. A tap on the content plays.
     static let levels = 2
 
+    /// Whether a cover in a row of covers carries its name: the system
+    /// draws one from iOS 26 on. A list is known by its name alone, so
+    /// without it lists stay rows of text.
+    static var coversCarryNames: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
+
     /// What a page says about rows it does not show: a fetch that failed is
     /// no empty library, so it gets a line of its own.
     enum EmptyNote: Equatable {

@@ -32,6 +32,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var roots: [CarPlayLayout.Tab: CPListTemplate] = [:]
     private var shownTabs: [CarPlayLayout.Tab] = []
     private var radioOnStart = false
+    /// The recently played albums of the rebuild that runs.
+    private var recentAnswer: FetchAnswer<[LibraryItem]>?
     private var signals: Set<AnyCancellable> = []
     private var pendingRebuild: Task<Void, Never>?
     /// The speed of the player that plays now; a new player replaces it.
@@ -127,6 +129,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// stays keeps its template, so the car does not jump back to the top.
     private func rebuild() async {
         guard interfaceController != nil else { return }
+        recentAnswer = nil
         let musicSource = session.musicProvider
         let maximum = CPTabBarTemplate.maximumTabCount
         let layout = CarPlayLayout.tabs(
@@ -181,25 +184,55 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     // MARK: - Start
 
-    /// Continue across books and episodes as a row of covers, Up Next, the
-    /// routines and mixed lists of Start, and the radio favourites while
-    /// Radio has no tab.
+    /// Start's rows in Start's order, each a row of covers under its name:
+    /// Continue across books and episodes, the routines and mixed lists of
+    /// Start, Up Next, Listen Again, the latest episodes; and the radio
+    /// favourites while Radio has no tab. A cover does what its tile does
+    /// in the app, the row's name opens the whole list.
     private func startSections() async -> [CPListSection] {
-        var sections: [CPListSection] = []
-        let continued = await SharedRows.continueIds(limit: 10).compactMap { session.playableItem(forId: $0) }
+        let session = self.session
+        var rows: [CPListImageRowItem] = []
+        let continuedIds = await SharedRows.continueIds(limit: 10)
+        let continued = await tiles(continuedIds.compactMap { session.playableItem(forId: $0) })
         if !continued.isEmpty {
-            sections.append(CPListSection(items: [await coverRow(continued)]))
-        }
-        let queue = upNextItems()
-        if !queue.isEmpty {
-            sections.append(await section(String(localized: "Up Next"),
-                                          queue.prefix(CarPlayLayout.sectionLimit)))
+            rows.append(coverRow(String(localized: "Continue Listening"), continued) { [weak self] in
+                let all = await SharedRows.continueIds(limit: Int(CPListTemplate.maximumItemCount))
+                    .compactMap { session.playableItem(forId: $0) }
+                await self?.pushList(String(localized: "Continue Listening"), all)
+            })
         }
         let lists = SharedRows.playlists(at: .start)
+        var listRows: [CPListItem] = []
         if !lists.isEmpty {
             let title = lists.allSatisfy(\.isRoutine) ? String(localized: "Routines") : String(localized: "Playlists")
-            let rows = lists.prefix(CarPlayLayout.sectionLimit).map(playlistRow)
-            sections.append(CPListSection(items: rows, header: title, sectionIndexTitle: nil))
+            if CarPlayLayout.coversCarryNames {
+                rows.append(coverRow(title, lists.map(listTile)) { [weak self] in
+                    self?.pushRows(title, lists.prefix(Int(CPListTemplate.maximumItemCount)).compactMap { self?.playlistRow($0) },
+                                   failed: false)
+                })
+            } else {
+                listRows = lists.prefix(CarPlayLayout.sectionLimit).map(playlistRow)
+            }
+        }
+        let next = await tiles(upNextItems())
+        if !next.isEmpty {
+            rows.append(coverRow(String(localized: "Up Next"), next) { [weak self] in await self?.pushUpNext() })
+        }
+        let again = await listenAgainTiles(continued: Set(continuedIds))
+        if !again.isEmpty { rows.append(coverRow(String(localized: "Listen Again"), again)) }
+        let latest = await tiles(SharedRows.newEpisodeIds(limit: Int(CPMaximumNumberOfGridImages))
+            .compactMap { session.playableItem(forId: $0) })
+        if !latest.isEmpty {
+            rows.append(coverRow(String(localized: "Latest Episodes"), latest) { [weak self] in
+                let all = SharedRows.newEpisodeIds(limit: Int(CPListTemplate.maximumItemCount))
+                    .compactMap { session.playableItem(forId: $0) }
+                await self?.pushList(String(localized: "Latest Episodes"), all)
+            })
+        }
+        var sections: [CPListSection] = rows.isEmpty ? [] : [CPListSection(items: rows)]
+        if !listRows.isEmpty {
+            let title = lists.allSatisfy(\.isRoutine) ? String(localized: "Routines") : String(localized: "Playlists")
+            sections.append(CPListSection(items: listRows, header: title, sectionIndexTitle: nil))
         }
         if radioOnStart {
             let favorites = RadioStore.favorites()
@@ -211,31 +244,170 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return sections
     }
 
-    /// The Continue row as covers; a cover plays its title, the row's name
-    /// opens the whole list.
-    private func coverRow(_ items: [LibraryItem]) async -> CPListImageRowItem {
-        let session = self.session
-        let shown = Array(items.prefix(Int(CPMaximumNumberOfGridImages)))
-        var images: [UIImage] = []
-        for item in shown {
-            images.append(await cover(forItemId: item.id) ?? UIImage(systemName: "play.circle") ?? UIImage())
+    /// One cover of a cover row: its picture, its name and what a tap does.
+    private struct Tile: Sendable {
+        let image: UIImage
+        let title: String
+        let subtitle: String?
+        let tap: @MainActor @Sendable () async -> Void
+    }
+
+    /// A row of covers under its name. A cover does its tap, the name opens
+    /// the whole list where the row has one. Each cover carries its name
+    /// where the system draws one.
+    private func coverRow(_ name: String, _ tiles: [Tile],
+                          all: (@MainActor @Sendable () async -> Void)? = nil) -> CPListImageRowItem {
+        let shown = Array(tiles.prefix(Int(CPMaximumNumberOfGridImages)))
+        let row: CPListImageRowItem
+        if #available(iOS 26.0, *) {
+            let elements = shown.map { CPListImageRowItemRowElement(image: $0.image, title: $0.title, subtitle: $0.subtitle) }
+            row = CPListImageRowItem(text: name, elements: elements, allowsMultipleLines: false)
+        } else {
+            row = CPListImageRowItem(text: name, images: shown.map(\.image))
         }
-        let row = CPListImageRowItem(text: String(localized: "Continue Listening"), images: images)
-        row.listImageRowHandler = { [weak self] _, index, completion in
-            Task { @MainActor [weak self] in
-                if shown.indices.contains(index) { await self?.openTitle(shown[index]) }
+        row.listImageRowHandler = { _, index, completion in
+            Task { @MainActor in
+                if shown.indices.contains(index) { await shown[index].tap() }
                 completion()
             }
         }
-        row.handler = { [weak self] _, completion in
-            Task { @MainActor [weak self] in
-                let all = await SharedRows.continueIds(limit: Int(CPListTemplate.maximumItemCount))
-                    .compactMap { session.playableItem(forId: $0) }
-                await self?.pushList(String(localized: "Continue Listening"), all)
-                completion()
+        if let all {
+            row.handler = { _, completion in
+                Task { @MainActor in
+                    await all()
+                    completion()
+                }
             }
         }
         return row
+    }
+
+    /// The covers of playable titles; a tap plays the title.
+    private func tiles(_ items: [LibraryItem]) async -> [Tile] {
+        var tiles: [Tile] = []
+        for item in items.prefix(Int(CPMaximumNumberOfGridImages)) {
+            tiles.append(Tile(image: await cover(forItemId: item.id) ?? Self.noCover, title: item.title,
+                              subtitle: item.media?.metadata?.authorName) { [weak self] in
+                await self?.openTitle(item)
+            })
+        }
+        return tiles
+    }
+
+    /// The picture of a title without a cover: a square of a cover's size
+    /// with a symbol in it, so the title keeps its place among covers.
+    private static let noCover = square(symbol: "headphones")
+
+    private static let coverSide: CGFloat = 200
+
+    /// A square of a cover's size with a symbol in it.
+    private static func square(symbol name: String) -> UIImage {
+        let side = coverSide
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { context in
+            UIColor.systemGray4.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            let symbol = UIImage(systemName: name,
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: side * 0.4, weight: .regular))?
+                .withTintColor(.systemGray, renderingMode: .alwaysOriginal)
+            guard let symbol else { return }
+            symbol.draw(at: CGPoint(x: (side - symbol.size.width) / 2, y: (side - symbol.size.height) / 2))
+        }
+    }
+
+    /// A list's picture from the covers of its titles, as its card shows
+    /// them: four as a square of four, fewer as the first alone.
+    private func mosaic(_ addresses: [URL]) async -> UIImage? {
+        var covers: [UIImage] = []
+        for address in addresses.prefix(4) {
+            if let cover = await Artwork.thumbnail(for: address) { covers.append(cover) }
+        }
+        guard let first = covers.first else { return nil }
+        guard covers.count == 4 else { return first }
+        let side = Self.coverSide
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            for (index, cover) in covers.enumerated() {
+                cover.draw(in: CGRect(x: CGFloat(index % 2) * side / 2, y: CGFloat(index / 2) * side / 2,
+                                      width: side / 2, height: side / 2))
+            }
+        }
+    }
+
+    /// A station's picture as the app shows it: its logo by the one
+    /// resolver, else the app's placeholder for that station.
+    private func stationImage(_ station: RadioStation) async -> UIImage {
+        guard let logo = await RadioArtwork.gatedImage(for: station.faviconURL.flatMap { URL(string: $0) },
+                                                       stationID: station.id) else {
+            return RadioArtwork.placeholderImage(stationID: station.id, name: RadioMapping.displayName(station.name),
+                                                 side: Self.coverSide)
+        }
+        // A word mark is a line in a row of the car: the station's own
+        // icon stands for it where it is closer to a square.
+        if Self.isWide(logo), let icon = await artwork(station.faviconURL), !Self.isWide(icon) { return icon }
+        return Self.squared(logo)
+    }
+
+    private static func isWide(_ image: UIImage) -> Bool {
+        guard image.size.width > 0, image.size.height > 0 else { return false }
+        return max(image.size.width, image.size.height) / min(image.size.width, image.size.height) > 1.2
+    }
+
+    /// A logo in a square of a cover's size: a wide word mark stands whole
+    /// on a white ground instead of shrinking to a line beside the name.
+    private static func squared(_ logo: UIImage) -> UIImage {
+        let side = coverSide
+        guard isWide(logo) else { return logo }
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            let room = side * 0.84
+            let scale = min(room / logo.size.width, room / logo.size.height)
+            let size = CGSize(width: logo.size.width * scale, height: logo.size.height * scale)
+            logo.draw(in: CGRect(x: (side - size.width) / 2, y: (side - size.height) / 2,
+                                 width: size.width, height: size.height))
+        }
+    }
+
+    /// A routine or a mixed list as a cover: a tap plays it, as its card
+    /// on Start.
+    private func listTile(_ list: MaerPlaylists.Playlist) -> Tile {
+        let session = self.session
+        let store = playlistStore
+        let symbol = list.isRoutine ? "repeat" : "music.note.list"
+        return Tile(image: Self.square(symbol: symbol), title: list.name, subtitle: nil) { [weak self] in
+            await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
+            self?.showNowPlaying()
+        }
+    }
+
+    /// Listen Again as Start merges it: an album opens its titles, a
+    /// catalogue title plays, a station plays.
+    private func listenAgainTiles(continued: Set<String>) async -> [Tile] {
+        let session = self.session
+        let recent = await recentAlbums().value ?? []
+        let stations = RadioStore.recents()
+        var tiles: [Tile] = []
+        for entry in SharedRows.listenAgain(serverRecent: recent, continued: continued,
+                                            limit: Int(CPMaximumNumberOfGridImages)) {
+            switch entry {
+            case .album(let id):
+                guard let album = recent.first(where: { $0.id == id }) else { continue }
+                tiles.append(Tile(image: await cover(forItemId: id) ?? Self.noCover, title: album.title,
+                                  subtitle: album.media?.metadata?.authorName) { [weak self] in
+                    await self?.pushTitles(of: album)
+                })
+            case .catalogTrack(let id):
+                guard let title = await catalogTitle(id) else { continue }
+                tiles.append(contentsOf: await self.tiles([title]))
+            case .station(let id):
+                guard let station = stations.first(where: { $0.id == id }) else { continue }
+                tiles.append(Tile(image: await stationImage(station),
+                                  title: RadioMapping.displayName(station.name), subtitle: nil) { [weak self] in
+                    RadioPlay.play(station, playerCoordinator: session.playerCoordinator)
+                    self?.showNowPlaying()
+                })
+            }
+        }
+        return tiles
     }
 
     // MARK: - Audiobooks
@@ -265,6 +437,12 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func podcastSections() async -> [CPListSection] {
         var sections: [CPListSection] = []
+        // Continue comes first, as in the app's tab: the episodes under way.
+        let continued = await SharedRows.continueEpisodeIds(limit: CarPlayLayout.sectionLimit)
+            .compactMap { session.playableItem(forId: $0) }
+        if !continued.isEmpty {
+            sections.append(await section(String(localized: "Continue Listening"), continued[...]))
+        }
         let queue = upNextItems()
         if !queue.isEmpty {
             sections.append(await section(String(localized: "Up Next"), queue.prefix(CarPlayLayout.sectionLimit)))
@@ -302,21 +480,27 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     // MARK: - Music
 
+    /// The server's recently played albums, asked once per rebuild: Start
+    /// and the music tab read the one answer.
+    private func recentAlbums() async -> FetchAnswer<[LibraryItem]> {
+        if let recentAnswer { return recentAnswer }
+        guard AppStorageKeys.musicServerActive else { return .value([]) }
+        let provider = session.musicProvider
+        let answer = await FetchAnswer.of("carplay recent albums", logger: .music) {
+            try await provider.albumShelf(shelf: .recent, size: 20)
+        }
+        recentAnswer = answer
+        return answer
+    }
+
     /// Recently Played as the music tab merges it, then the pages of
     /// playlists, albums and artists. A fetch that failed says so in a line
     /// of its own, apart from a library that holds nothing; every opening
     /// asks again.
     private func musicSections() async -> [CPListSection] {
-        let provider = session.musicProvider
-        var recent: [LibraryItem] = []
-        var recentFailed = false
-        if AppStorageKeys.musicServerActive {
-            let answer = await FetchAnswer.of("carplay recent albums", logger: .music) {
-                try await provider.albumShelf(shelf: .recent, size: 20)
-            }
-            recent = answer.value ?? []
-            recentFailed = answer.failed
-        }
+        let answer = await recentAlbums()
+        let recent = answer.value ?? []
+        let recentFailed = answer.failed
         var played: [LibraryItem] = []
         for entry in SharedRows.musicRecentlyPlayed(serverRecent: recent)
         where played.count < CarPlayLayout.sectionLimit {
@@ -327,17 +511,31 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             }
         }
         var sections: [CPListSection] = []
+        // The tab's order: the playlists on top, then what was heard.
+        var listsFailed = false
+        var pages: [CPListItem] = []
+        if CarPlayLayout.coversCarryNames {
+            let lists = await serverPlaylists()
+            listsFailed = lists.failed
+            let cards = await playlistTiles(SharedRows.musicPlaylists(server: lists.value ?? []))
+            if !cards.isEmpty {
+                sections.append(CPListSection(items: [
+                    coverRow(String(localized: "Playlists"), cards) { [weak self] in await self?.pushPlaylists() },
+                ]))
+            }
+        } else {
+            pages.append(pageRow(String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
+                await self?.pushPlaylists()
+            })
+        }
         if !played.isEmpty {
             sections.append(await section(String(localized: "Recently Played"),
                                           played.prefix(CarPlayLayout.sectionLimit)))
         }
-        if CarPlayLayout.emptyNote(failed: recentFailed) == .noAnswer {
+        if CarPlayLayout.emptyNote(failed: recentFailed || listsFailed) == .noAnswer {
             sections.append(CPListSection(items: [noAnswerRow()]))
         }
-        sections.append(CPListSection(items: [
-            pageRow(String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
-                await self?.pushPlaylists()
-            },
+        sections.append(CPListSection(items: pages + [
             pageRow(String(localized: "Albums"), symbol: "square.stack") { [weak self] in
                 await self?.pushAlbums()
             },
@@ -367,11 +565,50 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     /// The music tab's one playlist row; a list opens its titles.
-    private func pushPlaylists() async {
+    /// The server's playlists, asked anew by every caller.
+    private func serverPlaylists() async -> FetchAnswer<[MusicPlaylist]> {
         let provider = session.musicProvider
-        let answer = await FetchAnswer.of("carplay playlists", logger: .music) {
+        guard AppStorageKeys.musicServerActive else { return .value([]) }
+        return await FetchAnswer.of("carplay playlists", logger: .music) {
             try await provider.allPlaylists()
         }
+    }
+
+    /// The playlists as covers: a tap plays the list in its order, as the
+    /// card's body does in the app.
+    private func playlistTiles(_ sources: [PlaylistCardSource]) async -> [Tile] {
+        let session = self.session
+        let store = playlistStore
+        var tiles: [Tile] = []
+        for source in sources.prefix(Int(CPMaximumNumberOfGridImages)) {
+            // The covers the card shows: stated by the list, else fetched
+            // with its artists.
+            let stated = source.covers?() ?? []
+            let addresses = stated.isEmpty ? await source.mosaic().covers : stated
+            let picture = await mosaic(addresses) ?? Self.listSymbol
+            switch source.detailRoute {
+            case .album(let item):
+                tiles.append(Tile(image: picture, title: source.title,
+                                  subtitle: nil) { [weak self] in
+                    await SharedRows.playAlbum(item, fromTrackAt: 0, on: session.playerCoordinator)
+                    self?.showNowPlaying()
+                })
+            case .maerPlaylist(let id):
+                tiles.append(Tile(image: picture, title: source.title, subtitle: nil) { [weak self] in
+                    guard let list = store.playlist(id: id) else { return }
+                    await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
+                    self?.showNowPlaying()
+                })
+            default: break
+            }
+        }
+        return tiles
+    }
+
+    private static let listSymbol = square(symbol: "music.note.list")
+
+    private func pushPlaylists() async {
+        let answer = await serverPlaylists()
         let rows = SharedRows.musicPlaylists(server: answer.value ?? [])
             .prefix(Int(CPListTemplate.maximumItemCount))
             .map { source in
@@ -488,8 +725,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let session = self.session
         var rows: [CPListItem] = []
         for station in stations.prefix(Int(CPListTemplate.maximumItemCount)) {
-            let image = await artwork(station.faviconURL)
-            let row = CPListItem(text: station.name, detailText: nil, image: image)
+            let image = await stationImage(station)
+            let row = CPListItem(text: RadioMapping.displayName(station.name), detailText: nil, image: image)
             row.handler = { [weak self] _, completion in
                 Task { @MainActor [weak self] in
                     RadioPlay.play(station, playerCoordinator: session.playerCoordinator)
@@ -583,7 +820,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
         // A title without a cover keeps the place of one, so every title of
         // a list starts at the same edge.
-        let image = await cover(forItemId: item.id) ?? UIImage(systemName: "headphones")
+        let image = await cover(forItemId: item.id) ?? Self.noCover
         // The side line carries the server's name with two music servers:
         // "Artist · Navidrome". Episodes carry none.
         let detail = [item.media?.metadata?.authorName, session.musicSourceLabel(forItemId: item.id)]

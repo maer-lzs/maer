@@ -100,6 +100,34 @@ struct CarPlayLayoutTests {
                 "a failed page does not say so")
     }
 
+    @Test("Start im Auto traegt die Reihen von Start, jeder Tab beginnt wie in der App", .needsTheSources)
+    func startCarriesStartsRowsAndEveryTabBeginsAsInTheApp() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        // Start's rows in Start's order.
+        let order = ["SharedRows.continueIds(limit: 10)", "SharedRows.playlists(at: .start)", "await tiles(upNextItems())",
+                     "await listenAgainTiles(continued:", "SharedRows.newEpisodeIds(limit: Int(CPMaximumNumberOfGridImages))"]
+        var from = car.startIndex
+        for step in order {
+            let found = try #require(car.range(of: step, range: from..<car.endIndex), "Start misses or misplaces \(step)")
+            from = found.upperBound
+        }
+        #expect(car.contains("SharedRows.listenAgain(serverRecent: recent, continued: continued"))
+        // Podcasts begin with Continue, music with its playlists.
+        let podcasts = try #require(car.range(of: "private func podcastSections()"))
+        let continued = try #require(car.range(of: "SharedRows.continueEpisodeIds(", range: podcasts.upperBound..<car.endIndex))
+        let latest = try #require(car.range(of: "SharedRows.newEpisodeIds(limit: CarPlayLayout.sectionLimit)",
+                                            range: podcasts.upperBound..<car.endIndex))
+        #expect(continued.lowerBound < latest.lowerBound, "the podcast tab does not begin with Continue")
+        let music = try #require(car.range(of: "private func musicSections()"))
+        let lists = try #require(car.range(of: "coverRow(String(localized: \"Playlists\"), cards)", range: music.upperBound..<car.endIndex))
+        let played = try #require(car.range(of: "section(String(localized: \"Recently Played\")", range: music.upperBound..<car.endIndex))
+        #expect(lists.lowerBound < played.lowerBound, "the music tab does not begin with its playlists")
+        // A station shows the app's logo and the app's name for it.
+        #expect(car.contains("RadioArtwork.gatedImage(for:"))
+        #expect(car.contains("RadioMapping.displayName(station.name)"))
+        #expect(!car.contains("text: station.name"), "the car shows a station's raw name")
+    }
+
     @Test("Als Naechstes im Player, sobald etwas hinter dem Titel wartet, nie bei einem Sender")
     func upNextWheneverSomethingWaits() {
         #expect(CarPlayLayout.offersUpNext(for: "book-1", waiting: 1))

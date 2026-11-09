@@ -61,6 +61,17 @@ enum SharedRows {
         return HomeSections.byRecency([streams.books, streams.episodesShown], limit: limit)
     }
 
+    /// Continue in the podcast tab: the episodes under way, the most
+    /// recently played first, without what the person hid from Continue.
+    static func continueEpisodeIds(limit: Int) async -> [String] {
+        let shows = PodcastAutoContinue.allShows()
+        let sections = await PodcastSections.computeDetached(
+            shows: shows, snapshot: PodcastSections.snapshot(shows: shows))
+        let streams = continueStreams(books: [], episodes: sections.nextUp,
+                                      hidden: ContinueHiddenStore.markers())
+        return HomeSections.byRecency([streams.episodesShown], limit: limit)
+    }
+
     /// The newest episode of every show, own and listened along.
     static func newEpisodeIds(limit: Int = 30) -> [String] {
         PodcastSections.newestPerShow(shows: PodcastShowSources.active() + CoListenedShows.shows(),
@@ -87,6 +98,25 @@ enum SharedRows {
             continued: [], stations: [], stationTimes: [:],
             catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
             limit: Int.max)
+    }
+
+    /// Start's "Listen Again" for a surface that holds none of Start's own
+    /// state: the server's recently played albums, the stations and the
+    /// catalogue titles heard before, merged by time, without what
+    /// Continue already shows.
+    static func listenAgain(serverRecent: [LibraryItem], continued: Set<String>,
+                            limit: Int) -> [RecentlyPlayedRow.Entry] {
+        let albums = AppStorageKeys.musicServerActive ? serverRecent.map(\.id) : []
+        let positions = ListeningStore.positions()
+        let tracks = ContinueSources.positionless(positions: positions, serverKnows: [],
+                                                  hiddenMarkers: ContinueHiddenStore.markers())
+        return RecentlyPlayedRow.merged(
+            albums: albums,
+            albumTimes: RecentlyPlayedRow.deviceTimes(albums, positions: positions),
+            continued: continued,
+            stations: RadioStore.recents().map(\.id), stationTimes: RadioStore.recentTimes(),
+            catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
+            limit: limit)
     }
 
     /// The device lists that stand at `home`, the most recently changed

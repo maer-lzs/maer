@@ -267,9 +267,11 @@ struct RoutinePlaybackTests {
                 bare.append(file.name)
             }
         }
-        // The car's row of a routine or a mixed list is one more button.
+        // The car starts a list in three places: the row of a routine or a
+        // mixed list, its cover on Start, and the cover of a device list in
+        // the music tab.
         #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1, "AppShortcuts.swift": 1,
-                           "CarPlaySceneDelegate.swift": 1])
+                           "CarPlaySceneDelegate.swift": 3])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("resuming: start.fromRule)"))
