@@ -82,10 +82,14 @@ struct ResumeStandTests {
         model.stop()
     }
 
-    @Test("die Ruecknahme einer Pause traegt nur den Stand eines laufenden Stuecks; die Pause fragt die Regel")
-    func aSilentReleaseCarriesNoPosition() throws {
+    @Test("die Ruecknahme einer Pause traegt nur den Stand eines laufenden Stuecks")
+    func aSilentReleaseCarriesNoPosition() {
         #expect(PlaybackClaimRules.releasePosition(wasPlaying: true, currentTime: 42) == 42)
         #expect(PlaybackClaimRules.releasePosition(wasPlaying: false, currentTime: 42) == nil)
+    }
+
+    @Test("die Pause fragt die Regel der Ruecknahme und setzt den eigenen Stand nur, wenn ein Stueck lief", .needsTheSources)
+    func thePauseAsksTheReleaseRule() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
         #expect(text.contains("position: PlaybackClaimRules.releasePosition(wasPlaying: wasPlaying, currentTime: currentTime),"),
                 "the pause's release carries the position without asking")
