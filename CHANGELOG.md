@@ -7,7 +7,8 @@ private feed or your Audiobookshelf server passes a stream on to another
 server, a file host for example, the player now asks where the stream
 ends before it starts, and gives the sign-in only to the server it
 belongs to. Before, the player sent the sign-in along to the server the
-stream ended at. Starting such a title takes one short request more;
+stream ended at. Starting such a title takes one short request more,
+and so does each next file of a book as playback comes near it;
 downloads were not affected.
 
 ## v3.6.2 (Build 61)

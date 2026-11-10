@@ -663,11 +663,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                        : String(localized: "Audiobook could not be loaded."))
             return
         }
-        // The other tracks that need a plan are asked after the start, the
-        // ones ahead first; each joins the queue as its plan lands.
-        let order = Array(startIndex..<tracks.count) + Array(0..<startIndex)
-        let rest = order.compactMap { resolveTrackURL(index: $0) }.filter { needsPlan($0) }
-        planner.planRest(rest) { [weak self] in self?.appendPlannedTracks() }
+        // The tracks after the first are asked by the queue as playback
+        // nears them (`planWindow`), the next two right away.
 
         setupRemoteCommandCenter()
         lastSyncedTime = serverProgress
@@ -857,6 +854,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url)?.isEmpty == false
     }
 
+    /// Asks the plans of the track at `index` and the next ones
+    /// (`StreamPlanner.window`): what playback needs soon, never all tracks
+    /// of a title at once. Each joins the queue as its plan lands.
+    private func planWindow(from index: Int) {
+        guard let planner = streamPlanner else { return }
+        let urls = StreamPlanner.window(from: index, count: tracks.count)
+            .compactMap { resolveTrackURL(index: $0) }
+            .filter { needsPlan($0) }
+        planner.planAhead(urls) { [weak self] in self?.appendPlannedTracks() }
+    }
+
     /// Whether the track's stream is not built yet because it needs a plan
     /// and its plan has not landed.
     private func awaitsPlan(_ url: URL) -> Bool {
@@ -944,6 +952,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let wasPlaying = isPlaying
         player = newPlayer
         currentTrackIndex = startIndex
+        planWindow(from: startIndex)
 
         addTimeObserver()
         observeStalls(of: newPlayer)
@@ -1091,6 +1100,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if self.queueAppendIndex < self.tracks.count {
                     Logger.player.notice("PLAY waits for the plan of track=\(self.queueAppendIndex)")
                     self.waitsForPlannedTrack = true
+                    // The track it waits for is asked, if it is not yet.
+                    self.planWindow(from: self.queueAppendIndex)
                     return
                 }
                 self.currentTime = self.duration
@@ -1553,8 +1564,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
                       currentItem.status == .readyToPlay else { return }
                 let signpost = PerfSignpost.tick(playing: self.isPlaying)
                 defer { signpost.end() }
-                if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
+                if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)], idx != self.currentTrackIndex {
                     self.currentTrackIndex = idx
+                    // Playback reached the next track: the one after the
+                    // window is asked now.
+                    self.planWindow(from: idx)
                 }
                 // Local listening stats: 1 s per tick while playing. The item
                 // rides along so the same second can be seen per station/show

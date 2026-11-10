@@ -395,31 +395,91 @@ struct ServerHeadersWayTests {
         #expect(host.closed.withLock { $0 }, "the ask did not close its connection")
     }
 
-    @Test("ein Titel mit 50 Spuren startet nach genau einer Vorab-Anfrage, die anderen Spuren kommen danach in die Warteschlange")
-    func aTitleStartsAfterOneAskAhead() async throws {
-        let (origin, other) = try await started()
-        defer { origin.stop(); other.stop() }
+    /// A title of fifty tracks of `seconds` each on a server with headers,
+    /// the model that loads it, and the tracks the server was asked ahead
+    /// for (`Range: bytes=0-0`), by number.
+    func fiftyTracks(seconds: Int = 1) async throws -> (origin: Host, other: Host, keys: MemoryKeys, book: LibraryItemDetail) {
+        let body = seconds == 1 ? try HeaderRedirectMeasureTests.tone() : try Data(contentsOf: try TickWorkTests().tone(seconds: Double(seconds)))
+        let origin = try Host(body: body, contentType: "audio/x-caf")
+        let other = try Host(body: body, contentType: "audio/x-caf")
+        try await origin.start()
+        try await other.start()
         let keys = headers(for: origin)
         let tracks = (0..<50).map { index in
-            ABSAudioTrack(index: index, startOffset: Double(index), duration: 1,
+            ABSAudioTrack(index: index, startOffset: Double(index * seconds), duration: Double(seconds),
                           contentUrl: "http://127.0.0.1:\(origin.port)/track-\(index).caf", metadata: nil)
         }
         let book = LibraryItemDetail(
             id: "headers-\(UUID().uuidString)",
-            media: LibraryItemMedia(metadata: nil, duration: 50, chapters: nil, tracks: tracks),
+            media: LibraryItemMedia(metadata: nil, duration: Double(50 * seconds), chapters: nil, tracks: tracks),
             userMediaProgress: nil)
+        return (origin, other, keys, book)
+    }
+
+    static func askedAhead(_ host: Host) -> [Int] {
+        host.recorded.filter { $0.contains("range: bytes=0-0") }.compactMap { head in
+            guard let range = head.range(of: "/track-"), let end = head[range.upperBound...].firstIndex(of: ".") else { return nil }
+            return Int(head[range.upperBound..<end])
+        }.sorted()
+    }
+
+    @Test("ein Titel mit 50 Spuren fragt beim Start nur die Spur, mit der er beginnt, und die naechsten zwei; die Warteschlange haelt sie")
+    func aStartAsksOnlyTheTracksItNeedsSoon() async throws {
+        let (origin, other, keys, book) = try await fiftyTracks()
+        defer { origin.stop(); other.stop() }
         let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: true),
                                     localTracks: { _ in [:] }, isOnline: { true })
         await ServerHeaders.$witness.withValue(keys.keys()) { await model.load(item: book) }
-        func asksAhead() -> Int { origin.recorded.filter { $0.contains("range: bytes=0-0") }.count }
-        #expect(asksAhead() == 1, "the start waited for more than the track it begins with: \(asksAhead())")
+        #expect(Self.askedAhead(origin) == [0], "the start waited for more than the track it begins with: \(Self.askedAhead(origin))")
         #expect(model.player?.items().count == 1, "the queue holds only the planned track at the start")
-        let deadline = Date().addingTimeInterval(15)
-        while (model.player?.items().count ?? 0) < 50, Date() < deadline {
-            try await Task.sleep(for: .milliseconds(100))
+        // Long enough for every ask the start makes to land.
+        try await Task.sleep(for: .seconds(2))
+        #expect(Self.askedAhead(origin) == [0, 1, 2], "the start asked ahead for tracks it does not need soon: \(Self.askedAhead(origin))")
+        #expect(model.player?.items().count == 3, "the queue does not hold the planned tracks: \(model.player?.items().count ?? 0)")
+        model.stop()
+    }
+
+    @Test("nach dem Wechsel auf die naechste Spur wird genau eine Spur mehr gefragt", .needsAudio)
+    func theNextTrackAsksExactlyOneMore() async throws {
+        // A source with a sign-in, not server headers: the tick that notes
+        // the switch runs in a task of its own, outside the test's keychain
+        // seam, and would see a server without headers.
+        let (origin, other, _, book) = try await fiftyTracks(seconds: 3)
+        defer { origin.stop(); other.stop() }
+        let model = PlayerViewModel(provider: HostBoundProvider(host: "127.0.0.1"),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        try await ServerHeaders.$witness.withValue(MemoryKeys().keys()) {
+            await model.load(item: book)
+            try await Task.sleep(for: .seconds(1))
+            try #require(Self.askedAhead(origin) == [0, 1, 2], "the precondition: the start asked the first three: \(Self.askedAhead(origin))")
+            model.player?.volume = 0
+            model.play()
+            // The first track lasts three seconds; the tick notes the second.
+            let deadline = Date().addingTimeInterval(8)
+            while Self.askedAhead(origin).count < 4, Date() < deadline {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            #expect(Self.askedAhead(origin) == [0, 1, 2, 3], "the switch to the second track asked \(Self.askedAhead(origin))")
+            model.stop()
         }
-        #expect(model.player?.items().count == 50, "the tracks did not join the queue as their plans landed")
-        #expect(asksAhead() == 50)
+    }
+
+    @Test("ein Sprung auf Spur 40 fragt Spur 40 und ihre zwei Nachbarn, nicht die Spuren davor")
+    func aJumpAsksItsTrackAndItsNeighbours() async throws {
+        let (origin, other, keys, book) = try await fiftyTracks()
+        defer { origin.stop(); other.stop() }
+        let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: true),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        try await ServerHeaders.$witness.withValue(keys.keys()) {
+            await model.load(item: book)
+            try await Task.sleep(for: .seconds(1))
+            await model.seek(to: 40.5, userInitiated: false)
+            try await Task.sleep(for: .seconds(2))
+            #expect(Self.askedAhead(origin) == [0, 1, 2, 40, 41, 42], "the jump asked \(Self.askedAhead(origin))")
+            let built = (model.player?.currentItem?.asset as? AVURLAsset)?.url.lastPathComponent
+            #expect(built == "track-40.caf", "the jump built \(String(describing: built))")
+            model.stop()
+        }
     }
 
     /// A title of ten tracks with headers: the first five on a host that
@@ -588,7 +648,61 @@ struct StreamPlannerTests {
     /// How many plans landed, counted on the main actor.
     final class Tally { var count = 0 }
 
-    @Test("Planer: eine Anfrage vor dem Start, der Rest danach mit hoechstens vier zugleich, in der gegebenen Reihenfolge")
+    @Test("Planer: das Fenster ist die Spur und die naechsten zwei, nie hinter der letzten")
+    func theWindow() {
+        #expect(StreamPlanner.tracksAhead == 2)
+        #expect(StreamPlanner.window(from: 0, count: 212) == [0, 1, 2])
+        #expect(StreamPlanner.window(from: 40, count: 50) == [40, 41, 42])
+        #expect(StreamPlanner.window(from: 48, count: 50) == [48, 49])
+        #expect(StreamPlanner.window(from: 0, count: 1) == [0])
+        #expect(StreamPlanner.window(from: 50, count: 50) == [])
+        #expect(StreamPlanner.window(from: -1, count: 50) == [])
+    }
+
+    @Test("Planer: zwei Fenster, die sich ueberlappen, fragen jede Adresse einmal")
+    func overlappingWindowsAskEachOnce() async throws {
+        let counter = Counter()
+        let planner = StreamPlanner(limit: 4) { url in
+            await counter.begin(url)
+            try? await Task.sleep(for: .milliseconds(100))
+            await counter.end()
+            return .resolved(url, headers: [:])
+        }
+        let urls = try (0..<6).map { try #require(URL(string: "https://h.example/t\($0)")) }
+        let landed = Tally()
+        planner.planAhead(Array(urls[0...2])) { landed.count += 1 }
+        // The second window comes while the first is on its way.
+        planner.planAhead(Array(urls[1...3])) { landed.count += 1 }
+        let deadline = Date().addingTimeInterval(5)
+        while landed.count < 4, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        try await Task.sleep(for: .milliseconds(200))
+        let order = await counter.order
+        #expect(order.count == 4, "an address was asked twice: \(order.map(\.lastPathComponent))")
+        #expect(Set(order) == Set(urls[0...3]))
+    }
+
+    @Test("Planer: stop() beendet die Fragen im Voraus, kein Plan landet danach und keine Frage beginnt")
+    func stopEndsTheAsksAhead() async throws {
+        let counter = Counter()
+        let planner = StreamPlanner(limit: 2) { url in
+            await counter.begin(url)
+            try? await Task.sleep(for: .milliseconds(300))
+            await counter.end()
+            return .resolved(url, headers: [:])
+        }
+        let urls = try (0..<6).map { try #require(URL(string: "https://h.example/t\($0)")) }
+        let landed = Tally()
+        planner.planAhead(urls) { landed.count += 1 }
+        try await Task.sleep(for: .milliseconds(50))
+        planner.stop()
+        try await Task.sleep(for: .seconds(1))
+        let order = await counter.order
+        #expect(order.count == 2, "asks began after stop: \(order.count)")
+        #expect(landed.count == 0, "a plan landed after stop")
+        #expect(planner.plans.isEmpty)
+    }
+
+    @Test("Planer: im Voraus hoechstens vier zugleich, in der gegebenen Reihenfolge")
     func oneAheadTheRestBounded() async throws {
         let counter = Counter()
         let planner = StreamPlanner(limit: 4) { url in
@@ -601,7 +715,7 @@ struct StreamPlannerTests {
         _ = await planner.plan(urls[0])
         #expect(await counter.order == [urls[0]])
         let landed = Tally()
-        planner.planRest(Array(urls.dropFirst())) { landed.count += 1 }
+        planner.planAhead(Array(urls.dropFirst())) { landed.count += 1 }
         let deadline = Date().addingTimeInterval(10)
         while landed.count < 49, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
         #expect(landed.count == 49)
@@ -701,14 +815,21 @@ struct ServerHeadersFenceTests {
         #expect(player.contains("guard byServer == .plain, !sourceHeaders.isEmpty else { return byServer }\n            return await SignInStream.plan(for: url, sourceHeaders: sourceHeaders, signIn: signIn)"))
         let ahead = try #require(player.range(of: "_ = await planner.plan(first)", range: gate.upperBound..<player.endIndex))
         let built = try #require(player.range(of: "guard buildQueue(startingAtTrackIndex: startIndex", range: ahead.upperBound..<player.endIndex))
-        let rest = try #require(player.range(of: "planner.planRest(rest)", range: built.upperBound..<player.endIndex))
+        // The tracks after the first are asked by a window, never all at once:
+        // the queue asks it when it is built and when playback reaches the
+        // next track, and no other place asks ahead.
+        #expect(player.contains("currentTrackIndex = startIndex\n        planWindow(from: startIndex)"),
+                "the built queue does not ask the tracks it needs soon")
+        #expect(player.contains("self.currentTrackIndex = idx\n                    self.planWindow(from: idx)"),
+                "playback reaching a track does not move the window")
+        #expect(player.components(separatedBy: ".planAhead(").count - 1 == 1, "the tracks are asked ahead in another place")
+        #expect(player.contains("let urls = StreamPlanner.window(from: index, count: tracks.count)"))
         // One track ahead, on one of two ways: a server with headers is
         // waited for, a sign-in alone for a short time only.
         #expect(player[gate.lowerBound..<built.lowerBound].components(separatedBy: "await planner.plan(").count - 1 == 2,
                 "the start asks more than the one track ahead")
         #expect(player.contains("if ServerHeaders.needsPlan(first) {\n                _ = await planner.plan(first)\n            } else if await planner.plan(first, within: Self.startPatience) == .plain {"),
                 "a start with a sign-in alone waits for its plan without a limit")
-        #expect(rest.lowerBound > built.upperBound)
         #expect(player.contains("if let url = resolveTrackURL(index: index), awaitsPlan(url) {\n                queueAppendIndex = index\n                break"),
                 "a queue stops at the first track without its plan")
     }
