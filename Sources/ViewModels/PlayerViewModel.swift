@@ -641,15 +641,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         streamPlanner = planner
         if let first = resolveTrackURL(index: startIndex), needsPlan(first) {
-            // A server with headers is waited for: without its plan the
-            // stream would go without them. A sign-in alone waits a short
-            // time and then takes the stream at its address, as a host that
-            // cannot be asked does.
-            if ServerHeaders.needsPlan(first) {
-                _ = await planner.plan(first)
-            } else if await planner.plan(first, within: Self.startPatience) == .plain {
-                Logger.player.notice("PLAY starts at the track's address, its end was not known in time or could not be asked: \(item.id, privacy: .private(mask: .hash))")
-            }
+            await Self.awaitPlan(first, of: planner, for: "the start")
             // A start that came while the stream was asked owns the player,
             // and a title left meanwhile says nothing.
             guard self.item?.id == item.id, !isStopped else {
@@ -840,11 +832,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
 
-    /// How long a start waits for the end of a stream's redirects before
-    /// it takes the stream at its address: the time the check before a
-    /// play waits for the server (`playWithServerCheck`).
-    nonisolated static let startPatience: Double = 1.5
-
     /// Whether the stream at this address is planned before it is built:
     /// its server has headers, or its source attaches a sign-in to it. Both
     /// would travel with a stream asset to wherever the address redirects.
@@ -854,11 +841,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url)?.isEmpty == false
     }
 
-    /// The queue ran out at the track at `index`, which waits for its plan.
-    /// It is waited for as a start waits: a server with headers fully, a
-    /// sign-in alone `startPatience` before the stream is taken at its
-    /// address. A plan that says the track cannot be asked now stops
-    /// playback with a hint, so playback never stands silent at "playing".
+    /// The queue ran out at the track at `index`, which waits for its plan
+    /// as a start waits (`awaitPlan`). A plan that says the track cannot be
+    /// asked now stops playback with a hint, so playback never stands
+    /// silent at "playing".
     private func awaitPlanOfDryQueue(at index: Int) {
         guard let planner = streamPlanner, let url = resolveTrackURL(index: index) else { return }
         planWindow(from: index)
@@ -869,16 +855,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Waits for the plan of a track that a jump, a rebuild or a queue that
-    /// ran out needs now, as a start waits: a server with headers fully
-    /// (without its plan the stream would go without them), a sign-in alone
-    /// at most `startPatience`, after which the stream is taken at its
-    /// address, as a host that cannot be asked gives it.
+    /// The one wait for the plan of a track that a start, a jump, a rebuild
+    /// or a queue that ran out needs now: until the ask answers, bounded
+    /// only by the time limit of its request. A stream with server headers
+    /// or a sign-in is never built at an address whose end was not asked;
+    /// a stream built before the answer would carry them along a redirect.
+    /// Only an ask that fails leaves the stream at its address (`.plain`).
     private static func awaitPlan(_ url: URL, of planner: StreamPlanner, for need: String) async {
-        if ServerHeaders.needsPlan(url) {
-            _ = await planner.plan(url)
-        } else if await planner.plan(url, within: startPatience) == .plain {
-            Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end was not known in time or could not be asked")
+        if await planner.plan(url) == .plain {
+            Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end could not be asked or lies at the address")
         }
     }
 
@@ -924,15 +909,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let end = QueueAppend.end(trackCount: tracks.count, heldAt: heldAhead?.index, failureNoted: loadFailureNoted)
         guard let player, queueAppendIndex < end else { return }
         let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
+        // The track a queue that ran out waits for: where playback stands.
+        let waitedFor = queueAppendIndex
         var last: AVPlayerItem?
         while queueAppendIndex < end {
             let index = queueAppendIndex
             if let url = resolveTrackURL(index: index), needsPlan(url) {
                 guard let plan = streamPlanner?.plans[url] else { break }
                 if plan == .waiting {
-                    // Only a queue that ran out stops here; a track appended
-                    // in this pass plays first, and its end asks again.
-                    if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: index) }
+                    // Only a queue that ran out and gained nothing in this
+                    // pass stops here, at the track it waited for, also when
+                    // tracks between could not be built; a track appended in
+                    // this pass plays first, and its end asks again.
+                    if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: waitedFor) }
                     break
                 }
             }

@@ -8,9 +8,10 @@ import Foundation
 /// Asks how the streams of a title's tracks are asked, for a server with
 /// headers (`ServerHeaders.stream`) and for a source that attaches a
 /// sign-in (`SignInStream.plan`): the track a start begins with before the
-/// start, and then only the tracks playback will need soon (`window`), at
-/// most `limit` at a time and in the order they are handed in. Each plan is
-/// kept for the title: every load of a title makes a planner of its own.
+/// start, and then only the tracks playback will need soon (`window`). The
+/// asks ahead run at most `limit` at a time, in the order they are handed
+/// in; a plan wanted now is asked at once. Each plan is kept for the title:
+/// every load of a title makes a planner of its own.
 @MainActor
 final class StreamPlanner {
     typealias Ask = @Sendable (URL) async -> ServerHeaders.Stream
@@ -106,29 +107,6 @@ final class StreamPlanner {
         } else {
             turns.removeFirst().go.resume()
         }
-    }
-
-    /// The plan of one address, waited for at most `seconds`. A plan that
-    /// has not landed by then is held as `.plain`, the stream at its own
-    /// address, until the question that is still on its way answers and
-    /// takes its place. For a start, which must not wait for a host that
-    /// is connected and does not answer.
-    func plan(_ url: URL, within seconds: Double) async -> ServerHeaders.Stream {
-        if let held = plans[url] { return held }
-        // The first of the two answers ends the wait; nothing waits for the
-        // other, so a question that hangs holds nobody.
-        let (answers, continuation) = AsyncStream<ServerHeaders.Stream?>.makeStream()
-        Task { continuation.yield(await self.plan(url)) }
-        Task {
-            try? await Task.sleep(for: .seconds(seconds))
-            continuation.yield(nil)
-        }
-        var first = answers.makeAsyncIterator()
-        let answer = await first.next() ?? nil
-        continuation.finish()
-        if let answer { return answer }
-        if plans[url] == nil { plans[url] = .plain }
-        return plans[url] ?? .plain
     }
 
     /// Lets the plan of one address go, so the next `plan` asks it anew: a

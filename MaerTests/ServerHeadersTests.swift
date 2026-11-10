@@ -853,7 +853,7 @@ struct ServerHeadersFenceTests {
         #expect(player.contains("await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: address) }"))
         #expect(player.contains("guard let sourceHeaders = await signIn(url) else { return .waiting }"))
         #expect(player.contains("guard byServer == .plain, !sourceHeaders.isEmpty else { return byServer }\n            return await SignInStream.plan(for: url, sourceHeaders: sourceHeaders, signIn: signIn)"))
-        let ahead = try #require(player.range(of: "_ = await planner.plan(first)", range: gate.upperBound..<player.endIndex))
+        let ahead = try #require(player.range(of: "await Self.awaitPlan(first, of: planner, for: \"the start\")", range: gate.upperBound..<player.endIndex))
         let built = try #require(player.range(of: "guard buildQueue(startingAtTrackIndex: startIndex", range: ahead.upperBound..<player.endIndex))
         // The tracks after the first are asked by a window, never all at once:
         // the queue asks it when it is built and when playback reaches the
@@ -864,12 +864,24 @@ struct ServerHeadersFenceTests {
                 "playback reaching a track does not move the window")
         #expect(player.components(separatedBy: ".planAhead(").count - 1 == 1, "the tracks are asked ahead in another place")
         #expect(player.contains("let urls = StreamPlanner.window(from: index, count: tracks.count)"))
-        // One track ahead, on one of two ways: a server with headers is
-        // waited for, a sign-in alone for a short time only.
-        #expect(player[gate.lowerBound..<built.lowerBound].components(separatedBy: "await planner.plan(").count - 1 == 2,
+        // One track ahead, waited for at the one place.
+        #expect(player[gate.lowerBound..<built.lowerBound].components(separatedBy: "await Self.awaitPlan(").count - 1 == 1,
                 "the start asks more than the one track ahead")
-        #expect(player.contains("if ServerHeaders.needsPlan(first) {\n                _ = await planner.plan(first)\n            } else if await planner.plan(first, within: Self.startPatience) == .plain {"),
-                "a start with a sign-in alone waits for its plan without a limit")
+        // Every plan a stream needs now (a start, a jump, a rebuild, a queue
+        // that ran out) is waited for at one place, until the ask answers:
+        // no deadline after which a stream with a sign-in is built at an
+        // address whose end was not asked.
+        let wait = try #require(functionBody(of: "private static func awaitPlan(", in: player))
+        #expect(wait.contains("if await planner.plan(url) == .plain {"), "the one wait does not wait for the ask")
+        #expect(player.components(separatedBy: "planner.plan(").count - 1 == 1, "a plan is waited for past the one place")
+        #expect(!player.contains("within:"), "a wait for a plan has a deadline")
+        for (way, need) in [("func load(item: LibraryItemDetail", "the start"), ("func seek(to time: Double", "a jump"),
+                            ("private func rebuildAfterLoadFailure(", "a rebuild"), ("private func awaitPlanOfDryQueue(", "the next track")] {
+            let body = try #require(functionBody(of: way, in: player), "\(way) is gone")
+            #expect(body.contains("await Self.awaitPlan(") && body.contains("for: \"\(need)\")"), "\(way) does not wait at the one place")
+        }
+        let planner = try Self.code("Sources/ViewModels/StreamPlanner.swift")
+        #expect(!planner.contains("within"), "the planner has a deadline for a plan")
         #expect(player.contains("if let url = resolveTrackURL(index: index), awaitsPlan(url) {\n                queueAppendIndex = index\n                break"),
                 "a queue stops at the first track without its plan")
     }

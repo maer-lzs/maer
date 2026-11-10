@@ -196,24 +196,33 @@ struct SignInStreamTests {
         #expect(atFresh.contains { $0.contains("authorization:") } == false, "the new end saw the sign-in")
     }
 
-    @Test("ein Wirt, der die Vorab-Anfrage zehn Sekunden haelt, haelt den Start nicht auf: nach der kurzen Frist geht der Strom den Weg an seiner Adresse")
-    func aHostThatHoldsTheAskAheadDoesNotHoldTheStart() async throws {
+    @Test("ein Wirt, der die Frage nach dem Ende zwei Sekunden haelt, haelt den Start, und der Strom traegt am fremden Ende keine Anmeldung",
+          .needsAudio)
+    func aHostThatHoldsTheAskHoldsTheStart() async throws {
         let body = try HeaderRedirectMeasureTests.tone()
-        let holding = try Host(body: body, contentType: "audio/x-caf", delay: 10)
+        let holding = try Host(body: body, contentType: "audio/x-caf", delay: 2)
+        let other = try Host(body: body, contentType: "audio/x-caf")
         try await holding.start()
-        defer { holding.stop() }
+        try await other.start()
+        defer { holding.stop(); other.stop() }
+        holding.redirect(to: try #require(URL(string: "http://localhost:\(other.port)/held-end.caf")))
         let model = PlayerViewModel(provider: ServerHeadersWayTests.HostBoundProvider(host: "127.0.0.1"),
                                     localTracks: { _ in [:] }, isOnline: { true })
         let began = Date()
         await ServerHeaders.$witness.withValue(ServerHeadersWayTests.MemoryKeys().keys()) {
-            await model.load(item: book("http://127.0.0.1:\(holding.port)/held.caf", seconds: 1))
+            await model.load(item: book("http://127.0.0.1:\(holding.port)/start-held.caf", seconds: 1))
         }
         let waited = Date().timeIntervalSince(began)
-        #expect(waited < 4, "the start waited \(waited) s for the ask ahead")
-        #expect(waited >= 1, "the start did not wait for the ask ahead at all: \(waited) s")
-        let built = try #require(model.player?.currentItem?.asset as? AVURLAsset, "the load built no stream after the short wait")
-        #expect(built.url.lastPathComponent == "held.caf", "the stream after the short wait is not the one at the track's address")
+        #expect(waited >= 2, "the start did not wait for the ask: \(waited) s")
+        let built = try #require(model.player?.currentItem?.asset as? AVURLAsset, "the load built no stream")
+        #expect(built.url.lastPathComponent == "held-end.caf", "the stream was built at an address whose end was not asked")
+        model.player?.volume = 0
+        model.play()
+        await waitFor { other.recorded.contains { $0.contains("/held-end.caf") && !$0.contains("range: bytes=0-0") } }
         model.stop()
+        let streamed = other.recorded.filter { $0.contains("/held-end.caf") && !$0.contains("range: bytes=0-0") }
+        try #require(!streamed.isEmpty, "the precondition: the stream reached the end")
+        #expect(other.recorded.contains { $0.contains("authorization:") } == false, "the foreign end saw the sign-in")
     }
 
     @Test("ein Laden, das auf den Plan seiner ersten Spur wartet, meldet nach einem Stopp keinen Fehler")

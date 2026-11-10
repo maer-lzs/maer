@@ -9,7 +9,8 @@ ends before it starts, and gives the sign-in only to the server it
 belongs to. Before, the player sent the sign-in along to the server the
 stream ended at. Starting such a title takes one short request more,
 and so does each next file of a book as playback comes near it;
-downloads were not affected.
+downloads were not affected. When that request fails, the player
+plays from the known address as before.
 
 **A book that cannot go on says so.** When play cannot build a book
 again after one of its files failed to load, or the next file of a
