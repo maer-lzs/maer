@@ -82,6 +82,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published private(set) var waitsOnTheStream = false
 
     @Published var isPlaying = false
+    /// Set by `stop()` and never taken back: a stopped model stays stopped.
+    /// A task that comes back after an await (the check before play, a
+    /// jump) finds it and neither starts a player nor claims nor writes.
+    private(set) var isStopped = false
     /// Absolute position in the WHOLE book, in seconds. Regardless of whether
     /// the book consists of a single M4B file or several tracks. Not
     /// published by the model: it changes every second, and every surface
@@ -803,7 +807,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
         // A queue that is not built waited for no sign-in either.
         queueWaitedForSignIn = false
-        guard startIndex >= 0, startIndex < tracks.count else { return false }
+        guard !isStopped, startIndex >= 0, startIndex < tracks.count else { return false }
         // A new queue holds new items: a noted load failure is healed by it.
         loadFailureNoted = false
 
@@ -999,6 +1003,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     func play(caller: String = #function) {
+        guard !isStopped else {
+            Logger.player.notice("PLAYER play on a stopped model, nothing starts from=\(caller, privacy: .public)")
+            return
+        }
         notePlayback("play", from: caller)
         playbackStarts.send()
         // Playback is an EVENT. From here on the sync path may
@@ -1190,7 +1198,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   (scrubber, chapter, skip, lock screen). Such jumps are written to the
     ///   server immediately and without confirmation. Also backwards.
     func seek(to time: Double, userInitiated: Bool = true) async {
-        guard !tracks.isEmpty else { return }
+        guard !tracks.isEmpty, !isStopped else { return }
         let clamped = max(0, min(time, max(duration, 0)))
         let targetIndex = trackIndex(for: clamped)
         let offsetWithinTrack = max(0, clamped - trackAbsoluteStart(targetIndex))
@@ -1786,6 +1794,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                              duration: duration, epoch: standEpoch)
             pauseRecordPending = true
         }
+        isStopped = true
+        isPlaying = false
         Task { await syncProgress(.stop) }
         player?.pause()
         if let token = timeObserverToken {

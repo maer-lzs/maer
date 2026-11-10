@@ -31,6 +31,10 @@ the beginning, tapping a chapter or a song of a title that cannot open
 (offline and not downloaded, for example) leaves the playing title where
 it is. Before, the jump moved the playing title and saved that position.
 
+**A title you left stays stopped.** Pressing play and opening another
+title right after it could start the first title again beside the new
+one, without a player bar. A title that was stopped now stays stopped.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
