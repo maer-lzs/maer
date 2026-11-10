@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.6.3 (Build 62)
 
 **A sign-in no longer follows a stream to another server.** When a
 private feed or your Audiobookshelf server passes a stream on to another
