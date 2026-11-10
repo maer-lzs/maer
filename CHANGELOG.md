@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.6.2 (Build 61)
 
 **CarPlay is new, for every medium.** Home comes first and carries the
 rows of Home in the app, each as a row of covers: Continue Listening,
