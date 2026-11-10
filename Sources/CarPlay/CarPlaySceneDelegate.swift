@@ -154,7 +154,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         } else if tabBar == nil {
             let bar = CPTabBarTemplate(templates: templates)
             tabBar = bar
-            interfaceController?.setRootTemplate(bar, animated: true, completion: nil)
+            interfaceController?.setRootTemplate(bar, animated: true, completion: Self.settled("root"))
         }
         shownTabs = layout.tabs
     }
@@ -875,8 +875,27 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return row
     }
 
+    /// Lays a list on the stack while the stack has room. A template the
+    /// rule or the system refuses is not shown and leaves a log line.
     private func push(_ template: CPTemplate) {
-        interfaceController?.pushTemplate(template, animated: true, completion: nil)
+        guard let interfaceController else { return }
+        let depth = interfaceController.templates.count
+        guard CarPlayLayout.mayPush(depth: depth) else {
+            Logger.player.notice("CARPLAY push dropped, the stack is full depth=\(depth, privacy: .public)")
+            return
+        }
+        interfaceController.pushTemplate(template, animated: true, completion: Self.settled("push"))
+    }
+
+    /// The closure every change of the stack ends in. Without one the
+    /// system throws when it refuses the change; with it a refusal is a
+    /// log line.
+    private nonisolated static func settled(_ what: String) -> @Sendable (Bool, (any Error)?) -> Void {
+        { done, error in
+            guard !done || error != nil else { return }
+            let reason = (error as NSError?).map { "\($0.domain) \($0.code)" } ?? "refused"
+            Logger.player.error("CARPLAY \(what, privacy: .public) not done reason=\(reason, privacy: .public)")
+        }
     }
 
     /// Playable row: tap starts the title via the coordinator.
@@ -983,11 +1002,23 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     func nowPlayingTemplateAlbumArtistButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {}
 
+    /// Shows the player. It lies in the stack at most once: a tap in the
+    /// list the player opened goes back to it.
     private func showNowPlaying() {
         guard let interfaceController else { return }
-        // Don't push twice if Now Playing is already on top.
-        if interfaceController.topTemplate != nowPlaying {
-            interfaceController.pushTemplate(nowPlaying, animated: true, completion: nil)
+        let stack = interfaceController.templates
+        let move = CarPlayLayout.playerMove(playerOnTop: interfaceController.topTemplate === nowPlaying,
+                                            playerIndex: stack.firstIndex { $0 === nowPlaying },
+                                            depth: stack.count)
+        switch move {
+        case .stay:
+            break
+        case .back:
+            interfaceController.pop(to: nowPlaying, animated: true, completion: Self.settled("back to player"))
+        case .push:
+            interfaceController.pushTemplate(nowPlaying, animated: true, completion: Self.settled("player"))
+        case .full:
+            Logger.player.notice("CARPLAY player not shown, the stack is full depth=\(stack.count, privacy: .public)")
         }
     }
 }

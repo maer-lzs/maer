@@ -35,6 +35,36 @@ nonisolated enum CarPlayLayout {
     /// content. A tap on the content plays.
     static let levels = 2
 
+    /// How many templates stand on each other at most, the tab bar
+    /// included: the tab bar, the `levels`, the player and the list the
+    /// player opens. The system refuses a template beyond its own limit.
+    static let stackLimit = 1 + levels + 2
+
+    /// Whether one more template may be laid on a stack of `depth`.
+    static func mayPush(depth: Int) -> Bool { depth < stackLimit }
+
+    /// What showing the player does to the stack.
+    enum PlayerMove: Equatable {
+        /// The player is on top: nothing moves.
+        case stay
+        /// The player lies under something: the car goes back to it.
+        case back
+        /// The player is not in the stack and there is room: it is laid on.
+        case push
+        /// The player is not in the stack and the stack is full.
+        case full
+    }
+
+    /// The player lies in the stack at most once: on top it stays, under
+    /// another template the car goes back to it, and it is laid on only
+    /// when it is not there and the stack has room. `playerIndex` is its
+    /// place in the stack from the bottom, nil when it is not in it.
+    static func playerMove(playerOnTop: Bool, playerIndex: Int?, depth: Int) -> PlayerMove {
+        if playerOnTop { return .stay }
+        if let playerIndex { return playerIndex == depth - 1 ? .stay : .back }
+        return mayPush(depth: depth) ? .push : .full
+    }
+
     /// Whether a cover in a row of covers carries its name: the system
     /// draws one from iOS 26 on. A list is known by its name alone, so
     /// without it lists stay rows of text.
