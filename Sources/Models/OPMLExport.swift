@@ -10,8 +10,8 @@ import Foundation
 nonisolated enum OPMLExport {
     /// Premium/token feeds are EXCLUDED from the export by default. A
     /// shared OPML must never give the access away. Detection: the caller's
-    /// premium marking PLUS the defensive
-    /// secret-parameter net (token/freebie/auth/key/secret) as a second
+    /// premium marking PLUS the defensive net of the address itself (a
+    /// secret parameter, a user or password before the host) as a second
     /// layer. Pure; the count feeds the visible hint.
     static func partition(shows: [(title: String, feedURL: String)],
                           isPremium: (String) -> Bool) -> (safe: [(title: String, feedURL: String)],
@@ -19,7 +19,7 @@ nonisolated enum OPMLExport {
         var safe: [(title: String, feedURL: String)] = []
         var excluded: [(title: String, feedURL: String)] = []
         for show in shows {
-            if isPremium(show.feedURL) || PodcastFeedAddress.isTokenFeedURL(show.feedURL) {
+            if isPremium(show.feedURL) || PodcastFeedAddress.carriesAccess(show.feedURL) {
                 excluded.append(show)
             } else {
                 safe.append(show)

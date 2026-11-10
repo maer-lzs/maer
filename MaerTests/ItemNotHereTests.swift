@@ -122,7 +122,10 @@ struct ItemNotHereTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))
         let store = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
-        #expect(page.contains("if AppStorageKeys.podcastIndexActive, let show = liveShow {"), "the button asks the load's condition")
+        #expect(page.contains("if let show = liveShow, PodcastSubscriptions.mayAskDirectory(for: show.feedURL) {"),
+                "the button asks the load's condition")
+        #expect(store.contains("AppStorageKeys.podcastIndexActive && !staysHome(feedURL, defaults: defaults)"),
+                "the button's rule no longer asks whether the directory is on")
         #expect(!page.contains("podcastIndexConfigured"), "a key alone is not permission to ask")
         #expect(store.contains("guard AppStorageKeys.podcastIndexActive else {"))
     }

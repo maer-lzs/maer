@@ -664,6 +664,23 @@ final class PodcastSubscriptions: ObservableObject {
         premiumAnswer(feedURL, defaults: defaults) ?? false
     }
 
+    /// Whether a feed address stays with the device and its own source:
+    /// it carries access itself (a secret in its query, a user or password
+    /// before its host), or the feed is premium, or its stored sign-in
+    /// cannot be read now. Such an address goes to no directory: the way
+    /// to the directory asks here before it sends.
+    nonisolated static func staysHome(_ feedURL: String,
+                                      defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+        PodcastFeedAddress.carriesAccess(feedURL) || premiumAnswer(feedURL, defaults: defaults) != false
+    }
+
+    /// Whether the directory may be asked for the older episodes of this
+    /// feed: it is on in the sources and the address may leave the device.
+    nonisolated static func mayAskDirectory(for feedURL: String,
+                                            defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+        AppStorageKeys.podcastIndexActive && !staysHome(feedURL, defaults: defaults)
+    }
+
     /// The premium rule with its third answer: nil while no other sign
     /// says paid and the feed's stored sign-in cannot be read now. A
     /// surface reads nil as free (the next pass after the unlock shows it
@@ -1504,7 +1521,7 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.library.notice("PODCAST full history not asked reason=notFollowed show=\(showId, privacy: .private(mask: .hash))")
             return nil
         }
-        guard let added = await Self.historyAdditions(of: show, browsed: false) else { return nil }
+        guard let added = await Self.historyAdditions(of: show, browsed: false, defaults: defaults) else { return nil }
         guard !added.isEmpty else { return 0 }
         // Looked up again: the store may have changed while the directory answered.
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
@@ -1520,12 +1537,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// with the directory's episodes merged in, for the page to hold during
     /// the visit, and how many came. Nothing is stored. Nil under the same
     /// conditions as for a followed show: the directory is off, or it failed.
-    static func browsedHistory(of show: PodcastShow) async -> (show: PodcastShow, added: Int)? {
+    static func browsedHistory(of show: PodcastShow,
+                               defaults: UserDefaults = AppStorageKeys.store) async -> (show: PodcastShow, added: Int)? {
         guard AppStorageKeys.podcastIndexActive else {
             Logger.library.notice("PODCAST full history not asked reason=directoryOff browsed show=\(show.id, privacy: .private(mask: .hash))")
             return nil
         }
-        guard let added = await historyAdditions(of: show, browsed: true) else { return nil }
+        guard let added = await historyAdditions(of: show, browsed: true, defaults: defaults) else { return nil }
         var grown = show
         grown.episodes = (show.episodes + added).sorted { $0.pubDate > $1.pubDate }
         return (grown, added.count)
@@ -1538,13 +1556,19 @@ final class PodcastSubscriptions: ObservableObject {
     /// dedup and share the progress key. `ask` is the directory; a witness
     /// answers it without the network.
     static func historyAdditions(
-        of show: PodcastShow, browsed: Bool,
+        of show: PodcastShow, browsed: Bool, defaults: UserDefaults = AppStorageKeys.store,
         ask: (String) async throws -> [PodcastIndexEpisode] = { feedURL in
             try await PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
                                             secret: AppStorageKeys.podcastIndexEffectiveSecret)
                 .episodes(feedURL: feedURL)
         }
     ) async -> [PodcastEpisode]? {
+        // The directory is a third party: an address that carries access
+        // or belongs to a private feed is never sent to it.
+        guard !staysHome(show.feedURL, defaults: defaults) else {
+            Logger.library.notice("PODCAST full history not asked reason=privateFeed\(browsed ? " browsed" : "", privacy: .public) show=\(show.id, privacy: .private(mask: .hash))")
+            return nil
+        }
         let indexEpisodes: [PodcastIndexEpisode]
         do {
             indexEpisodes = try await ask(show.feedURL)
