@@ -26,6 +26,11 @@ source of whichever download had started last, so a paused book could be
 continued against the music server. When its source is gone, the download
 says so instead of staying paused.
 
+**A jump no longer hits the title that is playing.** Starting a book from
+the beginning, tapping a chapter or a song of a title that cannot open
+(offline and not downloaded, for example) leaves the playing title where
+it is. Before, the jump moved the playing title and saved that position.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.

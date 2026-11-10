@@ -1201,9 +1201,8 @@ struct ArchiveSeriesPage: View {
                     // playlist. A series part stays a section of its work.
                     await playerCoordinator.open(itemId: CatalogSongID.make(album: itemId, index: index))
                 } else {
-                    await playerCoordinator.open(item: LibraryItem(
-                        id: itemId, media: detail?.media, addedAt: nil))
-                    await playerCoordinator.viewModel?.seek(to: track.startOffset ?? 0)
+                    await playerCoordinator.open(item: LibraryItem(id: itemId, media: detail?.media, addedAt: nil),
+                                                 thenSeekTo: track.startOffset ?? 0)
                 }
             }
         } label: {

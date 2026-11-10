@@ -404,6 +404,26 @@ final class PlayerCoordinator: ObservableObject {
         await open(item: item)
     }
 
+    /// Opens a title and jumps inside it. The jump belongs to the open: it
+    /// hits only the title that was opened. An open that is refused,
+    /// overtaken or folded into one already on its way leaves another title
+    /// as the session's; that title is neither moved nor written.
+    func open(item: LibraryItem, thenSeekTo position: Double) async {
+        await open(item: item)
+        guard Self.jumpStands(opened: item.id, active: activeItem?.id, loaded: viewModel?.item?.id),
+              let model = viewModel else {
+            Logger.player.notice("OPEN jump dropped, the open does not stand: item=\(item.id, privacy: .private(mask: .hash))")
+            return
+        }
+        await model.seek(to: position)
+    }
+
+    /// Whether a jump that belongs to an open may happen: the opened title
+    /// is the session's and the one its player holds.
+    nonisolated static func jumpStands(opened: String, active: String?, loaded: String?) -> Bool {
+        active == opened && loaded == opened
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`

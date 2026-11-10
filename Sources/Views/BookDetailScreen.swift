@@ -609,8 +609,7 @@ struct BookDetailScreen: View {
             await vm.seek(to: 0)
             vm.play()
         } else {
-            await coordinator.open(item: entry.item)
-            await coordinator.viewModel?.seek(to: 0)
+            await coordinator.open(item: entry.item, thenSeekTo: 0)
         }
     }
 
@@ -1102,8 +1101,7 @@ private struct DetailChapterList: View {
             vm.jumpToChapter(chapter)
             vm.play()
         } else {
-            await coordinator.open(item: entry.item)
-            await coordinator.viewModel?.seek(to: chapter.start)
+            await coordinator.open(item: entry.item, thenSeekTo: chapter.start)
         }
     }
 

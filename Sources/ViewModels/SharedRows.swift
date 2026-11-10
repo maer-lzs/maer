@@ -140,7 +140,6 @@ enum SharedRows {
     /// Plays an album or a server list from the song at `start` (its
     /// chapter offset).
     static func playAlbum(_ item: LibraryItem, fromTrackAt start: Double, on coordinator: PlayerCoordinator) async {
-        await coordinator.open(item: item)
-        await coordinator.viewModel?.seek(to: start)
+        await coordinator.open(item: item, thenSeekTo: start)
     }
 }

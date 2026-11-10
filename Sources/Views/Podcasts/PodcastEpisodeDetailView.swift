@@ -233,8 +233,7 @@ struct PodcastEpisodeDetailView: View {
                 ForEach(chapters) { chapter in
                     Button {
                         Task {
-                            await playerCoordinator.open(item: item)
-                            await playerCoordinator.viewModel?.seek(to: chapter.start)
+                            await playerCoordinator.open(item: item, thenSeekTo: chapter.start)
                         }
                     } label: {
                         HStack(spacing: 12) {
