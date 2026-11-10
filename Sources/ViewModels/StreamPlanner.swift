@@ -5,10 +5,12 @@
 
 import Foundation
 
-/// Asks how the streams of a title's tracks are asked (`ServerHeaders.stream`)
-/// on a server with headers: the track a start begins with before the
+/// Asks how the streams of a title's tracks are asked, for a server with
+/// headers (`ServerHeaders.stream`) and for a source that attaches a
+/// sign-in (`SignInStream.plan`): the track a start begins with before the
 /// start, every other one after it, at most `limit` at a time and in the
-/// order they are handed in. Each plan is kept for the title.
+/// order they are handed in. Each plan is kept for the title: every load
+/// of a title makes a planner of its own.
 @MainActor
 final class StreamPlanner {
     typealias Ask = @Sendable (URL) async -> ServerHeaders.Stream
@@ -30,6 +32,11 @@ final class StreamPlanner {
         plans[url] = asked
         return asked
     }
+
+    /// Lets the plan of one address go, so the next `plan` asks it anew: a
+    /// stream built from it failed to load, and the end it names may have
+    /// lapsed.
+    func forget(_ url: URL) { plans[url] = nil }
 
     /// Asks the plans of these addresses after the start, at most `limit`
     /// at a time; `landed` runs after each one is kept.
@@ -59,7 +66,8 @@ final class StreamPlanner {
         }
     }
 
-    /// Ends the asking of the rest; the plans held stay.
+    /// Ends the asking of the rest; the plans held stay with this planner,
+    /// and the next title's planner starts without them.
     func stop() {
         rest?.cancel()
         rest = nil

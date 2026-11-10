@@ -346,6 +346,7 @@ Sources/
 │   ├── JellyfinClient.swift        Jellyfin-API (Authorization-Kopf, ApiKey an Medien-Links)
 │   ├── PinchflatClient.swift       Pinchflat: die Kanalliste als OPML-Spiegel, die Feeds laufen über RSS
 │   ├── ServerHeaders.swift         Die eigenen Header eines Servers im iCloud-Schlüsselbund, gesetzt an den vier Wegen nach außen
+│   ├── SignInStream.swift          Ein Stream mit Anmeldung wird am Ende seiner Umleitungen gefragt
 │   ├── CoverArtArchive.swift       Hochaufgelöste Album-Cover über die MusicBrainz-ID (gedrosselt)
 │   ├── RadioBrowserClient.swift    Client für den Radio-Browser-Katalog (Rückfall über Spiegelserver)
 │   ├── SyncHistoryStore.swift      Sync-Verlauf (Zeilen) + „zuletzt geprüft“ je Dienst
@@ -368,7 +369,7 @@ Sources/
 │   │                               Offline-Cache als Zeilen
 │   ├── PlayerCoordinator.swift     Hält die aktive Sitzung über die Navigation am Leben,
 │   │                               offline-bewusst, Grundlage der Mini-Leiste
-│   ├── StreamPlanner.swift         Wo die Streams eines Servers mit Headern enden: die erste
+│   ├── StreamPlanner.swift         Wo Streams mit Server-Headern oder einer Anmeldung enden: die erste
 │   │                               Spur vor dem Start, der Rest danach
 │   ├── PlayerViewModel.swift       AVQueuePlayer, Mehrspur-Warteschlange, Spulen/Springen, Kapitel
 │   ├── PlayerViewModel+Sync.swift  Sync-Vorgehen: Zeitgeber, Schutz vor Wiedereintritt, Konflikte, Abgleich

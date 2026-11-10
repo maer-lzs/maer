@@ -624,23 +624,29 @@ final class PlayerViewModel: NSObject, ObservableObject {
         streamPlanner = nil
         // The source's sign-in is asked per address, as the queue asks it. A
         // sign-in that cannot be read now makes the plan wait: the track is
-        // then not asked, like every stream of the source.
-        if ServerHeaders.anyServer() {
-            let provider = self.provider
-            let itemId = item.id
-            let planner = StreamPlanner { url in
-                let asked = await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: url) }
-                guard let sourceHeaders = asked else { return .waiting }
-                return await ServerHeaders.stream(for: url, sourceHeaders: sourceHeaders)
+        // then not asked, like every stream of the source. A server with
+        // headers plans the stream first (`ServerHeaders.stream`); a stream
+        // it leaves plain and whose source attaches a sign-in is planned by
+        // the end of its redirects (`SignInStream.plan`).
+        let provider = self.provider
+        let itemId = item.id
+        let planner = StreamPlanner { url in
+            let signIn: @Sendable (URL) async -> [String: String]? = { address in
+                await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: address) }
             }
-            streamPlanner = planner
-            if let first = resolveTrackURL(index: startIndex), ServerHeaders.needsPlan(first) {
-                _ = await planner.plan(first)
-                // A start that came while the stream was asked owns the player.
-                guard self.item?.id == item.id else {
-                    Logger.player.notice("PLAY superseded while its stream was asked: \(item.id, privacy: .public)")
-                    return
-                }
+            guard let sourceHeaders = await signIn(url) else { return .waiting }
+            let byServer = await ServerHeaders.stream(for: url, sourceHeaders: sourceHeaders)
+            guard byServer == .plain, !sourceHeaders.isEmpty else { return byServer }
+            return await SignInStream.plan(for: url, sourceHeaders: sourceHeaders, signIn: signIn)
+        }
+        streamPlanner = planner
+        if let first = resolveTrackURL(index: startIndex), needsPlan(first) {
+            _ = await planner.plan(first)
+            // A start that came while the stream was asked owns the player,
+            // and a title left meanwhile says nothing.
+            guard self.item?.id == item.id, !isStopped else {
+                Logger.player.notice("PLAY superseded while its stream was asked: \(item.id, privacy: .public)")
+                return
             }
         }
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
@@ -649,13 +655,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
                        : String(localized: "Audiobook could not be loaded."))
             return
         }
-        // The other tracks of a server with headers are asked after the
-        // start, the ones ahead first; each joins the queue as its plan lands.
-        if let planner = streamPlanner {
-            let order = Array(startIndex..<tracks.count) + Array(0..<startIndex)
-            let rest = order.compactMap { resolveTrackURL(index: $0) }.filter { ServerHeaders.needsPlan($0) }
-            planner.planRest(rest) { [weak self] in self?.appendPlannedTracks() }
-        }
+        // The other tracks that need a plan are asked after the start, the
+        // ones ahead first; each joins the queue as its plan lands.
+        let order = Array(startIndex..<tracks.count) + Array(0..<startIndex)
+        let rest = order.compactMap { resolveTrackURL(index: $0) }.filter { needsPlan($0) }
+        planner.planRest(rest) { [weak self] in self?.appendPlannedTracks() }
 
         setupRemoteCommandCenter()
         lastSyncedTime = serverProgress
@@ -831,10 +835,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
 
-    /// Whether the track's stream is not built yet because its server has
-    /// headers and its plan has not landed.
+    /// Whether the stream at this address is planned before it is built:
+    /// its server has headers, or its source attaches a sign-in to it. Both
+    /// would travel with a stream asset to wherever the address redirects.
+    private func needsPlan(_ url: URL) -> Bool {
+        guard !url.isFileURL else { return false }
+        if ServerHeaders.needsPlan(url) { return true }
+        return provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url)?.isEmpty == false
+    }
+
+    /// Whether the track's stream is not built yet because it needs a plan
+    /// and its plan has not landed.
     private func awaitsPlan(_ url: URL) -> Bool {
-        ServerHeaders.needsPlan(url) && streamPlanner?.plans[url] == nil
+        needsPlan(url) && streamPlanner?.plans[url] == nil
     }
 
     /// Appends to the playing queue, in order, the tracks whose plans have
@@ -954,17 +967,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if url.isFileURL {
             item = AVPlayerItem(asset: AVURLAsset(url: url))
         } else if let streamHeaders {
-            // A server with headers is asked at the end of its redirects
-            // (`StreamPlanner`); every other stream at its address with the
-            // source's headers alone.
+            // A stream with server headers or a sign-in is asked as its plan
+            // says (`StreamPlanner`), and not at all without one; every
+            // other stream at its address, where the source attaches nothing.
+            let plan: ServerHeaders.Stream = needsPlan(url) ? (streamPlanner?.plans[url] ?? .waiting) : .plain
             let target: (url: URL, headers: [String: String])
-            switch streamPlanner?.plans[url] ?? .plain {
+            switch plan {
             case .plain:
                 target = (url, streamHeaders)
             case .resolved(let end, let headers):
                 target = (end, headers)
             case .waiting:
-                Logger.player.notice("PLAY not requested, the server headers cannot be read now: track=\(index)")
+                Logger.player.notice("PLAY not requested, the stream's plan is not there or its headers cannot be read now: track=\(index)")
                 queueWaitedForSignIn = true
                 return nil
             }
@@ -1871,7 +1885,25 @@ final class PlayerViewModel: NSObject, ObservableObject {
         rebuildAtHeldPosition(reason: "network back")
     }
 
+    /// A track that needs a plan is asked anew first: the stream that
+    /// failed was built from a plan whose end may have lapsed (a signed
+    /// address), and a rebuild from the same plan would fail the same way.
     private func rebuildAtHeldPosition(reason: String) {
+        let index = trackIndex(for: currentTime)
+        if let planner = streamPlanner, let url = resolveTrackURL(index: index), needsPlan(url) {
+            planner.forget(url)
+            Task { [weak self] in
+                _ = await planner.plan(url)
+                // A title opened or left while the plan was asked owns the player.
+                guard let self, self.streamPlanner === planner, !self.isStopped else { return }
+                self.rebuildNow(reason: reason)
+            }
+            return
+        }
+        rebuildNow(reason: reason)
+    }
+
+    private func rebuildNow(reason: String) {
         let index = trackIndex(for: currentTime)
         let rebuilt = buildQueue(startingAtTrackIndex: index,
                                  seekWithin: max(0, currentTime - trackAbsoluteStart(index)))

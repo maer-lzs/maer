@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A sign-in no longer follows a stream to another server.** When a
+private feed or your Audiobookshelf server passes a stream on to another
+server, a file host for example, the player now asks where the stream
+ends before it starts, and gives the sign-in only to the server it
+belongs to. Before, the player sent the sign-in along to the server the
+stream ended at. Starting such a title takes one short request more;
+downloads were not affected.
+
 ## v3.6.2 (Build 61)
 
 **CarPlay is new, for every medium.** Home comes first and carries the

@@ -78,7 +78,7 @@ struct FeedSignInHostTests {
     /// Every reader of the headers asks the form with the address; the form
     /// without one is asked only for whether the sign-in can be read.
     static let readers: [String: (withAddress: Int, readableOnly: Int, reason: String)] = [
-        "PlayerViewModel.swift": (2, 0, reason: "the queue asks per track and the planner per address it asks ahead, each for the address the track is fetched from"),
+        "PlayerViewModel.swift": (3, 0, reason: "the queue asks per track, the planner per address it plans (the track's and the end of its redirects), and the question whether a track needs a plan, each for the address in question"),
         "DownloadManager.swift": (1, 1, reason: "per file for its address; before the first file only whether the sign-in can be read"),
         "MusicUnion.swift": (1, 1, reason: "forwards both forms to the title's own source"),
         "ABSPodcastProvider.swift": (1, 0, reason: "forwards the form with the address to the server's client"),

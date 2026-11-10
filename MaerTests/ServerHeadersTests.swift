@@ -669,21 +669,36 @@ struct ServerHeadersFenceTests {
                 "the stream asks the end the same way")
     }
 
-    @Test("Header: der Stream einer Spur fragt den Plan, ein Server ohne Header bleibt beim alten Asset", .needsTheSources)
+    @Test("Header: der Stream einer Spur fragt den Plan, kein Asset mit Kopfzeilen entsteht am Planer vorbei", .needsTheSources)
     func theStreamAsksThePlan() throws {
         let player = try Self.code("Sources/ViewModels/PlayerViewModel.swift")
-        #expect(player.contains("switch streamPlanner?.plans[url] ?? .plain"))
+        // A stream that needs a plan is built from its plan and not at all
+        // without one; only a stream that needs none is plain.
+        #expect(player.contains("let plan: ServerHeaders.Stream = needsPlan(url) ? (streamPlanner?.plans[url] ?? .waiting) : .plain"),
+                "a stream that needs a plan is built without one")
         #expect(player.contains("case .plain:\n                target = (url, streamHeaders)"),
-                "a stream without server headers is built from the address and the source's headers alone")
+                "a plain stream is built from the address and the source's headers alone")
         #expect(player.components(separatedBy: "AVURLAsset(url: target.url").count - 1 == 1)
-        // The start asks one track ahead, only when a server has headers,
-        // and the rest after the queue is built.
+        // In all of the sources one place gives an asset headers: the one
+        // behind the plan.
+        var givers: [String: Int] = [:]
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            let count = SyncContractFenceTests.stripped(text).components(separatedBy: "AVURLAssetHTTPHeaderFieldsKey").count - 1
+            if count > 0 { givers[file] = count }
+        }
+        #expect(givers == ["PlayerViewModel.swift": 1], "an asset is given headers in another place than the one behind the plan: \(givers)")
+        // A plan is needed for a server with headers and for a source that
+        // attaches a sign-in to the address.
+        #expect(player.contains("if ServerHeaders.needsPlan(url) { return true }\n        return provider.streamAuthHeaders(forItemId: self.item?.id ?? \"\", to: url)?.isEmpty == false"))
+        // The start asks one track ahead and the rest after the queue is built.
         let load = try #require(player.range(of: "func load(item: LibraryItemDetail"))
-        let gate = try #require(player.range(of: "if ServerHeaders.anyServer() {", range: load.upperBound..<player.endIndex))
-        // The plan asks the source's sign-in for the address it plans, and
-        // waits while that sign-in cannot be read.
-        #expect(player.contains("let asked = await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: url) }"))
-        #expect(player.contains("guard let sourceHeaders = asked else { return .waiting }"))
+        let gate = try #require(player.range(of: "let planner = StreamPlanner { url in", range: load.upperBound..<player.endIndex))
+        // The plan asks the source's sign-in for the address it plans, waits
+        // while it cannot be read, and plans a stream with a sign-in by the
+        // end of its redirects.
+        #expect(player.contains("await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: address) }"))
+        #expect(player.contains("guard let sourceHeaders = await signIn(url) else { return .waiting }"))
+        #expect(player.contains("guard byServer == .plain, !sourceHeaders.isEmpty else { return byServer }\n            return await SignInStream.plan(for: url, sourceHeaders: sourceHeaders, signIn: signIn)"))
         let ahead = try #require(player.range(of: "_ = await planner.plan(first)", range: gate.upperBound..<player.endIndex))
         let built = try #require(player.range(of: "guard buildQueue(startingAtTrackIndex: startIndex", range: ahead.upperBound..<player.endIndex))
         let rest = try #require(player.range(of: "planner.planRest(rest)", range: built.upperBound..<player.endIndex))

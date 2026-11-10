@@ -199,21 +199,9 @@ nonisolated enum ServerHeaders {
     /// still carries the headers: the way follows it without asking.
     static func end(of request: URLRequest, server: ServerHeaderRule.Entry) async -> URLRequest {
         guard let url = request.url else { return request }
-        var probe = request
-        probe.setValue("bytes=0-0", forHTTPHeaderField: "Range")
-        let end: URL
-        do {
-            // Only the head is read: a server that ignores the range sends
-            // the whole file, or a transcoded stream without end.
-            let (bytes, response) = try await HTTP.bytes(for: probe)
-            bytes.task.cancel()
-            end = response.url ?? url
-        } catch {
-            // The way then asks its own address with the headers, as one
-            // that redirects nowhere would.
-            Logger.library.notice("SERVERHEADERS end unknown host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
-            end = url
-        }
+        // Unknown: the way then asks its own address with the headers, as
+        // one that redirects nowhere would.
+        let end = await endAddress(of: request) ?? url
         guard let entries = entries(), ServerHeaderRule.entry(for: end, in: entries) == server else {
             var bare = URLRequest(url: end)
             bare.timeoutInterval = request.timeoutInterval
@@ -222,6 +210,26 @@ nonisolated enum ServerHeaders {
         var kept = request
         kept.url = end
         return kept
+    }
+
+    /// The address at the end of a request's redirects, or nil when it
+    /// cannot be asked. Asked once over the HTTP door with
+    /// `Range: bytes=0-0`; only the head of the answer is read, because a
+    /// server that ignores the range sends the whole file, or a transcoded
+    /// stream without end. The door drops `Authorization` at a redirect, so
+    /// the question itself carries a sign-in to no other host.
+    static func endAddress(of request: URLRequest) async -> URL? {
+        guard let url = request.url else { return nil }
+        var probe = request
+        probe.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        do {
+            let (bytes, response) = try await HTTP.bytes(for: probe)
+            bytes.task.cancel()
+            return response.url ?? url
+        } catch {
+            Logger.library.notice("SERVERHEADERS end unknown host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
     }
 
     // MARK: The table itself
