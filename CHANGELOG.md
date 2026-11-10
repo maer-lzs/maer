@@ -35,6 +35,12 @@ it is. Before, the jump moved the playing title and saved that position.
 title right after it could start the first title again beside the new
 one, without a player bar. A title that was stopped now stays stopped.
 
+**Settings in iCloud are no longer deleted by a half-finished fetch.**
+When the first fetch of your choices from iCloud was interrupted, or you
+changed something while it ran, the entries it had already read could be
+deleted in iCloud for all your devices. They are kept now. This only
+concerned devices that sync through iCloud without a Mär sync service.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.

@@ -113,6 +113,13 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// Keys whose records are to leave the cloud: the runner dropped them
     /// from the blob, and the mirror must not bring them back.
     private var removals: Set<String>
+    /// The keys the runner has held: every key it stored, and every key of
+    /// the mirror once a fetch ran to its end and was handed to the runner.
+    /// Only such a key can leave the cloud because the runner dropped it. A
+    /// key a fetch brought page by page and did not finish stands in the
+    /// mirror, but the runner never saw it, so its absence from the
+    /// runner's state says nothing.
+    private var known: Set<String> = []
     /// What the blob said per key when it was folded: the event time each
     /// key carried then. After the fold the blob is frozen on this device
     /// (never written again), so of it only what changed SINCE counts,
@@ -349,6 +356,9 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
             migrated = true
             defaults.set(true, forKey: Self.migratedKey)
         }
+        // The fetch ran to its end: what the mirror holds now reaches the
+        // runner, so it is known from here on.
+        known.formUnion(mirror.keys)
         persist()
         Logger.library.notice("CHOICE cloud fetch changed=\(changed) tombstones=\(tombstones) deleted=\(deleted) ms=\(Int(Date().timeIntervalSince(started) * 1000)) by=\(caller, privacy: .public)")
         if changed > 0 || deleted > 0 { onChange?() }
@@ -365,7 +375,8 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
 
     /// What `changes` says, into the queue and the removals.
     private func enqueue(_ desired: [String: CloudChoiceRecord], held: Set<String>) {
-        let changes = Self.changes(desired: desired, mirror: mirror, held: held)
+        let changes = Self.changes(desired: desired, mirror: mirror, held: held, known: known)
+        known.formUnion(desired.keys)
         for (key, record) in changes.save {
             queue[key] = record
             removals.remove(key)
@@ -384,12 +395,15 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// neither: its entry is of an unknown kind and has no record payload
     /// here (it came from the key-value blob or the service), so the record
     /// in the cloud stays as it is; a removal would delete a newer device's
-    /// statement.
+    /// statement. And only a key in `known` can be removed: a key the mirror
+    /// took from a fetch that did not finish was never the runner's, and a
+    /// removal would delete it in the cloud for every device.
     nonisolated static func changes(desired: [String: CloudChoiceRecord],
                                     mirror: [String: CloudChoiceRecord],
-                                    held: Set<String>) -> (save: [String: CloudChoiceRecord], remove: Set<String>) {
+                                    held: Set<String>,
+                                    known: Set<String>) -> (save: [String: CloudChoiceRecord], remove: Set<String>) {
         let save = desired.filter { key, record in mirror[key] != record }
-        let remove = Set(mirror.keys.filter { desired[$0] == nil && !held.contains($0) })
+        let remove = Set(mirror.keys.filter { desired[$0] == nil && !held.contains($0) && known.contains($0) })
         return (save, remove)
     }
 

@@ -184,9 +184,49 @@ struct CloudKitChoiceCarrierTests {
         let dropped = CloudChoiceRecord(key: "playbackRate.a", payload: CloudChoicePayload.encode(.double(1.5)),
                                         t: 500, tombstone: false)
         let changes = CloudKitChoiceCarrier.changes(desired: [:], mirror: ["sort.books": held, "playbackRate.a": dropped],
-                                                    held: CloudKitChoiceCarrier.heldAsTheyAre(in: unknown))
+                                                    held: CloudKitChoiceCarrier.heldAsTheyAre(in: unknown),
+                                                    known: ["sort.books", "playbackRate.a"])
         #expect(changes.save.isEmpty)
         #expect(changes.remove == ["playbackRate.a"], "\(changes.remove)")
+    }
+
+    /// A fetch over several pages puts each page into the mirror at once.
+    /// When it does not finish, or the person changes something while it
+    /// runs, the runner stores a state that never held those keys: they
+    /// are not its to remove.
+    @Test("was ein unfertiger Abruf in den Spiegel brachte, wird nie zur Loeschung; ein Schluessel, den der Laeufer hielt, schon")
+    func whatAnUnfinishedFetchBroughtIsNeverARemoval() {
+        func record(_ key: String) -> CloudChoiceRecord {
+            CloudChoiceRecord(key: key, payload: CloudChoicePayload.encode(.double(1.5)), t: 500, tombstone: false)
+        }
+        // The first page of a fetch stands in the mirror; the runner holds
+        // one key of its own and stores it.
+        let mirror = ["playbackRate.a": record("playbackRate.a"), "playbackRate.b": record("playbackRate.b"),
+                      "own": record("own")]
+        let unfinished = CloudKitChoiceCarrier.changes(desired: ["own": record("own")], mirror: mirror,
+                                                       held: [], known: ["own"])
+        #expect(unfinished.remove.isEmpty, "keys the runner never held go out as removals: \(unfinished.remove.sorted())")
+        #expect(unfinished.save.isEmpty)
+        // After the fetch ran to its end the runner knows them: a key it
+        // then drops leaves the cloud as before.
+        let settled = CloudKitChoiceCarrier.changes(desired: ["own": record("own"), "playbackRate.a": record("playbackRate.a")],
+                                                    mirror: mirror, held: [],
+                                                    known: ["own", "playbackRate.a", "playbackRate.b"])
+        #expect(settled.remove == ["playbackRate.b"], "\(settled.remove.sorted())")
+    }
+
+    @Test("der Traeger kennt einen Schluessel erst nach einem ganzen Abruf oder einem eigenen Schrieb", .needsTheSources)
+    func theCarrierKnowsAKeyOnlyAfterAWholeFetch() throws {
+        let carrier = try FetchAnswerTests.squeezedSource("Sources/Networking/CloudKitChoiceCarrier.swift")
+        #expect(carrier.contains("let changes = Self.changes(desired: desired, mirror: mirror, held: held, known: known) known.formUnion(desired.keys)"),
+                "the removals are not asked against what the runner has held")
+        // Known only below the loop over the pages, never inside it.
+        let fetch = try #require(carrier.range(of: "private func fetch(by caller: String) async {"))
+        let body = String(carrier[fetch.upperBound...])
+        let pages = try #require(body.range(of: "more = page.moreComing }"))
+        let learned = try #require(body.range(of: "known.formUnion(mirror.keys)"))
+        #expect(pages.upperBound <= learned.lowerBound, "a page teaches the carrier its keys before the fetch ran to its end")
+        #expect(carrier.components(separatedBy: "known.formUnion(").count - 1 == 2, "the carrier learns keys in another place")
     }
 
     /// The same entry in the service's form: after a switch from the Mär
