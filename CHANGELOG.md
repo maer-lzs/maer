@@ -13,11 +13,12 @@ Radio gets its own tab where the car allows one more. The lists keep up
 while you drive. The player offers Up Next whenever something waits
 behind the title, and the speed for books and podcasts.
 
-**A sign-in stays with its own server.** The sign-in of a private feed,
-the token of your Audiobookshelf server and the sign-in of Pinchflat now
-go only to the server they belong to, and never from https down to http.
-Before, the sign-in of a private feed went along to every server an
-episode's audio file was hosted on. A private feed whose files need the
+**A sign-in is attached only to its own server's addresses.** The
+sign-in of a private feed, the token of your Audiobookshelf server and
+the sign-in of Pinchflat are now attached only to addresses of the
+server they belong to, and never from https down to http. Before, the
+sign-in of a private feed was attached to every address an episode's
+audio file was hosted on. A private feed whose files need the
 same sign-in on a different server no longer plays from there.
 
 **A paused download continues with its own source.** Resuming a paused
@@ -46,7 +47,9 @@ episodes of a show asks the podcast directory with the feed's address.
 For a private feed, one whose address carries a token or a sign-in or
 that you marked as premium, the directory is no longer asked, and the
 button for the full history is not offered there. Before, the address
-went to the directory with its token.
+went to the directory with its token. The list of your subscriptions
+you export to share now also leaves out an address that carries a user
+name or a password before its host.
 
 **A malformed feed address no longer closes the app.** A feed address
 whose query held a pair without a name, such as a lone "=", closed the
