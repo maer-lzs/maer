@@ -67,6 +67,12 @@ station the widget shows the picture the player shows, its logo or the
 app's placeholder. Before, it showed the station's small web icon,
 enlarged and blurred.
 
+**Deutschlandfunk and Deutschlandfunk Kultur show their square mark
+again.** Since version 3.5 the two stations carried their long word
+mark, which stood as a thin strip on the station's card, in the mini
+player and on the lock screen. They carry the square mark again, also
+in the car.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
