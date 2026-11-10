@@ -59,6 +59,11 @@ the app when the episode's row or the large player was drawn, and kept
 the subscriptions from being saved. Such a length now counts as unknown,
 also for episodes that are already stored.
 
+**A radio station looks right in the Continue Listening widget.** For a
+station the widget shows the picture the player shows, its logo or the
+app's placeholder. Before, it showed the station's small web icon,
+enlarged and blurred.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
