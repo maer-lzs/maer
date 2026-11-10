@@ -862,15 +862,23 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func awaitPlanOfDryQueue(at index: Int) {
         guard let planner = streamPlanner, let url = resolveTrackURL(index: index) else { return }
         planWindow(from: index)
-        let waitsFully = ServerHeaders.needsPlan(url)
         Task { [weak self] in
-            if waitsFully {
-                _ = await planner.plan(url)
-            } else {
-                _ = await planner.plan(url, within: Self.startPatience)
-            }
+            await Self.awaitPlan(url, of: planner, for: "the next track")
             guard let self, self.streamPlanner === planner, !self.isStopped, self.waitsForPlannedTrack else { return }
             self.appendPlannedTracks()
+        }
+    }
+
+    /// Waits for the plan of a track that a jump, a rebuild or a queue that
+    /// ran out needs now, as a start waits: a server with headers fully
+    /// (without its plan the stream would go without them), a sign-in alone
+    /// at most `startPatience`, after which the stream is taken at its
+    /// address, as a host that cannot be asked gives it.
+    private static func awaitPlan(_ url: URL, of planner: StreamPlanner, for need: String) async {
+        if ServerHeaders.needsPlan(url) {
+            _ = await planner.plan(url)
+        } else if await planner.plan(url, within: startPatience) == .plain {
+            Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end was not known in time or could not be asked")
         }
     }
 
@@ -922,7 +930,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if let url = resolveTrackURL(index: index), needsPlan(url) {
                 guard let plan = streamPlanner?.plans[url] else { break }
                 if plan == .waiting {
-                    if waitsForPlannedTrack { stopWaitingForPlan(at: index) }
+                    // Only a queue that ran out stops here; a track appended
+                    // in this pass plays first, and its end asks again.
+                    if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: index) }
                     break
                 }
             }
@@ -1401,7 +1411,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Jump across a track boundary. Rebuild the queue; a track whose
             // plan has not landed is asked first.
             if let planner = streamPlanner, let url = resolveTrackURL(index: targetIndex), awaitsPlan(url) {
-                _ = await planner.plan(url)
+                await Self.awaitPlan(url, of: planner, for: "a jump")
                 // A title opened or a later jump while the plan was asked
                 // owns the player now, and a model stopped meanwhile stays stopped.
                 guard streamPlanner === planner, seekCount == jump, !isStopped else {
@@ -2023,7 +2033,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         planner.forget(url)
         Task { [weak self] in
-            _ = await planner.plan(url)
+            await Self.awaitPlan(url, of: planner, for: "a rebuild")
             guard let self, self.streamPlanner === planner, !self.isStopped else { return }
             done(self.rebuildNow(from: index, seekWithin: seekWithin, reason: reason))
         }

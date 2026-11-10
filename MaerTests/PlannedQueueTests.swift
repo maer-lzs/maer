@@ -213,5 +213,112 @@ struct PlannedQueueTests {
         #expect(model.sourceHint == nil, "a hint came although the plan came: \(String(describing: model.sourceHint))")
         model.stop()
     }
+
+    @Test("eine Spur, die die leergelaufene Warteschlange im selben Durchlauf aufnimmt, laeuft zuerst; der Halt vor der Spur dahinter kommt an ihrem Ende",
+          .needsAudio)
+    func aTrackThatJoinsBeforeAWaitingOnePlaysFirst() async throws {
+        let quick = try await host()
+        let slow = try await host(delay: 2)
+        let origin = try await host()
+        let other = try await host()
+        defer { quick.stop(); slow.stop(); origin.stop(); other.stop() }
+        // Track 2 ends at another host, whose sign-in cannot be read now.
+        origin.redirect(to: try #require(URL(string: "http://localhost:\(other.port)/end-2.caf")))
+        let model = model(elsewhere: nil)
+        await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
+                                      "http://127.0.0.1:\(slow.port)/track-1.caf",
+                                      "http://127.0.0.1:\(origin.port)/start-2.caf"]))
+        await waitFor { Self.asks(origin, "/start-2.") == 1 }
+        try #require(Self.asks(origin, "/start-2.") == 1, "the precondition: track 2 was asked")
+        try #require(model._testQueuedTracks() == [0], "the precondition: track 1 waits for its plan")
+        model.player?.volume = 0
+        model.play()
+        await waitFor { model._testQueuedTracks().contains(1) }
+        #expect(model._testQueuedTracks().contains(1), "track 1 did not join: \(model._testQueuedTracks())")
+        #expect(model.isPlaying, "playback stopped as track 1 joined")
+        #expect(model.currentTime < 2, "the position jumped over track 1 to \(model.currentTime) s")
+        await waitFor({ !model.isPlaying }, seconds: 15)
+        #expect(!model.isPlaying, "playback did not stop before track 2")
+        #expect(model.sourceHint?.kind == .cannotPlay)
+        #expect(model.currentTime == 2, "playback stopped at \(model.currentTime) s, not at the start of track 2")
+        #expect(Self.streamed(slow, "/track-1.") > 0, "track 1 was never streamed")
+        model.stop()
+    }
+
+    /// Tracks 0 to 7 at a host that holds every answer ten seconds, 8 to 10
+    /// at a quick one; after the start's window and the one from track 3,
+    /// four asks ahead hold every turn.
+    func heldTurns() async throws -> (hold: Host, quick: Host, model: PlayerViewModel) {
+        let hold = try await host(delay: 10)
+        let quick = try await host()
+        let model = model()
+        await model.load(item: title((0..<11).map { "http://127.0.0.1:\($0 < 8 ? hold.port : quick.port)/track-\($0).caf" }))
+        try #require(model.player != nil, "the precondition: the load built a player")
+        model._testPlanWindow(from: 3)
+        return (hold, quick, model)
+    }
+
+    @Test("ein Sprung baut nach der kurzen Frist, auch wenn ein Wirt alle Vorab-Fragen und die Frage des Sprungs haelt")
+    func aJumpBuildsAfterTheShortWait() async throws {
+        let (hold, quick, model) = try await heldTurns()
+        defer { hold.stop(); quick.stop() }
+        let began = Date()
+        await model.seek(to: 6.5, userInitiated: false)
+        let waited = Date().timeIntervalSince(began)
+        #expect(waited < 4, "the jump waited \(waited) s for its plan")
+        #expect(PlannedQueueTests.playing(model) == "track-6.caf", "the jump built \(String(describing: PlannedQueueTests.playing(model)))")
+        model.stop()
+    }
+
+    @Test("die Spur eines Sprungs wird sofort gefragt, nicht hinter den Vorab-Fragen, die alle Plaetze halten")
+    func aJumpIsNotAskedBehindTheAsksAhead() async throws {
+        let (hold, quick, model) = try await heldTurns()
+        defer { hold.stop(); quick.stop() }
+        // Tracks 7 to 9 wait for a turn behind the held asks.
+        model._testPlanWindow(from: 7)
+        try await Task.sleep(for: .milliseconds(200))
+        try #require(Self.asks(quick, "/track-8.") == 0, "the precondition: track 8 waits for its turn")
+        // A track not asked yet.
+        var began = Date()
+        await model.seek(to: 10.5, userInitiated: false)
+        var asked = Date().timeIntervalSince(began)
+        #expect(asked < 1.2, "the jump's new ask waited for a turn: \(asked) s")
+        #expect(Self.asks(quick, "/track-10.") == 1)
+        #expect(PlannedQueueTests.playing(model) == "track-10.caf")
+        // A track whose ask waits for its turn.
+        began = Date()
+        await model.seek(to: 8.5, userInitiated: false)
+        asked = Date().timeIntervalSince(began)
+        #expect(asked < 1.2, "the jump's track was asked behind the asks ahead: \(asked) s")
+        #expect(Self.asks(quick, "/track-8.") == 1)
+        #expect(PlannedQueueTests.playing(model) == "track-8.caf")
+        model.stop()
+    }
+
+    @Test("ein Druck auf Wiedergabe nach einem Ladefehler baut nach der kurzen Frist, auch wenn der Wirt die Frage haelt")
+    func aRebuildAfterALoadFailureDoesNotWaitForAHeldAsk() async throws {
+        let quick = try await host()
+        let hold = try await host(delay: 10)
+        defer { quick.stop(); hold.stop() }
+        let model = model()
+        await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
+                                      "http://127.0.0.1:\(hold.port)/track-1.caf"]))
+        try #require(model.player != nil, "the precondition: the load built a player")
+        model._testHoldAhead(at: 1, then: .none)
+        model._testStopAtHeld()
+        try #require(model.sourceHint?.kind == .loadFailed, "the precondition: playback stopped at the held track")
+        model.player?.volume = 0
+        let began = Date()
+        model.play()
+        await waitFor { PlannedQueueTests.playing(model) == "track-1.caf" }
+        let waited = Date().timeIntervalSince(began)
+        #expect(PlannedQueueTests.playing(model) == "track-1.caf", "the rebuild built nothing at track 1")
+        #expect(waited < 4, "the rebuild waited \(waited) s for its plan")
+        model.stop()
+    }
+
+    static func playing(_ model: PlayerViewModel) -> String? {
+        (model.player?.currentItem?.asset as? AVURLAsset)?.url.lastPathComponent
+    }
 }
 #endif

@@ -27,7 +27,7 @@ final class StreamPlanner {
     /// How many asks run now, and the asks waiting for their turn, first
     /// in first out.
     private var running = 0
-    private var turns: [CheckedContinuation<Void, Never>] = []
+    private var turns: [(url: URL, go: CheckedContinuation<Void, Never>)] = []
     /// Set by `stop()`: nothing is asked or kept after it.
     private var stopped = false
 
@@ -50,20 +50,27 @@ final class StreamPlanner {
     }
 
     /// The plan of one address: held, or the ask on its way, or asked now.
+    /// A plan wanted now (a start, a jump, a rebuild) never waits behind
+    /// the asks ahead: its ask starts at once, also one of this address
+    /// that still waits for its turn.
     func plan(_ url: URL) async -> ServerHeaders.Stream {
         if let held = plans[url] { return held }
-        return await asked(url).value
+        return await asked(url, now: true).value
     }
 
-    /// The one ask of an address, started when none is on its way. It waits
-    /// for its turn (at most `limit` run at once, in the order they were
-    /// started) and keeps its plan unless the planner stopped meanwhile.
-    private func asked(_ url: URL) -> Task<ServerHeaders.Stream, Never> {
-        if let running = asking[url] { return running }
+    /// The one ask of an address, started when none is on its way. An ask
+    /// ahead waits for its turn (at most `limit` run at once, in the order
+    /// they were started); an ask wanted now takes one at once. It keeps
+    /// its plan unless the planner stopped meanwhile.
+    private func asked(_ url: URL, now: Bool) -> Task<ServerHeaders.Stream, Never> {
+        if let running = asking[url] {
+            if now { startAtOnce(url) }
+            return running
+        }
         let ask = self.ask
         let task = Task { [weak self] () -> ServerHeaders.Stream in
             guard let self else { return .plain }
-            await self.turn()
+            await self.turn(for: url, now: now)
             defer { self.release() }
             guard !self.stopped else { return .plain }
             let plan = await ask(url)
@@ -75,12 +82,21 @@ final class StreamPlanner {
         return task
     }
 
-    private func turn() async {
-        if running < limit {
+    private func turn(for url: URL, now: Bool) async {
+        if now || running < limit {
             running += 1
             return
         }
-        await withCheckedContinuation { turns.append($0) }
+        await withCheckedContinuation { turns.append((url, $0)) }
+    }
+
+    /// An ask of this address that waits for its turn starts now, beside
+    /// the ones running.
+    private func startAtOnce(_ url: URL) {
+        guard let index = turns.firstIndex(where: { $0.url == url }) else { return }
+        let waiting = turns.remove(at: index)
+        running += 1
+        waiting.go.resume()
     }
 
     /// Hands the turn to the next ask waiting, or frees it.
@@ -88,7 +104,7 @@ final class StreamPlanner {
         if turns.isEmpty {
             running -= 1
         } else {
-            turns.removeFirst().resume()
+            turns.removeFirst().go.resume()
         }
     }
 
@@ -129,7 +145,7 @@ final class StreamPlanner {
         let pending = urls.filter { plans[$0] == nil && asking[$0] == nil }
         guard !pending.isEmpty else { return }
         for url in pending {
-            let task = asked(url)
+            let task = asked(url, now: false)
             let id = UUID()
             ahead[id] = Task { [weak self] in
                 _ = await task.value
@@ -155,7 +171,7 @@ final class StreamPlanner {
         turns = []
         for turn in waiting {
             running += 1
-            turn.resume()
+            turn.go.resume()
         }
     }
 }
