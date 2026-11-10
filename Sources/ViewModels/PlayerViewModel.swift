@@ -199,6 +199,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// cannot be read now (before the first unlock): a start that ends
     /// without a track says so in its own sentence.
     private var queueWaitedForSignIn = false
+    /// How the streams of the title's tracks on a server with headers are
+    /// asked (`StreamPlanner`); nil when no server has headers.
+    private var streamPlanner: StreamPlanner?
+    /// The first track the queue does not hold yet because its plan has
+    /// not landed; `tracks.count` when the queue holds every track.
+    private var queueAppendIndex = 0
+    /// The queue ran out while the next track waited for its plan.
+    private var waitsForPlannedTrack = false
+    /// Counts the jumps, so a jump that waited for a plan knows a later one.
+    private var seekCount = 0
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
 
@@ -610,11 +620,41 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let startIndex = trackIndex(for: startTime)
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
+        streamPlanner?.stop()
+        streamPlanner = nil
+        // The source's sign-in is asked per address, as the queue asks it. A
+        // sign-in that cannot be read now makes the plan wait: the track is
+        // then not asked, like every stream of the source.
+        if ServerHeaders.anyServer() {
+            let provider = self.provider
+            let itemId = item.id
+            let planner = StreamPlanner { url in
+                let asked = await MainActor.run { provider.streamAuthHeaders(forItemId: itemId, to: url) }
+                guard let sourceHeaders = asked else { return .waiting }
+                return await ServerHeaders.stream(for: url, sourceHeaders: sourceHeaders)
+            }
+            streamPlanner = planner
+            if let first = resolveTrackURL(index: startIndex), ServerHeaders.needsPlan(first) {
+                _ = await planner.plan(first)
+                // A start that came while the stream was asked owns the player.
+                guard self.item?.id == item.id else {
+                    Logger.player.notice("PLAY superseded while its stream was asked: \(item.id, privacy: .public)")
+                    return
+                }
+            }
+        }
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
             cannotPlay(queueWaitedForSignIn
                        ? String(localized: "Unlock this device once to play this episode.")
                        : String(localized: "Audiobook could not be loaded."))
             return
+        }
+        // The other tracks of a server with headers are asked after the
+        // start, the ones ahead first; each joins the queue as its plan lands.
+        if let planner = streamPlanner {
+            let order = Array(startIndex..<tracks.count) + Array(0..<startIndex)
+            let rest = order.compactMap { resolveTrackURL(index: $0) }.filter { ServerHeaders.needsPlan($0) }
+            planner.planRest(rest) { [weak self] in self?.appendPlannedTracks() }
         }
 
         setupRemoteCommandCenter()
@@ -791,6 +831,35 @@ final class PlayerViewModel: NSObject, ObservableObject {
         TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
 
+    /// Whether the track's stream is not built yet because its server has
+    /// headers and its plan has not landed.
+    private func awaitsPlan(_ url: URL) -> Bool {
+        ServerHeaders.needsPlan(url) && streamPlanner?.plans[url] == nil
+    }
+
+    /// Appends to the playing queue, in order, the tracks whose plans have
+    /// landed since it was built.
+    private func appendPlannedTracks() {
+        guard let player, queueAppendIndex < tracks.count else { return }
+        let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
+        var last: AVPlayerItem?
+        while queueAppendIndex < tracks.count {
+            let index = queueAppendIndex
+            if let url = resolveTrackURL(index: index), awaitsPlan(url) { break }
+            queueAppendIndex += 1
+            guard let item = queueItem(index: index, isRadio: isRadio) else { continue }
+            player.insert(item, after: nil)
+            last = item
+        }
+        guard let last else { return }
+        observeBookEnd(lastItem: last)
+        if waitsForPlannedTrack {
+            waitsForPlannedTrack = false
+            Logger.player.notice("PLAY goes on, the next track's plan landed: track=\(self.itemTrackIndex[ObjectIdentifier(last)] ?? -1)")
+            if isPlaying { player.rate = playbackRate }
+        }
+    }
+
     private func resolveTrackURL(index: Int) -> URL? {
         if let local = localTrackFiles[index] {
             return local
@@ -830,78 +899,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         icyStreamTitle = nil   // never carry a song title across items
         icySongArtwork = nil   // nor its resolved cover
         stationArtwork = nil   // Teil 2: the next station loads its own logo
-        // Asked per track, for the address the track is fetched from: a
-        // sign-in bound to a host travels only there. Nil while a sign-in
-        // the address needs cannot be read now: the track is not requested
-        // without it, and a queue without a track fails the way an
-        // unloadable one does.
-        let itemId = self.item?.id ?? ""
+        queueAppendIndex = tracks.count
+        waitsForPlannedTrack = false
         for index in startIndex..<tracks.count {
-            guard let url = resolveTrackURL(index: index) else { continue }
-            let streamHeaders = url.isFileURL ? [:] : provider.streamAuthHeaders(forItemId: itemId, to: url)
-            if isRadio {
-                // Persistent breadcrumb. A station that never plays leaves
-                // the resolved stream URL and, below, its load error in the log.
-                Logger.player.notice("radio play: building stream \(url.absoluteString, privacy: .public)")
+            // A stream whose server has headers waits for its plan; it and
+            // the tracks after it join the queue as plans land
+            // (`appendPlannedTracks`).
+            if let url = resolveTrackURL(index: index), awaitsPlan(url) {
+                queueAppendIndex = index
+                break
             }
-            // Decide per track: a partially downloaded book can mix local
-            // files and streaming (auth header only makes sense remotely).
-            let item: AVPlayerItem
-            if url.isFileURL {
-                item = AVPlayerItem(asset: AVURLAsset(url: url))
-            } else if let streamHeaders {
-                // The stream names the app like every other request. Measured
-                // on eight hosts (archive.org, gutenberg.org, three live
-                // stations, two podcast CDNs): none answers the app's name
-                // differently from CoreMedia's, and the download of the same
-                // episode already carried it.
-                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": streamHeaders,
-                                                          AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
-                item = AVPlayerItem(asset: asset)
-            } else {
-                Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")
-                queueWaitedForSignIn = true
-                continue
-            }
-            // Live radio. Tap the in-stream ICY metadata (song title)
-            // for the player UI and the lock screen.
-            if isRadio {
-                let output = AVPlayerItemMetadataOutput(identifiers: nil)
-                let collector = ICYMetadataCollector { [weak self] value in
-                    Task { @MainActor in
-                        guard let self, self.icyStreamTitle != value else { return }
-                        self.icyStreamTitle = value
-                        self.updateNowPlayingInfo()
-                        // Teil 2: try to resolve now-playing cover art for the song.
-                        self.refreshICYArtwork()
-                    }
-                }
-                icyCollector = collector
-                // queue because AVPlayerItemMetadataOutput hands its delegate a DispatchQueue; the value hops into a Task at once.
-                output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
-                item.add(output)
-            }
-            itemTrackIndex[ObjectIdentifier(item)] = index
-            // Surface a load failure that never starts playback (ATS block,
-            // dead stream, 404). Otherwise it stalls silently.
-            // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
-            // would trap there under the MainActor default. Only
-            // Sendable values (index, description) cross onto the main actor.
-            let failedIndex = index
-            let observation = item.observe(\.status, options: [.new]) { @Sendable [weak self] observedItem, _ in
-                guard observedItem.status == .failed else { return }
-                let description = observedItem.error.map { FailureReason.of($0) }
-                    ?? observedItem.errorLog()?.events.last?.errorComment
-                // The cause as the error tells it; the network's state is
-                // asked on the main actor.
-                let cause = NoticeCause.of(observedItem.error, online: true)
-                let failedItem = ObjectIdentifier(observedItem)
-                Task { @MainActor [weak self] in
-                    self?.handleItemLoadFailure(trackIndex: failedIndex, item: failedItem,
-                                                errorDescription: description, cause: cause)
-                }
-            }
-            itemStatusObservers.append(observation)
+            guard let item = queueItem(index: index, isRadio: isRadio) else { continue }
             items.append(item)
         }
         guard !items.isEmpty else { return false }
@@ -922,6 +930,97 @@ final class PlayerViewModel: NSObject, ObservableObject {
             newPlayer.rate = playbackRate
         }
         return true
+    }
+
+    /// One track as an item of the queue, with its observers; nil when the
+    /// track is not asked: no address, or a sign-in or server headers that
+    /// cannot be read now.
+    private func queueItem(index: Int, isRadio: Bool) -> AVPlayerItem? {
+        guard let url = resolveTrackURL(index: index) else { return nil }
+        // Asked per track, for the address the track is fetched from: a
+        // sign-in bound to a host travels only there. Nil while a sign-in
+        // the address needs cannot be read now: the track is not requested
+        // without it, and a queue without a track fails the way an
+        // unloadable one does.
+        let streamHeaders = url.isFileURL ? [:] : provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url)
+        if isRadio {
+            // Persistent breadcrumb. A station that never plays leaves
+            // the resolved stream URL and, below, its load error in the log.
+            Logger.player.notice("radio play: building stream \(url.absoluteString, privacy: .public)")
+        }
+        // Decide per track: a partially downloaded book can mix local
+        // files and streaming (auth header only makes sense remotely).
+        let item: AVPlayerItem
+        if url.isFileURL {
+            item = AVPlayerItem(asset: AVURLAsset(url: url))
+        } else if let streamHeaders {
+            // A server with headers is asked at the end of its redirects
+            // (`StreamPlanner`); every other stream at its address with the
+            // source's headers alone.
+            let target: (url: URL, headers: [String: String])
+            switch streamPlanner?.plans[url] ?? .plain {
+            case .plain:
+                target = (url, streamHeaders)
+            case .resolved(let end, let headers):
+                target = (end, headers)
+            case .waiting:
+                Logger.player.notice("PLAY not requested, the server headers cannot be read now: track=\(index)")
+                queueWaitedForSignIn = true
+                return nil
+            }
+            // The stream names the app like every other request. Measured
+            // on eight hosts (archive.org, gutenberg.org, three live
+            // stations, two podcast CDNs): none answers the app's name
+            // differently from CoreMedia's, and the download of the same
+            // episode already carried it.
+            let asset = AVURLAsset(url: target.url, options: ["AVURLAssetHTTPHeaderFieldsKey": target.headers,
+                                                             AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
+            item = AVPlayerItem(asset: asset)
+        } else {
+            Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")
+            queueWaitedForSignIn = true
+            return nil
+        }
+        // Live radio. Tap the in-stream ICY metadata (song title)
+        // for the player UI and the lock screen.
+        if isRadio {
+            let output = AVPlayerItemMetadataOutput(identifiers: nil)
+            let collector = ICYMetadataCollector { [weak self] value in
+                Task { @MainActor in
+                    guard let self, self.icyStreamTitle != value else { return }
+                    self.icyStreamTitle = value
+                    self.updateNowPlayingInfo()
+                    // Teil 2: try to resolve now-playing cover art for the song.
+                    self.refreshICYArtwork()
+                }
+            }
+            icyCollector = collector
+            // queue because AVPlayerItemMetadataOutput hands its delegate a DispatchQueue; the value hops into a Task at once.
+            output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
+            item.add(output)
+        }
+        itemTrackIndex[ObjectIdentifier(item)] = index
+        // Surface a load failure that never starts playback (ATS block,
+        // dead stream, 404). Otherwise it stalls silently.
+        // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
+        // would trap there under the MainActor default. Only
+        // Sendable values (index, description) cross onto the main actor.
+        let failedIndex = index
+        let observation = item.observe(\.status, options: [.new]) { @Sendable [weak self] observedItem, _ in
+            guard observedItem.status == .failed else { return }
+            let description = observedItem.error.map { FailureReason.of($0) }
+                ?? observedItem.errorLog()?.events.last?.errorComment
+            // The cause as the error tells it; the network's state is
+            // asked on the main actor.
+            let cause = NoticeCause.of(observedItem.error, online: true)
+            let failedItem = ObjectIdentifier(observedItem)
+            Task { @MainActor [weak self] in
+                self?.handleItemLoadFailure(trackIndex: failedIndex, item: failedItem,
+                                            errorDescription: description, cause: cause)
+            }
+        }
+        itemStatusObservers.append(observation)
+        return item
     }
 
     /// Watches the new queue player for a wait on the stream. @Sendable: KVO
@@ -958,6 +1057,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard let self else { return }
                 if let held = self.heldAhead {
                     self.stopAtHeldFailure(held)
+                    return
+                }
+                // The queue ran out before the next track's plan landed: the
+                // book goes on when it does (`appendPlannedTracks`).
+                if self.queueAppendIndex < self.tracks.count {
+                    Logger.player.notice("PLAY waits for the plan of track=\(self.queueAppendIndex)")
+                    self.waitsForPlannedTrack = true
                     return
                 }
                 self.currentTime = self.duration
@@ -1199,6 +1305,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   server immediately and without confirmation. Also backwards.
     func seek(to time: Double, userInitiated: Bool = true) async {
         guard !tracks.isEmpty, !isStopped else { return }
+        seekCount += 1
+        let jump = seekCount
         let clamped = max(0, min(time, max(duration, 0)))
         let targetIndex = trackIndex(for: clamped)
         let offsetWithinTrack = max(0, clamped - trackAbsoluteStart(targetIndex))
@@ -1207,7 +1315,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Jump stays within the currently loaded track.
             await player.seek(to: CMTime(seconds: offsetWithinTrack, preferredTimescale: 1000))
         } else {
-            // Jump across a track boundary. Rebuild the queue.
+            // Jump across a track boundary. Rebuild the queue; a track whose
+            // plan has not landed is asked first.
+            if let planner = streamPlanner, let url = resolveTrackURL(index: targetIndex), awaitsPlan(url) {
+                _ = await planner.plan(url)
+                // A title opened or a later jump while the plan was asked
+                // owns the player now, and a model stopped meanwhile stays stopped.
+                guard streamPlanner === planner, seekCount == jump, !isStopped else {
+                    Logger.player.notice("SEEK superseded while its track's stream was asked: track=\(targetIndex)")
+                    return
+                }
+            }
             buildQueue(startingAtTrackIndex: targetIndex, seekWithin: offsetWithinTrack)
         }
 
@@ -1796,6 +1914,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         isStopped = true
         isPlaying = false
+        // A title that was left asks no further track ahead.
+        streamPlanner?.stop()
         Task { await syncProgress(.stop) }
         player?.pause()
         if let token = timeObserverToken {

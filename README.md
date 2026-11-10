@@ -319,6 +319,7 @@ Sources/
 │   ├── SourceMap.swift             Pure: the five areas and what each needs (map states)
 │   ├── MaerPlaylistMerge.swift     Pure: per-list merge, rescued version, tombstones
 │   ├── UpNextAuto.swift            Pure: which new episodes go into Up Next, and where
+│   ├── ServerHeaderRule.swift      Pure: which request carries a server's own headers, and where a redirect leaves them
 │   ├── HeardElsewhere.swift        Pure: a mark from elsewhere that made a title played
 │   └── PodcastAutoDownloadRules.swift  Pure: what the automatic download may clean up
 ├── Networking/
@@ -344,6 +345,7 @@ Sources/
 │   ├── SubsonicClient.swift        Subsonic/OpenSubsonic API (token+salt auth, streaming, lyrics)
 │   ├── JellyfinClient.swift        Jellyfin API (Authorization header, ApiKey on media links)
 │   ├── PinchflatClient.swift       Pinchflat: the channel list as an OPML mirror, feeds ride RSS
+│   ├── ServerHeaders.swift         A server's own headers in the iCloud keychain, set at the four ways out
 │   ├── CoverArtArchive.swift       High-res album covers via MusicBrainz ID (rate-limited)
 │   ├── RadioBrowserClient.swift    Radio Browser catalog client (mirror fallback)
 │   ├── SyncHistoryStore.swift      Sync history (rows) + per-service "last checked"
@@ -366,6 +368,8 @@ Sources/
 │   │                               offline cache as rows
 │   ├── PlayerCoordinator.swift     Keeps the active session alive across navigation,
 │   │                               offline-aware, basis for the mini-player
+│   ├── StreamPlanner.swift         Where the streams of a server with headers end: the first
+│   │                               track before the start, the rest after it
 │   ├── PlayerViewModel.swift       AVQueuePlayer, multi-track queue, seek/skip, chapters
 │   ├── PlayerViewModel+Sync.swift  Sync policy: timer, reentrancy guard, conflicts, reconcile
 │   ├── PlayerViewModel+SleepTimer.swift   Sleep timer incl. volume fade

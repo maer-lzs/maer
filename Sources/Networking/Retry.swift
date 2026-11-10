@@ -86,6 +86,9 @@ nonisolated enum RequestRetryPolicy {
         // `HTTP.prepare`, so the identity is set here as well.
         var request = request
         AppUserAgent.applyIfMissing(to: &request)
+        ServerHeaders.apply(to: &request)
+        try ServerHeaders.admit(request)
+        let redirects = redirects ?? RedirectGuard.following()
         // Past every rung of `decide`, the first answer is final.
         var attempt = once ? Int.max : 0
         var pauseMs: Int?
@@ -173,11 +176,22 @@ nonisolated enum RequestRetryPolicy {
 /// handed to an unencrypted target by a redirect it never chose. A refused
 /// redirect ends the request with the 3xx answer, and `refused` says so, so
 /// the caller can name the reason instead of a status.
+///
+/// Every redirect it lets through leaves the headers of the server it
+/// comes from there (`ServerHeaders.redirected`), with the table as it was
+/// when the request started: a session's delegate runs outside the task.
 nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
     private let allows: @Sendable (URL) -> Bool
     private let refusals = Mutex(0)
+    private let serverHeaders: [ServerHeaderRule.Entry]?
 
-    init(allows: @escaping @Sendable (URL) -> Bool) { self.allows = allows }
+    init(allows: @escaping @Sendable (URL) -> Bool) {
+        self.allows = allows
+        serverHeaders = ServerHeaders.entries()
+    }
+
+    /// Follows every redirect; only the server headers stay behind.
+    static func following() -> RedirectGuard { RedirectGuard(allows: { _ in true }) }
 
     var refused: Bool { refusals.withLock { $0 > 0 } }
 
@@ -193,6 +207,6 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
             completionHandler(nil)
             return
         }
-        completionHandler(request)
+        completionHandler(ServerHeaders.redirected(request, from: response.url, entries: serverHeaders))
     }
 }

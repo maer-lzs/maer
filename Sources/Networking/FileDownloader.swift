@@ -159,8 +159,24 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         // The background session is the one way out past the HTTP door;
         // the identity is set here like there.
         var identified = request
+        ServerHeaders.apply(to: &identified)
+        try ServerHeaders.admit(identified)
+        let server = identified.url.flatMap { url in
+            ServerHeaders.entries().flatMap { ServerHeaderRule.entry(for: url, in: $0) }
+        }
+        // The background session follows a redirect without asking its
+        // delegate and carries the headers along (measured), so a server
+        // with headers is asked at the end of its redirects.
+        if let server { identified = await ServerHeaders.end(of: identified, server: server) }
         AppUserAgent.applyIfMissing(to: &identified)
         let request = identified
+        // Resume data carries the request it was paused with, headers and
+        // all; a server with headers starts its file anew with today's.
+        var resumeData = resumeData
+        if resumeData != nil, server != nil {
+            Logger.library.notice("DOWNLOAD starts anew host=\(request.url?.host ?? "-", privacy: .public): resume data would carry old server headers")
+            resumeData = nil
+        }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let task = resumeData.map { session.downloadTask(withResumeData: $0) }
                 ?? session.downloadTask(with: request)

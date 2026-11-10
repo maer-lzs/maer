@@ -772,7 +772,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
                 let line = try await MaerSyncTunnel.handshake(at: access.baseURL, wire: wire)
                 var request = URLRequest(url: url)
                 request.setValue(line.name, forHTTPHeaderField: "X-Maer-Session")
-                let socket = HTTP.webSocket(for: request)
+                let socket = try HTTP.webSocket(for: request)
                 guard let self, self.openedAs == generation else { socket.cancel(); return }
                 self.task = socket
                 socket.resume()

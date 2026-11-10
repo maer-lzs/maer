@@ -319,6 +319,7 @@ Sources/
 │   ├── SourceMap.swift             Pur: die fünf Bereiche und was jeder braucht (Zustände der Karte)
 │   ├── MaerPlaylistMerge.swift     Pur: Zusammenführen je Liste, gerettete Fassung, Grabsteine
 │   ├── UpNextAuto.swift            Pur: welche neuen Folgen in Als Nächstes kommen, und wohin
+│   ├── ServerHeaderRule.swift      Pur: welche Anfrage die eigenen Header eines Servers trägt, und wo eine Umleitung sie lässt
 │   ├── HeardElsewhere.swift        Pur: eine Marke von anderswo, die einen Titel gehört machte
 │   └── PodcastAutoDownloadRules.swift  Pur: was der automatische Download aufräumen darf
 ├── Networking/
@@ -344,6 +345,7 @@ Sources/
 │   ├── SubsonicClient.swift        Subsonic/OpenSubsonic-API (Token+Salz-Anmeldung, Streaming, Songtexte)
 │   ├── JellyfinClient.swift        Jellyfin-API (Authorization-Kopf, ApiKey an Medien-Links)
 │   ├── PinchflatClient.swift       Pinchflat: die Kanalliste als OPML-Spiegel, die Feeds laufen über RSS
+│   ├── ServerHeaders.swift         Die eigenen Header eines Servers im iCloud-Schlüsselbund, gesetzt an den vier Wegen nach außen
 │   ├── CoverArtArchive.swift       Hochaufgelöste Album-Cover über die MusicBrainz-ID (gedrosselt)
 │   ├── RadioBrowserClient.swift    Client für den Radio-Browser-Katalog (Rückfall über Spiegelserver)
 │   ├── SyncHistoryStore.swift      Sync-Verlauf (Zeilen) + „zuletzt geprüft“ je Dienst
@@ -366,6 +368,8 @@ Sources/
 │   │                               Offline-Cache als Zeilen
 │   ├── PlayerCoordinator.swift     Hält die aktive Sitzung über die Navigation am Leben,
 │   │                               offline-bewusst, Grundlage der Mini-Leiste
+│   ├── StreamPlanner.swift         Wo die Streams eines Servers mit Headern enden: die erste
+│   │                               Spur vor dem Start, der Rest danach
 │   ├── PlayerViewModel.swift       AVQueuePlayer, Mehrspur-Warteschlange, Spulen/Springen, Kapitel
 │   ├── PlayerViewModel+Sync.swift  Sync-Vorgehen: Zeitgeber, Schutz vor Wiedereintritt, Konflikte, Abgleich
 │   ├── PlayerViewModel+SleepTimer.swift   Schlaf-Zeitgeber samt Ausblenden der Lautstärke

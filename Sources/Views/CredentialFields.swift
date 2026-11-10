@@ -132,7 +132,7 @@ struct KnownServerSuggestions: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button(role: .destructive) {
-                                KnownServers.forget(entry)
+                                ServerHeaders.forget(entry)
                                 entries = KnownServers.suggestions(for: service)
                             } label: { Label("Remove", systemImage: "trash") }
                         }

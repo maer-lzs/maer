@@ -294,8 +294,11 @@ struct HostCourtesyTests {
                 "fetch asks its session inside the gate, per attempt")
         #expect(retry.components(separatedBy: "session.data(").count - 1 == 1)
         let http = try Self.code("Sources/Networking/HTTP.swift")
-        for ask in ["session(lane).data(for: prepared)", "session(.stream).bytes(for: prepared)",
-                    "session(lane).download(for: prepared)", "session(lane).upload(for: prepared, fromFile: file)"] {
+        // Each ask carries the redirect rule of the server headers as its delegate.
+        for ask in ["session(lane).data(for: prepared, delegate: RedirectGuard.following())",
+                    "session(.stream).bytes(for: prepared, delegate: RedirectGuard.following())",
+                    "session(lane).download(for: prepared, delegate: RedirectGuard.following())",
+                    "session(lane).upload(for: prepared, fromFile: file, delegate: RedirectGuard.following())"] {
             #expect(http.contains("courteously(prepared) {") && http.contains(ask), "\(ask)")
             let site = try #require(http.range(of: ask))
             let before = http[..<site.lowerBound].suffix(80)

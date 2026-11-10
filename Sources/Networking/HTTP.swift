@@ -57,8 +57,9 @@ nonisolated enum HTTP {
     /// A socket on the socket lane; the caller resumes, receives and
     /// cancels the task. Handed out here so the session stays behind the
     /// door like every other one.
-    static func webSocket(for request: URLRequest) -> URLSessionWebSocketTask {
+    static func webSocket(for request: URLRequest) throws -> URLSessionWebSocketTask {
         var out = prepare(request, lane: .socket)
+        try ServerHeaders.admit(out)
         // MEASURED, because the answer is the opposite of what it looks
         // like: on a socket task this value is the deadline of the UPGRADE,
         // not of the standing connection. A silent open socket stood 95
@@ -70,7 +71,9 @@ nonisolated enum HTTP {
         // request beats the session's and a hand-built request carries
         // URLRequest's own default silently.
         out.timeoutInterval = socketUpgradeTimeout
-        return session(.socket).webSocketTask(with: out)
+        let task = session(.socket).webSocketTask(with: out)
+        task.delegate = RedirectGuard.following()
+        return task
     }
 
     /// A request with data and the HTTP response. Retries by the policy
@@ -81,8 +84,11 @@ nonisolated enum HTTP {
                      retry: Bool = true) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
+            try ServerHeaders.admit(prepared)
             if lane == .stream || !retry {
-                let (data, response) = try await courteously(prepared) { try await session(lane).data(for: prepared) }
+                let (data, response) = try await courteously(prepared) {
+                    try await session(lane).data(for: prepared, delegate: RedirectGuard.following())
+                }
                 return (data, response as? HTTPURLResponse)
             }
             return try await RequestRetryPolicy.fetch(prepared, session: session(lane))
@@ -101,7 +107,10 @@ nonisolated enum HTTP {
     static func bytes(for request: URLRequest) async throws -> (URLSession.AsyncBytes, URLResponse) {
         let prepared = prepare(request, lane: .stream)
         do {
-            return try await courteously(prepared) { try await session(.stream).bytes(for: prepared) }
+            try ServerHeaders.admit(prepared)
+            return try await courteously(prepared) {
+                try await session(.stream).bytes(for: prepared, delegate: RedirectGuard.following())
+            }
         } catch {
             log(failure: error, request: prepared, lane: .stream)
             throw error
@@ -112,7 +121,10 @@ nonisolated enum HTTP {
     static func download(from url: URL, lane: Lane = .api) async throws -> (URL, URLResponse) {
         let prepared = prepare(URLRequest(url: url), lane: lane)
         do {
-            return try await courteously(prepared) { try await session(lane).download(for: prepared) }
+            try ServerHeaders.admit(prepared)
+            return try await courteously(prepared) {
+                try await session(lane).download(for: prepared, delegate: RedirectGuard.following())
+            }
         } catch {
             log(failure: error, request: prepared, lane: lane)
             throw error
@@ -123,8 +135,9 @@ nonisolated enum HTTP {
     static func upload(for request: URLRequest, fromFile file: URL, lane: Lane = .upload) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
+            try ServerHeaders.admit(prepared)
             let (data, response) = try await courteously(prepared) {
-                try await session(lane).upload(for: prepared, fromFile: file)
+                try await session(lane).upload(for: prepared, fromFile: file, delegate: RedirectGuard.following())
             }
             return (data, response as? HTTPURLResponse)
         } catch {
@@ -142,13 +155,16 @@ nonisolated enum HTTP {
 
     // MARK: - What every request gets
 
-    /// The identity, and the https upgrade where the lane needs it.
+    /// The identity, the headers of the request's server, and the https
+    /// upgrade where the lane needs it.
     static func prepare(_ request: URLRequest, lane: Lane) -> URLRequest {
         var out = request
         AppUserAgent.applyIfMissing(to: &out)
         if lane == .feed || lane == .cover, let url = out.url {
             out.url = PodcastFeedAddress.upgraded(url)
         }
+        // After the upgrade: the headers belong to the address that is asked.
+        ServerHeaders.apply(to: &out)
         return out
     }
 

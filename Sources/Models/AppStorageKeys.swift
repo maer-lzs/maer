@@ -882,6 +882,10 @@ nonisolated enum AppStorageKeys {
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     /// The Pinchflat server's address (`PinchflatClient.serverURL`).
     static let pinchflatServerURL = "pinchflatServerURL"
+    /// The addresses of the servers that have headers in the keychain,
+    /// without the headers (`ServerHeaders`): while the keychain cannot be
+    /// read, a request to one of them is held instead of sent without them.
+    static let serverHeaderBases = "serverHeaderBases"
     /// The Audiobookshelf server signed in now and the server of the last
     /// full library load, as normalized addresses, and when the signed-in
     /// server last changed (ms). `ABSServerScope` decides on them.

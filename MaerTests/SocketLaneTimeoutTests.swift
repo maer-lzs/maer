@@ -30,7 +30,7 @@ struct SocketLaneTimeoutTests {
         // Was ein selbst gebauter Request mitbringt, wenn niemand etwas sagt.
         #expect(nackt.timeoutInterval == 60, "URLRequest bringt nicht mehr 60 Sekunden mit")
 
-        let aufgabe = HTTP.webSocket(for: nackt)
+        let aufgabe = try HTTP.webSocket(for: nackt)
         defer { aufgabe.cancel() }
         let gestellt = try #require(aufgabe.originalRequest)
         #expect(gestellt.timeoutInterval == HTTP.socketUpgradeTimeout,
@@ -50,7 +50,7 @@ struct SocketLaneTimeoutTests {
     func theDeadlineBelongsToTheLaneNotTheCallSite() throws {
         var eigen = URLRequest(url: Self.adresse)
         eigen.timeoutInterval = 12
-        let aufgabe = HTTP.webSocket(for: eigen)
+        let aufgabe = try HTTP.webSocket(for: eigen)
         defer { aufgabe.cancel() }
         #expect(aufgabe.originalRequest?.timeoutInterval == HTTP.socketUpgradeTimeout)
     }
