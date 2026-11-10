@@ -196,6 +196,26 @@ struct SignInStreamTests {
         #expect(atFresh.contains { $0.contains("authorization:") } == false, "the new end saw the sign-in")
     }
 
+    @Test("ein Wirt, der die Vorab-Anfrage zehn Sekunden haelt, haelt den Start nicht auf: nach der kurzen Frist geht der Strom den Weg an seiner Adresse")
+    func aHostThatHoldsTheAskAheadDoesNotHoldTheStart() async throws {
+        let body = try HeaderRedirectMeasureTests.tone()
+        let holding = try Host(body: body, contentType: "audio/x-caf", delay: 10)
+        try await holding.start()
+        defer { holding.stop() }
+        let model = PlayerViewModel(provider: ServerHeadersWayTests.HostBoundProvider(host: "127.0.0.1"),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        let began = Date()
+        await ServerHeaders.$witness.withValue(ServerHeadersWayTests.MemoryKeys().keys()) {
+            await model.load(item: book("http://127.0.0.1:\(holding.port)/held.caf", seconds: 1))
+        }
+        let waited = Date().timeIntervalSince(began)
+        #expect(waited < 4, "the start waited \(waited) s for the ask ahead")
+        #expect(waited >= 1, "the start did not wait for the ask ahead at all: \(waited) s")
+        let built = try #require(model.player?.currentItem?.asset as? AVURLAsset, "the load built no stream after the short wait")
+        #expect(built.url.lastPathComponent == "held.caf", "the stream after the short wait is not the one at the track's address")
+        model.stop()
+    }
+
     @Test("ein Laden, das auf den Plan seiner ersten Spur wartet, meldet nach einem Stopp keinen Fehler")
     func aLoadThatWaitedLeavesAStoppedModelSilent() async throws {
         let body = try HeaderRedirectMeasureTests.tone()

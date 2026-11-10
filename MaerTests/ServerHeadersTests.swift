@@ -702,8 +702,12 @@ struct ServerHeadersFenceTests {
         let ahead = try #require(player.range(of: "_ = await planner.plan(first)", range: gate.upperBound..<player.endIndex))
         let built = try #require(player.range(of: "guard buildQueue(startingAtTrackIndex: startIndex", range: ahead.upperBound..<player.endIndex))
         let rest = try #require(player.range(of: "planner.planRest(rest)", range: built.upperBound..<player.endIndex))
-        #expect(player[gate.lowerBound..<built.lowerBound].components(separatedBy: "await planner.plan(").count - 1 == 1,
-                "the start asks exactly one track ahead")
+        // One track ahead, on one of two ways: a server with headers is
+        // waited for, a sign-in alone for a short time only.
+        #expect(player[gate.lowerBound..<built.lowerBound].components(separatedBy: "await planner.plan(").count - 1 == 2,
+                "the start asks more than the one track ahead")
+        #expect(player.contains("if ServerHeaders.needsPlan(first) {\n                _ = await planner.plan(first)\n            } else if await planner.plan(first, within: Self.startPatience) == .plain {"),
+                "a start with a sign-in alone waits for its plan without a limit")
         #expect(rest.lowerBound > built.upperBound)
         #expect(player.contains("if let url = resolveTrackURL(index: index), awaitsPlan(url) {\n                queueAppendIndex = index\n                break"),
                 "a queue stops at the first track without its plan")

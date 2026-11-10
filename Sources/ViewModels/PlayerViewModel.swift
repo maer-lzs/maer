@@ -641,7 +641,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         streamPlanner = planner
         if let first = resolveTrackURL(index: startIndex), needsPlan(first) {
-            _ = await planner.plan(first)
+            // A server with headers is waited for: without its plan the
+            // stream would go without them. A sign-in alone waits a short
+            // time and then takes the stream at its address, as a host that
+            // cannot be asked does.
+            if ServerHeaders.needsPlan(first) {
+                _ = await planner.plan(first)
+            } else if await planner.plan(first, within: Self.startPatience) == .plain {
+                Logger.player.notice("PLAY starts at the track's address, its end was not known in time or could not be asked: \(item.id, privacy: .private(mask: .hash))")
+            }
             // A start that came while the stream was asked owns the player,
             // and a title left meanwhile says nothing.
             guard self.item?.id == item.id, !isStopped else {
@@ -834,6 +842,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func trackIndex(for absoluteTime: Double) -> Int {
         TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
+
+    /// How long a start waits for the end of a stream's redirects before
+    /// it takes the stream at its address: the time the check before a
+    /// play waits for the server (`playWithServerCheck`).
+    nonisolated static let startPatience: Double = 1.5
 
     /// Whether the stream at this address is planned before it is built:
     /// its server has headers, or its source attaches a sign-in to it. Both

@@ -33,6 +33,29 @@ final class StreamPlanner {
         return asked
     }
 
+    /// The plan of one address, waited for at most `seconds`. A plan that
+    /// has not landed by then is held as `.plain`, the stream at its own
+    /// address, until the question that is still on its way answers and
+    /// takes its place. For a start, which must not wait for a host that
+    /// is connected and does not answer.
+    func plan(_ url: URL, within seconds: Double) async -> ServerHeaders.Stream {
+        if let held = plans[url] { return held }
+        // The first of the two answers ends the wait; nothing waits for the
+        // other, so a question that hangs holds nobody.
+        let (answers, continuation) = AsyncStream<ServerHeaders.Stream?>.makeStream()
+        Task { continuation.yield(await self.plan(url)) }
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            continuation.yield(nil)
+        }
+        var first = answers.makeAsyncIterator()
+        let answer = await first.next() ?? nil
+        continuation.finish()
+        if let answer { return answer }
+        if plans[url] == nil { plans[url] = .plain }
+        return plans[url] ?? .plain
+    }
+
     /// Lets the plan of one address go, so the next `plan` asks it anew: a
     /// stream built from it failed to load, and the end it names may have
     /// lapsed.
