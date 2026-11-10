@@ -20,6 +20,12 @@ Before, the sign-in of a private feed went along to every server an
 episode's audio file was hosted on. A private feed whose files need the
 same sign-in on a different server no longer plays from there.
 
+**A paused download continues with its own source.** Resuming a paused
+download asks the source that download began with. Before, it asked the
+source of whichever download had started last, so a paused book could be
+continued against the music server. When its source is gone, the download
+says so instead of staying paused.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.

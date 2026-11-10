@@ -46,6 +46,10 @@ final class DownloadManager {
     /// After a relaunch, partial folders are picked up via resume-by-skip).
     private struct DownloadControl {
         var detail: LibraryItemDetail
+        /// The source this download began with: a resume asks it, never the
+        /// source of whichever download started last. Weak, so a source
+        /// that is gone is gone here too.
+        weak var provider: (any AudioProvider)?
         var currentTask: URLSessionDownloadTask?
         var pendingPause = false
         var pendingCancel = false
@@ -412,6 +416,11 @@ final class DownloadManager {
     /// (`controls` stands, `phase` is clear), and the clearing of the start
     /// scan run on remnants handed in.
     func _testHoldAsResuming(_ detail: LibraryItemDetail) { controls[detail.id] = DownloadControl(detail: detail) }
+    /// For witnesses: a download paused with the source it began with.
+    func _testHoldAsPaused(_ detail: LibraryItemDetail, provider: (any AudioProvider)?) {
+        controls[detail.id] = DownloadControl(detail: detail, provider: provider)
+        phase[detail.id] = .paused(0)
+    }
     func _testClearRemnants(_ remnants: [String: Date], now: Date) { clearOldRemnants(remnants, now: now) }
     #endif
 
@@ -503,9 +512,15 @@ final class DownloadManager {
 
     /// Resume a paused download (continues mid-file via resume data).
     func resumeDownload(itemId: String) {
-        guard case .paused = phase[itemId],
-              let control = controls[itemId],
-              let provider = resumeProvider else { return }
+        guard case .paused = phase[itemId], let control = controls[itemId] else { return }
+        guard let provider = control.provider else {
+            // The source this download began with is gone: the title says
+            // so instead of staying paused without a way on.
+            Logger.library.notice("DOWNLOAD resume without its source: \(itemId, privacy: .public)")
+            controls[itemId] = nil
+            phase[itemId] = .failed(String(localized: "Not available on this device: the source is not set up here"))
+            return
+        }
         // Clear the paused phase so the isDownloading guard lets us restart.
         phase[itemId] = nil
         // The kind recorded at the start carries over; resuming names none.
@@ -529,9 +544,6 @@ final class DownloadManager {
             control.currentTask?.cancel()
         }
     }
-
-    /// Client used for resumes (set on each download start).
-    private weak var resumeProvider: (any AudioProvider)?
 
     /// All locally downloaded audio files of a book, sorted by track order
     /// (filename = track index). Preferred by the player to avoid streaming (and
@@ -825,12 +837,11 @@ final class DownloadManager {
             return
         }
 
-        resumeProvider = provider
         // Carry mid-file resume data over from a pause. Used once, and ONLY
         // for the exact track it was captured from (see resumeTrackIndex).
         var carriedResumeData = controls[itemId]?.resumeData
         let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
-        controls[itemId] = DownloadControl(detail: item, resumeData: nil)
+        controls[itemId] = DownloadControl(detail: item, provider: provider, resumeData: nil)
         phase[itemId] = .downloading(0)
         let dir = itemDirectory(itemId)
         if !FileManager.default.fileExists(atPath: dir.path) {
