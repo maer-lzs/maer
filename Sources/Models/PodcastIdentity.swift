@@ -112,8 +112,9 @@ nonisolated enum PodcastIdentity {
             let query = String(s[s.index(after: q)...])
             let kept = query.split(separator: "&")
                 .filter { pair in
-                    let name = pair.split(separator: "=", maxSplits: 1)[0]
-                    return identityQueryParams.contains(String(name))
+                    // The name is what stands before the first "="; a pair
+                    // that begins with "=" has none and is dropped.
+                    identityQueryParams.contains(String(pair.prefix { $0 != "=" }))
                 }
                 .sorted()
             if !kept.isEmpty { identityQuery = "?" + kept.joined(separator: "&") }

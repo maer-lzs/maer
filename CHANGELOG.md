@@ -48,6 +48,11 @@ that you marked as premium, the directory is no longer asked, and the
 button for the full history is not offered there. Before, the address
 went to the directory with its token.
 
+**A malformed feed address no longer closes the app.** A feed address
+whose query held a pair without a name, such as a lone "=", closed the
+app at every sync and at every start, on each device of the account that
+had it. Such an address is read like any other now.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.
