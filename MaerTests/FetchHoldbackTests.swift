@@ -158,14 +158,20 @@ struct FetchHoldbackTests {
     }
 
     /// The player forgets a catalogue answer where playback visibly failed:
-    /// both places that show the track failure hint after the retry.
+    /// both places that show the track failure hint after the retry: the
+    /// spent retry, and a rebuild that built no queue.
     @Test("ein sichtbar gescheitertes Abspielen vergisst die Katalog-Antwort", .needsTheSources)
     func aFailedPlaybackForgetsTheAnswer() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)
         let body = try #require(functionBody(of: "private func handleTrackFailure(", in: text))
-        #expect(body.components(separatedBy: "showSourceHint(.trackFailed)").count - 1 == 2)
-        #expect(body.components(separatedBy: "forgetCatalogAnswer()").count - 1 == 2,
+        #expect(body.components(separatedBy: "showSourceHint(.trackFailed)").count - 1 == 1)
+        #expect(body.components(separatedBy: "forgetCatalogAnswer()").count - 1 == 1,
+                "jede sichtbare Fehlstelle vergisst die Antwort")
+        #expect(body.contains("self.stopAfterFailedRebuild()"), "a failed rebuild after the retry stops elsewhere")
+        let failed = try #require(functionBody(of: "private func stopAfterFailedRebuild(", in: text))
+        #expect(failed.components(separatedBy: "showSourceHint(.trackFailed)").count - 1 == 1)
+        #expect(failed.components(separatedBy: "forgetCatalogAnswer()").count - 1 == 1,
                 "jede sichtbare Fehlstelle vergisst die Antwort")
         #expect(text.contains("ArchiveOrgClient.forgetMetadata(identifier: identifier)"))
     }

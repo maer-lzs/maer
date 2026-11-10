@@ -18,10 +18,18 @@ final class StreamPlanner {
     private let ask: Ask
     let limit: Int
     private(set) var plans: [URL: ServerHeaders.Stream] = [:]
-    /// Addresses asked ahead whose plan has not landed: each is asked once.
-    private var asking: Set<URL> = []
-    /// The asks ahead on their way, each until its last plan landed.
+    /// The asks on their way, one per address: a plan wanted while its
+    /// address is asked waits for that ask, from a jump, a start or a
+    /// window alike.
+    private var asking: [URL: Task<ServerHeaders.Stream, Never>] = [:]
+    /// The waits of the windows for their plans, each until it is done.
     private var ahead: [UUID: Task<Void, Never>] = [:]
+    /// How many asks run now, and the asks waiting for their turn, first
+    /// in first out.
+    private var running = 0
+    private var turns: [CheckedContinuation<Void, Never>] = []
+    /// Set by `stop()`: nothing is asked or kept after it.
+    private var stopped = false
 
     /// How many tracks after the one playing are asked ahead: enough that
     /// the switch to the next track does not wait for its plan.
@@ -41,12 +49,47 @@ final class StreamPlanner {
         self.ask = ask
     }
 
-    /// The plan of one address, asked now when it is not held.
+    /// The plan of one address: held, or the ask on its way, or asked now.
     func plan(_ url: URL) async -> ServerHeaders.Stream {
         if let held = plans[url] { return held }
-        let asked = await ask(url)
-        plans[url] = asked
-        return asked
+        return await asked(url).value
+    }
+
+    /// The one ask of an address, started when none is on its way. It waits
+    /// for its turn (at most `limit` run at once, in the order they were
+    /// started) and keeps its plan unless the planner stopped meanwhile.
+    private func asked(_ url: URL) -> Task<ServerHeaders.Stream, Never> {
+        if let running = asking[url] { return running }
+        let ask = self.ask
+        let task = Task { [weak self] () -> ServerHeaders.Stream in
+            guard let self else { return .plain }
+            await self.turn()
+            defer { self.release() }
+            guard !self.stopped else { return .plain }
+            let plan = await ask(url)
+            if !self.stopped { self.plans[url] = plan }
+            self.asking[url] = nil
+            return plan
+        }
+        asking[url] = task
+        return task
+    }
+
+    private func turn() async {
+        if running < limit {
+            running += 1
+            return
+        }
+        await withCheckedContinuation { turns.append($0) }
+    }
+
+    /// Hands the turn to the next ask waiting, or frees it.
+    private func release() {
+        if turns.isEmpty {
+            running -= 1
+        } else {
+            turns.removeFirst().resume()
+        }
     }
 
     /// The plan of one address, waited for at most `seconds`. A plan that
@@ -77,44 +120,42 @@ final class StreamPlanner {
     /// lapsed.
     func forget(_ url: URL) { plans[url] = nil }
 
-    /// Asks the plans of these addresses ahead, at most `limit` at a time;
-    /// an address whose plan is held or on its way is not asked again, so
-    /// two windows that overlap ask each track once. `landed` runs after
-    /// each one is kept.
+    /// Asks the plans of these addresses ahead, at most `limit` at a time
+    /// and in the order handed in; an address whose plan is held or on its
+    /// way is not asked again, so two windows that overlap ask each track
+    /// once. `landed` runs after each one is kept.
     func planAhead(_ urls: [URL], landed: @escaping @MainActor () -> Void) {
-        let pending = urls.filter { plans[$0] == nil && !asking.contains($0) }
+        guard !stopped else { return }
+        let pending = urls.filter { plans[$0] == nil && asking[$0] == nil }
         guard !pending.isEmpty else { return }
-        asking.formUnion(pending)
-        let ask = self.ask
-        let limit = self.limit
-        let id = UUID()
-        ahead[id] = Task { [weak self] in
-            var waiting = ArraySlice(pending)
-            await withTaskGroup(of: (URL, ServerHeaders.Stream).self) { group in
-                for _ in 0..<limit {
-                    guard let url = waiting.popFirst() else { break }
-                    group.addTask { (url, await ask(url)) }
-                }
-                for await (url, plan) in group {
-                    guard let self, !Task.isCancelled else {
-                        group.cancelAll()
-                        return
-                    }
-                    self.asking.remove(url)
-                    self.plans[url] = plan
-                    landed()
-                    if let next = waiting.popFirst() { group.addTask { (next, await ask(next)) } }
-                }
+        for url in pending {
+            let task = asked(url)
+            let id = UUID()
+            ahead[id] = Task { [weak self] in
+                _ = await task.value
+                guard let self else { return }
+                self.ahead[id] = nil
+                guard !self.stopped, !Task.isCancelled else { return }
+                landed()
             }
-            self?.ahead[id] = nil
         }
     }
 
-    /// Ends the asking ahead; the plans held stay with this planner, and the
-    /// next title's planner starts without them.
+    /// Ends the asking ahead: an ask waiting for its turn asks nothing, an
+    /// ask on its way keeps nothing, and no plan lands after it. The plans
+    /// held stay with this planner, and the next title's planner starts
+    /// without them.
     func stop() {
+        stopped = true
         for task in ahead.values { task.cancel() }
         ahead = [:]
-        asking = []
+        for task in asking.values { task.cancel() }
+        asking = [:]
+        let waiting = turns
+        turns = []
+        for turn in waiting {
+            running += 1
+            turn.resume()
+        }
     }
 }

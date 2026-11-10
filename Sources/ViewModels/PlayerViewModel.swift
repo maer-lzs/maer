@@ -854,6 +854,41 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url)?.isEmpty == false
     }
 
+    /// The queue ran out at the track at `index`, which waits for its plan.
+    /// It is waited for as a start waits: a server with headers fully, a
+    /// sign-in alone `startPatience` before the stream is taken at its
+    /// address. A plan that says the track cannot be asked now stops
+    /// playback with a hint, so playback never stands silent at "playing".
+    private func awaitPlanOfDryQueue(at index: Int) {
+        guard let planner = streamPlanner, let url = resolveTrackURL(index: index) else { return }
+        planWindow(from: index)
+        let waitsFully = ServerHeaders.needsPlan(url)
+        Task { [weak self] in
+            if waitsFully {
+                _ = await planner.plan(url)
+            } else {
+                _ = await planner.plan(url, within: Self.startPatience)
+            }
+            guard let self, self.streamPlanner === planner, !self.isStopped, self.waitsForPlannedTrack else { return }
+            self.appendPlannedTracks()
+        }
+    }
+
+    /// Playback stops at the track a dry queue waited for, whose plan says
+    /// it cannot be asked now: the same end as a start that cannot ask its
+    /// first track. The next play builds anew from there and asks again.
+    private func stopWaitingForPlan(at index: Int) {
+        waitsForPlannedTrack = false
+        loadFailureNoted = true
+        currentTrackIndex = index
+        currentTime = trackAbsoluteStart(index)
+        notePlayback("stopped", from: "the next track cannot be asked now")
+        player?.pause()
+        isPlaying = false
+        updateNowPlayingInfo()
+        cannotPlay(String(localized: "Unlock this device once to play this episode."))
+    }
+
     /// Asks the plans of the track at `index` and the next ones
     /// (`StreamPlanner.window`): what playback needs soon, never all tracks
     /// of a title at once. Each joins the queue as its plan lands.
@@ -872,14 +907,25 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Appends to the playing queue, in order, the tracks whose plans have
-    /// landed since it was built.
+    /// landed since it was built. Nothing at or behind a held load failure,
+    /// and nothing while a load failure stopped playback: the next play
+    /// builds anew from there. A track whose plan says it cannot be asked
+    /// now is not skipped; the queue stops before it, and a queue that ran
+    /// out waiting for it stops playback (`stopWaitingForPlan`).
     private func appendPlannedTracks() {
-        guard let player, queueAppendIndex < tracks.count else { return }
+        let end = QueueAppend.end(trackCount: tracks.count, heldAt: heldAhead?.index, failureNoted: loadFailureNoted)
+        guard let player, queueAppendIndex < end else { return }
         let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
         var last: AVPlayerItem?
-        while queueAppendIndex < tracks.count {
+        while queueAppendIndex < end {
             let index = queueAppendIndex
-            if let url = resolveTrackURL(index: index), awaitsPlan(url) { break }
+            if let url = resolveTrackURL(index: index), needsPlan(url) {
+                guard let plan = streamPlanner?.plans[url] else { break }
+                if plan == .waiting {
+                    if waitsForPlannedTrack { stopWaitingForPlan(at: index) }
+                    break
+                }
+            }
             queueAppendIndex += 1
             guard let item = queueItem(index: index, isRadio: isRadio) else { continue }
             player.insert(item, after: nil)
@@ -1096,12 +1142,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     return
                 }
                 // The queue ran out before the next track's plan landed: the
-                // book goes on when it does (`appendPlannedTracks`).
+                // book goes on when it does, or stops when it cannot be had.
                 if self.queueAppendIndex < self.tracks.count {
                     Logger.player.notice("PLAY waits for the plan of track=\(self.queueAppendIndex)")
                     self.waitsForPlannedTrack = true
-                    // The track it waits for is asked, if it is not yet.
-                    self.planWindow(from: self.queueAppendIndex)
+                    self.awaitPlanOfDryQueue(at: self.queueAppendIndex)
                     return
                 }
                 self.currentTime = self.duration
@@ -1714,15 +1759,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         if attempt.dropFile { dropLocalFile(at: index) }
         let idx = trackIndex(for: currentTime)
-        let rebuilt = buildQueue(
-            startingAtTrackIndex: idx,
-            seekWithin: max(0, currentTime - trackAbsoluteStart(idx))
-        )
-        if !rebuilt {
-            notePlayback("stopped", from: "queue rebuild failed")
-            isPlaying = false
-            showSourceHint(.trackFailed)
-            forgetCatalogAnswer()
+        rebuildAfterLoadFailure(from: idx, seekWithin: max(0, currentTime - trackAbsoluteStart(idx)),
+                                reason: "track failed") { [weak self] rebuilt in
+            guard let self, !rebuilt else { return }
+            self.stopAfterFailedRebuild()
         }
     }
 
@@ -1878,13 +1918,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let then = FailedLoad.atFiring(held.then, online: isOnline())
         if then == .stream {
             currentTime = trackAbsoluteStart(index)
-            let rebuilt = buildQueue(startingAtTrackIndex: index, seekWithin: 0)
-            Logger.player.notice("LOADFAIL held track=\(index) plays on from the server ok=\(rebuilt)")
-            if rebuilt {
-                showSourceHint(.downloadUnreadable)
-                return
+            rebuildAfterLoadFailure(from: index, seekWithin: 0, reason: "held, plays on from the server") { [weak self] rebuilt in
+                guard let self else { return }
+                if rebuilt {
+                    self.showSourceHint(.downloadUnreadable)
+                } else {
+                    self.stopAtHeld(index: index, then: then, cause: held.cause)
+                }
             }
+            return
         }
+        stopAtHeld(index: index, then: then, cause: held.cause)
+    }
+
+    /// Playback stops at a held track: the mark, the hint, the next play
+    /// builds anew from there.
+    private func stopAtHeld(index: Int, then: FailedLoad.LocalFallback, cause: NoticeCause) {
         loadFailureNoted = true
         currentTrackIndex = index
         currentTime = trackAbsoluteStart(index)
@@ -1892,9 +1941,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        showSourceHint(Self.loadHint(then, cause: isOnline() ? held.cause : .network))
+        showSourceHint(Self.loadHint(then, cause: isOnline() ? cause : .network))
         forgetCatalogAnswer()
     }
+
+    #if DEBUG
+    /// For witnesses: the tracks the queue holds, in order.
+    func _testQueuedTracks() -> [Int] {
+        (player?.items() ?? []).compactMap { itemTrackIndex[ObjectIdentifier($0)] }
+    }
+    /// For witnesses: a load failure of a later track, held.
+    func _testHoldAhead(at index: Int, then: FailedLoad.LocalFallback) {
+        holdAhead(at: index, then: then, cause: .server)
+    }
+    /// For witnesses: the queue ran out before the held track.
+    func _testStopAtHeld() {
+        if let held = heldAhead { stopAtHeldFailure(held) }
+    }
+    /// For witnesses: the playing item failed mid-play for the first time.
+    func _testFailPlaying() {
+        if let current = player?.currentItem { handleTrackFailure(current) }
+    }
+    /// For witnesses: playback reached the track at `index`.
+    func _testPlanWindow(from index: Int) { planWindow(from: index) }
+    #endif
 
     /// Before a play: a queue whose current item failed to load is built
     /// anew. The position is the one this device holds, never one fetched
@@ -1912,29 +1982,57 @@ final class PlayerViewModel: NSObject, ObservableObject {
         rebuildAtHeldPosition(reason: "network back")
     }
 
-    /// A track that needs a plan is asked anew first: the stream that
-    /// failed was built from a plan whose end may have lapsed (a signed
-    /// address), and a rebuild from the same plan would fail the same way.
     private func rebuildAtHeldPosition(reason: String) {
         let index = trackIndex(for: currentTime)
-        if let planner = streamPlanner, let url = resolveTrackURL(index: index), needsPlan(url) {
-            planner.forget(url)
-            Task { [weak self] in
-                _ = await planner.plan(url)
-                // A title opened or left while the plan was asked owns the player.
-                guard let self, self.streamPlanner === planner, !self.isStopped else { return }
-                self.rebuildNow(reason: reason)
-            }
-            return
+        rebuildAfterLoadFailure(from: index, seekWithin: max(0, currentTime - trackAbsoluteStart(index)),
+                                reason: reason) { [weak self] rebuilt in
+            guard let self, !rebuilt else { return }
+            self.stopAfterFailedRebuild()
         }
-        rebuildNow(reason: reason)
     }
 
-    private func rebuildNow(reason: String) {
-        let index = trackIndex(for: currentTime)
-        let rebuilt = buildQueue(startingAtTrackIndex: index,
-                                 seekWithin: max(0, currentTime - trackAbsoluteStart(index)))
+    /// A rebuild after a load failure built no queue: playback stops with a
+    /// hint, and the next play builds anew. A track whose sign-in or
+    /// headers cannot be read now says so, as a start says it.
+    private func stopAfterFailedRebuild() {
+        loadFailureNoted = true
+        notePlayback("stopped", from: "queue rebuild failed")
+        player?.pause()
+        isPlaying = false
+        updateNowPlayingInfo()
+        if queueWaitedForSignIn {
+            cannotPlay(String(localized: "Unlock this device once to play this episode."))
+        } else {
+            showSourceHint(.trackFailed)
+        }
+        forgetCatalogAnswer()
+    }
+
+    /// The one way every rebuild after a load failure goes. A track that
+    /// needs a plan is asked anew first: the stream that failed was built
+    /// from a plan whose end may have lapsed (a signed address), a dropped
+    /// local file leaves a track that was never planned, and a rebuild from
+    /// the old plan or none would fail the same way. `done` hears whether a
+    /// queue was built; it is not called when a title was opened or left
+    /// while the plan was asked.
+    private func rebuildAfterLoadFailure(from index: Int, seekWithin: Double, reason: String,
+                                         then done: @escaping @MainActor (Bool) -> Void) {
+        guard let planner = streamPlanner, let url = resolveTrackURL(index: index), needsPlan(url) else {
+            done(rebuildNow(from: index, seekWithin: seekWithin, reason: reason))
+            return
+        }
+        planner.forget(url)
+        Task { [weak self] in
+            _ = await planner.plan(url)
+            guard let self, self.streamPlanner === planner, !self.isStopped else { return }
+            done(self.rebuildNow(from: index, seekWithin: seekWithin, reason: reason))
+        }
+    }
+
+    private func rebuildNow(from index: Int, seekWithin: Double, reason: String) -> Bool {
+        let rebuilt = buildQueue(startingAtTrackIndex: index, seekWithin: seekWithin)
         Logger.player.notice("LOADFAIL rebuild reason=\(reason, privacy: .public) track=\(index) ok=\(rebuilt)")
+        return rebuilt
     }
 
     /// Absolute book time where the currently playing track ends.

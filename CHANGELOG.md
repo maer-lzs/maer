@@ -11,6 +11,11 @@ stream ended at. Starting such a title takes one short request more,
 and so does each next file of a book as playback comes near it;
 downloads were not affected.
 
+**A book that cannot go on says so.** When play cannot build a book
+again after one of its files failed to load, or the next file of a
+book cannot be reached until the device is unlocked, the player stops
+with a hint. Before, it could show that it plays while nothing played.
+
 ## v3.6.2 (Build 61)
 
 **CarPlay is new, for every medium.** Home comes first and carries the

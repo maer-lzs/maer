@@ -574,15 +574,21 @@ struct ServerHeadersWayTests {
 
     /// A source whose sign-in is bound to one host name: it answers the
     /// form with the address, and the form without it only says readable.
+    /// Every other host gets `elsewhere`: none, or nil for a sign-in that
+    /// cannot be read there now.
     final class HostBoundProvider: AudioProvider {
         let host: String
-        init(host: String) { self.host = host }
+        let elsewhere: [String: String]?
+        init(host: String, elsewhere: [String: String]? = [:]) {
+            self.host = host
+            self.elsewhere = elsewhere
+        }
         var providerId: String { "host-bound" }
         var keepsMarksOnDevice: Bool { true }
         var capabilities: ProviderCapabilities { [] }
         var streamAuthHeaders: [String: String] { [:] }
         func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {
-            url.host == host ? ["Authorization": "Basic cGxhbjpwbGFu"] : [:]
+            url.host == host ? ["Authorization": "Basic cGxhbjpwbGFu"] : elsewhere
         }
         func fetchLibraries() async throws -> [ABSLibrary] { [] }
         func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
@@ -679,6 +685,24 @@ struct StreamPlannerTests {
         let order = await counter.order
         #expect(order.count == 4, "an address was asked twice: \(order.map(\.lastPathComponent))")
         #expect(Set(order) == Set(urls[0...3]))
+    }
+
+    @Test("Planer: ein Plan, der gewollt wird, waehrend seine Adresse im Voraus gefragt wird, wartet auf diese Frage")
+    func aPlanWantedWhileAskedAheadWaitsForThatAsk() async throws {
+        let counter = Counter()
+        let planner = StreamPlanner(limit: 4) { url in
+            await counter.begin(url)
+            try? await Task.sleep(for: .milliseconds(200))
+            await counter.end()
+            return .resolved(url, headers: [:])
+        }
+        let url = try #require(URL(string: "https://h.example/t0"))
+        planner.planAhead([url]) {}
+        // A jump into the window wants the plan while the ask is on its way.
+        let plan = await planner.plan(url)
+        #expect(plan == .resolved(url, headers: [:]))
+        let order = await counter.order
+        #expect(order.count == 1, "the address was asked again: \(order.count)")
     }
 
     @Test("Planer: stop() beendet die Fragen im Voraus, kein Plan landet danach und keine Frage beginnt")
@@ -781,6 +805,22 @@ struct ServerHeadersFenceTests {
         let table = try Self.code("Sources/Networking/ServerHeaders.swift")
         #expect(table.contains("let end = await self.end(of: ServerHeaderRule.applied(request, entries: entries), server: server)"),
                 "the stream asks the end the same way")
+    }
+
+    @Test("Neubau nach einem Ladefehler: eine Stelle laesst den Plan der Spur gehen, und jeder Weg baut durch sie", .needsTheSources)
+    func everyRebuildAfterALoadFailureAsksThePlanAnew() throws {
+        let player = try Self.code("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(player.components(separatedBy: ".forget(").count - 1 == 1, "a plan is let go in another place")
+        let place = try #require(functionBody(of: "private func rebuildAfterLoadFailure(", in: player))
+        #expect(place.contains("planner.forget(url)"), "the one place does not let the plan go")
+        for way in ["private func handleTrackFailure(", "private func stopAtHeldFailure(", "private func rebuildAtHeldPosition("] {
+            let body = try #require(functionBody(of: way, in: player), "\(way) is gone")
+            #expect(body.contains("rebuildAfterLoadFailure(from:"), "\(way) builds anew past the one place")
+            #expect(!body.contains("buildQueue("), "\(way) builds the queue itself")
+        }
+        // The load, a jump and the one place.
+        #expect(player.components(separatedBy: "buildQueue(startingAtTrackIndex:").count - 1 == 3,
+                "the queue is built in another place")
     }
 
     @Test("Header: der Stream einer Spur fragt den Plan, kein Asset mit Kopfzeilen entsteht am Planer vorbei", .needsTheSources)
