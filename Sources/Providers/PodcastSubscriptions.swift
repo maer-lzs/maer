@@ -1588,7 +1588,7 @@ final class PodcastSubscriptions: ObservableObject {
                 title: pi.title ?? String(localized: "Untitled Episode"),
                 audioURL: audio,
                 pubDate: (pi.datePublished ?? 0) * 1000,
-                duration: pi.duration ?? 0,
+                duration: PodcastDuration.known(pi.duration ?? 0),
                 description: pi.description,
                 // PodcastIndex answers "" for an episode without a picture.
                 imageURL: PodcastCover.present(pi.image)
@@ -3010,12 +3010,13 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         }
     }
 
-    // "HH:MM:SS", "MM:SS" or plain seconds → seconds.
+    // "HH:MM:SS", "MM:SS" or plain seconds → seconds. A feed may write
+    // "inf", "nan" or a number beyond any length; such a value is unknown.
     private static func parseDuration(_ s: String) -> Double {
         if s.contains(":") {
             let parts = s.split(separator: ":").compactMap { Double($0) }
-            return parts.reduce(0) { $0 * 60 + $1 }
+            return PodcastDuration.known(parts.reduce(0) { $0 * 60 + $1 })
         }
-        return Double(s) ?? 0
+        return PodcastDuration.known(Double(s) ?? 0)
     }
 }

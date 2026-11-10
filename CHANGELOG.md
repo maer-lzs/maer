@@ -53,6 +53,12 @@ whose query held a pair without a name, such as a lone "=", closed the
 app at every sync and at every start, on each device of the account that
 had it. Such an address is read like any other now.
 
+**An impossible episode length no longer closes the app.** A feed that
+gave an episode a length that is no number, or an endless one, closed
+the app when the episode's row or the large player was drawn, and kept
+the subscriptions from being saved. Such a length now counts as unknown,
+also for episodes that are already stored.
+
 **Listening on an older version of the app is kept.** If you went back
 to version 3.2 or older and listened there, that listening now shows up
 after you update again, wherever it is newer than what the app held.

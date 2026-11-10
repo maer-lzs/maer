@@ -223,10 +223,14 @@ actor PodcastRowStore {
         for row in try await connection.query("SELECT show_id, payload FROM episode ORDER BY show_id, position") {
             guard let showId = row["show_id"]?.string, let i = index[showId],
                   let data = row["payload"]?.data,
-                  let episode = try? decoder.decode(PodcastEpisode.self, from: data) else {
+                  var episode = try? decoder.decode(PodcastEpisode.self, from: data) else {
                 skipped += 1
                 continue
             }
+            // A row written with a length no reader can take is read as
+            // unknown; the next write of the episode stores it so.
+            episode.duration = PodcastDuration.known(episode.duration)
+            episode.measuredDuration = episode.measuredDuration.map(PodcastDuration.known)
             shows[i].episodes.append(episode)
         }
         if skipped > 0 {
