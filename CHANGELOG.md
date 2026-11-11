@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Subscribing during a refresh of all podcasts sticks.** A show you
+subscribe to or unsubscribe from while all feeds are being refreshed now
+stays as you left it. Before, the refresh wrote back the list it started
+with.
+
 **Another user is another account.** When you sign in as another user at
 the same Audiobookshelf, Jellyfin, Subsonic or gpodder address, the app
 now forgets the sign-in of the user before, clears what belonged to that

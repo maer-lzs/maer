@@ -2410,6 +2410,24 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
+    /// The stock after a refresh of all feeds: each show that still stands
+    /// takes what its feed answered (`PodcastIdentity.merge`), by id, onto
+    /// the show as it stands now. A show subscribed while the feeds were
+    /// asked stays, one dropped stays gone, and a change made to a show
+    /// meanwhile is kept. Pairs for the shows that got an answer.
+    nonisolated static func mergedRefresh(current: [PodcastShow], fetched: [String: PodcastShow])
+        -> (shows: [PodcastShow], pairs: [(stored: PodcastShow, merged: PodcastShow)]) {
+        var shows = current
+        var pairs: [(stored: PodcastShow, merged: PodcastShow)] = []
+        for index in shows.indices {
+            guard let fresh = fetched[shows[index].id] else { continue }
+            let stored = shows[index]
+            shows[index] = PodcastIdentity.merge(stored, fresh)
+            pairs.append((stored, shows[index]))
+        }
+        return (shows, pairs)
+    }
+
     /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.
     func refreshAll() async {
         // NEVER mutate before the disk load. The BGAppRefresh
@@ -2420,8 +2438,10 @@ final class PodcastSubscriptions: ObservableObject {
         // THE one gate for the bulk RSS refresh; deliberate user actions
         // (subscribe/preview) stay ungated.
         guard AppStorageKeys.rssActive else { return }
-        var updated = shows
-        for (index, show) in shows.enumerated() {
+        // What each feed answered, by show id; merged into the stock as it
+        // stands after the last answer, not into this copy.
+        var fetched: [String: PodcastShow] = [:]
+        for show in shows {
             var feedCount: Int?
             var status: Int?
             let url = PodcastFeedAddress.requestURL(show.feedURL)
@@ -2439,7 +2459,7 @@ final class PodcastSubscriptions: ObservableObject {
                     Logger.rss.debug("RSS refresh shrank \(show.title, privacy: .public): cached=\(show.episodes.count) fresh=\(fresh.episodes.count) → union keeps the cache")
                 }
                 #endif
-                updated[index] = PodcastIdentity.merge(show, fresh)
+                fetched[show.id] = fresh
             }
             // Counted per show, so two devices holding a different number of
             // episodes of one show can be read side by side: what the stock
@@ -2447,10 +2467,12 @@ final class PodcastSubscriptions: ObservableObject {
             // takes an episode out of a show. Numbers and the show's hash,
             // never an address.
             let unasked = if case .accessUnknown? = outcome { true } else { false }
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(updated[index].episodes.count)")
+            let merged = fetched[show.id].map { PodcastIdentity.merge(show, $0).episodes.count } ?? show.episodes.count
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(merged)")
         }
-        let pairs = zip(shows, updated).map { (stored: $0, merged: $1) }
-        shows = updated
+        let refreshed = Self.mergedRefresh(current: shows, fetched: fetched)
+        shows = refreshed.shows
+        let pairs = refreshed.pairs
         save()
         UpNextArrivals.take(pairs, queue: upNext, store: defaults)
         healStoredProgress()
