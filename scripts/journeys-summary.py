@@ -23,6 +23,7 @@ import sys
 PARALLEL = re.compile(r"Test case '([^']*)' (passed|failed|skipped) on '[^']*' \(([0-9.]+) seconds\)")
 SERIAL = re.compile(r"Test Case '-\[(?:[\w]+\.)?(\w+) (\w+)\]' (passed|failed|skipped) \(([0-9.]+) seconds\)")
 EXECUTED = re.compile(r"Executed (\d+) tests?, with")
+RUN_MARKER = re.compile(r"^=== journeys run \d+ ===$", re.MULTILINE)
 # A skip names its reason on a line of its own before the closing line (a
 # server journey that did not reach its server says so there).
 SKIP_REASON = re.compile(r"-\[(?:[\w]+\.)?(\w+) (\w+)\] : Test skipped - (.*)$")
@@ -56,8 +57,14 @@ def verdict(result):
 
 
 def executed(text):
-    counts = [int(n) for n in EXECUTED.findall(text)]
-    return max(counts) if counts else 0
+    # A server run takes each journey as its own xcodebuild run into one
+    # log, each after a marker line; each run reports its own totals, so
+    # the count is the sum of the largest total of each run.
+    total = 0
+    for run in RUN_MARKER.split(text):
+        counts = [int(n) for n in EXECUTED.findall(run)]
+        total += max(counts) if counts else 0
+    return total
 
 
 def table(text):
@@ -93,6 +100,16 @@ def selbstprobe():
     lines, error = table(skipped)
     assert error is None, error
     assert lines == ["| ServerJourneys/testMusic | übersprungen: Server nicht erreichbar: https://gonic.example | 1 s |"], lines
+    # A server run: two xcodebuild runs in one log, each with its totals.
+    two = ("=== journeys run 1 ===\n"
+           "Test Case '-[MaerUITests.ServerJourneys testAudiobook]' passed (64.000 seconds).\n"
+           "\t Executed 1 test, with 0 failures (0 unexpected) in 64.0 (64.1) seconds\n"
+           "\t Executed 1 test, with 0 failures (0 unexpected) in 64.0 (64.2) seconds\n"
+           "=== journeys run 2 ===\n"
+           "Test Case '-[MaerUITests.ServerJourneys testMusic]' passed (66.000 seconds).\n"
+           "\t Executed 1 test, with 0 failures (0 unexpected) in 66.0 (66.1) seconds\n")
+    lines, error = table(two)
+    assert error is None and len(lines) == 2, (lines, error)
     # The failure this reader had: tests ran, the table stayed empty.
     lines, error = table("\t Executed 10 tests, with 1 failure (0 unexpected) in 1 (1) seconds\n")
     assert lines == [] and error and "10" in error, error

@@ -175,6 +175,8 @@ if [[ "${runs[*]}" != "${only[*]}" ]]; then
     for one in "${runs[@]}"; do
         n=$((n + 1))
         [[ $n -gt 1 ]] && fresh_template
+        # The summary reader counts each run by this line.
+        echo "=== journeys run $n ===" >> "$LOG"
         xcodebuild test-without-building "${built[@]}" \
             -destination "platform=iOS Simulator,id=$udid" \
             "${parallel[@]}" -collect-test-diagnostics never \
