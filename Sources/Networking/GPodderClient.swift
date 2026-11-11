@@ -34,7 +34,7 @@ enum GPodderError: Error, LocalizedError {
 }
 
 /// An episode action from the server response (`GET episodes`).
-struct GPodderEpisodeAction: Decodable {
+struct GPodderEpisodeAction: Codable, Equatable {
     let podcast: String?     // feed URL
     let episode: String?     // enclosure URL
     let action: String?      // "play" | "download" | "delete" | "new"

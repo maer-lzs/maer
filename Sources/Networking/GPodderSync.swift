@@ -327,6 +327,9 @@ final class GPodderSync {
         AppStorageKeys.set(Array(local.intersection(server)), for: AppStorageKeys.gpodderLastSyncedFeeds)
         AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveLocal)
         AppStorageKeys.remove(AppStorageKeys.gpodderPendingRemoveServer)
+        // The stock is another account's now: its stands before the push
+        // marker would never go out, and the pull asks the history again.
+        for key in Self.historyPointerKeys { AppStorageKeys.remove(key) }
         Logger.gpodder.notice("GPODDER continues with this account: left on the server=\(left.count) shared=\(local.intersection(server).count)")
         return nil
     }
@@ -347,12 +350,20 @@ final class GPodderSync {
         AppStorageKeys.setGpodderPassword("")
         for key in [AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
                     AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderLeftOnServer,
-                    AppStorageKeys.gpodderDeviceRegisteredFor] {
+                    AppStorageKeys.gpodderDeviceRegisteredFor] + historyPointerKeys {
             AppStorageKeys.remove(key)
         }
         Logger.gpodder.notice("GPODDER account switch: the password and the round state of the stored account are forgotten")
         return after.field
     }
+
+    /// The two markers of the listening history (where the pull asks from,
+    /// up to when this device pushed) and the actions parked between
+    /// rounds. They belong to one account's history on one server: signing
+    /// out, another account and going on with this account after the
+    /// device's own account changed start them again from zero.
+    static let historyPointerKeys = [AppStorageKeys.gpodderEpisodeSince, AppStorageKeys.gpodderLastEpisodePush,
+                                     AppStorageKeys.gpodderParkedActions]
 
     /// Signs this device out of gpodder: address, name, password and the
     /// state of the rounds go; nothing changes on the gpodder server. gpodder
@@ -362,7 +373,7 @@ final class GPodderSync {
         for key in [AppStorageKeys.gpodderServerURL, AppStorageKeys.gpodderUsername,
                     AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
                     AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderLeftOnServer,
-                    AppStorageKeys.gpodderDeviceRegisteredFor] {
+                    AppStorageKeys.gpodderDeviceRegisteredFor] + Self.historyPointerKeys {
             AppStorageKeys.remove(key)
         }
         AppStorageKeys.setGpodderPassword("")
@@ -655,7 +666,15 @@ final class GPodderSync {
         // round writing nothing into the new account's stock.
         let epoch = ListeningStore.ownerEpoch()
         let since = AppStorageKeys.int(AppStorageKeys.gpodderEpisodeSince) ?? 0
-        let (actions, newSince) = try await client.episodeActions(since: since)
+        let (fetched, newSince) = try await client.episodeActions(since: since)
+        // The actions parked by earlier rounds come again with the fetched
+        // ones: an episode unknown then may be known now.
+        let followed = Set(subs.shows.map { PodcastIdentity.feedKey($0.feedURL) })
+        let split = GPodderParking.split(
+            GPodderParking.load() + fetched,
+            isKnownEpisode: { byEnclosure[PodcastSubscriptions.normalizeEnclosure($0)] != nil },
+            isFollowedFeed: { followed.contains(PodcastIdentity.feedKey($0)) })
+        let actions = split.matched
         // Cheap main-actor pass first: matching over the index and the
         // timestamp parse (the shared formatters live on this actor).
         // No store access here.
@@ -731,6 +750,13 @@ final class GPodderSync {
             return (0, 0)
         }
         let pulled = outcome.pulledGuids.count
+        // The marker moves on only with what it passed parked: a play of a
+        // followed feed whose episode is not known yet waits for a round
+        // that knows it.
+        GPodderParking.save(split.parked)
+        if !split.parked.isEmpty {
+            Logger.gpodder.notice("GPODDER parked \(split.parked.count) plays whose episode is not known yet")
+        }
         AppStorageKeys.set(newSince, for: AppStorageKeys.gpodderEpisodeSince)
         if outcome.supplemented > 0 {
             Logger.rss.notice("GPODDER supplemented \(outcome.supplemented) entries with the duration they were written against")

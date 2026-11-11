@@ -124,6 +124,10 @@ nonisolated enum AppStorageKeys {
     static let gpodderEpisodeSince = "gpodderEpisodeSince"
     /// Time (s) up to which episode actions have already been pushed.
     static let gpodderLastEpisodePush = "gpodderLastEpisodePush"
+    /// Play actions the pull fetched whose episode this device did not know
+    /// yet, of a feed it follows (JSON): matched again at the next rounds
+    /// instead of lost behind the advanced marker (`GPodderParking`).
+    static let gpodderParkedActions = "gpodderParkedActions"
     /// Last synced subscription state (normalised feed URLs). Basis for the
     /// 3-way merge so unsubscribes are detected and propagated.
     static let gpodderLastSyncedFeeds = "gpodderLastSyncedFeeds"

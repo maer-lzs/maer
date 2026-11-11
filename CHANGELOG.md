@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**gpodder no longer loses listening positions at a first sync or after
+signing in again.** A position the server sends for an episode the app
+does not know yet waits until the episode is there, and signing out or
+switching accounts starts the listening history from the beginning.
+
 **The free catalogue no longer lists every title twice after a month.**
 The monthly full refresh of the catalogue now replaces the list instead
 of adding to it, and a list that already holds titles twice is cleaned
