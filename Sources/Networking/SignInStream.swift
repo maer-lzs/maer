@@ -20,8 +20,8 @@ nonisolated enum SignInStream {
     /// headers it attaches there, none for a host that is not its own, nil
     /// while they cannot be read. `end` asks the end of the redirects.
     ///
-    /// An end that cannot be asked leaves the track where it is today: the
-    /// address the app knows, with the sign-in the source answers for it.
+    /// An end that cannot be asked is `unanswered`: the sign-in does not go
+    /// to an address whose redirects are unknown, and playback holds.
     static func plan(for url: URL, sourceHeaders: [String: String],
                      signIn: @Sendable (URL) async -> [String: String]?,
                      end: @Sendable (URLRequest) async -> URL? = { await ServerHeaders.endAddress(of: $0) }
@@ -29,8 +29,8 @@ nonisolated enum SignInStream {
         var request = URLRequest(url: url)
         for (name, value) in sourceHeaders { request.setValue(value, forHTTPHeaderField: name) }
         guard let end = await end(request) else {
-            Logger.player.notice("SIGNIN stream end unknown, asked at its own address: host=\(url.host ?? "-", privacy: .public)")
-            return .plain
+            Logger.player.notice("SIGNIN stream end unknown, not asked with the sign-in: host=\(url.host ?? "-", privacy: .public)")
+            return .unanswered
         }
         guard let headers = await signIn(end) else { return .waiting }
         if end.host?.lowercased() != url.host?.lowercased() {

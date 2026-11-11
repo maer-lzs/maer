@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A stream with a sign-in never goes to an address it could not check.**
+When the app cannot find out where a stream of your server or a premium
+feed ends, playback stops at that file with a hint, and the next tap on
+play asks again. Before, it played from the known address, and a
+redirect there took the sign-in along.
+
 **Siri says when there is nothing to continue.** Asking Siri to continue
 listening on a device that has not played anything yet now says so
 instead of reporting success. A request that waits for the library more

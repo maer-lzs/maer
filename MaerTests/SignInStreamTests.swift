@@ -26,7 +26,7 @@ struct SignInStreamTests {
         { SignInReach.mayCarry(own: own, target: $0) ? signIn : [:] }
     }
 
-    @Test("die Regel: das Ende am eigenen Host bekommt die Anmeldung, ein fremder Host und https nach http nicht, ein unbekanntes Ende bleibt der Weg an der Adresse")
+    @Test("die Regel: das Ende am eigenen Host bekommt die Anmeldung, ein fremder Host und https nach http nicht, ein unbekanntes Ende wird nicht gefragt")
     func theRule() async throws {
         let own = try #require(URL(string: "https://feed.example.org/feed.xml"))
         let start = try #require(URL(string: "https://feed.example.org/audio/1.mp3"))
@@ -42,7 +42,7 @@ struct SignInStreamTests {
         let down = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: signIn) { _ in downgraded }
         #expect(down == .resolved(downgraded, headers: [:]), "an end over http got a sign-in given over https")
         let unknown = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: signIn) { _ in nil }
-        #expect(unknown == .plain, "an end that cannot be asked is no plan of its own")
+        #expect(unknown == .unanswered, "an end that cannot be asked went to the address with the sign-in")
         let unreadable = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: { _ in nil }) { _ in foreign }
         #expect(unreadable == .waiting, "a sign-in that cannot be read for the end is asked without it")
         // The question for the end carries the sign-in to the source's address.
@@ -153,25 +153,19 @@ struct SignInStreamTests {
         #expect(!atTarget.isEmpty, "the later redirect was not followed, the limit was not measured")
     }
 
-    @Test("benannte Grenze: scheitert die Frage nach dem Ende und leitet die bekannte Adresse um, traegt der Strom die Anmeldung mit (gemessen)")
-    func theNamedLimitOfAFailedAsk() async throws {
-        let (origin, other) = try await hosts()
-        defer { origin.stop(); other.stop() }
-        let own = try #require(URL(string: "http://127.0.0.1:\(origin.port)"))
-        let start = try #require(URL(string: "http://127.0.0.1:\(origin.port)/start-failed.caf"))
-        origin.redirect(to: try #require(URL(string: "http://localhost:\(other.port)/failed-final.caf")))
-        // The ask for the end fails: the plan is the known address.
+    @Test("scheitert die Frage nach dem Ende, geht der Strom nicht mit der Anmeldung an die bekannte Adresse: die Wiedergabe haelt mit einem Satz, und das naechste Abspielen fragt neu", .needsTheSources)
+    func aFailedAskHolds() async throws {
+        let own = try #require(URL(string: "https://feed.example.org/feed.xml"))
+        let start = try #require(URL(string: "https://feed.example.org/audio/1.mp3"))
         let plan = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: Self.answer(own: own)) { _ in nil }
-        try #require(plan == .plain, "the precondition: a failed ask plans the stream at its address")
-        // Built as the queue builds a `.plain` stream: the address and the source's sign-in.
-        let asset = AVURLAsset(url: start, options: ["AVURLAssetHTTPHeaderFieldsKey": Self.signIn])
-        // bearable, because the measured fact is the head the host recorded, not the asset
-        _ = try? await asset.load(.duration)
-        try await Task.sleep(for: .milliseconds(400))
-        let atTarget = other.recorded.filter { $0.contains("/failed-final.caf") }
-        let carried = atTarget.filter { $0.contains(Self.needle) }.count
-        print("SIGNINFAILEDASK asked=\(atTarget.count) carried=\(carried)")
-        #expect(!atTarget.isEmpty, "the redirect was not followed, the limit was not measured")
+        #expect(plan == .unanswered, "a failed ask planned the stream at its address with the sign-in")
+        let model = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(model.contains("case .unanswered: Logger.player.notice(\"PLAY not requested, the end of the stream could not be asked: track=\\(index)\") streamPlanner?.forget(url) return nil"),
+                "a stream whose end was not asked is built, or its plan is kept for the next play")
+        #expect(model.contains("if plan == .waiting || plan == .unanswered {"), "a queue skips a track whose end was not asked")
+        #expect(model.contains("stopWaitingForPlan(at: waitedFor, unanswered: plan == .unanswered)"))
+        #expect(model.contains("if let url = resolveTrackURL(index: index) { streamPlanner?.forget(url) } cannotPlay(String(localized: \"Could not load. Tap play to try again.\"))"),
+                "the hold says no sentence of its own, or keeps the plan")
     }
 
     private func waitFor(_ condition: () -> Bool, seconds: Double = 15) async {

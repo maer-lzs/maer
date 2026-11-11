@@ -223,6 +223,11 @@ nonisolated enum ServerHeaders {
         case resolved(URL, headers: [String: String])
         /// The headers cannot be read now; the track is not asked.
         case waiting
+        /// The end of a stream with a sign-in could not be asked: it is
+        /// not asked with the sign-in at an address whose redirects are
+        /// unknown. Playback holds there with a sentence, and the next play
+        /// asks again.
+        case unanswered
     }
 
     /// The stream of a track on a server with headers is asked at the end

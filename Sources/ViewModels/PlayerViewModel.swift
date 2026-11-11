@@ -883,7 +883,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// only by the time limit of its request. A stream with server headers
     /// or a sign-in is never built at an address whose end was not asked;
     /// a stream built before the answer would carry them along a redirect.
-    /// Only an ask that fails leaves the stream at its address (`.plain`).
+    /// An ask that fails leaves a server's stream at its address (`.plain`,
+    /// its headers stay with their server); a stream with a sign-in alone
+    /// is then not built (`.unanswered`).
     private static func awaitPlan(_ url: URL, of planner: StreamPlanner, for need: String) async {
         if await planner.plan(url) == .plain {
             Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end could not be asked or lies at the address")
@@ -893,16 +895,24 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Playback stops at the track a dry queue waited for, whose plan says
     /// it cannot be asked now: the same end as a start that cannot ask its
     /// first track. The next play builds anew from there and asks again.
-    private func stopWaitingForPlan(at index: Int) {
+    /// `unanswered`: the end of the track's stream could not be asked; its
+    /// plan goes, so the next play asks it again.
+    private func stopWaitingForPlan(at index: Int, unanswered: Bool = false) {
         waitsForPlannedTrack = false
         loadFailureNoted = true
         currentTrackIndex = index
         currentTime = trackAbsoluteStart(index)
-        notePlayback("stopped", from: "the next track cannot be asked now")
+        notePlayback("stopped", from: unanswered ? "the end of the next track's stream could not be asked"
+                                                  : "the next track cannot be asked now")
         player?.pause()
         isPlaying = false
         updateNowPlayingInfo()
-        cannotPlay(String(localized: "Unlock this device once to play this episode."))
+        if unanswered {
+            if let url = resolveTrackURL(index: index) { streamPlanner?.forget(url) }
+            cannotPlay(String(localized: "Could not load. Tap play to try again."))
+        } else {
+            cannotPlay(String(localized: "Unlock this device once to play this episode."))
+        }
     }
 
     /// Asks the plans of the track at `index` and the next ones
@@ -939,12 +949,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let index = queueAppendIndex
             if let url = resolveTrackURL(index: index), needsPlan(url) {
                 guard let plan = streamPlanner?.plans[url] else { break }
-                if plan == .waiting {
+                if plan == .waiting || plan == .unanswered {
                     // Only a queue that ran out and gained nothing in this
                     // pass stops here, at the track it waited for, also when
                     // tracks between could not be built; a track appended in
                     // this pass plays first, and its end asks again.
-                    if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: waitedFor) }
+                    if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: waitedFor, unanswered: plan == .unanswered) }
                     break
                 }
             }
@@ -1094,6 +1104,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .waiting:
                 Logger.player.notice("PLAY not requested, the stream's plan is not there or its headers cannot be read now: track=\(index)")
                 queueWaitedForSignIn = true
+                return nil
+            case .unanswered:
+                // Not built with the sign-in at an address whose redirects
+                // are unknown; the next build asks the end again.
+                Logger.player.notice("PLAY not requested, the end of the stream could not be asked: track=\(index)")
+                streamPlanner?.forget(url)
                 return nil
             }
             // The stream names the app like every other request. Measured
