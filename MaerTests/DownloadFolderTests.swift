@@ -201,6 +201,8 @@ struct DownloadFolderTests {
         let folder = home.downloads.appendingPathComponent(DownloadManager.folderName(of: id))
         #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(name).path))
         #expect(DownloadManager.itemId(ofFolder: folder) == id)
+        #expect(!FileManager.default.fileExists(atPath: home.downloads.appendingPathComponent("rss:k:https:").path),
+                "the emptied folders the nested one lay in stay")
     }
 
     @Test("ein Ordner, dessen .item-id eine andere Kennung nennt, zaehlt fuer keine")
@@ -213,9 +215,50 @@ struct DownloadFolderTests {
         try await home.mark("rss:k:two")
 
         #expect(DownloadManager.itemId(ofFolder: folder) == nil)
+        #expect(DownloadManager.itemId(ofFolder: folder, known: DownloadManager.knownFolders(of: ["rss:k:one"])) == nil,
+                "a file that names another id is refused for a marked folder too")
         let manager = home.manager()
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds.isEmpty)
+    }
+
+    @Test("ein fertiger Download, dessen Ordner die Kennung nicht traegt, zaehlt ueber seine vermerkte Kennung")
+    func aMarkedFolderWithoutItsIdFileCounts() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let id = "rss:k:https://ex.com/c.mp3"
+        let folder = home.downloads.appendingPathComponent(DownloadManager.folderName(of: id), isDirectory: true)
+        try home.plantTrack(in: folder)
+        try await home.mark(id)
+        #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent(DownloadManager.idFileName).path),
+                "the precondition: the folder carries no id file")
+
+        let manager = home.manager()
+        await manager.ensureScanned()
+        #expect(manager.downloadedItemIds == [id], "a whole download is no remnant because its id file is missing")
+        #expect(DownloadManager.itemId(ofFolder: folder) == folder.lastPathComponent, "without a mark the folder stands for its name")
+    }
+
+    @Test("ein Ordner, der seine Kennung nicht tragen kann, ist ein gescheiterter Download, und eine zu lange Datei wird nicht gelesen")
+    func aFolderThatCannotCarryItsIdFailsTheDownload() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        // Longer than the id file may be: the folder cannot be settled.
+        let id = "rss:k:" + String(repeating: "a", count: DownloadManager.idFileLimit)
+        let folder = home.downloads.appendingPathComponent(DownloadManager.folderName(of: id), isDirectory: true)
+        try home.plantTrack(in: folder)
+
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "/nowhere/0.m4b", metadata: nil)
+        await manager.download(item: Self.detail(id, tracks: [track]), provider: MarkOnlyProvider(), kind: nil)
+        #expect(!manager.downloadedItemIds.contains(id), "a download counts whose folder does not carry its id")
+        #expect(manager.phase[id] == .failed(String(localized: "Download failed")))
+
+        // The same id written by another hand is not read back.
+        try Data(id.utf8).write(to: folder.appendingPathComponent(DownloadManager.idFileName))
+        #expect(DownloadManager.itemId(ofFolder: folder) == nil, "an id file past the limit is read")
+        #expect(!DownloadManager.settle(folder, for: id))
     }
 
     @Test("jede Stelle bekommt nur ein direktes Kind von Downloads")

@@ -353,9 +353,10 @@ final class DownloadManager {
         var ids = Set<String>()
         var sizes: [String: Int64] = [:]
         var remnants: [String: Date] = [:]
+        let known = knownFolders(of: marked)
         for dir in dirs
         where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-            guard let itemId = itemId(ofFolder: dir) else { continue }
+            guard let itemId = itemId(ofFolder: dir, known: known) else { continue }
             // The mark is written only after a complete download. A folder
             // without a mark is an aborted remnant (kept for resume, not counted).
             guard marked.contains(itemId) else {
@@ -405,18 +406,46 @@ final class DownloadManager {
     /// The item id a download folder stands for. A folder with `.item-id`
     /// stands for the id in it when its name is that id's name; the file is
     /// outside input like the guid it came from, so one naming another
-    /// folder is refused with a line. A folder without the file is an older
-    /// one and stands for its name.
-    nonisolated static func itemId(ofFolder dir: URL) -> String? {
+    /// folder is refused with a line. A folder without the file stands for
+    /// the id among `known` whose folder it is (a folder in the form whose
+    /// file could not be written), and otherwise for its name (an older
+    /// folder).
+    nonisolated static func itemId(ofFolder dir: URL, known: [String: String] = [:]) -> String? {
         let file = dir.appendingPathComponent(idFileName)
-        guard FileManager.default.fileExists(atPath: file.path) else { return dir.lastPathComponent }
-        // bearable, because a file that cannot be read is refused below with its line
-        guard let data = try? Data(contentsOf: file), let itemId = String(data: data, encoding: .utf8),
-              folderName(of: itemId) == dir.lastPathComponent else {
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            return known[dir.lastPathComponent] ?? dir.lastPathComponent
+        }
+        guard let itemId = readIdFile(file), folderName(of: itemId) == dir.lastPathComponent else {
             Logger.library.error("DOWNLOADS folder refused, its \(idFileName, privacy: .public) does not name it")
             return nil
         }
         return itemId
+    }
+
+    /// The most bytes an `.item-id` holds. `settle` writes no longer id, and
+    /// a longer file is not read.
+    nonisolated static let idFileLimit = 65_536
+
+    /// The text of an `.item-id`, nil when the file cannot be read, is
+    /// longer than `idFileLimit` or is no UTF-8. At most one byte past the
+    /// limit is read, whatever the size of the file.
+    nonisolated private static func readIdFile(_ file: URL) -> String? {
+        do {
+            let handle = try FileHandle(forReadingFrom: file)
+            // bearable, because the handle only reads and closes with its last reference anyway
+            defer { try? handle.close() }
+            let data = try handle.read(upToCount: idFileLimit + 1) ?? Data()
+            return data.count <= idFileLimit ? String(data: data, encoding: .utf8) : nil
+        } catch {
+            Logger.library.error("DOWNLOADS \(idFileName, privacy: .public) unreadable: \(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// The ids by the name of their folder in the form: the id of a folder
+    /// that lacks its `.item-id`.
+    nonisolated static func knownFolders(of itemIds: some Sequence<String>) -> [String: String] {
+        Dictionary(itemIds.map { (folderName(of: $0), $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// The folder of a download, directly in the downloads: the folder in
@@ -442,9 +471,15 @@ final class DownloadManager {
     }
 
     /// Creates the folder in the form of `folderName` and writes the id into
-    /// its `.item-id`. False with a line when either fails.
-    @discardableResult
+    /// its `.item-id`. False with a line when either fails or the id is
+    /// longer than `idFileLimit`. The folder of a marked id is found
+    /// without the file too (`itemId(ofFolder:known:)`); the folder of an
+    /// unmarked one then stands for its name, a remnant no id claims.
     nonisolated static func settle(_ dir: URL, for itemId: String) -> Bool {
+        guard itemId.utf8.count <= idFileLimit else {
+            Logger.library.error("DOWNLOADS folder not settled: the id is longer than \(idFileLimit) bytes")
+            return false
+        }
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             try Data(itemId.utf8).write(to: dir.appendingPathComponent(idFileName), options: .atomic)
@@ -472,8 +507,21 @@ final class DownloadManager {
                   !FileManager.default.fileExists(atPath: target.path) else { continue }
             do {
                 try FileManager.default.moveItem(at: nested, to: target)
-                settle(target, for: itemId)
-                Logger.library.notice("DOWNLOADS nested folder moved to its own name item=\(itemId, privacy: .private(mask: .hash))")
+                // The id is marked: the scan finds the folder also when its file is not written.
+                let settled = settle(target, for: itemId)
+                // The folders the nested one lay in go when they hold nothing else.
+                var parent = nested.deletingLastPathComponent()
+                while parent.standardizedFileURL.path != downloadsDir.standardizedFileURL.path,
+                      parent.standardizedFileURL.path.hasPrefix(downloadsDir.standardizedFileURL.path + "/"),
+                      // bearable, because a folder that cannot be listed stays where it is
+                      (try? FileManager.default.contentsOfDirectory(atPath: parent.path))?.isEmpty == true {
+                    do { try FileManager.default.removeItem(at: parent) } catch {
+                        Logger.library.error("DOWNLOADS emptied folder not removed: \(FailureReason.of(error), privacy: .public)")
+                        break
+                    }
+                    parent = parent.deletingLastPathComponent()
+                }
+                Logger.library.notice("DOWNLOADS nested folder moved to its own name settled=\(settled) item=\(itemId, privacy: .private(mask: .hash))")
             } catch {
                 Logger.library.error("DOWNLOADS nested folder not moved: \(FailureReason.of(error), privacy: .public)")
             }
@@ -976,21 +1024,24 @@ final class DownloadManager {
             return
         }
 
+        // An older folder named by the id keeps its form; a new one carries
+        // its id, and a folder that cannot carry it is no place to load into.
+        if dir.lastPathComponent == Self.folderName(of: itemId) {
+            if !FileManager.default.fileExists(atPath: dir.appendingPathComponent(Self.idFileName).path),
+               !Self.settle(dir, for: itemId) {
+                phase[itemId] = .failed(String(localized: "Download failed"))
+                return
+            }
+        } else if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+
         // Carry mid-file resume data over from a pause. Used once, and ONLY
         // for the exact track it was captured from (see resumeTrackIndex).
         var carriedResumeData = controls[itemId]?.resumeData
         let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
         controls[itemId] = DownloadControl(detail: item, provider: provider, resumeData: nil)
         phase[itemId] = .downloading(0)
-        // An older folder named by the id keeps its form; a new one carries
-        // its id.
-        if dir.lastPathComponent == Self.folderName(of: itemId) {
-            if !FileManager.default.fileExists(atPath: dir.appendingPathComponent(Self.idFileName).path) {
-                Self.settle(dir, for: itemId)
-            }
-        } else if !FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
 
         let perTrackWeight = 1.0 / Double(tracks.count)
         var completedFraction: Double = 0
@@ -1402,7 +1453,10 @@ final class DownloadManager {
         }
         var found = 0
         var moved = 0
-        let ids = folders.compactMap { Self.itemId(ofFolder: downloadsDirectory.appendingPathComponent($0, isDirectory: true)) }
+        let known = Self.knownFolders(of: details.keys)
+        let ids = folders.compactMap {
+            Self.itemId(ofFolder: downloadsDirectory.appendingPathComponent($0, isDirectory: true), known: known)
+        }
         for oldId in ids.sorted() where details[oldId] == nil && !downloadedItemIds.contains(oldId) {
             let newId = map(oldId)
             guard newId != oldId else { continue }
@@ -1428,7 +1482,8 @@ final class DownloadManager {
             throw CocoaError(.fileWriteInvalidFileName)
         }
         try FileManager.default.moveItem(at: from, to: to)
-        Self.settle(to, for: newItemId)
+        // The move is done either way; `settle` says in its line when the id file is missing.
+        _ = Self.settle(to, for: newItemId)
     }
 }
 

@@ -47,7 +47,7 @@ struct AblageFenceTests {
         "APIClient.swift": (1, "a file mapped for a multipart upload"),
         "ContinueListeningWidget.swift": (2, "the widget reads the cover bytes the app left in the app group, the title's and its rows'"),
         "PodcastUpNextWidget.swift": (1, "the widget reads the queue's cover thumbnails the app left in the app group"),
-        "DownloadManager.swift": (2, "the item id in a download folder's .item-id, raw text beside the tracks: it moves and goes with the folder, and the seam writes JSON by name in one directory and lays an unreadable file aside, which would leave a second file in the folder"),
+        "DownloadManager.swift": (1, "the write of the item id into a download folder's .item-id, raw text beside the tracks: it moves and goes with the folder, and the seam writes JSON by name in one directory and lays an unreadable file aside, which would leave a second file in the folder; the read goes through a file handle with a length limit"),
     ]
 
     @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund", .needsTheSources)
