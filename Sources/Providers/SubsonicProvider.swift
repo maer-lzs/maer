@@ -579,6 +579,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws {
         guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !indices.isEmpty else { return }
+        // The songs of the rows shown, against the list as the server holds
+        // it now: a position that no longer holds the same song is not sent.
+        let shown = songsByItemId[playlistItemId]
+        let drawn = indices.map { index in shown.flatMap { $0.indices.contains(index) ? $0[index].id : nil } }
+        let current = try await client.playlist(id: rawId)?.entry?.map(\.id) ?? []
+        guard PlaylistRemoval.stillAt(indices, drawn: drawn, current: current) else {
+            Logger.music.notice("PLAYLIST remove refused: the list changed under the rows shown")
+            songsByItemId[playlistItemId] = nil
+            throw PlaylistRemoval.Changed()
+        }
         try await client.removePlaylistSongs(id: rawId, indices: indices)
         playlistMosaicCache[rawId] = nil
         songsByItemId[playlistItemId] = nil   // stale order — refetch on next use

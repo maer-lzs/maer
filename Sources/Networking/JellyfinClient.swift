@@ -166,9 +166,9 @@ final class JellyfinClient {
 
     // MARK: - Request core
 
-    private func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse?) {
+    private func fetch(_ request: URLRequest, repeatable: Bool = true) async throws -> (Data, HTTPURLResponse?) {
         do {
-            return try await RequestRetryPolicy.fetch(request)
+            return try await RequestRetryPolicy.fetch(request, repeatable: repeatable)
         } catch {
             // Convention: cancellation propagates untranslated.
             if SubsonicClient.isCancellation(error) { throw error }
@@ -221,15 +221,19 @@ final class JellyfinClient {
         try await postRaw(path, query, body: jsonData, method: method)
     }
 
+    /// `repeatable: false` for a write the server applies each time it
+    /// arrives (`RequestRetryPolicy.fetch`).
     private func post(_ path: String, _ query: [String: String] = [:],
-                      jsonBody: [String: String]? = nil, method: String = "POST") async throws -> Data {
+                      jsonBody: [String: String]? = nil, method: String = "POST",
+                      repeatable: Bool = true) async throws -> Data {
         try await postRaw(path, query,
                           body: jsonBody.flatMap { try? JSONEncoder().encode($0) },
-                          method: method)
+                          method: method, repeatable: repeatable)
     }
 
     private func postRaw(_ path: String, _ query: [String: String] = [:],
-                         body: Data? = nil, method: String = "POST") async throws -> Data {
+                         body: Data? = nil, method: String = "POST",
+                         repeatable: Bool = true) async throws -> Data {
         var (token, _) = try await ensureAuth()
         for attempt in 0..<2 {
             var comps = URLComponents(url: try base().appendingPathComponent(path),
@@ -243,7 +247,7 @@ final class JellyfinClient {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = body
             }
-            let (data, http) = try await fetch(request)
+            let (data, http) = try await fetch(request, repeatable: repeatable)
             if http?.statusCode == 401, attempt == 0 {
                 accessToken = nil
                 (token, _) = try await ensureAuth()
@@ -513,16 +517,18 @@ final class JellyfinClient {
 
     func createPlaylist(name: String) async throws -> String? {
         let (_, uid) = try await ensureAuth()
+        // A second create would make a second list: sent once.
         let data = try await post("Playlists", jsonBody: [
             "Name": name, "UserId": uid, "MediaType": "Audio",
-        ])
+        ], repeatable: false)
         return (try? JSONDecoder().decode(JFCreatedPlaylist.self, from: data))?.id
     }
 
     func addToPlaylist(playlistId: String, songIds: [String]) async throws {
         let (_, uid) = try await ensureAuth()
+        // A second append adds the songs twice: sent once.
         _ = try await post("Playlists/\(playlistId)/Items",
-                           ["Ids": songIds.joined(separator: ","), "UserId": uid])
+                           ["Ids": songIds.joined(separator: ","), "UserId": uid], repeatable: false)
     }
 
     /// Rename (Jellyfin 10.9+: POST /Playlists/{id} updates the playlist).
@@ -567,7 +573,8 @@ final class JellyfinClient {
     /// Scrobble analog: bumps the play count.
     func markPlayed(itemId: String) async throws {
         let (_, uid) = try await ensureAuth()
-        _ = try await post("Users/\(uid)/PlayedItems/\(itemId)")
+        // A reported play may count each time it arrives: sent once.
+        _ = try await post("Users/\(uid)/PlayedItems/\(itemId)", repeatable: false)
     }
 
     func lyrics(songId: String) async throws -> JFLyricsResponse {

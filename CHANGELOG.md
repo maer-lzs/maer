@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**A slow server no longer gets a playlist twice.** Creating a playlist,
+adding songs, removing a song, reporting a play, adding a podcast to
+Audiobookshelf and sending gpodder listening states now go out once when
+the answer leaves open whether they arrived. Removing a song from a
+server playlist now checks that the same song still stands at that
+place, so another song can no longer be removed by mistake.
+
 **Sleep until the end of the chapter stops at the end of the title.**
 When the chapter ends together with the episode or book, playback now
 stops there instead of starting the next title without a sleep timer.

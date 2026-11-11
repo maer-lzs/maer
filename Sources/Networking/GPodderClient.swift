@@ -117,8 +117,10 @@ final class GPodderClient {
     func uploadEpisodeActions(_ actions: [[String: Any]]) async throws -> Int {
         guard !actions.isEmpty else { return 0 }
         let body = try JSONSerialization.data(withJSONObject: actions)
+        // Each arrival stores the actions again: sent once after an answer
+        // that leaves open whether they landed.
         let data = try await send(request("api/2/episodes/\(Self.segment(config.username)).json",
-                                          method: "POST", body: body))
+                                          method: "POST", body: body), repeatable: false)
         // try?-with-reason (audit 01.08): the POST itself SUCCEEDED. Throwing
         // on a broken timestamp body would falsely fail the upload. Marker 0
         // only widens the next fetch window (idempotent), it deletes nothing.
@@ -148,7 +150,11 @@ final class GPodderClient {
     }
 
     @discardableResult
-    private func send(_ req: URLRequest, allowAuthRetry: Bool = true, attempt: Int = 0) async throws -> Data {
+    /// `repeatable: false` for a write the server stores each time it
+    /// arrives: no second round after a dropped connection or a 5xx. The
+    /// login retry after a 401 stays, nothing was stored there.
+    private func send(_ req: URLRequest, allowAuthRetry: Bool = true, attempt: Int = 0,
+                      repeatable: Bool = true) async throws -> Data {
         let (data, resp): (Data, HTTPURLResponse?)
         // The cookie lane: session-based servers keep their login this way.
         // No door-side retry: this client runs its own loop, which knows
@@ -158,11 +164,11 @@ final class GPodderClient {
             // Retry transient network errors (timeout, connection dropped) with a
             // short backoff before giving up. A brief server hiccup should not
             // fail the whole reconcile. A real offline error is not retried.
-            if attempt < maxRetries, Self.isTransientURLError(error) {
+            if repeatable, attempt < maxRetries, Self.isTransientURLError(error) {
                 // Audit 01.08: propagate cancellation instead of swallowing it
                 // into another retry round (isCancellation convention).
                 try await Self.backoff(attempt)
-                return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
+                return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1, repeatable: repeatable)
             }
             throw GPodderError.network
         }
@@ -171,12 +177,12 @@ final class GPodderClient {
         // a login → session cookie. Log in once and retry.
         if http.statusCode == 401, allowAuthRetry {
             try await login()
-            return try await send(req, allowAuthRetry: false, attempt: attempt)
+            return try await send(req, allowAuthRetry: false, attempt: attempt, repeatable: repeatable)
         }
         // Retry transient server errors (rate limit / 5xx).
-        if attempt < maxRetries, http.statusCode == 429 || (500..<600).contains(http.statusCode) {
+        if repeatable, attempt < maxRetries, http.statusCode == 429 || (500..<600).contains(http.statusCode) {
             try await Self.backoff(attempt)
-            return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
+            return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1, repeatable: repeatable)
         }
         guard (200..<300).contains(http.statusCode) else {
             // What survived the ladder above is final: a 401 has had its

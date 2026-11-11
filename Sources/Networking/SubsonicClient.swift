@@ -298,6 +298,22 @@ struct SubsonicClient {
         }
     }
 
+    /// Whether a call may go out again after an answer that leaves open
+    /// whether it landed (`RequestRetryPolicy.fetch`): not a created list,
+    /// songs appended, songs removed by position, or a reported play
+    /// (`submission=true`); each counts every time it arrives. A rename, a
+    /// star or a read may.
+    nonisolated static func isRepeatable(_ endpoint: String, _ params: [String: String],
+                                         extraItems: [URLQueryItem]) -> Bool {
+        switch endpoint {
+        case "createPlaylist": return false
+        case "updatePlaylist":
+            return !extraItems.contains { $0.name == "songIdToAdd" || $0.name == "songIndexToRemove" }
+        case "scrobble": return params["submission"] != "true"
+        default: return true
+        }
+    }
+
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
         // Retry parity with the ABS client. Transient failures and the
@@ -316,7 +332,9 @@ struct SubsonicClient {
             let data: Data
             let http: HTTPURLResponse?
             do {
-                (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url), redirects: redirects)
+                (data, http) = try await RequestRetryPolicy.fetch(
+                    URLRequest(url: url), redirects: redirects,
+                    repeatable: Self.isRepeatable(endpoint, params, extraItems: extraItems))
             } catch {
                 // Cancellation is never a domain error: a request torn down
                 // because the user scrolled away must not surface as a

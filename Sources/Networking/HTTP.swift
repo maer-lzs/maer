@@ -81,7 +81,7 @@ nonisolated enum HTTP {
     /// stream lane never, and not for a caller that runs a loop of its own
     /// (`retry: false`). A failure is logged with its reason and rethrown.
     static func data(for request: URLRequest, lane: Lane = .api,
-                     retry: Bool = true) async throws -> (Data, HTTPURLResponse?) {
+                     retry: Bool = true, repeatable: Bool = true) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
             try ServerHeaders.admit(prepared)
@@ -91,7 +91,7 @@ nonisolated enum HTTP {
                 }
                 return (data, response as? HTTPURLResponse)
             }
-            return try await RequestRetryPolicy.fetch(prepared, session: session(lane))
+            return try await RequestRetryPolicy.fetch(prepared, session: session(lane), repeatable: repeatable)
         } catch {
             log(failure: error, request: prepared, lane: lane)
             throw error

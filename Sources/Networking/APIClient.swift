@@ -340,7 +340,8 @@ final class APIClient {
             "libraryId": libraryId,
             "media": ["metadata": meta, "autoDownloadEpisodes": autoDownload]
         ]
-        _ = try await send(method: "POST", path: "api/podcasts", body: body)
+        // A second create would make a second podcast: sent once.
+        _ = try await send(method: "POST", path: "api/podcasts", body: body, repeatable: false)
     }
 
     /// Set an item's cover server-side from a URL (ABS downloads the image
@@ -368,9 +369,10 @@ final class APIClient {
 
     /// Have selected feed episodes downloaded server-side.
     func downloadEpisodes(libraryItemId: String, episodes: [[String: Any]]) async throws {
+        // Each arrival queues the downloads again: sent once.
         _ = try await sendJSON(method: "POST",
                                path: "api/podcasts/\(libraryItemId)/download-episodes",
-                               json: episodes)
+                               json: episodes, repeatable: false)
     }
 
     // MARK: URLs for cover and streaming
@@ -557,7 +559,7 @@ final class APIClient {
     /// once more before the logout fires (outage gateways answer 401
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
     /// back off briefly instead of surfacing straight away.
-    private func perform(_ request: URLRequest) async throws -> Data {
+    private func perform(_ request: URLRequest, repeatable: Bool = true) async throws -> Data {
         // While the access could not be read the request would leave
         // without a token, the server would answer 401, and the doubt and
         // its probe would end in a sign-in that nothing called for.
@@ -566,7 +568,7 @@ final class APIClient {
         // twice, transient URL errors likewise) and hands back the LAST
         // response; the logout hook stays here, at the one place that
         // knows what a confirmed 401 means for this client.
-        let (data, http) = try await HTTP.data(for: request, lane: .api)
+        let (data, http) = try await HTTP.data(for: request, lane: .api, repeatable: repeatable)
         guard let http else { throw APIError.invalidResponse }
         if (200...299).contains(http.statusCode) { return data }
         // Only a CONFIRMED 401 (survived the probe retry) logs out.
@@ -578,7 +580,8 @@ final class APIClient {
         try await send(method: "PATCH", path: path, body: body)
     }
 
-    private func send(method: String, path: String, body: [String: Any]? = nil) async throws -> Data {
+    private func send(method: String, path: String, body: [String: Any]? = nil,
+                      repeatable: Bool = true) async throws -> Data {
         let url = baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -589,12 +592,12 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        return try await perform(request)
+        return try await perform(request, repeatable: repeatable)
     }
 
     /// Like `send`, but with an arbitrary JSON body (dict OR array). For
     /// endpoints like `download-episodes` that expect a JSON list.
-    private func sendJSON(method: String, path: String, json: Any) async throws -> Data {
+    private func sendJSON(method: String, path: String, json: Any, repeatable: Bool = true) async throws -> Data {
         let url = baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -603,7 +606,7 @@ final class APIClient {
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: json)
-        return try await perform(request)
+        return try await perform(request, repeatable: repeatable)
     }
 
     /// Decode OFF the main actor. APIClient is MainActor-isolated by project

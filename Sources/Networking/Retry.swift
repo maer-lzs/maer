@@ -75,10 +75,17 @@ nonisolated enum RequestRetryPolicy {
     /// errors rethrow after the policy gives up. `once` asks exactly one
     /// time: a bulk run over many feeds names a feed that does not answer
     /// instead of waiting a whole ladder for it.
+    ///
+    /// `repeatable: false` is a write the server applies each time it
+    /// arrives (create, append, remove by position, a reported play): after
+    /// a timeout or a 5xx nobody knows whether it landed, so it goes out
+    /// once and the caller says the failure as before. The one probe after
+    /// a 401 stays, nothing was applied there.
     static func fetch(_ request: URLRequest,
                       session: URLSession? = nil,
                       redirects: RedirectGuard? = nil,
-                      once: Bool = false) async throws -> (Data, HTTPURLResponse?) {
+                      once: Bool = false,
+                      repeatable: Bool = true) async throws -> (Data, HTTPURLResponse?) {
         // Default argument can't reference `.maer` here (isolation of the
         // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
@@ -113,7 +120,7 @@ nonisolated enum RequestRetryPolicy {
                 throw resting
             } catch let urlError as URLError {
                 if case .retry(let ms) = decide(status: nil, urlErrorCode: urlError.code.rawValue,
-                                                attempt: attempt) {
+                                                attempt: attempt, repeatable: repeatable) {
                     attempt += 1
                     pauseMs = ms
                     continue
@@ -122,7 +129,7 @@ nonisolated enum RequestRetryPolicy {
             }
             let http = answered.1
             if let status = http?.statusCode, !(200...299).contains(status),
-               case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt) {
+               case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt, repeatable: repeatable) {
                 attempt += 1
                 pauseMs = ms
                 lastAnswer = answered
@@ -153,10 +160,13 @@ nonisolated enum RequestRetryPolicy {
         }
     }
 
-    static func decide(status: Int?, urlErrorCode: Int?, attempt: Int) -> Decision {
+    static func decide(status: Int?, urlErrorCode: Int?, attempt: Int, repeatable: Bool = true) -> Decision {
         if status == 401 {
             return attempt == 0 ? .retry(afterMs: 500) : .fail
         }
+        // A write that applies each time it arrives is never sent again
+        // after an answer that leaves open whether it landed.
+        guard repeatable else { return .fail }
         let transientStatus = status.map { $0 == 429 || (500...599).contains($0) } ?? false
         let transientURLError = urlErrorCode.map {
             [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost,

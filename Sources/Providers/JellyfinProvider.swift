@@ -693,6 +693,15 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws {
         guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !indices.isEmpty else { return }
         let songs = try await client.playlistSongs(playlistId: rawId)
+        // The songs of the rows shown, against the list as the server holds
+        // it now: an entry is removed only where the same song still stands.
+        let shown = songsByItemId[playlistItemId]
+        let drawn = indices.map { index in shown.flatMap { $0.indices.contains(index) ? $0[index].id : nil } }
+        guard PlaylistRemoval.stillAt(indices, drawn: drawn, current: songs.map(\.id)) else {
+            Logger.music.notice("PLAYLIST remove refused: the list changed under the rows shown")
+            songsByItemId[playlistItemId] = nil
+            throw PlaylistRemoval.Changed()
+        }
         let entryIds = indices.compactMap { songs.indices.contains($0) ? songs[$0].playlistItemId : nil }
         try await client.removeFromPlaylist(playlistId: rawId, entryIds: entryIds)
         playlistMosaicCache[rawId] = nil
