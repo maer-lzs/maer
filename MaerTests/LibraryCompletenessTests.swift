@@ -28,6 +28,12 @@ struct LibraryCompletenessTests {
         // No total: the first page is not all of it, a short page ends it.
         #expect(step(0, 50, page: 50, total: Rule.unknownTotal) == .askMore)
         #expect(step(50, 73, page: 23, total: Rule.unknownTotal) == .endedShort)
+        // An empty first page without a total is no empty library; an empty
+        // page after a whole number of full pages ends the list.
+        #expect(step(0, 0, page: 0, total: Rule.unknownTotal) == .stalled,
+                "an empty first page counted as a whole library, and the cleanup took the books' rows")
+        #expect(step(50, 50, page: 0, total: Rule.unknownTotal) == .endedShort)
+        #expect(step(50, 50, page: 10, total: Rule.unknownTotal) == .stalled, "a short page of books held already ended the list")
         #expect(Rule.isWhole(.reachedTotal) && Rule.isWhole(.endedShort))
         #expect(!Rule.isWhole(.stalled) && !Rule.isWhole(.askMore), "a stopped or cut list counted as whole")
     }

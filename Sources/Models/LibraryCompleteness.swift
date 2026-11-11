@@ -30,11 +30,17 @@ nonisolated enum LibraryCompleteness {
     /// The step after a page. With a total, only the distinct ids decide:
     /// a short page in the middle does not end the list. Without one, a
     /// short page ends it. A page that brings nothing new stops the load
-    /// either way, so a source that ignores the page never loops.
+    /// either way, so a source that ignores the page never loops, and an
+    /// empty first page without a total is no empty library.
     static func afterPage(distinctBefore: Int, distinctAfter: Int, pageCount: Int, pageSize: Int, total: Int) -> Step {
         if total != unknownTotal, distinctAfter >= total { return .reachedTotal }
+        if distinctAfter <= distinctBefore {
+            // Without a total, an empty page after books is the end of a list
+            // as long as a whole number of pages; an empty first page or a
+            // page that sent only books held already is no end.
+            return total == unknownTotal && pageCount == 0 && distinctBefore > 0 ? .endedShort : .stalled
+        }
         if total == unknownTotal, pageCount < pageSize { return .endedShort }
-        if distinctAfter <= distinctBefore { return .stalled }
         return .askMore
     }
 
