@@ -179,19 +179,22 @@ if [[ "${runs[*]}" != "${only[*]}" ]]; then
         [[ $n -gt 1 ]] && fresh_template
         # The summary reader counts each run by this line.
         echo "=== journeys run $n ===" >> "$LOG"
-        bundles+=("${RESULT%.xcresult}-$n.xcresult")
+        bundle="${RESULT%.xcresult}-$n.xcresult"
         xcodebuild test-without-building "${built[@]}" \
             -destination "platform=iOS Simulator,id=$udid" \
             "${parallel[@]}" -collect-test-diagnostics never \
-            -resultBundlePath "${bundles[-1]}" "$one" >> "$LOG" 2>&1 || rc=65
+            -resultBundlePath "$bundle" "$one" >> "$LOG" 2>&1 || rc=65
+        # Named only once it exists: a run that stopped before writing it
+        # leaves no bundle for the summary to point at.
+        [[ -e "$bundle" ]] && bundles+=("$bundle")
     done
 else
-    bundles=("$RESULT")
     xcodebuild test-without-building "${built[@]}" \
         -destination "platform=iOS Simulator,id=$udid" \
         "${parallel[@]}" -collect-test-diagnostics never \
         -resultBundlePath "$RESULT" "${only[@]}" "${skip[@]}" > "$LOG" 2>&1
     rc=$?
+    [[ -e "$RESULT" ]] && bundles=("$RESULT")
 fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 ELAPSED=$(( $(date +%s) - STARTED ))

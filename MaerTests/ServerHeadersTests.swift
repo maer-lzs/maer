@@ -561,14 +561,14 @@ struct ServerHeadersWayTests {
             await model.load(item: book)
             let first = Task { await model.seek(to: 7.5, userInitiated: false) }
             try await Task.sleep(for: .milliseconds(300))
-            await model.seek(to: 1.5, userInitiated: false)
+            await model.seek(to: 1.6, userInitiated: false)
             await first.value
         }
         #expect(Self.playing(model) == "track-1.caf", "the older jump built over the later one: \(String(describing: Self.playing(model)))")
-        // Within track 1, not at the exact second: half a second into a
-        // track plays from its start (`buildQueue` seeks only past 0.5 s),
-        // and the time observer may read the start before this line.
-        #expect((1.0..<2.0).contains(model.currentTime), "the older jump set its time: \(model.currentTime)")
+        // 0.6 s into track 1, past the half second from which `buildQueue`
+        // seeks into a track: the later jump's own time arrived, not the
+        // start of its track and not the older jump's 7.5.
+        #expect((1.5..<2.0).contains(model.currentTime), "the later jump did not set its time: \(model.currentTime)")
     }
 
     @Test("ein Sprung, der auf den Plan seiner Spur wartet, bewegt ein inzwischen gestopptes Modell nicht")
