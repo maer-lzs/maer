@@ -82,6 +82,8 @@ struct MaerSyncSettingsView: View {
                 Text("Example: https://sync.example.com. Signing in trades the password for a token this device keeps in the keychain; the password itself is not kept.")
             }
 
+            CustomHeadersSection(address: serverURL, idPrefix: "maer-sync")
+
             Section {
                 if signedIn {
                     Label {
@@ -359,9 +361,11 @@ struct MaerSyncSettingsView: View {
             case .blockedHere:
                 // The same sentence the sign-in gives for the same answer,
                 // so the two buttons cannot tell two stories about one 403.
-                setStatus(String(localized: "The service is not reachable from this network."), isError: true)
+                setStatus(await AccessGuard.sentence(after: String(localized: "The service is not reachable from this network."),
+                                                     address: serverURL), isError: true)
             case .silent:
-                setStatus(String(localized: "The service did not answer."), isError: true)
+                setStatus(await AccessGuard.sentence(after: String(localized: "The service did not answer."),
+                                                     address: serverURL), isError: true)
             case .plainAddressRefused:
                 setStatus(String(localized: "iOS does not allow plain http for this address, so the service was never asked."), isError: true)
             }

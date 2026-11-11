@@ -29,6 +29,43 @@ nonisolated enum ServerHeaderRule {
         "authorization", "user-agent", "content-type", "content-length", "cookie", "host",
     ]
 
+    /// Why an entered header is not kept: a name the app sets itself, a
+    /// name that is no HTTP token (a space, a colon), or a value with a line
+    /// break or another control character, which could start a header of
+    /// its own.
+    enum Refusal: Equatable, Sendable {
+        case reservedName, notAToken, unsafeValue
+    }
+
+    /// The entered row as it is kept: name and value without the spaces at
+    /// either end (a value pasted from elsewhere often ends in one).
+    static func cleaned(name: String, value: String) -> Header {
+        Header(name: name.trimmingCharacters(in: .whitespaces),
+               value: value.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// The server address a sheet's field names, as the table keeps it:
+    /// trimmed, `https://` when no scheme is typed (as the sheets complete
+    /// it), nil while it is no address with a host.
+    static func base(typed: String) -> URL? {
+        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let full = text.contains("://") ? text : "https://" + text
+        guard let url = URL(string: full), let host = url.host, !host.isEmpty,
+              url.scheme == "http" || url.scheme == "https" else { return nil }
+        return url
+    }
+
+    /// The reason a cleaned row is not kept, nil when it is.
+    static func refusal(of header: Header) -> Refusal? {
+        if reservedNames.contains(header.name.lowercased()) { return .reservedName }
+        if !isAllowed(name: header.name) { return .notAToken }
+        if header.value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) {
+            return .unsafeValue
+        }
+        return nil
+    }
+
     /// A name a request can carry: an HTTP token, not one the app sets.
     static func isAllowed(name: String) -> Bool {
         let token = CharacterSet(charactersIn: "!#$%&'*+-.^_`|~")

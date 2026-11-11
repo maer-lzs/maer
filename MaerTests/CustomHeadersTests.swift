@@ -1,0 +1,155 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+import Synchronization
+import os
+@testable import Maer
+
+/// The headers a person enters in a server sheet: what the rule keeps, how
+/// they move with the address, and the sentence of a guard in front.
+@Suite(.serialized)
+struct CustomHeadersTests {
+    typealias Keys = ServerHeadersWayTests.MemoryKeys
+    typealias Host = HeaderRedirectMeasureTests.RecordingHost
+
+    @Test("Eingabe: reservierte Namen, Namen ausser einem Token und Werte mit Steuerzeichen werden abgewiesen, Leerzeichen am Rand beschnitten")
+    func theEntryRule() {
+        func refusal(_ name: String, _ value: String) -> ServerHeaderRule.Refusal? {
+            ServerHeaderRule.refusal(of: ServerHeaderRule.cleaned(name: name, value: value))
+        }
+        #expect(refusal("CF-Access-Client-Id", "abc.access") == nil)
+        #expect(refusal("Authorization", "Bearer x") == .reservedName)
+        #expect(refusal("user-agent", "x") == .reservedName)
+        #expect(refusal("X Gate", "x") == .notAToken, "a name with a space")
+        #expect(refusal("X-Gate:", "x") == .notAToken, "a name with a colon")
+        #expect(refusal("X-Gate", "a\r\nX-Other: b") == .unsafeValue, "a value with CR LF")
+        #expect(refusal("X-Gate", "a\nb") == .unsafeValue, "a value with LF")
+        #expect(refusal("X-Gate", "a\u{0}b") == .unsafeValue, "a value with another control character")
+        let pasted = ServerHeaderRule.cleaned(name: " X-Gate ", value: "secret-value  ")
+        #expect(pasted == .init(name: "X-Gate", value: "secret-value"), "the spaces of a pasted value stayed")
+    }
+
+    @Test("Eingabe: die Adresse des Feldes wird die Adresse der Tabelle, ohne Schema https")
+    func theTypedAddress() {
+        #expect(ServerHeaderRule.base(typed: "music.example.com")?.absoluteString == "https://music.example.com")
+        #expect(ServerHeaderRule.base(typed: " http://10.0.0.2:4533/navidrome ")?.absoluteString == "http://10.0.0.2:4533/navidrome")
+        #expect(ServerHeaderRule.base(typed: "") == nil)
+        #expect(ServerHeaderRule.base(typed: "ftp://files.example.com") == nil)
+    }
+
+    @Test("Eingabe: der Satz unter einer abgewiesenen Zeile, keiner unter einer halb ausgefuellten")
+    @MainActor
+    func theSentenceUnderARow() {
+        var row = CustomHeadersSection.Row()
+        row.name = "X-Gate"
+        #expect(CustomHeadersSection.sentence(for: row) == nil, "a row without its value spoke already")
+        row.value = "a\nb"
+        #expect(CustomHeadersSection.sentence(for: row) == String(localized: "A header value cannot contain a line break."))
+        row.name = "Cookie"
+        row.value = "x"
+        #expect(CustomHeadersSection.sentence(for: row) == String(localized: "The app sets this header itself."))
+    }
+
+    @Test("Umzug: aendert sich die Adresse, wandern die Header mit, unter der alten bleibt nichts, und eine Anfrage an die alte traegt nichts")
+    func theHeadersMoveWithTheAddress() throws {
+        let keys = Keys()
+        let old = try #require(URL(string: "https://old-\(UUID().uuidString.prefix(6)).example/abs"))
+        let new = try #require(URL(string: "https://new-\(UUID().uuidString.prefix(6)).example/abs"))
+        let header = ServerHeaderRule.Header(name: ServerHeadersWayTests.name, value: ServerHeadersWayTests.value)
+        try ServerHeaders.$witness.withValue(keys.keys()) {
+            ServerHeaders.set([header], for: old)
+            try #require(ServerHeaders.stored(for: old) == [header], "the precondition: the old address has the header")
+            #expect(ServerHeaders.move(from: old, to: new))
+            #expect(ServerHeaders.stored(for: new) == [header], "the header did not move to the new address")
+            #expect(ServerHeaders.stored(for: old) == [], "the header stayed under the old address")
+            let entries = try #require(ServerHeaders.entries())
+            let request = ServerHeaderRule.applied(URLRequest(url: old.appendingPathComponent("api/me")), entries: entries)
+            #expect(request.value(forHTTPHeaderField: ServerHeadersWayTests.name) == nil, "a request to the old address carries the header")
+        }
+        #expect(keys.state.withLock { $0.bases } == [KnownServers.normalized(new.absoluteString)])
+    }
+
+    @Test("Lesen: unlesbar ist nicht leer")
+    func unreadableIsNotEmpty() throws {
+        let keys = Keys(.init(readable: false))
+        let base = try #require(URL(string: "https://locked.example"))
+        ServerHeaders.$witness.withValue(keys.keys()) {
+            #expect(ServerHeaders.stored(for: base) == nil)
+        }
+    }
+
+    @Test("Schutz: eine Antwort von einem anderen Host oder 401/403 als Webseite ist ein Schutz, die Antwort des Servers nicht")
+    func theGuardRule() throws {
+        let server = try #require(URL(string: "https://music.example.com/rest/ping"))
+        let login = try #require(URL(string: "https://team.cloudflareaccess.com/cdn-cgi/access/login"))
+        #expect(AccessGuard.standsAhead(requested: server, final: login, status: 200, contentType: "text/html"))
+        #expect(AccessGuard.standsAhead(requested: server, final: server, status: 403, contentType: "text/html; charset=utf-8"))
+        #expect(AccessGuard.standsAhead(requested: server, final: server, status: 401, contentType: "text/html"))
+        #expect(!AccessGuard.standsAhead(requested: server, final: server, status: 401, contentType: "application/json"),
+                "the server's own refusal is no guard")
+        #expect(!AccessGuard.standsAhead(requested: server, final: server, status: 200, contentType: "text/html"))
+        #expect(!AccessGuard.standsAhead(requested: server, final: nil, status: nil, contentType: nil))
+    }
+
+    @Test("Schutz: ein Server, dessen Adresse zu einem anderen Host umleitet, bekommt den Satz; einer, der selbst antwortet, behaelt seinen")
+    func theGuardSentenceAtTheLoopback() async throws {
+        let body = try HeaderRedirectMeasureTests.tone()
+        let guarded = try Host(body: body, contentType: "text/html")
+        let login = try Host(body: body, contentType: "text/html")
+        try await guarded.start()
+        try await login.start()
+        defer { guarded.stop(); login.stop() }
+        guarded.redirect(to: try #require(URL(string: "http://localhost:\(login.port)/login")))
+        guarded.redirecting.withLock { $0 = "/start" }
+        let own = "Server not reachable."
+        let guardedAnswer = await ServerHeaders.$witness.withValue(Keys().keys()) {
+            await AccessGuard.sentence(after: own, address: "http://127.0.0.1:\(guarded.port)/start")
+        }
+        #expect(guardedAnswer == String(localized: "A sign-in stands in front of the server (Cloudflare Access, for example). Enter what it asks for under Custom Headers."))
+        let plainAnswer = await ServerHeaders.$witness.withValue(Keys().keys()) {
+            await AccessGuard.sentence(after: own, address: "http://127.0.0.1:\(login.port)/rest")
+        }
+        #expect(plainAnswer == own, "a server answering itself got the guard's sentence")
+    }
+}
+
+/// Every server sheet carries the one component, and every connection
+/// check of a sheet asks the one guard.
+struct CustomHeadersFenceTests {
+    static let sheets = ["SetupView.swift", "SubsonicSourceView.swift", "JellyfinSourceView.swift",
+                         "GPodderSettingsView.swift", "PodcastSourceView.swift", "MaerSyncSettingsView.swift"]
+
+    @Test("Eigene Header: jedes Server-Blatt traegt die eine Komponente, das Blatt eines Feeds nicht", .needsTheSources)
+    func everyServerSheetCarriesTheSection() {
+        var carriers: [String: Int] = [:]
+        var forms: [String: Int] = [:]
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
+            let code = SyncContractFenceTests.stripped(text)
+            let section = code.components(separatedBy: "CustomHeadersSection(address:").count - 1
+            if section > 0 { carriers[file] = section }
+            let server = code.components(separatedBy: "CredentialField.serverURL(").count - 1
+                - code.components(separatedBy: "CredentialField.serverURL(\"Feed URL\"").count + 1
+            if server > 0 { forms[file] = server }
+        }
+        #expect(carriers == Dictionary(uniqueKeysWithValues: Self.sheets.map { ($0, 1) }), "the carriers: \(carriers)")
+        #expect(Set(forms.keys) == Set(Self.sheets), "a server form without the headers: \(forms)")
+    }
+
+    @Test("Eigene Header: jede Verbindungspruefung der sechs Blaetter fragt den einen Schutz", .needsTheSources)
+    func everyCheckAsksTheGuard() {
+        var askers: Set<String> = []
+        for (file, text) in ProjectFileIntegrityTests.sourceTexts()
+        where SyncContractFenceTests.stripped(text).contains("AccessGuard.sentence(after:") {
+            askers.insert(file)
+        }
+        #expect(askers == ["AuthViewModel.swift", "SubsonicSourceView.swift", "JellyfinSourceView.swift",
+                           "GPodderSettingsView.swift", "PodcastSourceView.swift", "MaerSyncSettingsView.swift"],
+                "the askers: \(askers.sorted())")
+    }
+}
+#endif

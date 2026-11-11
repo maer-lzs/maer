@@ -51,6 +51,8 @@ struct SubsonicSourceView: View {
                 Text("Works with Navidrome, Gonic and Airsonic. Example: https://music.example.com")
             }
 
+            CustomHeadersSection(address: serverURL, idPrefix: "subsonic")
+
             Section {
                 // What can do several things may do them AT ONCE. One server,
                 // one setup. Hence one switch per capability instead of an
@@ -119,9 +121,10 @@ struct SubsonicSourceView: View {
                     Task {
                         // A press gets the answer of now, even during the
                         // rest after a refused connection.
-                        let err = await LookupOccasion.deliberate { await SubsonicProvider.shared.testConnection() }
+                        var err = await LookupOccasion.deliberate { await SubsonicProvider.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .subsonic) }
+                        if let failure = err { err = await AccessGuard.sentence(after: failure, address: serverURL) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

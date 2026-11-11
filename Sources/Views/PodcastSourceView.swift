@@ -384,6 +384,7 @@ struct PodcastSourceView: View {
         return PinchflatSync.hiddenEntries()
     }
 
+    @ViewBuilder
     private var pinchflatSection: some View {
         Section {
             // This was the ONLY one of the fourteen sources without an
@@ -463,6 +464,9 @@ struct PodcastSourceView: View {
         } footer: {
             Text("Mirrors every channel of your Pinchflat server as its own group. Manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube.")
         }
+        if showPinchflat {
+            CustomHeadersSection(address: pinchflatURL, idPrefix: "pinchflat")
+        }
     }
 
     /// A re-admit is only real once the mirror ran AND this channel is a
@@ -524,9 +528,11 @@ struct PodcastSourceView: View {
             KnownServers.remember(pinchflatURL, service: .pinchflat)
             pinchflatStatus = String(localized: "Connected: \(count) channels in the group.")
         } catch PinchflatClient.FetchError.unauthorized {
-            pinchflatStatus = String(localized: "The server rejected the token or login (401).")
+            pinchflatStatus = await AccessGuard.sentence(after: String(localized: "The server rejected the token or login (401)."),
+                                                         address: pinchflatURL)
         } catch PinchflatClient.FetchError.badAnswer {
-            pinchflatStatus = String(localized: "The server answered, but not with a channel list.")
+            pinchflatStatus = await AccessGuard.sentence(after: String(localized: "The server answered, but not with a channel list."),
+                                                         address: pinchflatURL)
         } catch {
             // A mesh-only server being away is NORMAL, not an app defect.
             pinchflatStatus = String(localized: "Server not reachable right now. Try again in your home network.")

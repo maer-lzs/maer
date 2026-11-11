@@ -35,6 +35,8 @@ struct JellyfinSourceView: View {
                 Text("Example: https://jellyfin.example.com. Sign-in stores an access token in the keychain.")
             }
 
+            CustomHeadersSection(address: serverURL, idPrefix: "jellyfin")
+
             Section {
                 AppSwitch("Use as music source", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
@@ -51,9 +53,10 @@ struct JellyfinSourceView: View {
                     Task {
                         // A press gets the answer of now, even during the
                         // rest after a refused connection.
-                        let err = await LookupOccasion.deliberate { await JellyfinProvider.shared.testConnection() }
+                        var err = await LookupOccasion.deliberate { await JellyfinProvider.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .jellyfin) }
+                        if let failure = err { err = await AccessGuard.sentence(after: failure, address: serverURL) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

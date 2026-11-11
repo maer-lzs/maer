@@ -217,6 +217,45 @@ struct SignInStreamTests {
         #expect(atFresh.contains { $0.contains("authorization:") } == false, "the new end saw the sign-in")
     }
 
+    @Test("ein Sprung auf eine Spur, deren gehaltener Plan auf ein abgelaufenes Ende zeigt, faellt in den Ladefehler, und der naechste Druck auf Wiedergabe fragt das Ende neu",
+          .needsAudio)
+    func aJumpToALapsedEndIsPlannedAnew() async throws {
+        let body = try Data(contentsOf: try TickWorkTests().tone(seconds: 60))
+        let quick = try Host(body: body, contentType: "audio/x-caf")
+        let origin = try Host(body: body, contentType: "audio/x-caf")
+        let lapsing = try Host(body: body, contentType: "audio/x-caf")
+        let fresh = try Host(body: body, contentType: "audio/x-caf")
+        for host in [quick, origin, lapsing, fresh] { try await host.start() }
+        defer { quick.stop(); origin.stop(); lapsing.stop(); fresh.stop() }
+        origin.redirect(to: try #require(URL(string: "http://localhost:\(lapsing.port)/jump-old.caf?sig=old")))
+        let title = LibraryItemDetail(
+            id: "signin-jump-\(UUID().uuidString)",
+            media: LibraryItemMedia(metadata: nil, duration: 120, chapters: nil, tracks: [
+                ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "http://127.0.0.1:\(quick.port)/track-0.caf", metadata: nil),
+                ABSAudioTrack(index: 1, startOffset: 60, duration: 60, contentUrl: "http://127.0.0.1:\(origin.port)/start-jump.caf", metadata: nil),
+            ]),
+            userMediaProgress: nil)
+        let model = PlayerViewModel(provider: ServerHeadersWayTests.HostBoundProvider(host: "127.0.0.1"),
+                                    localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: title)
+        try #require(model.player != nil, "the precondition: the load built a player")
+        await waitFor { lapsing.recorded.contains { $0.contains("/jump-old.caf") } }
+        try #require(lapsing.recorded.contains { $0.contains("/jump-old.caf") }, "the precondition: the window planned track 1")
+        // A long pause: the end the held plan names stops answering, and
+        // the source now redirects to another one.
+        lapsing.stop()
+        origin.redirect(to: try #require(URL(string: "http://localhost:\(fresh.port)/jump-new.caf?sig=new")))
+        await model.seek(to: 61, userInitiated: false)
+        await waitFor { model.sourceHint?.kind == .loadFailed }
+        try #require(model.sourceHint?.kind == .loadFailed, "the jump to the lapsed end did not fail to load")
+        model.player?.volume = 0
+        model.play()
+        await waitFor { fresh.recorded.contains { $0.contains("/jump-new.caf") && !$0.contains("range: bytes=0-0") } }
+        model.stop()
+        #expect(fresh.recorded.contains { $0.contains("/jump-new.caf") && !$0.contains("range: bytes=0-0") },
+                "the play after the failed jump built its stream from the lapsed plan again")
+    }
+
     @Test("ein Wirt, der die Frage nach dem Ende zwei Sekunden haelt, haelt den Start, und der Strom traegt am fremden Ende keine Anmeldung",
           .needsAudio)
     func aHostThatHoldsTheAskHoldsTheStart() async throws {

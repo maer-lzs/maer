@@ -141,6 +141,8 @@ struct ABSLoginForm: View {
                 }
             }
 
+            CustomHeadersSection(address: viewModel.serverURLString, idPrefix: "setup")
+
             if let error = viewModel.errorMessage {
                 Section {
                     Text(error).foregroundStyle(.red)

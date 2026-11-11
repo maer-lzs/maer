@@ -53,6 +53,8 @@ struct GPodderSettingsView: View {
                 Text("Works with oPodSync, Nextcloud GPodder and gpodder.net. Example: https://sync.example.com")
             }
 
+            CustomHeadersSection(address: serverURL, idPrefix: "gpodder")
+
             Section {
                 AppSwitch("Sync podcasts via gpodder", isOn: $enabled)
                     // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
@@ -75,9 +77,10 @@ struct GPodderSettingsView: View {
                     Task {
                         // A press gets the answer of now, even during the
                         // rest after a refused connection.
-                        let err = await LookupOccasion.deliberate { await GPodderSync.shared.testConnection() }
+                        var err = await LookupOccasion.deliberate { await GPodderSync.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .gpodder) }
+                        if let failure = err { err = await AccessGuard.sentence(after: failure, address: serverURL) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

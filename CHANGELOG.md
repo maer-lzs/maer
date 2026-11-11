@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Your own headers for a server.** The settings of every server now have
+a section Custom Headers under the sign-in, for what a guard in front of
+the server asks for, such as Cloudflare Access, Authelia or Authentik.
+The headers are kept in the keychain, reach your other devices through
+the iCloud keychain, and go only to that server, never along a redirect
+to another one. When a connection check fails because such a guard
+answered, the page says so.
+
 **A book whose next file cannot be reached waits visibly and stops at
 that file.** When a jump or the next file of a book waits for the server
 to say where its stream ends, the player shows that it is waiting, and

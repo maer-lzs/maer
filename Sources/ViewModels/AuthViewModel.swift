@@ -171,10 +171,11 @@ final class AuthViewModel: ObservableObject {
             do {
                 token = try await trial.login(username: user, password: password)
             } catch APIError.http(401, _) {
-                errorMessage = String(localized: "Login failed. Please check username and password.")
+                errorMessage = await AccessGuard.sentence(after: String(localized: "Login failed. Please check username and password."),
+                                                          address: serverURLString)
                 return
             } catch {
-                errorMessage = Self.friendlyMessage(for: error)
+                errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
                 return
             }
         case .token:
@@ -220,7 +221,7 @@ final class AuthViewModel: ObservableObject {
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
-            errorMessage = Self.friendlyMessage(for: error)
+            errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
         }
     }
 

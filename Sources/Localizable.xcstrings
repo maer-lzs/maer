@@ -974,6 +974,26 @@
         }
       }
     },
+    "A header name has only letters, digits and signs such as -, no spaces and no colon." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Header-Name besteht nur aus Buchstaben, Ziffern und Zeichen wie -, ohne Leerzeichen und ohne Doppelpunkt."
+          }
+        }
+      }
+    },
+    "A header value cannot contain a line break." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Header-Wert darf keinen Zeilenumbruch enthalten."
+          }
+        }
+      }
+    },
     "A key changes when the service moved to another machine or was restored from a backup. If you did not do that, someone between you and the service may be answering in its place. Compare the offered key with what the service prints about itself before you accept it." : {
       "localizations" : {
         "de" : {
@@ -1041,6 +1061,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eine Regel, die diese Version nicht lesen kann: die Routine startet ohne sie"
+          }
+        }
+      }
+    },
+    "A sign-in stands in front of the server (Cloudflare Access, for example). Enter what it asks for under Custom Headers." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vor dem Server steht eine Anmeldung (etwa Cloudflare Access). Trage unter Eigene Header ein, was sie verlangt."
           }
         }
       }
@@ -1175,6 +1205,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feed hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Header" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Header hinzufügen"
           }
         }
       }
@@ -3211,6 +3251,16 @@
         }
       }
     },
+    "Custom Headers" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eigene Header"
+          }
+        }
+      }
+    },
     "Dark" : {
       "localizations" : {
         "de" : {
@@ -4761,6 +4811,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fröhlich"
+          }
+        }
+      }
+    },
+    "Header Name" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name des Headers"
+          }
+        }
+      }
+    },
+    "Headers a guard in front of the server asks for, such as Cloudflare Access. They go only to this server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Header, die ein Schutz vor dem Server verlangt, etwa Cloudflare Access. Sie gehen nur an diesen Server."
           }
         }
       }
@@ -11606,6 +11676,16 @@
         }
       }
     },
+    "The app sets this header itself." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Header setzt die App selbst."
+          }
+        }
+      }
+    },
     "The catalogs could not be loaded." : {
       "localizations" : {
         "de" : {
@@ -11762,6 +11842,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Gutenberg-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
+    "The headers can be read once this device is unlocked." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Header lassen sich lesen, sobald dieses Gerät entsperrt ist."
           }
         }
       }
@@ -13476,6 +13566,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lokaler Stand verwendet"
+          }
+        }
+      }
+    },
+    "Value" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wert"
           }
         }
       }

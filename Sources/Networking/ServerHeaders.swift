@@ -270,6 +270,26 @@ nonisolated enum ServerHeaders {
         return true
     }
 
+    /// The headers laid down for exactly this server address (not for one
+    /// it lies under); empty when it has none, nil while the keychain
+    /// cannot be read.
+    static func stored(for base: URL) -> [ServerHeaderRule.Header]? {
+        guard let entries = entries() else { return nil }
+        let address = KnownServers.normalized(base.absoluteString)
+        return entries.first { KnownServers.normalized($0.base.absoluteString) == address }?.headers ?? []
+    }
+
+    /// The headers of a server move with its address: laid down under the
+    /// new one, removed under the old, so nothing stays behind for the old
+    /// address. False when the keychain did not take them.
+    @discardableResult
+    static func move(from old: URL, to new: URL) -> Bool {
+        guard KnownServers.normalized(old.absoluteString) != KnownServers.normalized(new.absoluteString),
+              let headers = stored(for: old), !headers.isEmpty else { return true }
+        guard set(headers, for: new) else { return false }
+        return set([], for: old)
+    }
+
     /// Removes a server from the register by hand, and its headers on every
     /// device with it.
     static func forget(_ entry: KnownServer, defaults: UserDefaults? = nil) {
