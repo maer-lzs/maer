@@ -183,6 +183,18 @@ import Foundation
             }
         }
         #expect(pages == 2, "pages asked: \(pages)")
+        // A server that sends an item on two pages: it counts once for the
+        // total and comes back once, and the next page starts where the
+        // server's last one ended.
+        var starts: [Int] = []
+        let twice = try await JellyfinClient.allPages(limit: 500) { start, limit in
+            starts.append(start)
+            if start == 0 { return (Array(files[0..<500]), 1001) }
+            return (Array(files[499..<min(1000, files.count)]) + [files[1000]], 1001)
+        }
+        #expect(starts == [0, 500])
+        #expect(twice.count == 1001, "the doubled item came back twice or a page was lost: \(twice.count)")
+        #expect(Set(twice.map(\.id)).count == twice.count)
     }
 
     @Test func aNegativePositionNeverTravels() throws {

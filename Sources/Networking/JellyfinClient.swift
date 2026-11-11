@@ -336,17 +336,23 @@ final class JellyfinClient {
     nonisolated static func allPages(limit: Int,
                                      page: (_ start: Int, _ limit: Int) async throws -> (items: [JFItem], total: Int?))
         async throws -> [JFItem] {
+        // Each item once, in the order it came; the next page starts where
+        // the server's last one ended, doubles counted there.
         var all: [JFItem] = []
         var held: Set<String> = []
+        var asked = 0
         for _ in 0..<mostPages {
-            let next = try await page(all.count, limit)
-            let fresh = next.items.filter { !held.contains($0.id) }
-            all += next.items
-            held.formUnion(next.items.map(\.id))
+            let next = try await page(asked, limit)
+            asked += next.items.count
+            var fresh = 0
+            for item in next.items where held.insert(item.id).inserted {
+                all.append(item)
+                fresh += 1
+            }
             if next.items.count < limit { return all }
-            if let total = next.total, all.count >= total { return all }
-            guard !fresh.isEmpty else {
-                Logger.music.error("JELLYFIN listing stopped at \(all.count, privacy: .public): a full page brought nothing new, the server ignores StartIndex")
+            if let total = next.total, held.count >= total { return all }
+            guard fresh > 0 else {
+                Logger.music.error("JELLYFIN listing stopped at \(held.count, privacy: .public): a full page brought nothing new, the server ignores StartIndex")
                 throw URLError(.cannotParseResponse)
             }
         }
