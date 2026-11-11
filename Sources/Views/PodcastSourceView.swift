@@ -99,7 +99,8 @@ struct PodcastSourceView: View {
             Task { await absPodcast.refresh() }
         }
         // What leaves the device, before it leaves: shows, episodes with
-        // a state, and the premium feeds held back. Their exclusion is
+        // a state, and the private feeds held back (premium, access in the
+        // address, the own server: `staysHome`). Their exclusion is
         // the safe default, "include anyway" the deliberate second step
         // for the own-backup case.
         .confirmationDialog(
@@ -107,7 +108,7 @@ struct PodcastSourceView: View {
             isPresented: $opmlPremiumHintShown, titleVisibility: .visible
         ) {
             if opmlExcludedCount > 0 {
-                Button("Export without premium feeds") { performExport(includePremium: false) }
+                Button("Export without private feeds") { performExport(includePremium: false) }
                     .accessibilityIdentifier("opml-export-confirm")
                 Button("Include anyway", role: .destructive) { performExport(includePremium: true) }
             } else {
@@ -117,7 +118,7 @@ struct PodcastSourceView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             if opmlExcludedCount > 0 {
-                Text("\(opmlExcludedCount) premium feeds not exported, because they contain personal access links. Their listening states stay out with them.")
+                Text("\(opmlExcludedCount) private feeds not exported, because they contain personal access links or come from your own server. Their listening states stay out with them.")
             } else {
                 Text("Listening states travel with their shows; a plain OPML reader ignores them.")
             }

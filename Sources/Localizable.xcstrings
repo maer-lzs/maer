@@ -4,6 +4,26 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%lld private feeds not exported, because they contain personal access links or come from your own server. Their listening states stay out with them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld private Feeds nicht exportiert, weil sie persönliche Zugangslinks enthalten oder von deinem eigenen Server kommen. Ihre Hörstände bleiben mit ihnen draußen."
+          }
+        }
+      }
+    },
+    "Export without private feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne private Feeds exportieren"
+          }
+        }
+      }
+    },
     "The headers could not be saved. They are saved again when you change them or close this page." : {
       "localizations" : {
         "de" : {
@@ -567,16 +587,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "%lld premium feeds not exported, because they contain personal access links. Their listening states stay out with them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangslinks enthalten. Ihre Hörstände bleiben mit ihnen draußen."
           }
         }
       }
@@ -4196,16 +4206,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OPML exportieren"
-          }
-        }
-      }
-    },
-    "Export without premium feeds" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Premium-Feeds exportieren"
           }
         }
       }

@@ -64,7 +64,8 @@ or any server you entered), feeds whose address carries a key or password
 under another name, and episode addresses that carry one. The podcast
 directory is asked about none of them either. A feed whose address only
 looks like it, with a word such as author or keyword in it, stays a
-public feed.
+public feed. The export asks before it leaves out private feeds and now
+calls them so, not premium feeds.
 
 **Subscribing during a refresh of all podcasts sticks.** A show you
 subscribe to or unsubscribe from while all feeds are being refreshed now
