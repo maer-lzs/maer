@@ -122,6 +122,10 @@ nonisolated final class StandMirror: Sendable {
         // per device. After it the stock is the table, and the old keys are
         // read on the chain, after the first frame.
         let startWalk: ListeningStore.Stock? = moved ? nil : Self.walkedLegacy(defaults)
+        // The rows that are there before the stock is read: the repair
+        // removes among these only. A row that arrives later (from the
+        // account, with a moment of its own) is never one of them.
+        let present: Set<String>? = moved ? nil : Self.rowsNow(loadNow)
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
         let unread = resumes && ListeningStore.readFailed(in: defaults)
@@ -149,16 +153,19 @@ nonisolated final class StandMirror: Sendable {
                     Logger.library.error("STAND repair refused: the table holds rows the move mark does not explain; nothing goes, the mark waits")
                     return
                 }
-                // A row no old key names and newer than every old key was
-                // written after the move, not from those keys: the repair
-                // adds and keeps everything then, it does not take what it
-                // cannot explain. An older row without a key is a removal
-                // the chain did not write before it ended, and goes.
+                // Only a row that was there before the stock was read can
+                // be a removal the chain did not write before it ended.
+                // Among those, a row no old key names and newer than every
+                // old key was written after the move, not from those keys:
+                // the repair adds and keeps everything then, it does not
+                // take what it cannot explain.
+                let rowsHere = try await store.all()
+                let held = present ?? Set(rowsHere.keys)
                 let newestOld = entries.values.compactMap { $0.count > 1 ? $0[1] : nil }.max() ?? 0
-                let unnamed = resumes ? 0 : try await store.all()
-                    .filter { entries[$0.key] == nil && $0.value.updatedAtMs > newestOld }.count
+                let unnamed = resumes ? 0 : rowsHere
+                    .filter { held.contains($0.key) && entries[$0.key] == nil && $0.value.updatedAtMs > newestOld }.count
                 let written = try await store.importEntries(entries)
-                let removed = unnamed > 0 ? 0 : try await store.retainOnly(Set(entries.keys))
+                let removed = unnamed > 0 ? 0 : try await store.remove(itemIds: held.subtracting(entries.keys))
                 if unnamed > 0 {
                     Logger.library.error("STAND repair kept \(unnamed) rows no old key names, newer than every old key: nothing removed")
                 }
@@ -202,6 +209,21 @@ nonisolated final class StandMirror: Sendable {
             if !check.missing.isEmpty {
                 Logger.library.error("STAND old keys kept missing=\(check.missing.count) of=\(legacy.backups.count + legacy.flushed.count)")
             }
+        }
+    }
+
+    /// The ids of the rows as they lie now, read synchronously. Nil without
+    /// a reader: the repair then takes the rows it finds when it runs. An
+    /// empty set without a database or when the table does not read, so
+    /// the repair removes nothing.
+    private static func rowsNow(_ loadNow: (@Sendable () throws -> ListeningStore.Stock?)?) -> Set<String>? {
+        guard let loadNow else { return nil }
+        do {
+            guard let stock = try loadNow() else { return [] }
+            return Set(stock.backups.keys)
+        } catch {
+            Logger.library.error("STAND rows not read before the repair, it removes nothing: \(FailureReason.of(error), privacy: .public)")
+            return []
         }
     }
 

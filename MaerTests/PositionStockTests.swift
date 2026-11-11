@@ -245,7 +245,9 @@ struct PositionStockTests {
             ListeningStore.listen(to: defaults, nil)
         }
         // Old keys hold one title, the table holds it and another one.
-        ListeningStore.store("rss:old:a", entry: [20, 2_000], in: defaults)
+        // The key is set in the defaults themselves: the start drops the
+        // stock held in memory and reads the old keys from there.
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.localPosition("rss:old:a"))
         try await store.upsert(Stand(itemId: "rss:old:a", position: 10, updatedAtMs: 1_000, duration: nil))
         try await store.upsert(Stand(itemId: "rss:new:b", position: 70, updatedAtMs: 7_000, duration: nil))
         #expect(!ListeningStore.isMoved(in: defaults) && !ListeningStore.isMoveStarted(in: defaults), "the precondition: both marks read unset")
@@ -254,8 +256,39 @@ struct PositionStockTests {
         mirror.start(defaults: defaults)
         await mirror.awaitPendingWrites()
         let rows = try await store.all()
+        #expect(rows["rss:old:a"]?.entry == [20, 2_000], "the precondition: the repair ran and wrote the old key's entry")
+        #expect(ListeningStore.isMoved(in: defaults), "the precondition: the repair ended")
         #expect(rows["rss:new:b"]?.entry == [70, 7_000], "the repair removed a row no old key names")
-        #expect(rows["rss:old:a"] != nil)
+    }
+
+    @Test("eine Zeile aus dem Konto mit alter Zeit, die waehrend der Reparatur eintrifft, bleibt")
+    func aRowThatArrivesDuringTheRepairStays() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.localPosition("rss:old:a"))
+        try await store.upsert(Stand(itemId: "rss:old:a", position: 10, updatedAtMs: 1_000, duration: nil))
+        try await store.upsert(Stand(itemId: "rss:gone:d", position: 5, updatedAtMs: 500, duration: nil))
+        // The account's row lies in the table and the read at the start
+        // does not hold it: it arrives after that read, with an old moment.
+        try await store.upsert(Stand(itemId: "rss:acct:c", position: 30, updatedAtMs: 500, duration: nil))
+        let readBefore: @Sendable () throws -> ListeningStore.Stock? = {
+            var stock = try loadNow()
+            stock?.backups["rss:acct:c"] = nil
+            return stock
+        }
+
+        let mirror = StandMirror(store: store, loadNow: readBefore)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        let rows = try await store.all()
+        #expect(ListeningStore.isMoved(in: defaults), "the precondition: the repair ended")
+        #expect(rows["rss:gone:d"] == nil, "the precondition: the repair removes a row that was there and has no old key")
+        #expect(rows["rss:acct:c"]?.entry == [30, 500], "the repair took a row that arrived after its read")
     }
 
     @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")

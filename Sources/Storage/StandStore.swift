@@ -240,14 +240,14 @@ actor StandStore {
         return stock
     }
 
-    /// Removes every row whose title the stock no longer holds, in one
-    /// transaction: a removal the chain had not written yet when the app
-    /// ended. Returns how many went.
+    /// Removes the rows of the named titles in one transaction: removals
+    /// the chain had not written yet when the app ended. The caller names
+    /// them; a row that arrives meanwhile is never taken for not being
+    /// named somewhere else. Returns how many went.
     @discardableResult
-    func retainOnly(_ itemIds: Set<String>) async throws -> Int {
-        let gone = try await all().keys.filter { !itemIds.contains($0) }
-        guard !gone.isEmpty else { return 0 }
-        let statements = gone.map { SQLiteConnection.Statement("DELETE FROM stand WHERE item_id = ?", [.text($0)]) }
+    func remove(itemIds: Set<String>) async throws -> Int {
+        guard !itemIds.isEmpty else { return 0 }
+        let statements = itemIds.sorted().map { SQLiteConnection.Statement("DELETE FROM stand WHERE item_id = ?", [.text($0)]) }
         return try await connection.transaction(statements)
     }
 
