@@ -235,6 +235,29 @@ struct PositionStockTests {
         #expect(try await store.all()["rss:kept:a"]?.entry == [50, 5_000], "a write of this run went over the row")
     }
 
+    @Test("eine Reparatur ueber alten Schluesseln laesst eine Zeile stehen, die kein alter Schluessel nennt")
+    func theRepairKeepsARowNoOldKeyNames() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        // Old keys hold one title, the table holds it and another one.
+        ListeningStore.store("rss:old:a", entry: [20, 2_000], in: defaults)
+        try await store.upsert(Stand(itemId: "rss:old:a", position: 10, updatedAtMs: 1_000, duration: nil))
+        try await store.upsert(Stand(itemId: "rss:new:b", position: 70, updatedAtMs: 7_000, duration: nil))
+        #expect(!ListeningStore.isMoved(in: defaults) && !ListeningStore.isMoveStarted(in: defaults), "the precondition: both marks read unset")
+
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        let rows = try await store.all()
+        #expect(rows["rss:new:b"]?.entry == [70, 7_000], "the repair removed a row no old key names")
+        #expect(rows["rss:old:a"] != nil)
+    }
+
     @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")
     func aFailedReadWritesOnlyNewer() async throws {
         let (defaults, name) = suite()

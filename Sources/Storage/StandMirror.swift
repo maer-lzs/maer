@@ -149,8 +149,15 @@ nonisolated final class StandMirror: Sendable {
                     Logger.library.error("STAND repair refused: the table holds rows the move mark does not explain; nothing goes, the mark waits")
                     return
                 }
+                // Rows no old key names, beside old keys, were not written
+                // from those keys: the repair adds and keeps them, it does
+                // not take what it cannot explain.
+                let unnamed = resumes ? 0 : try await store.all().keys.filter { entries[$0] == nil }.count
                 let written = try await store.importEntries(entries)
-                let removed = try await store.retainOnly(Set(entries.keys))
+                let removed = unnamed > 0 ? 0 : try await store.retainOnly(Set(entries.keys))
+                if unnamed > 0 {
+                    Logger.library.error("STAND repair kept \(unnamed) rows no old key names: nothing removed")
+                }
                 let pushed = try await store.replaceFlushed(with: flushed)
                 Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed) resumed=\(resumes)")
                 if movesNow { ListeningStore.markMoved(for: followed) }
