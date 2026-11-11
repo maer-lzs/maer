@@ -361,8 +361,9 @@ final class DownloadManager {
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
-            if let count = expected[itemId], !isComplete(trackCount: count, present: presentIndices(in: dir)) {
-                Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(presentIndices(in: dir).count)")
+            if let count = expected[itemId], case let present = presentIndices(in: dir),
+               !isComplete(trackCount: count, present: present) {
+                Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(present.count)")
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
@@ -834,9 +835,10 @@ final class DownloadManager {
 
         let itemId = item.id
         // "Downloaded" alone is not enough: corrupted/undersized tracks are
-        // excluded from the map. A re-download run replaces exactly those.
+        // excluded from the map, and every index must lie there by the one
+        // count (`isComplete`). A re-download run replaces exactly those.
         if downloadedItemIds.contains(itemId),
-           Self.trackMap(in: itemDirectory(itemId)).count >= tracks.count {
+           Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: itemDirectory(itemId)).keys)) {
             return
         }
         // A sign-in the tracks need that cannot be read now sends nothing
