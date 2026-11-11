@@ -62,6 +62,9 @@ final class PlaybackContext: ObservableObject {
         sourceTitle = loaded?.sourceTitle
         // One row: a context this run wrote is the newer word over the row
         // read after a failed start, so nothing of that row goes into memory.
+        // An empty memory writes only through `replace`, a start that hands
+        // over a whole new context: `clear`, `remove` and `rekey` write
+        // nothing over a row they did not read.
         keeper.adopt = { _ in }
         Logger.library.notice("CONTEXT start: entries=\(self.ids.count)")
     }

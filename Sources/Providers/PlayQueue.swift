@@ -59,10 +59,32 @@ final class PlayQueue: ObservableObject {
             return
         }
         ids = keeper.startNow()?[Self.rowKey] ?? []
-        // One row: a queue this run wrote is the newer word over the row read
-        // after a failed start, so nothing of that row goes into memory.
-        keeper.adopt = { _ in }
+        // After a failed start the memory holds only what this run added:
+        // the row read on the first save keeps its entries behind them
+        // instead of being replaced by them.
+        keeper.adopt = { [weak self] read in
+            guard let self, let row = read[Self.rowKey] else { return }
+            let before = self.ids.count
+            self.ids = Self.afterUnreadStart(run: self.ids, read: row, equivalents: self.equivalents)
+            Logger.library.notice("QUEUE row read on save: run=\(before) kept=\(self.ids.count - before)")
+        }
         Logger.library.notice("QUEUE start: entries=\(self.ids.count)")
+    }
+
+    /// The queue after a start that could not read its row, once the row
+    /// reads: what this run put in, in its order, then every entry of the
+    /// row it does not hold (a twin counts as held). The run removed
+    /// nothing of the row, it never saw it.
+    nonisolated static func afterUnreadStart(run: [String], read: [String],
+                                             equivalents: (String) -> [String]) -> [String] {
+        let held = Set(run.flatMap { equivalents($0) + [$0] })
+        var seen = held
+        var out = run
+        for id in read where canHold(id) && !seen.contains(id) {
+            out.append(id)
+            seen.formUnion(equivalents(id) + [id])
+        }
+        return out
     }
 
     /// Waits for every queued write of the row (tests, teardown).

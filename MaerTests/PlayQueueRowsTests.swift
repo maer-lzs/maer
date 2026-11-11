@@ -49,5 +49,32 @@ struct PlayQueueRowsTests {
         #expect(try home.row() == [], "emptied is an empty row, not a missing one")
         #expect(home.store().ids.isEmpty, "the empty row reads back as empty")
     }
+
+    /// A start that could not read the row holds only what the run adds;
+    /// the first save reads the row and keeps it behind that, instead of
+    /// replacing it. A memory database has no synchronous reader, so its
+    /// start read fails while the writer works.
+    @Test("nach einem Start, der die Zeile nicht las, ersetzt das erste Sichern sie nicht")
+    func aStartThatDidNotReadReplacesNothing() async throws {
+        let database = MaerDatabase(path: ":memory:")
+        let rows = try await KeyedRowStore<[String]>(connection: try database.connection(), table: .playQueue)
+        try await rows.apply(previous: [:], current: [PlayQueue.rowKey: ["a", "b"]])
+        let store = PlayQueue(persists: true, database: database)
+        #expect(store.isEmpty, "the precondition: the start did not read the row")
+        store.playLast("c")
+        store.playLast("a")
+        await store.awaitPendingWrites()
+        #expect(try await rows.load().rows[PlayQueue.rowKey] == ["c", "a", "b"],
+                "the first save replaced the row it never read")
+        #expect(store.ids == ["c", "a", "b"])
+    }
+
+    @Test("die Regel nach einem ungelesenen Start: was der Lauf hinzufuegte zuerst, dann die Zeile ohne Doppel und ohne Zwilling")
+    func theRuleAfterAnUnreadStart() {
+        let twins: (String) -> [String] = { $0 == "rss:x" ? ["rss:x", "abspod:x"] : [$0] }
+        #expect(PlayQueue.afterUnreadStart(run: ["c", "rss:x"], read: ["a", "abspod:x", "c", "radio:r", "b"],
+                                           equivalents: twins) == ["c", "rss:x", "a", "b"])
+        #expect(PlayQueue.afterUnreadStart(run: [], read: ["a"], equivalents: { [$0] }) == ["a"])
+    }
 }
 #endif
