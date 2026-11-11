@@ -204,12 +204,13 @@ struct GPodderSettingsView: View {
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
         let typedUser = username.trimmingCharacters(in: .whitespaces)
         let newUser = typedUser.isEmpty ? AppStorageKeys.gpodderUsernameValue : typedUser
-        if !trimmedURL.isEmpty {
-            // Another server or user is another account: its password and
-            // the state of its rounds go to no other one.
-            password = GPodderSync.forgetAccessOnSwitch(to: trimmedURL, user: newUser, typed: password)
-            AppStorageKeys.gpodderServerURLValue = trimmedURL
-        }
+        // Another server or user is another account: its password and the
+        // state of its rounds go to no other one. Asked with the stored
+        // address when the field is empty, so another user at the stored
+        // server counts too.
+        let address = trimmedURL.isEmpty ? AppStorageKeys.gpodderServerURLValue : trimmedURL
+        password = GPodderSync.forgetAccessOnSwitch(to: address, user: newUser, typed: password)
+        if !trimmedURL.isEmpty { AppStorageKeys.gpodderServerURLValue = trimmedURL }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)
         if !trimmedUser.isEmpty {
             AppStorageKeys.gpodderUsernameValue = trimmedUser

@@ -29,13 +29,17 @@ nonisolated enum ServerAddressSwitch {
     /// `isSwitch`, or another user at the same server. What the stored
     /// account was handed out, and what it wrote, belong to it alone. Names
     /// are compared without case and surrounding spaces; an empty stored or
-    /// new name is no switch (an empty field leaves the stored name).
-    static func isAccountSwitch(fromAddress: String, fromUser: String, toAddress: String, toUser: String) -> Bool {
+    /// new name is no switch (an empty field leaves the stored name), unless
+    /// `unknownIsSwitch`: where the user is learned from the server, not
+    /// typed, a stored account whose user or the new one's is unknown
+    /// cannot be shown to be the same, and counts as another.
+    static func isAccountSwitch(fromAddress: String, fromUser: String, toAddress: String, toUser: String,
+                                unknownIsSwitch: Bool = false) -> Bool {
         if isSwitch(from: fromAddress, to: toAddress) { return true }
         let before = fromUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let after = toUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !before.isEmpty, !after.isEmpty else { return false }
+        guard !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard !before.isEmpty, !after.isEmpty else { return unknownIsSwitch }
         return before != after
     }
 

@@ -71,8 +71,10 @@ with.
 the same Audiobookshelf, Jellyfin, Subsonic or gpodder address, the app
 now forgets the sign-in of the user before, clears what belonged to that
 account from the device, and no longer sends its waiting listening
-positions to the new account. Changing only the gpodder address no
-longer sends the stored password to the new server.
+positions to the new account. This holds also on a device that was
+signed in before this version, and in the music and gpodder settings when
+only the user name changes. Changing only the gpodder address no longer
+sends the stored password to the new server.
 
 **A Jellyfin audiobook starts where you last listened, on any device.**
 The app now tells the server when it wrote your position and reads that

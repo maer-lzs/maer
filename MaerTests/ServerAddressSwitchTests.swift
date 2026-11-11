@@ -83,6 +83,39 @@ struct ServerAddressSwitchTests {
                 "the password of the stored user went to the new one")
     }
 
+    @Test("die drei Formulare fragen die Regel des Kontos auch ohne Adresse im Feld, und bevor sie den Benutzer schreiben", .needsTheSources)
+    func theFormsAskBeforeTheUserIsWritten() throws {
+        let forms = [("Sources/Views/SubsonicSourceView.swift", "SubsonicProvider.forgetAccessOnSwitch(to: address, user: newUser)", "subsonic"),
+                     ("Sources/Views/JellyfinSourceView.swift", "JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser)", "jellyfin"),
+                     ("Sources/Views/GPodderSettingsView.swift", "GPodderSync.forgetAccessOnSwitch(to: address, user: newUser, typed: password)", "gpodder")]
+        for (file, ask, family) in forms {
+            let form = try FetchAnswerTests.squeezedSource(file)
+            #expect(form.contains("let address = trimmedURL.isEmpty ? AppStorageKeys.\(family)ServerURLValue : trimmedURL"),
+                    "\(file) asks the rule only with a typed address")
+            let asked = try #require(form.range(of: ask), "\(file) does not ask the rule")
+            let written = try #require(form.range(of: "AppStorageKeys.\(family)UsernameValue = trimmedUser"), "\(file) writes no user")
+            #expect(asked.lowerBound < written.lowerBound, "\(file) writes the user before the rule is asked")
+        }
+    }
+
+    @Test("Audiobookshelf: ein gespeichertes Konto mit Zugang, dessen Benutzer auf einer Seite unbekannt ist, ist ein anderes Konto", .needsTheSources)
+    func anUnknownUserIsAnotherAccount() throws {
+        let a = "https://abs.a.example"
+        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "", toAddress: a, toUser: "u-2", unknownIsSwitch: true),
+                "a device from a build before the note signed in as another user and kept the stored account's stands")
+        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "u-1", toAddress: a, toUser: "", unknownIsSwitch: true),
+                "an answer without an id counted as the same account")
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "u-1", toAddress: a, toUser: "u-1", unknownIsSwitch: true))
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: "", fromUser: "", toAddress: a, toUser: "u-2", unknownIsSwitch: true),
+                "no stored server, nothing to forget")
+        let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
+        #expect(auth.contains("formerUser = await Self.userId(of: apiClient, side: \"stored\") ?? \"\""),
+                "a stored sign-in without a noted user does not ask the server with the stored token")
+        #expect(auth.contains("toUser: userId ?? \"\", unknownIsSwitch: formerAccess)"))
+        #expect(auth.contains("AUTH user id not read side="), "a failed ask for the user passes in silence")
+        #expect(!auth.contains("(try? await trial.fetchUserId())"))
+    }
+
     @Test("die wartenden Staende eines Servers gehen beim Wechsel des Benutzers, die anderer Server bleiben")
     func theQueuedStandsOfTheServerGo() {
         typealias Update = SyncQueue.PendingUpdate

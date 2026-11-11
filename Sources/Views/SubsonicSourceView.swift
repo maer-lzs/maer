@@ -187,13 +187,14 @@ struct SubsonicSourceView: View {
         // stored account wrote go the way of another address.
         let typedUser = username.trimmingCharacters(in: .whitespaces)
         let newUser = typedUser.isEmpty ? AppStorageKeys.subsonicUsernameValue : typedUser
-        if !trimmedURL.isEmpty {
-            // The password of the stored server stays with it, also the one
-            // the field was filled with.
-            password = SubsonicProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password)
-            SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser)
-            AppStorageKeys.subsonicServerURLValue = trimmedURL
-        }
+        // Asked with the stored address when the field is empty: another
+        // user at the stored server is another account too. The password
+        // of the stored account stays with it, also the one the field was
+        // filled with.
+        let address = trimmedURL.isEmpty ? AppStorageKeys.subsonicServerURLValue : trimmedURL
+        password = SubsonicProvider.passwordAfterAddress(address, user: newUser, typed: password)
+        SubsonicProvider.forgetAccessOnSwitch(to: address, user: newUser)
+        if !trimmedURL.isEmpty { AppStorageKeys.subsonicServerURLValue = trimmedURL }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)
         if !trimmedUser.isEmpty {
             AppStorageKeys.subsonicUsernameValue = trimmedUser

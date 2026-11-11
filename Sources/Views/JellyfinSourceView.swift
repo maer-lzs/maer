@@ -109,13 +109,13 @@ struct JellyfinSourceView: View {
         // stored account wrote go the way of another address.
         let typedUser = username.trimmingCharacters(in: .whitespaces)
         let newUser = typedUser.isEmpty ? AppStorageKeys.jellyfinUsernameValue : typedUser
-        if !trimmedURL.isEmpty {
-            // The access the stored server handed out, and its password,
-            // go to no other one.
-            password = JellyfinProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password)
-            JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser)
-            AppStorageKeys.jellyfinServerURLValue = trimmedURL
-        }
+        // Asked with the stored address when the field is empty: another
+        // user at the stored server is another account too. The access the
+        // stored account was handed out, and its password, go to no other.
+        let address = trimmedURL.isEmpty ? AppStorageKeys.jellyfinServerURLValue : trimmedURL
+        password = JellyfinProvider.passwordAfterAddress(address, user: newUser, typed: password)
+        JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser)
+        if !trimmedURL.isEmpty { AppStorageKeys.jellyfinServerURLValue = trimmedURL }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)
         if !trimmedUser.isEmpty {
             AppStorageKeys.jellyfinUsernameValue = trimmedUser

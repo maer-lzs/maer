@@ -194,14 +194,20 @@ final class AuthViewModel: ObservableObject {
             // by the one rule of a switch.
             // Another user at the same address is another account
             // (`ServerAddressSwitch.isAccountSwitch`): the user's id is asked
-            // once, and an answer without one leaves the address alone to
-            // decide.
+            // once. A stored sign-in whose user is not noted (a build before
+            // the note) asks the server with the stored token; a user that
+            // stays unknown on either side counts as another account.
             let formerAddress = apiClient.baseURL.absoluteString
-            let userId = (try? await trial.fetchUserId()) ?? nil
             let serverSwitched = ServerAddressSwitch.isSwitch(from: formerAddress, to: url.absoluteString)
+            let formerAccess = !(KeychainStore.load(forKey: KeychainKey.apiToken) ?? "").isEmpty
+            let userId = await Self.userId(of: trial, side: "new")
+            var formerUser = AppStorageKeys.string(AppStorageKeys.absSignedInUser) ?? ""
+            if formerUser.isEmpty, formerAccess, !serverSwitched {
+                formerUser = await Self.userId(of: apiClient, side: "stored") ?? ""
+            }
             let switched = ServerAddressSwitch.isAccountSwitch(
-                fromAddress: formerAddress, fromUser: AppStorageKeys.string(AppStorageKeys.absSignedInUser) ?? "",
-                toAddress: url.absoluteString, toUser: userId ?? "")
+                fromAddress: formerAddress, fromUser: formerUser,
+                toAddress: url.absoluteString, toUser: userId ?? "", unknownIsSwitch: formerAccess)
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -310,6 +316,21 @@ final class AuthViewModel: ObservableObject {
         Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
         Task { await Self.forgetFormerServer() }
+    }
+
+    /// The user's id as the server names it (`api/me`); nil, with a log
+    /// line, when the server does not answer with one.
+    static func userId(of client: APIClient, side: String) async -> String? {
+        do {
+            guard let id = try await client.fetchUserId(), !id.isEmpty else {
+                Logger.library.notice("AUTH user id unknown side=\(side, privacy: .public): the answer carries none")
+                return nil
+            }
+            return id
+        } catch {
+            Logger.library.error("AUTH user id not read side=\(side, privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
     }
 
     /// What a server leaves on the device beside its token: a player on one
