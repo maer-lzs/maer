@@ -165,7 +165,8 @@ struct CustomHeadersTests {
     @Test("Ein Schluessel: ein IPv6-Server und ein kodierter Pfad lesen sich als derselbe Schluessel zurueck")
     func theKeyReadsBack() throws {
         for raw in ["https://[fd00::1]:8443/abs/", "https://[::1]/my%20abs", "HTTPS://Demo.Example:443/", "http://x.example:80/a/b//"] {
-            let key = try #require(ServerHeaderRule.key(try #require(URL(string: raw))), "\(raw) has no key")
+            let address = try #require(URL(string: raw))
+            let key = try #require(ServerHeaderRule.key(address), "\(raw) has no key")
             let back = try #require(URL(string: key), "the key \(key) does not read as an address")
             #expect(ServerHeaderRule.key(back) == key, "\(raw) does not read back")
         }
