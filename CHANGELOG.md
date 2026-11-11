@@ -6,7 +6,9 @@
 The app now tells the server when it wrote your position and reads that
 moment back. Before, the server's position had no time, so a device
 always started from its own older position instead of the newer one from
-another device.
+another device. The same holds for albums, playlists and books on a
+Subsonic or Navidrome server: the app asks the server's bookmarks every
+time it opens one, and writes none while it could not read them.
 
 **What could not be read is not treated as empty.** When the app starts
 before the device is unlocked for the first time, or reads a mark of its

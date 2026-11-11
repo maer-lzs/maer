@@ -36,8 +36,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Package 3: the last song we wrote a continue-bookmark for, per playlist
     /// item. So the previous song's bookmark is cleaned up on a song change.
     private var lastBookmarkedSong: [String: String] = [:]
-    /// Short-lived cache of the server's bookmarks (invalidated on our own write).
-    private var bookmarksCache: [SubsonicBookmark]?
+    /// Items whose bookmarks did not read when they were opened: no
+    /// bookmark is written for them until a read succeeds, so a stand of
+    /// another device this one never saw is not overwritten by an older one.
+    private var bookmarksUnread: Set<String> = []
     /// Per-track play counts of the last detail fetch, by item id.
     private var playCountsByItemId: [String: [Int?]] = [:]
 
@@ -405,9 +407,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     private func playlistResumeProgress(itemId: String, total: Double) async -> MediaProgress? {
-        guard Self.continueScope(itemId: itemId), total > 0,
-              let bookmarks = try? await loadBookmarks(),
-              let songs = songsByItemId[itemId],
+        guard Self.continueScope(itemId: itemId), total > 0 else { return nil }
+        let bookmarks: [SubsonicBookmark]
+        do {
+            bookmarks = try await loadBookmarks()
+            bookmarksUnread.remove(itemId)
+        } catch {
+            bookmarksUnread.insert(itemId)
+            Logger.music.error("BOOKMARK read failed item=\(itemId, privacy: .private(mask: .hash)) by=open reason=\(FailureReason.of(error), privacy: .public): no bookmark is written for it until a read succeeds")
+            return nil
+        }
+        guard let songs = songsByItemId[itemId],
               let pick = BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: itemId,
                                                     songs: songs, stamp: Self.bookmarkStamp,
                                                     key: { Self.canonicalItemId($0) }) else { return nil }
@@ -1167,6 +1177,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // song (same `songsByItemId` offset arithmetic as the scrobble);
         // the item id rides in the comment as context.
         guard Self.continueScope(itemId: itemId) else { return }
+        // Opened while the bookmarks did not read: the stand of another
+        // device was never seen, so nothing is written until they read.
+        if bookmarksUnread.contains(itemId) {
+            do {
+                _ = try await loadBookmarks()
+                bookmarksUnread.remove(itemId)
+            } catch {
+                Logger.music.error("BOOKMARK write held item=\(itemId, privacy: .private(mask: .hash)): the bookmarks still do not read reason=\(FailureReason.of(error), privacy: .public)")
+                return
+            }
+        }
         // Moving to a new song → drop the previous song's bookmark so at most one
         // lingers per item (resume is unaffected. The fetch picks the most
         // recent). Best-effort; a song shared across playlists is a rare edge.
@@ -1185,15 +1206,13 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } catch {
             Logger.music.error("BOOKMARK write failed item=\(itemId, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
         }
-        bookmarksCache = nil   // our own write invalidates the cache
     }
 
+    /// The server's bookmarks, asked each time: a list kept for the process
+    /// would hide a stand another device wrote since.
     private func loadBookmarks() async throws -> [SubsonicBookmark] {
-        if let cached = bookmarksCache { return cached }
         guard let client else { return [] }
-        let list = try await client.getBookmarks()
-        bookmarksCache = list
-        return list
+        return try await client.getBookmarks()
     }
 
     /// Reconstruct per-item continue progress from bookmarks: group by the

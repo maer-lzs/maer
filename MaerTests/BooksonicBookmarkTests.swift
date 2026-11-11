@@ -77,5 +77,23 @@ struct BooksonicBookmarkTests {
         #expect(BookmarkProgressMath.resume(bookmarks: try bookmarks(), itemId: "sub:album:9",
                                             songs: songs, stamp: { _ in 1 }) == nil)
     }
+
+    /// The bookmarks are asked at every open and every read of progress,
+    /// never from a list kept for the process: a stand another device wrote
+    /// since is seen before this device writes. An open whose read failed
+    /// writes no bookmark until a read succeeds. The provider is one
+    /// instance without a client to hand in, so this is read at the source.
+    @Test("Subsonic: die Lesezeichen werden jedes Mal gefragt, und nach einem gescheiterten Lesen wird nicht geschrieben", .needsTheSources)
+    func theBookmarksAreAskedEachTime() throws {
+        let source = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))
+        #expect(!source.contains("bookmarksCache"), "a list of the bookmarks is kept for the process again")
+        #expect(source.contains("guard let client else { return [] }\n        return try await client.getBookmarks()"))
+        #expect(!source.contains("try? await loadBookmarks()\n              let songs"), "the open swallows a failed read")
+        #expect(source.contains("bookmarksUnread.insert(itemId)"), "a failed read at the open is not remembered")
+        let held = try #require(source.range(of: "if bookmarksUnread.contains(itemId) {"), "the write does not ask whether the open read")
+        let write = try #require(source.range(of: "try await client.createBookmark("))
+        #expect(held.lowerBound < write.lowerBound, "the hold stands after the write")
+    }
 }
 #endif
