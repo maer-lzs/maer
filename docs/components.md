@@ -857,7 +857,9 @@ Zeuge `JellyfinAudiobookTests.theServerStandCarriesItsMoment`.
 Die Hoerbuecher einer Bibliothek kommen geblaettert (`JellyfinClient.allPages`,
 Seiten zu 500 ab dem Ende der letzten, bis eine Seite kurz oder leer kommt oder
 `TotalRecordCount` erreicht ist, hoechstens `mostPages`); eine Seite, die
-scheitert, wirft, damit eine angeschnittene Liste nie als ganzer Bestand gilt.
+scheitert, wirft, damit eine angeschnittene Liste nie als ganzer Bestand gilt,
+und eine volle Seite ohne neue Kennung wirft mit einer Zeile (ein Server, der
+`StartIndex` nicht kennt).
 Vorher galt ein Abruf mit Grenze 500 Dateien als alle Buecher. Zeuge
 `JellyfinAudiobookTests.theAudiobooksArePaged` (1200 Dateien, drei Buecher).
 

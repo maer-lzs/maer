@@ -330,16 +330,25 @@ final class JellyfinClient {
     /// Every item of a listing: pages asked from where the last ended, until
     /// a page comes back short or empty or the server's total is reached. A
     /// page that fails throws, so a listing cut in the middle never stands
-    /// as the whole stock.
+    /// as the whole stock. A full page that brings no item not held already
+    /// throws too: the server ignores where the page starts, and asking on
+    /// would only bring the same page again.
     nonisolated static func allPages(limit: Int,
                                      page: (_ start: Int, _ limit: Int) async throws -> (items: [JFItem], total: Int?))
         async throws -> [JFItem] {
         var all: [JFItem] = []
+        var held: Set<String> = []
         for _ in 0..<mostPages {
             let next = try await page(all.count, limit)
+            let fresh = next.items.filter { !held.contains($0.id) }
             all += next.items
+            held.formUnion(next.items.map(\.id))
             if next.items.count < limit { return all }
             if let total = next.total, all.count >= total { return all }
+            guard !fresh.isEmpty else {
+                Logger.music.error("JELLYFIN listing stopped at \(all.count, privacy: .public): a full page brought nothing new, the server ignores StartIndex")
+                throw URLError(.cannotParseResponse)
+            }
         }
         throw URLError(.dataLengthExceedsMaximum)
     }

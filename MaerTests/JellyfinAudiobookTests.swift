@@ -173,6 +173,16 @@ import Foundation
                 return (Array(files[start..<start + limit]), files.count)
             }
         }
+        // A server that ignores StartIndex and names no total sends the
+        // first page again: the second ask ends the listing, not the 1000th.
+        var pages = 0
+        await #expect(throws: URLError.self, "a server that ignores StartIndex was asked on") {
+            _ = try await JellyfinClient.allPages(limit: 500) { _, limit in
+                pages += 1
+                return (Array(files[0..<limit]), nil)
+            }
+        }
+        #expect(pages == 2, "pages asked: \(pages)")
     }
 
     @Test func aNegativePositionNeverTravels() throws {
