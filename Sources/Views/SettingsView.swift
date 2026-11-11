@@ -561,7 +561,7 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings-next-steps")
             }
-            SourceMapCard(facts: .current) { area in
+            SourceMapCard(facts: { .current }) { area in
                 AnyView(SourceAreaPage(area: area, absDestination: absPage))
             }
         }

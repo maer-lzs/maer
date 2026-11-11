@@ -16,11 +16,20 @@ import SwiftUI
 /// during the first run there is no session yet, so "Audiobooks" leads to the
 /// login form; in the settings it leads to the full source page.
 struct SourceMapCard: View {
-    let facts: SourceMapFacts
+    /// What the card shows, read at every draw: a sign-in on a page the card
+    /// led to changes it, and the card is drawn again when the sources
+    /// change or the card comes back into view.
+    let facts: () -> SourceMapFacts
     @Environment(\.dynamicTypeSize) private var typeSize
     let destination: (SourceMapArea) -> AnyView
+    /// The sources changed (a sign-in, a source switched).
+    @ObservedObject private var session = AppSession.shared
+    /// Counted when the card comes back into view, so it reads anew.
+    @State private var shown = 0
 
     var body: some View {
+        let facts = self.facts()
+        let _ = (session.sourcesVersion, shown)
         Section {
             ForEach(SourceMapArea.allCases) { area in
                 NavigationLink {
@@ -67,6 +76,7 @@ struct SourceMapCard: View {
             .accessibilityIdentifier("source-map-sync")
         } header: {
             Text("Between your devices")
+                .onAppear { shown &+= 1 }
         } footer: {
             Text("Not a media area: keeps progress, playlists and settings the same on your devices. Without Mär Sync, iCloud does it.")
         }

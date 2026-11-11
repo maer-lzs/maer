@@ -199,5 +199,20 @@ struct SourceMapAreasTests {
         let crippled = AppRows.all.filter { $0.key != "music.jamendo" }
         #expect(!crippled.contains { $0.key == FreeCatalog.Area.freeMusic.rowKey })
     }
+
+    /// The card reads its facts at every draw and is drawn again when the
+    /// sources change or it comes back into view: a sign-in on the page it
+    /// led to shows at once, not at the next start.
+    @Test("die Quellenkarte liest ihren Stand bei jedem Zeichnen, nicht einmal", .needsTheSources)
+    func theCardReadsItsStandEachTime() throws {
+        let card = FetchAnswerTests.squeezed(try sourceText("Sources/Views/SourceMapCard.swift"))
+        #expect(card.contains("let facts: () -> SourceMapFacts"), "the card holds a stand read once")
+        #expect(card.contains("@ObservedObject private var session = AppSession.shared"), "a change of the sources does not draw the card")
+        #expect(card.contains("let facts = self.facts() let _ = (session.sourcesVersion, shown)"))
+        #expect(card.contains(".onAppear { shown &+= 1 }"), "the card does not read anew when it comes back")
+        for host in ["Sources/Views/SettingsView.swift", "Sources/Views/SetupView.swift", "Sources/Views/NextStepsView.swift"] {
+            #expect(try sourceText(host).contains("SourceMapCard(facts: { .current })"), "\(host) hands the card a stand read once")
+        }
+    }
 }
 #endif

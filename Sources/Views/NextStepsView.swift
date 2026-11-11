@@ -26,7 +26,7 @@ struct NextStepsView: View {
             } header: {
                 Text("Add more sources")
             }
-            SourceMapCard(facts: .current) { area in
+            SourceMapCard(facts: { .current }) { area in
                 AnyView(SourceAreaPage(area: area, absDestination: absDestination))
             }
             ServerGuidesSection()

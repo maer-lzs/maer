@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The sources overview shows a new sign-in at once.** After signing in to
+a music server, the overview no longer says that one is needed until you
+leave the page.
+
 **CarPlay no longer shows an empty screen after a quick disconnect.** When
 the car disconnects while CarPlay is still setting up and connects again,
 the tabs now appear; and tapping Up Next twice shows one list.

@@ -24,7 +24,7 @@ struct SetupView: View {
                         .font(.callout)
                 }
 
-                SourceMapCard(facts: .current) { area in
+                SourceMapCard(facts: { .current }) { area in
                     AnyView(SourceAreaPage(area: area, absDestination: {
                         AnyView(ABSLoginPage(viewModel: viewModel))
                     }))
