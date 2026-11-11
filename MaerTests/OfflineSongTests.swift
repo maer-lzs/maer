@@ -112,7 +112,7 @@ struct OfflineSongTests {
     @Test("Offline-Lied: die Datei des Liedes ist die Datei seines Stuecks im Album, als Stueck 0", .needsTheSources)
     func theFileIsTheAlbumsTrack() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Networking/DownloadManager.swift")
-        #expect(flat.contains("let file = Self.trackMap(in: itemDirectory(place.downloadId))[place.trackIndex] else { return [:] } return [0: file]"))
+        #expect(flat.contains("let dir = itemDirectory(place.downloadId), let file = Self.trackMap(in: dir)[place.trackIndex] else { return [:] } return [0: file]"))
         #expect(flat.contains("if songPlace(itemId) != nil { return true }"), "the one question")
     }
 }

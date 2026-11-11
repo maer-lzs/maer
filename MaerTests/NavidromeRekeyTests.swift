@@ -226,7 +226,10 @@ struct NavidromeRekeyTests {
         let moved = Self.map(hexAlbum)
         #expect(heard == ["\(hexAlbum)>\(moved)"], "the one download that moved is heard, so its cover can follow")
         #expect(manager.downloadedItemIds == [moved, plain, "li_book"])
-        #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(moved).appendingPathComponent("0.mp3").path))
+        let folder = downloads.appendingPathComponent(DownloadManager.folderName(of: moved))
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("0.mp3").path),
+                "a moved folder takes the form of its new id")
+        #expect(DownloadManager.itemId(ofFolder: folder) == moved, "and carries the new id")
         #expect(manager.kinds[moved] == .music && manager.kinds[hexAlbum] == nil)
         #expect(manager.loadCachedDetail(forItemId: moved)?.media.tracks?.map(\.contentUrl) == [Self.new])
         #expect(manager.loadCachedDetail(forItemId: plain)?.media.tracks?.map(\.contentUrl) == [Self.new, Self.new])
@@ -815,7 +818,8 @@ struct NavidromeRekeyTests {
 
         let result = try #require(manager.rekey(Self.map))
         #expect(manager.sizeMeasurements == measured, "a pass that moved only interrupted downloads measured the sizes")
-        let moved = downloads.appendingPathComponent(Self.map(old)).appendingPathComponent("0.mp3").path
+        let moved = downloads.appendingPathComponent(DownloadManager.folderName(of: Self.map(old)))
+            .appendingPathComponent("0.mp3").path
         #expect(FileManager.default.fileExists(atPath: moved), "the interrupted download stayed under its old id")
         #expect(!FileManager.default.fileExists(atPath: downloads.appendingPathComponent(old).path))
         #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(taken).path), "a taken target is left alone")

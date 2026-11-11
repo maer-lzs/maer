@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Downloads stay in their folder.** A podcast episode whose feed gives
+it an address as its id now downloads into a folder of its own inside
+the downloads. Before, such an episode could count as not downloaded
+after a restart, and a crafted id could write or delete outside the
+downloads. Episodes downloaded that way before are found again while
+their files are still on the device.
+
 **A stream with a sign-in never goes to an address it could not check.**
 When the app cannot find out where a stream of your server or a premium
 feed ends, playback stops at that file with a hint, and the next tap on

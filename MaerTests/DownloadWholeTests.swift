@@ -51,7 +51,7 @@ struct DownloadWholeTests {
         #expect(check.lowerBound < mark.lowerBound, "the title is marked before its tracks are counted")
         // One count of "whole" for the end of a download, the start and the
         // question whether a marked title is loaded already.
-        #expect(manager.contains("Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: itemDirectory(itemId)).keys))"),
+        #expect(manager.contains("Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: dir).keys))"),
                 "the marked title is judged by a count of its own")
         #expect(!manager.contains(".count >= tracks.count"), "a third form of whole by the number of files")
         #expect(manager.components(separatedBy: "presentIndices(in: dir)").count - 1 == 2,

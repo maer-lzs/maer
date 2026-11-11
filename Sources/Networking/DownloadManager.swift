@@ -179,7 +179,8 @@ final class DownloadManager {
         scanTask = Task { [weak self] in
             // detached because the filesystem walk runs off the MainActor before first paint
             let scan = await Task.detached(priority: .userInitiated) {
-                Self.scanDownloads(downloadsDir: downloadsDir, marked: marked, expected: expected)
+                Self.rescueNested(downloadsDir: downloadsDir, marked: marked)
+                return Self.scanDownloads(downloadsDir: downloadsDir, marked: marked, expected: expected)
             }.value
             guard let self else { return }
             self.scanUnreadable = !scan.readable
@@ -354,7 +355,7 @@ final class DownloadManager {
         var remnants: [String: Date] = [:]
         for dir in dirs
         where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-            let itemId = dir.lastPathComponent
+            guard let itemId = itemId(ofFolder: dir) else { continue }
             // The mark is written only after a complete download. A folder
             // without a mark is an aborted remnant (kept for resume, not counted).
             guard marked.contains(itemId) else {
@@ -373,10 +374,117 @@ final class DownloadManager {
         return (ids, sizes, true, remnants)
     }
 
-    /// The files directly in a download folder and their bytes.
+    /// The name of a download's folder: the item id in its `utf16` view,
+    /// each unit of A-Z, a-z, 0-9, "-" and "_" as it is and every other one
+    /// as "_", the first 64 of them, then "-" and `PodcastIdentity.stableHash`
+    /// of the id as 16 hex digits, zeros in front. It holds no separator and
+    /// no dot, so on every file system it is one folder directly in the
+    /// downloads. The name cannot be read back: the id lies in the folder's
+    /// `.item-id`.
+    nonisolated static func folderName(of itemId: String) -> String {
+        let safe = itemId.utf16.prefix(64).map { unit -> Character in
+            switch unit {
+            case 0x30...0x39, 0x41...0x5A, 0x61...0x7A, 0x2D, 0x5F: Character(Unicode.Scalar(UInt8(unit)))
+            default: "_"
+            }
+        }
+        let hash = PodcastIdentity.stableHash(itemId)
+        return String(safe) + "-" + String(repeating: "0", count: max(0, 16 - hash.count)) + hash
+    }
+
+    /// The file in a download folder that carries its item id.
+    nonisolated static let idFileName = ".item-id"
+
+    /// Whether an id names a folder the way a build before the form did:
+    /// one folder directly in the downloads.
+    nonisolated static func isDirectChildName(_ itemId: String) -> Bool {
+        !itemId.isEmpty && itemId != "." && itemId != ".." && !itemId.contains("/")
+            && itemId.utf8.count <= 255
+    }
+
+    /// The item id a download folder stands for. A folder with `.item-id`
+    /// stands for the id in it when its name is that id's name; the file is
+    /// outside input like the guid it came from, so one naming another
+    /// folder is refused with a line. A folder without the file stands for
+    /// its name, as a build before the form named it.
+    nonisolated static func itemId(ofFolder dir: URL) -> String? {
+        let file = dir.appendingPathComponent(idFileName)
+        guard FileManager.default.fileExists(atPath: file.path) else { return dir.lastPathComponent }
+        // bearable, because a file that cannot be read is refused below with its line
+        guard let data = try? Data(contentsOf: file), let itemId = String(data: data, encoding: .utf8),
+              folderName(of: itemId) == dir.lastPathComponent else {
+            Logger.library.error("DOWNLOADS folder refused, its \(idFileName, privacy: .public) does not name it")
+            return nil
+        }
+        return itemId
+    }
+
+    /// The folder of a download, directly in the downloads: the folder in
+    /// the form of `folderName`, or the folder a build before named by the
+    /// id itself while that one is there and the new one is not. Anything
+    /// else is refused with a line.
+    nonisolated static func folder(of itemId: String, in downloads: URL) -> URL? {
+        let named = downloads.appendingPathComponent(folderName(of: itemId), isDirectory: true)
+        if !FileManager.default.fileExists(atPath: named.path), isDirectChildName(itemId) {
+            let before = downloads.appendingPathComponent(itemId, isDirectory: true)
+            if FileManager.default.fileExists(atPath: before.path) { return directChild(before, of: downloads) }
+        }
+        return directChild(named, of: downloads)
+    }
+
+    /// The folder when it lies directly in the downloads, otherwise nil with a line.
+    nonisolated private static func directChild(_ dir: URL, of downloads: URL) -> URL? {
+        guard dir.standardizedFileURL.deletingLastPathComponent().path == downloads.standardizedFileURL.path else {
+            Logger.library.error("DOWNLOADS refused a folder outside the downloads")
+            return nil
+        }
+        return dir
+    }
+
+    /// Creates the folder in the form of `folderName` and writes the id into
+    /// its `.item-id`. False with a line when either fails.
+    @discardableResult
+    nonisolated static func settle(_ dir: URL, for itemId: String) -> Bool {
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try Data(itemId.utf8).write(to: dir.appendingPathComponent(idFileName), options: .atomic)
+            return true
+        } catch {
+            Logger.library.error("DOWNLOADS folder not settled: \(FailureReason.of(error), privacy: .public)")
+            return false
+        }
+    }
+
+    /// A build before the form named a folder by the raw id, so an id with
+    /// "/" made folders inside folders, and the start walk saw only the
+    /// outermost name: the download counted as gone after a restart. Each
+    /// marked id whose nested folder lies inside the downloads (no "." or
+    /// ".." among its parts) moves to its folder in the form, once.
+    nonisolated static func rescueNested(downloadsDir: URL, marked: Set<String>) {
+        for itemId in marked.sorted() where itemId.contains("/") {
+            let parts = itemId.split(separator: "/", omittingEmptySubsequences: true)
+            guard parts.count > 1, !parts.contains(where: { $0 == "." || $0 == ".." }) else { continue }
+            let nested = parts.reduce(downloadsDir) { $0.appendingPathComponent(String($1), isDirectory: true) }
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: nested.path, isDirectory: &isDirectory), isDirectory.boolValue,
+                  let target = directChild(downloadsDir.appendingPathComponent(folderName(of: itemId), isDirectory: true),
+                                           of: downloadsDir),
+                  !FileManager.default.fileExists(atPath: target.path) else { continue }
+            do {
+                try FileManager.default.moveItem(at: nested, to: target)
+                settle(target, for: itemId)
+                Logger.library.notice("DOWNLOADS nested folder moved to its own name item=\(itemId, privacy: .private(mask: .hash))")
+            } catch {
+                Logger.library.error("DOWNLOADS nested folder not moved: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+    }
+
+    /// The files directly in a download folder and their bytes; the hidden
+    /// `.item-id` is no part of the download.
     nonisolated static func folderContents(_ dir: URL) -> (files: Int, bytes: Int64) {
         let files = (try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+            at: dir, includingPropertiesForKeys: [.fileSizeKey], options: .skipsHiddenFiles)) ?? []
         let bytes = files.reduce(Int64(0)) { sum, url in
             sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
         }
@@ -421,7 +529,7 @@ final class DownloadManager {
         var old: [String: Date] = [:]
         for (itemId, scanned) in remnants
         where Self.remnantClears(marksRead: marksRead, complete: false, active: false, changed: scanned, now: now) {
-            let changed = Self.lastChanged(itemDirectory(itemId))
+            let changed = itemDirectory(itemId).flatMap(Self.lastChanged)
             if Self.remnantClears(marksRead: marksRead, complete: details[itemId] != nil,
                                   active: downloadHolds(itemId), changed: changed, now: now),
                let changed {
@@ -430,7 +538,7 @@ final class DownloadManager {
         }
         guard !old.isEmpty else { return }
         for (itemId, changed) in old {
-            let contents = Self.folderContents(downloadsDirectory.appendingPathComponent(itemId, isDirectory: true))
+            let contents = itemDirectory(itemId).map(Self.folderContents) ?? (files: 0, bytes: 0)
             let days = Int(now.timeIntervalSince(changed) / 86_400)
             Logger.library.notice("DOWNLOADS remnant cleared item=\(itemId, privacy: .private(mask: .hash)) files=\(contents.files) bytes=\(contents.bytes) untouched=\(days)d")
         }
@@ -471,13 +579,13 @@ final class DownloadManager {
         return values?.volumeAvailableCapacityForImportantUsage
     }
 
-    private func itemDirectory(_ itemId: String) -> URL {
-        downloadsDirectory.appendingPathComponent(itemId, isDirectory: true)
+    /// The folder of a download, always directly in the downloads (`folder(of:in:)`).
+    private func itemDirectory(_ itemId: String) -> URL? {
+        Self.folder(of: itemId, in: downloadsDirectory)
     }
 
-    // (The startup scan lives in `scanDownloads` above. Each book has its own
-    // subfolder named after the item id; Audiobookshelf ids can contain
-    // underscores, so folders avoid ambiguity when mapping files to books.)
+    // (The startup scan lives in `scanDownloads` above. Each title has its
+    // own folder, named by `folderName` and carrying its id in `.item-id`.)
 
     /// Can this play without a network? The name says „downloaded", the
     /// question is OFFLINE AVAILABILITY, and the two are not the same: an
@@ -522,9 +630,9 @@ final class DownloadManager {
     /// True if an incomplete download folder exists (aborted/failed earlier).
     /// A new download will only fetch the missing files.
     func hasPartialDownload(itemId: String) -> Bool {
-        guard !downloadedItemIds.contains(itemId) else { return false }
+        guard !downloadedItemIds.contains(itemId), let dir = itemDirectory(itemId) else { return false }
         let files = (try? FileManager.default.contentsOfDirectory(
-            at: itemDirectory(itemId), includingPropertiesForKeys: nil)) ?? []
+            at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)) ?? []
         return !files.isEmpty
     }
 
@@ -709,9 +817,9 @@ final class DownloadManager {
     /// Local audio files of a COMPLETE download, keyed by track index. A
     /// server song held in another download gets its one file as track 0.
     func localTrackMap(forItemId itemId: String) -> [Int: URL] {
-        if downloadedItemIds.contains(itemId) { return Self.trackMap(in: itemDirectory(itemId)) }
-        guard let place = songPlace(itemId),
-              let file = Self.trackMap(in: itemDirectory(place.downloadId))[place.trackIndex] else { return [:] }
+        if downloadedItemIds.contains(itemId) { return itemDirectory(itemId).map(Self.trackMap) ?? [:] }
+        guard let place = songPlace(itemId), let dir = itemDirectory(place.downloadId),
+              let file = Self.trackMap(in: dir)[place.trackIndex] else { return [:] }
         return [0: file]
     }
 
@@ -834,11 +942,15 @@ final class DownloadManager {
         }
 
         let itemId = item.id
+        guard let dir = itemDirectory(itemId) else {
+            phase[itemId] = .failed(String(localized: "Download failed"))
+            return
+        }
         // "Downloaded" alone is not enough: corrupted/undersized tracks are
         // excluded from the map, and every index must lie there by the one
         // count (`isComplete`). A re-download run replaces exactly those.
         if downloadedItemIds.contains(itemId),
-           Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: itemDirectory(itemId)).keys)) {
+           Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: dir).keys)) {
             return
         }
         // A sign-in the tracks need that cannot be read now sends nothing
@@ -853,7 +965,7 @@ final class DownloadManager {
         // A mid-download abort would otherwise surface as a cryptic write
         // error. Tracks without size metadata are skipped in the sum; 200 MB
         // margin keeps the system from running into its own low-space state.
-        let alreadyPresent = Self.trackMap(in: itemDirectory(itemId))
+        let alreadyPresent = Self.trackMap(in: dir)
         let missingBytes = tracks.enumerated()
             .filter { alreadyPresent[$0.offset] == nil }
             .compactMap { $0.element.metadata?.size }
@@ -870,8 +982,13 @@ final class DownloadManager {
         let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
         controls[itemId] = DownloadControl(detail: item, provider: provider, resumeData: nil)
         phase[itemId] = .downloading(0)
-        let dir = itemDirectory(itemId)
-        if !FileManager.default.fileExists(atPath: dir.path) {
+        // A folder a build before named by the id keeps its form; a new one
+        // carries its id.
+        if dir.lastPathComponent == Self.folderName(of: itemId) {
+            if !FileManager.default.fileExists(atPath: dir.appendingPathComponent(Self.idFileName).path) {
+                Self.settle(dir, for: itemId)
+            }
+        } else if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
 
@@ -987,7 +1104,7 @@ final class DownloadManager {
 
             // Self-heal the folder: drop duplicate-extension leftovers and
             // foreign files so the strict index mapping stays unambiguous.
-            let keep = Set(Self.trackMap(in: dir).values.map(\.lastPathComponent))
+            let keep = Set(Self.trackMap(in: dir).values.map(\.lastPathComponent)).union([Self.idFileName])
             let all = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
             for file in all where !keep.contains(file.lastPathComponent) {
                 try? FileManager.default.removeItem(at: file)
@@ -1051,9 +1168,8 @@ final class DownloadManager {
 
     /// Used storage of a book in bytes (0 if nothing is stored).
     func downloadSize(forItemId itemId: String) -> Int64 {
-        let dir = itemDirectory(itemId)
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.fileSizeKey]
+        guard let dir = itemDirectory(itemId), let files = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.fileSizeKey], options: .skipsHiddenFiles
         ) else { return 0 }
         return files.reduce(0) { sum, url in
             sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
@@ -1076,7 +1192,7 @@ final class DownloadManager {
         var kindsChanged = false
         var sessionCoversChanged = false
         for itemId in itemIds {
-            try? FileManager.default.removeItem(at: itemDirectory(itemId))
+            if let dir = itemDirectory(itemId) { try? FileManager.default.removeItem(at: dir) }
             // The mark leaves with the files, whether or not the folder went.
             details.removeValue(forKey: itemId)
             if kinds.removeValue(forKey: itemId) != nil { kindsChanged = true }
@@ -1174,7 +1290,7 @@ final class DownloadManager {
         guard downloadedItemIds.contains(oldItemId),
               !downloadedItemIds.contains(newItemId) else { return nil }
         do {
-            try FileManager.default.moveItem(at: itemDirectory(oldItemId), to: itemDirectory(newItemId))
+            try moveFolder(of: oldItemId, to: newItemId)
         } catch {
             Logger.rss.error("download adopt failed: \(FailureReason.of(error), privacy: .public)")
             return nil
@@ -1286,20 +1402,33 @@ final class DownloadManager {
         }
         var found = 0
         var moved = 0
-        for oldId in folders.sorted() where details[oldId] == nil && !downloadedItemIds.contains(oldId) {
+        let ids = folders.compactMap { Self.itemId(ofFolder: downloadsDirectory.appendingPathComponent($0, isDirectory: true)) }
+        for oldId in ids.sorted() where details[oldId] == nil && !downloadedItemIds.contains(oldId) {
             let newId = map(oldId)
             guard newId != oldId else { continue }
             found += 1
-            guard !downloadHolds(oldId),
-                  !fm.fileExists(atPath: itemDirectory(newId).path) else { continue }
+            guard !downloadHolds(oldId), let target = itemDirectory(newId),
+                  !fm.fileExists(atPath: target.path) else { continue }
             do {
-                try fm.moveItem(at: itemDirectory(oldId), to: itemDirectory(newId))
+                try moveFolder(of: oldId, to: newId)
                 moved += 1
             } catch {
                 Logger.library.error("REKEY interrupted download not moved: \(FailureReason.of(error), privacy: .public)")
             }
         }
         return (found, moved)
+    }
+
+    /// Moves a download's folder to the folder of another id in the form of
+    /// `folderName`, which then carries the new id.
+    private func moveFolder(of oldItemId: String, to newItemId: String) throws {
+        guard let from = itemDirectory(oldItemId),
+              let to = Self.folder(of: newItemId, in: downloadsDirectory),
+              to.lastPathComponent == Self.folderName(of: newItemId) else {
+            throw CocoaError(.fileWriteInvalidFileName)
+        }
+        try FileManager.default.moveItem(at: from, to: to)
+        Self.settle(to, for: newItemId)
     }
 }
 
