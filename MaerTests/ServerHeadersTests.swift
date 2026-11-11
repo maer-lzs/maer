@@ -550,7 +550,10 @@ struct ServerHeadersWayTests {
             await first.value
         }
         #expect(Self.playing(model) == "track-1.caf", "the older jump built over the later one: \(String(describing: Self.playing(model)))")
-        #expect(abs(model.currentTime - 1.5) < 0.01, "the older jump set its time: \(model.currentTime)")
+        // Within track 1, not at the exact second: half a second into a
+        // track plays from its start (`buildQueue` seeks only past 0.5 s),
+        // and the time observer may read the start before this line.
+        #expect((1.0..<2.0).contains(model.currentTime), "the older jump set its time: \(model.currentTime)")
     }
 
     @Test("ein Sprung, der auf den Plan seiner Spur wartet, bewegt ein inzwischen gestopptes Modell nicht")
