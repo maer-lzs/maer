@@ -883,8 +883,6 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         ticks.map { $0 / 10_000_000 }
     }
 
-    /// Jellyfin `DateCreated` → epoch ms. The 7-digit fraction Jellyfin sends
-    /// is trimmed to 3 digits (ISO8601DateFormatter's supported shape).
     /// When the server's position was written: the newest `LastPlayedDate`
     /// of the item or its elements, in epoch ms; nil when none carries one
     /// (a position written before the app sent the date).
@@ -892,6 +890,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         userData.compactMap { epochMs(fromJFDate: $0?.lastPlayedDate) }.max()
     }
 
+    /// Jellyfin `DateCreated` → epoch ms. The 7-digit fraction Jellyfin sends
+    /// is trimmed to 3 digits (ISO8601DateFormatter's supported shape).
     nonisolated static func epochMs(fromJFDate raw: String?) -> Double? {
         guard let raw, !raw.isEmpty else { return nil }
         var normalized = raw
