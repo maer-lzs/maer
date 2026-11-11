@@ -86,6 +86,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A task that comes back after an await (the check before play, a
     /// jump) finds it and neither starts a player nor claims nor writes.
     private(set) var isStopped = false
+    /// How many holds this model saw: a pause, a stop, the begin of an
+    /// interruption. A start remembers it before it waits and plays only
+    /// when no hold came meanwhile (`WaitWindow`).
+    private(set) var holds = 0
+
+    /// What a start remembers before it waits and asks again after.
+    var waitWindow: WaitWindow {
+        WaitWindow(itemId: item?.id, player: ObjectIdentifier(self), holds: holds)
+    }
     /// Absolute position in the WHOLE book, in seconds. Regardless of whether
     /// the book consists of a single M4B file or several tracks. Not
     /// published by the model: it changes every second, and every surface
@@ -423,6 +432,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     private func handleInterruption(began: Bool, shouldResume: Bool) {
         if began {
+            holds += 1
             // Don't overwrite on nested interruptions (second .began while the
             // first is still active would clear the flag → no resume).
             if isPlaying {
@@ -973,7 +983,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
         // A queue that is not built waited for no sign-in either.
         queueWaitedForSignIn = false
-        guard !isStopped, startIndex >= 0, startIndex < tracks.count else { return false }
+        if isStopped {
+            Logger.player.notice("PLAYER queue on a stopped model, nothing is built track=\(startIndex)")
+            return false
+        }
+        guard startIndex >= 0, startIndex < tracks.count else { return false }
         // A new queue holds new items: a noted load failure is healed by it.
         loadFailureNoted = false
 
@@ -1263,6 +1277,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// fresh progress. Every way to play on goes through here (a fence
     /// counts the callers of `play`); only a deliberate jump plays at once.
     func playWithServerCheck(caller: String = #function) async {
+        // A pause, a stop or another title while this start waits wins
+        // over it: remembered here, asked again before it plays.
+        let before = waitWindow
         // Podcast/KVS half of the device switch: the freshest state of a
         // podcast episode lives in the iCloud blob, not behind
         // `reconcileWithServer`. One targeted pull, then adopt a newer mark
@@ -1295,14 +1312,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         // Wait for the reconcile at most 1.5s. On a slow network (no immediate
         // offline error) the play button must not hang until the URLSession
-        // timeout. If the reconcile takes longer, playback starts immediately; a
+        // timeout. If the reconcile takes longer, playback starts at once; a
         // later adopt then jumps during playback.
         let reconcile = Task { await self.reconcileWithServer() }
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await reconcile.value }
-            group.addTask { try? await Task.sleep(nanoseconds: 1_500_000_000) }
-            await group.next()
-            group.cancelAll()
+        await WaitLimit.wait(for: reconcile, atMost: Self.reconcileWaitLimit)
+        guard WaitWindow.stillStands(before, waitWindow) else {
+            Logger.player.notice("PLAY dropped after the wait from=\(caller, privacy: .public): a pause, a stop or another title came meanwhile")
+            return
         }
         play(caller: caller)
     }
@@ -1362,7 +1378,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if isPlaying { pause(caller: "account switch") }
     }
 
+    /// The longest a start waits for the reconcile with the server.
+    nonisolated static let reconcileWaitLimit: Duration = .milliseconds(1500)
+
     func pause(caller: String = #function) {
+        holds += 1
         notePlayback("pause", from: caller)
         let wasPlaying = isPlaying
         player?.pause()
@@ -1404,7 +1424,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   (scrubber, chapter, skip, lock screen). Such jumps are written to the
     ///   server immediately and without confirmation. Also backwards.
     func seek(to time: Double, userInitiated: Bool = true) async {
-        guard !tracks.isEmpty, !isStopped else { return }
+        if isStopped {
+            Logger.player.notice("PLAYER seek on a stopped model, nothing moves to=\(Int(time))")
+            return
+        }
+        guard !tracks.isEmpty else { return }
         seekCount += 1
         let jump = seekCount
         let clamped = max(0, min(time, max(duration, 0)))
@@ -2078,6 +2102,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Cleanup
 
     func stop(caller: String = #function) {
+        holds += 1
         notePlayback("stop", from: caller)
         ListeningStatsStore.shared.flush()
         // Session end withdraws the claim like a pause does.

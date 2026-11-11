@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Play starts quickly, and a pause you make while it starts wins.**
+Pressing play waits at most one and a half seconds for the server, as it
+was meant to; on a slow network it could wait much longer. A pause, a
+stop or another title chosen during that moment now wins over the start,
+and the same holds when the app follows another device or continues from
+Siri or a widget while a title is still being looked up.
+
 **The shared podcast export keeps private addresses out.** The safe
 export now also leaves out feeds from your own server (a Pinchflat mirror
 or any server you entered), feeds whose address carries a key or password
