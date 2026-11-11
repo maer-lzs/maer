@@ -1038,11 +1038,23 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
+    /// What a wait of the coordinator remembers and asks again after
+    /// (`WaitWindow`): the open title, its player and the holds it saw.
+    var waitWindow: WaitWindow {
+        WaitWindow(itemId: activeItem?.id, player: viewModel.map(ObjectIdentifier.init), holds: viewModel?.holds ?? 0)
+    }
+
     /// Opens the claimed episode through the ladder without the neighbour
-    /// rung; an episode this device cannot name is said, not replaced.
+    /// rung; an episode this device cannot name is said, not replaced. A
+    /// title opened, a pause or a stop while it resolves wins over it.
     func playForeignClaim(_ itemId: String) async {
         claimNotKnownHere = nil
+        let before = waitWindow
         if let item = await resolveStandbyItem(itemId, allowsShowNewest: false) {
+            guard WaitWindow.stillStands(before, waitWindow) else {
+                Logger.player.notice("CLAIM open dropped: another title, a pause or a stop came while it resolved")
+                return
+            }
             await open(item: item, autoplay: true, origin: .gesture)
         } else {
             claimNotKnownHere = itemId
@@ -1083,7 +1095,14 @@ final class PlayerCoordinator: ObservableObject {
             viewModel?.stop(); viewModel = nil; activeItem = nil
             Logger.player.notice("STANDBY cleared live: foreign tombstone")
         case .swap(let target):
+            // A play or another title that came while the title resolved
+            // wins over the swap: asked again after the wait.
+            let before = waitWindow
             if let item = await resolveStandbyItem(target, allowsShowNewest: false) {
+                guard WaitWindow.stillStands(before, waitWindow), viewModel?.isPlaying != true else {
+                    Logger.player.notice("STANDBY swap dropped: a play, a hold or another title came while it resolved")
+                    return
+                }
                 Logger.player.notice("STANDBY swapped live: \(target, privacy: .public)")
                 await open(item: item, autoplay: false, origin: .mirror)
             }

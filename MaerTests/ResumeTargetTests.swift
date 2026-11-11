@@ -305,5 +305,35 @@ struct ResumeTargetTests {
         #expect(link.contains("guard ResumeLink.asksToResume(url) else { return } ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)"),
                 "the widget's link does not hand its title to the door")
     }
+
+    /// The door waits while the title resolves; another title opened
+    /// meanwhile wins over it (`WaitWindow`), and the door opens nothing.
+    @Test("die Tuer zum Weiterhoeren oeffnet nichts, wenn waehrend des Aufloesens ein anderer Titel geoeffnet wurde")
+    func theDoorYieldsToATitleOpenedMeanwhile() async {
+        let coordinator = PlayerCoordinator(provider: MockProvider())
+        let library = LibraryViewModel(provider: MockProvider())
+        let other = LibraryItem(id: "opened-meanwhile-\(UUID().uuidString)", media: nil, addedAt: nil)
+        let named = LibraryItem(id: "named-\(UUID().uuidString)", media: nil, addedAt: nil)
+        _ = await coordinator.resume(namedItemId: named.id, by: .command, library: library, lastPlayedId: nil) { _, _, _ in
+            coordinator._seedActivePlayerForUITest(
+                item: other,
+                detail: LibraryItemDetail(id: other.id, media: LibraryItemMedia(metadata: nil, duration: 60, chapters: nil, tracks: nil),
+                                          userMediaProgress: nil),
+                chapters: [], currentChapterIndex: 0, isFallback: false)
+            return named
+        }
+        #expect(coordinator.activeItem?.id == other.id, "the door opened its title over the one opened meanwhile")
+    }
+
+    /// The standby mirror and the open on a foreign claim ask the same
+    /// window after their title resolved; the mirror also yields to a play.
+    @Test("Spiegel der Bereitschaft und fremder Anspruch fragen nach dem Aufloesen das Fenster", .needsTheSources)
+    func theMirrorAndTheClaimAskTheWindow() throws {
+        let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
+        #expect(coordinator.contains("let before = waitWindow if let item = await resolveStandbyItem(itemId, allowsShowNewest: false) { guard WaitWindow.stillStands(before, waitWindow) else {"),
+                "the open on a foreign claim does not ask after the wait")
+        #expect(coordinator.contains("let before = waitWindow if let item = await resolveStandbyItem(target, allowsShowNewest: false) { guard WaitWindow.stillStands(before, waitWindow), viewModel?.isPlaying != true else {"),
+                "the mirror swaps without asking after the wait")
+    }
 }
 #endif

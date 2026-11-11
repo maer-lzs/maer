@@ -58,6 +58,9 @@ extension PlayerCoordinator {
                 lastPlayedId: String? = AppStorageKeys.lastPlayedItemIdValue,
                 resolve resolver: (@MainActor (String, [LibraryEntry], Bool) async -> LibraryItem?)? = nil) async -> ResumeTarget {
         let session = AppSession.shared
+        // The door waits for the stored library and for the titles to
+        // resolve; a title opened, a pause or a stop meanwhile wins.
+        let before = waitWindow
         let library = given ?? session.libraryViewModel
         if caller == .command, library.entries.isEmpty {
             await library.showCachedLibraryIfAvailable()
@@ -76,6 +79,10 @@ extension PlayerCoordinator {
                                        libraryLoading: caller == .view && library.isLoading)
         lastResumeTarget = target
         Logger.player.notice("RESUME by=\(caller.rawValue, privacy: .public) target=\(target.name, privacy: .public)")
+        guard WaitWindow.stillStands(before, waitWindow) else {
+            Logger.player.notice("RESUME dropped by=\(caller.rawValue, privacy: .public): another title, a pause or a stop came while it waited")
+            return target
+        }
         switch target {
         case .item:
             if let named { await open(item: named) }
