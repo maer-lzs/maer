@@ -326,6 +326,13 @@ final class PlayerCoordinator: ObservableObject {
     /// (auto-continue / manual open). It means "stop after X min of listening",
     /// independent of the title. A position-based mode (until chapter/track end)
     /// is bound to the current item and does not carry (it fires at that boundary).
+    /// Whether the end of a title is where a running sleep ends: one bound
+    /// to the end of the chapter or track ends at the latest with the
+    /// title, and nothing opens after it. Fixed minutes carry on instead.
+    nonisolated static func sleepEndsWithTitle(untilChapterEnd: Bool, untilTrackEnd: Bool) -> Bool {
+        untilChapterEnd || untilTrackEnd
+    }
+
     nonisolated static func carriedSleepRemaining(remaining: TimeInterval?, untilChapterEnd: Bool,
                                                   untilTrackEnd: Bool) -> TimeInterval? {
         guard let remaining, remaining > 0, !untilChapterEnd, !untilTrackEnd else { return nil }
@@ -739,6 +746,16 @@ final class PlayerCoordinator: ObservableObject {
         // see WITHOUT a tab switch. One deliberate bump; every surface
         // recomputes through its existing scope/revision.
         PodcastProgressStore.shared.reload()
+
+        // A sleep until the end of the chapter or track ends here when the
+        // title ends before its own tick saw the boundary.
+        if let model = viewModel, Self.sleepEndsWithTitle(untilChapterEnd: model.sleepUntilChapterEnd,
+                                                          untilTrackEnd: model.sleepUntilTrackEnd) {
+            model.cancelSleepTimer()
+            if model.isPlaying { model.pause(caller: "sleep ends with the title") }
+            Logger.player.notice("SLEEP ends with the title, nothing opens after it")
+            return
+        }
 
         // The WHOLE cascade (orders, context, medium continuation) is the
         // ONE rule shared with the player's what-plays-next line. The jump

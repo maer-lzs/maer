@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**Sleep until the end of the chapter stops at the end of the title.**
+When the chapter ends together with the episode or book, playback now
+stops there instead of starting the next title without a sleep timer.
+
 **Play starts quickly, and a pause you make while it starts wins.**
 Pressing play waits at most one and a half seconds for the server, as it
 was meant to; on a slow network it could wait much longer. A pause, a

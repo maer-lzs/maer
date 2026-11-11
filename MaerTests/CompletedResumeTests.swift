@@ -42,6 +42,10 @@ struct CompletedResumeTests {
     @Test("no timer / zero does not carry")
     func noTimerNoCarry() {
         #expect(PlayerCoordinator.carriedSleepRemaining(remaining: nil, untilChapterEnd: false, untilTrackEnd: false) == nil)
+        // A sleep bound to the chapter or track ends with the title, fixed minutes do not.
+        #expect(PlayerCoordinator.sleepEndsWithTitle(untilChapterEnd: true, untilTrackEnd: false))
+        #expect(PlayerCoordinator.sleepEndsWithTitle(untilChapterEnd: false, untilTrackEnd: true))
+        #expect(!PlayerCoordinator.sleepEndsWithTitle(untilChapterEnd: false, untilTrackEnd: false))
         #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 0, untilChapterEnd: false, untilTrackEnd: false) == nil)
     }
 
@@ -49,6 +53,17 @@ struct CompletedResumeTests {
     func positionTimerDoesNotCarry() {
         #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 120, untilChapterEnd: true, untilTrackEnd: false) == nil)
         #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 120, untilChapterEnd: false, untilTrackEnd: true) == nil)
+    }
+
+    /// The advance at a title's end asks the sleep before it opens the next
+    /// title: a sleep until the end of the chapter or track ends there.
+    @Test("das Weiterschalten am Titelende fragt den Schlaf bis Kapitelende, bevor es den naechsten oeffnet", .needsTheSources)
+    func theAdvanceAsksTheSleepFirst() throws {
+        let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
+        let asked = try #require(coordinator.range(of: "if let model = viewModel, Self.sleepEndsWithTitle(untilChapterEnd: model.sleepUntilChapterEnd,"),
+                                 "the advance does not ask the sleep")
+        let next = try #require(coordinator.range(of: "guard let next = resolveAdvance(after: finishedItemId) else { return }"))
+        #expect(asked.lowerBound < next.lowerBound, "the sleep is asked after the next title is chosen")
     }
 }
 #endif
