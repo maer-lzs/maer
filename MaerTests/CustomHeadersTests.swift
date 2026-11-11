@@ -131,11 +131,80 @@ struct CustomHeadersTests {
         #expect(alone.state.withLock { $0.items } == [prefix + "https://\(host)": json("old")])
         // A second read writes nothing more.
         #expect(ServerHeaders.lifted(alone.state.withLock { $0.items }).writes.isEmpty)
-        // Two spellings of one server: the one under the key stays.
+        // Two spellings of one server: the one under the key stays in the
+        // table, the other stays in the keychain under its own account.
         let both = Keys(.init(items: [prefix + "https://\(host)": json("kept"),
-                                      prefix + "https://\(host)/": json("dropped")]))
-        ServerHeaders.$witness.withValue(both.keys()) { _ = ServerHeaders.entries() }
-        #expect(both.state.withLock { $0.items } == [prefix + "https://\(host)": json("kept")])
+                                      prefix + "https://\(host)/": json("left")]))
+        try ServerHeaders.$witness.withValue(both.keys()) {
+            #expect(try #require(ServerHeaders.entries()).map(\.headers) == [[.init(name: "X-Gate", value: "kept")]])
+        }
+        #expect(both.state.withLock { $0.items } == [prefix + "https://\(host)": json("kept"),
+                                                     prefix + "https://\(host)/": json("left")],
+                "a spelling left out of the table was removed from the keychain")
+    }
+
+    @Test("Ein Schluessel: von zwei alten Schreibweisen ohne Eintrag unter dem Schluessel wird die gehoben, die das Register nennt, nicht die erste")
+    func theRegisteredSpellingIsLifted() throws {
+        let host = "gate-\(UUID().uuidString.prefix(6).lowercased()).example"
+        let prefix = ServerHeaders.accountPrefix
+        func json(_ value: String) -> String { #"[{"name":"X-Gate","value":"\#(value)"}]"# }
+        let first = "https://\(host.uppercased())"
+        let named = "https://\(host)/"
+        let keys = Keys(.init(items: [prefix + first: json("older"), prefix + named: json("in force")],
+                              bases: [named]))
+        try ServerHeaders.$witness.withValue(keys.keys()) {
+            #expect(ServerHeaders.stored(for: try #require(URL(string: "https://\(host)"))) == [.init(name: "X-Gate", value: "in force")],
+                    "the first spelling in order was lifted over the one the register names")
+        }
+        #expect(keys.state.withLock { $0.items } == [prefix + "https://\(host)": json("in force"), prefix + first: json("older")])
+        // Without a register the first in order is lifted.
+        let plain = ServerHeaders.lifted([prefix + first: json("older"), prefix + named: json("in force")])
+        #expect(plain.items == [prefix + "https://\(host)": json("older")])
+        #expect(plain.dropped == 1)
+    }
+
+    @Test("Ein Schluessel: ein IPv6-Server und ein kodierter Pfad lesen sich als derselbe Schluessel zurueck")
+    func theKeyReadsBack() throws {
+        for raw in ["https://[fd00::1]:8443/abs/", "https://[::1]/my%20abs", "HTTPS://Demo.Example:443/", "http://x.example:80/a/b//"] {
+            let key = try #require(ServerHeaderRule.key(try #require(URL(string: raw))), "\(raw) has no key")
+            let back = try #require(URL(string: key), "the key \(key) does not read as an address")
+            #expect(ServerHeaderRule.key(back) == key, "\(raw) does not read back")
+        }
+        #expect(ServerHeaderRule.key(try #require(URL(string: "https://[FD00::1]:8443/abs"))) == "https://[fd00::1]:8443/abs")
+        // A server under IPv6 keeps its headers through a read.
+        let keys = Keys()
+        let base = try #require(URL(string: "https://[fd00::1]:8443/abs"))
+        let header = ServerHeaderRule.Header(name: "X-Gate", value: "v6")
+        ServerHeaders.$witness.withValue(keys.keys()) {
+            #expect(ServerHeaders.set([header], for: base))
+            #expect(ServerHeaders.stored(for: base) == [header], "the headers of an IPv6 server read empty")
+        }
+    }
+
+    @Test("Speichern: nimmt der Schluesselbund nichts, sagt set nein und das Register bleibt; ein Umzug ueber einen unlesbaren ist nicht genommen")
+    func aWriteNotTakenSaysSo() throws {
+        let keys = Keys(.init(takes: false))
+        let base = try #require(URL(string: "https://refused-\(UUID().uuidString.prefix(6).lowercased()).example"))
+        let other = try #require(URL(string: "https://other-\(UUID().uuidString.prefix(6).lowercased()).example"))
+        ServerHeaders.$witness.withValue(keys.keys()) {
+            #expect(!ServerHeaders.set([.init(name: "X-Gate", value: "a")], for: base), "a write the keychain did not take said yes")
+        }
+        #expect(keys.state.withLock { $0.bases }.isEmpty, "the register names a server whose headers were not kept")
+        let locked = Keys(.init(readable: false))
+        ServerHeaders.$witness.withValue(locked.keys()) {
+            #expect(ServerHeaders.move(from: base, to: other) == .notTaken)
+        }
+    }
+
+    @Test("Speichern: das Blatt sagt, wenn die Header nicht gespeichert sind, und behaelt die Adresse davor", .needsTheSources)
+    func theSectionSaysWhenNotKept() throws {
+        let section = try FetchAnswerTests.squeezedSource("Sources/Views/CustomHeadersSection.swift")
+        #expect(section.contains("case .notTaken: notKept = true return"), "a move not taken passes in silence")
+        #expect(section.contains("guard ServerHeaders.set(headers, for: base) else { notKept = true"), "a set not taken passes in silence")
+        #expect(section.contains("if notKept { Text(\"The headers could not be saved."), "the sheet does not say it")
+        let store = try FetchAnswerTests.squeezedSource("Sources/Networking/ServerHeaders.swift")
+        #expect(store.contains("SERVERHEADERS headers not kept"), "set does not write a line when it is not taken")
+        #expect(store.contains("SERVERHEADERS not moved host=\\(new.host ?? \"-\", privacy: .public): the keychain cannot be read"))
     }
 
     @Test("Lesen: unlesbar ist nicht leer")

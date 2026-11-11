@@ -96,40 +96,57 @@ nonisolated enum ServerHeaders {
     /// a later read writes nothing; a write the keychain does not take
     /// leaves the items where they are, and the next read tries again.
     private static func read(_ keys: Keys) -> [ServerHeaderRule.Entry]? {
-        guard let items = keys.list() else { return nil }
-        let lift = lifted(items)
-        guard !lift.writes.isEmpty else { return table(from: items) }
-        for write in lift.writes where !keys.write(write.account, write.value) {
-            Logger.library.error("SERVERHEADERS lifting onto the one key not taken, read as kept")
-            return table(from: items)
+        // One turn with every write of the table: a header laid down while
+        // the read lifts is not written over by the lifting.
+        keychainTurn.withLock { _ in
+            guard let items = keys.list() else { return nil }
+            let lift = lifted(items, register: Set(keys.bases()))
+            guard !lift.writes.isEmpty else { return table(from: lift.items) }
+            for write in lift.writes where !keys.write(write.account, write.value) {
+                Logger.library.error("SERVERHEADERS lifting onto the one key not taken, read as kept")
+                return table(from: items)
+            }
+            Logger.library.notice("SERVERHEADERS lifted onto the one key: \(lift.writes.filter { $0.value != nil }.count) kept, \(lift.dropped) left out")
+            return table(from: lift.items)
         }
-        Logger.library.notice("SERVERHEADERS lifted onto the one key: \(lift.writes.filter { $0.value != nil }.count) kept, \(lift.dropped) dropped")
-        return table(from: lift.items)
     }
+
+    /// Every write of the keychain items and the lifting of a read take
+    /// their turn here.
+    private static let keychainTurn = Mutex(())
 
     /// The items with each one under the one key of its server, and the
     /// writes that bring the keychain there: the new item first, then the
-    /// old one removed. Of two spellings of one server, the item already
-    /// under the key stays, else the first spelling in order; the other is
-    /// dropped, since a request could never tell which of the two it gets.
-    static func lifted(_ items: [String: String])
+    /// old one removed. Of several spellings of one server, the item
+    /// already under the key stays (this build wrote it, it is the newest);
+    /// else the spelling the register names, else the first in order. The
+    /// others are left out of the table, since a request could never tell
+    /// which it gets, and stay in the keychain under their own account
+    /// until the server is forgotten.
+    static func lifted(_ items: [String: String], register: Set<String> = [])
         -> (items: [String: String], writes: [(account: String, value: String?)], dropped: Int) {
-        var out = items
-        var writes: [(account: String, value: String?)] = []
-        var dropped = 0
+        var spellings: [String: [String]] = [:]
         for account in items.keys.sorted() where account.hasPrefix(accountPrefix) {
             guard let base = URL(string: String(account.dropFirst(accountPrefix.count))),
                   let key = ServerHeaderRule.key(base) else { continue }
-            let target = accountPrefix + key
-            guard target != account, let value = out[account] else { continue }
-            if out[target] == nil {
+            spellings[accountPrefix + key, default: []].append(account)
+        }
+        var out = items
+        var writes: [(account: String, value: String?)] = []
+        var dropped = 0
+        for (target, accounts) in spellings.sorted(by: { $0.key < $1.key }) where accounts != [target] {
+            let named = accounts.filter { register.contains(String($0.dropFirst(accountPrefix.count))) }
+            let kept = accounts.contains(target) ? target : (named.first ?? accounts[0])
+            if kept != target, let value = items[kept] {
                 out[target] = value
                 writes.append((target, value))
-            } else {
+                out[kept] = nil
+                writes.append((kept, nil))
+            }
+            for account in accounts where account != kept && account != target {
+                out[account] = nil
                 dropped += 1
             }
-            out[account] = nil
-            writes.append((account, nil))
         }
         return (out, writes, dropped)
     }
@@ -311,10 +328,17 @@ nonisolated enum ServerHeaders {
                 return false
             }
         }
-        guard keys.write(account, value) else { return false }
-        var bases = keys.bases().filter { $0 != address }
-        if !headers.isEmpty { bases.append(address) }
-        keys.setBases(bases)
+        let taken = keychainTurn.withLock { _ in
+            guard keys.write(account, value) else { return false }
+            var bases = keys.bases().filter { $0 != address }
+            if !headers.isEmpty { bases.append(address) }
+            keys.setBases(bases)
+            return true
+        }
+        guard taken else {
+            Logger.library.error("SERVERHEADERS headers not kept host=\(base.host ?? "-", privacy: .public): the keychain did not take them")
+            return false
+        }
         cache.withLock { $0 = nil }
         return true
     }
@@ -347,7 +371,10 @@ nonisolated enum ServerHeaders {
     @discardableResult
     static func move(from old: URL, to new: URL) -> Move {
         guard address(old) != address(new) else { return .nothingToMove }
-        guard let target = stored(for: new), let headers = stored(for: old) else { return .notTaken }
+        guard let target = stored(for: new), let headers = stored(for: old) else {
+            Logger.library.error("SERVERHEADERS not moved host=\(new.host ?? "-", privacy: .public): the keychain cannot be read")
+            return .notTaken
+        }
         if !target.isEmpty {
             Logger.library.notice("SERVERHEADERS not moved host=\(new.host ?? "-", privacy: .public): the new address has headers of its own")
             return .targetHasOwn
@@ -361,19 +388,21 @@ nonisolated enum ServerHeaders {
     /// device with it.
     static func forget(_ entry: KnownServer, defaults: UserDefaults? = nil) {
         KnownServers.forget(entry, defaults: defaults ?? AppStorageKeys.store)
-        guard let items = keys.list() else {
-            Logger.library.error("SERVERHEADERS forget: the keychain cannot be read, the headers of the server stay")
-            return
+        keychainTurn.withLock { _ in
+            guard let items = keys.list() else {
+                Logger.library.error("SERVERHEADERS forget: the keychain cannot be read, the headers of the server stay")
+                return
+            }
+            let matching = items.keys.filter {
+                KnownServers.sameServer(String($0.dropFirst(accountPrefix.count)), entry.url)
+            }
+            // Each item by its own account, so one still under an old
+            // spelling goes too.
+            for account in matching where !keys.write(account, nil) {
+                Logger.library.error("SERVERHEADERS forget: an item of the server was not removed")
+            }
+            keys.setBases(keys.bases().filter { !KnownServers.sameServer($0, entry.url) })
         }
-        let matching = items.keys.filter {
-            KnownServers.sameServer(String($0.dropFirst(accountPrefix.count)), entry.url)
-        }
-        // Each item by its own account, so one still under an old spelling
-        // goes too.
-        for account in matching where !keys.write(account, nil) {
-            Logger.library.error("SERVERHEADERS forget: an item of the server was not removed")
-        }
-        keys.setBases(keys.bases().filter { !KnownServers.sameServer($0, entry.url) })
         cache.withLock { $0 = nil }
     }
 }

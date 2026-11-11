@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "The headers could not be saved. They are saved again when you change them or close this page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Header konnten nicht gespeichert werden. Sie werden wieder gespeichert, wenn du sie änderst oder diese Seite schließt."
+          }
+        }
+      }
+    },
     "“%@” already has a rule for this show. Remove it first to choose another." : {
       "localizations" : {
         "de" : {

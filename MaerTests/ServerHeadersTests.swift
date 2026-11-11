@@ -94,6 +94,8 @@ struct ServerHeadersWayTests {
             var items: [String: String] = [:]
             var bases: [String] = []
             var readable = true
+            /// False: the keychain takes no write.
+            var takes = true
         }
         let state: Mutex<State>
         init(_ state: State = State()) { self.state = Mutex(state) }
@@ -103,8 +105,11 @@ struct ServerHeadersWayTests {
             return ServerHeaders.Keys(
                 list: { source.state.withLock { $0.readable ? $0.items : nil } },
                 write: { account, value in
-                    source.state.withLock { $0.items[account] = value }
-                    return true
+                    source.state.withLock { state in
+                        guard state.takes else { return false }
+                        state.items[account] = value
+                        return true
+                    }
                 },
                 bases: { [self] in state.withLock { $0.bases } },
                 setBases: { [self] bases in state.withLock { $0.bases = bases } }
@@ -266,6 +271,16 @@ struct ServerHeadersWayTests {
         }
         #expect(keys.state.withLock { $0.items }.isEmpty, "the headers stayed after the server was removed")
         #expect(keys.state.withLock { $0.bases }.isEmpty)
+        // An item still under an old spelling of the server goes with it.
+        let old = ServerHeaders.accountPrefix + base.absoluteString.uppercased().replacingOccurrences(of: "/ABS", with: "/abs/")
+        keys.state.withLock {
+            $0.items = [ServerHeaders.accountPrefix + "https://" + base.host! + "/abs": "[]", old: "[]"]
+        }
+        ServerHeaders.$witness.withValue(keys.keys()) {
+            ServerHeaders.forget(KnownServer(url: base.absoluteString, service: .audiobookshelf, lastSuccessAt: 0),
+                                 defaults: defaults)
+        }
+        #expect(keys.state.withLock { $0.items }.isEmpty, "an item under an old spelling stayed after the server was removed")
     }
 
     @Test("ein fortgesetzter Download eines Servers mit Headern beginnt neu, mit den Headern von heute")

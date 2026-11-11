@@ -85,12 +85,17 @@ nonisolated enum ServerHeaderRule {
     /// The one form of a server's address the table keeps its headers
     /// under, made like `origin`: scheme and host in small letters, the
     /// default port left out, the path without a trailing slash, no user and
-    /// no password. Two spellings of one server are one entry.
+    /// no password. Two spellings of one server are one entry. The key reads
+    /// back as the same URL: an IPv6 host keeps its brackets and the path
+    /// stays percent-encoded (`URL(string: key)` gives the key again).
     static func key(_ url: URL) -> String? {
         guard let scheme = url.scheme?.lowercased(), let host = url.host?.lowercased(), !host.isEmpty else { return nil }
         let defaultPort = scheme == "https" ? 443 : scheme == "http" ? 80 : nil
         let port = url.port.flatMap { $0 == defaultPort ? nil : ":\($0)" } ?? ""
-        return "\(scheme)://\(host)\(port)\(basePath(url))"
+        let shownHost = host.contains(":") ? "[\(host)]" : host
+        var path = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedPath ?? ""
+        while path.hasSuffix("/") { path.removeLast() }
+        return "\(scheme)://\(shownHost)\(port)\(path)"
     }
 
     /// The path a server lives under, without a trailing slash.

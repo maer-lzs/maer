@@ -30,6 +30,8 @@ struct CustomHeadersSection: View {
     @State private var keptFor: URL?
     /// The keychain could not be read: nothing is shown and nothing kept.
     @State private var unreadable = false
+    /// The last keeping did not land: the rows shown are not saved.
+    @State private var notKept = false
 
     var body: some View {
         Section {
@@ -37,6 +39,13 @@ struct CustomHeadersSection: View {
                 Text("The headers can be read once this device is unlocked.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+            if notKept {
+                Text("The headers could not be saved. They are saved again when you change them or close this page.")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("\(idPrefix)-headers-not-kept")
             }
             ForEach($rows) { $row in
                 VStack(alignment: .leading, spacing: 4) {
@@ -113,16 +122,31 @@ struct CustomHeadersSection: View {
     /// Keeps the complete rows the rule takes under the sheet's address,
     /// after moving what was kept under an address typed before. An address
     /// that names a server with headers of its own takes nothing: the rows
-    /// become that server's, and its headers stay as they are.
+    /// become that server's, and its headers stay as they are. A keeping
+    /// the keychain does not take says so under the rows and leaves the
+    /// address they were kept for, so the next keeping moves them again.
     private func keep() {
         guard !unreadable, let base = ServerHeaderRule.base(typed: address) else { return }
-        if let before = keptFor, ServerHeaders.move(from: before, to: base) == .targetHasOwn {
-            read()
-            return
+        if let before = keptFor {
+            switch ServerHeaders.move(from: before, to: base) {
+            case .targetHasOwn:
+                read()
+                return
+            case .notTaken:
+                notKept = true
+                return
+            case .moved, .nothingToMove:
+                break
+            }
         }
-        keptFor = base
         let headers = rows.map { ServerHeaderRule.cleaned(name: $0.name, value: $0.value) }
             .filter { !$0.name.isEmpty && !$0.value.isEmpty && ServerHeaderRule.refusal(of: $0) == nil }
-        ServerHeaders.set(headers, for: base)
+        guard ServerHeaders.set(headers, for: base) else {
+            notKept = true
+            keptFor = keptFor ?? base
+            return
+        }
+        notKept = false
+        keptFor = base
     }
 }

@@ -78,10 +78,11 @@ longer sends the stored password to the new server.
 The app now tells the server when it wrote your position and reads that
 moment back. Before, the server's position had no time, so a device
 always started from its own older position instead of the newer one from
-another device. A Jellyfin audiobook library with more than 500 files
-now shows every book with its full length. The same holds for albums, playlists and books on a
+another device. The same holds for albums, playlists and books on a
 Subsonic or Navidrome server: the app asks the server's bookmarks every
-time it opens one, and writes none while it could not read them.
+time it opens one, and writes none while it could not read them. A
+Jellyfin audiobook library with more than 500 files now shows every
+audiobook with its full length.
 
 **What could not be read is not treated as empty.** When the app starts
 before the device is unlocked for the first time, or reads a mark of its
@@ -105,7 +106,8 @@ to another one. When a connection check fails because such a guard
 answered, the page says so. A server's address written in another way
 (capital letters, `:443`, a slash at the end) keeps the same headers,
 and changing an address to that of another server with headers of its
-own leaves both servers their own.
+own leaves both servers their own. A server at an IPv6 address keeps its
+headers too, and when the headers cannot be saved, the page says so.
 
 **A book whose next file cannot be reached waits visibly and stops at
 that file.** When a jump or the next file of a book waits for the server
