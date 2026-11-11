@@ -132,7 +132,9 @@ struct SharedGrowthFenceTests {
     /// 751: the map of sources observes the session (one), and a change
     /// of user at one address removes the stands queued there through the
     /// one queue, from the Jellyfin, Subsonic and Audiobookshelf ways (three).
-    nonisolated static let sourcesStock = 751
+    /// 752: Siri's continue asks the door whether anything can continue
+    /// before the app opens (one, the session's door).
+    nonisolated static let sourcesStock = 752
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

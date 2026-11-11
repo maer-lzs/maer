@@ -149,14 +149,18 @@ nonisolated final class StandMirror: Sendable {
                     Logger.library.error("STAND repair refused: the table holds rows the move mark does not explain; nothing goes, the mark waits")
                     return
                 }
-                // Rows no old key names, beside old keys, were not written
-                // from those keys: the repair adds and keeps them, it does
-                // not take what it cannot explain.
-                let unnamed = resumes ? 0 : try await store.all().keys.filter { entries[$0] == nil }.count
+                // A row no old key names and newer than every old key was
+                // written after the move, not from those keys: the repair
+                // adds and keeps everything then, it does not take what it
+                // cannot explain. An older row without a key is a removal
+                // the chain did not write before it ended, and goes.
+                let newestOld = entries.values.compactMap { $0.count > 1 ? $0[1] : nil }.max() ?? 0
+                let unnamed = resumes ? 0 : try await store.all()
+                    .filter { entries[$0.key] == nil && $0.value.updatedAtMs > newestOld }.count
                 let written = try await store.importEntries(entries)
                 let removed = unnamed > 0 ? 0 : try await store.retainOnly(Set(entries.keys))
                 if unnamed > 0 {
-                    Logger.library.error("STAND repair kept \(unnamed) rows no old key names: nothing removed")
+                    Logger.library.error("STAND repair kept \(unnamed) rows no old key names, newer than every old key: nothing removed")
                 }
                 let pushed = try await store.replaceFlushed(with: flushed)
                 Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed) resumed=\(resumes)")

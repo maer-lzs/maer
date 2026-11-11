@@ -894,8 +894,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Playback stops at the track a dry queue waited for, whose plan says
     /// it cannot be asked now: the same end as a start that cannot ask its
     /// first track. The next play builds anew from there and asks again.
-    /// `unanswered`: the end of the track's stream could not be asked; its
-    /// plan goes, so the next play asks it again.
+    /// `unanswered`: the end of the track's stream could not be asked; the
+    /// next play rebuilds through `rebuildAfterLoadFailure`, which asks it
+    /// again.
     private func stopWaitingForPlan(at index: Int, unanswered: Bool = false) {
         waitsForPlannedTrack = false
         loadFailureNoted = true
@@ -907,7 +908,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = false
         updateNowPlayingInfo()
         if unanswered {
-            if let url = resolveTrackURL(index: index) { streamPlanner?.forget(url) }
             cannotPlay(String(localized: "Could not load. Tap play to try again."))
         } else {
             cannotPlay(String(localized: "Unlock this device once to play this episode."))
@@ -1105,10 +1105,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 queueWaitedForSignIn = true
                 return nil
             case .unanswered:
-                // Not built with the sign-in at an address whose redirects
-                // are unknown; the next build asks the end again.
+                // Not built at an address whose redirects are unknown; the
+                // rebuild after the failure asks the end again.
                 Logger.player.notice("PLAY not requested, the end of the stream could not be asked: track=\(index)")
-                streamPlanner?.forget(url)
                 return nil
             }
             // The stream names the app like every other request. Measured

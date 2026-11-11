@@ -24,6 +24,13 @@ extension PlayerCoordinator {
         entries.first(where: { $0.id == id })?.item ?? known(id)
     }
 
+    /// What the door can tell a request from outside before the app opens:
+    /// nothing to continue on a device without a last played title and
+    /// without an open player (`ResumeAsk.continueFindsNothing`).
+    var findsNothingToContinue: Bool {
+        ResumeAsk.continueFindsNothing(lastPlayedId: AppStorageKeys.lastPlayedItemIdValue, hasActivePlayer: viewModel != nil)
+    }
+
     /// A request to continue found no title: said like a search hit that
     /// no longer resolves, never a silent tap. The one place of the
     /// sentence for the view and for the widget's command, which says the

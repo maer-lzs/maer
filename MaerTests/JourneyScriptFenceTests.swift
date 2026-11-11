@@ -28,7 +28,9 @@ struct JourneyScriptFenceTests {
         #expect(code.contains("[[ $n -gt 1 ]] && fresh_template"), "a later server journey runs on the app the first one signed in")
         // The summary names the result bundles the run wrote, one per
         // server journey, not one that a server run never writes.
-        #expect(code.contains("-resultBundlePath \"${bundles[-1]}\" \"$one\""), "a server journey's bundle is not the one the summary names")
+        #expect(code.contains("bundle=\"${RESULT%.xcresult}-$n.xcresult\""), "a server journey has no bundle of its own")
+        #expect(code.contains("-resultBundlePath \"$bundle\" \"$one\""), "a server journey's bundle is not the one the summary names")
+        #expect(code.contains("[[ -e \"$bundle\" ]] && bundles+=(\"$bundle\")"), "the summary names a bundle the run never wrote")
         #expect(code.contains("Ergebnis: ${(j: · :)bundles}"), "the summary names a bundle of its own")
     }
 }

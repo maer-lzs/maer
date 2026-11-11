@@ -55,7 +55,9 @@ struct MusicPageStateTests {
             artists: { [] },
             playlists: {
                 if server.fails { throw Boom() }
-                return [MusicPlaylist(id: server.account, itemId: server.account, name: server.account,
+                // A name of its own: a playlist named by its id is junk and
+                // never shown (`PlaylistPresentation.realPlaylists`).
+                return [MusicPlaylist(id: server.account, itemId: server.account, name: "Playlist of \(server.account)",
                                       songCount: 1, duration: nil, changedAt: nil)]
             })
         let model = MusicViewModel(source: source)

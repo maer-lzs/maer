@@ -261,6 +261,8 @@ struct ResumeTargetTests {
                 "a request started a title long after it was made")
         #expect(ResumeAsk.stillStands(askedAt: nil, now: asked))
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("if AppSession.shared.playerCoordinator.findsNothingToContinue {"),
+                "Siri decides on its own what the door knows")
         #expect(shortcuts.contains("throw ResumeAsk.Refusal(ResumeTarget.Missing.noLastPlayed.sentence)"),
                 "Siri reports success with nothing to continue")
         let view = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")

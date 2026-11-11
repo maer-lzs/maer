@@ -160,12 +160,12 @@ struct SignInStreamTests {
         let plan = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: Self.answer(own: own)) { _ in nil }
         #expect(plan == .unanswered, "a failed ask planned the stream at its address with the sign-in")
         let model = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
-        #expect(model.contains("case .unanswered: Logger.player.notice(\"PLAY not requested, the end of the stream could not be asked: track=\\(index)\") streamPlanner?.forget(url) return nil"),
-                "a stream whose end was not asked is built, or its plan is kept for the next play")
+        #expect(model.contains("case .unanswered: Logger.player.notice(\"PLAY not requested, the end of the stream could not be asked: track=\\(index)\") return nil"),
+                "a stream whose end was not asked is built")
         #expect(model.contains("if plan == .waiting || plan == .unanswered {"), "a queue skips a track whose end was not asked")
         #expect(model.contains("stopWaitingForPlan(at: waitedFor, unanswered: plan == .unanswered)"))
-        #expect(model.contains("if let url = resolveTrackURL(index: index) { streamPlanner?.forget(url) } cannotPlay(String(localized: \"Could not load. Tap play to try again.\"))"),
-                "the hold says no sentence of its own, or keeps the plan")
+        #expect(model.contains("if unanswered { cannotPlay(String(localized: \"Could not load. Tap play to try again.\"))"),
+                "the hold says no sentence of its own")
     }
 
     private func waitFor(_ condition: () -> Bool, seconds: Double = 15) async {

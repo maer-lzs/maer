@@ -348,9 +348,9 @@ struct ServerAddressSwitchTests {
     @Test("beide Formulare fragen die Regel, bevor sie eine Adresse schreiben, und nur sie schreiben eine", .needsTheSources)
     func bothFormsAskBeforeTheyWrite() throws {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
-        #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
+        #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(address, user: newUser, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser) if !trimmedURL.isEmpty { AppStorageKeys.jellyfinServerURLValue = trimmedURL }"))
         let subsonic = try FetchAnswerTests.squeezedSource("Sources/Views/SubsonicSourceView.swift")
-        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
+        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(address, user: newUser, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: address, user: newUser) if !trimmedURL.isEmpty { AppStorageKeys.subsonicServerURLValue = trimmedURL }"))
         var writers: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() where file != "UITestSeed.swift" {
             let squeezed = FetchAnswerTests.squeezed(text)
