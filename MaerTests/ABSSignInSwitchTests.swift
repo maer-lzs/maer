@@ -24,6 +24,7 @@ struct ABSSignInSwitchTests {
         let url = KeychainStore.load(forKey: KeychainKey.serverURL)
         let token = KeychainStore.load(forKey: KeychainKey.apiToken)
         let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
+        let signedInUser = AppStorageKeys.string(AppStorageKeys.absSignedInUser)
         let switchedAt = UserDefaults.standard.object(forKey: AppStorageKeys.absServerSwitchedAt)
         let moreThanOne = UserDefaults.standard.object(forKey: AppStorageKeys.absMoreThanOneServer)
         let known = UserDefaults.standard.data(forKey: KnownServers.storeKey)
@@ -31,6 +32,7 @@ struct ABSSignInSwitchTests {
             if let url { KeychainStore.save(url, forKey: KeychainKey.serverURL) } else { KeychainStore.delete(forKey: KeychainKey.serverURL) }
             if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) } else { KeychainStore.delete(forKey: KeychainKey.apiToken) }
             AppStorageKeys.set(signedIn, for: AppStorageKeys.absSignedInServer)
+            AppStorageKeys.set(signedInUser, for: AppStorageKeys.absSignedInUser)
             UserDefaults.standard.set(switchedAt, forKey: AppStorageKeys.absServerSwitchedAt)
             UserDefaults.standard.set(moreThanOne, forKey: AppStorageKeys.absMoreThanOneServer)
             UserDefaults.standard.set(known, forKey: KnownServers.storeKey)
@@ -61,7 +63,7 @@ struct ABSSignInSwitchTests {
         auth.password = "passwort-fuer-b"
         await auth.connect()
         let seen = server.requests
-        #expect(seen.map(\.path) == ["/login", "/api/libraries"], "\(seen.map(\.path)) \(server.diagnosis)")
+        #expect(seen.map(\.path) == ["/login", "/api/libraries", "/api/me"], "\(seen.map(\.path)) \(server.diagnosis)")
         #expect(seen.first?.authorization == nil, "the sign-in to B carried: \(String(describing: seen.first?.authorization))")
         #expect(!seen.contains { $0.authorization?.contains("token-of-a") == true }, "a request to B carried the token of A")
     }
@@ -131,10 +133,14 @@ struct ABSSignInSwitchTests {
                 if let data { try? data.write(to: url) } else { try? FileManager.default.removeItem(at: url) }
             }
         }
-        let server = try await ABSLoopback.start(login: .accept("token-new"), libraries: .accept)
+        let server = try await ABSLoopback.start(login: .accept("token-new"), libraries: .accept, userId: "user-b")
         defer { server.stop() }
         let sameServer = server.address.replacingOccurrences(of: "http://", with: "https://")
-        for (stored, forgets) in [("https://abs.a.example", true), (sameServer, false)] {
+        // Another server; the same server again; the same server with
+        // another user, which is another account.
+        for (stored, storedUser, forgets) in [("https://abs.a.example", nil, true), (sameServer, nil, false),
+                                              (sameServer, "user-a", true)] as [(String, String?, Bool)] {
+            AppStorageKeys.set(storedUser, for: AppStorageKeys.absSignedInUser)
             WidgetSnapshot(itemId: "li_former", title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
             let former = WidgetSourceRow(source: .audiobooks, itemId: "li_former", title: "Titel", subtitle: nil, fraction: 0.5,
                                          remainingText: nil, isLive: false, kindSymbol: "book", cover: nil, playedAt: 1)
@@ -148,6 +154,7 @@ struct ABSSignInSwitchTests {
             await auth.connect()
             #expect(auth.errorMessage == nil, "\(stored): \(String(describing: auth.errorMessage)) \(server.diagnosis)")
             #expect((WidgetSnapshot.load() == nil) == forgets, "\(stored): the title of the former server")
+            #expect(AppStorageKeys.string(AppStorageKeys.absSignedInUser) == "user-b", "the signed-in user is not noted")
             let rows = ContinueRows.load()?.rows.map(\.itemId)
             #expect(rows == (forgets ? [] : ["li_former"]), "\(stored): the widget's rows \(String(describing: rows))")
             if #available(iOS 27, *) {
@@ -168,7 +175,7 @@ struct ABSSignInSwitchTests {
         }
         #expect(auth.contains("AppSession.shared.notifySourcesChanged() Task { await Self.forgetFormerServer() } }"),
                 "the sign out does not forget the former server")
-        #expect(auth.contains("if switched { await Self.forgetFormerServer() } AppSession.shared.notifySourcesChanged() } catch {"),
+        #expect(auth.contains("if switched { await Self.forgetFormerServer() } if switched, !serverSwitched { await SyncQueue.shared.forgetPending(onServer: formerAddress) } AppSession.shared.notifySourcesChanged() } catch {"),
                 "the switch does not forget the former server before the sources change")
     }
 
@@ -232,20 +239,23 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
     private var events: [String] = []
     private let login: Answer
     private let libraries: Listing
+    /// The user id `api/me` answers with; nil answers without one.
+    private let userId: String?
     private(set) var port: UInt16 = 0
 
     var requests: [Seen] { lock.withLock { seen } }
     var diagnosis: String { lock.withLock { "requests=\(seen.count) events=\(events)" } }
     var address: String { "http://127.0.0.1:\(port)" }
 
-    private init(login: Answer, libraries: Listing) throws {
+    private init(login: Answer, libraries: Listing, userId: String?) throws {
         self.login = login
         self.libraries = libraries
+        self.userId = userId
         listener = try NWListener(using: .tcp, on: .any)
     }
 
-    static func start(login: Answer, libraries: Listing) async throws -> ABSLoopback {
-        let server = try ABSLoopback(login: login, libraries: libraries)
+    static func start(login: Answer, libraries: Listing, userId: String? = nil) async throws -> ABSLoopback {
+        let server = try ABSLoopback(login: login, libraries: libraries, userId: userId)
         server.listener.newConnectionHandler = { [server] connection in
             connection.start(queue: .global())
             server.receiveHead(connection, buffer: Data())
@@ -299,6 +309,8 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
             status = "401 Unauthorized"; json = "{}"
         case ("/api/libraries", _, .accept):
             status = "200 OK"; json = #"{"libraries":[]}"#
+        case ("/api/me", _, _):
+            status = "200 OK"; json = userId.map { #"{"id":""# + $0 + #""}"# } ?? "{}"
         default:
             status = "401 Unauthorized"; json = "{}"
         }

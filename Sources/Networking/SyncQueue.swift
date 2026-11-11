@@ -195,6 +195,32 @@ final class SyncQueue {
         return loadAll().filter { owns($0.key) && judge.fate($0.key, $0.value) != .wait }.count
     }
 
+    /// The stands queued under a server leave with its account when another
+    /// user signs in at the same address: they were heard by the account
+    /// before and must not be written into the new one. Another server is
+    /// no such case (its stands wait under their own server). Returns how
+    /// many went, after the write landed; nothing while the start could not
+    /// read the entries.
+    @discardableResult
+    func forgetPending(onServer address: String) async -> Int {
+        guard !storage.startReadFailed else {
+            Logger.library.error("SYNCQUEUE account switch: the entries did not read at the start, nothing removed")
+            return 0
+        }
+        let pending = loadAll()
+        let kept = Self.without(server: ABSServerScope.identity(of: address), in: pending)
+        guard kept.count != pending.count else { return 0 }
+        save(kept)
+        await storage.awaitPendingWrites()
+        Logger.library.notice("SYNCQUEUE account switch: \(pending.count - kept.count) stands of the account before removed")
+        return pending.count - kept.count
+    }
+
+    /// The entries without those queued under `server` (one name, `ABSServerScope.identity`).
+    nonisolated static func without(server: String, in pending: [String: PendingUpdate]) -> [String: PendingUpdate] {
+        pending.filter { $0.value.server != server }
+    }
+
     /// All pending updates. For the library, so it can show the locally newest
     /// (not-yet-sent) state.
     func allPending() -> [String: PendingUpdate] {

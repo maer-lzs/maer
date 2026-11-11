@@ -94,10 +94,22 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// rows), as with Jellyfin; its password goes in `passwordAfterAddress`.
     /// Answers whether anything was forgotten.
     @discardableResult
-    static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool {
-        guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.subsonicServerURLValue, to: newURL) else { return false }
-        Task { await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player) }
-        Logger.music.notice("SUBSONIC address switch: the titles of the stored server are forgotten")
+    static func forgetAccessOnSwitch(to newURL: String, user newUser: String? = nil,
+                                     player: PlayerCoordinator? = nil) -> Bool {
+        // Another user at the same address is another account
+        // (`ServerAddressSwitch.isAccountSwitch`); nil keeps the stored user.
+        let storedUser = AppStorageKeys.subsonicUsernameValue
+        guard ServerAddressSwitch.isAccountSwitch(fromAddress: AppStorageKeys.subsonicServerURLValue, fromUser: storedUser,
+                                                  toAddress: newURL, toUser: newUser ?? storedUser) else { return false }
+        // Another user at the same address: the stands the user before
+        // queued there stay theirs and are not written into the new account.
+        let former = AppStorageKeys.subsonicServerURLValue
+        let userOnly = !ServerAddressSwitch.isSwitch(from: former, to: newURL)
+        Task {
+            await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player)
+            if userOnly { await SyncQueue.shared.forgetPending(onServer: former) }
+        }
+        Logger.music.notice("SUBSONIC account switch: the titles of the stored account are forgotten")
         return true
     }
 
@@ -106,9 +118,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// with that server and is forgotten. The form fills the field with it,
     /// so the field's text is kept only when the person typed another one
     /// for the new server.
-    static func passwordAfterAddress(_ newURL: String, typed: String) -> String {
+    static func passwordAfterAddress(_ newURL: String, user newUser: String? = nil, typed: String) -> String {
+        let storedUser = AppStorageKeys.subsonicUsernameValue
         let after = ServerAddressSwitch.password(typed: typed, stored: AppStorageKeys.subsonicPasswordValue,
-                                                 from: AppStorageKeys.subsonicServerURLValue, to: newURL)
+                                                 from: AppStorageKeys.subsonicServerURLValue, to: newURL,
+                                                 fromUser: storedUser, toUser: newUser ?? storedUser)
         if after.forgetsStored {
             AppStorageKeys.setSubsonicPassword("")
             Logger.music.notice("SUBSONIC address switch: the password of the stored server is forgotten")

@@ -69,6 +69,81 @@ struct ServerAddressSwitchTests {
         return kept
     }
 
+    @Test("ein anderer Benutzer an derselben Adresse ist ein anderes Konto; Gross- und Kleinschreibung und ein leeres Feld nicht")
+    func whatIsAnAccountSwitch() {
+        let a = "https://jf.a.example"
+        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "anna", toAddress: a, toUser: "ben"))
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "Anna", toAddress: "HTTPS://jf.a.example/", toUser: " anna "))
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "anna", toAddress: a, toUser: ""), "an empty field leaves the user")
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "", toAddress: a, toUser: "ben"), "no stored user, nothing to forget")
+        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: "", fromUser: "anna", toAddress: a, toUser: "ben"), "no stored server, nothing to forget")
+        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "anna", toAddress: "https://jf.b.example", toUser: "anna"))
+        #expect(ServerAddressSwitch.password(typed: "pw-anna", stored: "pw-anna", from: a, to: a,
+                                            fromUser: "anna", toUser: "ben") == ("", true),
+                "the password of the stored user went to the new one")
+    }
+
+    @Test("die wartenden Staende eines Servers gehen beim Wechsel des Benutzers, die anderer Server bleiben")
+    func theQueuedStandsOfTheServerGo() {
+        typealias Update = SyncQueue.PendingUpdate
+        let pending: [String: Update] = [
+            "li_a": Update(currentTime: 10, duration: 100, isFinished: false, server: "https://abs.a.example"),
+            "jf:book:1": Update(currentTime: 20, duration: 100, isFinished: false, server: "https://jf.example"),
+            "li_old": Update(currentTime: 30, duration: 100, isFinished: false),
+        ]
+        let kept = SyncQueue.without(server: ABSServerScope.identity(of: "HTTPS://abs.a.example/"), in: pending)
+        #expect(Set(kept.keys) == ["jf:book:1", "li_old"], "the stands of the account before stayed: \(kept.keys.sorted())")
+    }
+
+    @Test("Jellyfin: ein anderer Benutzer an derselben Adresse vergisst Zugang, Benutzerkennung und Passwort des frueheren")
+    func anotherUserForgetsTheAccess() {
+        let stand = JellyfinStand()
+        defer { stand.restore() }
+        let url = "https://jf-user-\(UUID().uuidString.prefix(6)).example"
+        AppStorageKeys.jellyfinServerURLValue = url
+        AppStorageKeys.jellyfinUsernameValue = "anna"
+        AppStorageKeys.jellyfinUserIdValue = "uid-anna"
+        AppStorageKeys.setJellyfinToken("token-anna")
+        AppStorageKeys.setJellyfinPassword("pw-anna")
+        #expect(JellyfinProvider.passwordAfterAddress(url, user: "ben", typed: "pw-anna").isEmpty,
+                "the field kept the password of the stored user")
+        #expect(JellyfinProvider.forgetAccessOnSwitch(to: url, user: "ben"))
+        #expect(AppStorageKeys.jellyfinTokenValue.isEmpty, "the access token of the stored user stayed")
+        #expect(AppStorageKeys.jellyfinUserIdValue.isEmpty, "the user id of the stored user stayed")
+        #expect(AppStorageKeys.jellyfinPasswordValue.isEmpty)
+        AppStorageKeys.jellyfinUsernameValue = "ben"
+        AppStorageKeys.setJellyfinToken("token-ben")
+        #expect(!JellyfinProvider.forgetAccessOnSwitch(to: url, user: "Ben"), "the same user in other letters is no switch")
+        #expect(AppStorageKeys.jellyfinTokenValue == "token-ben")
+    }
+
+    @Test("gpodder: eine neue Adresse vergisst Passwort und Rundenstand des gespeicherten Kontos, ein getipptes Passwort bleibt")
+    func gpodderForgetsOnAnAddressSwitch() {
+        let url = AppStorageKeys.gpodderServerURLValue, user = AppStorageKeys.gpodderUsernameValue
+        let password = AppStorageKeys.gpodderPasswordValue
+        let synced = AppStorageKeys.stringArray(AppStorageKeys.gpodderLastSyncedFeeds)
+        defer {
+            AppStorageKeys.gpodderServerURLValue = url
+            AppStorageKeys.gpodderUsernameValue = user
+            AppStorageKeys.setGpodderPassword(password)
+            AppStorageKeys.set(synced, for: AppStorageKeys.gpodderLastSyncedFeeds)
+        }
+        let a = "https://gp-a-\(UUID().uuidString.prefix(6)).example"
+        AppStorageKeys.gpodderServerURLValue = a
+        AppStorageKeys.gpodderUsernameValue = "anna"
+        AppStorageKeys.setGpodderPassword("pw-anna")
+        AppStorageKeys.set(["https://feed.example/a"], for: AppStorageKeys.gpodderLastSyncedFeeds)
+        #expect(GPodderSync.forgetAccessOnSwitch(to: a + "/", user: "anna", typed: "pw-anna") == "pw-anna", "the same server is no switch")
+        #expect(AppStorageKeys.gpodderPasswordValue == "pw-anna")
+        #expect(GPodderSync.forgetAccessOnSwitch(to: "https://gp-b.example", user: "anna", typed: "pw-anna").isEmpty,
+                "the field kept the password of the stored server")
+        #expect(AppStorageKeys.gpodderPasswordValue.isEmpty, "the stored password would go to the new host")
+        #expect(AppStorageKeys.stringArray(AppStorageKeys.gpodderLastSyncedFeeds) == nil, "the round state of the stored account stayed")
+        AppStorageKeys.setGpodderPassword("pw-anna")
+        #expect(GPodderSync.forgetAccessOnSwitch(to: a, user: "ben", typed: "pw-ben") == "pw-ben", "a password typed for the new account stays")
+        #expect(AppStorageKeys.gpodderPasswordValue.isEmpty, "another user kept the stored password")
+    }
+
     @Test("das Passwortfeld nach einer neuen Adresse: bei einem Wechsel leer, wenn es das gespeicherte zeigt, ein getipptes bleibt")
     func thePasswordFieldAfterANewAddress() {
         let a = "https://jf.a.example", b = "https://jf.b.example"
@@ -232,9 +307,9 @@ struct ServerAddressSwitchTests {
     @Test("beide Formulare fragen die Regel, bevor sie eine Adresse schreiben, und nur sie schreiben eine", .needsTheSources)
     func bothFormsAskBeforeTheyWrite() throws {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
-        #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(trimmedURL, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
+        #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser) AppStorageKeys.jellyfinServerURLValue = trimmedURL"))
         let subsonic = try FetchAnswerTests.squeezedSource("Sources/Views/SubsonicSourceView.swift")
-        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
+        #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser) AppStorageKeys.subsonicServerURLValue = trimmedURL"))
         var writers: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() where file != "UITestSeed.swift" {
             let squeezed = FetchAnswerTests.squeezed(text)

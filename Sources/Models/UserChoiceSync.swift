@@ -223,6 +223,7 @@ nonisolated enum UserChoiceCatalog {
         "pendingDownloadDestinations": .machine,
         "serverHeaderBases": .machine,
         "absSignedInServer": .machine,
+        "absSignedInUser": .machine,
         "absLastFullLoadServer": .machine,
         "absServerSwitchedAt": .machine,
         "absMoreThanOneServer": .machine,

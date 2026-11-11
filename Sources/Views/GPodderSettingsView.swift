@@ -202,7 +202,12 @@ struct GPodderSettingsView: View {
         // disappear could nuke URL, user AND the keychain password. Clearing
         // the source is done via the toggle, not by emptying fields.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
+        let typedUser = username.trimmingCharacters(in: .whitespaces)
+        let newUser = typedUser.isEmpty ? AppStorageKeys.gpodderUsernameValue : typedUser
         if !trimmedURL.isEmpty {
+            // Another server or user is another account: its password and
+            // the state of its rounds go to no other one.
+            password = GPodderSync.forgetAccessOnSwitch(to: trimmedURL, user: newUser, typed: password)
             AppStorageKeys.gpodderServerURLValue = trimmedURL
         }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)

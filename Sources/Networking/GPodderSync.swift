@@ -331,6 +331,29 @@ final class GPodderSync {
         return nil
     }
 
+    /// Before new settings are stored: another server or another user is
+    /// another account (`ServerAddressSwitch.isAccountSwitch`), the same
+    /// rule as for Jellyfin and Subsonic. The stored password goes with the
+    /// stored account, and so does the state of its rounds (what its server
+    /// knows of this device), so the next sign-in starts as a first one and
+    /// sends nothing of the old account to the new host. The subscriptions
+    /// stay on the device. Answers the password field: emptied when it
+    /// still shows the stored password, kept when one was typed.
+    static func forgetAccessOnSwitch(to newURL: String, user newUser: String, typed: String) -> String {
+        let after = ServerAddressSwitch.password(typed: typed, stored: AppStorageKeys.gpodderPasswordValue,
+                                                 from: AppStorageKeys.gpodderServerURLValue, to: newURL,
+                                                 fromUser: AppStorageKeys.gpodderUsernameValue, toUser: newUser)
+        guard after.forgetsStored else { return after.field }
+        AppStorageKeys.setGpodderPassword("")
+        for key in [AppStorageKeys.gpodderLastSyncedFeeds, AppStorageKeys.gpodderPendingRemoveLocal,
+                    AppStorageKeys.gpodderPendingRemoveServer, AppStorageKeys.gpodderLeftOnServer,
+                    AppStorageKeys.gpodderDeviceRegisteredFor] {
+            AppStorageKeys.remove(key)
+        }
+        Logger.gpodder.notice("GPODDER account switch: the password and the round state of the stored account are forgotten")
+        return after.field
+    }
+
     /// Signs this device out of gpodder: address, name, password and the
     /// state of the rounds go; nothing changes on the gpodder server. gpodder
     /// then follows the account that holds the subscriptions, so a new

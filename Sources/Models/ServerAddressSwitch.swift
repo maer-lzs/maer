@@ -25,14 +25,31 @@ nonisolated enum ServerAddressSwitch {
         return old != fresh
     }
 
-    /// The password field of a form after a new address, and whether the
-    /// stored password is forgotten. On a switch the stored password goes
-    /// with the stored server: a field that still shows it is emptied, so
-    /// the form does not write it back for the new one; a password typed
-    /// for the new server stays.
+    /// Whether new settings name another account: another server by
+    /// `isSwitch`, or another user at the same server. What the stored
+    /// account was handed out, and what it wrote, belong to it alone. Names
+    /// are compared without case and surrounding spaces; an empty stored or
+    /// new name is no switch (an empty field leaves the stored name).
+    static func isAccountSwitch(fromAddress: String, fromUser: String, toAddress: String, toUser: String) -> Bool {
+        if isSwitch(from: fromAddress, to: toAddress) { return true }
+        let before = fromUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let after = toUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !before.isEmpty, !after.isEmpty else { return false }
+        return before != after
+    }
+
+    /// The password field of a form after a new address or user, and
+    /// whether the stored password is forgotten. On a switch of the account
+    /// the stored password goes with it: a field that still shows it is
+    /// emptied, so the form does not write it back for the new one; a
+    /// password typed for the new account stays. Without names given only
+    /// the address decides.
     static func password(typed: String, stored: String,
-                         from storedAddress: String, to new: String) -> (field: String, forgetsStored: Bool) {
-        guard isSwitch(from: storedAddress, to: new) else { return (typed, false) }
+                         from storedAddress: String, to new: String,
+                         fromUser: String = "", toUser: String = "") -> (field: String, forgetsStored: Bool) {
+        guard isAccountSwitch(fromAddress: storedAddress, fromUser: fromUser, toAddress: new, toUser: toUser)
+        else { return (typed, false) }
         return (typed == stored ? "" : typed, true)
     }
 

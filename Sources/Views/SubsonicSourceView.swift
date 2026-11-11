@@ -183,11 +183,15 @@ struct SubsonicSourceView: View {
         // Same decision as the password below: clearing a source is done via
         // the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
+        // Another user is another account: its access and what the
+        // stored account wrote go the way of another address.
+        let typedUser = username.trimmingCharacters(in: .whitespaces)
+        let newUser = typedUser.isEmpty ? AppStorageKeys.subsonicUsernameValue : typedUser
         if !trimmedURL.isEmpty {
             // The password of the stored server stays with it, also the one
             // the field was filled with.
-            password = SubsonicProvider.passwordAfterAddress(trimmedURL, typed: password)
-            SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL)
+            password = SubsonicProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password)
+            SubsonicProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser)
             AppStorageKeys.subsonicServerURLValue = trimmedURL
         }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)

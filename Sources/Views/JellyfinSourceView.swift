@@ -105,11 +105,15 @@ struct JellyfinSourceView: View {
         // Empty fields leave the stored values alone. Clearing
         // a source is done via the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
+        // Another user is another account: its access and what the
+        // stored account wrote go the way of another address.
+        let typedUser = username.trimmingCharacters(in: .whitespaces)
+        let newUser = typedUser.isEmpty ? AppStorageKeys.jellyfinUsernameValue : typedUser
         if !trimmedURL.isEmpty {
             // The access the stored server handed out, and its password,
             // go to no other one.
-            password = JellyfinProvider.passwordAfterAddress(trimmedURL, typed: password)
-            JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL)
+            password = JellyfinProvider.passwordAfterAddress(trimmedURL, user: newUser, typed: password)
+            JellyfinProvider.forgetAccessOnSwitch(to: trimmedURL, user: newUser)
             AppStorageKeys.jellyfinServerURLValue = trimmedURL
         }
         let trimmedUser = username.trimmingCharacters(in: .whitespaces)

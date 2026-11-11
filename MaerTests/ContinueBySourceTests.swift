@@ -559,7 +559,7 @@ struct ContinueBySourceTests {
                     Issue.record("\(file) writes \(key), an address of no family the fence knows"); continue
                 }
                 #expect(file == family.writer, "\(file) writes \(key) beside \(family.writer)")
-                #expect(squeezed.contains("\(family.place).forgetAccessOnSwitch(to: trimmedURL) AppStorageKeys.\(key) = trimmedURL"),
+                #expect(squeezed.contains("\(family.place).forgetAccessOnSwitch(to: trimmedURL, user: newUser) AppStorageKeys.\(key) = trimmedURL"),
                         "\(file) stores the address without asking \(family.place) right before")
             }
         }

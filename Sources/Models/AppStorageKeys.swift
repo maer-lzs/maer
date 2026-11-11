@@ -890,6 +890,9 @@ nonisolated enum AppStorageKeys {
     /// full library load, as normalized addresses, and when the signed-in
     /// server last changed (ms). `ABSServerScope` decides on them.
     static let absSignedInServer = "absSignedInServer"
+    /// The id of the Audiobookshelf user signed in now (`api/me`): another
+    /// user at the same address is another account.
+    static let absSignedInUser = "absSignedInUser"
     static let absLastFullLoadServer = "absLastFullLoadServer"
     static let absServerSwitchedAt = "absServerSwitchedAt"
     /// Set once a sign-in moved from one known server to another; then a

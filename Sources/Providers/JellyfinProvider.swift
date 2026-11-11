@@ -83,22 +83,37 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     /// (`ServerAddressSwitch`). The next request signs in anew. The stored
     /// server leaves the device with it (`ServerLeaving`: its player, its
     /// rows). Answers whether anything was forgotten.
+    /// Another user at the same address is another account and goes the
+    /// same way (`ServerAddressSwitch.isAccountSwitch`); nil keeps the
+    /// stored user.
     @discardableResult
-    static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool {
-        guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.jellyfinServerURLValue, to: newURL) else { return false }
+    static func forgetAccessOnSwitch(to newURL: String, user newUser: String? = nil,
+                                     player: PlayerCoordinator? = nil) -> Bool {
+        let storedUser = AppStorageKeys.jellyfinUsernameValue
+        guard ServerAddressSwitch.isAccountSwitch(fromAddress: AppStorageKeys.jellyfinServerURLValue, fromUser: storedUser,
+                                                  toAddress: newURL, toUser: newUser ?? storedUser) else { return false }
         AppStorageKeys.setJellyfinToken("")
         AppStorageKeys.jellyfinUserIdValue = ""
-        Task { await ServerLeaving.forget(ItemNamespace.isJellyfin, covers: .jellyfin, player: player) }
-        Logger.music.notice("JELLYFIN address switch: the access of the stored server is forgotten")
+        // Another user at the same address: the stands the user before
+        // queued there stay theirs and are not written into the new account.
+        let former = AppStorageKeys.jellyfinServerURLValue
+        let userOnly = !ServerAddressSwitch.isSwitch(from: former, to: newURL)
+        Task {
+            await ServerLeaving.forget(ItemNamespace.isJellyfin, covers: .jellyfin, player: player)
+            if userOnly { await SyncQueue.shared.forgetPending(onServer: former) }
+        }
+        Logger.music.notice("JELLYFIN account switch: the access of the stored account is forgotten")
         return true
     }
 
     /// Before a new address is stored: on a switch the stored password goes
     /// with the stored server and is forgotten; the field's text is kept
     /// only when the person typed another one for the new server.
-    static func passwordAfterAddress(_ newURL: String, typed: String) -> String {
+    static func passwordAfterAddress(_ newURL: String, user newUser: String? = nil, typed: String) -> String {
+        let storedUser = AppStorageKeys.jellyfinUsernameValue
         let after = ServerAddressSwitch.password(typed: typed, stored: AppStorageKeys.jellyfinPasswordValue,
-                                                 from: AppStorageKeys.jellyfinServerURLValue, to: newURL)
+                                                 from: AppStorageKeys.jellyfinServerURLValue, to: newURL,
+                                                 fromUser: storedUser, toUser: newUser ?? storedUser)
         if after.forgetsStored {
             AppStorageKeys.setJellyfinPassword("")
             Logger.music.notice("JELLYFIN address switch: the password of the stored server is forgotten")
@@ -113,16 +128,19 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     /// access it gets there must not reach the next client.
     static func storedClient() -> JellyfinClient {
         let builtFor = AppStorageKeys.jellyfinServerURLValue
+        let builtUser = AppStorageKeys.jellyfinUsernameValue
         let client = JellyfinClient(
             serverURL: builtFor,
-            username: AppStorageKeys.jellyfinUsernameValue,
+            username: builtUser,
             password: AppStorageKeys.jellyfinPasswordValue,
             deviceId: AppStorageKeys.jellyfinDeviceIdValue,
             accessToken: AppStorageKeys.jellyfinTokenValue.isEmpty ? nil : AppStorageKeys.jellyfinTokenValue,
             userId: AppStorageKeys.jellyfinUserIdValue.isEmpty ? nil : AppStorageKeys.jellyfinUserIdValue)
         client.onTokenRefresh = { token, userId in
-            guard !ServerAddressSwitch.isSwitch(from: builtFor, to: AppStorageKeys.jellyfinServerURLValue) else {
-                Logger.music.notice("JELLYFIN sign-in of a former server not kept")
+            guard !ServerAddressSwitch.isAccountSwitch(fromAddress: builtFor, fromUser: builtUser,
+                                                       toAddress: AppStorageKeys.jellyfinServerURLValue,
+                                                       toUser: AppStorageKeys.jellyfinUsernameValue) else {
+                Logger.music.notice("JELLYFIN sign-in of a former account not kept")
                 return
             }
             AppStorageKeys.setJellyfinToken(token)

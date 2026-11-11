@@ -192,7 +192,16 @@ final class AuthViewModel: ObservableObject {
             _ = try await trial.fetchLibraries()
             // Whether this is another server than the one signed in before,
             // by the one rule of a switch.
-            let switched = ServerAddressSwitch.isSwitch(from: apiClient.baseURL.absoluteString, to: url.absoluteString)
+            // Another user at the same address is another account
+            // (`ServerAddressSwitch.isAccountSwitch`): the user's id is asked
+            // once, and an answer without one leaves the address alone to
+            // decide.
+            let formerAddress = apiClient.baseURL.absoluteString
+            let userId = (try? await trial.fetchUserId()) ?? nil
+            let serverSwitched = ServerAddressSwitch.isSwitch(from: formerAddress, to: url.absoluteString)
+            let switched = ServerAddressSwitch.isAccountSwitch(
+                fromAddress: formerAddress, fromUser: AppStorageKeys.string(AppStorageKeys.absSignedInUser) ?? "",
+                toAddress: url.absoluteString, toUser: userId ?? "")
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -200,6 +209,7 @@ final class AuthViewModel: ObservableObject {
             // Only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
             AppStorageKeys.noteABSSignIn(url.absoluteString, nowMs: Date().timeIntervalSince1970 * 1000)
+            AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser)
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""
@@ -218,6 +228,9 @@ final class AuthViewModel: ObservableObject {
             // so a pass for the new server writes after them; a sign-in
             // again to the same server keeps them.
             if switched { await Self.forgetFormerServer() }
+            // The stands the user before queued at this server stay theirs;
+            // another server keeps its own waiting under its name.
+            if switched, !serverSwitched { await SyncQueue.shared.forgetPending(onServer: formerAddress) }
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {

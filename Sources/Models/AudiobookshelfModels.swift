@@ -20,6 +20,12 @@ nonisolated struct LoginUser: Decodable {
 }
 
 /// Response of /api/me. Holds all of the user's progress entries.
+/// Who is signed in: the user's id from `api/me`, the account a stand
+/// belongs to (`AuthViewModel` compares it with the one signed in before).
+nonisolated struct MeIdentity: Decodable {
+    let id: String?
+}
+
 nonisolated struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
     let bookmarks: [ABSBookmark]?

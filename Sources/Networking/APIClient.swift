@@ -178,6 +178,12 @@ final class APIClient {
                            recentlyAdded: entities("recently-added"))
     }
 
+    /// The id of the signed-in user (`api/me`); nil when the answer names none.
+    func fetchUserId() async throws -> String? {
+        let data = try await get(path: "api/me")
+        return try await decode(MeIdentity.self, from: data).id
+    }
+
     /// All of the user's progress entries at once. Lets the whole library list
     /// be annotated with bars/status without a per-book request.
     func fetchAllProgress() async throws -> [String: BookProgress] {
