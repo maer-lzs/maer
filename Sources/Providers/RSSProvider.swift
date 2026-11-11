@@ -115,8 +115,8 @@ final class RSSProvider: AudioProvider {
 
     // MARK: - Chapters (Podcasting 2.0)
 
-    private struct PC20ChapterList: Decodable { let chapters: [PC20Chapter] }
-    private struct PC20Chapter: Decodable { let startTime: Double; let title: String? }
+    nonisolated private struct PC20ChapterList: Decodable { let chapters: [PC20Chapter] }
+    nonisolated private struct PC20Chapter: Decodable { let startTime: Double; let title: String? }
 
     /// Load chapter JSON and map it to `[ABSChapter]` (end = next start, episode
     /// duration for the last). Error → nil (episode plays without chapters).
@@ -128,7 +128,7 @@ final class RSSProvider: AudioProvider {
     /// The chapters of a chapter JSON, pure. A mark that is no length
     /// (huge, negative, non-finite) is left out, so it never reaches a
     /// conversion to whole seconds.
-    static func chapters(from data: Data, duration: Double) -> [ABSChapter]? {
+    nonisolated static func chapters(from data: Data, duration: Double) -> [ABSChapter]? {
         guard let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data) else { return nil }
         let marks = list.chapters.filter { PodcastDuration.known($0.startTime) == $0.startTime }
         guard !marks.isEmpty else { return nil }
