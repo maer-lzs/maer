@@ -29,6 +29,13 @@ struct ExportStaysHomeTests {
                     "https://feeds.example/show.xml?api_key="] {
             #expect(!PodcastFeedAddress.carriesAccess(raw), "\(raw) was held back")
         }
+        // A word counts whole, never inside another.
+        for name in ["author", "keyword", "design", "passage", "monkey", "sigma"] {
+            #expect(!PodcastFeedAddress.carriesAccess("https://feeds.example/show.xml?\(name)=x"), "\(name) was read as access")
+        }
+        for name in ["api_key", "apiKey", "accessToken", "X-Auth-Token", "session_id", "sid", "auth", "apikey", "user.pass"] {
+            #expect(PodcastFeedAddress.carriesAccess("https://feeds.example/show.xml?\(name)=x"), "\(name) was not read as access")
+        }
         #expect(!PodcastFeedAddress.isTokenFeedURL("https://feeds.example/show.xml?api_key=abc"),
                 "a wider access name made the feed premium")
     }

@@ -60,7 +60,9 @@ Siri or a widget while a title is still being looked up.
 export now also leaves out feeds from your own server (a Pinchflat mirror
 or any server you entered), feeds whose address carries a key or password
 under another name, and episode addresses that carry one. The podcast
-directory is asked about none of them either.
+directory is asked about none of them either. A feed whose address only
+looks like it, with a word such as author or keyword in it, stays a
+public feed.
 
 **Subscribing during a refresh of all podcasts sticks.** A show you
 subscribe to or unsubscribe from while all feeds are being refreshed now

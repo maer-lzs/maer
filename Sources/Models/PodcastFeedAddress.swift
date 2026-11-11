@@ -62,11 +62,34 @@ nonisolated enum PodcastFeedAddress {
     static let secretQueryParams: Set<String> =
         ["token", "auth", "key", "secret", "freebie"]
 
-    /// Parts of a query name that say its value is access, wider than
+    /// Words of a query name that say its value is access, wider than
     /// `secretQueryParams`, which decides premium: an address carrying one
     /// stays home, and is not called premium for it (`api_key`,
-    /// `access_token`, `password`, `sig`, `session_id` and the like).
-    static let accessNameParts = ["token", "auth", "key", "secret", "pass", "sig", "session", "freebie"]
+    /// `access_token`, `password`, `sig`, `session_id` and the like). A word
+    /// counts whole, never inside another (`author`, `keyword`, `design`,
+    /// `passage` are no access).
+    static let accessNameParts: Set<String> = ["token", "auth", "key", "secret", "pass", "password", "passwd",
+                                               "sig", "signature", "session", "sid", "freebie", "apikey"]
+
+    /// Whether a query name names access: the name or one of its words
+    /// (split at `_`, `-`, `.` and where a small letter meets a capital) is
+    /// one of `accessNameParts`.
+    static func namesAccess(_ name: String) -> Bool {
+        var words: [String] = []
+        var word = ""
+        var previous: Character?
+        for character in name {
+            if !character.isLetter && !character.isNumber {
+                words.append(word); word = ""
+            } else {
+                if character.isUppercase, let previous, previous.isLowercase { words.append(word); word = "" }
+                word.append(character)
+            }
+            previous = character
+        }
+        words.append(word)
+        return ([name] + words).contains { accessNameParts.contains($0.lowercased()) }
+    }
 
     /// Whether an address carries access at all: a secret in its query, by
     /// the premium names or a name with an access part, or a user or
@@ -78,8 +101,8 @@ nonisolated enum PodcastFeedAddress {
         if let q = text.firstIndex(of: "?"),
            text[text.index(after: q)...].split(separator: "&").contains(where: { pair in
                let parts = pair.split(separator: "=", maxSplits: 1)
-               let name = parts.first.map { $0.lowercased() } ?? ""
-               return parts.count == 2 && !parts[1].isEmpty && accessNameParts.contains { name.contains($0) }
+               let name = parts.first.map(String.init) ?? ""
+               return parts.count == 2 && !parts[1].isEmpty && namesAccess(name)
            }) {
             return true
         }
