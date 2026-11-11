@@ -193,21 +193,22 @@ final class AuthViewModel: ObservableObject {
             // Whether this is another server than the one signed in before,
             // by the one rule of a switch.
             // Another user at the same address is another account
-            // (`ServerAddressSwitch.isAccountSwitch`): the user's id is asked
+            // (`ServerAddressSwitch.signInSwitches`): the user's id is asked
             // once. A stored sign-in whose user is not noted (a build before
-            // the note) asks the server with the stored token; a user that
-            // stays unknown on either side counts as another account.
+            // the note) asks the server with the stored token. An ask that
+            // fails is no switch and forgets nothing.
             let formerAddress = apiClient.baseURL.absoluteString
             let serverSwitched = ServerAddressSwitch.isSwitch(from: formerAddress, to: url.absoluteString)
             let formerAccess = !(KeychainStore.load(forKey: KeychainKey.apiToken) ?? "").isEmpty
-            let userId = await Self.userId(of: trial, side: "new")
+            let answer = await Self.userId(of: trial, side: "new")
             var formerUser = AppStorageKeys.string(AppStorageKeys.absSignedInUser) ?? ""
-            if formerUser.isEmpty, formerAccess, !serverSwitched {
-                formerUser = await Self.userId(of: apiClient, side: "stored") ?? ""
+            if formerUser.isEmpty, formerAccess, !serverSwitched,
+               case .id(let stored) = await Self.userId(of: apiClient, side: "stored") {
+                formerUser = stored
             }
-            let switched = ServerAddressSwitch.isAccountSwitch(
-                fromAddress: formerAddress, fromUser: formerUser,
-                toAddress: url.absoluteString, toUser: userId ?? "", unknownIsSwitch: formerAccess)
+            let switched = ServerAddressSwitch.signInSwitches(fromAddress: formerAddress, storedUser: formerUser,
+                                                              toAddress: url.absoluteString, answer: answer)
+            let userId: String? = if case .id(let id) = answer { id } else { nil }
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -215,7 +216,9 @@ final class AuthViewModel: ObservableObject {
             // Only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
             AppStorageKeys.noteABSSignIn(url.absoluteString, nowMs: Date().timeIntervalSince1970 * 1000)
-            AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser)
+            // The noted user changes with a known id or a switch; an ask
+            // that failed keeps the note it found.
+            if userId != nil || switched { AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser) }
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""
@@ -318,18 +321,18 @@ final class AuthViewModel: ObservableObject {
         Task { await Self.forgetFormerServer() }
     }
 
-    /// The user's id as the server names it (`api/me`); nil, with a log
-    /// line, when the server does not answer with one.
-    static func userId(of client: APIClient, side: String) async -> String? {
+    /// The user's id as the server names it (`api/me`): an answer without
+    /// one and an ask that failed are two answers, each with a log line.
+    static func userId(of client: APIClient, side: String) async -> ServerAddressSwitch.UserAnswer {
         do {
             guard let id = try await client.fetchUserId(), !id.isEmpty else {
                 Logger.library.notice("AUTH user id unknown side=\(side, privacy: .public): the answer carries none")
-                return nil
+                return .carriesNone
             }
-            return id
+            return .id(id)
         } catch {
-            Logger.library.error("AUTH user id not read side=\(side, privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
-            return nil
+            Logger.library.error("AUTH user id not read side=\(side, privacy: .public) reason=\(FailureReason.of(error), privacy: .public): no switch, nothing forgotten")
+            return .notRead
         }
     }
 

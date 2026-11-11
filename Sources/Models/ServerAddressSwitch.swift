@@ -29,18 +29,39 @@ nonisolated enum ServerAddressSwitch {
     /// `isSwitch`, or another user at the same server. What the stored
     /// account was handed out, and what it wrote, belong to it alone. Names
     /// are compared without case and surrounding spaces; an empty stored or
-    /// new name is no switch (an empty field leaves the stored name), unless
-    /// `unknownIsSwitch`: where the user is learned from the server, not
-    /// typed, a stored account whose user or the new one's is unknown
-    /// cannot be shown to be the same, and counts as another.
-    static func isAccountSwitch(fromAddress: String, fromUser: String, toAddress: String, toUser: String,
-                                unknownIsSwitch: Bool = false) -> Bool {
+    /// new name is no switch (an empty field leaves the stored name).
+    static func isAccountSwitch(fromAddress: String, fromUser: String, toAddress: String, toUser: String) -> Bool {
         if isSwitch(from: fromAddress, to: toAddress) { return true }
         let before = fromUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let after = toUser.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        guard !before.isEmpty, !after.isEmpty else { return unknownIsSwitch }
+        guard !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !before.isEmpty, !after.isEmpty else { return false }
         return before != after
+    }
+
+    /// What a server said when asked for the signed-in user's id.
+    enum UserAnswer: Equatable, Sendable {
+        case id(String)
+        /// It answered, without an id.
+        case carriesNone
+        /// It could not be asked (no answer, an error): nothing is known.
+        case notRead
+    }
+
+    /// Whether a sign-in where the user is learned from the server
+    /// (Audiobookshelf, `api/me`) is another account: another server, two
+    /// different ids, or an answer without an id while the stored user is
+    /// known. An ask that failed is no switch and forgets nothing; a stored
+    /// user that is not known cannot tell either.
+    static func signInSwitches(fromAddress: String, storedUser: String, toAddress: String, answer: UserAnswer) -> Bool {
+        if isSwitch(from: fromAddress, to: toAddress) { return true }
+        let known = !storedUser.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        switch answer {
+        case .notRead: return false
+        case .carriesNone: return known
+        case .id(let id): return isAccountSwitch(fromAddress: fromAddress, fromUser: storedUser, toAddress: toAddress, toUser: id)
+        }
     }
 
     /// The password field of a form after a new address or user, and

@@ -98,22 +98,30 @@ struct ServerAddressSwitchTests {
         }
     }
 
-    @Test("Audiobookshelf: ein gespeichertes Konto mit Zugang, dessen Benutzer auf einer Seite unbekannt ist, ist ein anderes Konto", .needsTheSources)
-    func anUnknownUserIsAnotherAccount() throws {
+    @Test("Audiobookshelf: eine gescheiterte Frage nach dem Benutzer ist kein Wechsel; zwei Kennungen oder eine Antwort ohne Kennung bei bekanntem Benutzer sind einer", .needsTheSources)
+    func aFailedAskIsNoSwitch() throws {
+        typealias Rule = ServerAddressSwitch
         let a = "https://abs.a.example"
-        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "", toAddress: a, toUser: "u-2", unknownIsSwitch: true),
-                "a device from a build before the note signed in as another user and kept the stored account's stands")
-        #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "u-1", toAddress: a, toUser: "", unknownIsSwitch: true),
-                "an answer without an id counted as the same account")
-        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "u-1", toAddress: a, toUser: "u-1", unknownIsSwitch: true))
-        #expect(!ServerAddressSwitch.isAccountSwitch(fromAddress: "", fromUser: "", toAddress: a, toUser: "u-2", unknownIsSwitch: true),
-                "no stored server, nothing to forget")
+        #expect(!Rule.signInSwitches(fromAddress: a, storedUser: "u-1", toAddress: a, answer: .notRead),
+                "a sign-in again whose ask for the user failed dropped the waiting stands")
+        #expect(!Rule.signInSwitches(fromAddress: a, storedUser: "", toAddress: a, answer: .notRead))
+        #expect(Rule.signInSwitches(fromAddress: a, storedUser: "u-1", toAddress: a, answer: .id("u-2")))
+        #expect(!Rule.signInSwitches(fromAddress: a, storedUser: "u-1", toAddress: a, answer: .id("U-1")))
+        #expect(Rule.signInSwitches(fromAddress: a, storedUser: "u-1", toAddress: a, answer: .carriesNone),
+                "an answer without an id counted as the known user")
+        #expect(!Rule.signInSwitches(fromAddress: a, storedUser: "", toAddress: a, answer: .carriesNone),
+                "an unknown stored user counted as another")
+        #expect(!Rule.signInSwitches(fromAddress: a, storedUser: "", toAddress: a, answer: .id("u-2")),
+                "an unknown stored user counted as another")
+        #expect(Rule.signInSwitches(fromAddress: a, storedUser: "u-1", toAddress: "https://abs.b.example", answer: .notRead),
+                "another server is another account, asked or not")
         let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
-        #expect(auth.contains("formerUser = await Self.userId(of: apiClient, side: \"stored\") ?? \"\""),
+        #expect(auth.contains("case .id(let stored) = await Self.userId(of: apiClient, side: \"stored\") { formerUser = stored }"),
                 "a stored sign-in without a noted user does not ask the server with the stored token")
-        #expect(auth.contains("toUser: userId ?? \"\", unknownIsSwitch: formerAccess)"))
+        #expect(auth.contains("let switched = ServerAddressSwitch.signInSwitches(fromAddress: formerAddress, storedUser: formerUser, toAddress: url.absoluteString, answer: answer)"))
+        #expect(auth.contains("if userId != nil || switched { AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser) }"),
+                "a failed ask erases the noted user")
         #expect(auth.contains("AUTH user id not read side="), "a failed ask for the user passes in silence")
-        #expect(!auth.contains("(try? await trial.fetchUserId())"))
     }
 
     @Test("die wartenden Staende eines Servers gehen beim Wechsel des Benutzers, die anderer Server bleiben")
