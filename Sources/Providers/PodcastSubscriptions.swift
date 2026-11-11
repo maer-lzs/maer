@@ -2451,6 +2451,8 @@ final class PodcastSubscriptions: ObservableObject {
         // What each feed answered, by show id; merged into the stock as it
         // stands after the last answer, not into this copy.
         var fetched: [String: PodcastShow] = [:]
+        // What each feed said, for the line written after the union.
+        var said: [(show: PodcastShow, feed: String, status: Int)] = []
         for show in shows {
             var feedCount: Int?
             var status: Int?
@@ -2477,11 +2479,15 @@ final class PodcastSubscriptions: ObservableObject {
             // takes an episode out of a show. Numbers and the show's hash,
             // never an address.
             let unasked = if case .accessUnknown? = outcome { true } else { false }
-            // What the union makes of this show, by the one rule of the refresh.
-            let merged = Self.mergedRefresh(current: [show], fetched: fetched).shows.first?.episodes.count ?? show.episodes.count
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(merged)")
+            said.append((show, feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), status ?? 0))
         }
         let refreshed = Self.mergedRefresh(current: shows, fetched: fetched)
+        // One line per show, with what the one union made of it.
+        let union = Dictionary(refreshed.shows.map { ($0.id, $0.episodes.count) }, uniquingKeysWith: { first, _ in first })
+        for (show, feed, status) in said {
+            let merged = union[show.id] ?? show.episodes.count
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feed, privacy: .public) status=\(status) merged=\(merged)")
+        }
         shows = refreshed.shows
         let pairs = refreshed.pairs
         save()

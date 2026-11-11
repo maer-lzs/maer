@@ -206,7 +206,9 @@ struct FeedRefusalTests {
         #expect(seite.contains("\"Enter new link\""))
         let auffrischen = try sourceText("Sources/Providers/PodcastSubscriptions.swift")
         #expect(auffrischen.contains("if let outcome { noteRefusal(show, outcome) }"))
-        #expect(auffrischen.contains("status=\\(status ?? 0) merged="), "die Logzeile nennt den Status")
+        #expect(auffrischen.contains("status=\\(status) merged=\\(merged)"), "die Logzeile nennt den Status und die Vereinigung")
+        #expect(auffrischen.components(separatedBy: "Self.mergedRefresh(").count - 1 == 1,
+                "die Vereinigung wird fuer die Logzeile ein zweites Mal gerechnet")
     }
 
     // MARK: - Der Anmelde-Bogen fragt nur nach einer Aenderung
