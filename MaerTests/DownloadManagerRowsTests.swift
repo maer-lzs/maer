@@ -221,6 +221,17 @@ struct DownloadManagerRowsTests {
         #expect(empty.files == 0 && empty.bytes == 0, "a missing folder measures nothing")
     }
 
+    /// A track file of a title, as an earlier attempt left it: a provider
+    /// without addresses downloads nothing, and loaded means every track lies here.
+    /// Real sound: the folder's self-heal drops a file that does not read as audio.
+    @MainActor
+    static func placeTrack(_ index: Int, of itemId: String, in downloads: URL) throws {
+        let folder = downloads.appendingPathComponent(itemId, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let tone = try TickWorkTests().tone(seconds: 1)
+        try FileManager.default.moveItem(at: tone, to: folder.appendingPathComponent("\(index).\(tone.pathExtension)"))
+    }
+
     @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen")
     func theDirectoryCarriesTheExclusion() async throws {
         let home = try home()
@@ -241,6 +252,9 @@ struct DownloadManagerRowsTests {
             ABSAudioTrack(index: 0, startOffset: 0, duration: 1234, contentUrl: "/nowhere/0.m4b", metadata: nil)
         ])
 
+        // The provider names no address: the track lies here already, as
+        // an earlier attempt left it, so the download is whole.
+        try Self.placeTrack(0, of: "fresh", in: home.downloads)
         await manager.download(item: book, provider: MarkOnlyProvider(), kind: nil)
         #expect(manager.isDownloaded(itemId: "fresh"), "the download ended")
         // Read straight from the file, without awaitPendingWrites: the row
@@ -317,6 +331,7 @@ struct DownloadManagerRowsTests {
         let manager = home.manager()
         await manager.ensureScanned()
         let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "/nowhere/0.mp3", metadata: nil)
+        try Self.placeTrack(0, of: "lva:session-witness", in: home.downloads)
         await manager.download(item: Self.detail("lva:session-witness", tracks: [track]),
                                provider: OriginalCoverProvider(), kind: nil)
         #expect(manager.isDownloaded(itemId: "lva:session-witness"), "the precondition: the download ended")

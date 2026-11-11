@@ -576,9 +576,12 @@ struct ContinueBySourceTests {
                 "the player does not end before the rows forget, or the purgeable covers of the kind stay")
         for (key, family) in families {
             let place = try FetchAnswerTests.squeezedSource("Sources/Providers/\(family.place).swift")
-            #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String, player: PlayerCoordinator? = nil) -> Bool { guard ServerAddressSwitch.isSwitch(from: AppStorageKeys.\(key), to: newURL) else { return false }"),
+            // Another user at the same address is a switch of the account
+            // too; the user is the family's stored one unless the form names one.
+            let user = key.replacingOccurrences(of: "ServerURLValue", with: "UsernameValue")
+            #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String, user newUser: String? = nil, player: PlayerCoordinator? = nil) -> Bool { let storedUser = AppStorageKeys.\(user) guard ServerAddressSwitch.isAccountSwitch(fromAddress: AppStorageKeys.\(key), fromUser: storedUser, toAddress: newURL, toUser: newUser ?? storedUser) else { return false }"),
                     "\(family.place) does not ask the switch first")
-            #expect(place.contains("Task { await ServerLeaving.forget(\(family.owns), player: player) }"),
+            #expect(place.contains("Task { await ServerLeaving.forget(\(family.owns), player: player) if userOnly { await SyncQueue.shared.forgetPending(onServer: former) } }"),
                     "\(family.place) does not let the former server leave the device")
         }
         let writer = try FetchAnswerTests.squeezedSource("Sources/Providers/ContinueRowsWriter.swift")

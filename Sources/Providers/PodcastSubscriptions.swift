@@ -2477,8 +2477,7 @@ final class PodcastSubscriptions: ObservableObject {
             // takes an episode out of a show. Numbers and the show's hash,
             // never an address.
             let unasked = if case .accessUnknown? = outcome { true } else { false }
-            let merged = fetched[show.id].map { PodcastIdentity.merge(show, $0).episodes.count } ?? show.episodes.count
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0) merged=\(merged)")
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? (unasked ? "unasked" : "failed"), privacy: .public) status=\(status ?? 0)")
         }
         let refreshed = Self.mergedRefresh(current: shows, fetched: fetched)
         shows = refreshed.shows

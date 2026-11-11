@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// The one channel of playback notices: which notice shows as the pill, how
@@ -246,7 +247,12 @@ struct PlaybackNoticesTests {
         let model = try #require(coordinator.viewModel)
         model.showSourceHint(.loadFailed(.network))
         #expect(notices.shown == .loadFailed(.network), "the precondition: the stopping error stands")
+        // The seeded model built no player: its play is no start, and the
+        // error of the load stays (a load that failed starts nothing).
         model.play(caller: "remote")
+        #expect(notices.shown == .loadFailed(.network), "a play that started nothing let the error fall")
+        // Every start, from any way in, passes the one signal of a start.
+        model.playbackStarts.send()
         #expect(notices.shown == nil, "a start did not let the stopping error fall")
         model.pause()
     }

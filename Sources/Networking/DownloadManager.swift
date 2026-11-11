@@ -327,6 +327,15 @@ final class DownloadManager {
         trackCount > 0 && Set(0..<trackCount).isSubset(of: present)
     }
 
+    /// The track indices whose file lies in a folder, by name only
+    /// (`<index>.<ext>`): the count reads the folder and repairs nothing.
+    nonisolated static func presentIndices(in dir: URL) -> Set<Int> {
+        // bearable, because a folder that cannot be listed holds no track, and the title then counts as not whole
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil,
+                                                                  options: .skipsHiddenFiles)) ?? []
+        return Set(files.compactMap { Int($0.deletingPathExtension().lastPathComponent) })
+    }
+
     /// `expected` holds the number of tracks of each marked title; a marked
     /// folder that lacks one is no download (a build before the count
     /// marked it), counts as a remnant and can be loaded again.
@@ -352,8 +361,8 @@ final class DownloadManager {
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
-            if let count = expected[itemId], !isComplete(trackCount: count, present: Set(trackMap(in: dir).keys)) {
-                Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(trackMap(in: dir).count)")
+            if let count = expected[itemId], !isComplete(trackCount: count, present: presentIndices(in: dir)) {
+                Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(presentIndices(in: dir).count)")
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
@@ -958,7 +967,7 @@ final class DownloadManager {
             // Loaded means every track lies here as a file: a track the
             // source gave no address for, or that did not land, makes the
             // download fail, and the title does not count as offline.
-            let present = Set(Self.trackMap(in: dir).keys)
+            let present = Self.presentIndices(in: dir)
             guard Self.isComplete(trackCount: tracks.count, present: present) else {
                 Logger.library.error("DOWNLOADS incomplete tracks=\(tracks.count) present=\(present.count), not marked")
                 throw URLError(.resourceUnavailable)

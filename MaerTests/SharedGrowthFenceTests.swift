@@ -66,13 +66,15 @@ struct SharedGrowthFenceTests {
     /// list that observes the subscriptions and the episode page asks the
     /// show sources it already reads, so it falls to 368; the music
     /// catalogue area page nobody opened is removed with its grip, so it
-    /// falls to 367).
+    /// falls to 367; the map of sources observes the session so a sign-in
+    /// on the page it led to shows at once, one grip, written back as
+    /// measured: 368).
     /// It has fallen
     /// from 630 over the view cut; four times it was PAID rather than
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 367
+    nonisolated static let stock = 368
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -127,7 +129,10 @@ struct SharedGrowthFenceTests {
     /// is nothing to fold in payment. Written back as measured when it rises
     /// and when it falls, with the reason in the report: a stock above the
     /// count lets that many new grips in unseen.
-    nonisolated static let sourcesStock = 747
+    /// 751: the map of sources observes the session (one), and a change
+    /// of user at one address removes the stands queued there through the
+    /// one queue, from the Jellyfin, Subsonic and Audiobookshelf ways (three).
+    nonisolated static let sourcesStock = 751
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

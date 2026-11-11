@@ -47,6 +47,7 @@ enum GPodderParking {
     }
 
     static func save(_ actions: [GPodderEpisodeAction]) {
+        // bearable, because actions decoded from the server always encode, and an empty list leaves nothing parked
         guard !actions.isEmpty, let data = try? JSONEncoder().encode(actions) else {
             AppStorageKeys.remove(AppStorageKeys.gpodderParkedActions)
             return

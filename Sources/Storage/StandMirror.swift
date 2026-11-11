@@ -134,12 +134,16 @@ nonisolated final class StandMirror: Sendable {
                 return
             }
             if !moved {
-                // Rows at a start that neither moved nor resumes were written
-                // after a move: the mark read wrong. Nothing goes over them,
-                // the mark waits, and the next start resumes (the record of
-                // a started move is set now).
-                let rows = resumes ? 0 : try await store.count()
-                let flushedRows = resumes ? 0 : try await store.allFlushed().count
+                // Rows at a start that neither moved nor resumes, while the
+                // old keys hold nothing, were written after a move: the mark
+                // read wrong. Nothing goes over them, the mark waits, and the
+                // next start resumes (the record of a started move is set now).
+                // Only a repair over an empty stock is refused: it would
+                // remove every row. Old keys with rows beside them are the
+                // ordinary first start after a build that mirrored before
+                // the move.
+                let rows = resumes || !entries.isEmpty || !flushed.isEmpty ? 0 : try await store.count()
+                let flushedRows = resumes || !entries.isEmpty || !flushed.isEmpty ? 0 : try await store.allFlushed().count
                 if rows + flushedRows > 0 {
                     self.state.withLock { $0.unread = true }
                     Logger.library.error("STAND repair refused: the table holds rows the move mark does not explain; nothing goes, the mark waits")

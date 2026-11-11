@@ -155,11 +155,17 @@ struct UpNextAutoTests {
         let stripped = SyncContractFenceTests.stripped(source)
         #expect(stripped.components(separatedBy: "PodcastIdentity.merge(").count - 1 == 4,
                 "a new way merges a feed: hand its arrivals over, or say why not")
-        for head in ["func refreshAll() async {", "func absorb(_ fresh: PodcastShow, showId: String) async -> Int? {",
+        for head in ["func absorb(_ fresh: PodcastShow, showId: String) async -> Int? {",
                      "func recheckAccess(showId: String) async {"] {
             let body = try #require(functionBody(of: head, in: stripped), "\(head) was not found")
             #expect(body.contains("PodcastIdentity.merge(") && body.contains("UpNextArrivals.take("), "\(head)")
         }
+        // The refresh of all feeds merges through its pure rule, by id onto
+        // the stock as it stands, and hands the pairs it made over.
+        let refresh = try #require(functionBody(of: "func refreshAll() async {", in: stripped))
+        #expect(refresh.contains("Self.mergedRefresh(current: shows, fetched: fetched)") && refresh.contains("UpNextArrivals.take("))
+        let rule = try #require(functionBody(of: "nonisolated static func mergedRefresh(current: [PodcastShow], fetched: [String: PodcastShow])", in: stripped))
+        #expect(rule.contains("PodcastIdentity.merge("))
         #expect(stripped.components(separatedBy: "UpNextArrivals.take(").count - 1 == 3)
         // The queue's door for arrivals has one caller, and playNext and
         // playLast stay the person's.

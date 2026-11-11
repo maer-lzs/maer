@@ -48,7 +48,9 @@ struct StoppedStaysStoppedTests {
         // await, after the stop: a question only at the entrance of the
         // check passed it too.)
         let check = Task { await model.playWithServerCheck(caller: "remote play") }
-        for _ in 0..<5 { await Task.yield() }
+        // One turn of the main actor: the check runs to its first wait
+        // (the reconcile it starts comes after this test's next step).
+        await Task.yield()
         model.stop()
         await check.value
         #expect(!model.isPlaying, "the stopped model says it plays")
@@ -66,7 +68,9 @@ struct StoppedStaysStoppedTests {
         let counted = model.playbackStarts.sink { starts += 1 }
         defer { counted.cancel() }
         let check = Task { await model.playWithServerCheck(caller: "remote play") }
-        for _ in 0..<5 { await Task.yield() }
+        // One turn of the main actor: the check runs to its first wait
+        // (the reconcile it starts comes after this test's next step).
+        await Task.yield()
         model.pause(caller: "the person")
         await check.value
         #expect(!model.isPlaying, "the start played over the pause")
