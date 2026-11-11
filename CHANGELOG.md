@@ -12,7 +12,9 @@ the tabs now appear; and tapping Up Next twice shows one list.
 
 **An Audiobookshelf library that loads only in part no longer clears
 books.** The app keeps the library as its offline copy, and clears what
-belonged to books that are gone, only when every book arrived.
+belonged to books that are gone, only when every book arrived. A page
+that comes back short in the middle no longer stops the loading of the
+rest.
 
 **A book with a file that cannot be reached stops there instead of
 ending.** When a file in the middle of a book cannot be played at all,

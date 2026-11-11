@@ -980,9 +980,10 @@ final class LibraryViewModel: ObservableObject {
         isShowingOfflineCache = false
         var accumulated = first.items
         let total = first.total
-        // A page shorter than asked is the last one.
-        var endedShort = first.items.count < pageSize
         var distinct: Int { Set(accumulated.map(\.id)).count }
+        // After each page the one rule says whether to ask the next.
+        var step = LibraryCompleteness.afterPage(distinctBefore: 0, distinctAfter: distinct,
+                                                 pageCount: first.items.count, pageSize: pageSize, total: total)
         // Render partial pages ONLY when nothing is on screen yet (fresh install
         // / no cache). There a fast first page beats a blank wait, and the grid
         // only grows. With a cache already showing the full library, a partial
@@ -991,7 +992,7 @@ final class LibraryViewModel: ObservableObject {
         let renderPartialPages = entries.isEmpty
         if renderPartialPages {
             await rebuild(items: accumulated, progress: progress)
-            isLoadingMore = !endedShort && LibraryCompleteness.asksMore(distinctIds: distinct, total: total)
+            isLoadingMore = step == .askMore
         }
         isLoading = false   // first view is ready — spinner off, rest loads quietly
 
@@ -1002,12 +1003,16 @@ final class LibraryViewModel: ObservableObject {
         // identical but saves intermediate work.
         var page = 1
         do {
-            while !endedShort, LibraryCompleteness.asksMore(distinctIds: distinct, total: total) {
+            while step == .askMore {
                 let next = try await provider.fetchLibraryItemsPage(
                     libraryId: id, limit: pageSize, page: page)
-                if next.items.isEmpty { endedShort = true; break }
+                let before = distinct
                 accumulated += next.items
-                if next.items.count < pageSize { endedShort = true }
+                step = LibraryCompleteness.afterPage(distinctBefore: before, distinctAfter: distinct,
+                                                     pageCount: next.items.count, pageSize: pageSize, total: total)
+                if step == .stalled {
+                    Logger.library.error("LIBRARY page \(page) brought no new book, loading stops ids=\(distinct) total=\(total == LibraryCompleteness.unknownTotal ? -1 : total)")
+                }
                 page += 1
                 if renderPartialPages, page % 3 == 0 {
                     await rebuild(items: accumulated, progress: progress)
@@ -1025,7 +1030,7 @@ final class LibraryViewModel: ObservableObject {
         // Only persist and hand out ids with a FULLY loaded list. Otherwise
         // a partial list would overwrite the good offline cache, or (cleanup)
         // wrongly delete per-book keys of not-yet-loaded books.
-        guard LibraryCompleteness.isWhole(distinctIds: distinct, total: total, endedShort: endedShort) else {
+        guard LibraryCompleteness.isWhole(step) else {
             Logger.library.notice("LIBRARY list not whole ids=\(distinct) total=\(total == LibraryCompleteness.unknownTotal ? -1 : total): not kept, no cleanup")
             return nil
         }

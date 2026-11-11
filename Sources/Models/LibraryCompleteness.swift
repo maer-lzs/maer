@@ -5,23 +5,41 @@
 
 import Foundation
 
-/// When the pages of a library are the whole library. Only a whole list is
-/// kept as the offline copy and hands out its ids to the cleanup, which
-/// removes the rows of every book it does not name.
+/// When the pages of a library are the whole library, and when the load
+/// asks another page. Only a whole list is kept as the offline copy and
+/// hands out its ids to the cleanup, which removes the rows of every book
+/// it does not name.
 nonisolated enum LibraryCompleteness {
     /// The total of a library whose server answered none.
     static let unknownTotal = Int.max
 
-    /// Whether the load asks for another page: the distinct ids have not
-    /// reached the server's total, or the total is unknown.
-    static func asksMore(distinctIds: Int, total: Int) -> Bool {
-        total == unknownTotal || distinctIds < total
+    /// What a load does after a page.
+    enum Step: Equatable, Sendable {
+        /// Asks the next page.
+        case askMore
+        /// As many distinct ids as the server's total: whole.
+        case reachedTotal
+        /// Without a total, a page shorter than asked ended the list: whole.
+        case endedShort
+        /// The page brought no id not held already (an empty page with a
+        /// total not reached, or a source that ignores the page and sends
+        /// the same again): the load stops, and the list is not whole.
+        case stalled
     }
 
-    /// Whether the loaded pages are the whole library: as many distinct ids
-    /// as the server's total (a book sent twice on two pages is one), or,
-    /// without a total, a page that came back shorter than asked ended it.
-    static func isWhole(distinctIds: Int, total: Int, endedShort: Bool) -> Bool {
-        total == unknownTotal ? endedShort : distinctIds >= total
+    /// The step after a page. With a total, only the distinct ids decide:
+    /// a short page in the middle does not end the list. Without one, a
+    /// short page ends it. A page that brings nothing new stops the load
+    /// either way, so a source that ignores the page never loops.
+    static func afterPage(distinctBefore: Int, distinctAfter: Int, pageCount: Int, pageSize: Int, total: Int) -> Step {
+        if total != unknownTotal, distinctAfter >= total { return .reachedTotal }
+        if total == unknownTotal, pageCount < pageSize { return .endedShort }
+        if distinctAfter <= distinctBefore { return .stalled }
+        return .askMore
+    }
+
+    /// Whether the load that stopped at this step holds the whole library.
+    static func isWhole(_ step: Step) -> Bool {
+        step == .reachedTotal || step == .endedShort
     }
 }

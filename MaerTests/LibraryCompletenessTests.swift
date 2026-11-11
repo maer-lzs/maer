@@ -14,21 +14,75 @@ struct LibraryCompletenessTests {
     @Test("voll ist die Liste mit so vielen verschiedenen Kennungen wie total; ohne total endet sie an einer kurzen Seite")
     func wholeByDistinctIds() {
         typealias Rule = LibraryCompleteness
-        #expect(Rule.isWhole(distinctIds: 200, total: 200, endedShort: false))
-        #expect(!Rule.isWhole(distinctIds: 199, total: 200, endedShort: true), "a book sent twice made the list whole")
-        #expect(Rule.asksMore(distinctIds: 199, total: 200))
-        #expect(!Rule.asksMore(distinctIds: 200, total: 200))
-        // No total: the first page is not all of it.
-        #expect(Rule.asksMore(distinctIds: 50, total: Rule.unknownTotal))
-        #expect(!Rule.isWhole(distinctIds: 50, total: Rule.unknownTotal, endedShort: false),
-                "the length of the first page counted as the total")
-        #expect(Rule.isWhole(distinctIds: 73, total: Rule.unknownTotal, endedShort: true))
+        func step(_ before: Int, _ after: Int, page: Int, total: Int) -> Rule.Step {
+            Rule.afterPage(distinctBefore: before, distinctAfter: after, pageCount: page, pageSize: 50, total: total)
+        }
+        #expect(step(150, 200, page: 50, total: 200) == .reachedTotal)
+        #expect(step(150, 199, page: 50, total: 200) == .askMore, "a book sent twice made the list whole")
+        // With a total, a short page in the middle does not end the list.
+        #expect(step(0, 40, page: 40, total: 200) == .askMore, "a short page ended a list with a total")
+        // A page that brings nothing new stops, with or without a total.
+        #expect(step(59, 59, page: 60, total: 60) == .stalled)
+        #expect(step(40, 40, page: 0, total: 200) == .stalled)
+        #expect(step(50, 50, page: 50, total: Rule.unknownTotal) == .stalled)
+        // No total: the first page is not all of it, a short page ends it.
+        #expect(step(0, 50, page: 50, total: Rule.unknownTotal) == .askMore)
+        #expect(step(50, 73, page: 23, total: Rule.unknownTotal) == .endedShort)
+        #expect(Rule.isWhole(.reachedTotal) && Rule.isWhole(.endedShort))
+        #expect(!Rule.isWhole(.stalled) && !Rule.isWhole(.askMore), "a stopped or cut list counted as whole")
+    }
+
+    /// A source on the default paging (every page is the whole list) whose
+    /// list holds one book twice, longer than a page.
+    @MainActor
+    final class SamePageTwice: AudioProvider {
+        let books: [Maer.LibraryItem]
+        var asks = 0
+        init() {
+            let ids = (0..<59).map { "same-page-\($0)" } + ["same-page-0"]
+            books = BookCleanupTests.Libraries(["lib-same": ids]).books["lib-same"] ?? []
+        }
+        var providerId: String { "same-page-twice" }
+        var keepsMarksOnDevice: Bool { false }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [ABSLibrary(id: "lib-same", name: "lib-same", mediaType: "book")] }
+        func fetchLibraryItems(libraryId: String) async throws -> [Maer.LibraryItem] {
+            asks += 1
+            return books
+        }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail { throw NSError(domain: "same-page-twice", code: 404) }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    @Test("die Schleife gegen die Vorgabe des Blaetterns mit einer doppelten Kennung: sie endet nach der zweiten Seite, und die Liste ist nicht voll",
+          .timeLimit(.minutes(1)))
+    @MainActor
+    func theDefaultPagingEnds() async throws {
+        let keys = [AppStorageKeys.selectedLibraryId]
+        let saved = keys.map { ($0, AppStorageKeys.object($0)) }
+        defer { for (key, value) in saved { AppStorageKeys.set(value, for: key) } }
+        AppStorageKeys.set("lib-same", for: AppStorageKeys.selectedLibraryId)
+        let provider = SamePageTwice()
+        let model = LibraryViewModel(provider: provider)
+        await model.loadLibrary()
+        await model.keySweep?.value
+        #expect(provider.asks == 2, "the load asked the same page \(provider.asks) times")
+        #expect(model.keySweep == nil, "a list that never reached its total handed its ids to the cleanup")
     }
 
     @Test("die Bibliothek fragt die Regel und sagt einen Abbruch beim Nachladen", .needsTheSources)
     func theLibraryAsksTheRule() throws {
         let library = try FetchAnswerTests.squeezedSource("Sources/ViewModels/LibraryViewModel.swift")
-        #expect(library.contains("guard LibraryCompleteness.isWhole(distinctIds: distinct, total: total, endedShort: endedShort) else {"))
+        #expect(library.contains("guard LibraryCompleteness.isWhole(step) else {"))
+        #expect(library.contains("while step == .askMore {"), "the load asks past the rule")
+        #expect(library.contains(#"Logger.library.error("LIBRARY page \(page) brought no new book, loading stops"#))
         #expect(!library.contains("guard accumulated.count >= total else { return nil }"), "the count of entries decides again")
         #expect(library.contains(#"Logger.library.error("LIBRARY page \(page) failed, the list stays partial:"#), "the abort is silent")
         let client = try FetchAnswerTests.squeezedSource("Sources/Networking/APIClient.swift")
