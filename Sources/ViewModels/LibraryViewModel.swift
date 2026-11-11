@@ -980,6 +980,9 @@ final class LibraryViewModel: ObservableObject {
         isShowingOfflineCache = false
         var accumulated = first.items
         let total = first.total
+        // A page shorter than asked is the last one.
+        var endedShort = first.items.count < pageSize
+        var distinct: Int { Set(accumulated.map(\.id)).count }
         // Render partial pages ONLY when nothing is on screen yet (fresh install
         // / no cache). There a fast first page beats a blank wait, and the grid
         // only grows. With a cache already showing the full library, a partial
@@ -988,7 +991,7 @@ final class LibraryViewModel: ObservableObject {
         let renderPartialPages = entries.isEmpty
         if renderPartialPages {
             await rebuild(items: accumulated, progress: progress)
-            isLoadingMore = accumulated.count < total
+            isLoadingMore = !endedShort && LibraryCompleteness.asksMore(distinctIds: distinct, total: total)
         }
         isLoading = false   // first view is ready — spinner off, rest loads quietly
 
@@ -999,18 +1002,21 @@ final class LibraryViewModel: ObservableObject {
         // identical but saves intermediate work.
         var page = 1
         do {
-            while accumulated.count < total {
+            while !endedShort, LibraryCompleteness.asksMore(distinctIds: distinct, total: total) {
                 let next = try await provider.fetchLibraryItemsPage(
                     libraryId: id, limit: pageSize, page: page)
-                if next.items.isEmpty { break }
+                if next.items.isEmpty { endedShort = true; break }
                 accumulated += next.items
+                if next.items.count < pageSize { endedShort = true }
                 page += 1
                 if renderPartialPages, page % 3 == 0 {
                     await rebuild(items: accumulated, progress: progress)
                 }
             }
         } catch {
-            // Abort while loading more: keep the loaded partial list.
+            // Abort while loading more: keep the loaded partial list, which
+            // is then neither kept nor handed to the cleanup.
+            Logger.library.error("LIBRARY page \(page) failed, the list stays partial: \(FailureReason.of(error), privacy: .public)")
         }
         await rebuild(items: accumulated, progress: progress)   // final rebuild
         isLoadingMore = false
@@ -1019,7 +1025,10 @@ final class LibraryViewModel: ObservableObject {
         // Only persist and hand out ids with a FULLY loaded list. Otherwise
         // a partial list would overwrite the good offline cache, or (cleanup)
         // wrongly delete per-book keys of not-yet-loaded books.
-        guard accumulated.count >= total else { return nil }
+        guard LibraryCompleteness.isWhole(distinctIds: distinct, total: total, endedShort: endedShort) else {
+            Logger.library.notice("LIBRARY list not whole ids=\(distinct) total=\(total == LibraryCompleteness.unknownTotal ? -1 : total): not kept, no cleanup")
+            return nil
+        }
         saveLibraryDiskCache(items: accumulated, progress: progress)
         return Set(accumulated.map(\.id))
     }

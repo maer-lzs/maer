@@ -156,7 +156,9 @@ final class APIClient {
         let response: LibraryItemsResponse
         do { response = try await fetch(minified: true) }
         catch APIError.decoding { response = try await fetch(minified: false) }
-        return (response.results, response.total ?? response.results.count)
+        // A server that names no total is not one whose first page is all
+        // of it: the load pages on until a page comes back short.
+        return (response.results, response.total ?? LibraryCompleteness.unknownTotal)
     }
 
     /// "Continue Listening" + "Recently Added" from the ABS `personalized` view
