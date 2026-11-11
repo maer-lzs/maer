@@ -259,7 +259,13 @@ final class CatalogStockService: ObservableObject {
             // The run RESUMES. An app switch or a closed app costs the last
             // slice, never the run: what arrived is written down with the
             // cursor it stood at, and the next visit continues there.
-            let angefangen = store.load(surface: surface)
+            // Only an unfinished run resumes: a whole stock (the full
+            // refetch every thirty days) stays as it is until the new one
+            // is whole, also after a run that breaks off, and is replaced,
+            // never appended to.
+            let stored = store.load(surface: surface)
+            let replacesWhole = stored != nil && stored?.fetchCursor == nil
+            let angefangen = replacesWhole ? nil : stored
             var entries: [CatalogStockEntry] = angefangen?.entries ?? []
             var cursor: String? = angefangen?.fetchCursor
             var total = 0
@@ -275,7 +281,7 @@ final class CatalogStockService: ObservableObject {
                 // Written down BEFORE the next slice is asked. An
                 // interruption between two slices therefore keeps everything
                 // that came before it.
-                if cursor != nil { keepPartial(surface: surface, entries: entries, cursor: cursor) }
+                if cursor != nil, !replacesWhole { keepPartial(surface: surface, entries: entries, cursor: cursor) }
             } while cursor != nil && !Task.isCancelled
             // A cancelled run must never book its torso as a whole stock:
             // finish would clear the resume mark and stamp takenAt, and the
@@ -348,7 +354,7 @@ final class CatalogStockService: ObservableObject {
         }
         var stock = store.load(surface: surface)
             ?? CatalogStock(surface: surface, takenAt: 0, watermark: nil, entries: [])
-        stock.entries = entries
+        stock.entries = CatalogStockRules.deduplicated(entries)
         stock.takenAt = Date().timeIntervalSince1970
         stock.watermark = CatalogStockFetch.watermark(from: entries, previous: previous)
         // The run is whole, so the resume mark goes away.

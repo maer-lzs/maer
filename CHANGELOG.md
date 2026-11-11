@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**The free catalogue no longer lists every title twice after a month.**
+The monthly full refresh of the catalogue now replaces the list instead
+of adding to it, and a list that already holds titles twice is cleaned
+once.
+
 **A download with a missing file no longer counts as downloaded.** A
 title counts as downloaded only when every file lies on the device. A
 download that lacks one fails with the usual message, and a title marked

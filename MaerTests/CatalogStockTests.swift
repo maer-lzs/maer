@@ -446,4 +446,29 @@ struct CatalogStockTests {
         #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "resume")
         #expect(CatalogStockRules.loadVerdict(nil, isDump: false, now: now) == "full")
     }
+
+    /// A full refetch replaces the stock and never appends to it; a stock
+    /// that holds an id twice is healed once at its next read.
+    @Test("ein voller Neuabruf ersetzt, haengt nicht an; ein verdoppelter Bestand wird einmal entdoppelt")
+    func aFullRefetchReplaces() {
+        let old = [eintrag("a"), eintrag("b")]
+        var fresher = eintrag("a")
+        fresher.downloads = 9
+        let doubled = old + [fresher, eintrag("b"), eintrag("c")]
+        let healed = CatalogStockRules.deduplicated(doubled)
+        #expect(healed.map(\.id) == ["a", "b", "c"], "an id stayed twice: \(healed.map(\.id))")
+        #expect(healed.first?.downloads == 9, "the older entry won over the fresher")
+        #expect(CatalogStockRules.deduplicated(old) == old)
+    }
+
+    @Test("der volle Neuabruf saet nicht aus einem ganzen Bestand und schreibt keinen Teil darueber", .needsTheSources)
+    func theRefetchLeavesTheWholeStockStanding() throws {
+        let service = try FetchAnswerTests.squeezedSource("Sources/ViewModels/CatalogStockService.swift")
+        #expect(service.contains("let replacesWhole = stored != nil && stored?.fetchCursor == nil let angefangen = replacesWhole ? nil : stored"),
+                "the refetch seeds from the whole stock again")
+        #expect(service.contains("if cursor != nil, !replacesWhole { keepPartial("), "a partial is written over the whole stock")
+        #expect(service.contains("stock.entries = CatalogStockRules.deduplicated(entries)"))
+        let store = try FetchAnswerTests.squeezedSource("Sources/Networking/CatalogStockStore.swift")
+        #expect(store.contains("let once = CatalogStockRules.deduplicated(stock.entries)"), "a doubled stock is not healed at its read")
+    }
 }

@@ -51,7 +51,16 @@ nonisolated struct CatalogStockStore: Sendable {
         switch Ablage(directory: url.deletingLastPathComponent())
             .loadNow(CatalogStock.self, name: url.lastPathComponent) {
         case .fresh: return (nil, "missing")
-        case .loaded(let stock): return (stock, "present")
+        case .loaded(let stock):
+            // A stock that holds an id twice (a full refetch appended to
+            // the old one) is healed once, here, and written back.
+            let once = CatalogStockRules.deduplicated(stock.entries)
+            guard once.count != stock.entries.count else { return (stock, "present") }
+            var healed = stock
+            healed.entries = once
+            Logger.library.notice("STOCK \(surface, privacy: .public) held ids twice, healed entries=\(stock.entries.count) to=\(once.count)")
+            save(healed)
+            return (healed, "present")
         case .corrupt: return (nil, "undecodable")
         }
     }

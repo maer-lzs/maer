@@ -115,6 +115,19 @@ nonisolated enum CatalogStockRules {
     /// the stock: that is the class where a generator exited cleanly and
     /// left a dead data file behind. An empty slice therefore keeps
     /// everything and only moves the timestamp.
+    /// Every id once, the last of its entries winning (a later fetch is
+    /// the fresher word), in the order the ids first came. A stock a full
+    /// refetch appended to the old one is healed by it at its next read.
+    static func deduplicated(_ entries: [CatalogStockEntry]) -> [CatalogStockEntry] {
+        var last: [String: CatalogStockEntry] = [:]
+        var order: [String] = []
+        for entry in entries {
+            if last[entry.id] == nil { order.append(entry.id) }
+            last[entry.id] = entry
+        }
+        return order.compactMap { last[$0] }
+    }
+
     static func merged(_ kept: [CatalogStockEntry],
                        with fresh: [CatalogStockEntry]) -> [CatalogStockEntry] {
         guard !fresh.isEmpty else { return kept }
