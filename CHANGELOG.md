@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A download with a missing file no longer counts as downloaded.** A
+title counts as downloaded only when every file lies on the device. A
+download that lacks one fails with the usual message, and a title marked
+as downloaded by an earlier build with a gap can be downloaded again.
+
 **A slow server no longer gets a playlist twice.** Creating a playlist,
 adding songs, removing a song, reporting a play, adding a podcast to
 Audiobookshelf and sending gpodder listening states now go out once when

@@ -174,10 +174,12 @@ final class DownloadManager {
         // and publish the result one tick later.
         let downloadsDir = downloadsDirectory
         let marked = Set(details.keys)
+        // A mark without tracks says nothing about the files: not counted.
+        let expected = details.compactMapValues { $0.media?.tracks?.count }.filter { $0.value > 0 }
         scanTask = Task { [weak self] in
             // detached because the filesystem walk runs off the MainActor before first paint
             let scan = await Task.detached(priority: .userInitiated) {
-                Self.scanDownloads(downloadsDir: downloadsDir, marked: marked)
+                Self.scanDownloads(downloadsDir: downloadsDir, marked: marked, expected: expected)
             }.value
             guard let self else { return }
             self.scanUnreadable = !scan.readable
@@ -319,7 +321,16 @@ final class DownloadManager {
     /// folder itself could not be listed: then the empty answer means
     /// "unknown", never "no downloads". `remnants` are the folders without
     /// a mark, with the moment they were last changed.
-    nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
+    /// Whether a download lies whole: every track of the title as a file
+    /// of its index. One count for the end of a download and the start.
+    nonisolated static func isComplete(trackCount: Int, present: Set<Int>) -> Bool {
+        trackCount > 0 && Set(0..<trackCount).isSubset(of: present)
+    }
+
+    /// `expected` holds the number of tracks of each marked title; a marked
+    /// folder that lacks one is no download (a build before the count
+    /// marked it), counts as a remnant and can be loaded again.
+    nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>, expected: [String: Int] = [:])
         -> (ids: Set<String>, sizes: [String: Int64], readable: Bool, remnants: [String: Date]) {
         let dirs: [URL]
         do {
@@ -338,6 +349,11 @@ final class DownloadManager {
             // The mark is written only after a complete download. A folder
             // without a mark is an aborted remnant (kept for resume, not counted).
             guard marked.contains(itemId) else {
+                if let changed = lastChanged(dir) { remnants[itemId] = changed }
+                continue
+            }
+            if let count = expected[itemId], !isComplete(trackCount: count, present: Set(trackMap(in: dir).keys)) {
+                Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(trackMap(in: dir).count)")
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
@@ -937,6 +953,15 @@ final class DownloadManager {
                 // The backup exclusion sits on the Downloads directory, once.
 
                 completedFraction += perTrackWeight
+            }
+
+            // Loaded means every track lies here as a file: a track the
+            // source gave no address for, or that did not land, makes the
+            // download fail, and the title does not count as offline.
+            let present = Set(Self.trackMap(in: dir).keys)
+            guard Self.isComplete(trackCount: tracks.count, present: present) else {
+                Logger.library.error("DOWNLOADS incomplete tracks=\(tracks.count) present=\(present.count), not marked")
+                throw URLError(.resourceUnavailable)
             }
 
             // Save book details (chapters, duration, tracks) for real offline
