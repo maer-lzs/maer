@@ -21,6 +21,7 @@ struct DownloadWholeTests {
     }
 
     @Test("beim Start: ein vermerkter Titel mit fehlender Spur zaehlt nicht als geladen und ist wieder ladbar", .needsAudio)
+    @MainActor
     func aMarkedTitleWithAGapIsFoundAtStart() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("whole-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
