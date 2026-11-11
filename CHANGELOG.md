@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**What could not be read is not treated as empty.** When the app starts
+before the device is unlocked for the first time, or reads a mark of its
+own wrongly, it no longer empties or overwrites your listening positions
+with what it holds in that moment: it only adds what is newer and
+removes nothing until the positions read again.
+
 **An episode page with a broken chapter list opens.** A chapter list
 from a feed with an impossible chapter start, or a length from
 archive.org that is no length, no longer closes the app; such a chapter

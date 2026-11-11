@@ -207,6 +207,64 @@ struct PositionStockTests {
         #expect(defaults.object(forKey: "localPosition.rss:win:a") != nil, "an old key went over an unread table")
     }
 
+    @Test("liest der Start die Marke des Umzugs nicht, obwohl die Tabelle Zeilen hat, geht keine Zeile, und die Marke wartet")
+    func aMisreadMoveMarkEmptiesNothing() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        // A moved device whose marks read unset at this start: no old keys,
+        // rows in both tables.
+        try await store.upsert(Stand(itemId: "rss:kept:a", position: 50, updatedAtMs: 5_000, duration: nil))
+        _ = try await store.replaceFlushed(with: ["rss:kept:a": [50, 5_500]])
+        #expect(!ListeningStore.isMoved(in: defaults) && !ListeningStore.isMoveStarted(in: defaults), "the precondition: both marks read unset")
+
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        #expect(try await store.all()["rss:kept:a"]?.entry == [50, 5_000], "the start emptied the stand table")
+        #expect(try await store.allFlushed() == ["rss:kept:a": [50, 5_500]], "the start emptied the flushed table")
+        #expect(!ListeningStore.isMoved(in: defaults), "the mark came over a table the start did not read")
+        // A write of this run adds nothing older and removes nothing.
+        ListeningStore.store("rss:kept:a", entry: [10, 1_000], in: defaults)
+        ListeningStore.clearBackup("rss:kept:a", in: defaults)
+        await mirror.awaitPendingWrites()
+        #expect(try await store.all()["rss:kept:a"]?.entry == [50, 5_000], "a write of this run went over the row")
+    }
+
+    @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")
+    func aFailedReadWritesOnlyNewer() async throws {
+        let (defaults, name) = suite()
+        let (store, _, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        defaults.set(true, forKey: ListeningStore.movedKey)
+        try await store.upsert(Stand(itemId: "rss:row:a", position: 50, updatedAtMs: 5_000, duration: nil))
+        try await store.upsert(Stand(itemId: "rss:row:b", position: 20, updatedAtMs: 3_000, duration: nil))
+        try await store.upsertFlushed(itemId: "rss:row:a", entry: [50, 5_500])
+        struct Unreadable: Error {}
+
+        let mirror = StandMirror(store: store, loadNow: { throw Unreadable() })
+        mirror.start(defaults: defaults)
+        #expect(ListeningStore.readFailed(in: defaults), "the precondition: the table did not read at the start")
+        ListeningStore.store("rss:row:a", entry: [10, 1_000], in: defaults)
+        ListeningStore.store("rss:row:b", entry: [90, 9_000], in: defaults)
+        ListeningStore.clearBackup("rss:row:b", in: defaults)
+        ListeningStore.store("rss:row:c", entry: [7, 7_000], in: defaults)
+        await mirror.awaitPendingWrites()
+        let rows = try await store.all()
+        #expect(rows["rss:row:a"]?.entry == [50, 5_000], "an older stand went over the row")
+        #expect(rows["rss:row:b"]?.entry == [90, 9_000], "a newer stand did not land, or the removal went through")
+        #expect(rows["rss:row:c"]?.entry == [7, 7_000], "a new title did not land")
+        #expect(try await store.allFlushed()["rss:row:a"] == [50, 5_500])
+    }
+
     @Test("die Deckung, je Eintrag gleich oder neuer, ein Grabstein zaehlt wie jeder Eintrag")
     func theCoverageRule() {
         let legacy = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000], "radio:x": [5, 1],

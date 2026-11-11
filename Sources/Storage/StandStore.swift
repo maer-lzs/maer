@@ -94,6 +94,21 @@ actor StandStore {
                           stand.form.map { .real($0) } ?? .null])
     }
 
+    /// Like `upsert`, but over a row only when the stand is newer than it:
+    /// the write of a run whose stock was not read from this table, which
+    /// may add what is newer and never set an older stand over a row.
+    func upsertIfNewer(_ stand: Stand) async throws {
+        try await connection.run("""
+            INSERT INTO stand (item_id, position, updated_at_ms, duration, started_form) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET position = excluded.position,
+                updated_at_ms = excluded.updated_at_ms, duration = excluded.duration,
+                started_form = excluded.started_form
+            WHERE excluded.updated_at_ms > stand.updated_at_ms
+            """, [.text(stand.itemId), .real(stand.position), .real(stand.updatedAtMs),
+                  stand.duration.map { .real($0) } ?? .null,
+                  stand.form.map { .real($0) } ?? .null])
+    }
+
     /// The travelling part of the rows made exactly `backups` and `flushed`
     /// (what `travels` names and they lack goes), with `also` in the same
     /// transaction: the replacement of the stock at a change of account and
@@ -243,6 +258,16 @@ actor StandStore {
         try await connection.run("""
             INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
             ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+            """, [.text(itemId), .real(entry[0]), .real(entry[1])])
+    }
+
+    /// Like `upsertFlushed`, but over a row only when the entry is newer.
+    func upsertFlushedIfNewer(itemId: String, entry: [Double]) async throws {
+        guard entry.count >= 2 else { return }
+        try await connection.run("""
+            INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+            WHERE excluded.flushed_at_ms > stand_flushed.flushed_at_ms
             """, [.text(itemId), .real(entry[0]), .real(entry[1])])
     }
 

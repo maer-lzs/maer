@@ -39,6 +39,10 @@ nonisolated final class StandMirror: Sendable {
         /// The whole writes that landed, each with the number of writes
         /// handed over when it read the stock, and what travelled in it.
         var wholes: [(readAfter: Int, travels: @Sendable (String) -> Bool)] = []
+        /// The stock of this run was not read from the table (its read
+        /// failed, or the move mark reads unset over a table with rows): a
+        /// write may add what is newer than its row, nothing goes.
+        var unread = false
 
         /// Whether a whole write carries what the write numbered `index`
         /// wrote for `itemId`: it read the stock after that write was
@@ -121,12 +125,26 @@ nonisolated final class StandMirror: Sendable {
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
         let unread = resumes && ListeningStore.readFailed(in: defaults)
+        if unread || (moved && ListeningStore.readFailed(in: defaults)) {
+            state.withLock { $0.unread = true }
+        }
         enqueue { store in
             if unread {
                 Logger.library.error("STAND repair held: the move resumes over a table it could not read")
                 return
             }
             if !moved {
+                // Rows at a start that neither moved nor resumes were written
+                // after a move: the mark read wrong. Nothing goes over them,
+                // the mark waits, and the next start resumes (the record of
+                // a started move is set now).
+                let rows = resumes ? 0 : try await store.count()
+                let flushedRows = resumes ? 0 : try await store.allFlushed().count
+                if rows + flushedRows > 0 {
+                    self.state.withLock { $0.unread = true }
+                    Logger.library.error("STAND repair refused: the table holds rows the move mark does not explain; nothing goes, the mark waits")
+                    return
+                }
                 let written = try await store.importEntries(entries)
                 let removed = try await store.retainOnly(Set(entries.keys))
                 let pushed = try await store.replaceFlushed(with: flushed)
@@ -224,9 +242,16 @@ nonisolated final class StandMirror: Sendable {
     /// One write of what this device last pushed: an entry, or nil for a removal.
     func noteFlushed(itemId: String, entry: [Double]?, in written: ObjectIdentifier) {
         guard state.withLock({ $0.followed }) == written else { return }
-        enqueue(itemId: itemId) { store in
+        enqueue(itemId: itemId) { [self] store in
+            let unread = state.withLock { $0.unread }
             if let entry {
-                try await store.upsertFlushed(itemId: itemId, entry: entry)
+                if unread {
+                    try await store.upsertFlushedIfNewer(itemId: itemId, entry: entry)
+                } else {
+                    try await store.upsertFlushed(itemId: itemId, entry: entry)
+                }
+            } else if unread {
+                Logger.library.error("STAND removal refused: the stock was not read from the table in this run")
             } else {
                 try await store.removeFlushed(itemId: itemId)
             }
@@ -236,9 +261,12 @@ nonisolated final class StandMirror: Sendable {
     /// One write of the stock: an entry, or nil for a removal.
     func note(itemId: String, entry: [Double]?, in written: ObjectIdentifier) {
         guard state.withLock({ $0.followed }) == written else { return }
-        enqueue(itemId: itemId) { store in
+        enqueue(itemId: itemId) { [self] store in
+            let unread = state.withLock { $0.unread }
             if let entry, let stand = Stand(itemId: itemId, entry: entry) {
-                try await store.upsert(stand)
+                if unread { try await store.upsertIfNewer(stand) } else { try await store.upsert(stand) }
+            } else if unread {
+                Logger.library.error("STAND removal refused: the stock was not read from the table in this run")
             } else {
                 try await store.remove(itemId: itemId)
             }
