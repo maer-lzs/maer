@@ -249,6 +249,23 @@ struct ResumeTargetTests {
         #expect(!ResumeLink.asksToResume(other) && ResumeLink.itemId(in: other) == nil)
     }
 
+    @Test("ein Link maer: wird streng gelesen: nur die Form des Widgets und eine bekannte Kennung, sonst fragt er nichts")
+    func theLinkIsReadStrictly() throws {
+        typealias Check = ResumeLinkCheck
+        #expect(Check.ask(in: ResumeLink.url(itemId: nil)) == .resume)
+        #expect(Check.ask(in: try #require(URL(string: "maer://resume/"))) == .resume)
+        for id in ["li_book-1", "rss:https://feed.example/a?b=c&d#ep 1/ä", "sub:song:1", "jf:book:7"] {
+            #expect(Check.ask(in: ResumeLink.url(itemId: id)) == .title(id), "\(id) was refused")
+        }
+        for raw in ["maer://play/li_1", "maer://resume/li_1?autoplay=1", "maer://resume/li_1#x", "maer://user:pw@resume/li_1",
+                    "maer://resume:99/li_1", "maer:resume", "maer://resume/evil:payload", "MAER://resume/li_1"] {
+            #expect(Check.ask(in: try #require(URL(string: raw))) == nil, "\(raw) was taken")
+        }
+        #expect(Check.ask(in: ResumeLink.url(itemId: "rss:a\u{0007}b")) == nil, "a control character was taken")
+        #expect(Check.ask(in: ResumeLink.url(itemId: "li_" + String(repeating: "x", count: Check.longestId))) == nil,
+                "an endless title was taken")
+    }
+
     /// The text between a function's head and the next `func` of the file.
     private func body(of head: String, in file: String) throws -> String {
         let text = try FetchAnswerTests.squeezedSource(file)
@@ -302,8 +319,10 @@ struct ResumeTargetTests {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("ResumeRequest.pendingItemId = book.itemId"), "Siri's named book does not reach the door through the view")
         let link = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
-        #expect(link.contains("guard ResumeLink.asksToResume(url) else { return } ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)"),
+        #expect(link.contains("guard let ask = ResumeLinkCheck.ask(in: url) else {"), "a link reaches the door unchecked")
+        #expect(link.contains("if case .title(let id) = ask { ResumeRequest.pendingItemId = id } else { ResumeRequest.pendingItemId = nil }"),
                 "the widget's link does not hand its title to the door")
+        #expect(!link.contains("ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)"))
     }
 
     /// The door waits while the title resolves; another title opened

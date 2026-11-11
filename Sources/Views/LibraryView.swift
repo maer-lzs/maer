@@ -819,8 +819,14 @@ struct LibraryView: View {
         .onOpenURL { url in
             // Home-screen widget: maer://resume → resume path (like the quick
             // action / Siri); a row's link names its title like Siri does.
-            guard ResumeLink.asksToResume(url) else { return }
-            ResumeRequest.pendingItemId = ResumeLink.itemId(in: url)
+            // Read strictly: a link of another form asks nothing.
+            guard let ask = ResumeLinkCheck.ask(in: url) else {
+                if ResumeLink.asksToResume(url) {
+                    Logger.player.notice("RESUME link refused: not the form the widget builds")
+                }
+                return
+            }
+            if case .title(let id) = ask { ResumeRequest.pendingItemId = id } else { ResumeRequest.pendingItemId = nil }
             ResumeRequest.pending = true
             Task { await handlePendingResumeRequest() }
         }
