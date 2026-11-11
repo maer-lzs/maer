@@ -24,12 +24,32 @@
         }
       }
     },
+    "Mark all episodes as unplayed?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Folgen als ungehört markieren?"
+          }
+        }
+      }
+    },
     "The headers could not be saved. They are saved again when you change them or close this page." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Header konnten nicht gespeichert werden. Sie werden wieder gespeichert, wenn du sie änderst oder diese Seite schließt."
+          }
+        }
+      }
+    },
+    "Their listening positions go, on this device and on your other devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihre Hörstände gehen, auf diesem Gerät und auf deinen anderen Geräten."
           }
         }
       }

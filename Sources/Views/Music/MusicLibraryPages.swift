@@ -881,6 +881,9 @@ struct MaerPlaylistPage: View {
     @ObservedObject private var answerSources = RoutineAnswerSources.shared
     @State private var renaming = false
     @State private var newName = ""
+    /// Deleting the playlist goes to every device: it asks first, as the
+    /// card and the album page do.
+    @State private var deleting = false
     /// Reordering and deleting, switched from the page's menu.
     @State private var editMode: EditMode = .inactive
     /// Counts the passes in which the sources named covers the page lacked;
@@ -954,8 +957,11 @@ struct MaerPlaylistPage: View {
                 renaming = true
             } label: { Label("Rename", systemImage: "pencil") }
             Button(role: .destructive) {
-                store.delete(playlistId: playlistId)
+                deleting = true
             } label: { Label("Delete", systemImage: "trash") }
+        }
+        .confirmationDialog("Delete this playlist?", isPresented: $deleting, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) { store.delete(playlistId: playlistId) }
         }
         .alert("Rename", isPresented: $renaming) {
             TextField("Name", text: $newName)

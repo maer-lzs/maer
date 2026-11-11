@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**Two actions that reach every device ask first.** Marking all episodes
+of a show as unplayed and deleting a Mär playlist from its own page now
+ask before they act, as deleting a playlist already did on its card.
+
 **The sources overview shows a new sign-in at once.** After signing in to
 a music server, the overview no longer says that one is needed until you
 leave the page.

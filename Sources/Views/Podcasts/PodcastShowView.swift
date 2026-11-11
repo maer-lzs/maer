@@ -42,6 +42,9 @@ struct PodcastShowView: View {
     @State private var descriptionExpanded = false
     @State private var showDeleteConfirm = false
     @State private var showUnsubscribeConfirm = false
+    /// "Mark All as Unplayed" takes every position of the show, on every
+    /// device: it asks first.
+    @State private var showUnplayedConfirm = false
     // "Load older episodes" (ABS shows only): feed episodes not yet on the server.
     @State private var available: [FeedEpisode] = []
     @State private var availableLoaded = false
@@ -202,11 +205,18 @@ struct PodcastShowView: View {
                             Label("Mark All as Played", systemImage: "checkmark.circle")
                         }
                         Button {
-                            markAllEpisodes(played: false)
+                            showUnplayedConfirm = true
                         } label: {
                             Label("Mark All as Unplayed", systemImage: "circle")
                         }
                     }
+                }
+                .confirmationDialog("Mark all episodes as unplayed?", isPresented: $showUnplayedConfirm,
+                                    titleVisibility: .visible) {
+                    Button("Mark All as Unplayed", role: .destructive) { markAllEpisodes(played: false) }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Their listening positions go, on this device and on your other devices.")
                 }
         } rows: {
             // The server keeps refusing this feed. Below the header,
