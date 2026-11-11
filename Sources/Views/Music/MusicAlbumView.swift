@@ -319,17 +319,15 @@ struct MusicAlbumView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("Delete Playlist", role: .destructive) {
-                Task {
-                    let done = await FetchAnswer.of("playlist delete", logger: .music) {
-                        try await music.deletePlaylist(itemId: item.id)
-                    }
-                    music.librarySynced.send()
-                    // The page closes only on a deleted list; a refused delete
-                    // leaves it standing and says so.
-                    if done.failed { actionFailed = true } else { dismissView() }
+        .asksBeforeDeletingPlaylist(isPresented: $showDeleteConfirm) {
+            Task {
+                let done = await FetchAnswer.of("playlist delete", logger: .music) {
+                    try await music.deletePlaylist(itemId: item.id)
                 }
+                music.librarySynced.send()
+                // The page closes only on a deleted list; a refused delete
+                // leaves it standing and says so.
+                if done.failed { actionFailed = true } else { dismissView() }
             }
         }
         .actionFailedAlert($actionFailed)

@@ -251,14 +251,11 @@ struct PlaylistCard: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm,
-                            titleVisibility: .visible) {
-            Button("Delete Playlist", role: .destructive) {
-                Task {
-                    guard let delete = source.delete else { return }
-                    let done = await FetchAnswer.of("playlist delete", logger: .music) { try await delete() }
-                    if done.failed { actionFailed = true }
-                }
+        .asksBeforeDeletingPlaylist(isPresented: $showDeleteConfirm) {
+            Task {
+                guard let delete = source.delete else { return }
+                let done = await FetchAnswer.of("playlist delete", logger: .music) { try await delete() }
+                if done.failed { actionFailed = true }
             }
         }
         .actionFailedAlert($actionFailed)

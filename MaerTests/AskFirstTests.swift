@@ -27,10 +27,16 @@ struct AskFirstTests {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(page.contains("Button(role: .destructive) { deleting = true } label: { Label(\"Delete\", systemImage: \"trash\") }"),
                 "the page's menu deletes at once")
-        #expect(page.contains(".confirmationDialog(\"Delete this playlist?\", isPresented: $deleting, titleVisibility: .visible) { Button(\"Delete Playlist\", role: .destructive) { store.delete(playlistId: playlistId) } }"))
+        #expect(page.contains(".asksBeforeDeletingPlaylist(isPresented: $deleting) { store.delete(playlistId: playlistId) }"))
         #expect(page.components(separatedBy: "store.delete(playlistId:").count - 1 == 1, "another delete without the question")
-        let card = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistCard.swift")
-        #expect(card.contains(".confirmationDialog(\"Delete this playlist?\""))
+        // One question, in one place, at the three places.
+        for file in ["Sources/Views/Music/PlaylistCard.swift", "Sources/Views/Music/MusicAlbumView.swift"] {
+            #expect(try FetchAnswerTests.squeezedSource(file).contains(".asksBeforeDeletingPlaylist(isPresented: $showDeleteConfirm) {"),
+                    "\(file) asks in words of its own")
+        }
+        var spelled = 0
+        for (_, text) in ProjectFileIntegrityTests.sourceTexts() where text.contains("\"Delete this playlist?\"") { spelled += 1 }
+        #expect(spelled == 1, "the question is spelled out in \(spelled) files")
     }
 }
 #endif

@@ -960,9 +960,7 @@ struct MaerPlaylistPage: View {
                 deleting = true
             } label: { Label("Delete", systemImage: "trash") }
         }
-        .confirmationDialog("Delete this playlist?", isPresented: $deleting, titleVisibility: .visible) {
-            Button("Delete Playlist", role: .destructive) { store.delete(playlistId: playlistId) }
-        }
+        .asksBeforeDeletingPlaylist(isPresented: $deleting) { store.delete(playlistId: playlistId) }
         .alert("Rename", isPresented: $renaming) {
             TextField("Name", text: $newName)
             Button("Save") { store.rename(playlistId: playlistId, to: newName) }

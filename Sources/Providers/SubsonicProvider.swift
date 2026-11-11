@@ -1239,9 +1239,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// The server's bookmarks, asked each time: a list kept for the process
-    /// would hide a stand another device wrote since.
-    /// The server's bookmarks; without a client nothing was read, which is
-    /// no answer of the server, so it throws instead of saying none.
+    /// would hide a stand another device wrote since. Without a client
+    /// nothing was read, which is no answer of the server, so it throws
+    /// instead of saying none.
     private func loadBookmarks() async throws -> [SubsonicBookmark] {
         guard let client else { throw SubsonicClient.SubsonicError.network }
         return try await client.getBookmarks()
