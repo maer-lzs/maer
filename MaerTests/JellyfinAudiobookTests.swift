@@ -121,6 +121,27 @@ import Foundation
         #expect(!text.contains("\"true\""))
     }
 
+    /// The server's position carries the moment it was written: the write
+    /// sends `LastPlayedDate`, and the read gives it to the start, so an
+    /// older backup of this device no longer wins over another device's
+    /// newer position.
+    @Test("Jellyfin: der Schrieb traegt das Datum, der Stand des Servers liest es, und eine aeltere Sicherung gewinnt nicht")
+    func theServerStandCarriesItsMoment() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000.25)
+        let text = String(decoding: try JellyfinClient.userDataBody(seconds: 90, isFinished: false, now: now), as: UTF8.self)
+        #expect(text.contains("\"LastPlayedDate\":\"2027-01-15T08:00:00.250Z\""), "the write carries no moment: \(text)")
+        let wire = #"{"Id":"b1","UserData":{"PlaybackPositionTicks":30000000000,"LastPlayedDate":"2027-01-15T08:00:00.2500000Z"}}"#
+        let book = try JSONDecoder().decode(JFItem.self, from: Data(wire.utf8))
+        let stand = try #require(JellyfinProvider.standMs([book.userData]), "the read lost the moment")
+        #expect(abs(stand - 1_800_000_000_250) < 1)
+        #expect(JellyfinProvider.standMs([nil, book.userData, nil]) == stand)
+        #expect(JellyfinProvider.standMs([nil]) == nil)
+        // Device A kept minute 10 an hour before device B wrote minute 50.
+        #expect(!SyncRules.shouldRestoreLocalPosition(savedTime: 600, savedAtMs: stand - 3_600_000,
+                                                      serverTime: 3_000, serverUpdateMs: stand),
+                "the older backup of this device wins over the server's newer position")
+    }
+
     @Test func aNegativePositionNeverTravels() throws {
         let data = try JellyfinClient.userDataBody(seconds: -5, isFinished: false)
         #expect(String(decoding: data, as: UTF8.self).contains("\"PlaybackPositionTicks\":0"))

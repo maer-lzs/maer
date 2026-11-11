@@ -845,6 +845,14 @@ Die Buecher-Bibliothek erscheint NUR, wenn der Server eine hat — eine
 `books`-Bibliothek ist eine Einrichtung im Plugin, keine Selbstverstaendlichkeit.
 `updateProgress` verzweigt: ein BUCH schreibt eine Position, MUSIK nicht (ein
 Lied wird nicht fortgesetzt, es wird neu gespielt).
+Jeder Schrieb der Position traegt `LastPlayedDate` (jetzt, ISO-8601 mit
+Millisekunden, `JellyfinClient.userDataBody`), und das Lesen gibt den Moment
+als `lastUpdate` an den Start (`JellyfinProvider.standMs`: das neueste Datum
+des Buchs oder seiner Elemente, dieselbe Regel fuer die Liste): eine aeltere
+Sicherung des Geraets gewinnt nicht mehr ueber den neueren Stand eines anderen
+Geraets. Ob der Server das Datum aus dem Schrieb uebernimmt, ist **nicht
+gemessen** (keine Jellyfin-Testinstanz); ohne Datum bleibt es wie zuvor.
+Zeuge `JellyfinAudiobookTests.theServerStandCarriesItsMoment`.
 
 **Abnahme GETRAGEN** (`4470b34`): Verbinden · Browsen (2 Eintraege, RunTimeTicks 1818959999 = 182 s) · Abspielen (`/Audio/{id}/stream?static=true`, HTTP 200, 3.985.158 Bytes, MPEG-Rahmen) · Hoerstand 900000000 geschrieben und identisch zurueckgelesen.
 

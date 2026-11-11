@@ -305,9 +305,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard total > 0,
               let read = JellyfinBookFold.position(elements: group.elements, tracks: tracks, total: total)
         else { return nil }
-        let lastUpdate = group.elements
-            .compactMap { epochMs(fromJFDate: $0.userData?.lastPlayedDate) }
-            .max() ?? 0
+        let lastUpdate = standMs(group.elements.map(\.userData)) ?? 0
         return BookProgress(fraction: min(max(read.currentTime / total, 0), 1),
                             isFinished: read.isFinished,
                             lastUpdate: lastUpdate,
@@ -348,7 +346,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             userMediaProgress: read.map { state in
                 MediaProgress(currentTime: state.currentTime, duration: total,
                               progress: total > 0 ? state.currentTime / total : 0,
-                              isFinished: state.isFinished, lastUpdate: nil)
+                              isFinished: state.isFinished,
+                              lastUpdate: Self.standMs(elements.map(\.userData)))
             })
     }
 
@@ -432,7 +431,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                     return MediaProgress(
                         currentTime: seconds, duration: duration,
                         progress: duration.map { $0 > 0 ? seconds / $0 : 0 },
-                        isFinished: book.userData?.played ?? false, lastUpdate: nil)
+                        isFinished: book.userData?.played ?? false,
+                        lastUpdate: Self.standMs([book.userData]))
                 })
         } else if let songId = Self.id(itemId, kind: "song"), let song = try await client.item(id: songId) {
             songs = [song]; title = song.name; artist = song.artists?.first; genre = nil
@@ -858,6 +858,13 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     /// Jellyfin `DateCreated` → epoch ms. The 7-digit fraction Jellyfin sends
     /// is trimmed to 3 digits (ISO8601DateFormatter's supported shape).
+    /// When the server's position was written: the newest `LastPlayedDate`
+    /// of the item or its elements, in epoch ms; nil when none carries one
+    /// (a position written before the app sent the date).
+    nonisolated static func standMs(_ userData: [JFUserData?]) -> Double? {
+        userData.compactMap { epochMs(fromJFDate: $0?.lastPlayedDate) }.max()
+    }
+
     nonisolated static func epochMs(fromJFDate raw: String?) -> Double? {
         guard let raw, !raw.isEmpty else { return nil }
         var normalized = raw

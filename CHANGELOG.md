@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A Jellyfin audiobook starts where you last listened, on any device.**
+The app now tells the server when it wrote your position and reads that
+moment back. Before, the server's position had no time, so a device
+always started from its own older position instead of the newer one from
+another device.
+
 **What could not be read is not treated as empty.** When the app starts
 before the device is unlocked for the first time, or reads a mark of its
 own wrongly, it no longer empties or overwrites your listening positions

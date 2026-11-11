@@ -329,15 +329,23 @@ final class JellyfinClient {
     /// The body of a UserData write. Typed, so the ticks travel as a NUMBER
     /// and `Played` as a BOOL. A quoted "true" is a string, and a server that
     /// ignores a mistyped field does it without a word.
+    /// `LastPlayedDate` travels with every write: the server keeps it, and
+    /// the next read of the position learns when it was written. Without
+    /// it the server's position has no moment, and a device's older backup
+    /// of the position always won at its start.
     nonisolated struct UserDataWrite: Encodable {
         let PlaybackPositionTicks: Int64
         let Played: Bool
+        let LastPlayedDate: String
     }
 
-    nonisolated static func userDataBody(seconds: Double, isFinished: Bool) throws -> Data {
-        try JSONEncoder().encode(UserDataWrite(
+    nonisolated static func userDataBody(seconds: Double, isFinished: Bool, now: Date = Date()) throws -> Data {
+        let stamp = ISO8601DateFormatter()
+        stamp.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return try JSONEncoder().encode(UserDataWrite(
             PlaybackPositionTicks: Int64(max(0, seconds) * 10_000_000),
-            Played: isFinished))
+            Played: isFinished,
+            LastPlayedDate: stamp.string(from: now)))
     }
 
     func setPlaybackPosition(itemId: String, seconds: Double, isFinished: Bool) async throws {
