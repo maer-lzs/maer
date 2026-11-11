@@ -153,6 +153,27 @@ struct SignInStreamTests {
         #expect(!atTarget.isEmpty, "the later redirect was not followed, the limit was not measured")
     }
 
+    @Test("benannte Grenze: scheitert die Frage nach dem Ende und leitet die bekannte Adresse um, traegt der Strom die Anmeldung mit (gemessen)")
+    func theNamedLimitOfAFailedAsk() async throws {
+        let (origin, other) = try await hosts()
+        defer { origin.stop(); other.stop() }
+        let own = try #require(URL(string: "http://127.0.0.1:\(origin.port)"))
+        let start = try #require(URL(string: "http://127.0.0.1:\(origin.port)/start-failed.caf"))
+        origin.redirect(to: try #require(URL(string: "http://localhost:\(other.port)/failed-final.caf")))
+        // The ask for the end fails: the plan is the known address.
+        let plan = await SignInStream.plan(for: start, sourceHeaders: Self.signIn, signIn: Self.answer(own: own)) { _ in nil }
+        try #require(plan == .plain, "the precondition: a failed ask plans the stream at its address")
+        // Built as the queue builds a `.plain` stream: the address and the source's sign-in.
+        let asset = AVURLAsset(url: start, options: ["AVURLAssetHTTPHeaderFieldsKey": Self.signIn])
+        // bearable, because the measured fact is the head the host recorded, not the asset
+        _ = try? await asset.load(.duration)
+        try await Task.sleep(for: .milliseconds(400))
+        let atTarget = other.recorded.filter { $0.contains("/failed-final.caf") }
+        let carried = atTarget.filter { $0.contains(Self.needle) }.count
+        print("SIGNINFAILEDASK asked=\(atTarget.count) carried=\(carried)")
+        #expect(!atTarget.isEmpty, "the redirect was not followed, the limit was not measured")
+    }
+
     private func waitFor(_ condition: () -> Bool, seconds: Double = 15) async {
         let deadline = Date().addingTimeInterval(seconds)
         while !condition(), Date() < deadline {

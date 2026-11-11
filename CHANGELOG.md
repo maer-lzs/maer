@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A book whose next file cannot be reached waits visibly and stops at
+that file.** When a jump or the next file of a book waits for the server
+to say where its stream ends, the player shows that it is waiting, and
+it waits at most ten seconds for that answer. When the sign-in for the
+next file cannot be read until the device is unlocked, playback stops at
+the start of that file with a hint. Before, the jump showed nothing while
+it waited, and the book could end at the file before, marked as finished.
+
 ## v3.6.3 (Build 62)
 
 **A sign-in no longer follows a stream to another server.** When a

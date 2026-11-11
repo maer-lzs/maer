@@ -335,6 +335,50 @@ struct PlannedQueueTests {
         model.stop()
     }
 
+    @Test("ein Sprung an einen Wirt, der die Frage nach dem Ende annimmt und nie beantwortet, zeigt das Warten und baut nach der Grenze der Frage")
+    func aJumpToASilentHostShowsTheWaitAndEndsAtTheLimit() async throws {
+        let quick = try await host()
+        let silent = try await host(delay: 30)
+        defer { quick.stop(); silent.stop() }
+        let model = model()
+        await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
+                                      "http://127.0.0.1:\(silent.port)/track-1.caf"]))
+        try #require(model.player != nil, "the precondition: the load built a player")
+        let began = Date()
+        let jump = Task { await model.seek(to: 1.5, userInitiated: false) }
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(model.waitsOnTheStream, "the jump waits for its plan and shows nothing")
+        await jump.value
+        let waited = Date().timeIntervalSince(began)
+        // The limit of the ask is 10 s; the host answers after 30.
+        #expect(waited < 14, "the jump waited \(waited) s, past the limit of the ask")
+        #expect(PlannedQueueTests.playing(model) == "track-1.caf", "the jump built nothing after the ask ended")
+        #expect(!model.waitsOnTheStream, "the wait still shows after the jump built")
+        model.stop()
+    }
+
+    @Test("ist die Anmeldung der naechsten Spur gerade unlesbar, haelt die leergelaufene Warteschlange mit Hinweis an ihrem Anfang",
+          .needsAudio)
+    func aDryQueueWhoseNextSignInCannotBeReadStops() async throws {
+        let quick = try await host()
+        let slow = try await host(delay: 2)
+        defer { quick.stop(); slow.stop() }
+        let provider = LockingProvider()
+        let model = PlayerViewModel(provider: provider, localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
+                                      "http://127.0.0.1:\(slow.port)/track-1.caf"]))
+        try #require(model._testQueuedTracks() == [0], "the precondition: track 1 waits for its plan")
+        // The sign-in of track 1 cannot be read any more.
+        provider.locked.insert("/track-1.caf")
+        model.player?.volume = 0
+        model.play()
+        await waitFor({ !model.isPlaying }, seconds: 15)
+        #expect(!model.isPlaying, "the queue ran out and playback stands at playing")
+        #expect(model.sourceHint?.kind == .cannotPlay, "the stop said nothing: \(String(describing: model.sourceHint))")
+        #expect(model.currentTime == 1, "playback stopped at \(model.currentTime) s, not at the start of track 1")
+        model.stop()
+    }
+
     static func playing(_ model: PlayerViewModel) -> String? {
         (model.player?.currentItem?.asset as? AVURLAsset)?.url.lastPathComponent
     }

@@ -849,10 +849,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard let planner = streamPlanner, let url = resolveTrackURL(index: index) else { return }
         planWindow(from: index)
         Task { [weak self] in
-            await Self.awaitPlan(url, of: planner, for: "the next track")
+            await self?.awaitPlanShowingTheWait(url, of: planner, for: "the next track")
             guard let self, self.streamPlanner === planner, !self.isStopped, self.waitsForPlannedTrack else { return }
             self.appendPlannedTracks()
         }
+    }
+
+    /// `awaitPlan` while playback stands at a track that waits for it (a
+    /// jump, a queue that ran out): the player shows the wait it shows for
+    /// a stream that stops delivering, until the plan lands.
+    private func awaitPlanShowingTheWait(_ url: URL, of planner: StreamPlanner, for need: String) async {
+        let shows = planner.plans[url] == nil
+        if shows { waitsOnTheStream = true }
+        await Self.awaitPlan(url, of: planner, for: need)
+        if shows, streamPlanner === planner { waitsOnTheStream = false }
     }
 
     /// The one wait for the plan of a track that a start, a jump, a rebuild
@@ -924,6 +934,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: waitedFor) }
                     break
                 }
+            }
+            // A track whose sign-in cannot be read now is not skipped: the
+            // queue waits before it, a queue that ran out stops there, and
+            // the book does not end at the track before it.
+            if let url = resolveTrackURL(index: index), !url.isFileURL,
+               provider.streamAuthHeaders(forItemId: self.item?.id ?? "", to: url) == nil {
+                if waitsForPlannedTrack, last == nil { stopWaitingForPlan(at: waitedFor) }
+                break
             }
             queueAppendIndex += 1
             guard let item = queueItem(index: index, isRadio: isRadio) else { continue }
@@ -1400,7 +1418,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Jump across a track boundary. Rebuild the queue; a track whose
             // plan has not landed is asked first.
             if let planner = streamPlanner, let url = resolveTrackURL(index: targetIndex), awaitsPlan(url) {
-                await Self.awaitPlan(url, of: planner, for: "a jump")
+                await awaitPlanShowingTheWait(url, of: planner, for: "a jump")
                 // A title opened or a later jump while the plan was asked
                 // owns the player now, and a model stopped meanwhile stays stopped.
                 guard streamPlanner === planner, seekCount == jump, !isStopped else {

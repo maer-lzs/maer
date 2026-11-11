@@ -212,6 +212,12 @@ nonisolated enum ServerHeaders {
         return kept
     }
 
+    /// How long the ask for the end of a stream's redirects may stay
+    /// without an answer: a start, a jump and a rebuild wait for it, so a
+    /// host that accepts and never answers holds them this long and no
+    /// longer (the request's own default is 60 s).
+    nonisolated static let endAskLimit: TimeInterval = 10
+
     /// The address at the end of a request's redirects, or nil when it
     /// cannot be asked. Asked once over the HTTP door with
     /// `Range: bytes=0-0`; only the head of the answer is read, because a
@@ -222,6 +228,7 @@ nonisolated enum ServerHeaders {
         guard let url = request.url else { return nil }
         var probe = request
         probe.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        probe.timeoutInterval = endAskLimit
         do {
             let (bytes, response) = try await HTTP.bytes(for: probe)
             bytes.task.cancel()

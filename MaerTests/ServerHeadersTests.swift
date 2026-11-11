@@ -878,8 +878,11 @@ struct ServerHeadersFenceTests {
         for (way, need) in [("func load(item: LibraryItemDetail", "the start"), ("func seek(to time: Double", "a jump"),
                             ("private func rebuildAfterLoadFailure(", "a rebuild"), ("private func awaitPlanOfDryQueue(", "the next track")] {
             let body = try #require(functionBody(of: way, in: player), "\(way) is gone")
-            #expect(body.contains("await Self.awaitPlan(") && body.contains("for: \"\(need)\")"), "\(way) does not wait at the one place")
+            #expect((body.contains("await Self.awaitPlan(") || body.contains("awaitPlanShowingTheWait(")) && body.contains("for: \"\(need)\")"),
+                    "\(way) does not wait at the one place")
         }
+        let shown = try #require(functionBody(of: "private func awaitPlanShowingTheWait(", in: player))
+        #expect(shown.contains("await Self.awaitPlan(url, of: planner, for: need)"), "the visible wait waits past the one place")
         let planner = try Self.code("Sources/ViewModels/StreamPlanner.swift")
         #expect(!planner.contains("within"), "the planner has a deadline for a plan")
         #expect(player.contains("if let url = resolveTrackURL(index: index), awaitsPlan(url) {\n                queueAppendIndex = index\n                break"),

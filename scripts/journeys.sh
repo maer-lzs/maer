@@ -98,8 +98,6 @@ if [[ -z "$udid" ]]; then
         || { echo "no template: $DEVICE does not exist on $runtime, set MAER_JOURNEY_DEVICE or MAER_JOURNEY_RUNTIME" >&2; exit 2; }
     echo "template created: $TEMPLATE ($udid)"
 fi
-xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
-xcrun simctl erase "$udid"
 # Sound and microphone of the template on a silent device, so a run does not
 # break the Mac's sound: a running simulator disturbs coreaudiod.
 # The erase removes the choice, so it is written after every erase, before
@@ -107,16 +105,21 @@ xcrun simctl erase "$udid"
 # installed and without the variable the template keeps the Mac's devices.
 audio_uid=${MAER_JOURNEY_AUDIO_UID:-}
 [[ -z "$audio_uid" && -d /Library/Audio/Plug-Ins/HAL/BlackHole2ch.driver ]] && audio_uid=BlackHole2ch_UID
-if [[ -n "$audio_uid" ]]; then
-    audio_dir="$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/var/run"
-    audio_plist="$audio_dir/com.apple.coresimulator.audio.plist"
-    mkdir -p "$audio_dir" && { [[ -f "$audio_plist" ]] || plutil -create xml1 "$audio_plist"; } \
-        && plutil -replace sim_output_device_uid -string "$audio_uid" "$audio_plist" \
-        && plutil -replace sim_input_device_uid -string "$audio_uid" "$audio_plist" \
-        && plutil -replace useHostDefaultOutputDevice -bool NO "$audio_plist" \
-        && plutil -replace useHostDefaultInputDevice -bool NO "$audio_plist" \
-        || { echo "audio device of the template not set" >&2; exit 2; }
-fi
+fresh_template() {
+    xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+    xcrun simctl erase "$udid"
+    if [[ -n "$audio_uid" ]]; then
+        audio_dir="$HOME/Library/Developer/CoreSimulator/Devices/$udid/data/var/run"
+        audio_plist="$audio_dir/com.apple.coresimulator.audio.plist"
+        mkdir -p "$audio_dir" && { [[ -f "$audio_plist" ]] || plutil -create xml1 "$audio_plist"; } \
+            && plutil -replace sim_output_device_uid -string "$audio_uid" "$audio_plist" \
+            && plutil -replace sim_input_device_uid -string "$audio_uid" "$audio_plist" \
+            && plutil -replace useHostDefaultOutputDevice -bool NO "$audio_plist" \
+            && plutil -replace useHostDefaultInputDevice -bool NO "$audio_plist" \
+            || { echo "audio device of the template not set" >&2; exit 2; }
+    fi
+}
+fresh_template
 
 # 3. Build once, then run. A lower target applies to this build only; the
 # project keeps its own.
@@ -151,13 +154,39 @@ fi
 # No simulator diagnostics after the run: the option ends the run seconds
 # after the closing line; without it xcodebuild collects them after the last
 # journey for up to 600 s.
-xcodebuild test-without-building "${built[@]}" \
-    -destination "platform=iOS Simulator,id=$udid" \
-    "${parallel[@]}" -collect-test-diagnostics never \
-    -resultBundlePath "$RESULT" "${only[@]}" "${skip[@]}" > "$LOG" 2>&1
+# A server journey signs in, and each needs an app that never did: a server
+# run takes them one at a time, each on the freshly erased template, into
+# the one log (measured 10.11. and 11.11.2026: the second of two server
+# journeys in one run failed at its own precondition, the map of sources).
+runs=("${only[@]}")
+if [[ "${MAER_JOURNEY_SERVERS:-0}" == 1 && "${only[*]}" == "-only-testing:MaerUITests/ServerJourneys" ]]; then
+    runs=()
+    for name in $(grep -oE 'func (test[A-Za-z0-9_]+)\(' MaerUITests/ServerJourneys.swift | sed -E 's/func (test[A-Za-z0-9_]+)\(/\1/'); do
+        runs+=("-only-testing:MaerUITests/ServerJourneys/$name")
+    done
+    [[ ${#runs[@]} -gt 0 ]] || { echo "no server journey found in MaerUITests/ServerJourneys.swift" >&2; exit 2; }
+fi
+: > "$LOG"
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
 # the script right here and no summary was ever written.
-rc=$?
+rc=0
+if [[ "${runs[*]}" != "${only[*]}" ]]; then
+    n=0
+    for one in "${runs[@]}"; do
+        n=$((n + 1))
+        [[ $n -gt 1 ]] && fresh_template
+        xcodebuild test-without-building "${built[@]}" \
+            -destination "platform=iOS Simulator,id=$udid" \
+            "${parallel[@]}" -collect-test-diagnostics never \
+            -resultBundlePath "${RESULT%.xcresult}-$n.xcresult" "$one" >> "$LOG" 2>&1 || rc=65
+    done
+else
+    xcodebuild test-without-building "${built[@]}" \
+        -destination "platform=iOS Simulator,id=$udid" \
+        "${parallel[@]}" -collect-test-diagnostics never \
+        -resultBundlePath "$RESULT" "${only[@]}" "${skip[@]}" > "$LOG" 2>&1
+    rc=$?
+fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 ELAPSED=$(( $(date +%s) - STARTED ))
 
