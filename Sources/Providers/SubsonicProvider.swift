@@ -1176,9 +1176,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         if UITestSeed.isActive { return UITestSeed.seedMusicContinue }
         #endif
         guard client != nil else { return [:] }
-        if let bookmarks = try? await loadBookmarks(), !bookmarks.isEmpty {
-            let byPlaylist = await playlistProgress(from: bookmarks)
-            if !byPlaylist.isEmpty { return byPlaylist }
+        do {
+            let bookmarks = try await loadBookmarks()
+            if !bookmarks.isEmpty {
+                let byPlaylist = await playlistProgress(from: bookmarks)
+                if !byPlaylist.isEmpty { return byPlaylist }
+            }
+        } catch {
+            Logger.music.error("BOOKMARK read failed by=progress reason=\(FailureReason.of(error), privacy: .public): the local positions answer")
         }
         return await localPlaylistProgress()
     }
@@ -1234,8 +1239,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The server's bookmarks, asked each time: a list kept for the process
     /// would hide a stand another device wrote since.
+    /// The server's bookmarks; without a client nothing was read, which is
+    /// no answer of the server, so it throws instead of saying none.
     private func loadBookmarks() async throws -> [SubsonicBookmark] {
-        guard let client else { return [] }
+        guard let client else { throw SubsonicClient.SubsonicError.network }
         return try await client.getBookmarks()
     }
 

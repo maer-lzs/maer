@@ -88,7 +88,10 @@ struct BooksonicBookmarkTests {
         let source = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))
         #expect(!source.contains("bookmarksCache"), "a list of the bookmarks is kept for the process again")
-        #expect(source.contains("guard let client else { return [] }\n        return try await client.getBookmarks()"))
+        #expect(source.contains("guard let client else { throw SubsonicClient.SubsonicError.network }\n        return try await client.getBookmarks()"),
+                "without a client the read says none, and the open clears the hold without a read")
+        #expect(!source.contains("try? await loadBookmarks()"), "a failed read of the bookmarks passes without a line")
+        #expect(source.contains("BOOKMARK read failed by=progress"))
         #expect(!source.contains("try? await loadBookmarks()\n              let songs"), "the open swallows a failed read")
         #expect(source.contains("bookmarksUnread.insert(itemId)"), "a failed read at the open is not remembered")
         let held = try #require(source.range(of: "if bookmarksUnread.contains(itemId) {"), "the write does not ask whether the open read")
