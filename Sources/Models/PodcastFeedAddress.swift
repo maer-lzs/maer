@@ -88,8 +88,23 @@ nonisolated enum PodcastFeedAddress {
             previous = character
         }
         words.append(word)
-        return ([name] + words).contains { accessNameParts.contains($0.lowercased()) }
+        if ([name] + words).contains(where: { accessNameParts.contains($0.lowercased()) }) { return true }
+        // A name written as one word (`authtoken`, `accesskey`, `sessionid`):
+        // it begins or ends with a hard word, or ends with `key` right after
+        // a word that makes it access. Soft words (`auth`, `key`, `pass`,
+        // `sig`) count only whole, so `author`, `keyword`, `passage`,
+        // `monkey` and `sigma` stay names.
+        let joined = name.lowercased().filter { $0.isLetter || $0.isNumber }
+        if accessHardWords.contains(where: { joined.hasPrefix($0) || joined.hasSuffix($0) }) { return true }
+        if accessKeyLeads.contains(where: { joined.hasSuffix($0 + "key") }) { return true }
+        return joined.hasPrefix("session") || joined.hasSuffix("pass") || joined.hasSuffix("auth")
     }
+
+    /// Words that say access wherever they stand in a name written as one.
+    static let accessHardWords = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature"]
+
+    /// Words that make a following `key` an access key.
+    static let accessKeyLeads = ["api", "access", "auth", "secret", "private", "session", "client", "signing"]
 
     /// Whether an address carries access at all: a secret in its query, by
     /// the premium names or a name with an access part, or a user or
