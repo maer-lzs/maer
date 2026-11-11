@@ -335,7 +335,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("ein Sprung an einen Wirt, der die Frage nach dem Ende annimmt und nie beantwortet, zeigt das Warten und baut nach der Grenze der Frage")
+    @Test("ein Sprung an einen Wirt, der die Frage nach dem Ende annimmt und nie beantwortet, zeigt das Warten und baut nach der Grenze der Frage nichts an der unbekannten Adresse")
     func aJumpToASilentHostShowsTheWaitAndEndsAtTheLimit() async throws {
         let quick = try await host()
         let silent = try await host(delay: 30)
@@ -352,8 +352,9 @@ struct PlannedQueueTests {
         let waited = Date().timeIntervalSince(began)
         // The limit of the ask is 10 s; the host answers after 30.
         #expect(waited < 14, "the jump waited \(waited) s, past the limit of the ask")
-        #expect(PlannedQueueTests.playing(model) == "track-1.caf", "the jump built nothing after the ask ended")
-        #expect(!model.waitsOnTheStream, "the wait still shows after the jump built")
+        #expect(PlannedQueueTests.playing(model) != "track-1.caf",
+                "the jump built the track at an address whose end is unknown, with the headers")
+        #expect(!model.waitsOnTheStream, "the wait still shows after the ask ended")
         model.stop()
     }
 

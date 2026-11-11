@@ -166,8 +166,14 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         }
         // The background session follows a redirect without asking its
         // delegate and carries the headers along (measured), so a server
-        // with headers is asked at the end of its redirects.
-        if let server { identified = await ServerHeaders.end(of: identified, server: server) }
+        // with headers is asked at the end of its redirects; an end that
+        // cannot be asked fails the download, which can be tried again.
+        if let server {
+            guard let end = await ServerHeaders.end(of: identified, server: server) else {
+                throw URLError(.cannotConnectToHost)
+            }
+            identified = end
+        }
         AppUserAgent.applyIfMissing(to: &identified)
         let request = identified
         // Resume data carries the request it was paused with, headers and

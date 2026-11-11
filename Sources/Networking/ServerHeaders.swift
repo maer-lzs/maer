@@ -246,7 +246,9 @@ nonisolated enum ServerHeaders {
         guard let server = ServerHeaderRule.entry(for: url, in: entries) else { return .plain }
         var request = URLRequest(url: url)
         for (name, value) in sourceHeaders { request.setValue(value, forHTTPHeaderField: name) }
-        let end = await self.end(of: ServerHeaderRule.applied(request, entries: entries), server: server)
+        guard let end = await self.end(of: ServerHeaderRule.applied(request, entries: entries), server: server) else {
+            return .unanswered
+        }
         return .resolved(end.url ?? url, headers: end.allHTTPHeaderFields ?? [:])
     }
 
@@ -262,11 +264,14 @@ nonisolated enum ServerHeaders {
     /// asset's later requests to that end carry it, measured, so the end
     /// is asked bare). A later redirect of that end by the server itself
     /// still carries the headers: the way follows it without asking.
-    static func end(of request: URLRequest, server: ServerHeaderRule.Entry) async -> URLRequest {
+    /// Nil when the end cannot be asked: the way is not built, since its
+    /// own address could redirect anywhere with the headers.
+    static func end(of request: URLRequest, server: ServerHeaderRule.Entry) async -> URLRequest? {
         guard let url = request.url else { return request }
-        // Unknown: the way then asks its own address with the headers, as
-        // one that redirects nowhere would.
-        let end = await endAddress(of: request) ?? url
+        guard let end = await endAddress(of: request) else {
+            Logger.library.notice("SERVERHEADERS not asked host=\(url.host ?? "-", privacy: .public): the end of its redirects is unknown")
+            return nil
+        }
         guard let entries = entries(), ServerHeaderRule.entry(for: end, in: entries) == server else {
             var bare = URLRequest(url: end)
             bare.timeoutInterval = request.timeoutInterval

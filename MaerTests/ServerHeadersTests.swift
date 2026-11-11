@@ -818,11 +818,13 @@ struct ServerHeadersFenceTests {
         #expect(setHere.lowerBound < task.lowerBound)
         // The background session never asks its delegate at a redirect
         // (measured), so the downloader asks the end first, like the stream.
-        let end = try #require(downloader.range(of: "identified = await ServerHeaders.end(of: identified, server: server)"))
+        let end = try #require(downloader.range(of: "guard let end = await ServerHeaders.end(of: identified, server: server) else {\n                throw URLError(.cannotConnectToHost)"),
+                               "a download whose end is unknown is sent with the headers to its own address")
         #expect(end.lowerBound < task.lowerBound)
         let table = try Self.code("Sources/Networking/ServerHeaders.swift")
-        #expect(table.contains("let end = await self.end(of: ServerHeaderRule.applied(request, entries: entries), server: server)"),
-                "the stream asks the end the same way")
+        #expect(table.contains("guard let end = await self.end(of: ServerHeaderRule.applied(request, entries: entries), server: server) else {\n            return .unanswered"),
+                "the stream asks the end the same way, and an unknown end builds no stream")
+        #expect(!table.contains("await endAddress(of: request) ?? url"), "an unknown end is taken as the address again")
     }
 
     @Test("Neubau nach einem Ladefehler: eine Stelle laesst den Plan der Spur gehen, und jeder Weg baut durch sie", .needsTheSources)

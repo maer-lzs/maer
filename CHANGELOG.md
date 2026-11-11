@@ -131,7 +131,10 @@ answered, the page says so. A server's address written in another way
 (capital letters, `:443`, a slash at the end) keeps the same headers,
 and changing an address to that of another server with headers of its
 own leaves both servers their own. A server at an IPv6 address keeps its
-headers too, and when the headers cannot be saved, the page says so.
+headers too, and when the headers cannot be saved, the page says so. When
+the app cannot find out where a stream or a download of such a server
+ends, it does not start it, so the headers never follow an unknown
+redirect.
 
 **A book whose next file cannot be reached waits visibly and stops at
 that file.** When a jump or the next file of a book waits for the server

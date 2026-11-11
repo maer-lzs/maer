@@ -883,12 +883,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// only by the time limit of its request. A stream with server headers
     /// or a sign-in is never built at an address whose end was not asked;
     /// a stream built before the answer would carry them along a redirect.
-    /// An ask that fails leaves a server's stream at its address (`.plain`,
-    /// its headers stay with their server); a stream with a sign-in alone
-    /// is then not built (`.unanswered`).
+    /// An ask that fails builds nothing (`.unanswered`), for a server with
+    /// headers as for a sign-in.
     private static func awaitPlan(_ url: URL, of planner: StreamPlanner, for need: String) async {
         if await planner.plan(url) == .plain {
-            Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end could not be asked or lies at the address")
+            Logger.player.notice("PLAY \(need, privacy: .public) takes the stream at its address, its end lies there")
         }
     }
 
