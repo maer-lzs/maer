@@ -170,6 +170,8 @@ fi
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
 # the script right here and no summary was ever written.
 rc=0
+# The result bundles this run wrote, each named in the summary.
+bundles=()
 if [[ "${runs[*]}" != "${only[*]}" ]]; then
     n=0
     for one in "${runs[@]}"; do
@@ -177,12 +179,14 @@ if [[ "${runs[*]}" != "${only[*]}" ]]; then
         [[ $n -gt 1 ]] && fresh_template
         # The summary reader counts each run by this line.
         echo "=== journeys run $n ===" >> "$LOG"
+        bundles+=("${RESULT%.xcresult}-$n.xcresult")
         xcodebuild test-without-building "${built[@]}" \
             -destination "platform=iOS Simulator,id=$udid" \
             "${parallel[@]}" -collect-test-diagnostics never \
-            -resultBundlePath "${RESULT%.xcresult}-$n.xcresult" "$one" >> "$LOG" 2>&1 || rc=65
+            -resultBundlePath "${bundles[-1]}" "$one" >> "$LOG" 2>&1 || rc=65
     done
 else
+    bundles=("$RESULT")
     xcodebuild test-without-building "${built[@]}" \
         -destination "platform=iOS Simulator,id=$udid" \
         "${parallel[@]}" -collect-test-diagnostics never \
@@ -205,7 +209,7 @@ TABLE=$(python3 scripts/journeys-summary.py "$LOG")
     echo "|---|---|---|"
     echo "$TABLE"
     echo
-    echo "Log: $LOG · Ergebnis: $RESULT"
+    echo "Log: $LOG · Ergebnis: ${(j: · :)bundles}"
 } > "$SUMMARY"
 cat "$SUMMARY"
 

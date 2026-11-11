@@ -73,12 +73,12 @@ nonisolated enum ServerHeaders {
     /// The table; nil while the keychain cannot be read.
     static func entries(now: Date = Date()) -> [ServerHeaderRule.Entry]? {
         #if DEBUG
-        if let witness { return table(from: witness.list()) }
+        if let witness { return read(witness) }
         #endif
         if let held = cache.withLock({ $0 }), now.timeIntervalSince(held.readAt) < readAgainAfter {
             return held.entries
         }
-        let read = table(from: device.list())
+        let read = read(device)
         cache.withLock { $0 = (read, now) }
         guard let read else {
             Logger.library.notice("SERVERHEADERS keychain unreadable, asked again in \(Int(readAgainAfter))s")
@@ -86,9 +86,52 @@ nonisolated enum ServerHeaders {
         }
         // Headers another device laid down arrive in the keychain alone;
         // the register of their servers follows the table here.
-        let bases = read.map { KnownServers.normalized($0.base.absoluteString) }.sorted()
+        let bases = read.map { address($0.base) }.sorted()
         if bases != device.bases().sorted() { device.setBases(bases) }
         return read
+    }
+
+    /// Reads the table, after lifting items kept under another spelling of
+    /// their server onto the one key (`ServerHeaderRule.key`). Once lifted,
+    /// a later read writes nothing; a write the keychain does not take
+    /// leaves the items where they are, and the next read tries again.
+    private static func read(_ keys: Keys) -> [ServerHeaderRule.Entry]? {
+        guard let items = keys.list() else { return nil }
+        let lift = lifted(items)
+        guard !lift.writes.isEmpty else { return table(from: items) }
+        for write in lift.writes where !keys.write(write.account, write.value) {
+            Logger.library.error("SERVERHEADERS lifting onto the one key not taken, read as kept")
+            return table(from: items)
+        }
+        Logger.library.notice("SERVERHEADERS lifted onto the one key: \(lift.writes.filter { $0.value != nil }.count) kept, \(lift.dropped) dropped")
+        return table(from: lift.items)
+    }
+
+    /// The items with each one under the one key of its server, and the
+    /// writes that bring the keychain there: the new item first, then the
+    /// old one removed. Of two spellings of one server, the item already
+    /// under the key stays, else the first spelling in order; the other is
+    /// dropped, since a request could never tell which of the two it gets.
+    static func lifted(_ items: [String: String])
+        -> (items: [String: String], writes: [(account: String, value: String?)], dropped: Int) {
+        var out = items
+        var writes: [(account: String, value: String?)] = []
+        var dropped = 0
+        for account in items.keys.sorted() where account.hasPrefix(accountPrefix) {
+            guard let base = URL(string: String(account.dropFirst(accountPrefix.count))),
+                  let key = ServerHeaderRule.key(base) else { continue }
+            let target = accountPrefix + key
+            guard target != account, let value = out[account] else { continue }
+            if out[target] == nil {
+                out[target] = value
+                writes.append((target, value))
+            } else {
+                dropped += 1
+            }
+            out[account] = nil
+            writes.append((account, nil))
+        }
+        return (out, writes, dropped)
     }
 
     private static func table(from items: [String: String]?) -> [ServerHeaderRule.Entry]? {
@@ -242,7 +285,13 @@ nonisolated enum ServerHeaders {
     // MARK: The table itself
 
     static func account(for base: URL) -> String {
-        accountPrefix + KnownServers.normalized(base.absoluteString)
+        accountPrefix + address(base)
+    }
+
+    /// The server's address as the table and the register name it: its one
+    /// key, the same form the rule matches by.
+    static func address(_ base: URL) -> String {
+        ServerHeaderRule.key(base) ?? KnownServers.normalized(base.absoluteString)
     }
 
     /// Lays a server's headers down (empty removes them) and notes the
@@ -250,7 +299,7 @@ nonisolated enum ServerHeaders {
     @discardableResult
     static func set(_ headers: [ServerHeaderRule.Header], for base: URL) -> Bool {
         let account = account(for: base)
-        let address = KnownServers.normalized(base.absoluteString)
+        let address = address(base)
         let value: String?
         if headers.isEmpty {
             value = nil
@@ -270,24 +319,42 @@ nonisolated enum ServerHeaders {
         return true
     }
 
-    /// The headers laid down for exactly this server address (not for one
-    /// it lies under); empty when it has none, nil while the keychain
-    /// cannot be read.
+    /// The headers laid down for exactly this server (any spelling of its
+    /// address, not one it lies under); empty when it has none, nil while
+    /// the keychain cannot be read.
     static func stored(for base: URL) -> [ServerHeaderRule.Header]? {
         guard let entries = entries() else { return nil }
-        let address = KnownServers.normalized(base.absoluteString)
-        return entries.first { KnownServers.normalized($0.base.absoluteString) == address }?.headers ?? []
+        let address = address(base)
+        return entries.first { Self.address($0.base) == address }?.headers ?? []
     }
 
-    /// The headers of a server move with its address: laid down under the
-    /// new one, removed under the old, so nothing stays behind for the old
-    /// address. False when the keychain did not take them.
+    /// What became of the headers when a sheet's address changed.
+    enum Move: Equatable, Sendable {
+        /// Laid down under the new address, removed under the old.
+        case moved
+        /// The old address had none, or both name the same server.
+        case nothingToMove
+        /// The new address is a server with headers of its own: both keep
+        /// theirs, and the sheet now shows the new server's.
+        case targetHasOwn
+        /// The keychain cannot be read, or did not take the write.
+        case notTaken
+    }
+
+    /// The headers of a server move with its address, so nothing stays
+    /// behind for the old one; never onto a server with headers of its own,
+    /// which would get another server's secret and lose its own.
     @discardableResult
-    static func move(from old: URL, to new: URL) -> Bool {
-        guard KnownServers.normalized(old.absoluteString) != KnownServers.normalized(new.absoluteString),
-              let headers = stored(for: old), !headers.isEmpty else { return true }
-        guard set(headers, for: new) else { return false }
-        return set([], for: old)
+    static func move(from old: URL, to new: URL) -> Move {
+        guard address(old) != address(new) else { return .nothingToMove }
+        guard let target = stored(for: new), let headers = stored(for: old) else { return .notTaken }
+        if !target.isEmpty {
+            Logger.library.notice("SERVERHEADERS not moved host=\(new.host ?? "-", privacy: .public): the new address has headers of its own")
+            return .targetHasOwn
+        }
+        guard !headers.isEmpty else { return .nothingToMove }
+        guard set(headers, for: new), set([], for: old) else { return .notTaken }
+        return .moved
     }
 
     /// Removes a server from the register by hand, and its headers on every
@@ -301,8 +368,12 @@ nonisolated enum ServerHeaders {
         let matching = items.keys.filter {
             KnownServers.sameServer(String($0.dropFirst(accountPrefix.count)), entry.url)
         }
-        for account in matching {
-            if let base = URL(string: String(account.dropFirst(accountPrefix.count))) { set([], for: base) }
+        // Each item by its own account, so one still under an old spelling
+        // goes too.
+        for account in matching where !keys.write(account, nil) {
+            Logger.library.error("SERVERHEADERS forget: an item of the server was not removed")
         }
+        keys.setBases(keys.bases().filter { !KnownServers.sameServer($0, entry.url) })
+        cache.withLock { $0 = nil }
     }
 }

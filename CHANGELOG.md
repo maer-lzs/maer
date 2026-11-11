@@ -8,7 +8,10 @@ the server asks for, such as Cloudflare Access, Authelia or Authentik.
 The headers are kept in the keychain, reach your other devices through
 the iCloud keychain, and go only to that server, never along a redirect
 to another one. When a connection check fails because such a guard
-answered, the page says so.
+answered, the page says so. A server's address written in another way
+(capital letters, `:443`, a slash at the end) keeps the same headers,
+and changing an address to that of another server with headers of its
+own leaves both servers their own.
 
 **A book whose next file cannot be reached waits visibly and stops at
 that file.** When a jump or the next file of a book waits for the server

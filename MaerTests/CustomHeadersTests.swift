@@ -64,14 +64,78 @@ struct CustomHeadersTests {
         try ServerHeaders.$witness.withValue(keys.keys()) {
             ServerHeaders.set([header], for: old)
             try #require(ServerHeaders.stored(for: old) == [header], "the precondition: the old address has the header")
-            #expect(ServerHeaders.move(from: old, to: new))
+            #expect(ServerHeaders.move(from: old, to: new) == .moved)
             #expect(ServerHeaders.stored(for: new) == [header], "the header did not move to the new address")
             #expect(ServerHeaders.stored(for: old) == [], "the header stayed under the old address")
             let entries = try #require(ServerHeaders.entries())
             let request = ServerHeaderRule.applied(URLRequest(url: old.appendingPathComponent("api/me")), entries: entries)
             #expect(request.value(forHTTPHeaderField: ServerHeadersWayTests.name) == nil, "a request to the old address carries the header")
         }
-        #expect(keys.state.withLock { $0.bases } == [KnownServers.normalized(new.absoluteString)])
+        #expect(keys.state.withLock { $0.bases } == [ServerHeaders.address(new)])
+    }
+
+    @Test("Umzug: auf einen Server mit eigenen Headern zieht nichts, beide behalten ihre, und eine Anfrage an das Ziel traegt seine")
+    func noMoveOntoAServerWithItsOwnHeaders() throws {
+        let keys = Keys()
+        let old = try #require(URL(string: "https://old-\(UUID().uuidString.prefix(6)).example"))
+        let new = try #require(URL(string: "https://new-\(UUID().uuidString.prefix(6)).example"))
+        let theirs = ServerHeaderRule.Header(name: "X-Old-Gate", value: "old-\(UUID().uuidString.prefix(6))")
+        let own = ServerHeaderRule.Header(name: "X-New-Gate", value: "new-\(UUID().uuidString.prefix(6))")
+        try ServerHeaders.$witness.withValue(keys.keys()) {
+            ServerHeaders.set([theirs], for: old)
+            ServerHeaders.set([own], for: new)
+            #expect(ServerHeaders.move(from: old, to: new) == .targetHasOwn)
+            #expect(ServerHeaders.stored(for: new) == [own], "the target lost its own headers")
+            #expect(ServerHeaders.stored(for: old) == [theirs], "the old address lost its headers")
+            let entries = try #require(ServerHeaders.entries())
+            let request = ServerHeaderRule.applied(URLRequest(url: new.appendingPathComponent("api/me")), entries: entries)
+            #expect(request.value(forHTTPHeaderField: own.name) == own.value, "a request to the target lost its own header")
+            #expect(request.value(forHTTPHeaderField: theirs.name) == nil, "a request to the target carries the other server's secret")
+        }
+    }
+
+    @Test("Ein Schluessel: zwei Schreibweisen eines Servers sind ein Eintrag, und beide lesen dieselben Zeilen")
+    func twoSpellingsAreOneEntry() throws {
+        let keys = Keys()
+        let host = "music-\(UUID().uuidString.prefix(6).lowercased()).example.com"
+        let upper = try #require(URL(string: "https://\(host.uppercased())"))
+        let spelled = try #require(URL(string: "https://\(host):443/"))
+        let first = ServerHeaderRule.Header(name: ServerHeadersWayTests.name, value: "a")
+        let second = ServerHeaderRule.Header(name: ServerHeadersWayTests.name, value: "b")
+        #expect(ServerHeaderRule.key(upper) == "https://\(host)")
+        #expect(ServerHeaderRule.key(spelled) == "https://\(host)")
+        #expect(ServerHeaderRule.key(try #require(URL(string: "http://\(host):8080/abs/"))) == "http://\(host):8080/abs")
+        #expect(ServerHeaderRule.key(try #require(URL(string: "https://name:secret@\(host)"))) == "https://\(host)")
+        ServerHeaders.$witness.withValue(keys.keys()) {
+            ServerHeaders.set([first], for: upper)
+            #expect(ServerHeaders.stored(for: spelled) == [first], "the other spelling reads empty over a header in force")
+            ServerHeaders.set([second], for: spelled)
+            #expect(ServerHeaders.stored(for: upper) == [second])
+        }
+        #expect(keys.state.withLock { $0.items.count } == 1, "two spellings made two entries")
+        #expect(keys.state.withLock { $0.bases } == ["https://\(host)"])
+    }
+
+    @Test("Ein Schluessel: ein Eintrag unter alter Schreibweise wird beim ersten Lesen einmal gehoben, von zweien bleibt der unter dem Schluessel")
+    func oldSpellingsAreLiftedOnce() throws {
+        let host = "abs-\(UUID().uuidString.prefix(6).lowercased()).example"
+        let prefix = ServerHeaders.accountPrefix
+        func json(_ value: String) -> String { #"[{"name":"X-Gate","value":"\#(value)"}]"# }
+        // One old spelling alone: lifted onto the key, nothing left behind.
+        let alone = Keys(.init(items: [prefix + "https://\(host.uppercased()):443": json("old")]))
+        try ServerHeaders.$witness.withValue(alone.keys()) {
+            let entries = try #require(ServerHeaders.entries())
+            #expect(entries.count == 1)
+            #expect(ServerHeaders.stored(for: try #require(URL(string: "https://\(host)"))) == [.init(name: "X-Gate", value: "old")])
+        }
+        #expect(alone.state.withLock { $0.items } == [prefix + "https://\(host)": json("old")])
+        // A second read writes nothing more.
+        #expect(ServerHeaders.lifted(alone.state.withLock { $0.items }).writes.isEmpty)
+        // Two spellings of one server: the one under the key stays.
+        let both = Keys(.init(items: [prefix + "https://\(host)": json("kept"),
+                                      prefix + "https://\(host)/": json("dropped")]))
+        ServerHeaders.$witness.withValue(both.keys()) { _ = ServerHeaders.entries() }
+        #expect(both.state.withLock { $0.items } == [prefix + "https://\(host)": json("kept")])
     }
 
     @Test("Lesen: unlesbar ist nicht leer")

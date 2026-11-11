@@ -26,6 +26,10 @@ struct JourneyScriptFenceTests {
         #expect(code.contains("runs+=(\"-only-testing:MaerUITests/ServerJourneys/$name\")"), "a server run takes its journeys together")
         #expect(code.contains("for one in \"${runs[@]}\"; do"))
         #expect(code.contains("[[ $n -gt 1 ]] && fresh_template"), "a later server journey runs on the app the first one signed in")
+        // The summary names the result bundles the run wrote, one per
+        // server journey, not one that a server run never writes.
+        #expect(code.contains("-resultBundlePath \"${bundles[-1]}\" \"$one\""), "a server journey's bundle is not the one the summary names")
+        #expect(code.contains("Ergebnis: ${(j: · :)bundles}"), "the summary names a bundle of its own")
     }
 }
 #endif

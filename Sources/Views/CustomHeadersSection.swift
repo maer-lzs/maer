@@ -11,7 +11,9 @@ import SwiftUI
 /// hidden), "Add Header", swipe to delete. The rows are kept for the address
 /// in the sheet's field when a row is committed, deleted, or the sheet
 /// closes; a changed address takes the headers with it
-/// (`ServerHeaders.move`). A row the rule refuses says why and is not kept.
+/// (`ServerHeaders.move`), unless it names a server with headers of its
+/// own, whose headers the section then shows. A row the rule refuses says
+/// why and is not kept.
 struct CustomHeadersSection: View {
     /// The sheet's address field, as typed.
     let address: String
@@ -109,10 +111,15 @@ struct CustomHeadersSection: View {
     }
 
     /// Keeps the complete rows the rule takes under the sheet's address,
-    /// after moving what was kept under an address typed before.
+    /// after moving what was kept under an address typed before. An address
+    /// that names a server with headers of its own takes nothing: the rows
+    /// become that server's, and its headers stay as they are.
     private func keep() {
         guard !unreadable, let base = ServerHeaderRule.base(typed: address) else { return }
-        if let before = keptFor { ServerHeaders.move(from: before, to: base) }
+        if let before = keptFor, ServerHeaders.move(from: before, to: base) == .targetHasOwn {
+            read()
+            return
+        }
         keptFor = base
         let headers = rows.map { ServerHeaderRule.cleaned(name: $0.name, value: $0.value) }
             .filter { !$0.name.isEmpty && !$0.value.isEmpty && ServerHeaderRule.refusal(of: $0) == nil }
