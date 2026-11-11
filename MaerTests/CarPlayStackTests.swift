@@ -87,5 +87,30 @@ struct CarPlayStackTests {
         #expect(show.contains("CarPlayLayout.playerMove(playerOnTop:"), "the player is shown past the rule")
         #expect(delegate.components(separatedBy: "pushTemplate(nowPlaying").count - 1 == 1, "the player is laid on in another place")
     }
+
+    @Test("Gleichheit zweier Bezuege: keiner ist kein Treffer")
+    @MainActor
+    func theSameObject() {
+        let one = NSObject(), other = NSObject()
+        #expect(CarPlaySceneDelegate.isSame(one, one))
+        #expect(!CarPlaySceneDelegate.isSame(one, other))
+        #expect(!CarPlaySceneDelegate.isSame(nil, one) && !CarPlaySceneDelegate.isSame(one, nil) && !CarPlaySceneDelegate.isSame(nil, nil))
+    }
+
+    /// The first build after a connect is held and ends at a disconnect;
+    /// after its waits it sets nothing on a scene that is gone, and a
+    /// second tap on Up Next lays no second list over the first.
+    @Test("Trennen waehrend des ersten Aufbaus setzt nichts mehr; zweimal Als Naechstes legt eine Liste", .needsTheSources)
+    func aDisconnectEndsTheFirstBuild() throws {
+        let delegate = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(delegate.contains("connectTask?.cancel() connectTask = Task { await self.prepare() guard Self.isSame(self.interfaceController, interfaceController) else {"),
+                "the first build is not held, or does not ask after it prepared")
+        #expect(delegate.contains("signals.removeAll() rateSignal = nil connectTask?.cancel() connectTask = nil"),
+                "a disconnect leaves the first build running")
+        #expect(delegate.contains("guard interfaceController != nil, !Task.isCancelled else { return } let templates = layout.tabs.compactMap { roots[$0] }"),
+                "the rebuild sets the tab bar on a scene that is gone")
+        #expect(delegate.contains("guard !upNextPushing, !Self.isSame(interfaceController?.topTemplate, upNextList) else { return }"),
+                "a second tap lays a second Up Next list")
+    }
 }
 #endif

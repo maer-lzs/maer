@@ -36,6 +36,15 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var recentAnswer: FetchAnswer<[LibraryItem]>?
     private var signals: Set<AnyCancellable> = []
     private var pendingRebuild: Task<Void, Never>?
+    /// The first build after a connect, held so a disconnect ends it: a
+    /// build that went on after the disconnect set the tab bar on a scene
+    /// that was gone, and a reconnect on the same object found it set and
+    /// set no root (an empty screen), its signals twice.
+    private var connectTask: Task<Void, Never>?
+    /// An Up Next list is being put together; a second tap waits for it.
+    private var upNextPushing = false
+    /// The Up Next list on top, if it is: a tap then pushes none over it.
+    private weak var upNextList: CPListTemplate?
     /// The speed of the player that plays now; a new player replaces it.
     private var rateSignal: AnyCancellable?
     // The stores the car reads, held once.
@@ -52,12 +61,26 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         self.interfaceController = interfaceController
         nowPlaying.add(self)
         nowPlaying.upNextTitle = String(localized: "Up Next")
-        Task {
+        connectTask?.cancel()
+        connectTask = Task {
             await self.prepare()
+            guard Self.isSame(self.interfaceController, interfaceController) else {
+                Logger.player.notice("CARPLAY first build dropped: the scene disconnected while it prepared")
+                return
+            }
             await self.rebuild()
+            guard Self.isSame(self.interfaceController, interfaceController) else { return }
             self.observe()
             self.updatePlayerExtras()
         }
+    }
+
+    /// Whether two references name the same object, none being no match:
+    /// the build of a connect still serves the scene's controller, the
+    /// list on top is the Up Next list.
+    nonisolated static func isSame(_ one: AnyObject?, _ other: AnyObject?) -> Bool {
+        guard let one, let other else { return false }
+        return one === other
     }
 
     func templateApplicationScene(
@@ -66,6 +89,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     ) {
         signals.removeAll()
         rateSignal = nil
+        connectTask?.cancel()
+        connectTask = nil
         pendingRebuild?.cancel()
         nowPlaying.remove(self)
         self.interfaceController = nil
@@ -148,6 +173,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             guard !Task.isCancelled else { return }
             template.updateSections(filled)
         }
+        // A disconnect while the sections were read leaves nothing to set.
+        guard interfaceController != nil, !Task.isCancelled else { return }
         let templates = layout.tabs.compactMap { roots[$0] }
         if let tabBar, shownTabs != layout.tabs {
             tabBar.updateTemplates(templates)
@@ -985,6 +1012,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// What plays after the title, as the app's queue page lists it: the
     /// orders first, then the rest of what was started, named by its source.
     private func pushUpNext() async {
+        // A second tap on a short way while the first list is put together
+        // lays no second list over it.
+        guard !upNextPushing, !Self.isSame(interfaceController?.topTemplate, upNextList) else { return }
+        upNextPushing = true
+        defer { upNextPushing = false }
         var sections: [CPListSection] = []
         let orders = upNextItems()
         if !orders.isEmpty {
@@ -997,7 +1029,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 ?? String(localized: "Continuing")
             sections.append(await section(header, rest.prefix(Int(CPListTemplate.maximumItemCount))))
         }
-        push(CPListTemplate(title: String(localized: "Up Next"), sections: sections))
+        let list = CPListTemplate(title: String(localized: "Up Next"), sections: sections)
+        upNextList = list
+        push(list)
     }
 
     func nowPlayingTemplateAlbumArtistButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {}

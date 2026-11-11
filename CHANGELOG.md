@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**CarPlay no longer shows an empty screen after a quick disconnect.** When
+the car disconnects while CarPlay is still setting up and connects again,
+the tabs now appear; and tapping Up Next twice shows one list.
+
 **An Audiobookshelf library that loads only in part no longer clears
 books.** The app keeps the library as its offline copy, and clears what
 belonged to books that are gone, only when every book arrived.
