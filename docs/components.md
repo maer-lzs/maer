@@ -853,6 +853,12 @@ Sicherung des Geraets gewinnt nicht mehr ueber den neueren Stand eines anderen
 Geraets. Ob der Server das Datum aus dem Schrieb uebernimmt, ist **nicht
 gemessen** (keine Jellyfin-Testinstanz); ohne Datum bleibt es wie zuvor.
 Zeuge `JellyfinAudiobookTests.theServerStandCarriesItsMoment`.
+Die Hoerbuecher einer Bibliothek kommen geblaettert (`JellyfinClient.allPages`,
+Seiten zu 500 ab dem Ende der letzten, bis eine Seite kurz oder leer kommt oder
+`TotalRecordCount` erreicht ist, hoechstens `mostPages`); eine Seite, die
+scheitert, wirft, damit eine angeschnittene Liste nie als ganzer Bestand gilt.
+Vorher galt ein Abruf mit Grenze 500 Dateien als alle Buecher. Zeuge
+`JellyfinAudiobookTests.theAudiobooksArePaged` (1200 Dateien, drei Buecher).
 
 **Abnahme GETRAGEN** (`4470b34`): Verbinden · Browsen (2 Eintraege, RunTimeTicks 1818959999 = 182 s) · Abspielen (`/Audio/{id}/stream?static=true`, HTTP 200, 3.985.158 Bytes, MPEG-Rahmen) · Hoerstand 900000000 geschrieben und identisch zurueckgelesen.
 

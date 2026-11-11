@@ -26,8 +26,11 @@ nonisolated struct JFUser: Decodable {
 
 nonisolated struct JFItemsResult: Decodable {
     let items: [JFItem]?
+    /// How many items the whole listing holds, beyond this page.
+    var totalRecordCount: Int? = nil
     enum CodingKeys: String, CodingKey {
         case items = "Items"
+        case totalRecordCount = "TotalRecordCount"
     }
 }
 

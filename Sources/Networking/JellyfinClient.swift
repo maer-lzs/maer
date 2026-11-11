@@ -304,15 +304,40 @@ final class JellyfinClient {
          "Fields": "ParentId"]
     }
 
-    /// The audiobooks of one library. `AudioBook` is the type Jellyfin assigns
-    /// to every audio file in a `books` library; the provider folds the files
-    /// of one book into one.
-    func audioBooks(parentId: String, startIndex: Int = 0, limit: Int = 500) async throws -> [JFItem] {
+    /// The audiobooks of one library: every file, page by page
+    /// (`allPages`). `AudioBook` is the type Jellyfin assigns to every audio
+    /// file in a `books` library; the provider folds the files of one book
+    /// into one, so a listing cut after one page would cut books and make
+    /// a leftover file a book of its own.
+    func audioBooks(parentId: String, limit: Int = 500) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
-        let result = try await get("Users/\(uid)/Items",
-                                   Self.audioBookListQuery(parentId: parentId, startIndex: startIndex, limit: limit),
-                                   as: JFItemsResult.self)
-        return result.items ?? []
+        return try await Self.allPages(limit: limit) { start, limit in
+            let result = try await self.get("Users/\(uid)/Items",
+                                            Self.audioBookListQuery(parentId: parentId, startIndex: start, limit: limit),
+                                            as: JFItemsResult.self)
+            return (result.items ?? [], result.totalRecordCount)
+        }
+    }
+
+    /// The most pages a listing is asked for: a server that answered full
+    /// pages past this has not ended its listing, and a cut one is no whole.
+    nonisolated static let mostPages = 1_000
+
+    /// Every item of a listing: pages asked from where the last ended, until
+    /// a page comes back short or empty or the server's total is reached. A
+    /// page that fails throws, so a listing cut in the middle never stands
+    /// as the whole stock.
+    nonisolated static func allPages(limit: Int,
+                                     page: (_ start: Int, _ limit: Int) async throws -> (items: [JFItem], total: Int?))
+        async throws -> [JFItem] {
+        var all: [JFItem] = []
+        for _ in 0..<mostPages {
+            let next = try await page(all.count, limit)
+            all += next.items
+            if next.items.count < limit { return all }
+            if let total = next.total, all.count >= total { return all }
+        }
+        throw URLError(.dataLengthExceedsMaximum)
     }
 
     /// The folders under one library, so a folded book can carry its folder's

@@ -13,7 +13,8 @@ longer sends the stored password to the new server.
 The app now tells the server when it wrote your position and reads that
 moment back. Before, the server's position had no time, so a device
 always started from its own older position instead of the newer one from
-another device. The same holds for albums, playlists and books on a
+another device. A Jellyfin audiobook library with more than 500 files
+now shows every book with its full length. The same holds for albums, playlists and books on a
 Subsonic or Navidrome server: the app asks the server's bookmarks every
 time it opens one, and writes none while it could not read them.
 

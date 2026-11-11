@@ -142,6 +142,39 @@ import Foundation
                 "the older backup of this device wins over the server's newer position")
     }
 
+    /// The audiobooks of a library come page by page until the listing
+    /// ends: 1200 files of three books in pages of 500 fold into three
+    /// books, and a page that fails in the middle leaves no listing that
+    /// stands as the whole stock.
+    @Test("Jellyfin: die Hoerbuecher kommen geblaettert, 1200 Dateien in drei Buechern; eine Seite, die scheitert, gibt keinen ganzen Bestand")
+    func theAudiobooksArePaged() async throws {
+        let files: [JFItem] = try (0..<1200).map { index in
+            let book = index / 400
+            let wire = #"{"Id":"f\#(index)","ParentId":"folder-\#(book)","Album":"Book \#(book)","IndexNumber":\#(index % 400 + 1)}"#
+            return try JSONDecoder().decode(JFItem.self, from: Data(wire.utf8))
+        }
+        var asked: [Int] = []
+        let all = try await JellyfinClient.allPages(limit: 500) { start, limit in
+            asked.append(start)
+            return (Array(files[min(start, files.count)..<min(start + limit, files.count)]), files.count)
+        }
+        #expect(asked == [0, 500, 1000])
+        #expect(all.count == 1200, "a page was lost: \(all.count)")
+        #expect(JellyfinBookFold.fold(all).count == 3, "the fold did not find the three books")
+        // Without a total the listing ends at the short page.
+        let untold = try await JellyfinClient.allPages(limit: 500) { start, limit in
+            (Array(files[min(start, files.count)..<min(start + limit, files.count)]), nil)
+        }
+        #expect(untold.count == 1200)
+        struct Cut: Error {}
+        await #expect(throws: Cut.self, "a listing cut in the middle stood as the whole stock") {
+            _ = try await JellyfinClient.allPages(limit: 500) { start, limit in
+                if start >= 500 { throw Cut() }
+                return (Array(files[start..<start + limit]), files.count)
+            }
+        }
+    }
+
     @Test func aNegativePositionNeverTravels() throws {
         let data = try JellyfinClient.userDataBody(seconds: -5, isFinished: false)
         #expect(String(decoding: data, as: UTF8.self).contains("\"PlaybackPositionTicks\":0"))
