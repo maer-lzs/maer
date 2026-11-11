@@ -64,6 +64,37 @@ struct CatalogKeptItemsTests {
         #expect(CatalogKeptItems.merged(known: item("lva:bbc", title: nil), resolved: resolved) == resolved)
     }
 
+    /// A kept document that is there and does not read (before the first
+    /// unlock) is not empty: nothing is saved over it, and once it reads the
+    /// titles of the run go in front of it.
+    @Test("ein behaltenes Dokument, das nicht liest, wird nicht ueberschrieben; liest es wieder, kommen die Titel des Laufs davor")
+    @MainActor
+    func anUnreadKeptDocumentIsNotReplaced() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kept-unread-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let ablage = Ablage(directory: directory)
+        let document = ablage.url(for: FreeCatalogProvider.keptDocument)
+        let old = CatalogKeptItems.adding(item("lva:old", title: "Old"), to: [])
+        try JSONEncoder().encode(old).write(to: document)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: document.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: document.path) }
+        #expect(ablage.liesUnreadInPlace(FreeCatalogProvider.keptDocument), "the precondition: the document does not read")
+
+        let provider = FreeCatalogProvider(ablage: ablage)
+        provider.keep(item("lva:first", title: "First"))
+        await provider.awaitPendingSave()
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: document.path)
+        let untouched = try JSONDecoder().decode([LibraryItem].self, from: Data(contentsOf: document))
+        #expect(untouched.map(\.id) == ["lva:old"], "the run saved over a document it did not read")
+
+        provider.keep(item("lva:second", title: "Second"))
+        await provider.awaitPendingSave()
+        let saved = try JSONDecoder().decode([LibraryItem].self, from: Data(contentsOf: document))
+        #expect(saved.map(\.id) == ["lva:second", "lva:first", "lva:old"], "the document read late lost a title")
+    }
+
     @Test("der Anbieter laedt die behaltenen Titel beim Start und behaelt, was er aufloest; Weiterhoeren benennt die unbenannten", .needsTheSources)
     func theProviderKeepsAndContinueNames() throws {
         let read = { (path: String) in
@@ -71,7 +102,9 @@ struct CatalogKeptItemsTests {
                 try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         let provider = try read("Sources/Providers/FreeCatalogProvider.swift")
-        #expect(provider.contains("kept = (Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? [])\n            .map(FreeCatalog.gutenbergReadable)"))
+        #expect(provider.contains("kept = Self.readKept(ablage)"))
+        #expect(provider.contains("(ablage.loadNow([LibraryItem].self, name: keptDocument).value ?? []).map(FreeCatalog.gutenbergReadable)"))
+        #expect(provider.contains("static let shared = FreeCatalogProvider(ablage: .documents)"))
         #expect(provider.contains("resolved: LibraryItem(id: detail.id, media: detail.media, addedAt: nil))\n        keep(item)\n        itemsById[detail.id] = item"))
         // Each resolve goes through `rememberResolved`: LibriVox, the archive
         // item, its song, Jamendo and Gutenberg, beside the declaration.

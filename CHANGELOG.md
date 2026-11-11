@@ -7,8 +7,8 @@ before the device is unlocked for the first time, or reads a mark of its
 own wrongly, it no longer empties or overwrites your listening positions
 with what it holds in that moment: it only adds what is newer and
 removes nothing until the positions read again. The same holds for Up
-Next: what you add in such a moment goes in front of the list, which
-stays.
+Next and for the catalogue titles the app keeps: what you add in such a
+moment goes in front of the list, which stays.
 
 **An episode page with a broken chapter list opens.** A chapter list
 from a feed with an impossible chapter start, or a length from

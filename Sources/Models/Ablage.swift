@@ -66,6 +66,13 @@ actor Ablage {
     }
 
     /// Where an unreadable document lies aside (`CorruptStore.preserve`).
+    /// Whether the document is there but does not read now (the data
+    /// protection before the first unlock): a store must not write over it.
+    nonisolated func liesUnreadInPlace(_ name: String) -> Bool {
+        let target = url(for: name)
+        return FileManager.default.fileExists(atPath: target.path) && (try? Data(contentsOf: target)) == nil
+    }
+
     nonisolated func asideURL(for name: String) -> URL {
         url(for: name).appendingPathExtension("corrupt")
     }

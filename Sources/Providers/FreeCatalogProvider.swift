@@ -13,12 +13,23 @@ import OSLog
 /// the player routes by prefix like everywhere else.
 @MainActor
 final class FreeCatalogProvider: AudioProvider {
-    static let shared = FreeCatalogProvider()
-    private init() {
-        // A Gutenberg title kept before its rules existed reads readable too.
-        kept = (Ablage.documents.loadNow([LibraryItem].self, name: Self.keptDocument).value ?? [])
-            .map(FreeCatalog.gutenbergReadable)
+    static let shared = FreeCatalogProvider(ablage: .documents)
+
+    /// The provider over a given home of its documents; one for the app,
+    /// others for witnesses.
+    init(ablage: Ablage) {
+        self.ablage = ablage
+        // A document there that does not read (before the first unlock) is
+        // not an empty one: the memory starts empty, nothing is saved over it.
+        keptUnread = ablage.liesUnreadInPlace(Self.keptDocument)
+        kept = Self.readKept(ablage)
         for item in kept where itemsById[item.id] == nil { itemsById[item.id] = item }
+    }
+
+    /// The kept titles as the document holds them; a Gutenberg title kept
+    /// before its rules existed reads readable too.
+    private static func readKept(_ ablage: Ablage) -> [LibraryItem] {
+        (ablage.loadNow([LibraryItem].self, name: keptDocument).value ?? []).map(FreeCatalog.gutenbergReadable)
     }
 
     /// The titles resolved for playback, with their metadata
@@ -26,6 +37,17 @@ final class FreeCatalogProvider: AudioProvider {
     /// id finds it from the first display on.
     nonisolated static let keptDocument = "catalog-kept-items.json"
     private var kept: [LibraryItem] = []
+    private let ablage: Ablage
+    /// The kept document was there and did not read: the memory holds only
+    /// this run's titles (`keptThisRun`) until the document reads.
+    private var keptUnread = false
+    private var keptThisRun: [LibraryItem] = []
+    private var pendingSave: Task<Void, Never>?
+
+    /// For witnesses: the last save handed over has landed or failed.
+    func awaitPendingSave() async {
+        await pendingSave?.value
+    }
 
     var providerId: String { "freecatalog" }
     var mediaTypes: Set<MediaType> { [.audiobooks] }
@@ -569,13 +591,30 @@ final class FreeCatalogProvider: AudioProvider {
         itemsById[detail.id] = item
     }
 
-    private func keep(_ item: LibraryItem) {
+    /// Keeps a resolved title on the device. Over a document that did not
+    /// read in this run nothing is saved; once it reads, this run's titles
+    /// go in front of what it holds.
+    func keep(_ item: LibraryItem) {
         let next = CatalogKeptItems.adding(item, to: kept)
         guard next != kept else { return }
         kept = next
-        Task {
+        keptThisRun = CatalogKeptItems.adding(item, to: keptThisRun)
+        if keptUnread {
+            guard !ablage.liesUnreadInPlace(Self.keptDocument) else {
+                Logger.library.error("CATALOG kept items held: the document did not read in this run, nothing saved over it")
+                return
+            }
+            keptUnread = false
+            kept = keptThisRun.reversed().reduce(Self.readKept(ablage)) { CatalogKeptItems.adding($1, to: $0) }
+            for entry in kept where itemsById[entry.id] == nil { itemsById[entry.id] = entry }
+            Logger.library.notice("CATALOG kept items read late: \(self.kept.count) with \(self.keptThisRun.count) of this run")
+        }
+        let toSave = kept
+        let previous = pendingSave
+        pendingSave = Task { [ablage] in
+            await previous?.value
             do {
-                try await Ablage.documents.save(next, name: Self.keptDocument)
+                try await ablage.save(toSave, name: Self.keptDocument)
             } catch {
                 Logger.library.error("CATALOG kept items not saved: \(FailureReason.of(error), privacy: .public)")
             }
