@@ -33,7 +33,8 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
     private let logsSaves: Bool
     /// The one write chain.
     private let chain: RowChain<Rows>
-    /// The one opening of the rows: every caller awaits the same task.
+    /// The one opening of the rows: every caller awaits the same task. An
+    /// opening that failed is not kept: the next write opens again.
     private var opening: Task<KeyedRowStore<Value>?, Never>?
 
     init(database: MaerDatabase, table: KeyedRowStore<Value>.Table, label: String, logsSaves: Bool = false) {
@@ -163,7 +164,11 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
             let load = try await rows.load()
             return (load.rows.isEmpty ? nil : load.rows, load.skipped)
         }, take: take, apply: { [weak self] snapshot, base, refusal in
-            guard let self, let rows = await self.open() else { return .skipped }
+            guard let self else { return .skipped }
+            guard let rows = await self.open() else {
+                Logger.library.error("\(self.label, privacy: .public) save held: the rows do not open now, the next write opens again")
+                return .skipped
+            }
             if base.refuses(snapshot, emptying) {
                 let count = base.removable?.count ?? 0
                 switch refusal {
@@ -207,8 +212,11 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         await chain.awaitPendingWrites()
     }
 
+    /// The rows, opened once; nil while they do not open. A failure at one
+    /// moment (before the first unlock) is not one for the run: the next
+    /// caller opens again instead of ending every write of the run.
     private func open() async -> KeyedRowStore<Value>? {
-        if let opening { return await opening.value }
+        if let opening, let opened = await opening.value { return opened }
         let task = Task<KeyedRowStore<Value>?, Never> { [database, table, label] in
             do {
                 return try await KeyedRowStore<Value>(connection: try database.connection(), table: table)

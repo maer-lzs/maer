@@ -41,6 +41,28 @@ struct RowKeeperTests {
         #expect(RowKeepers.count == alive - 1, "a dead keeper is forgotten")
     }
 
+    /// Rows that do not open at one moment (before the first unlock) open at
+    /// the next write: a failed opening is not held for the run.
+    @Test("oeffnen die Zeilen einmal nicht, oeffnet der naechste Schrieb neu und landet")
+    func aFailedOpeningIsAskedAgain() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("keeper-late-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+        let keeper = RowKeeper<[String]>(database: database, table: .playQueue, label: "PROBE-LATE")
+        keeper.write(emptying: .refused) { ["k": ["a"]] }
+        await keeper.awaitPendingWrites()
+        #expect(throws: (any Error).self, "the precondition: the rows do not open while the folder is missing") {
+            _ = try database.connection()
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        keeper.write(emptying: .refused) { ["k": ["a", "b"]] }
+        await keeper.awaitPendingWrites()
+        let reader = try #require(try database.readerNow())
+        #expect(try KeyedRowStore<[String]>.loadNow(table: .playQueue, reader: reader).rows["k"] == ["a", "b"],
+                "the write after a failed opening ended without opening again")
+    }
+
     /// The totals keep a chain of their own; it writes to the rows, so the
     /// app's two ends wait for it like for every row chain.
     @Test("awaitAll wartet auch die eigene Kette der Statistik ab")
