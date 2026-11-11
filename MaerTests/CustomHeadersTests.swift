@@ -135,9 +135,8 @@ struct CustomHeadersTests {
         // table, the other stays in the keychain under its own account.
         let both = Keys(.init(items: [prefix + "https://\(host)": json("kept"),
                                       prefix + "https://\(host)/": json("left")]))
-        try ServerHeaders.$witness.withValue(both.keys()) {
-            #expect(try #require(ServerHeaders.entries()).map(\.headers) == [[.init(name: "X-Gate", value: "kept")]])
-        }
+        let table = ServerHeaders.$witness.withValue(both.keys()) { ServerHeaders.entries() }
+        #expect(table?.map(\.headers) == [[.init(name: "X-Gate", value: "kept")]])
         #expect(both.state.withLock { $0.items } == [prefix + "https://\(host)": json("kept"),
                                                      prefix + "https://\(host)/": json("left")],
                 "a spelling left out of the table was removed from the keychain")
@@ -152,10 +151,10 @@ struct CustomHeadersTests {
         let named = "https://\(host)/"
         let keys = Keys(.init(items: [prefix + first: json("older"), prefix + named: json("in force")],
                               bases: [named]))
-        try ServerHeaders.$witness.withValue(keys.keys()) {
-            #expect(ServerHeaders.stored(for: try #require(URL(string: "https://\(host)"))) == [.init(name: "X-Gate", value: "in force")],
-                    "the first spelling in order was lifted over the one the register names")
-        }
+        let base = try #require(URL(string: "https://\(host)"))
+        let stored = ServerHeaders.$witness.withValue(keys.keys()) { ServerHeaders.stored(for: base) }
+        #expect(stored == [.init(name: "X-Gate", value: "in force")],
+                "the first spelling in order was lifted over the one the register names")
         #expect(keys.state.withLock { $0.items } == [prefix + "https://\(host)": json("in force"), prefix + first: json("older")])
         // Without a register the first in order is lifted.
         let plain = ServerHeaders.lifted([prefix + first: json("older"), prefix + named: json("in force")])
