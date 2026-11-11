@@ -10,8 +10,8 @@ import Foundation
 
 /// The folder of a download is always one folder directly in the downloads,
 /// whatever the item id holds: an episode's id carries the guid of its feed,
-/// and a guid like `a/../../x` named a folder outside before. The name is
-/// `folderName`, the id lies in `.item-id`, and a folder a build before
+/// and a guid like `a/../../x` taken as the name is a folder outside. The
+/// name is `folderName`, the id lies in `.item-id`, and an older folder
 /// named by the id itself still counts. Every case runs over a documents
 /// directory and a database file of its own.
 @MainActor
@@ -112,6 +112,10 @@ struct DownloadFolderTests {
         #expect(DownloadManager.itemId(ofFolder: folder) == Self.escaping, "the folder carries its id")
         #expect(try FileManager.default.contentsOfDirectory(atPath: outside.path) == ["keep.txt"],
                 "nothing lands outside the downloads")
+        // A folder outside that is not there yet: the load makes none.
+        let unborn = home.directory.appendingPathComponent("y", isDirectory: true)
+        await manager.download(item: Self.detail("rss:k:a/../../y", tracks: [track]), provider: MarkOnlyProvider(), kind: nil)
+        #expect(!FileManager.default.fileExists(atPath: unborn.path), "the load makes no folder outside the downloads")
 
         manager.deleteDownload(itemId: Self.escaping)
         #expect(FileManager.default.fileExists(atPath: outside.appendingPathComponent("keep.txt").path),
@@ -138,6 +142,30 @@ struct DownloadFolderTests {
         #expect(manager.localTrackMap(forItemId: id)[0]?.lastPathComponent == name)
     }
 
+    /// The end of a download drops every file of the folder that is no
+    /// track. The id file stays, or the next start reads the folder by its
+    /// name and the download counts for no id.
+    @Test("das Aufraeumen am Ende eines Downloads laesst die Kennung des Ordners stehen")
+    func theIdFileOutlivesTheEndOfADownload() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let id = "rss:k:https://ex.com/b.mp3"
+        let folder = home.downloads.appendingPathComponent(DownloadManager.folderName(of: id), isDirectory: true)
+        try home.plantTrack(in: folder)
+        let leftover = folder.appendingPathComponent("notes.txt")
+        try Data("left over".utf8).write(to: leftover)
+
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "/nowhere/0.m4b", metadata: nil)
+        await manager.download(item: Self.detail(id, tracks: [track]), provider: MarkOnlyProvider(), kind: nil)
+        #expect(manager.downloadedItemIds == [id], "the precondition: the download ends whole")
+        #expect(!FileManager.default.fileExists(atPath: leftover.path), "the precondition: the folder is cleared of what is no track")
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(DownloadManager.idFileName).path))
+        #expect(DownloadManager.itemId(ofFolder: folder) == id)
+        #expect(manager.localTrackMap(forItemId: id)[0] != nil, "the track stays")
+    }
+
     @Test("ein alter Ordner, der die Kennung selbst als Namen traegt, gilt weiter und laesst sich loeschen")
     func anOldFolderStillCounts() async throws {
         let home = try home()
@@ -156,10 +184,9 @@ struct DownloadFolderTests {
         #expect(!FileManager.default.fileExists(atPath: old.path))
     }
 
-    /// A build before named the folder of a guid with "/" by the raw id: the
-    /// folder lay nested, the start walk saw only the outermost name, and the
-    /// download counted as gone after a restart. The start moves it to its
-    /// own name.
+    /// An older folder of a guid with "/" is named by the raw id and lies
+    /// nested: the start walk sees only the outermost name. The start moves
+    /// it to its own name, and the download counts.
     @Test("ein verschachtelter Ordner einer guid mit Schraegstrich zaehlt nach dem Update wieder")
     func aNestedFolderIsFoundAgain() async throws {
         let home = try home()

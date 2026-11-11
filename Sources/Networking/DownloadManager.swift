@@ -395,8 +395,8 @@ final class DownloadManager {
     /// The file in a download folder that carries its item id.
     nonisolated static let idFileName = ".item-id"
 
-    /// Whether an id names a folder the way a build before the form did:
-    /// one folder directly in the downloads.
+    /// Whether an id is itself the name of one folder directly in the
+    /// downloads, the form of a folder older than `folderName`.
     nonisolated static func isDirectChildName(_ itemId: String) -> Bool {
         !itemId.isEmpty && itemId != "." && itemId != ".." && !itemId.contains("/")
             && itemId.utf8.count <= 255
@@ -405,8 +405,8 @@ final class DownloadManager {
     /// The item id a download folder stands for. A folder with `.item-id`
     /// stands for the id in it when its name is that id's name; the file is
     /// outside input like the guid it came from, so one naming another
-    /// folder is refused with a line. A folder without the file stands for
-    /// its name, as a build before the form named it.
+    /// folder is refused with a line. A folder without the file is an older
+    /// one and stands for its name.
     nonisolated static func itemId(ofFolder dir: URL) -> String? {
         let file = dir.appendingPathComponent(idFileName)
         guard FileManager.default.fileExists(atPath: file.path) else { return dir.lastPathComponent }
@@ -420,9 +420,9 @@ final class DownloadManager {
     }
 
     /// The folder of a download, directly in the downloads: the folder in
-    /// the form of `folderName`, or the folder a build before named by the
-    /// id itself while that one is there and the new one is not. Anything
-    /// else is refused with a line.
+    /// the form of `folderName`, or an older folder named by the id itself
+    /// while that one is there and the new one is not. Anything else is
+    /// refused with a line.
     nonisolated static func folder(of itemId: String, in downloads: URL) -> URL? {
         let named = downloads.appendingPathComponent(folderName(of: itemId), isDirectory: true)
         if !FileManager.default.fileExists(atPath: named.path), isDirectChildName(itemId) {
@@ -455,11 +455,11 @@ final class DownloadManager {
         }
     }
 
-    /// A build before the form named a folder by the raw id, so an id with
-    /// "/" made folders inside folders, and the start walk saw only the
-    /// outermost name: the download counted as gone after a restart. Each
-    /// marked id whose nested folder lies inside the downloads (no "." or
-    /// ".." among its parts) moves to its folder in the form, once.
+    /// An older folder is named by the raw id, so an id with "/" lies as
+    /// folders inside folders, and the start walk sees only the outermost
+    /// name: the download does not count after a restart. Each marked id
+    /// whose nested folder lies inside the downloads (no "." or ".." among
+    /// its parts) moves to its folder in the form, once.
     nonisolated static func rescueNested(downloadsDir: URL, marked: Set<String>) {
         for itemId in marked.sorted() where itemId.contains("/") {
             let parts = itemId.split(separator: "/", omittingEmptySubsequences: true)
@@ -982,8 +982,8 @@ final class DownloadManager {
         let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
         controls[itemId] = DownloadControl(detail: item, provider: provider, resumeData: nil)
         phase[itemId] = .downloading(0)
-        // A folder a build before named by the id keeps its form; a new one
-        // carries its id.
+        // An older folder named by the id keeps its form; a new one carries
+        // its id.
         if dir.lastPathComponent == Self.folderName(of: itemId) {
             if !FileManager.default.fileExists(atPath: dir.appendingPathComponent(Self.idFileName).path) {
                 Self.settle(dir, for: itemId)
