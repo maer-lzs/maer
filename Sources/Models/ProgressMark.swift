@@ -270,6 +270,7 @@ nonisolated enum ProgressMark {
     /// Whole minutes left for a remaining time, rounded UP: under a minute
     /// reads "1 min", never "0 min".
     static func minutesLeft(_ remaining: Double) -> Int {
+        let remaining = PodcastDuration.known(remaining)
         guard remaining > 0 else { return 0 }
         return Int((remaining / 60).rounded(.up))
     }

@@ -24,7 +24,7 @@ nonisolated enum DurationText {
 
     /// A length: whole minutes, rounded down.
     static func length(seconds: Double) -> String {
-        length(minutes: Int(max(0, seconds) / 60))
+        length(minutes: PodcastDuration.wholeSeconds(seconds) / 60)
     }
 
     /// A full hour stands as hours alone ("1 hr", never "1 hr 0 min").

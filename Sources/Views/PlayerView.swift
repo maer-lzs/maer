@@ -675,7 +675,7 @@ struct PlayerView: View {
     }
 
     private func chapterRemainingMinutes(_ chapter: ABSChapter, at time: Double) -> Int {
-        max(1, Int((max(0, chapter.end - time) / 60).rounded(.up)))
+        max(1, ProgressMark.minutesLeft(chapter.end - time))
     }
 
     /// Wall-clock time the BOOK finishes if playback continues at the

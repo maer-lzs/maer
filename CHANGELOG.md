@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**An episode page with a broken chapter list opens.** A chapter list
+from a feed with an impossible chapter start, or a length from
+archive.org that is no length, no longer closes the app; such a chapter
+is left out and such a length counts as unknown.
+
 **Your own headers for a server.** The settings of every server now have
 a section Custom Headers under the sign-in, for what a guard in front of
 the server asks for, such as Cloudflare Access, Authelia or Authentik.

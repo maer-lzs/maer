@@ -18,4 +18,11 @@ nonisolated enum PodcastDuration {
     static func known(_ raw: Double) -> Double {
         raw.isFinite && raw >= 0 && raw <= longest ? raw : 0
     }
+
+    /// Whole seconds of a length from outside (a chapter mark, what is
+    /// left of a chapter): `known` first, so a huge or non-finite number
+    /// becomes 0 instead of stopping the app at `Int(_:)`.
+    static func wholeSeconds(_ raw: Double) -> Int {
+        Int(known(raw))
+    }
 }

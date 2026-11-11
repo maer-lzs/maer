@@ -121,10 +121,18 @@ final class RSSProvider: AudioProvider {
     /// Load chapter JSON and map it to `[ABSChapter]` (end = next start, episode
     /// duration for the last). Error → nil (episode plays without chapters).
     static func loadChapters(url: URL, duration: Double) async -> [ABSChapter]? {
-        guard let (data, _) = try? await RequestRetryPolicy.fetch(URLRequest(url: url)),
-              let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data),
-              !list.chapters.isEmpty else { return nil }
-        let sorted = list.chapters.sorted { $0.startTime < $1.startTime }
+        guard let (data, _) = try? await RequestRetryPolicy.fetch(URLRequest(url: url)) else { return nil }
+        return chapters(from: data, duration: duration)
+    }
+
+    /// The chapters of a chapter JSON, pure. A mark that is no length
+    /// (huge, negative, non-finite) is left out, so it never reaches a
+    /// conversion to whole seconds.
+    static func chapters(from data: Data, duration: Double) -> [ABSChapter]? {
+        guard let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data) else { return nil }
+        let marks = list.chapters.filter { PodcastDuration.known($0.startTime) == $0.startTime }
+        guard !marks.isEmpty else { return nil }
+        let sorted = marks.sorted { $0.startTime < $1.startTime }
         return sorted.enumerated().map { i, c in
             let end = i + 1 < sorted.count ? sorted[i + 1].startTime
                 : (duration > 0 ? duration : c.startTime)

@@ -314,7 +314,7 @@ nonisolated enum FreeCatalog {
     /// is no duration; nothing above zero is no length either.
     static func fileLength(_ raw: String?) -> Double? {
         guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
-        if let plain = Double(raw) { return plain > 0 ? plain : nil }
+        if let plain = Double(raw) { return PodcastDuration.known(plain) > 0 ? plain : nil }
         let parts = raw.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
         guard (2...3).contains(parts.count), let last = Double(parts[parts.count - 1]), last >= 0, last < 60 else {
             return nil
@@ -326,7 +326,7 @@ nonisolated enum FreeCatalog {
             total = total * 60 + Double(value)
         }
         total = total * 60 + last
-        return total > 0 ? total : nil
+        return PodcastDuration.known(total) > 0 ? total : nil
     }
 
     /// The title a catalogue title shows: the source's own, or "Untitled"
