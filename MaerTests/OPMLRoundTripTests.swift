@@ -51,7 +51,7 @@ struct OPMLRoundTripTests {
     func premiumStatesLeaveWithTheirFeed() throws {
         let all = [state(free.feedURL, guid: "f", position: 100),
                    state(premium.feedURL, guid: "p", position: 200)]
-        let split = OPMLExport.partition(shows: [free, premium], isPremium: { _ in false })
+        let split = OPMLExport.partition(shows: [free, premium], staysHome: { _ in false })
         #expect(split.excluded.map(\.title) == ["Paid"])
         let kept = OPMLExport.states(all, for: split.safe)
         #expect(kept.map(\.episodeGUID) == ["f"])

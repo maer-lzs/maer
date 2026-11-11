@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**The shared podcast export keeps private addresses out.** The safe
+export now also leaves out feeds from your own server (a Pinchflat mirror
+or any server you entered), feeds whose address carries a key or password
+under another name, and episode addresses that carry one. The podcast
+directory is asked about none of them either.
+
 **Subscribing during a refresh of all podcasts sticks.** A show you
 subscribe to or unsubscribe from while all feeds are being refreshed now
 stays as you left it. Before, the refresh wrote back the list it started

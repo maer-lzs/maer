@@ -8,18 +8,20 @@ import Foundation
 /// Subscriptions as an OPML document. The export
 /// counterpart of the importer. Pure builder (tested); no network.
 nonisolated enum OPMLExport {
-    /// Premium/token feeds are EXCLUDED from the export by default. A
-    /// shared OPML must never give the access away. Detection: the caller's
-    /// premium marking PLUS the defensive net of the address itself (a
-    /// secret parameter, a user or password before the host) as a second
-    /// layer. Pure; the count feeds the visible hint.
+    /// Feeds whose address stays home are EXCLUDED from the export by
+    /// default. A shared OPML must never give the access away. Detection:
+    /// the caller's one question (`PodcastSubscriptions.staysHome`: premium,
+    /// an unreadable sign-in, the person's own server) PLUS the defensive
+    /// net of the address itself (a secret parameter, a user or password
+    /// before the host) as a second layer. Pure; the count feeds the
+    /// visible hint.
     static func partition(shows: [(title: String, feedURL: String)],
-                          isPremium: (String) -> Bool) -> (safe: [(title: String, feedURL: String)],
+                          staysHome: (String) -> Bool) -> (safe: [(title: String, feedURL: String)],
                                                            excluded: [(title: String, feedURL: String)]) {
         var safe: [(title: String, feedURL: String)] = []
         var excluded: [(title: String, feedURL: String)] = []
         for show in shows {
-            if isPremium(show.feedURL) || PodcastFeedAddress.carriesAccess(show.feedURL) {
+            if staysHome(show.feedURL) || PodcastFeedAddress.carriesAccess(show.feedURL) {
                 excluded.append(show)
             } else {
                 safe.append(show)
@@ -54,11 +56,18 @@ nonisolated enum OPMLExport {
 
     /// The states that belong to the shows being written: a state travels
     /// only with its show, so an excluded premium feed takes its states
-    /// out of the file with it.
+    /// out of the file with it. An episode's own address (its enclosure, its
+    /// page) that carries access does not travel either; the state goes
+    /// without it and is found by its guid.
     static func states(_ states: [ForeignListeningState],
                        for shows: [(title: String, feedURL: String)]) -> [ForeignListeningState] {
         let feeds = Set(shows.map(\.feedURL))
-        return states.filter { $0.feedURL.map(feeds.contains) == true }
+        return states.filter { $0.feedURL.map(feeds.contains) == true }.map { state in
+            var kept = state
+            if kept.enclosureURL.map(PodcastFeedAddress.carriesAccess) == true { kept.enclosureURL = nil }
+            if kept.episodeLink.map(PodcastFeedAddress.carriesAccess) == true { kept.episodeLink = nil }
+            return kept
+        }
     }
 
     /// One outline per show: title + xmlUrl (the feed). With states, each

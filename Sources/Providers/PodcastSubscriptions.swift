@@ -667,11 +667,21 @@ final class PodcastSubscriptions: ObservableObject {
     /// Whether a feed address stays with the device and its own source:
     /// it carries access itself (a secret in its query, a user or password
     /// before its host), or the feed is premium, or its stored sign-in
-    /// cannot be read now. Such an address goes to no directory: the way
-    /// to the directory asks here before it sends.
+    /// cannot be read now, or it lives on the person's own server (a
+    /// mirrored Pinchflat feed, any host the person entered). Such an
+    /// address goes to no directory and into no shared export: the way to
+    /// the directory and the export ask here before they send.
     nonisolated static func staysHome(_ feedURL: String,
-                                      defaults: UserDefaults = AppStorageKeys.store) -> Bool {
-        PodcastFeedAddress.carriesAccess(feedURL) || premiumAnswer(feedURL, defaults: defaults) != false
+                                      defaults: UserDefaults = AppStorageKeys.store,
+                                      ownHosts: Set<String>? = nil) -> Bool {
+        if PodcastFeedAddress.carriesAccess(feedURL) { return true }
+        if mirroredFeedKeys(defaults: defaults).contains(PodcastIdentity.feedKey(feedURL)) { return true }
+        let trimmed = feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let host = URL(string: trimmed.contains("://") ? trimmed : "https://" + trimmed)?.host?.lowercased(),
+           (ownHosts ?? KnownServers.ownHosts()).contains(host) {
+            return true
+        }
+        return premiumAnswer(feedURL, defaults: defaults) != false
     }
 
     /// Whether the directory may be asked for the older episodes of this

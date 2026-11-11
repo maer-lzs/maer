@@ -607,7 +607,7 @@ struct PodcastSourceView: View {
     private func exportOPML() {
         let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
         let split = OPMLExport.partition(
-            shows: shows, isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+            shows: shows, staysHome: { PodcastSubscriptions.staysHome($0) })
         opmlExcludedCount = split.excluded.count
         opmlShowCount = split.safe.count
         opmlStateCount = OPMLExport.states(PodcastSubscriptions.shared.exportableStates(), for: split.safe).count
@@ -617,7 +617,7 @@ struct PodcastSourceView: View {
     private func performExport(includePremium: Bool) {
         let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
         let split = OPMLExport.partition(shows: shows,
-                                         isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+                                         staysHome: { PodcastSubscriptions.staysHome($0) })
         let written = includePremium ? shows : split.safe
         let doc = OPMLExport.document(shows: written,
                                       states: OPMLExport.states(PodcastSubscriptions.shared.exportableStates(),

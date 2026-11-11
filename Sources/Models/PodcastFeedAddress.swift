@@ -62,11 +62,28 @@ nonisolated enum PodcastFeedAddress {
     static let secretQueryParams: Set<String> =
         ["token", "auth", "key", "secret", "freebie"]
 
-    /// Whether an address carries access at all: a secret in its query, or
-    /// a user or password before its host. Such an address stays home.
+    /// Parts of a query name that say its value is access, wider than
+    /// `secretQueryParams`, which decides premium: an address carrying one
+    /// stays home, and is not called premium for it (`api_key`,
+    /// `access_token`, `password`, `sig`, `session_id` and the like).
+    static let accessNameParts = ["token", "auth", "key", "secret", "pass", "sig", "session", "freebie"]
+
+    /// Whether an address carries access at all: a secret in its query, by
+    /// the premium names or a name with an access part, or a user or
+    /// password before its host (also written without a scheme). Such an
+    /// address stays home.
     static func carriesAccess(_ raw: String) -> Bool {
         if isTokenFeedURL(raw) { return true }
-        guard let url = URL(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { return false }
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let q = text.firstIndex(of: "?"),
+           text[text.index(after: q)...].split(separator: "&").contains(where: { pair in
+               let parts = pair.split(separator: "=", maxSplits: 1)
+               let name = parts.first.map { $0.lowercased() } ?? ""
+               return parts.count == 2 && !parts[1].isEmpty && accessNameParts.contains { name.contains($0) }
+           }) {
+            return true
+        }
+        guard let url = URL(string: text.contains("://") ? text : "https://" + text) else { return false }
         return url.user != nil || url.password != nil
     }
 

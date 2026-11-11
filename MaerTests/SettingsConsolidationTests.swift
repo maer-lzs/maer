@@ -61,7 +61,7 @@ struct SettingsConsolidationTests {
         ]
         // Marking-based premium is injected; the secret-parameter net
         // catches the ZEIT freebie class EVEN without a marking.
-        let split = OPMLExport.partition(shows: shows, isPremium: { $0.contains("patreon") })
+        let split = OPMLExport.partition(shows: shows, staysHome: { $0.contains("patreon") })
         #expect(split.safe.map(\.title) == ["Free Show"])
         #expect(split.excluded.count == 2)
         // The default document carries NO token URL.
