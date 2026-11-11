@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Siri says when there is nothing to continue.** Asking Siri to continue
+listening on a device that has not played anything yet now says so
+instead of reporting success. A request that waits for the library more
+than two minutes no longer starts a title later, and a link that is not
+the widget's own form no longer starts anything.
+
 **Two actions that reach every device ask first.** Marking all episodes
 of a show as unplayed and deleting a Mär playlist from its own page now
 ask before they act, as deleting a playlist already did on its card.

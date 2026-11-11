@@ -1789,6 +1789,14 @@ struct LibraryView: View {
         case .resume(let endsRoutine):
             if endsRoutine { ResumeRequest.endRoutineWait("a later request") }
         }
+        // A request that waited past its time goes: it must not start a
+        // title minutes later at some load of the library.
+        guard ResumeAsk.stillStands(askedAt: ResumeRequest.askedAt, now: Date()) else {
+            ResumeRequest.pendingItemId = nil
+            ResumeRequest.pending = false
+            Logger.library.notice("RESUME request dropped: it waited longer than \(Int(ResumeAsk.standsAtMost))s")
+            return
+        }
         // Siri "Play <book>" names a title; a quick action, Siri's
         // "continue" and the widget's link only ask. The decision is the
         // door's, the same one the widget's command asks.

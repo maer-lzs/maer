@@ -15,10 +15,17 @@ import OSLog
 enum ResumeRequest {
     static let quickActionType = "resumeLastBook"
     /// Set by quick action / Siri intent, consumed by the library screen.
-    static var pending = false
+    static var pending = false {
+        didSet { if pending { askedAt = Date() } }
+    }
     /// Specific book requested via Siri ("Play <book>"); takes precedence
     /// over the plain "continue last book" request.
-    static var pendingItemId: String?
+    static var pendingItemId: String? {
+        didSet { if pendingItemId != nil { askedAt = Date() } }
+    }
+    /// When the newest title or continue request was made: one that still
+    /// waits after `ResumeAsk.standsAtMost` goes (`ResumeAsk.stillStands`).
+    static var askedAt: Date?
     /// A routine requested via Siri or Shortcuts ("Start <routine>"), by
     /// the id of its list.
     static var pendingRoutineId: String?

@@ -22,6 +22,14 @@ struct ContinueListeningIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        // What can be known before the app opens is said, not called a
+        // success: a device without a last played title and without an
+        // open player has nothing to continue.
+        if ResumeAsk.continueFindsNothing(lastPlayedId: AppStorageKeys.lastPlayedItemIdValue,
+                                          hasActivePlayer: AppSession.shared.playerCoordinator.viewModel != nil) {
+            Logger.library.notice("SIRI continue: nothing to continue on this device")
+            throw ResumeAsk.Refusal(ResumeTarget.Missing.noLastPlayed.sentence)
+        }
         ResumeRequest.pending = true
         NotificationCenter.default.post(name: .resumeLastBookRequested, object: nil)
         return .result()

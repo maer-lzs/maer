@@ -249,6 +249,28 @@ struct ResumeTargetTests {
         #expect(!ResumeLink.asksToResume(other) && ResumeLink.itemId(in: other) == nil)
     }
 
+    @Test("Siri sagt, was es vorher weiss: weiterhoeren ohne zuletzt gehoerten Titel und ohne Player ist nichts; eine Bitte steht hoechstens zwei Minuten", .needsTheSources)
+    func siriIsHonestAndARequestHasATime() throws {
+        #expect(ResumeAsk.continueFindsNothing(lastPlayedId: nil, hasActivePlayer: false))
+        #expect(ResumeAsk.continueFindsNothing(lastPlayedId: "", hasActivePlayer: false))
+        #expect(!ResumeAsk.continueFindsNothing(lastPlayedId: "li_1", hasActivePlayer: false))
+        #expect(!ResumeAsk.continueFindsNothing(lastPlayedId: nil, hasActivePlayer: true))
+        let asked = Date(timeIntervalSince1970: 1_000)
+        #expect(ResumeAsk.stillStands(askedAt: asked, now: asked.addingTimeInterval(ResumeAsk.standsAtMost)))
+        #expect(!ResumeAsk.stillStands(askedAt: asked, now: asked.addingTimeInterval(ResumeAsk.standsAtMost + 1)),
+                "a request started a title long after it was made")
+        #expect(ResumeAsk.stillStands(askedAt: nil, now: asked))
+        let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
+        #expect(shortcuts.contains("throw ResumeAsk.Refusal(ResumeTarget.Missing.noLastPlayed.sentence)"),
+                "Siri reports success with nothing to continue")
+        let view = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(view.contains("guard ResumeAsk.stillStands(askedAt: ResumeRequest.askedAt, now: Date()) else {"),
+                "a request waits without end")
+        let app = try FetchAnswerTests.squeezedSource("Sources/MaerApp.swift")
+        #expect(app.contains("static var pending = false { didSet { if pending { askedAt = Date() } } }"))
+        #expect(app.contains("static var pendingItemId: String? { didSet { if pendingItemId != nil { askedAt = Date() } } }"))
+    }
+
     @Test("ein Link maer: wird streng gelesen: nur die Form des Widgets und eine bekannte Kennung, sonst fragt er nichts")
     func theLinkIsReadStrictly() throws {
         typealias Check = ResumeLinkCheck
