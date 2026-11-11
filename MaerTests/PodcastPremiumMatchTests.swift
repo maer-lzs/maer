@@ -297,7 +297,7 @@ struct ProviderTokenChainTests {
         let split = OPMLExport.partition(
             shows: [(title: "Servus", feedURL: zeitPremium),
                     (title: "Servus frei", feedURL: zeitFree)],
-            isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+            staysHome: { PodcastSubscriptions.isPremiumFeed($0) })
         #expect(split.excluded.map(\.feedURL) == [zeitPremium])
         #expect(split.safe.map(\.feedURL) == [zeitFree])
     }

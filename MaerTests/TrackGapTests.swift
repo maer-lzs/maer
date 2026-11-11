@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import AVFoundation
 @testable import Maer
 
 /// A track that cannot be built is a track that does not load: what is

@@ -175,7 +175,7 @@ final class DownloadManager {
         let downloadsDir = downloadsDirectory
         let marked = Set(details.keys)
         // A mark without tracks says nothing about the files: not counted.
-        let expected = details.compactMapValues { $0.media?.tracks?.count }.filter { $0.value > 0 }
+        let expected = details.compactMapValues { $0.media.tracks?.count }.filter { $0.value > 0 }
         scanTask = Task { [weak self] in
             // detached because the filesystem walk runs off the MainActor before first paint
             let scan = await Task.detached(priority: .userInitiated) {

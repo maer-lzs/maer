@@ -99,7 +99,7 @@ struct StoppedStaysStoppedTests {
 
     @Test("die Grenze vor dem Start ist hart: ein Abgleich, der spaet antwortet, haelt den Start nicht laenger als die Grenze")
     func theLimitBeforeTheStartIsHard() async {
-        let slow = Task { try? await Task.sleep(for: .seconds(5)) }
+        let slow = Task { _ = try? await Task.sleep(for: .seconds(5)) }
         let started = ContinuousClock.now
         await WaitLimit.wait(for: slow, atMost: .milliseconds(300))
         let waited = ContinuousClock.now - started

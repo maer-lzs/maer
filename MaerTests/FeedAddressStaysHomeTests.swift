@@ -74,7 +74,7 @@ struct FeedAddressStaysHomeTests {
         let split = OPMLExport.partition(
             shows: [("Free", "https://free.example/feed.xml"), ("Login", "https://u:p@paid.example/feed.xml"),
                     ("Token", "https://paid.example/feed.xml?key=abc")],
-            isPremium: { _ in false })
+            staysHome: { _ in false })
         #expect(split.safe.map(\.title) == ["Free"])
         #expect(split.excluded.map(\.title) == ["Login", "Token"])
     }
