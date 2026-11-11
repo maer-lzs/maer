@@ -628,6 +628,8 @@ final class PlayerCoordinator: ObservableObject {
         if autoplay || openGate.playWasAsked(generation) {
             await newViewModel.playWithServerCheck()
             guard generation == openGeneration else { newViewModel.stop(); return }
+            // A load that failed started nothing, and nothing is counted.
+            guard newViewModel.isPlaying else { return }
             // THE point at which something is deliberately being listened to.
             // After the generation guard, so a start that was superseded does
             // not leave a mark. A source that keeps play statistics books here;

@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**A title that could not be loaded no longer counts as playing.** The
+player no longer shows it as playing, tells your other devices it plays
+there, or counts a start for it; the message about the load stays.
+
 **gpodder no longer loses listening positions at a first sync or after
 signing in again.** A position the server sends for an episode the app
 does not know yet waits until the episode is there, and signing out or

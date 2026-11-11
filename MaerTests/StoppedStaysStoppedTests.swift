@@ -74,6 +74,19 @@ struct StoppedStaysStoppedTests {
         #expect(!model.isStopped, "a pause is no stop")
     }
 
+    @Test("ein Laden, das keinen Spieler baute, startet nichts: kein spielt, kein Anspruch, kein gezaehlter Start")
+    func aFailedLoadStartsNothing() {
+        let model = PlayerViewModel(provider: MockProvider())
+        var starts = 0
+        let counted = model.playbackStarts.sink { starts += 1 }
+        defer { counted.cancel() }
+        #expect(model.player == nil, "the precondition: no player was built")
+        model.play(caller: "remote play")
+        #expect(!model.isPlaying, "a title that did not load says it plays")
+        #expect(model.playbackStartedAtMs == 0, "a title that did not load claimed")
+        #expect(starts == 0, "a title that did not load counted a start")
+    }
+
     @Test("das Fenster: Titel, Spieler und Halte; jede Aenderung bricht es")
     func theWaitWindowRule() {
         let model = PlayerViewModel(provider: MockProvider())

@@ -1227,6 +1227,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Logger.player.notice("PLAYER play on a stopped model, nothing starts from=\(caller, privacy: .public)")
             return
         }
+        // A load that built no player is no start: nothing says it plays,
+        // claims the title or counts a start. The load said its sentence.
+        guard player != nil else {
+            Logger.player.notice("PLAYER play without a loaded title, nothing starts from=\(caller, privacy: .public)")
+            return
+        }
         notePlayback("play", from: caller)
         playbackStarts.send()
         // Playback is an EVENT. From here on the sync path may
