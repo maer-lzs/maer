@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A book with a file that cannot be reached stops there instead of
+ending.** When a file in the middle of a book cannot be played at all,
+playback now stops at its start with the usual message, and the book is
+no longer marked as finished.
+
 **A title that could not be loaded no longer counts as playing.** The
 player no longer shows it as playing, tells your other devices it plays
 there, or counts a start for it; the message about the load stays.

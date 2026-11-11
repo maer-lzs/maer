@@ -180,6 +180,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let then: FailedLoad.LocalFallback
         /// Why the held track failed, for the symbol when it stops.
         let cause: NoticeCause
+        /// The track could not be built because its sign-in cannot be read
+        /// now: it stops with the sentence of that case.
+        var signIn = false
     }
 
     /// Where the local files of an item lie, and whether the network carries.
@@ -1012,6 +1015,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         stationArtwork = nil   // Teil 2: the next station loads its own logo
         queueAppendIndex = tracks.count
         waitsForPlannedTrack = false
+        // A track that cannot be built (no address, a sign-in that cannot be
+        // read now) is a track that does not load: the queue ends before it,
+        // playback holds there, and the title never ends at it.
+        var unbuilt: (index: Int, signIn: Bool)?
         for index in startIndex..<tracks.count {
             // A stream whose server has headers waits for its plan; it and
             // the tracks after it join the queue as plans land
@@ -1020,7 +1027,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 queueAppendIndex = index
                 break
             }
-            guard let item = queueItem(index: index, isRadio: isRadio) else { continue }
+            let signInBefore = queueWaitedForSignIn
+            guard let item = queueItem(index: index, isRadio: isRadio) else {
+                unbuilt = (index, queueWaitedForSignIn && !signInBefore)
+                break
+            }
             items.append(item)
         }
         guard !items.isEmpty else { return false }
@@ -1034,6 +1045,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         addTimeObserver()
         observeStalls(of: newPlayer)
         observeBookEnd(lastItem: items.last)
+        if let unbuilt {
+            heldAhead = HeldPoint(index: unbuilt.index, then: .none, cause: .unknown, signIn: unbuilt.signIn)
+            Logger.player.notice("PLAY queue ends before track=\(unbuilt.index): it cannot be built now, playback holds there signIn=\(unbuilt.signIn)")
+        }
 
         if seekWithin > 0.5 {
             newPlayer.seek(to: CMTime(seconds: seekWithin, preferredTimescale: 1000))
@@ -1960,6 +1975,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func stopAtHeldFailure(_ held: HeldPoint) {
         guard heldAhead?.index == held.index else { return }
         let index = held.index
+        if held.signIn {
+            stopWaitingForPlan(at: index)
+            return
+        }
         // Asked again now: the network may have gone while the track before
         // played, and then nothing can take over.
         let then = FailedLoad.atFiring(held.then, online: isOnline())
