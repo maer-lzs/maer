@@ -39,6 +39,39 @@ struct MusicPageStateTests {
         #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: false, asked: false) == .reload,
                 "a page that never asked and whose server came loads")
         #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: false) == .showMissing)
+        // Another account answers: a full page starts over.
+        #expect(MusicPageState.onSourcesChange(reachableNow: true, wasMissing: false, asked: true, accountChanged: true) == .startOver)
+        #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: true, accountChanged: true) == .showMissing)
+    }
+
+    @Test("nach einem Kontowechsel verwirft die Musikseite die Listen des frueheren Kontos, auch wenn das Laden des neuen scheitert")
+    @MainActor
+    func anAccountSwitchDropsTheFormerLists() async throws {
+        @MainActor final class Server { var account = "a"; var fails = false }
+        let server = Server()
+        let source = MusicSource(
+            albumsPage: { _, _, _ in [] },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: {
+                if server.fails { throw Boom() }
+                return [MusicPlaylist(id: server.account, itemId: server.account, name: server.account,
+                                      songCount: 1, duration: nil, changedAt: nil)]
+            })
+        let model = MusicViewModel(source: source)
+        await model.loadIfNeeded()
+        #expect(model.playlists.map(\.id) == ["a"])
+        // Another user at the same server; the new account's lists fail.
+        server.account = "b"
+        server.fails = true
+        MusicAccountSwitch.generation += 1
+        await model.sourcesChanged()
+        #expect(model.playlists.isEmpty, "the former account's playlists stayed: \(model.playlists.map(\.id))")
+        // The next change loads the new account's.
+        server.fails = false
+        MusicAccountSwitch.generation += 1
+        await model.sourcesChanged()
+        #expect(model.playlists.map(\.id) == ["b"])
     }
 
     @Test("der Ladeweg fragt zuerst den Server, ein Fehlschlag wird der Satz der Seite, ein Abbruch entscheidet nichts")

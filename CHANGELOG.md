@@ -83,7 +83,8 @@ account from the device, and no longer sends its waiting listening
 positions to the new account. This holds also on a device that was
 signed in before this version, and in the music and gpodder settings when
 only the user name changes. Changing only the gpodder address no longer
-sends the stored password to the new server.
+sends the stored password to the new server. The music pages load the
+new account's lists and no longer show the playlists of the one before.
 
 **A Jellyfin audiobook starts where you last listened, on any device.**
 The app now tells the server when it wrote your position and reads that

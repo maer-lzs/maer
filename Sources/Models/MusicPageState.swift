@@ -36,6 +36,9 @@ nonisolated enum MusicPageState: Equatable, Sendable {
         case showMissing
         /// The page said "no server here" and one is there now: load.
         case reload
+        /// Another account answers now: what the page holds is the former
+        /// account's, it goes, and the page loads anew.
+        case startOver
         /// Nothing to do; a full page is not asked again.
         case keep
     }
@@ -45,8 +48,20 @@ nonisolated enum MusicPageState: Equatable, Sendable {
     /// asked at all (`asked`, its runs have started): a page mounted without
     /// a server and then given one would otherwise load forever, since
     /// before its first run an empty page shows the loading state.
-    static func onSourcesChange(reachableNow: Bool, wasMissing: Bool, asked: Bool) -> SourcesChange {
+    /// `accountChanged`: a switch of the music account happened since the
+    /// page loaded (`MusicAccountSwitch`).
+    static func onSourcesChange(reachableNow: Bool, wasMissing: Bool, asked: Bool,
+                                accountChanged: Bool = false) -> SourcesChange {
         if !reachableNow { return wasMissing ? .keep : .showMissing }
+        if accountChanged { return .startOver }
         return wasMissing || !asked ? .reload : .keep
     }
+}
+
+/// Counts the switches of the music account in this process (another
+/// server or another user, `forgetAccessOnSwitch` of Subsonic and Jellyfin),
+/// so a page that loaded under the former account knows its lists are not
+/// the new one's.
+enum MusicAccountSwitch {
+    static var generation = 0
 }

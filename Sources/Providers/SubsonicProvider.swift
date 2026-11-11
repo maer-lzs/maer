@@ -105,6 +105,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // queued there stay theirs and are not written into the new account.
         let former = AppStorageKeys.subsonicServerURLValue
         let userOnly = !ServerAddressSwitch.isSwitch(from: former, to: newURL)
+        MusicAccountSwitch.generation += 1
         Task {
             await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player)
             if userOnly { await SyncQueue.shared.forgetPending(onServer: former) }

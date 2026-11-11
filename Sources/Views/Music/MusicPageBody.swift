@@ -127,14 +127,34 @@ extension View {
     /// asked on every change (`MusicPageState.onSourcesChange`), a server
     /// that went away shows the way out, one that came loads the page, and so
     /// does a page that never asked (`asked`, from its runs).
+    /// After a switch of the music account the page loads anew (`reload`
+    /// replaces its lists).
     func reasksOnSourcesChange(serverMissing: Binding<Bool>, asked: @escaping () -> Bool,
                                reachable: @escaping () -> Bool,
                                reload: @escaping () async -> Void) -> some View {
-        onMusicSourcesChange {
+        modifier(ReasksOnSourcesChange(serverMissing: serverMissing, asked: asked, reachable: reachable, reload: reload))
+    }
+}
+
+/// The page's answer to a change of the sources, holding the switch of the
+/// music account it loaded under.
+private struct ReasksOnSourcesChange: ViewModifier {
+    let serverMissing: Binding<Bool>
+    let asked: () -> Bool
+    let reachable: () -> Bool
+    let reload: () async -> Void
+    @State private var loadedUnder = MusicAccountSwitch.generation
+
+    func body(content: Content) -> some View {
+        content.onMusicSourcesChange {
             switch MusicPageState.onSourcesChange(reachableNow: reachable(), wasMissing: serverMissing.wrappedValue,
-                                                  asked: asked()) {
+                                                  asked: asked(),
+                                                  accountChanged: loadedUnder != MusicAccountSwitch.generation) {
             case .showMissing: serverMissing.wrappedValue = true
             case .reload: Task { await reload() }
+            case .startOver:
+                loadedUnder = MusicAccountSwitch.generation
+                Task { await reload() }
             case .keep: break
             }
         }

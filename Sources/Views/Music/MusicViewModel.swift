@@ -114,6 +114,9 @@ final class MusicViewModel: ObservableObject {
     /// load, so a server that never answered kept the bar for minutes.
     var firstPageDeadline: Duration = .seconds(15)
 
+    /// The switch of the music account the page loaded under.
+    private var loadedUnder = MusicAccountSwitch.generation
+
     init(source: MusicSource = .live) {
         self.source = source
     }
@@ -166,7 +169,8 @@ final class MusicViewModel: ObservableObject {
     /// out, and a full page is not asked again.
     func sourcesChanged() async {
         switch MusicPageState.onSourcesChange(reachableNow: source.reachable(), wasMissing: serverMissingHere,
-                                              asked: hasAsked) {
+                                              asked: hasAsked,
+                                              accountChanged: loadedUnder != MusicAccountSwitch.generation) {
         case .showMissing:
             serverMissingHere = true
             // As in `loadIfNeeded`: a page without its server decided
@@ -175,6 +179,14 @@ final class MusicViewModel: ObservableObject {
             gate.reopen()
             Logger.music.notice("music server went away on this device")
         case .reload:
+            await loadIfNeeded()
+        case .startOver:
+            // The lists are the former account's: none of them stays, also
+            // when the new account's load fails.
+            loadedUnder = MusicAccountSwitch.generation
+            newest = []; frequent = []; recent = []; albums = []; artists = []; playlists = []
+            Logger.music.notice("music account switched: the page drops its lists and loads anew")
+            gate.reopen()
             await loadIfNeeded()
         case .keep:
             break

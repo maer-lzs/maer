@@ -94,6 +94,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                                                   toAddress: newURL, toUser: newUser ?? storedUser) else { return false }
         AppStorageKeys.setJellyfinToken("")
         AppStorageKeys.jellyfinUserIdValue = ""
+        MusicAccountSwitch.generation += 1
         // Another user at the same address: the stands the user before
         // queued there stay theirs and are not written into the new account.
         let former = AppStorageKeys.jellyfinServerURLValue
