@@ -41,6 +41,9 @@ struct ExportStaysHomeTests {
                      "accesstoken", "clientsecret", "authkey", "sessiontoken", "passphrase", "refreshtoken", "oauth"] {
             #expect(PodcastFeedAddress.carriesAccess("https://feeds.example/show.xml?\(name)=x"), "\(name) was not read as access")
         }
+        for name in ["pwd", "hmac", "user_pwd", "userpwd", "hmacsha256", "X-Hmac"] {
+            #expect(PodcastFeedAddress.carriesAccess("https://feeds.example/show.xml?\(name)=x"), "\(name) was not read as access")
+        }
         #expect(!PodcastFeedAddress.isTokenFeedURL("https://feeds.example/show.xml?api_key=abc"),
                 "a wider access name made the feed premium")
     }

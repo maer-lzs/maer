@@ -100,8 +100,10 @@ nonisolated enum PodcastFeedAddress {
         return joined.hasPrefix("session") || joined.hasSuffix("pass") || joined.hasSuffix("auth")
     }
 
-    /// Words that say access wherever they stand in a name written as one.
-    static let accessHardWords = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature"]
+    /// Words that say access at the beginning or the end of a name written
+    /// as one, and as a whole name.
+    static let accessHardWords = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature",
+                                  "pwd", "hmac"]
 
     /// Words that make a following `key` an access key.
     static let accessKeyLeads = ["api", "access", "auth", "secret", "private", "session", "client", "signing"]
