@@ -90,6 +90,20 @@ struct ABSPasswordCookieTests {
         #expect((HTTPCookieStorage.shared.cookies(for: elsewhere) ?? []).map(\.name) == ["refresh_token"])
     }
 
+    @Test("Ein Server, der neu startet und einmal 503 sagt: die Anmeldung mit Passwort fragt nach der Regel noch einmal und meldet an")
+    func aRestartingServerIsAskedAgain() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let server = try await ABSLoopback.start(login: .acceptAfterUnavailable("token-pw"), libraries: .accept)
+        defer { server.stop() }
+        let auth = await signIn(at: server)
+        let logins = server.requests.filter { $0.path == "/login" }
+        #expect(logins.count == 2, "the sign-in asked \(logins.count) times \(server.diagnosis)")
+        #expect(auth.errorMessage == nil, "\(String(describing: auth.errorMessage))")
+        #expect(auth.apiClient.token == "token-pw")
+        #expect(logins.allSatisfy { $0.returnTokens == "true" }, "the repeated sign-in lost its question for the tokens")
+    }
+
     @Test("Ein echtes Set-Cookie des Servers im geteilten Speicher, wie es ein frueherer Bau hinterliess: der Start kehrt es")
     func aCookieTheServerSetIsSweptAtTheStart() async throws {
         let stand = ABSSignInSwitchTests.Stand()

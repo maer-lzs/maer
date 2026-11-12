@@ -227,6 +227,9 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         case accept(String)
         /// A server that sets the cookie whatever the request asks.
         case acceptSettingTheCookie(String)
+        /// A server that restarts: the first sign-in gets 503, the next one
+        /// is accepted.
+        case acceptAfterUnavailable(String)
         case refuse
     }
     enum Listing: Sendable {
@@ -254,6 +257,7 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [Seen] = []
     private var events: [String] = []
+    private var loginsAnswered = 0
     private let login: Answer
     private let libraries: Listing
     /// The user id `api/me` answers with; nil answers without one.
@@ -343,6 +347,18 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         case ("/login", .acceptSettingTheCookie(let token)):
             send(connection, status: "200 OK", headers: ["Content-Type: application/json", renewalCookie],
                  body: #"{"user":{"token":""# + token + #""}}"#)
+            return
+        case ("/login", .acceptAfterUnavailable(let token)):
+            let first = lock.withLock { () -> Bool in
+                loginsAnswered += 1
+                return loginsAnswered == 1
+            }
+            if first {
+                send(connection, status: "503 Service Unavailable", headers: [], body: "")
+            } else {
+                send(connection, status: "200 OK", headers: ["Content-Type: application/json"],
+                     body: #"{"user":{"token":""# + token + #""}}"#)
+            }
             return
         default:
             break

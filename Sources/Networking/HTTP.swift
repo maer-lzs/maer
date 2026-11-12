@@ -153,7 +153,8 @@ nonisolated enum HTTP {
     /// redirect, so the single sign-on reads the provider's address from
     /// `Location`, unless the flow is built to follow them as every other
     /// request does; it gets the server's headers and the courtesy gate like
-    /// every request and is asked once, a flow repeats as a whole.
+    /// every request. `data(for:)` asks once, a single sign-on repeats as a
+    /// whole; `retryingData(for:)` asks by the retry policy.
     nonisolated final class SignInFlow: Sendable {
         private let session = URLSession.signInFlow()
         private let followsRedirects: Bool
@@ -174,6 +175,24 @@ nonisolated enum HTTP {
                                            delegate: followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone())
                 }
                 guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+                return (data, http)
+            } catch {
+                HTTP.log(failure: error, request: prepared, lane: .api)
+                throw error
+            }
+        }
+
+        /// As `data(for:)`, by the retry policy of every other request (401
+        /// once, 429 and 5xx twice, transient errors twice): the sign-in with
+        /// a password, which a server that restarts answers with 502 or 503
+        /// for a moment.
+        func retryingData(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+            let prepared = HTTP.prepare(request, lane: .api)
+            do {
+                let (data, response) = try await RequestRetryPolicy.fetch(
+                    prepared, session: session,
+                    redirects: followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone())
+                guard let http = response else { throw URLError(.badServerResponse) }
                 return (data, http)
             } catch {
                 HTTP.log(failure: error, request: prepared, lane: .api)

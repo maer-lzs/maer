@@ -117,7 +117,7 @@ final class APIClient {
         request.httpBody = try JSONSerialization.data(withJSONObject: ["username": username, "password": password])
         let flow = HTTP.SignInFlow(followsRedirects: true)
         defer { flow.close() }
-        let (data, http) = try await flow.data(for: request)
+        let (data, http) = try await flow.retryingData(for: request)
         guard (200...299).contains(http.statusCode) else {
             throw APIError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
         }
