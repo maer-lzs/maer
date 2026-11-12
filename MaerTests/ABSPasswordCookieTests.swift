@@ -90,6 +90,28 @@ struct ABSPasswordCookieTests {
         #expect((HTTPCookieStorage.shared.cookies(for: elsewhere) ?? []).map(\.name) == ["refresh_token"])
     }
 
+    @Test("Ein echtes Set-Cookie des Servers im geteilten Speicher, wie es ein frueherer Bau hinterliess: der Start kehrt es")
+    func aCookieTheServerSetIsSweptAtTheStart() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let server = try await ABSLoopback.start(login: .acceptSettingTheCookie("token-old"), libraries: .accept)
+        defer { server.stop() }
+        let url = try #require(URL(string: server.address))
+        clearShared(url)
+        defer { clearShared(url) }
+        // The way of an earlier build: the sign-in through the request lane
+        // of the app, whose store is the shared one.
+        var login = URLRequest(url: url.appendingPathComponent("login"))
+        login.httpMethod = "POST"
+        _ = try await HTTP.data(for: login, lane: .api, retry: false)
+        // The precondition: the server's cookie landed in the shared store.
+        #expect((HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name).contains("refresh_token"),
+                "\(server.diagnosis)")
+        _ = AuthViewModel(read: { key in key == KeychainKey.serverURL ? .value(server.address) : .missing })
+        #expect(!(HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name).contains("refresh_token"),
+                "the start kept \((HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name))")
+    }
+
     /// Answers unreadable until it is opened, as the keychain before the
     /// first unlock.
     private final class Lock {
