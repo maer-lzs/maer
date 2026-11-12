@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AuthenticationServices
 import SwiftUI
 
 /// The first screen is the EXPLANATION, not a slideshow: one sentence about
@@ -103,6 +104,8 @@ struct ABSLoginForm: View {
         }
     }
 
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+
     /// The server's offer of single sign-on, for the address in the field.
     private var ssoOffer: ABSSignInMethods? {
         guard let read = viewModel.signInMethods, read.address == viewModel.serverURLString,
@@ -140,7 +143,8 @@ struct ABSLoginForm: View {
                 }
                 if let methods = ssoOffer {
                     Button {
-                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO() } }
+                        let window = SystemSignInWindow(session: webAuthenticationSession)
+                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO(window: window) } }
                     } label: {
                         if let text = methods.ssoButtonText {
                             Text(verbatim: text)
@@ -190,18 +194,10 @@ struct ABSLoginForm: View {
                 .accessibilityIdentifier("abs-connect")
             }
         }
-        // The server is asked for its ways of signing in once the address
-        // rests for a moment; a new keystroke cancels the wait.
-        .task(id: viewModel.serverURLString) {
-            do {
-                try await Task.sleep(for: .milliseconds(600))
-            } catch {
-                // The sleep throws only when the task is cancelled: the
-                // address changed, and the next task asks for it.
-                return
-            }
-            await viewModel.checkSignInMethods()
-        }
+        // The server is asked for its ways of signing in when the form
+        // appears with an address and when an address is submitted.
+        .task { await viewModel.checkSignInMethods() }
+        .onSubmit { Task { await viewModel.checkSignInMethods() } }
     }
 }
 

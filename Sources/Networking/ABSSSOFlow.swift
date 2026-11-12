@@ -31,17 +31,13 @@ struct ABSSSOFlow {
             throw ABSSSO.Failure.startUnanswered(status: -1)
         }
         let (startBody, startResponse) = try await fetch(URLRequest(url: start))
-        let page = try ABSSSO.providerPage(status: startResponse.statusCode,
-                                           location: startResponse.value(forHTTPHeaderField: "Location"),
-                                           body: startBody)
+        let page = try ABSSSO.providerPage(startResponse, body: startBody)
         let back = try await window.signIn(at: page, returnScheme: ABSSSO.callbackScheme)
         let code = try ABSSSO.code(fromReturn: back, state: state)
         guard let exchange = ABSSSO.exchangeURL(server: server, state: state, code: code, verifier: verifier) else {
             throw ABSSSO.Failure.exchangeUnanswered(status: -1)
         }
         let (body, response) = try await fetch(URLRequest(url: exchange))
-        return try ABSSSO.token(status: response.statusCode,
-                                location: response.value(forHTTPHeaderField: "Location"),
-                                body: body)
+        return try ABSSSO.token(response, body: body)
     }
 }

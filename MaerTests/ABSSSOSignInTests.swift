@@ -60,12 +60,16 @@ struct ABSSSOSignInTests {
         defer { stand.restore() }
         let server = try await ABSLoopback.start(login: .refuse, libraries: .accept, singleSignOn: .token("token-sso"))
         defer { server.stop() }
+        // Cookies belong to the host, not the port: a cookie an earlier run
+        // left for the loopback host would read as this flow's.
+        let url = try #require(URL(string: server.address))
+        for cookie in HTTPCookieStorage.shared.cookies(for: url) ?? [] { HTTPCookieStorage.shared.deleteCookie(cookie) }
+        #expect((HTTPCookieStorage.shared.cookies(for: url) ?? []).isEmpty, "the precondition: no cookie of the host before the flow")
         let auth = signedIn(to: "https://abs.a.example")
         auth.serverURLString = server.address
         await auth.connectWithSSO(window: ReturningWindow())
         // The precondition: the server set its cookies and the flow carried them.
         #expect(server.requests.dropFirst().first?.cookie?.contains("connect.sid=") == true, "\(server.diagnosis)")
-        let url = try #require(URL(string: server.address))
         let shared = (HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name)
         #expect(!shared.contains("connect.sid") && !shared.contains("auth_method"), "the shared store keeps \(shared)")
         let after = server.requests.dropFirst(2)

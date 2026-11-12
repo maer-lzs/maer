@@ -223,7 +223,7 @@ final class AuthViewModel: ObservableObject {
     /// as a password's (`adopt`). A flow the person cancels leaves no
     /// message; a failed one says what failed and writes its reason to the
     /// log.
-    func connectWithSSO(window: (any SignInWindow)? = nil) async {
+    func connectWithSSO(window: any SignInWindow) async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
             errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
@@ -236,7 +236,7 @@ final class AuthViewModel: ObservableObject {
         let token: String
         do {
             token = try await ABSSSOFlow(fetch: { try await flow.data(for: $0) },
-                                         window: window ?? SystemSignInWindow()).run(server: url)
+                                         window: window).run(server: url)
         } catch let failure as ABSSSO.Failure {
             Logger.library.notice("AUTH sso failed host=\(url.host ?? "-", privacy: .public) step=\(String(describing: failure), privacy: .public)")
             errorMessage = Self.sentence(for: failure)

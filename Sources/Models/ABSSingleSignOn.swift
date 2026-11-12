@@ -6,7 +6,7 @@
 import CryptoKit
 import Foundation
 
-/// Proof Key for Code Exchange (RFC 7636) with the method S256: the app
+/// Proof Key for Code Exchange (RFC 7636) with the SHA-256 method: the app
 /// keeps a random verifier and sends only its hash, the challenge; the code
 /// the provider hands out is worth nothing without the verifier.
 nonisolated enum PKCE {
@@ -99,6 +99,11 @@ nonisolated enum ABSSSO {
         throw .startUnanswered(status: status)
     }
 
+    /// The provider's sign-in page from the server's answer to the start.
+    static func providerPage(_ response: HTTPURLResponse, body: Data) throws(Failure) -> URL {
+        try providerPage(status: response.statusCode, location: response.value(forHTTPHeaderField: "Location"), body: body)
+    }
+
     /// The code from the address the sign-in window came back with. Only
     /// the app's return address with this flow's state carries one.
     static func code(fromReturn url: URL, state: String) throws(Failure) -> String {
@@ -127,6 +132,11 @@ nonisolated enum ABSSSO {
             URLQueryItem(name: "code_verifier", value: verifier),
         ])
         return components.url
+    }
+
+    /// The token from the server's answer to the exchange.
+    static func token(_ response: HTTPURLResponse, body: Data) throws(Failure) -> String {
+        try token(status: response.statusCode, location: response.value(forHTTPHeaderField: "Location"), body: body)
     }
 
     /// The token from the server's answer to the exchange. A success is the
