@@ -7,65 +7,64 @@
 import Testing
 import Foundation
 
-/// Ob die Quellen dieser Kopie ueberhaupt danebenliegen, und was daraus
-/// folgt.
+/// Whether the sources of this copy lie beside it at all, and what follows.
 ///
-/// Die Quelltext-Zaeune lesen das Repo ueber `#filePath`. Laeuft die Suite
-/// dort, wo das Repo nicht liegt, ist das eine ehrliche Enthaltung. Bisher
-/// stand dafuer ein Wachposten am Anfang des Falls, und der meldete
-/// BESTANDEN: *„sources unreadable, no verdict"*, und daneben ein gruenes
-/// Haekchen. Ein Zaun, der seine Quellen nicht findet, sagt damit „in
-/// Ordnung" genau dann, wenn er nichts weiss.
+/// The source fences read the repository through `#filePath`. A suite that
+/// runs where the repository is not abstains, honestly. A guard at the start
+/// of a case would report PASSED there, and a fence that cannot find its
+/// sources would say "fine" exactly when it knows nothing.
 ///
-/// **Die zwei Faelle werden hier getrennt, und nur so wird es ehrlich:**
+/// **The two cases are kept apart here, and only that makes it honest:**
 ///
-/// - **Die Quellen fehlen** ist eine Enthaltung. Das entscheidet eine
-///   Bedingung VOR dem Lauf, der Fall erscheint als uebersprungen und nicht
-///   als bestanden.
-/// - **Die Quellen sind da und der Zaun hat trotzdem nichts gelesen** ist
-///   ein BEFUND. Dann hat er seine einzige Aufgabe verfehlt, und das gehoert
-///   rot.
+/// - **The sources are missing** is an abstention. A condition BEFORE the
+///   run decides it, and the case shows as skipped, not as passed.
+/// - **The sources are there and the fence read nothing anyway** is a
+///   FINDING. The fence missed its one task, and that is red.
 ///
-/// Dieselbe Trennung wie auf der Dienst-Seite bei der Ignorier-Datei: fehlt
-/// sie im Abbild, ist das in Ordnung; fehlt sie in einer Arbeitskopie, ist
-/// es ein Befund. Die Frage „welcher der beiden Faelle ist es" wird gestellt,
-/// statt beide gleich zu behandeln.
+/// The same split as on the service side for the ignore file: missing in
+/// the image is fine, missing in a working copy is a finding. The question
+/// which of the two cases it is gets asked instead of treating both alike.
 nonisolated enum SourceTree {
-    /// Die Wurzel des Repos, aus der Lage DIESER Datei abgeleitet.
+    /// The root of the repository, derived from where THIS file lies.
     static let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    /// Ob der Quellordner dieser Kopie beiliegt.
+    /// Whether the source folder lies with this copy.
     static var hasSources: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("Sources").path)
     }
 
-    /// Ob die Projektdatei dieser Kopie beiliegt. Eigene Frage, weil ein
-    /// Lauf ohne Projektdatei die Quellen trotzdem haben kann.
+    /// Whether the project file lies with this copy. A question of its own,
+    /// because a run without the project file can still have the sources.
     static var hasProjectFile: Bool {
         FileManager.default.fileExists(atPath:
             root.appendingPathComponent("Maer.xcodeproj/project.pbxproj").path)
     }
 
-    /// Ob der Testordner dieser Kopie beiliegt. Der Zaun ueber den Zaeunen
-    /// liest ihn, und er darf aus demselben Grund nicht still bestehen.
+    /// Whether the test folder lies with this copy. The fence over the
+    /// fences reads it, and for the same reason it must not pass silently.
     static var hasTests: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("MaerTests").path)
     }
 
-    /// Ob die Dokumente beiliegen: Inventar und Vertrag.
+    /// Whether the documents lie with this copy: inventory and contract.
     static var hasDocs: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("docs").path)
     }
 
-    /// Ob die UI-Tests beiliegen.
+    /// Whether the UI tests lie with this copy.
     static var hasUITests: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("MaerUITests").path)
     }
 
-    /// Ob die Info.plist der App als Datei beiliegt (gebaut steckt sie im
-    /// Paket, aber nicht in der Form, die die Faelle lesen).
+    /// Whether the pages of the website lie with this copy (`site`).
+    static var hasSite: Bool {
+        FileManager.default.fileExists(atPath: root.appendingPathComponent("site").path)
+    }
+
+    /// Whether the app's Info.plist lies with this copy as a file (built, it
+    /// is inside the bundle, but not in the form the cases read).
     static var hasInfoPlist: Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent("Maer-Info.plist").path)
     }
@@ -163,35 +162,40 @@ struct SourceTreeWalkTests {
 }
 
 extension Trait where Self == ConditionTrait {
-    /// Der Fall liest den Quellbaum. Liegt er nicht bei, wird der Fall
-    /// UEBERSPRUNGEN und nicht bestanden.
+    /// The case reads the source tree. Without it, the case is SKIPPED, not
+    /// passed.
     static var needsTheSources: Self {
         .enabled(if: SourceTree.hasSources, "die Quellen liegen dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest die Projektdatei. Dasselbe eine Ebene daneben.
+    /// The case reads the project file. The same, one level beside.
     static var needsTheProjectFile: Self {
         .enabled(if: SourceTree.hasProjectFile, "die Projektdatei liegt dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest den Testordner, auch seine Fixtures.
+    /// The case reads the test folder, its fixtures too.
     static var needsTheTests: Self {
         .enabled(if: SourceTree.hasTests, "der Testordner liegt dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest die Dokumente.
+    /// The case reads the documents.
     static var needsTheDocs: Self {
         .enabled(if: SourceTree.hasDocs, "die Dokumente liegen dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest die UI-Tests.
+    /// The case reads the UI tests.
     static var needsTheUITests: Self {
         .enabled(if: SourceTree.hasUITests, "die UI-Tests liegen dieser Kopie nicht bei")
     }
 
-    /// Der Fall liest die Info.plist der App als Datei.
+    /// The case reads the app's Info.plist as a file.
     static var needsTheInfoPlist: Self {
         .enabled(if: SourceTree.hasInfoPlist, "die Info.plist liegt dieser Kopie nicht als Datei bei")
+    }
+
+    /// The case reads the pages of the website.
+    static var needsTheSite: Self {
+        .enabled(if: SourceTree.hasSite, "die Seiten der Website liegen dieser Kopie nicht bei")
     }
 }
 #endif

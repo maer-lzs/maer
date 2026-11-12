@@ -1924,7 +1924,6 @@ extension ProjectFileIntegrityTests {
         "ScrollCalmFenceTests.swift": 1,
         "SearchDoorFenceTests.swift": 2,
         "SocketLaneTimeoutTests.swift": 1,
-        "SourceTreeProbe.swift": 1,
         "StockReasonFenceTests.swift": 2,
         "SyncContractFenceTests.swift": 1,
         "SyncRulesTests.swift": 1,
