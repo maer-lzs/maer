@@ -66,6 +66,8 @@ struct BookDetailScreen: View {
     private var detailProvider: any AudioProvider { router.provider(entry.id) }
 
     @State private var detail: LibraryItemDetail?
+    /// The link on maer.fm for a catalog book; nil for any other title.
+    @State private var shareURL: URL?
     /// The item the page names (`BookPageItem`): the entry's, else the
     /// loaded detail's when the entry carries no title.
     private var shownItem: LibraryItem { BookPageItem.shown(entry: entry.item, detail: detail) }
@@ -554,6 +556,12 @@ struct BookDetailScreen: View {
         }
         } // GeometryReader
         .untitledDetailPage()
+        .pageActions("book-actions", shown: shareURL != nil) {
+            if let shareURL { SharedLinkButton(url: shareURL, title: shownItem.title) }
+        }
+        .sharedLink(SharedLink.content(bookId: entry.id, title: shownItem.title, author: shownItem.author,
+                                       audioURL: nil),
+                    to: $shareURL)
         .alert("No Wi-Fi Detected", isPresented: $showWiFiWarning) {
             Button("Download Anyway") {
                 Task { await reallyStartDownload() }

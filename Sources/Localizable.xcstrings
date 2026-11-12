@@ -10297,6 +10297,16 @@
         }
       }
     },
+    "Share" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilen"
+          }
+        }
+      }
+    },
     "Share OPML" : {
       "localizations" : {
         "de" : {

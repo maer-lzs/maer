@@ -172,5 +172,35 @@ struct SharedLinkTests {
         #expect(PodcastIdentity.originalGuid(id) == "tag:example.org,2026:214")
         #expect(id == "rss:\(PodcastIdentity.feedKey(Self.feed)):tag:example.org,2026:214")
     }
+
+    @Test("Der Link einer Seite: keiner ohne Inhalt, keiner fuer etwas, das zu Hause bleibt, sonst der Link der Regel")
+    func thePageLinkFollowsTheRule() throws {
+        #expect(SharedLink.shareURL(nil, staysHome: Self.open) == nil)
+        #expect(SharedLink.shareURL(Self.show, staysHome: { _ in true }) == nil)
+        #expect(SharedLink.shareURL(Self.show, staysHome: Self.open) == SharedLink.url(for: Self.show))
+    }
+
+    /// The seam: the link is written in one place, a page shares through
+    /// the one button, and the system's share link stands only where it is
+    /// known to stand.
+    @Test("Zaun: der Link entsteht nur in SharedLink, geteilt wird ueber den einen Knopf auf den vier Seiten", .needsTheSources)
+    func theLinkHasOneHome() throws {
+        var writesTheLink: Set<String> = []
+        var systemShareLink: Set<String> = []
+        var usesTheButton: Set<String> = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let name = file.lastPathComponent
+            if code.contains("maer.fm/l") || code.contains("\"/l\"") || code.contains("/l#") { writesTheLink.insert(name) }
+            if code.contains("ShareLink(") { systemShareLink.insert(name) }
+            if code.contains("SharedLinkButton(") { usesTheButton.insert(name) }
+        }
+        #expect(writesTheLink == ["SharedLink.swift"], "the link is written elsewhere: \(writesTheLink.sorted())")
+        #expect(systemShareLink == ["SharedLinkButton.swift", "PodcastSourceView.swift", "MetricRecordsView.swift"],
+                "a share link stands past the one button: \(systemShareLink.sorted())")
+        #expect(usesTheButton == ["PodcastEpisodeDetailView.swift", "PodcastShowView.swift",
+                                  "RadioStationDetailView.swift", "BookDetailScreen.swift"],
+                "the pages that share: \(usesTheButton.sorted())")
+    }
 }
 #endif

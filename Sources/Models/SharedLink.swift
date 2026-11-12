@@ -160,6 +160,13 @@ nonisolated enum SharedLink {
         return (addresses + [content.facts.audioURL].compactMap { $0 }).allSatisfy(isPublicAddress)
     }
 
+    /// The link a page offers to share: nil when there is no content or
+    /// `offers` says no, so the page shows no share button.
+    static func shareURL(_ content: Content?, staysHome: (String) -> Bool) -> URL? {
+        guard let content, offers(content, staysHome: staysHome) else { return nil }
+        return url(for: content)
+    }
+
     /// An http or https address with a host and no access in it.
     static func isPublicAddress(_ raw: String) -> Bool {
         guard let url = URL(string: raw), let scheme = url.scheme?.lowercased(),

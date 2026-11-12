@@ -25,6 +25,12 @@ struct PodcastEpisodeDetailView: View {
     /// memory, they are read when the episode opens.
     @State private var notes: String?
     @State private var showSettings = false
+    /// The link on maer.fm for this episode; nil when it is not shared.
+    @State private var shareURL: URL?
+    private var shareContent: SharedLink.Content? {
+        guard let episode = podcastEpisode, let show else { return nil }
+        return SharedLink.content(episode: episode, feedURL: show.feedURL, showTitle: show.title)
+    }
     /// The page stands on top of its stack (appeared, nothing pushed over it).
     @State private var isTopPage = false
     /// Timestamp column ("1:23:45") scales with Dynamic Type.
@@ -197,9 +203,11 @@ struct PodcastEpisodeDetailView: View {
         // The show's settings from its episode too, in the page's one menu.
         // The show comes only from a store, so there is one whenever there
         // are settings.
-        .pageActions("episode-actions", shown: show != nil) {
-            PodcastShowSettingsButton { showSettings = true }
+        .pageActions("episode-actions", shown: show != nil || shareURL != nil) {
+            if show != nil { PodcastShowSettingsButton { showSettings = true } }
+            if let shareURL { SharedLinkButton(url: shareURL, title: shareContent?.facts.title) }
         }
+        .sharedLink(shareContent, to: $shareURL)
         .sheet(isPresented: $showSettings) {
             Group {
                 if let show { PodcastShowSettingsEntry(show: show) }

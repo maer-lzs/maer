@@ -56,6 +56,8 @@ struct PodcastShowView: View {
     @State private var loadingHistory = false
     @State private var historyResult: String?
     @State private var showSettings = false
+    /// The link on maer.fm for this show; nil when it is not shared.
+    @State private var shareURL: URL?
     /// The freshly parsed feed of a show nobody subscribed to. It lives for
     /// the visit; leaving the page discards it.
     @State private var fetchedShow: PodcastShow?
@@ -281,8 +283,9 @@ struct PodcastShowView: View {
         .untitledDetailPage()
         // The show's settings stand in the page's one menu; a pushed page
         // carries its own actions and no app settings cog.
-        .pageActions("show-actions", shown: caps.showsSettingsSheet) {
-            PodcastShowSettingsButton { showSettings = true }
+        .pageActions("show-actions", shown: caps.showsSettingsSheet || shareURL != nil) {
+            if caps.showsSettingsSheet { PodcastShowSettingsButton { showSettings = true } }
+            if let shareURL { SharedLinkButton(url: shareURL, title: liveShow?.title) }
             if let show = routineShow {
                 Menu {
                     ForEach(RoutineRule.offered(feedKey: PodcastIdentity.feedKey(show.feedURL)), id: \.self) { rule in
@@ -295,6 +298,7 @@ struct PodcastShowView: View {
                 .accessibilityIdentifier("add-to-routine")
             }
         }
+        .sharedLink(liveShow.flatMap { SharedLink.content(show: $0) }, to: $shareURL)
         .sheet(isPresented: $showSettings) {
             Group {
                 if let show = liveShow {
