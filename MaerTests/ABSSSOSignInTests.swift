@@ -71,9 +71,13 @@ struct ABSSSOSignInTests {
         auth.serverURLString = server.address
         await auth.connectWithSSO(window: ReturningWindow())
         // The precondition: the server set its cookies and the flow carried them.
-        #expect(server.requests.dropFirst().first?.cookie?.contains("connect.sid=") == true, "\(server.diagnosis)")
+        let exchange = server.requests.dropFirst().first?.cookie ?? ""
+        for name in ["connect.sid", "auth_method", "auth_state", "auth_cb"] {
+            #expect(exchange.contains("\(name)="), "the exchange did not carry \(name): \(server.diagnosis)")
+        }
         let shared = (HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name)
-        #expect(!shared.contains("connect.sid") && !shared.contains("auth_method"), "the shared store keeps \(shared)")
+        let flowCookies = ["connect.sid", "auth_method", "auth_state", "auth_cb", "openid_id_token"]
+        #expect(shared.allSatisfy { !flowCookies.contains($0) }, "the shared store keeps \(shared)")
         let after = server.requests.dropFirst(2)
         #expect(!after.isEmpty && after.allSatisfy { $0.cookie == nil }, "a later request carried \(after.map(\.cookie))")
     }

@@ -393,6 +393,8 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
                 "Location: https://id.example/authorize?response_type=code&state=\(state)",
                 "Set-Cookie: connect.sid=flow-\(UUID().uuidString); Path=/; HttpOnly",
                 "Set-Cookie: auth_method=openid-mobile; Max-Age=315360000; Path=/; HttpOnly",
+                "Set-Cookie: auth_state=\(state); Max-Age=600; Path=/; HttpOnly",
+                "Set-Cookie: auth_cb=audiobookshelf%3A%2F%2Foauth; Max-Age=600; Path=/; HttpOnly",
             ], body: "")
         case "/auth/openid/callback":
             guard cookie?.contains("connect.sid=flow-") == true else {
@@ -403,7 +405,10 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
             case .token(let token): #"{"user":{"id":"u","token":""# + token + #"","accessToken":"short","refreshToken":"long"}}"#
             case .expiringOnly: #"{"user":{"id":"u","accessToken":"short","refreshToken":"long"}}"#
             }
-            send(connection, status: "200 OK", headers: ["Content-Type: application/json"], body: json)
+            send(connection, status: "200 OK", headers: [
+                "Content-Type: application/json",
+                "Set-Cookie: openid_id_token=id-\(UUID().uuidString); Max-Age=3600; Path=/; HttpOnly",
+            ], body: json)
         default:
             send(connection, status: "404 Not Found", headers: [], body: "")
         }
