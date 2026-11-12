@@ -817,6 +817,12 @@ struct LibraryView: View {
             }
         }
         .onOpenURL { url in
+            // A link on maer.fm that shares a public thing: the opener
+            // decides what it opens, or says that it opens nothing.
+            if url.host?.lowercased() == SharedLink.host {
+                Task { await openShared(url) }
+                return
+            }
             // Home-screen widget: maer://resume → resume path (like the quick
             // action / Siri); a row's link names its title like Siri does.
             // Read strictly: a link of another form asks nothing.
@@ -1746,6 +1752,15 @@ struct LibraryView: View {
             return viewModel.seriesGroupedEntries.count > allBooksPreviewLimit
         }
         return viewModel.sortedFilteredEntries.count > allBooksPreviewShown
+    }
+
+    /// Opens what a link on maer.fm names, through the one navigation point,
+    /// or says the one sentence of a link that opens nothing.
+    private func openShared(_ url: URL) async {
+        await SharedLinkOpener.live(knows: { router.item($0) != nil }).open(url) { sentence in
+            Haptics.tap()
+            playerCoordinator.sayOpenFailure(sentence, cause: .unknown, title: nil)
+        }
     }
 
     // MARK: Resume from outside (quick action / Siri)

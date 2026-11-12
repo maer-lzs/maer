@@ -134,7 +134,11 @@ struct SharedGrowthFenceTests {
     /// one queue, from the Jellyfin, Subsonic and Audiobookshelf ways (three).
     /// 752: Siri's continue asks the door whether anything can continue
     /// before the app opens (one, the session's door).
-    nonisolated static let sourcesStock = 752
+    /// 755: a link on maer.fm opens through the one navigation point, reads
+    /// a feed nobody follows into the browsed episodes and resolves a
+    /// catalog book through the session (three, in `SharedLinkOpener`, none
+    /// in a view).
+    nonisolated static let sourcesStock = 755
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

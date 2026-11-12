@@ -12729,6 +12729,16 @@
         }
       }
     },
+    "This link can't be opened." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Link lässt sich nicht öffnen."
+          }
+        }
+      }
+    },
     "This playlist has no tracks yet." : {
       "localizations" : {
         "de" : {
