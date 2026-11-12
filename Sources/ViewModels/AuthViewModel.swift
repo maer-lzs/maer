@@ -215,7 +215,69 @@ final class AuthViewModel: ObservableObject {
             }
             token = trimmedToken
         }
+        await adopt(token, at: url, trial: trial)
+    }
 
+    /// Signs in through the server's single sign-on (`ABSSSOFlow`) in the
+    /// system's sign-in window. The token it brings ends in the same steps
+    /// as a password's (`adopt`). A flow the person cancels leaves no
+    /// message; a failed one says what failed and writes its reason to the
+    /// log.
+    func connectWithSSO(window: (any SignInWindow)? = nil) async {
+        errorMessage = nil
+        guard let url = Self.normalizedURL(from: serverURLString) else {
+            errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        let flow = HTTP.SignInFlow()
+        defer { flow.close() }
+        let token: String
+        do {
+            token = try await ABSSSOFlow(fetch: { try await flow.data(for: $0) },
+                                         window: window ?? SystemSignInWindow()).run(server: url)
+        } catch let failure as ABSSSO.Failure {
+            Logger.library.notice("AUTH sso failed host=\(url.host ?? "-", privacy: .public) step=\(String(describing: failure), privacy: .public)")
+            errorMessage = Self.sentence(for: failure)
+            return
+        } catch {
+            guard !error.isCancellation else {
+                Logger.library.notice("AUTH sso cancelled host=\(url.host ?? "-", privacy: .public)")
+                return
+            }
+            errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
+            return
+        }
+        await adopt(token, at: url, trial: Self.makeClient(baseURL: url, token: nil))
+    }
+
+    /// What a failed single sign-on tells the person.
+    static func sentence(for failure: ABSSSO.Failure) -> String {
+        switch failure {
+        case .returnAddressRefused:
+            return String(localized: "This server does not let Mär return from its single sign-on. Its administrator can add audiobookshelf://oauth to the allowed redirect URIs.")
+        case .providerNotSecure:
+            return String(localized: "The sign-in page of this server's provider is not secured with HTTPS. Mär does not open it.")
+        case .startUnanswered, .exchangeUnanswered:
+            return String(localized: "The server did not answer the single sign-on as expected. Please try again.")
+        case .windowUnavailable:
+            return String(localized: "The sign-in window could not be opened. Please try again.")
+        case .refusedBySignIn:
+            return String(localized: "The sign-in was refused. Please check your account at the provider.")
+        case .foreignState, .noCode:
+            return String(localized: "The sign-in came back without a valid answer. Please try again.")
+        case .flowUnknown:
+            return String(localized: "The server no longer knows this sign-in. Please try again.")
+        case .needsRenewal:
+            return String(localized: "This server signs in only with tokens that expire and must be renewed, which Mär cannot do yet. Please use an API key.")
+        }
+    }
+
+    /// Hands a token a sign-in obtained to the shared client once the server
+    /// answered with it. Every way of signing in ends here, so the rule of
+    /// an account switch holds for each of them.
+    private func adopt(_ token: String, at url: URL, trial: APIClient) async {
         trial.updateToken(token)
         do {
             _ = try await trial.fetchLibraries()

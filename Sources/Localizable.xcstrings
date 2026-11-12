@@ -12087,6 +12087,16 @@
         }
       }
     },
+    "The server did not answer the single sign-on as expected. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server hat die Einmalanmeldung nicht wie erwartet beantwortet. Bitte erneut versuchen."
+          }
+        }
+      }
+    },
     "The server does not accept this key. Enter the key from the server's music settings as the password." : {
       "localizations" : {
         "de" : {
@@ -12133,6 +12143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Server ist aus diesem Netz nicht erreichbar."
+          }
+        }
+      }
+    },
+    "The server no longer knows this sign-in. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server kennt diese Anmeldung nicht mehr. Bitte erneut versuchen."
           }
         }
       }
@@ -12365,6 +12385,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "The sign-in came back without a valid answer. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldung kam ohne gültige Antwort zurück. Bitte erneut versuchen."
+          }
+        }
+      }
+    },
+    "The sign-in page of this server's provider is not secured with HTTPS. Mär does not open it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldeseite des Anbieters dieses Servers ist nicht mit HTTPS gesichert. Mär öffnet sie nicht."
+          }
+        }
+      }
+    },
+    "The sign-in was refused. Please check your account at the provider." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldung wurde abgelehnt. Bitte das Konto beim Anbieter prüfen."
+          }
+        }
+      }
+    },
+    "The sign-in window could not be opened. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Anmeldefenster ließ sich nicht öffnen. Bitte erneut versuchen."
           }
         }
       }
@@ -12809,6 +12869,16 @@
         }
       }
     },
+    "This server does not let Mär return from its single sign-on. Its administrator can add audiobookshelf://oauth to the allowed redirect URIs." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server lässt Mär nicht aus seiner Einmalanmeldung zurückkehren. Sein Administrator kann audiobookshelf://oauth bei den erlaubten Weiterleitungsadressen eintragen."
+          }
+        }
+      }
+    },
     "This server has no podcast library." : {
       "localizations" : {
         "de" : {
@@ -12825,6 +12895,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Server meldet nur %lld Bibliothek. Mär kann Musik und Hörbücher innerhalb einer Bibliothek nicht auseinanderhalten. Schalte einen Modus ab oder trenne sie auf dem Server."
+          }
+        }
+      }
+    },
+    "This server signs in only with tokens that expire and must be renewed, which Mär cannot do yet. Please use an API key." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server meldet nur mit Tokens an, die ablaufen und erneuert werden müssen; das kann Mär noch nicht. Bitte einen API-Schlüssel nutzen."
           }
         }
       }

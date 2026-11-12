@@ -233,6 +233,16 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         case accept
         case refuse
     }
+    /// The single sign-on as the server runs it, rebuilt from its source
+    /// (Audiobookshelf 2.37.2, `server/Auth.js`): the start sets the flow's
+    /// cookie and redirects to the provider with the app's state, the
+    /// exchange without that cookie is `400 No session`.
+    enum SingleSignOn: Sendable {
+        /// The exchange answers with the long-lived token.
+        case token(String)
+        /// The exchange answers only with tokens that expire.
+        case expiringOnly
+    }
     struct Seen: Sendable {
         let path: String
         let authorization: String?
@@ -248,21 +258,24 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
     private let libraries: Listing
     /// The user id `api/me` answers with; nil answers without one.
     private let userId: String?
+    private let singleSignOn: SingleSignOn?
     private(set) var port: UInt16 = 0
 
     var requests: [Seen] { lock.withLock { seen } }
     var diagnosis: String { lock.withLock { "requests=\(seen.count) events=\(events)" } }
     var address: String { "http://127.0.0.1:\(port)" }
 
-    private init(login: Answer, libraries: Listing, userId: String?) throws {
+    private init(login: Answer, libraries: Listing, userId: String?, singleSignOn: SingleSignOn?) throws {
         self.login = login
         self.libraries = libraries
         self.userId = userId
+        self.singleSignOn = singleSignOn
         listener = try NWListener(using: .tcp, on: .any)
     }
 
-    static func start(login: Answer, libraries: Listing, userId: String? = nil) async throws -> ABSLoopback {
-        let server = try ABSLoopback(login: login, libraries: libraries, userId: userId)
+    static func start(login: Answer, libraries: Listing, userId: String? = nil,
+                      singleSignOn: SingleSignOn? = nil) async throws -> ABSLoopback {
+        let server = try ABSLoopback(login: login, libraries: libraries, userId: userId, singleSignOn: singleSignOn)
         server.listener.newConnectionHandler = { [server] connection in
             connection.start(queue: .global())
             server.receiveHead(connection, buffer: Data())
@@ -314,6 +327,11 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         lock.withLock {
             seen.append(Seen(path: bare, authorization: authorization, cookie: cookie, returnTokens: returnTokens))
         }
+        if let singleSignOn, bare.hasPrefix("/auth/openid") {
+            let query = URLComponents(string: path)?.queryItems ?? []
+            answerSingleSignOn(connection, path: bare, query: query, cookie: cookie, singleSignOn)
+            return
+        }
         let renewalCookie = "Set-Cookie: refresh_token=renewal-\(UUID().uuidString); Max-Age=2592000; Path=/; HttpOnly"
         switch (bare, login) {
         case ("/login", .accept(let token)):
@@ -341,6 +359,38 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
             status = "401 Unauthorized"; json = "{}"
         }
         send(connection, status: status, headers: ["Content-Type: application/json"], body: json)
+    }
+
+    /// The two routes of the single sign-on: `/auth/openid` and
+    /// `/auth/openid/callback`.
+    private func answerSingleSignOn(_ connection: NWConnection, path: String, query: [URLQueryItem],
+                                    cookie: String?, _ singleSignOn: SingleSignOn) {
+        func value(_ name: String) -> String? { query.first { $0.name == name }?.value }
+        switch path {
+        case "/auth/openid":
+            guard value("redirect_uri") == "audiobookshelf://oauth" else {
+                send(connection, status: "400 Bad Request", headers: [], body: "Invalid redirect_uri")
+                return
+            }
+            let state = value("state") ?? ""
+            send(connection, status: "302 Found", headers: [
+                "Location: https://id.example/authorize?response_type=code&state=\(state)",
+                "Set-Cookie: connect.sid=flow-\(UUID().uuidString); Path=/; HttpOnly",
+                "Set-Cookie: auth_method=openid-mobile; Max-Age=315360000; Path=/; HttpOnly",
+            ], body: "")
+        case "/auth/openid/callback":
+            guard cookie?.contains("connect.sid=flow-") == true else {
+                send(connection, status: "400 Bad Request", headers: [], body: "No session")
+                return
+            }
+            let json = switch singleSignOn {
+            case .token(let token): #"{"user":{"id":"u","token":""# + token + #"","accessToken":"short","refreshToken":"long"}}"#
+            case .expiringOnly: #"{"user":{"id":"u","accessToken":"short","refreshToken":"long"}}"#
+            }
+            send(connection, status: "200 OK", headers: ["Content-Type: application/json"], body: json)
+        default:
+            send(connection, status: "404 Not Found", headers: [], body: "")
+        }
     }
 
     private func send(_ connection: NWConnection, status: String, headers: [String], body text: String) {
