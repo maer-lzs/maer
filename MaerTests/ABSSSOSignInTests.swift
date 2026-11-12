@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Foundation
+import OSLog
 import Testing
 @testable import Maer
 
@@ -159,6 +160,52 @@ struct ABSSSOSignInTests {
             #expect((WidgetSnapshot.load() == nil) == switches, "\(storedUser): the title of the account before")
             #expect(AppStorageKeys.string(AppStorageKeys.absSignedInUser) == "user-b")
         }
+    }
+
+    /// Fails with an error that is neither a step of the flow nor a cancel.
+    private struct BrokenWindow: SignInWindow {
+        func signIn(at page: URL, returnScheme: String) async throws -> URL {
+            throw URLError(.cannotConnectToHost)
+        }
+    }
+
+    /// The lines of the library log since a moment that begin with `prefix`.
+    private func logged(since: Date, prefix: String) throws -> [String] {
+        let store = try OSLogStore(scope: .currentProcessIdentifier)
+        return try store.getEntries(at: store.position(date: since)).compactMap { $0 as? OSLogEntryLog }
+            .filter { $0.subsystem == AppLogSubsystem.value && $0.category == "library" }
+            .map(\.composedMessage).filter { $0.hasPrefix(prefix) }
+    }
+
+    @Test("Jeder Ausgang der Anmeldung schreibt eine Zeile: angemeldet, nicht uebernommen, Fehler ausserhalb des Ablaufs")
+    func everyOutcomeOfASignInIsLogged() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let accepting = try await ABSLoopback.start(login: .refuse, libraries: .accept, singleSignOn: .token("token-sso"))
+        defer { accepting.stop() }
+        let since = Date()
+        let auth = signedIn(to: "https://abs.a.example")
+        auth.serverURLString = accepting.address
+        await auth.connectWithSSO(window: ReturningWindow())
+        #expect(auth.errorMessage == nil, "the precondition: the sign-in went through \(accepting.diagnosis)")
+        let taken = try logged(since: since, prefix: "AUTH signed in")
+        #expect(taken.contains { $0.contains("host=127.0.0.1") }, "\(taken)")
+
+        let refusing = try await ABSLoopback.start(login: .refuse, libraries: .refuse, singleSignOn: .token("token-sso"))
+        defer { refusing.stop() }
+        let notTaken = signedIn(to: "https://abs.a.example")
+        notTaken.serverURLString = refusing.address
+        await notTaken.connectWithSSO(window: ReturningWindow())
+        #expect(notTaken.errorMessage != nil, "the precondition: the libraries refused the token")
+        let refused = try logged(since: since, prefix: "AUTH sign-in not taken")
+        #expect(refused.contains { $0.contains("host=127.0.0.1") && $0.contains("reason=") }, "\(refused)")
+
+        let broken = signedIn(to: "https://abs.a.example")
+        broken.serverURLString = accepting.address
+        await broken.connectWithSSO(window: BrokenWindow())
+        #expect(broken.errorMessage != nil, "the precondition: the window failed")
+        let failed = try logged(since: since, prefix: "AUTH sso failed")
+        #expect(failed.contains { $0.contains("host=127.0.0.1") && $0.contains("reason=") }, "\(failed)")
     }
 }
 #endif

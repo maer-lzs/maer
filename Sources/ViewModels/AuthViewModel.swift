@@ -246,6 +246,7 @@ final class AuthViewModel: ObservableObject {
                 Logger.library.notice("AUTH sso cancelled host=\(url.host ?? "-", privacy: .public)")
                 return
             }
+            Logger.library.notice("AUTH sso failed host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
             errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
             return
         }
@@ -323,6 +324,7 @@ final class AuthViewModel: ObservableObject {
             needsReauth = false
             accessUnknown = false
             apiClient.accessUnknown = false
+            Logger.library.notice("AUTH signed in host=\(url.host ?? "-", privacy: .public) switched=\(switched, privacy: .public)")
             // The titles of the former server leave the widget and the
             // device's search, as at a sign out, before the sources change,
             // so a pass for the new server writes after them; a sign-in
@@ -334,6 +336,7 @@ final class AuthViewModel: ObservableObject {
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
+            Logger.library.notice("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
             errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
         }
     }
