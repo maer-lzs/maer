@@ -73,6 +73,9 @@ final class AuthViewModel: ObservableObject {
         if !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
             AppStorageKeys.set(ABSServerScope.identity(of: url.absoluteString), for: AppStorageKeys.absSignedInServer)
         }
+        // A password sign-in of an earlier build left the server's renewal
+        // cookie in the store of the app's requests; it goes at the start.
+        if !storedURLString.isEmpty { ABSCookieSweep.sweep(server: url) }
 
         // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in

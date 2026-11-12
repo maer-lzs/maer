@@ -101,12 +101,26 @@ final class APIClient {
     /// under /api). Prefers the long-lived legacy token; newer JWT servers only
     /// return `accessToken` (which expires. The existing 401 handling then
     /// leads back to setup).
+    ///
+    /// The server sets a cookie with a renewal token unless the request asks
+    /// for its tokens in the answer (`x-return-tokens: true`). The request
+    /// asks, and it runs in a session of its own (`HTTP.SignInFlow`), so a
+    /// cookie the server sets anyway ends with it and never reaches the
+    /// store of the app's other requests. Redirects are followed as on
+    /// every other request. It is asked once.
     func login(username: String, password: String) async throws -> String {
-        let data = try await send(
-            method: "POST",
-            path: "login",
-            body: ["username": username, "password": password]
-        )
+        guard !accessUnknown else { throw APIError.accessUnknown }
+        var request = URLRequest(url: baseURL.appendingPathComponent("login"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("true", forHTTPHeaderField: "x-return-tokens")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["username": username, "password": password])
+        let flow = HTTP.SignInFlow(followsRedirects: true)
+        defer { flow.close() }
+        let (data, http) = try await flow.data(for: request)
+        guard (200...299).contains(http.statusCode) else {
+            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+        }
         let response = try await decode(LoginResponse.self, from: data)
         guard let token = response.user.token ?? response.user.accessToken, !token.isEmpty else {
             throw APIError.decoding("Login-Antwort enthält keinen Token")

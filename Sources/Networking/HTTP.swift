@@ -149,16 +149,16 @@ nonisolated enum HTTP {
     /// The session of one sign-in flow: the start of the flow and the
     /// exchange of its code ride on it, so the cookie the server ties the
     /// two together with lives only as long as the flow (`close`). A request
-    /// on it follows no redirect and gets the server's headers and the
+    /// on it follows no redirect, unless the flow is built to follow them
+    /// as every other request does, and gets the server's headers and the
     /// courtesy gate like every request; it is asked once, a flow repeats
     /// as a whole.
     nonisolated final class SignInFlow: Sendable {
         private let session = URLSession.signInFlow()
+        private let followsRedirects: Bool
 
-        /// Whether the flow's cookies stay apart from the shared store.
-        var keepsCookiesApart: Bool {
-            guard let own = session.configuration.httpCookieStorage else { return true }
-            return own !== HTTPCookieStorage.shared
+        init(followsRedirects: Bool = false) {
+            self.followsRedirects = followsRedirects
         }
 
         /// The flow's own cookie store; nil when the session keeps none.
@@ -169,7 +169,8 @@ nonisolated enum HTTP {
             do {
                 try ServerHeaders.admit(prepared)
                 let (data, response) = try await HTTP.courteously(prepared) {
-                    try await session.data(for: prepared, delegate: RedirectGuard.followingNone())
+                    try await session.data(for: prepared,
+                                           delegate: followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone())
                 }
                 guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
                 return (data, http)
@@ -183,6 +184,12 @@ nonisolated enum HTTP {
         func close() {
             session.invalidateAndCancel()
         }
+    }
+
+    /// The cookie store a lane's session keeps its cookies in; nil when it
+    /// keeps none.
+    static func cookieStore(_ lane: Lane) -> HTTPCookieStorage? {
+        session(lane).configuration.httpCookieStorage
     }
 
     /// The ways that ask their session once pass the same courtesy gate as

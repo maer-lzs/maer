@@ -20,7 +20,7 @@ import Testing
 struct ABSSignInSwitchTests {
     /// Everything a sign-in writes outside the client, put back after the
     /// witness.
-    private struct Stand {
+    struct Stand {
         let url = KeychainStore.load(forKey: KeychainKey.serverURL)
         let token = KeychainStore.load(forKey: KeychainKey.apiToken)
         let signedIn = AppStorageKeys.string(AppStorageKeys.absSignedInServer)
@@ -220,8 +220,13 @@ struct ABSSignInSwitchTests {
 /// its path and its Authorization header. Unchecked because one lock
 /// guards the recorded requests.
 nonisolated final class ABSLoopback: @unchecked Sendable {
+    /// The answer to `POST /login`. As the server does (`server/Auth.js`),
+    /// an accepted sign-in sets the cookie `refresh_token` unless the
+    /// request carries `x-return-tokens: true`.
     enum Answer: Sendable {
         case accept(String)
+        /// A server that sets the cookie whatever the request asks.
+        case acceptSettingTheCookie(String)
         case refuse
     }
     enum Listing: Sendable {
@@ -231,6 +236,8 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
     struct Seen: Sendable {
         let path: String
         let authorization: String?
+        var cookie: String? = nil
+        var returnTokens: String? = nil
     }
 
     private let listener: NWListener
@@ -299,12 +306,31 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         let path = lines.first?.split(separator: " ").dropFirst().first.map(String.init) ?? "/"
         let authorization = lines.dropFirst().first { $0.lowercased().hasPrefix("authorization:") }
             .map { String($0.dropFirst("authorization:".count)).trimmingCharacters(in: .whitespaces) }
+        let cookie = lines.dropFirst().first { $0.lowercased().hasPrefix("cookie:") }
+            .map { String($0.dropFirst("cookie:".count)).trimmingCharacters(in: .whitespaces) }
+        let returnTokens = lines.dropFirst().first { $0.lowercased().hasPrefix("x-return-tokens:") }
+            .map { String($0.dropFirst("x-return-tokens:".count)).trimmingCharacters(in: .whitespaces) }
         let bare = URLComponents(string: path)?.path ?? path
-        lock.withLock { seen.append(Seen(path: bare, authorization: authorization)) }
+        lock.withLock {
+            seen.append(Seen(path: bare, authorization: authorization, cookie: cookie, returnTokens: returnTokens))
+        }
+        let renewalCookie = "Set-Cookie: refresh_token=renewal-\(UUID().uuidString); Max-Age=2592000; Path=/; HttpOnly"
+        switch (bare, login) {
+        case ("/login", .accept(let token)):
+            let asked = returnTokens == "true"
+            let json = #"{"user":{"token":""# + token + #"","refreshToken":"# + (asked ? #""renewal""# : "null") + "}}"
+            send(connection, status: "200 OK",
+                 headers: ["Content-Type: application/json"] + (asked ? [] : [renewalCookie]), body: json)
+            return
+        case ("/login", .acceptSettingTheCookie(let token)):
+            send(connection, status: "200 OK", headers: ["Content-Type: application/json", renewalCookie],
+                 body: #"{"user":{"token":""# + token + #""}}"#)
+            return
+        default:
+            break
+        }
         let status: String, json: String
         switch (bare, login, libraries) {
-        case ("/login", .accept(let token), _):
-            status = "200 OK"; json = #"{"user":{"token":""# + token + #""}}"#
         case ("/login", .refuse, _):
             status = "401 Unauthorized"; json = "{}"
         case ("/api/libraries", _, .accept):
@@ -314,9 +340,14 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         default:
             status = "401 Unauthorized"; json = "{}"
         }
-        let body = Data(json.utf8)
-        let response = "HTTP/1.1 \(status)\r\nContent-Type: application/json\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
-        connection.send(content: Data(response.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
+        send(connection, status: status, headers: ["Content-Type: application/json"], body: json)
+    }
+
+    private func send(_ connection: NWConnection, status: String, headers: [String], body text: String) {
+        let body = Data(text.utf8)
+        let head = (["HTTP/1.1 \(status)"] + headers + ["Content-Length: \(body.count)", "Connection: close"])
+            .joined(separator: "\r\n") + "\r\n\r\n"
+        connection.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
     }
 }
 #endif

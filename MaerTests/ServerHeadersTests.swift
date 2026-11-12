@@ -820,8 +820,8 @@ struct ServerHeadersFenceTests {
         let prepare = try #require(http.range(of: "static func prepare("))
         let applied = try #require(http.range(of: "ServerHeaders.apply(to: &out)"))
         #expect(prepare.upperBound < applied.lowerBound)
-        #expect(http.components(separatedBy: "try ServerHeaders.admit(").count - 1 == 5,
-                "webSocket, data, bytes, download and upload each hold a request whose headers cannot be read")
+        #expect(http.components(separatedBy: "try ServerHeaders.admit(").count - 1 == 6,
+                "webSocket, data, bytes, download, upload and the sign-in flow each hold a request whose headers cannot be read")
         #expect(http.components(separatedBy: "delegate: RedirectGuard.following()").count - 1 == 4,
                 "data, bytes, download and upload each ask with the redirect rule")
         #expect(http.contains("task.delegate = RedirectGuard.following()"), "the socket asks with the redirect rule")

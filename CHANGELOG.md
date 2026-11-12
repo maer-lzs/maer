@@ -1,5 +1,16 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Signing in to Audiobookshelf with a password no longer leaves a
+renewal token in the app's cookies.** The server answered a password
+sign-in with a cookie that holds a renewal token for 30 days. It stayed
+outside the keychain and went along with every later request to that
+server. The sign-in now asks the server for its tokens in the answer and
+runs in a session of its own whose cookies end with it, and at its start
+the app removes such a cookie an earlier version left, together with the
+server's sign-in method cookie, and no other cookie.
+
 ## v3.6.4 (Build 63)
 
 **A feed can no longer make the app write or delete outside the

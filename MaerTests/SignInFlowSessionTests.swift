@@ -16,7 +16,7 @@ struct SignInFlowSessionTests {
     func flowCookiesStayApart() throws {
         let flow = HTTP.SignInFlow()
         defer { flow.close() }
-        #expect(flow.keepsCookiesApart)
+        #expect(flow.cookieStorage !== HTTPCookieStorage.shared)
         let host = "sso-flow-\(UUID().uuidString.lowercased()).example"
         let url = try #require(URL(string: "https://\(host)/auth/openid"))
         let cookie = try #require(HTTPCookie(properties: [
