@@ -146,13 +146,13 @@ nonisolated enum HTTP {
         }
     }
 
-    /// The session of one sign-in flow: the start of the flow and the
-    /// exchange of its code ride on it, so the cookie the server ties the
-    /// two together with lives only as long as the flow (`close`). A request
-    /// on it follows no redirect, unless the flow is built to follow them
-    /// as every other request does, and gets the server's headers and the
-    /// courtesy gate like every request; it is asked once, a flow repeats
-    /// as a whole.
+    /// The session of one sign-in: the requests of the sign-in ride on it,
+    /// so a cookie the server sets while signing in lives only as long as
+    /// the flow (`close`) and never reaches the shared store. A request on
+    /// it follows no redirect, for a flow that reads the redirect itself,
+    /// unless the flow is built to follow them as every other request does;
+    /// it gets the server's headers and the courtesy gate like every
+    /// request and is asked once, a flow repeats as a whole.
     nonisolated final class SignInFlow: Sendable {
         private let session = URLSession.signInFlow()
         private let followsRedirects: Bool

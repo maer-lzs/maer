@@ -203,8 +203,8 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
     /// Follows every redirect; only the server headers stay behind.
     static func following() -> RedirectGuard { RedirectGuard(allows: { _ in true }) }
 
-    /// Follows no redirect: the request ends with the 3xx answer, whose
-    /// `Location` the caller reads.
+    /// Follows no redirect, for a flow that reads the redirect itself: the
+    /// request ends with the 3xx answer, whose `Location` the caller reads.
     static func followingNone() -> RedirectGuard { RedirectGuard(allows: { _ in false }) }
 
     var refused: Bool { refusals.withLock { $0 > 0 } }
