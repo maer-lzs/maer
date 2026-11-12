@@ -90,6 +90,39 @@ struct ABSPasswordCookieTests {
         #expect((HTTPCookieStorage.shared.cookies(for: elsewhere) ?? []).map(\.name) == ["refresh_token"])
     }
 
+    /// Answers unreadable until it is opened, as the keychain before the
+    /// first unlock.
+    private final class Lock {
+        var open = false
+    }
+
+    @Test("Ist der Schluesselbund beim Start unlesbar, gehen die zwei Cookies, sobald die Adresse nachgelesen ist")
+    func theSweepFollowsTheRereadAddress() throws {
+        let host = "abs-\(UUID().uuidString.lowercased()).example"
+        let server = try #require(URL(string: "https://\(host)/"))
+        defer { clearShared(server) }
+        for name in ["refresh_token", "auth_method"] {
+            HTTPCookieStorage.shared.setCookie(try #require(HTTPCookie(properties: [
+                .domain: host, .path: "/", .name: name, .value: "v", .expires: Date(timeIntervalSinceNow: 3600)])))
+        }
+        let lock = Lock()
+        let auth = AuthViewModel(read: { key in
+            guard lock.open else { return .unreadable }
+            switch key {
+            case KeychainKey.serverURL: return .value(server.absoluteString)
+            case KeychainKey.apiToken: return .value("token")
+            default: return .missing
+            }
+        })
+        // The precondition: the start could not read the address and kept the cookies.
+        #expect(auth.accessUnknown)
+        #expect(Set((HTTPCookieStorage.shared.cookies(for: server) ?? []).map(\.name)) == ["refresh_token", "auth_method"])
+        lock.open = true
+        #expect(auth.rereadIfUnknown(), "the access reads as signed in after the unlock")
+        #expect((HTTPCookieStorage.shared.cookies(for: server) ?? []).isEmpty,
+                "the store keeps \((HTTPCookieStorage.shared.cookies(for: server) ?? []).map(\.name))")
+    }
+
     @Test("Die Regel nimmt nur die zwei Namen und nur den Host selbst")
     func theRuleTakesTheTwoNamesAtTheHost() throws {
         let server = try #require(URL(string: "https://Books.Example.org/abs"))

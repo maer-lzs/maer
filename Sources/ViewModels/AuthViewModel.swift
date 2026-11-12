@@ -86,15 +86,22 @@ final class AuthViewModel: ObservableObject {
         if !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
             AppStorageKeys.set(ABSServerScope.identity(of: url.absoluteString), for: AppStorageKeys.absSignedInServer)
         }
-        // A password sign-in of an earlier build left the server's renewal
-        // cookie in the store of the app's requests; it goes at the start.
-        if !storedURLString.isEmpty { ABSCookieSweep.sweep(server: url) }
+        Self.sweepCookies(ofStored: storedURLString)
 
         // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
             self.markSessionSuspect()
         }
+    }
+
+    /// A password sign-in of an earlier build left the server's renewal
+    /// cookie in the store of the app's requests. It goes as soon as the
+    /// stored address is known: at the start, or when the access is read
+    /// again after the first unlock.
+    private static func sweepCookies(ofStored address: String) {
+        guard !address.isEmpty, let url = normalizedURL(from: address) else { return }
+        ABSCookieSweep.sweep(server: url)
     }
 
     /// Reads the access again while it is unknown. Returns true when it now
@@ -109,6 +116,7 @@ final class AuthViewModel: ObservableObject {
         guard !state.unknown else { return false }
         let storedURLString = storedURL.value ?? ""
         serverURLString = storedURLString
+        Self.sweepCookies(ofStored: storedURLString)
         if let url = Self.normalizedURL(from: storedURLString) { apiClient.updateBaseURL(url) }
         if let token = storedToken.value { apiClient.updateToken(token) }
         apiClient.accessUnknown = false
