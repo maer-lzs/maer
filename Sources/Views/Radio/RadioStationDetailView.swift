@@ -22,7 +22,7 @@ struct RadioStationDetailView: View {
     /// country). Net-gated, empty hides the row.
     @State private var similar: [RadioStation] = []
     /// The link on maer.fm for this station; nil when it is not shared.
-    @State private var shareURL: URL?
+    @State private var shareOffer: SharedLinkOffer?
 
     /// The station's streams, at least its own.
     private var variants: [RadioStation] { station.streamVariants }
@@ -74,10 +74,11 @@ struct RadioStationDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .untitledDetailPage()
-        .pageActions("station-actions", shown: shareURL != nil) {
-            if let shareURL { SharedLinkButton(url: shareURL, title: station.name) }
+        .pageActions("station-actions", shown: shareOffer != nil) {
+            if let shareOffer { SharedLinkButton(offer: shareOffer, title: station.name) }
         }
-        .sharedLink(SharedLink.content(station: station), to: $shareURL)
+        .sharedLink(SharedLink.content(station: station), cover: station.faviconURL.flatMap { URL(string: $0) },
+                    to: $shareOffer)
         .onAppear {
             selectedURL = RadioStore.selectedVariantURL(for: station) ?? station.streamURL
             isFavorite = RadioStore.isFavorite(station.id)

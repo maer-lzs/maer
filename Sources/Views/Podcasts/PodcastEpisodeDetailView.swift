@@ -26,7 +26,7 @@ struct PodcastEpisodeDetailView: View {
     @State private var notes: String?
     @State private var showSettings = false
     /// The link on maer.fm for this episode; nil when it is not shared.
-    @State private var shareURL: URL?
+    @State private var shareOffer: SharedLinkOffer?
     private var shareContent: SharedLink.Content? {
         guard let episode = podcastEpisode, let show else { return nil }
         return SharedLink.content(episode: episode, feedURL: show.feedURL, showTitle: show.title)
@@ -203,11 +203,11 @@ struct PodcastEpisodeDetailView: View {
         // The show's settings from its episode too, in the page's one menu.
         // The show comes only from a store, so there is one whenever there
         // are settings.
-        .pageActions("episode-actions", shown: show != nil || shareURL != nil) {
+        .pageActions("episode-actions", shown: show != nil || shareOffer != nil) {
             if show != nil { PodcastShowSettingsButton { showSettings = true } }
-            if let shareURL { SharedLinkButton(url: shareURL, title: shareContent?.facts.title) }
+            if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
-        .sharedLink(shareContent, to: $shareURL)
+        .sharedLink(shareContent, cover: coverURL, to: $shareOffer)
         .sheet(isPresented: $showSettings) {
             Group {
                 if let show { PodcastShowSettingsEntry(show: show) }
