@@ -70,6 +70,19 @@ extension URLSession {
         return URLSession(configuration: config)
     }()
 
+    /// A session for ONE sign-in flow, built per flow. Its cookies live in
+    /// the session's own store in memory (`ephemeral`), never in the shared
+    /// one: the cookies a server sets during the flow end with it and do
+    /// not travel with later requests to that server.
+    nonisolated static func signInFlow() -> URLSession {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpShouldSetCookies = true
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 60
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }
+
     /// The changes socket of the Mär sync service. The request timeout is
     /// the time the session waits for the NEXT bytes, and a socket that
     /// idles for twenty seconds would be cut on it; an announcement can be

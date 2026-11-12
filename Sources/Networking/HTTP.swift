@@ -146,6 +146,45 @@ nonisolated enum HTTP {
         }
     }
 
+    /// The session of one sign-in flow: the start of the flow and the
+    /// exchange of its code ride on it, so the cookie the server ties the
+    /// two together with lives only as long as the flow (`close`). A request
+    /// on it follows no redirect and gets the server's headers and the
+    /// courtesy gate like every request; it is asked once, a flow repeats
+    /// as a whole.
+    nonisolated final class SignInFlow: Sendable {
+        private let session = URLSession.signInFlow()
+
+        /// Whether the flow's cookies stay apart from the shared store.
+        var keepsCookiesApart: Bool {
+            guard let own = session.configuration.httpCookieStorage else { return true }
+            return own !== HTTPCookieStorage.shared
+        }
+
+        /// The flow's own cookie store; nil when the session keeps none.
+        var cookieStorage: HTTPCookieStorage? { session.configuration.httpCookieStorage }
+
+        func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+            let prepared = HTTP.prepare(request, lane: .api)
+            do {
+                try ServerHeaders.admit(prepared)
+                let (data, response) = try await HTTP.courteously(prepared) {
+                    try await session.data(for: prepared, delegate: RedirectGuard.followingNone())
+                }
+                guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+                return (data, http)
+            } catch {
+                HTTP.log(failure: error, request: prepared, lane: .api)
+                throw error
+            }
+        }
+
+        /// Ends the flow: its cookies go with the session.
+        func close() {
+            session.invalidateAndCancel()
+        }
+    }
+
     /// The ways that ask their session once pass the same courtesy gate as
     /// each attempt of the retrying way.
     private static func courteously<Value>(_ request: URLRequest,
