@@ -410,6 +410,27 @@ struct ServerHeadersWayTests {
         #expect(host.closed.withLock { $0 }, "the ask did not close its connection")
     }
 
+    @Test("kann das Ende der Umleitungen eines Servers mit Headern nicht gefragt werden, gibt es keinen Strom und keine Anfrage mit den Headern")
+    func anEndThatCannotBeAskedBuildsNoStream() async throws {
+        let origin = try Host(body: Data(), contentType: "audio/x-caf")
+        try await origin.start()
+        let keys = headers(for: origin)
+        let port = origin.port
+        // Nothing listens at the server's address any more.
+        origin.stop()
+        try await Task.sleep(for: .milliseconds(300))
+        let track = try #require(URL(string: "http://127.0.0.1:\(port)/track"))
+        let base = try #require(URL(string: "http://127.0.0.1:\(port)"))
+        let (plan, end) = await ServerHeaders.$witness.withValue(keys.keys()) { () async -> (ServerHeaders.Stream, URLRequest?) in
+            let plan = await ServerHeaders.stream(for: track, sourceHeaders: [:])
+            let entries = ServerHeaders.entries() ?? []
+            guard let server = ServerHeaderRule.entry(for: base, in: entries) else { return (plan, URLRequest(url: base)) }
+            return (plan, await ServerHeaders.end(of: ServerHeaderRule.applied(URLRequest(url: track), entries: entries), server: server))
+        }
+        #expect(plan == .unanswered, "an end that cannot be asked planned the stream: \(plan)")
+        #expect(end == nil, "an end that cannot be asked gave a request: \(String(describing: end))")
+    }
+
     /// A title of fifty tracks of `seconds` each on a server with headers,
     /// the model that loads it, and the tracks the server was asked ahead
     /// for (`Range: bytes=0-0`), by number.
