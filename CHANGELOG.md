@@ -1,13 +1,18 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.6.4 (Build 63)
 
-**Downloads stay in their folder.** A podcast episode whose feed gives
-it an address as its id now downloads into a folder of its own inside
-the downloads. Before, such an episode could count as not downloaded
-after a restart, and a crafted id could write or delete outside the
-downloads. Episodes downloaded that way before are found again while
-their files are still on the device.
+**A feed can no longer make the app write or delete outside the
+downloads.** The folder of a download was named after the id its feed
+gives the episode. A crafted id could lead out of the downloads folder:
+downloading wrote there, and deleting the download removed the folder it
+pointed at. Every download now lies in a folder of its own directly
+inside the downloads, whatever its id says. An episode whose id is an
+address, which could count as not downloaded after a restart, keeps its
+download now, and episodes downloaded before this version are found
+again while their files are still on the device. A finished download
+stays known to the app when the small file that names its title is
+missing from its folder.
 
 **A stream with a sign-in never goes to an address it could not check.**
 When the app cannot find out where a stream of your server or a premium
@@ -84,7 +89,8 @@ Siri or a widget while a title is still being looked up.
 **The shared podcast export keeps private addresses out.** The safe
 export now also leaves out feeds from your own server (a Pinchflat mirror
 or any server you entered), feeds whose address carries a key or password
-under another name, and episode addresses that carry one. The podcast
+under another name, `pwd` or `hmac` among them, and episode addresses
+that carry one. The podcast
 directory is asked about none of them either. A feed whose address only
 looks like it, with a word such as author or keyword in it, stays a
 public feed. The export asks before it leaves out private feeds and now
@@ -122,6 +128,12 @@ with what it holds in that moment: it only adds what is newer and
 removes nothing until the positions read again. The same holds for Up
 Next and for the catalogue titles the app keeps: what you add in such a
 moment goes in front of the list, which stays.
+
+**A listening position that arrives while the app starts stays.** When
+the app clears positions at its start that an earlier build left behind,
+it now removes only positions that were there before the start. Before,
+a position that arrived from your account in that moment and carried an
+older time could be removed with them.
 
 **An episode page with a broken chapter list opens.** A chapter list
 from a feed with an impossible chapter start, or a length from
