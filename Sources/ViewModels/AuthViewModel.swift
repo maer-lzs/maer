@@ -34,6 +34,9 @@ final class AuthViewModel: ObservableObject {
     /// token really is invalid and re-signing in is offered (prefilled).
     /// Still without deleting anything behind the user's back.
     @Published private(set) var needsReauth = false
+    /// The ways of signing in the typed server offers, with the address
+    /// they were read for; nil while unread or after a failed read.
+    @Published private(set) var signInMethods: (address: String, methods: ABSSignInMethods)?
 
     let apiClient: APIClient
 
@@ -141,6 +144,29 @@ final class AuthViewModel: ObservableObject {
     /// at the start, a fresh one for every sign-in.
     static func makeClient(baseURL: URL, token: String?) -> APIClient {
         APIClient(baseURL: baseURL, token: token)
+    }
+
+    /// Reads the ways of signing in the typed server offers. A read that
+    /// fails leaves none known and writes its reason to the log; the form
+    /// then offers what it offers without them.
+    func checkSignInMethods() async {
+        let typed = serverURLString
+        guard let url = Self.normalizedURL(from: typed) else {
+            signInMethods = nil
+            return
+        }
+        let methods: ABSSignInMethods
+        do {
+            methods = try await Self.makeClient(baseURL: url, token: nil).fetchSignInMethods()
+        } catch {
+            guard !error.isCancellation else { return }
+            Logger.library.notice("AUTH sign-in methods unread host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
+            if serverURLString == typed { signInMethods = nil }
+            return
+        }
+        // The field may have changed while the server answered.
+        guard serverURLString == typed else { return }
+        signInMethods = (typed, methods)
     }
 
     /// Connects via username/password (POST /login → token) OR with a directly

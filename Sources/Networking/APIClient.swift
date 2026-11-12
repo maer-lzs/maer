@@ -128,6 +128,13 @@ final class APIClient {
         return token
     }
 
+    /// The ways of signing in the server offers (`GET /status`, at the root,
+    /// asked without a token).
+    func fetchSignInMethods() async throws -> ABSSignInMethods {
+        let data = try await get(path: "status")
+        return try ABSSignInMethods.from(statusBody: data)
+    }
+
     // MARK: Libraries
 
     func fetchLibraries() async throws -> [ABSLibrary] {
