@@ -141,20 +141,6 @@ struct ABSLoginForm: View {
                     CredentialField.secret("API Token", text: $viewModel.apiToken,
                                            id: "setup-token")
                 }
-                if let methods = ssoOffer {
-                    Button {
-                        let window = SystemSignInWindow(session: webAuthenticationSession)
-                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO(window: window) } }
-                    } label: {
-                        if let text = methods.ssoButtonText {
-                            Text(verbatim: text)
-                        } else {
-                            Text("Sign in with SSO")
-                        }
-                    }
-                    .disabled(viewModel.isLoading)
-                    .accessibilityIdentifier("abs-sso")
-                }
             } header: {
                 Text("Sign In")
             } footer: {
@@ -180,24 +166,53 @@ struct ABSLoginForm: View {
                     // after a refused connection.
                     Task { await LookupOccasion.deliberate { await viewModel.connect() } }
                 } label: {
-                    HStack {
-                        Spacer()
+                    actionRow {
                         if viewModel.isLoading {
                             ProgressView()
                         } else {
                             Text("Connect")
                         }
-                        Spacer()
                     }
                 }
                 .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || !hasCredentials)
                 .accessibilityIdentifier("abs-connect")
+            }
+
+            // The single sign-on is a button of its own under Connect, in
+            // the same form, and only when the server offers it.
+            if let methods = ssoOffer {
+                Section {
+                    Button {
+                        let window = SystemSignInWindow(session: webAuthenticationSession)
+                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO(window: window) } }
+                    } label: {
+                        actionRow {
+                            if let text = methods.ssoButtonText {
+                                Text(verbatim: text)
+                            } else {
+                                Text("Sign in with SSO")
+                            }
+                        }
+                    }
+                    .disabled(viewModel.isLoading)
+                    .accessibilityIdentifier("abs-sso")
+                }
             }
         }
         // The server is asked for its ways of signing in when the form
         // appears with an address and when an address is submitted.
         .task { await viewModel.checkSignInMethods() }
         .onSubmit { Task { await viewModel.checkSignInMethods() } }
+    }
+
+    /// The one shape of an action row of the form: its label centred
+    /// across the row.
+    private func actionRow<Label: View>(@ViewBuilder _ label: () -> Label) -> some View {
+        HStack {
+            Spacer()
+            label()
+            Spacer()
+        }
     }
 }
 

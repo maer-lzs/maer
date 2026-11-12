@@ -164,5 +164,19 @@ struct AppShortcutPhrasesTests {
         #expect(localizations["de"] != nil && localizations["en"] != nil,
                 "der gesprochene Name braucht beide Sprachen, hat: \(localizations.keys.sorted())")
     }
+
+    /// The system's own questions (the sign-in window's question among
+    /// them) name the app by its bundle name in the device's language, not
+    /// by the display name. The build sets the bundle name from the target
+    /// name; the translation in both languages carries „Mär“.
+    @Test("die gebaute App traegt den Namen des Bundles in beiden Sprachen als „Mär“")
+    func theBuiltAppNamesItselfMaerInBothLanguages() throws {
+        for language in ["de", "en"] {
+            let path = try #require(Bundle.main.path(forResource: "InfoPlist", ofType: "strings", inDirectory: nil,
+                                                     forLocalization: language), "\(language): no InfoPlist.strings")
+            let strings = try #require(NSDictionary(contentsOfFile: path) as? [String: String], "\(language): unreadable")
+            #expect(strings["CFBundleName"] == "Mär", "\(language): \(String(describing: strings["CFBundleName"]))")
+        }
+    }
 }
 #endif
