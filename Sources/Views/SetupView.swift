@@ -103,6 +103,13 @@ struct ABSLoginForm: View {
         }
     }
 
+    /// The server's offer of single sign-on, for the address in the field.
+    private var ssoOffer: ABSSignInMethods? {
+        guard let read = viewModel.signInMethods, read.address == viewModel.serverURLString,
+              read.methods.offersSSO else { return nil }
+        return read.methods
+    }
+
     var body: some View {
         Group {
             Section {
@@ -130,6 +137,19 @@ struct ABSLoginForm: View {
                 case .token:
                     CredentialField.secret("API Token", text: $viewModel.apiToken,
                                            id: "setup-token")
+                }
+                if let methods = ssoOffer {
+                    Button {
+                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO() } }
+                    } label: {
+                        if let text = methods.ssoButtonText {
+                            Text(verbatim: text)
+                        } else {
+                            Text("Sign in with SSO")
+                        }
+                    }
+                    .disabled(viewModel.isLoading)
+                    .accessibilityIdentifier("abs-sso")
                 }
             } header: {
                 Text("Sign In")
@@ -169,6 +189,18 @@ struct ABSLoginForm: View {
                 .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || !hasCredentials)
                 .accessibilityIdentifier("abs-connect")
             }
+        }
+        // The server is asked for its ways of signing in once the address
+        // rests for a moment; a new keystroke cancels the wait.
+        .task(id: viewModel.serverURLString) {
+            do {
+                try await Task.sleep(for: .milliseconds(600))
+            } catch {
+                // The sleep throws only when the task is cancelled: the
+                // address changed, and the next task asks for it.
+                return
+            }
+            await viewModel.checkSignInMethods()
         }
     }
 }

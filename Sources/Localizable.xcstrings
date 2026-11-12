@@ -10579,6 +10579,16 @@
         }
       }
     },
+    "Sign in with SSO" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit SSO anmelden"
+          }
+        }
+      }
+    },
     "Sign out" : {
       "localizations" : {
         "de" : {
