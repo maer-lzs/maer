@@ -20,7 +20,17 @@ final class AuthViewModel: ObservableObject {
     @Published var password: String = ""
     @Published var apiToken: String = ""
     @Published var isLoggedIn: Bool
-    @Published var isLoading = false
+    /// The ways of signing in that a button of the form starts.
+    enum SignInWay: Sendable {
+        case connect
+        case singleSignOn
+    }
+    /// The way of signing in that runs now; nil while none runs. The button
+    /// of that way shows the progress, every button waits while one runs.
+    @Published private(set) var running: SignInWay?
+    /// Whether the button of `way` shows the progress.
+    nonisolated static func showsProgress(_ way: SignInWay, running: SignInWay?) -> Bool { running == way }
+    var isLoading: Bool { running != nil }
     @Published var errorMessage: String?
     /// 🔴 The session is DOUBTED, never dissolved. A homeserver coming
     /// back up answers 401 for minutes; the old path logged out and DELETED
@@ -185,8 +195,8 @@ final class AuthViewModel: ObservableObject {
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        running = .connect
+        defer { running = nil }
         let trial = Self.makeClient(baseURL: url, token: nil)
 
         let token: String
@@ -229,8 +239,8 @@ final class AuthViewModel: ObservableObject {
             errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
             return
         }
-        isLoading = true
-        defer { isLoading = false }
+        running = .singleSignOn
+        defer { running = nil }
         let flow = HTTP.SignInFlow()
         defer { flow.close() }
         let token: String

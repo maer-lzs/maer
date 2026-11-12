@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 #if canImport(Testing)
+import Combine
 import Foundation
 import OSLog
 import Testing
@@ -160,6 +161,43 @@ struct ABSSSOSignInTests {
             #expect((WidgetSnapshot.load() == nil) == switches, "\(storedUser): the title of the account before")
             #expect(AppStorageKeys.string(AppStorageKeys.absSignedInUser) == "user-b")
         }
+    }
+
+    /// The way that runs is the one whose button shows the progress: the
+    /// view model names it while it runs and names none before and after,
+    /// for the password sign-in and for the single sign-on.
+    @Test("Das Ladezeichen gehoert dem ausloesenden Knopf: Verbinden laeuft als connect, SSO als singleSignOn")
+    func theRunningWayIsTheOneThatWasPressed() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let server = try await ABSLoopback.start(login: .accept("token-pw"), libraries: .accept, singleSignOn: .token("token-sso"))
+        defer { server.stop() }
+
+        let password = signedIn(to: "https://abs.a.example")
+        password.serverURLString = server.address
+        password.loginMode = .password
+        password.username = "hoerer"
+        password.password = "passwort"
+        var seenByPassword: [AuthViewModel.SignInWay?] = []
+        let watchingPassword = password.$running.sink { seenByPassword.append($0) }
+        await password.connect()
+        watchingPassword.cancel()
+        #expect(password.errorMessage == nil, "the precondition: the password sign-in went through \(server.diagnosis)")
+        #expect(seenByPassword == [nil, .connect, nil], "\(seenByPassword)")
+
+        let sso = signedIn(to: "https://abs.a.example")
+        sso.serverURLString = server.address
+        var seenBySSO: [AuthViewModel.SignInWay?] = []
+        let watchingSSO = sso.$running.sink { seenBySSO.append($0) }
+        await sso.connectWithSSO(window: ReturningWindow())
+        watchingSSO.cancel()
+        #expect(sso.errorMessage == nil, "the precondition: the single sign-on went through \(server.diagnosis)")
+        #expect(seenBySSO == [nil, .singleSignOn, nil], "\(seenBySSO)")
+
+        #expect(AuthViewModel.showsProgress(.singleSignOn, running: .singleSignOn))
+        #expect(!AuthViewModel.showsProgress(.connect, running: .singleSignOn))
+        #expect(!AuthViewModel.showsProgress(.singleSignOn, running: .connect))
+        #expect(!AuthViewModel.showsProgress(.connect, running: nil))
     }
 
     /// Fails with an error that is neither a step of the flow nor a cancel.

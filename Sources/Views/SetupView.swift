@@ -167,7 +167,7 @@ struct ABSLoginForm: View {
                     Task { await LookupOccasion.deliberate { await viewModel.connect() } }
                 } label: {
                     actionRow {
-                        if viewModel.isLoading {
+                        if AuthViewModel.showsProgress(.connect, running: viewModel.running) {
                             ProgressView()
                         } else {
                             Text("Connect")
@@ -187,7 +187,9 @@ struct ABSLoginForm: View {
                         Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO(window: window) } }
                     } label: {
                         actionRow {
-                            if let text = methods.ssoButtonText {
+                            if AuthViewModel.showsProgress(.singleSignOn, running: viewModel.running) {
+                                ProgressView()
+                            } else if let text = methods.ssoButtonText {
                                 Text(verbatim: text)
                             } else {
                                 Text("Sign in with SSO")
