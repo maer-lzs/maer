@@ -65,6 +65,7 @@ struct StatusMeaningFenceTests {
         "PodcastFeedLiveness.swift": "the status a directory saw last, not an answer to us: 0 never reached and 400 up stuck are gone, which only orders a row",
         "MaerSyncFrame.swift": "a frame's status is checked to be a status at all (100 to 599) before the answer reads it",
         "MaerSyncSignIn.swift": "the sign-in probe of the service: 200 reached, 403 blocked on this network, the service's own sentences",
+        "ABSSingleSignOn.swift": "the server's single sign-on answers with a redirect as its way on and with two texts of a 400 (Invalid redirect_uri, No session); each is a step of the flow the meaning has no word for",
     ]
 
     /// Non-comment lines that read a status: the word `statusCode`, or a

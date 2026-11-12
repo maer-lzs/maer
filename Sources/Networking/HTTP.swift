@@ -146,13 +146,15 @@ nonisolated enum HTTP {
         }
     }
 
-    /// The session of one sign-in: the requests of the sign-in ride on it,
-    /// so a cookie the server sets while signing in lives only as long as
-    /// the flow (`close`) and never reaches the shared store. A request on
-    /// it follows no redirect, for a flow that reads the redirect itself,
-    /// unless the flow is built to follow them as every other request does;
-    /// it gets the server's headers and the courtesy gate like every
-    /// request and is asked once, a flow repeats as a whole.
+    /// The session of one sign-in: the start and the exchange of a single
+    /// sign-on, or the sign-in with a password, ride on it, so a cookie the
+    /// server sets while signing in lives only as long as the flow (`close`)
+    /// and never reaches the shared store. A request on it follows no
+    /// redirect, so the single sign-on reads the provider's address from
+    /// `Location`, unless the flow is built to follow them as every other
+    /// request does; it gets the server's headers and the courtesy gate like
+    /// every request. `data(for:)` asks once, a single sign-on repeats as a
+    /// whole; `retryingData(for:)` asks by the retry policy.
     nonisolated final class SignInFlow: Sendable {
         private let session = URLSession.signInFlow()
         private let followsRedirects: Bool
@@ -173,6 +175,24 @@ nonisolated enum HTTP {
                                            delegate: followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone())
                 }
                 guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+                return (data, http)
+            } catch {
+                HTTP.log(failure: error, request: prepared, lane: .api)
+                throw error
+            }
+        }
+
+        /// As `data(for:)`, by the retry policy of every other request (401
+        /// once, 429 and 5xx twice, transient errors twice): the sign-in with
+        /// a password, which a server that restarts answers with 502 or 503
+        /// for a moment.
+        func retryingData(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+            let prepared = HTTP.prepare(request, lane: .api)
+            do {
+                let (data, response) = try await RequestRetryPolicy.fetch(
+                    prepared, session: session,
+                    redirects: followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone())
+                guard let http = response else { throw URLError(.badServerResponse) }
                 return (data, http)
             } catch {
                 HTTP.log(failure: error, request: prepared, lane: .api)

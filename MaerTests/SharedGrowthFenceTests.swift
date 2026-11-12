@@ -140,12 +140,16 @@ struct SharedGrowthFenceTests {
     /// in a view).
     nonisolated static let sourcesStock = 755
 
+    /// A line that names `.shared` as the browser session of the system's
+    /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,
+    /// the session shared with Safari; it reaches no singleton.
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 return !trimmed.hasPrefix("//")
-                    && trimmed.range(of: "\\.shared\\b", options: .regularExpression) != nil
+                    && trimmed.replacingOccurrences(of: "preferredBrowserSession: .shared", with: "")
+                        .range(of: "\\.shared\\b", options: .regularExpression) != nil
             }.count
     }
 
@@ -162,6 +166,9 @@ struct SharedGrowthFenceTests {
         let drift = StockDrift.total(total, stock: Self.stock)
         #expect(drift == nil, "views reach singletons on \(total) lines, stock is \(Self.stock) (\(drift ?? "")); heaviest: \(heaviest)")
         #expect(Self.sharedLines(in: "let vm = PlayerViewModel.shared\n// PlayerViewModel.shared in a comment\nlet x = sharedCount") == 1)
+        // The policy of the sign-in window is no grip; a singleton on the same line still is.
+        #expect(Self.sharedLines(in: "try await s.authenticate(using: u, preferredBrowserSession: .shared)") == 0)
+        #expect(Self.sharedLines(in: "try await s.authenticate(using: u, preferredBrowserSession: .shared, x: Store.shared)") == 1)
     }
 
     @Test("Der Gesamtbestand faellt mit, sonst war es nur ein Umzug", .needsTheSources)

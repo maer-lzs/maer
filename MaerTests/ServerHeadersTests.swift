@@ -123,7 +123,7 @@ struct ServerHeadersWayTests {
 
     static func carried(_ head: String) -> Int { head.components(separatedBy: "\r\n\(needle)").count - 1 }
 
-    enum Way: String, CaseIterable, Sendable { case door, retryingFetch, backgroundDownload, stream }
+    enum Way: String, CaseIterable, Sendable { case door, retryingFetch, backgroundDownload, stream, passwordSignIn }
 
     func started() async throws -> (origin: Host, other: Host) {
         let body = try HeaderRedirectMeasureTests.tone()
@@ -168,6 +168,11 @@ struct ServerHeadersWayTests {
                 let asset = AVURLAsset(url: end, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
                 // bearable, because the witness reads the heads the host recorded
                 _ = try? await asset.load(.duration)
+            case .passwordSignIn:
+                // The sign-in with a password posts to `login` under the
+                // server's address in its own session, following redirects.
+                // bearable, because the witness reads the heads the host recorded
+                _ = try? await APIClient(baseURL: start).login(username: "hoerer", password: "passwort")
             }
         }
     }
@@ -822,8 +827,15 @@ struct ServerHeadersFenceTests {
         #expect(prepare.upperBound < applied.lowerBound)
         #expect(http.components(separatedBy: "try ServerHeaders.admit(").count - 1 == 6,
                 "webSocket, data, bytes, download, upload and the sign-in flow each hold a request whose headers cannot be read")
-        #expect(http.components(separatedBy: "delegate: RedirectGuard.following()").count - 1 == 4,
-                "data, bytes, download and upload each ask with the redirect rule")
+        // Every delegate a request is asked with, written plainly or chosen
+        // by the sign-in flow, is a redirect guard; a way that hands its
+        // guard through an expression counts as well.
+        let delegates = http.components(separatedBy: "delegate: ").dropFirst().map { String($0.prefix(100)) }
+        #expect(delegates.count == 5, "data, bytes, download, upload and the sign-in flow each ask with a delegate: \(delegates.count)")
+        let guarded = ["RedirectGuard.following()",
+                       "followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone()"]
+        #expect(delegates.allSatisfy { delegate in guarded.contains { delegate.hasPrefix($0) } },
+                "a way asks without the redirect rule: \(delegates)")
         #expect(http.contains("task.delegate = RedirectGuard.following()"), "the socket asks with the redirect rule")
 
         let retry = try Self.code("Sources/Networking/Retry.swift")

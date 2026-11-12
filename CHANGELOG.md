@@ -2,6 +2,18 @@
 
 ## Next build (not yet cut)
 
+**Audiobookshelf: sign in with single sign-on.** When a server offers
+single sign-on (OpenID Connect), the sign-in form shows a button of its
+own under Connect, with the server's text or "Sign in with SSO". It opens
+the provider's page in the system's sign-in window and returns to Mär
+with the server's long-lived token, the way the Audiobookshelf app does.
+The cookies of the sign-in stay in a session of their own and end with
+it. A cancelled window says nothing; a failed sign-in says in one
+sentence what failed, for example that the server does not allow the
+return to the app. A server that only hands out expiring tokens is not
+signed in yet, and the app says so. The system's own sign-in question
+now names the app Mär.
+
 **Signing in to Audiobookshelf with a password no longer leaves a
 renewal token in the app's cookies.** The server answered a password
 sign-in with a cookie that holds a renewal token for 30 days. It stayed

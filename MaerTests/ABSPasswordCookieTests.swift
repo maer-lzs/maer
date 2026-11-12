@@ -90,6 +90,75 @@ struct ABSPasswordCookieTests {
         #expect((HTTPCookieStorage.shared.cookies(for: elsewhere) ?? []).map(\.name) == ["refresh_token"])
     }
 
+    @Test("Ein Server, der neu startet und einmal 503 sagt: die Anmeldung mit Passwort fragt nach der Regel noch einmal und meldet an")
+    func aRestartingServerIsAskedAgain() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let server = try await ABSLoopback.start(login: .acceptAfterUnavailable("token-pw"), libraries: .accept)
+        defer { server.stop() }
+        let auth = await signIn(at: server)
+        let logins = server.requests.filter { $0.path == "/login" }
+        #expect(logins.count == 2, "the sign-in asked \(logins.count) times \(server.diagnosis)")
+        #expect(auth.errorMessage == nil, "\(String(describing: auth.errorMessage))")
+        #expect(auth.apiClient.token == "token-pw")
+        #expect(logins.allSatisfy { $0.returnTokens == "true" }, "the repeated sign-in lost its question for the tokens")
+    }
+
+    @Test("Ein echtes Set-Cookie des Servers im geteilten Speicher, wie es ein frueherer Bau hinterliess: der Start kehrt es")
+    func aCookieTheServerSetIsSweptAtTheStart() async throws {
+        let stand = ABSSignInSwitchTests.Stand()
+        defer { stand.restore() }
+        let server = try await ABSLoopback.start(login: .acceptSettingTheCookie("token-old"), libraries: .accept)
+        defer { server.stop() }
+        let url = try #require(URL(string: server.address))
+        clearShared(url)
+        defer { clearShared(url) }
+        // The way of an earlier build: the sign-in through the request lane
+        // of the app, whose store is the shared one.
+        var login = URLRequest(url: url.appendingPathComponent("login"))
+        login.httpMethod = "POST"
+        _ = try await HTTP.data(for: login, lane: .api, retry: false)
+        // The precondition: the server's cookie landed in the shared store.
+        #expect((HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name).contains("refresh_token"),
+                "\(server.diagnosis)")
+        _ = AuthViewModel(read: { key in key == KeychainKey.serverURL ? .value(server.address) : .missing })
+        #expect(!(HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name).contains("refresh_token"),
+                "the start kept \((HTTPCookieStorage.shared.cookies(for: url) ?? []).map(\.name))")
+    }
+
+    /// Answers unreadable until it is opened, as the keychain before the
+    /// first unlock.
+    private final class Lock {
+        var open = false
+    }
+
+    @Test("Ist der Schluesselbund beim Start unlesbar, gehen die zwei Cookies, sobald die Adresse nachgelesen ist")
+    func theSweepFollowsTheRereadAddress() throws {
+        let host = "abs-\(UUID().uuidString.lowercased()).example"
+        let server = try #require(URL(string: "https://\(host)/"))
+        defer { clearShared(server) }
+        for name in ["refresh_token", "auth_method"] {
+            HTTPCookieStorage.shared.setCookie(try #require(HTTPCookie(properties: [
+                .domain: host, .path: "/", .name: name, .value: "v", .expires: Date(timeIntervalSinceNow: 3600)])))
+        }
+        let lock = Lock()
+        let auth = AuthViewModel(read: { key in
+            guard lock.open else { return .unreadable }
+            switch key {
+            case KeychainKey.serverURL: return .value(server.absoluteString)
+            case KeychainKey.apiToken: return .value("token")
+            default: return .missing
+            }
+        })
+        // The precondition: the start could not read the address and kept the cookies.
+        #expect(auth.accessUnknown)
+        #expect(Set((HTTPCookieStorage.shared.cookies(for: server) ?? []).map(\.name)) == ["refresh_token", "auth_method"])
+        lock.open = true
+        #expect(auth.rereadIfUnknown(), "the access reads as signed in after the unlock")
+        #expect((HTTPCookieStorage.shared.cookies(for: server) ?? []).isEmpty,
+                "the store keeps \((HTTPCookieStorage.shared.cookies(for: server) ?? []).map(\.name))")
+    }
+
     @Test("Die Regel nimmt nur die zwei Namen und nur den Host selbst")
     func theRuleTakesTheTwoNamesAtTheHost() throws {
         let server = try #require(URL(string: "https://Books.Example.org/abs"))

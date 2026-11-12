@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AuthenticationServices
 import SwiftUI
 
 /// The first screen is the EXPLANATION, not a slideshow: one sentence about
@@ -103,6 +104,15 @@ struct ABSLoginForm: View {
         }
     }
 
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+
+    /// The server's offer of single sign-on, for the address in the field.
+    private var ssoOffer: ABSSignInMethods? {
+        guard let read = viewModel.signInMethods, read.address == viewModel.serverURLString,
+              read.methods.offersSSO else { return nil }
+        return read.methods
+    }
+
     var body: some View {
         Group {
             Section {
@@ -156,19 +166,54 @@ struct ABSLoginForm: View {
                     // after a refused connection.
                     Task { await LookupOccasion.deliberate { await viewModel.connect() } }
                 } label: {
-                    HStack {
-                        Spacer()
-                        if viewModel.isLoading {
+                    actionRow {
+                        if AuthViewModel.showsProgress(.connect, running: viewModel.running) {
                             ProgressView()
                         } else {
                             Text("Connect")
                         }
-                        Spacer()
                     }
                 }
                 .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || !hasCredentials)
                 .accessibilityIdentifier("abs-connect")
             }
+
+            // The single sign-on is a button of its own under Connect, in
+            // the same form, and only when the server offers it.
+            if let methods = ssoOffer {
+                Section {
+                    Button {
+                        let window = SystemSignInWindow(session: webAuthenticationSession)
+                        Task { await LookupOccasion.deliberate { await viewModel.connectWithSSO(window: window) } }
+                    } label: {
+                        actionRow {
+                            if AuthViewModel.showsProgress(.singleSignOn, running: viewModel.running) {
+                                ProgressView()
+                            } else if let text = methods.ssoButtonText {
+                                Text(verbatim: text)
+                            } else {
+                                Text("Sign in with SSO")
+                            }
+                        }
+                    }
+                    .disabled(viewModel.isLoading)
+                    .accessibilityIdentifier("abs-sso")
+                }
+            }
+        }
+        // The server is asked for its ways of signing in when the form
+        // appears with an address and when an address is submitted.
+        .task { await viewModel.checkSignInMethods() }
+        .onSubmit { Task { await viewModel.checkSignInMethods() } }
+    }
+
+    /// The one shape of an action row of the form: its label centred
+    /// across the row.
+    private func actionRow<Label: View>(@ViewBuilder _ label: () -> Label) -> some View {
+        HStack {
+            Spacer()
+            label()
+            Spacer()
         }
     }
 }

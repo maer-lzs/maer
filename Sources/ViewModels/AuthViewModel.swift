@@ -20,7 +20,17 @@ final class AuthViewModel: ObservableObject {
     @Published var password: String = ""
     @Published var apiToken: String = ""
     @Published var isLoggedIn: Bool
-    @Published var isLoading = false
+    /// The ways of signing in that a button of the form starts.
+    enum SignInWay: Sendable {
+        case connect
+        case singleSignOn
+    }
+    /// The way of signing in that runs now; nil while none runs. The button
+    /// of that way shows the progress, every button waits while one runs.
+    @Published private(set) var running: SignInWay?
+    /// Whether the button of `way` shows the progress.
+    nonisolated static func showsProgress(_ way: SignInWay, running: SignInWay?) -> Bool { running == way }
+    var isLoading: Bool { running != nil }
     @Published var errorMessage: String?
     /// 🔴 The session is DOUBTED, never dissolved. A homeserver coming
     /// back up answers 401 for minutes; the old path logged out and DELETED
@@ -34,6 +44,9 @@ final class AuthViewModel: ObservableObject {
     /// token really is invalid and re-signing in is offered (prefilled).
     /// Still without deleting anything behind the user's back.
     @Published private(set) var needsReauth = false
+    /// The ways of signing in the typed server offers, with the address
+    /// they were read for; nil while unread or after a failed read.
+    @Published private(set) var signInMethods: (address: String, methods: ABSSignInMethods)?
 
     let apiClient: APIClient
 
@@ -73,15 +86,22 @@ final class AuthViewModel: ObservableObject {
         if !storedURLString.isEmpty, AppStorageKeys.string(AppStorageKeys.absSignedInServer) == nil {
             AppStorageKeys.set(ABSServerScope.identity(of: url.absoluteString), for: AppStorageKeys.absSignedInServer)
         }
-        // A password sign-in of an earlier build left the server's renewal
-        // cookie in the store of the app's requests; it goes at the start.
-        if !storedURLString.isEmpty { ABSCookieSweep.sweep(server: url) }
+        Self.sweepCookies(ofStored: storedURLString)
 
         // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
             self.markSessionSuspect()
         }
+    }
+
+    /// A password sign-in of an earlier build left the server's renewal
+    /// cookie in the store of the app's requests. It goes as soon as the
+    /// stored address is known: at the start, or when the access is read
+    /// again after the first unlock.
+    private static func sweepCookies(ofStored address: String) {
+        guard !address.isEmpty, let url = normalizedURL(from: address) else { return }
+        ABSCookieSweep.sweep(server: url)
     }
 
     /// Reads the access again while it is unknown. Returns true when it now
@@ -96,6 +116,7 @@ final class AuthViewModel: ObservableObject {
         guard !state.unknown else { return false }
         let storedURLString = storedURL.value ?? ""
         serverURLString = storedURLString
+        Self.sweepCookies(ofStored: storedURLString)
         if let url = Self.normalizedURL(from: storedURLString) { apiClient.updateBaseURL(url) }
         if let token = storedToken.value { apiClient.updateToken(token) }
         apiClient.accessUnknown = false
@@ -143,6 +164,29 @@ final class AuthViewModel: ObservableObject {
         APIClient(baseURL: baseURL, token: token)
     }
 
+    /// Reads the ways of signing in the typed server offers. A read that
+    /// fails leaves none known and writes its reason to the log; the form
+    /// then offers what it offers without them.
+    func checkSignInMethods() async {
+        let typed = serverURLString
+        guard let url = Self.normalizedURL(from: typed) else {
+            signInMethods = nil
+            return
+        }
+        let methods: ABSSignInMethods
+        do {
+            methods = try await Self.makeClient(baseURL: url, token: nil).fetchSignInMethods()
+        } catch {
+            guard !error.isCancellation else { return }
+            Logger.library.notice("AUTH sign-in methods unread host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
+            if serverURLString == typed { signInMethods = nil }
+            return
+        }
+        // The field may have changed while the server answered.
+        guard serverURLString == typed else { return }
+        signInMethods = (typed, methods)
+    }
+
     /// Connects via username/password (POST /login → token) OR with a directly
     /// entered API token; the connection is then verified via a library fetch
     /// and the token stored in the keychain.
@@ -159,8 +203,8 @@ final class AuthViewModel: ObservableObject {
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        running = .connect
+        defer { running = nil }
         let trial = Self.makeClient(baseURL: url, token: nil)
 
         let token: String
@@ -189,7 +233,70 @@ final class AuthViewModel: ObservableObject {
             }
             token = trimmedToken
         }
+        await adopt(token, at: url, trial: trial)
+    }
 
+    /// Signs in through the server's single sign-on (`ABSSSOFlow`) in the
+    /// system's sign-in window. The token it brings ends in the same steps
+    /// as a password's (`adopt`). A flow the person cancels leaves no
+    /// message; a failed one says what failed and writes its reason to the
+    /// log.
+    func connectWithSSO(window: any SignInWindow) async {
+        errorMessage = nil
+        guard let url = Self.normalizedURL(from: serverURLString) else {
+            errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
+            return
+        }
+        running = .singleSignOn
+        defer { running = nil }
+        let flow = HTTP.SignInFlow()
+        defer { flow.close() }
+        let token: String
+        do {
+            token = try await ABSSSOFlow(fetch: { try await flow.data(for: $0) },
+                                         window: window).run(server: url)
+        } catch let failure as ABSSSO.Failure {
+            Logger.library.notice("AUTH sso failed host=\(url.host ?? "-", privacy: .public) step=\(String(describing: failure), privacy: .public)")
+            errorMessage = Self.sentence(for: failure)
+            return
+        } catch {
+            guard !error.isCancellation else {
+                Logger.library.notice("AUTH sso cancelled host=\(url.host ?? "-", privacy: .public)")
+                return
+            }
+            Logger.library.notice("AUTH sso failed host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
+            errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
+            return
+        }
+        await adopt(token, at: url, trial: Self.makeClient(baseURL: url, token: nil))
+    }
+
+    /// What a failed single sign-on tells the person.
+    static func sentence(for failure: ABSSSO.Failure) -> String {
+        switch failure {
+        case .returnAddressRefused:
+            return String(localized: "This server does not let Mär return from its single sign-on. Its administrator can add audiobookshelf://oauth to the allowed redirect URIs.")
+        case .providerNotSecure:
+            return String(localized: "The sign-in page of this server's provider is not secured with HTTPS. Mär does not open it.")
+        case .startUnanswered, .exchangeUnanswered:
+            return String(localized: "The server did not answer the single sign-on as expected. Please try again.")
+        case .windowUnavailable:
+            return String(localized: "The sign-in window could not be opened. Please try again.")
+        case .refusedBySignIn:
+            return String(localized: "The sign-in was refused. Please check your account at the provider.")
+        case .foreignState, .noCode:
+            return String(localized: "The sign-in came back without a valid answer. Please try again.")
+        case .flowUnknown:
+            return String(localized: "The server no longer knows this sign-in. Please try again.")
+        case .needsRenewal:
+            return String(localized: "This server signs in only with tokens that expire and must be renewed, which Mär cannot do yet. Please use an API key.")
+        }
+    }
+
+    /// Hands a token a sign-in obtained to the shared client once the server
+    /// answered with it. Every way of signing in ends here, so the rule of
+    /// an account switch holds for each of them.
+    private func adopt(_ token: String, at url: URL, trial: APIClient) async {
         trial.updateToken(token)
         do {
             _ = try await trial.fetchLibraries()
@@ -235,6 +342,7 @@ final class AuthViewModel: ObservableObject {
             needsReauth = false
             accessUnknown = false
             apiClient.accessUnknown = false
+            Logger.library.notice("AUTH signed in host=\(url.host ?? "-", privacy: .public) switched=\(switched, privacy: .public)")
             // The titles of the former server leave the widget and the
             // device's search, as at a sign out, before the sources change,
             // so a pass for the new server writes after them; a sign-in
@@ -246,6 +354,7 @@ final class AuthViewModel: ObservableObject {
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
+            Logger.library.notice("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=\(FailureReason.of(error), privacy: .public)")
             errorMessage = await AccessGuard.sentence(after: Self.friendlyMessage(for: error), address: serverURLString)
         }
     }
