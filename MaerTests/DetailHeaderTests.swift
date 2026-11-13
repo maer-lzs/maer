@@ -143,9 +143,11 @@ struct DetailHeaderTests {
     /// The pages whose actions stand in the top bar and how many menus each
     /// file builds there (the music library file: the device playlist and
     /// the Jamendo page; the archive music file: an area and the shellac
-    /// page; the catalogue file: a source page and a release).
+    /// page; the catalogue file: a source page and a release; the book and
+    /// the station page: their share menu).
     /// BESTAND OHNE EINZELGRUENDE: an inventory compared for equality, one
-    /// reason for every entry (the page's one menu).
+    /// reason for every entry (the page's one menu). Every view file that
+    /// builds a menu is read, so a page that gains one joins the inventory.
     static let pagesWithActions: [String: Int] = [
         "Sources/Views/Music/MusicAlbumView.swift": 1,
         "Sources/Views/Podcasts/PodcastShowView.swift": 1,
@@ -153,20 +155,35 @@ struct DetailHeaderTests {
         "Sources/Views/Music/ArchiveMusicPages.swift": 2,
         "Sources/Views/Music/MusicLibraryPages.swift": 2,
         "Sources/Views/CatalogSourcePage.swift": 2,
+        "Sources/Views/BookDetailScreen.swift": 1,
+        "Sources/Views/Radio/RadioStationDetailView.swift": 1,
     ]
+
+    /// The modifier a catalogue area page calls (`catalogShuffleActions`)
+    /// builds the menu for it; it is no page of its own.
+    static let menuModifiers: Set<String> = ["Sources/Views/TabContentLayout.swift"]
+
+    /// How many menus a view file builds: its `pageActions`, and a catalogue
+    /// area page's draw (`catalogShuffleActions`).
+    static func menusBuilt(in text: String) -> Int {
+        text.components(separatedBy: ".pageActions(").count - 1
+            + text.components(separatedBy: ".catalogShuffleActions").count - 1
+    }
 
     @Test("eine Seite hat einen Ort fuer ihre Handlungen: das Menue oben, kein Zeichen daneben", .needsTheSources)
     func aPageHasOnePlaceForItsActions() throws {
         var found: [String: Int] = [:]
-        for file in Self.pagesWithActions.keys {
-            let text = SyncContractFenceTests.stripped(
-                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
-            // A catalogue area page builds its menu through its draw (`catalogShuffleActions`).
-            found[file] = text.components(separatedBy: ".pageActions(").count - 1
-                + text.components(separatedBy: ".catalogShuffleActions").count - 1
+        for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
+            let file = SourceTree.relativePath(of: url)
+            guard !Self.menuModifiers.contains(file) else { continue }
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let menus = Self.menusBuilt(in: text)
+            guard menus > 0 else { continue }
+            found[file] = menus
             #expect(!text.contains("ToolbarItem(") && !text.contains("ToolbarItemGroup("),
                     "\(file) puts a control of its own in the top bar")
         }
+        #expect(found["Sources/Views/Podcasts/PodcastShowView.swift"] == 1, "the precondition: the fence read the views")
         #expect(found == Self.pagesWithActions, "a page builds its menu another way: \(found)")
         // The menu is built in one place, with its name for VoiceOver.
         var menus: [String] = []
