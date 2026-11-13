@@ -32,7 +32,10 @@
   // A link opened in the same tab changes only the fragment, and the page
   // does not load again by itself; it reads the new link from the start.
   window.addEventListener("hashchange", function () { location.reload(); });
-  document.getElementById("badge").alt = words.store;
+  // Apple's badge in the language of the page, from this site.
+  var badge = document.getElementById("badge");
+  badge.alt = words.store;
+  if (german) { badge.src = "/l/app-store-badge-de.svg"; }
 
   // The two forms of a free music track, as SharedLink checks them.
   var JAMENDO = /^jam:([0-9]+)$/;
