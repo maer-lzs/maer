@@ -56,7 +56,73 @@
     return values;
   }
 
+  // The question the app asks before it shares or opens a link
+  // (PodcastFeedAddress.carriesAccess): an address with a user or password
+  // before its host, or a query name that says access, carries access. The
+  // three lists are the app's, word for word (fence in SharedLinkPageAccessTests).
+  var ACCESS_PARTS = ["token", "auth", "key", "secret", "pass", "password", "passwd", "sig", "signature", "session", "sid", "freebie", "apikey"];
+  var ACCESS_HARD = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature", "pwd", "hmac"];
+  var ACCESS_KEY_LEADS = ["api", "access", "auth", "secret", "private", "session", "client", "signing"];
+  var ALNUM = /[\p{L}\p{N}]/u;
+
+  function isUpper(c) { return c !== c.toLowerCase() && c === c.toUpperCase(); }
+  function isLower(c) { return c !== c.toUpperCase() && c === c.toLowerCase(); }
+  function has(list, word) { return list.indexOf(word) >= 0; }
+  function endsWith(text, end) { return text.length >= end.length && text.slice(text.length - end.length) === end; }
+
+  function namesAccess(name) {
+    var words = [name];
+    var word = "";
+    var previous = "";
+    for (var i = 0; i < name.length; i++) {
+      var c = name.charAt(i);
+      if (!ALNUM.test(c)) {
+        words.push(word); word = "";
+      } else {
+        if (isUpper(c) && previous && isLower(previous)) { words.push(word); word = ""; }
+        word += c;
+      }
+      previous = c;
+    }
+    words.push(word);
+    for (var j = 0; j < words.length; j++) {
+      if (has(ACCESS_PARTS, words[j].toLowerCase())) { return true; }
+    }
+    var joined = "";
+    var lower = name.toLowerCase();
+    for (var k = 0; k < lower.length; k++) {
+      if (ALNUM.test(lower.charAt(k))) { joined += lower.charAt(k); }
+    }
+    for (var h = 0; h < ACCESS_HARD.length; h++) {
+      if (joined.indexOf(ACCESS_HARD[h]) === 0 || endsWith(joined, ACCESS_HARD[h])) { return true; }
+    }
+    for (var l = 0; l < ACCESS_KEY_LEADS.length; l++) {
+      if (endsWith(joined, ACCESS_KEY_LEADS[l] + "key")) { return true; }
+    }
+    return joined.indexOf("session") === 0 || endsWith(joined, "pass") || endsWith(joined, "auth");
+  }
+
+  function carriesAccess(raw) {
+    if (!raw) { return false; }
+    var text = raw.trim();
+    var q = text.indexOf("?");
+    if (q >= 0) {
+      var pairs = text.slice(q + 1).split("&");
+      for (var i = 0; i < pairs.length; i++) {
+        var at = pairs[i].indexOf("=");
+        if (at > 0 && at < pairs[i].length - 1 && namesAccess(pairs[i].slice(0, at))) { return true; }
+      }
+    }
+    var scheme = text.indexOf("://");
+    var rest = scheme >= 0 ? text.slice(scheme + 3) : text;
+    var end = rest.search(/[\/?#]/);
+    var authority = end >= 0 ? rest.slice(0, end) : rest;
+    return authority.indexOf("@") >= 0;
+  }
+
   var link = read(location.hash.slice(1));
+  // A link with access in any of its addresses shows nothing of it.
+  if (link && (carriesAccess(link.f) || carriesAccess(link.a) || carriesAccess(link.c))) { link = null; }
   if (!link) {
     document.getElementById("title").textContent = words.unreadable;
     return;

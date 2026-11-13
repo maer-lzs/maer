@@ -111,7 +111,8 @@ nonisolated enum PodcastFeedAddress {
     /// Whether an address carries access at all: a secret in its query, by
     /// the premium names or a name with an access part, or a user or
     /// password before its host (also written without a scheme). Such an
-    /// address stays home.
+    /// address stays home. The page on maer.fm (`site/l/l.js`) asks the same
+    /// question with the same three lists.
     static func carriesAccess(_ raw: String) -> Bool {
         if isTokenFeedURL(raw) { return true }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)

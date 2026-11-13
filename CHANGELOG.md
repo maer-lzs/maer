@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.7 (Build 64)
 
 **Share a podcast, an episode, a station, a free audiobook or a Jamendo
 track as a link.** Their pages have a share button. The link points to
