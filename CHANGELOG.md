@@ -6,7 +6,7 @@
 track as a link.** Their pages have a share button. The link points to
 maer.fm and carries everything after the `#`, so the title, the
 subtitle, the cover and, where there is one, the audio address never
-reach a server; it holds no tracking. The share sheet shows the cover.
+reach maer.fm itself; it holds no tracking. The share sheet shows the cover.
 Opened in a browser, the page shows the title and the cover, plays the
 audio from its own address and points to Mär in the App Store; a
 Jamendo track is not played there, the page names Jamendo and links to
