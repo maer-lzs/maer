@@ -26,7 +26,12 @@ struct SharedLinkTests {
     static let book = SharedLink.Content.book(
         itemId: "lv:1234", .init(title: "Die Verwandlung", subtitle: "Franz Kafka",
                                  audioURL: "https://archive.org/download/x/x_01.mp3"))
-    static let all = [episode, show, station, book]
+    static let jamendoTrack = SharedLink.Content.track(
+        itemId: "jam:1848357", .init(title: "Abendlicht", subtitle: "Die Kapelle"))
+    static let archiveSong = SharedLink.Content.track(
+        itemId: "lva:78_abendlied_georgeblood#2", .init(title: "Abendlied", subtitle: "Ein Orchester",
+                                                     audioURL: "https://archive.org/download/x/x_02.mp3"))
+    static let all = [episode, show, station, book, jamendoTrack, archiveSong]
 
     @Test("Jede Art kommt aus ihrem Link unveraendert zurueck")
     func everyKindReadsBack() throws {
@@ -131,12 +136,7 @@ struct SharedLinkTests {
             for audio in tainted {
                 var facts = content.facts
                 facts.audioURL = audio
-                let changed: SharedLink.Content = switch content {
-                case .episode(let f, let g, _): .episode(feedURL: f, guid: g, facts)
-                case .show(let f, _): .show(feedURL: f, facts)
-                case .station(let u, _): .station(uuid: u, facts)
-                case .book(let i, _): .book(itemId: i, facts)
-                }
+                let changed = content.with(facts)
                 // Written by hand and read back, as a link from outside arrives.
                 let url = try #require(SharedLink.url(for: changed))
                 let read = try #require(SharedLink.read(url))
@@ -191,6 +191,38 @@ struct SharedLinkTests {
         }
         for id in ["lv:1234", "lva:dieverwandlung_1001_librivox", "gut:5200"] {
             #expect(SharedLink.offers(.book(itemId: id, .init()), staysHome: Self.open), "\(id)")
+        }
+    }
+
+    @Test("Ein Musiktitel nur aus Jamendo oder als Lied einer archive.org-Veroeffentlichung, Jamendo nie mit Strom")
+    func tracksByTheirIdentity() {
+        for id in ["jam:1848357", "lva:78_abendlied_georgeblood#0", "lva:netlabel-release#12"] {
+            #expect(SharedLink.offers(.track(itemId: id, .init()), staysHome: Self.open), "\(id)")
+        }
+        for id in ["jam:", "jam:12a", "jam:-1", "jam:１２", "lva:release", "lva:#3", "lva:release#a", "lva:a#b#3",
+                   "lv:1234#2", "gut:5200#1", "sub:album:9#1", "local:/x.mp3", "1848357"] {
+            #expect(!SharedLink.offers(.track(itemId: id, .init()), staysHome: Self.open), "\(id)")
+        }
+        // A Jamendo stream address never travels; an archive.org song plays
+        // from its public address.
+        #expect(!SharedLink.offers(.track(itemId: "jam:1848357", .init(audioURL: "https://prod-1.storage.jamendo.com/?trackid=1848357")),
+                                   staysHome: Self.open))
+        #expect(SharedLink.offers(Self.archiveSong, staysHome: Self.open))
+        // The precondition: the same ids are not books.
+        #expect(!SharedLink.offers(.book(itemId: "jam:1848357", .init()), staysHome: Self.open))
+        #expect(!SharedLink.offers(.book(itemId: "lva:78_abendlied_georgeblood#2", .init()), staysHome: Self.open))
+    }
+
+    @Test("Ein Musiktitel aus der App: Jamendo ohne Strom, archive.org mit, jeder andere Titel nicht")
+    func musicTracksBecomeLinks() {
+        #expect(SharedLink.content(trackId: "jam:1848357", title: "Abendlicht", artist: "Die Kapelle",
+                                   audioURL: "https://prod-1.storage.jamendo.com/?trackid=1848357")
+                == Self.jamendoTrack)
+        #expect(SharedLink.content(trackId: "lva:78_abendlied_georgeblood#2", title: "Abendlied", artist: "Ein Orchester",
+                                   audioURL: "https://archive.org/download/x/x_02.mp3")
+                == Self.archiveSong)
+        for id in ["sub:song:1", "lva:78_abendlied_georgeblood", "lv:1234", "local:/x.mp3"] {
+            #expect(SharedLink.content(trackId: id, title: "T", artist: nil, audioURL: nil) == nil, "\(id)")
         }
     }
 

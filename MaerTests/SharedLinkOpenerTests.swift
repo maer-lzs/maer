@@ -76,6 +76,8 @@ struct SharedLinkOpenerTests {
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:1234", .init(title: "B")))) == .book(itemId: "lv:1234"))
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:9999", .init(title: "B")))) == .refused(reason: "bookUnknown"))
         #expect(await opener.outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF")))) == .refused(reason: "stationWithoutStream"))
+        // A music track reads, and the app does not open it yet.
+        #expect(await opener.outcome(for: try link(.track(itemId: "jam:1848357", .init(title: "T")))) == .refused(reason: "track"))
     }
 
     @Test("Ein von Hand gebauter Link mit einem Feed, der zu Hause bleibt, oder einer Adresse mit Zugang oeffnet nichts, je Art, ohne zu fragen")

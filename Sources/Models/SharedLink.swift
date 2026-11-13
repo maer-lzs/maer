@@ -39,10 +39,15 @@ nonisolated enum SharedLink {
         case station(uuid: String, Facts)
         /// A free audiobook by its catalog id (`lv:`, `lva:`, `gut:`).
         case book(itemId: String, Facts)
+        /// A free music track by its catalog id: a Jamendo track
+        /// (`jam:<id>`) or one song of an archive.org release
+        /// (`lva:<release>#<index>`).
+        case track(itemId: String, Facts)
 
         var facts: Facts {
             switch self {
-            case .episode(_, _, let facts), .show(_, let facts), .station(_, let facts), .book(_, let facts):
+            case .episode(_, _, let facts), .show(_, let facts), .station(_, let facts), .book(_, let facts),
+                 .track(_, let facts):
                 return facts
             }
         }
@@ -54,6 +59,7 @@ nonisolated enum SharedLink {
             case .show(let feedURL, _): return .show(feedURL: feedURL, facts)
             case .station(let uuid, _): return .station(uuid: uuid, facts)
             case .book(let itemId, _): return .book(itemId: itemId, facts)
+            case .track(let itemId, _): return .track(itemId: itemId, facts)
             }
         }
     }
@@ -90,6 +96,7 @@ nonisolated enum SharedLink {
         case .show(let feedURL, _): pairs = [("k", "s"), ("f", feedURL)]
         case .station(let uuid, _): pairs = [("k", "r"), ("i", uuid)]
         case .book(let itemId, _): pairs = [("k", "b"), ("i", itemId)]
+        case .track(let itemId, _): pairs = [("k", "m"), ("i", itemId)]
         }
         let facts = content.facts
         pairs += [("t", facts.title), ("s", facts.subtitle), ("a", facts.audioURL), ("c", facts.coverURL)]
@@ -147,6 +154,9 @@ nonisolated enum SharedLink {
         case "b":
             guard let itemId = present("i") else { return nil }
             return .book(itemId: itemId, facts)
+        case "m":
+            guard let itemId = present("i") else { return nil }
+            return .track(itemId: itemId, facts)
         default:
             return nil
         }
@@ -174,6 +184,12 @@ nonisolated enum SharedLink {
             guard let prefix = bookPrefixes.first(where: { itemId.hasPrefix($0) }),
                   itemId.count > prefix.count, !itemId.contains("#") else { return false }
             addresses = []
+        case .track(let itemId, let facts):
+            guard isTrackId(itemId) else { return false }
+            // A Jamendo stream address carries a mark of this app, so a
+            // Jamendo track never travels with one.
+            if itemId.hasPrefix(FreeCatalog.jamendoPrefix), facts.audioURL != nil { return false }
+            addresses = []
         }
         let named = [content.facts.audioURL, content.facts.coverURL].compactMap { $0 }
         return (addresses + named).allSatisfy(isPublicAddress)
@@ -198,6 +214,19 @@ nonisolated enum SharedLink {
             facts.coverURL = nil
         }
         return content.with(facts)
+    }
+
+    /// A free music track id: `jam:` and digits, or a song address of an
+    /// archive.org release (`lva:<release>#<index>`, `CatalogSongID`).
+    static func isTrackId(_ itemId: String) -> Bool {
+        if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
+            let number = itemId.dropFirst(FreeCatalog.jamendoPrefix.count)
+            return !number.isEmpty && number.allSatisfy { $0.isASCII && $0.isNumber }
+        }
+        guard let song = CatalogSongID.parse(itemId) else { return false }
+        return song.album.hasPrefix(FreeCatalog.archivePrefix)
+            && song.album.count > FreeCatalog.archivePrefix.count
+            && !song.album.contains(CatalogSongID.separator)
     }
 
     /// An http or https address with a host and no access in it.
@@ -236,6 +265,14 @@ nonisolated enum SharedLink {
     static func content(bookId: String, title: String, author: String?, audioURL: String?) -> Content? {
         guard bookPrefixes.contains(where: { bookId.hasPrefix($0) }) else { return nil }
         return .book(itemId: bookId, Facts(title: title, subtitle: author, audioURL: audioURL))
+    }
+
+    /// The link content of a free music track; nil for any other title. A
+    /// Jamendo track goes without its stream address.
+    static func content(trackId: String, title: String, artist: String?, audioURL: String?) -> Content? {
+        guard isTrackId(trackId) else { return nil }
+        let audio = trackId.hasPrefix(FreeCatalog.jamendoPrefix) ? nil : audioURL
+        return .track(itemId: trackId, Facts(title: title, subtitle: artist, audioURL: audio))
     }
 
     /// The app's id of a shared station and of a shared episode.

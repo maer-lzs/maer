@@ -90,6 +90,8 @@ struct SharedLinkOpener {
                                          streamURL: stream))
         case .book(let itemId, _):
             return await resolveBook(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
+        case .track:
+            return .refused(reason: "track")
         }
     }
 }

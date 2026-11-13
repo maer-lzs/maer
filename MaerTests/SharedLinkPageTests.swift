@@ -96,7 +96,7 @@ struct SharedLinkPageTests {
     func thePageReadsTheFormOfTheLink() throws {
         let js = try Self.text(Self.script)
         #expect(js.contains("indexOf(\"\(SharedLink.version)?\")"), "the page reads another version")
-        for kind in ["e: [\"f\", \"g\"]", "s: [\"f\"]", "r: [\"i\"]", "b: [\"i\"]"] {
+        for kind in ["e: [\"f\", \"g\"]", "s: [\"f\"]", "r: [\"i\"]", "b: [\"i\"]", "m: [\"i\"]"] {
             #expect(js.contains(kind), "the page misses the identity of a kind: \(kind)")
         }
         #expect(js.contains("> \(SharedLink.longestFragment)"), "the page reads a longer fragment than the app")

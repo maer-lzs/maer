@@ -6,12 +6,12 @@
   "use strict";
   var german = (navigator.language || "").toLowerCase().indexOf("de") === 0;
   var words = german ? {
-    e: "Folge", s: "Sendung", r: "Radiosender", b: "Hörbuch",
+    e: "Folge", s: "Sendung", r: "Radiosender", b: "Hörbuch", m: "Musiktitel",
     store: "Mär im App Store",
     hint: "Mit Mär öffnet dieser Link direkt in der App.",
     unreadable: "Dieser Link lässt sich nicht öffnen."
   } : {
-    e: "Episode", s: "Show", r: "Radio station", b: "Audiobook",
+    e: "Episode", s: "Show", r: "Radio station", b: "Audiobook", m: "Track",
     store: "Get Mär on the App Store",
     hint: "With Mär, this link opens right in the app.",
     unreadable: "This link can't be opened."
@@ -34,7 +34,7 @@
       if (Object.prototype.hasOwnProperty.call(values, key)) { return null; }
       try { values[key] = decodeURIComponent(pairs[i].slice(at + 1)); } catch (e) { return null; }
     }
-    var needs = { e: ["f", "g"], s: ["f"], r: ["i"], b: ["i"] }[values.k];
+    var needs = { e: ["f", "g"], s: ["f"], r: ["i"], b: ["i"], m: ["i"] }[values.k];
     if (!needs) { return null; }
     for (var j = 0; j < needs.length; j++) {
       if (!values[needs[j]] || !values[needs[j]].trim()) { return null; }
