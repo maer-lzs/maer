@@ -6,15 +6,15 @@
 track as a link.** Their pages have a share button. The link points to
 maer.fm and carries everything after the `#`, so the title, the
 subtitle, the cover and, where there is one, the audio address never
-reach maer.fm itself; it holds no tracking. The share sheet shows the cover.
-Opened in a browser, the page shows the title and the cover, plays the
-audio from its own address and points to Mär in the App Store; a
-Jamendo track is not played there, the page names Jamendo and links to
-the track on Jamendo. Opened on a device with Mär, the link opens the
-same page in the app without starting playback; a link the app cannot
-read says so in one sentence. Nothing from your own servers is shared,
-nor a premium feed or an address that carries a key or a password, and
-no button appears for them.
+reach maer.fm itself; it holds no tracking. The share sheet shows the
+cover. Opened in a browser, the page shows the title and the cover,
+plays the audio from its own address and points to Mär in the App
+Store; a Jamendo track is not played there, the page names Jamendo and
+links to the track on Jamendo. Opened on a device with Mär, the link
+opens the same page in the app without starting playback; a link the
+app cannot read says so in one sentence. Nothing from your own servers
+is shared, nor a premium feed or an address that carries a key or a
+password, and no button appears for them.
 
 **A Jamendo track's page shows the track's name.** The row of a Jamendo
 track on its page showed the end of its stream address instead of the
