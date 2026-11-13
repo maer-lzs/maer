@@ -10,9 +10,10 @@ import Foundation
 
 /// Documents go through the seam (`Ablage`) or the rows (`Sources/Storage`).
 /// Outside them, every line with `Data(contentsOf:`, `.write(to:`, a file
-/// handle (`FileHandle(for`) or `createFile(atPath:` is a counted site with
-/// a reason in the stock; the stock is the count (`StockDrift`), a new site
-/// and a free place are red. Comment lines do not count.
+/// handle (`FileHandle(for`), `createFile(atPath:`, `contents(atPath:`,
+/// `copyItem(at:` or `replaceItemAt` is a counted site with a reason in the
+/// stock; the stock is the count (`StockDrift`), a new site and a free
+/// place are red. Comment lines do not count.
 struct AblageFenceTests {
     /// Die Heimaten der Naht, jede mit ihrem Grund IM Eintrag.
     nonisolated static let homes: [(suffix: String, reason: String)] = [
@@ -34,12 +35,13 @@ struct AblageFenceTests {
     }
 
     /// Every way a line of the app reads or writes a file by itself.
-    nonisolated static let fileSpellings = ["Data(contentsOf:", ".write(to:", "FileHandle(for", "createFile(atPath:"]
+    nonisolated static let fileSpellings = ["Data(contentsOf:", ".write(to:", "FileHandle(for", "createFile(atPath:",
+                                            "contents(atPath:", "copyItem(at:", "replaceItemAt"]
 
     /// The stock on the day the fence was built (05.09.2026, phase2-ablage),
     /// each with its reason: bytes that are not a document of the app.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
-        "ImageCache.swift": (9, "cover bytes in the image cache, not a document; four of them are test seams that place a picture in a tier"),
+        "ImageCache.swift": (13, "cover bytes in the image cache, not a document; six of them are test seams that place or read a picture in a tier, two replace a kept cover with the fresh one in one step"),
         "WidgetShared.swift": (7, "the app-group snapshot the widget reads, the Continue rows and the queue's cover thumbnails, outside the app's own container"),
         "PlayerViewModel+Widget.swift": (1, "artwork bytes for the widget in the app group"),
         "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
@@ -47,7 +49,7 @@ struct AblageFenceTests {
         "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note"),
         "PodcastSourceView.swift": (1, "the OPML export handed to the share sheet"),
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
-        "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
+        "LocalLibrary.swift": (2, "the cover extracted from a local audio file, and the audio files of a local import copied into its folder"),
         "APIClient.swift": (3, "a file mapped for a multipart upload, and the body file of that upload made and written through a handle"),
         "ContinueListeningWidget.swift": (2, "the widget reads the cover bytes the app left in the app group, the title's and its rows'"),
         "PodcastUpNextWidget.swift": (1, "the widget reads the queue's cover thumbnails the app left in the app group"),
@@ -76,6 +78,8 @@ struct AblageFenceTests {
         #expect(Self.fileSites(in: "let d = try? Data(contentsOf: url)\ntry d.write(to: url, options: .atomic)\n// Data(contentsOf: in a comment") == 2)
         #expect(Self.fileSites(in: "let h = try FileHandle(forReadingFrom: url)\nlet w = try FileHandle(forWritingTo: url)\nlet u = try FileHandle(forUpdating: url)\nFileManager.default.createFile(atPath: p, contents: d)\n// FileHandle(forReadingFrom: in a comment") == 4,
                 "a file handle and a created file count as sites")
+        #expect(Self.fileSites(in: "let d = FileManager.default.contents(atPath: p)\ntry FileManager.default.copyItem(at: a, to: b)\n_ = try FileManager.default.replaceItemAt(a, withItemAt: b)\n// copyItem(at: in a comment") == 3,
+                "a read by path, a copy and a swap count as sites")
         #expect(Self.stock.values.allSatisfy { !$0.reason.isEmpty })
     }
 }
