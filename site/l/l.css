@@ -33,7 +33,6 @@ audio { width: 100%; margin: 0 0 0.6rem; }
 /* Below the head: what the feed says, as a list. */
 .about, .episodes { background: var(--card); border-radius: 1.25rem; padding: 1.25rem 1.5rem; margin: 1rem 0 0; }
 .description { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
-.description.short { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
 .more { display: block; background: none; border: 0; padding: 0; margin: 0.4rem 0 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
 .website { display: block; margin: 0.8rem 0 0; color: var(--accent); text-decoration: none; font-weight: 600; overflow-wrap: anywhere; }
 h2 { font-size: 1.1rem; margin: 0 0 0.4rem; }

@@ -368,7 +368,20 @@
     return "";
   }
 
-  // The description, cut to a few lines with "More" when it is longer, and
+  var SHORT_LIMIT = 320;
+
+  // A text longer than the limit, cut at the last space before it, without
+  // the punctuation and spaces at the cut, and one "…"; null for a text
+  // that fits.
+  function shortened(text, limit) {
+    if (text.length <= limit) { return null; }
+    var cut = text.slice(0, limit);
+    var space = cut.lastIndexOf(" ");
+    if (space > limit * 0.6) { cut = cut.slice(0, space); }
+    return cut.replace(/[\s.,;:!?…–—-]+$/, "") + "…";
+  }
+
+  // The description, cut with "More" when it is longer, and
   // the website of the show.
   function showAbout(text, website) {
     if (!text && !website) { return; }
@@ -376,18 +389,16 @@
     var description = document.getElementById("description");
     about.hidden = false;
     if (text) {
-      description.textContent = text;
-      description.classList.add("short");
-      if (description.scrollHeight > description.clientHeight + 1) {
+      var short = shortened(text, SHORT_LIMIT);
+      description.textContent = short || text;
+      if (short) {
         var more = document.getElementById("more");
         more.textContent = words.more;
         more.hidden = false;
         more.addEventListener("click", function () {
-          description.classList.remove("short");
+          description.textContent = text;
           more.hidden = true;
         });
-      } else {
-        description.classList.remove("short");
       }
     } else {
       description.hidden = true;
