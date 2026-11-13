@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A Jamendo track's page shows the track's name.** The row of a Jamendo
+track on its page showed the end of its stream address instead of the
+track's name, including a value that belongs to the app. The row now
+shows the name, and no part of the stream address is shown.
+
 **Audiobookshelf: sign in with single sign-on.** When a server offers
 single sign-on (OpenID Connect), the sign-in form shows a button of its
 own under Connect, with the server's text or "Sign in with SSO". It opens

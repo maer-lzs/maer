@@ -683,7 +683,8 @@ final class FreeCatalogProvider: AudioProvider {
                     duration: track.duration.map(Double.init), chapters: nil,
                     tracks: [ABSAudioTrack(index: 0, startOffset: 0,
                                            duration: track.duration.map(Double.init),
-                                           contentUrl: audio, metadata: nil)]),
+                                           contentUrl: audio,
+                                           metadata: ABSFileMetadata(size: nil, title: track.name.map(htmlPlainText)))]),
                 userMediaProgress: nil)
             rememberResolved(detail)
             return detail

@@ -62,6 +62,57 @@ struct JamendoTrackByIdTests {
         #expect(asked() == ["1848357"], "a known track was asked for again")
     }
 
+    @Test("Die Spur eines Titels von Jamendo traegt seinen Namen, nie einen Teil der Stromadresse")
+    func theTrackOfAJamendoTitleCarriesItsName() async throws {
+        let (provider, _, directory) = try makeProvider(allowed: true, answer: Self.track)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let detail = try await provider.fetchItemDetail(itemId: "jam:1848357")
+        let track = try #require(detail.media.tracks?.first)
+        #expect(track.contentUrl.contains("?"), "the precondition: the stream address carries a query")
+        #expect(track.metadata?.title == "Abendlicht", "the track has no name of its own: \(String(describing: track.metadata?.title))")
+    }
+
+    @Test("Der Zeilentitel eines Titels von Jamendo ist sein Name, sonst der Titel der Seite; andere Titel wie bisher")
+    func theRowTitleOfAJamendoTrackIsItsName() {
+        let stream = "https://prod-1.storage.jamendo.com/?trackid=1848357&format=mp32&from=AAAA==|BBBB=="
+        for series in [true, false] {
+            let named = FreeCatalog.trackRowTitle(itemId: "jam:1848357", stated: "Abendlicht", contentUrl: stream,
+                                                  series: series, fallback: "Seite")
+            #expect(named.title == "Abendlicht" && named.airDate == nil, "\(named)")
+            let unnamed = FreeCatalog.trackRowTitle(itemId: "jam:1848357", stated: " ", contentUrl: stream,
+                                                    series: series, fallback: "Seite")
+            #expect(unnamed.title == "Seite", "\(unnamed)")
+        }
+        // The precondition: the address alone would show its query.
+        #expect(FreeCatalog.trackDisplayTitle(contentUrl: stream).contains("from="))
+        // Every other title as before: the stated name on an album, the file
+        // name's episode in a series.
+        let file = "https://archive.org/download/x/Folge_12_Der_Fall.mp3"
+        #expect(FreeCatalog.trackRowTitle(itemId: "lva:x", stated: "Benannt", contentUrl: file, series: false, fallback: "S").title
+                == "Benannt")
+        #expect(FreeCatalog.trackRowTitle(itemId: "lva:x", stated: nil, contentUrl: file, series: false, fallback: "S").title
+                == FreeCatalog.trackDisplayTitle(contentUrl: file))
+        #expect(FreeCatalog.trackRowTitle(itemId: "lva:x", stated: "Benannt", contentUrl: file, series: true, fallback: "S").title
+                == FreeCatalog.otrEpisode(fromFileName: FreeCatalog.trackDisplayTitle(contentUrl: file)).title)
+    }
+
+    @Test("Zaun: der Name aus der Adresse wird nur in FreeCatalog gefragt, und fuer einen Titel von Jamendo nie", .needsTheSources)
+    func theAddressNameIsNeverAskedForAJamendoTrack() throws {
+        var callers: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("trackDisplayTitle(") { callers.append(file.lastPathComponent) }
+        }
+        #expect(callers == ["FreeCatalog.swift"], "the name from the address is asked elsewhere: \(callers)")
+        let catalog = SourceTree.root.appendingPathComponent("Sources/Models/FreeCatalog.swift")
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: catalog, encoding: .utf8))
+        let rule = try #require(code.range(of: "static func trackRowTitle("), "the precondition: the rule stands")
+        let body = code[rule.upperBound...]
+        let jamendo = try #require(body.range(of: "itemId.hasPrefix(jamendoPrefix)"))
+        let address = try #require(body.range(of: "trackDisplayTitle(contentUrl: contentUrl)"))
+        #expect(jamendo.lowerBound < address.lowerBound, "the rule reads the address before it asks for Jamendo")
+    }
+
     @Test("Mit der Quelle aus wird nichts gefragt, und der Titel oeffnet nicht")
     func theSourceOffAsksNothing() async throws {
         let (provider, asked, directory) = try makeProvider(allowed: false, answer: Self.track)

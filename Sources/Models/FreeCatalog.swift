@@ -1235,6 +1235,22 @@ nonisolated enum FreeCatalog {
         return trackDisplayTitle(contentUrl: file.name ?? "")
     }
 
+    /// The title and first broadcast a catalog page's track row shows. A
+    /// Jamendo track shows its own name, else the page's title, and never a
+    /// part of its stream address: that address carries a mark of this app
+    /// in its query. Any other track shows the name it states, else its file
+    /// name; in a series the file name's housekeeping head moves off the
+    /// title and its date into the broadcast.
+    static func trackRowTitle(itemId: String, stated: String?, contentUrl: String, series: Bool,
+                              fallback: String) -> (title: String, airDate: String?) {
+        if itemId.hasPrefix(jamendoPrefix) {
+            let name = stated?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return (name.isEmpty ? fallback : name, nil)
+        }
+        let raw = trackDisplayTitle(contentUrl: contentUrl)
+        return series ? otrEpisode(fromFileName: raw) : (stated ?? raw, nil)
+    }
+
     static func trackDisplayTitle(contentUrl: String) -> String {
         let last = contentUrl.split(separator: "/").last.map(String.init) ?? contentUrl
         let decoded = last.removingPercentEncoding ?? last

@@ -1197,11 +1197,14 @@ struct ArchiveSeriesPage: View {
     /// The title the ROW shows. The same derivation, so what lands in a
     /// playlist is what the person tapped.
     private func trackTitle(_ track: ABSAudioTrack) -> String {
-        let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
-        let stated = track.metadata?.title
-        return effectiveFlavor == .series
-            ? FreeCatalog.otrEpisode(fromFileName: raw).title
-            : (stated ?? raw)
+        rowTitle(track).title
+    }
+
+    /// The row's title and broadcast, by the one rule (`FreeCatalog.trackRowTitle`).
+    private func rowTitle(_ track: ABSAudioTrack) -> (title: String, airDate: String?) {
+        FreeCatalog.trackRowTitle(itemId: itemId, stated: track.metadata?.title, contentUrl: track.contentUrl,
+                                  series: effectiveFlavor == .series,
+                                  fallback: (detail ?? quick)?.media.metadata?.title ?? "")
     }
 
     private func episodeRow(index: Int, track: ABSAudioTrack) -> some View {
@@ -1229,12 +1232,9 @@ struct ArchiveSeriesPage: View {
                 // The source's own track title wins; the file name stays the
                 // fallback for items that state none. The OTR head patterns
                 // (shorthand, date, running number) only exist in series.
-                // Music track names are left untouched.
-                let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
-                let stated = track.metadata?.title
-                let episode = effectiveFlavor == .series
-                    ? FreeCatalog.otrEpisode(fromFileName: raw)
-                    : (title: stated ?? raw, airDate: nil)
+                // Music track names are left untouched, and a Jamendo track
+                // never shows a part of its stream address.
+                let episode = rowTitle(track)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: episode.title)
                         .font(.subheadline)
