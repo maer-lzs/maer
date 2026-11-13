@@ -15,6 +15,11 @@ import OSLog
 final class FreeCatalogProvider: AudioProvider {
     static let shared = FreeCatalogProvider(ablage: .documents)
 
+    /// Asks Jamendo for one track by its id; the app's client, a witness's own.
+    var fetchJamendoTrack: (String) async throws -> JamendoTrack? = { try await JamendoClient.track(id: $0) }
+    /// Whether Jamendo may be asked: the switch of the source.
+    var jamendoAllowed: () -> Bool = { AppStorageKeys.jamendoActive }
+
     /// The provider over a given home of its documents; one for the app,
     /// others for witnesses.
     init(ablage: Ablage) {
@@ -661,6 +666,12 @@ final class FreeCatalogProvider: AudioProvider {
             return try await releaseDetail(itemId: itemId, identifier: identifier, meta: meta)
         }
         if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
+            // A track no row showed this session, named by a shared link:
+            // asked once, live, while the source is on.
+            if jamendoTracks[itemId] == nil, jamendoAllowed(),
+               let fetched = try await fetchJamendoTrack(String(itemId.dropFirst(FreeCatalog.jamendoPrefix.count))) {
+                _ = remember(track: fetched)
+            }
             guard let track = jamendoTracks[itemId], let audio = track.audio, !audio.isEmpty else {
                 throw URLError(.resourceUnavailable)
             }

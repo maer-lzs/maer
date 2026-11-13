@@ -10,7 +10,8 @@ import OSLog
 /// `SharedLink.offers` confirms with the same question as sharing, so a link
 /// built by hand around a private feed or an address with access opens
 /// nothing. The ways to the content are seams: whether an episode is known,
-/// reading a feed nobody follows, resolving a catalog book.
+/// reading a feed nobody follows, resolving a catalog title. A link shows its
+/// content and never starts playback.
 struct SharedLinkOpener {
     /// What the app opens for a link.
     enum Outcome: Equatable {
@@ -18,6 +19,8 @@ struct SharedLinkOpener {
         case show(feedURL: String)
         case station(RadioStation)
         case book(itemId: String)
+        /// A free music track: the page of its release or of the track.
+        case track(itemId: String)
         /// Not a link of this form, or one the app does not open; the one
         /// sentence says so, the reason goes to the log.
         case refused(reason: String)
@@ -30,15 +33,17 @@ struct SharedLinkOpener {
     /// Reads a feed nobody follows and keeps its episodes for the visit;
     /// false when it could not be read.
     var browse: (String) async -> Bool
-    /// Resolves a catalog title; false when it cannot be found.
-    var resolveBook: (String) async -> Bool
+    /// Resolves a catalog title, a book or a music track; false when it
+    /// cannot be found.
+    var resolveCatalog: (String) async -> Bool
 
     /// The one sentence for every link that opens nothing; a link does not
     /// tell whether it named something private.
     static let refusal = String(localized: "This link can't be opened.")
 
     /// The opener of the app: a feed nobody follows is read as the show
-    /// page reads it, a catalog book is resolved by the session.
+    /// page reads it, a catalog title is resolved by the session (a Jamendo
+    /// track nobody saw this session is asked for there).
     static func live(knows: @escaping (String) -> Bool) -> SharedLinkOpener {
         SharedLinkOpener(
             staysHome: { PodcastSubscriptions.staysHome($0) },
@@ -49,24 +54,34 @@ struct SharedLinkOpener {
                 BrowsedEpisodes.shared.remember(show: show)
                 return true
             },
-            resolveBook: { await AppSession.shared.resolveItem(forId: $0) != nil })
+            resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil })
     }
 
     /// Opens what the link names through the one navigation point, or hands
     /// the one sentence to `refuse` and writes the reason to the log.
     func open(_ url: URL, refuse: (String) -> Void) async {
-        let target: PlayerSourceTarget
-        switch await outcome(for: url) {
-        case .episode(let itemId): target = .podcastEpisode(itemId: itemId)
-        case .show(let feedURL): target = .podcastShow(feedURL: feedURL)
-        case .station(let station): target = .radioStation(station)
-        case .book(let itemId): target = .catalogBook(itemId: itemId)
-        case .refused(let reason):
-            Logger.library.notice("SHAREDLINK refused reason=\(reason, privacy: .public)")
+        let outcome = await outcome(for: url)
+        guard let target = Self.target(of: outcome) else {
+            if case .refused(let reason) = outcome {
+                Logger.library.notice("SHAREDLINK refused reason=\(reason, privacy: .public)")
+            }
             refuse(Self.refusal)
             return
         }
         PlayerSourceRouter.shared.open(target)
+    }
+
+    /// The page an outcome opens; nil for a refusal. A music track opens by
+    /// the catalog's own rule: a song its release, a Jamendo track its page.
+    static func target(of outcome: Outcome) -> PlayerSourceTarget? {
+        switch outcome {
+        case .episode(let itemId): .podcastEpisode(itemId: itemId)
+        case .show(let feedURL): .podcastShow(feedURL: feedURL)
+        case .station(let station): .radioStation(station)
+        case .book(let itemId): .catalogBook(itemId: itemId)
+        case .track(let itemId): PlayerSourceTargets.catalogPage(itemId, markedForm: nil)
+        case .refused: nil
+        }
     }
 
     func outcome(for url: URL) async -> Outcome {
@@ -89,9 +104,9 @@ struct SharedLinkOpener {
             return .station(RadioStation(id: SharedLink.stationId(uuid: uuid), name: facts.title ?? "",
                                          streamURL: stream))
         case .book(let itemId, _):
-            return await resolveBook(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
-        case .track:
-            return .refused(reason: "track")
+            return await resolveCatalog(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
+        case .track(let itemId, _):
+            return await resolveCatalog(itemId) ? .track(itemId: itemId) : .refused(reason: "trackUnknown")
         }
     }
 }

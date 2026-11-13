@@ -33,7 +33,7 @@ struct SharedLinkOpenerTests {
                     if let id = feedHolds[feed] { known.insert(id) }
                     return loadsOnBrowse.contains(feed)
                 },
-                resolveBook: { [self] in books.contains($0) })
+                resolveCatalog: { [self] in books.contains($0) })
         }
     }
 
@@ -76,8 +76,46 @@ struct SharedLinkOpenerTests {
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:1234", .init(title: "B")))) == .book(itemId: "lv:1234"))
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:9999", .init(title: "B")))) == .refused(reason: "bookUnknown"))
         #expect(await opener.outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF")))) == .refused(reason: "stationWithoutStream"))
-        // A music track reads, and the app does not open it yet.
-        #expect(await opener.outcome(for: try link(.track(itemId: "jam:1848357", .init(title: "T")))) == .refused(reason: "track"))
+    }
+
+    @Test("Ein Musiktitel oeffnet sich, wenn der Katalog ihn findet: Jamendo und ein Lied von archive.org; ein unbekannter nicht")
+    func aMusicTrackOpensWhenTheCatalogFindsIt() async throws {
+        let ways = Ways()
+        ways.books = ["jam:1848357", "lva:release_x#2"]
+        let opener = ways.opener()
+        #expect(await opener.outcome(for: try link(.track(itemId: "jam:1848357", .init(title: "T"))))
+                == .track(itemId: "jam:1848357"))
+        #expect(await opener.outcome(for: try link(.track(itemId: "lva:release_x#2", .init(title: "T"))))
+                == .track(itemId: "lva:release_x#2"))
+        #expect(await opener.outcome(for: try link(.track(itemId: "jam:42", .init(title: "T"))))
+                == .refused(reason: "trackUnknown"))
+    }
+
+    @Test("Ein Musiktitel oeffnet seine Seite nach der Regel des Katalogs, ein Lied seine Veroeffentlichung; eine Weigerung keine")
+    func aMusicTrackOpensItsPage() {
+        guard case .catalogAlbum(let jamendo) = SharedLinkOpener.target(of: .track(itemId: "jam:1848357")) else {
+            Issue.record("a Jamendo track does not open its catalog page"); return
+        }
+        #expect(jamendo == "jam:1848357")
+        guard case .catalogAlbum(let release) = SharedLinkOpener.target(of: .track(itemId: "lva:release_x#2")) else {
+            Issue.record("a song does not open its release"); return
+        }
+        #expect(release == "lva:release_x")
+        guard case .catalogBook(let book) = SharedLinkOpener.target(of: .book(itemId: "lv:1234")) else {
+            Issue.record("a book does not open its page"); return
+        }
+        #expect(book == "lv:1234")
+        #expect(SharedLinkOpener.target(of: .refused(reason: "form")) == nil)
+    }
+
+    @Test("Zaun: ein Link zeigt und startet keine Wiedergabe", .needsTheSources)
+    func aLinkNeverStartsPlayback() throws {
+        let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/SharedLinkOpener.swift")
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        #expect(code.contains("PlayerSourceRouter.shared.open(target)"), "the precondition: the opener navigates")
+        let playing = ["playerCoordinator", "PlayerCoordinator", "PlayerViewModel", ".play(", "playItem", "startPlayback"]
+            .filter { code.contains($0) }
+        #expect(playing.isEmpty, "the opener starts playback: \(playing)")
     }
 
     @Test("Ein von Hand gebauter Link mit einem Feed, der zu Hause bleibt, oder einer Adresse mit Zugang oeffnet nichts, je Art, ohne zu fragen")

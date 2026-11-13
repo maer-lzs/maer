@@ -1206,4 +1206,34 @@ nonisolated enum JamendoClient {
         }
         return try decodeTracks(data)
     }
+
+    /// The address that asks for one track by its Jamendo id, in the form of
+    /// the chart (same audio format and cover size); nil for an id that is
+    /// not a number.
+    nonisolated static func trackURL(id: String, clientId: String) -> URL? {
+        guard !id.isEmpty, id.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        var comp = URLComponents(string: "https://api.jamendo.com/v3.0/tracks/")!
+        comp.setQuery([
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "id", value: id),
+            URLQueryItem(name: "limit", value: "1"),
+            URLQueryItem(name: "audioformat", value: "mp32"),
+            URLQueryItem(name: "imagesize", value: String(FreeCatalog.jamendoCoverSize)),
+        ])
+        return comp.url
+    }
+
+    /// One track by its Jamendo id, asked live when a link names it; nil
+    /// without a key, for an id that is not a number, or when Jamendo knows
+    /// no such track. A stated failure throws like the chart's.
+    static func track(id: String) async throws -> JamendoTrack? {
+        guard let key = await clientId(), let url = trackURL(id: id, clientId: key) else { return nil }
+        let (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
+        if let status = http?.statusCode, !(200...299).contains(status) {
+            throw JamendoFailure(status: status, code: nil, message: nil,
+                                 retryAfter: http?.value(forHTTPHeaderField: "Retry-After"))
+        }
+        return try decodeTracks(data).first { $0.id == id }
+    }
 }
