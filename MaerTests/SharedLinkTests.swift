@@ -272,7 +272,7 @@ struct SharedLinkTests {
     /// The seam: the link is written in one place, a page shares through
     /// the one button, and the system's share link stands only where it is
     /// known to stand.
-    @Test("Zaun: der Link entsteht nur in SharedLink, geteilt wird ueber den einen Knopf auf den vier Seiten", .needsTheSources)
+    @Test("Zaun: der Link entsteht nur in SharedLink, geteilt wird ueber den einen Knopf auf den fuenf Seiten", .needsTheSources)
     func theLinkHasOneHome() throws {
         var writesTheLink: Set<String> = []
         var systemShareLink: Set<String> = []
@@ -289,8 +289,14 @@ struct SharedLinkTests {
         #expect(systemShareLink == ["SharedLinkButton.swift", "PodcastSourceView.swift", "MetricRecordsView.swift"],
                 "a share link stands past the one button: \(systemShareLink.sorted())")
         #expect(usesTheButton == ["PodcastEpisodeDetailView.swift", "PodcastShowView.swift",
-                                  "RadioStationDetailView.swift", "BookDetailScreen.swift"],
+                                  "RadioStationDetailView.swift", "BookDetailScreen.swift", "CatalogSourcePage.swift"],
                 "the pages that share: \(usesTheButton.sorted())")
+        // The catalog page shares a music track by its id alone; the stream
+        // address of a Jamendo track never reaches the link from there.
+        let catalog = SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift")
+        let catalogCode = SyncContractFenceTests.stripped(try String(contentsOf: catalog, encoding: .utf8))
+        #expect(catalogCode.contains("SharedLink.content(trackId: itemId, title: title, artist: metadata.authorName, audioURL: nil)"),
+                "the catalog page builds its link otherwise")
     }
 }
 #endif

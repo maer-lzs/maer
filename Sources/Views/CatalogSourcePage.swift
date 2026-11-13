@@ -904,8 +904,18 @@ struct ArchiveSeriesPage: View {
     /// How many of the album's songs did not resolve when it was last
     /// started; the line under the buttons says it.
     @State private var missingSongs = 0
+    /// The link on maer.fm when this page is a free music track; nil for a
+    /// release or a reading.
+    @State private var shareOffer: SharedLinkOffer?
 
     private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
+
+    /// What the page shares: a Jamendo track by its id with its title and
+    /// artist, never its stream address; nothing for any other item.
+    private var shareContent: SharedLink.Content? {
+        guard let metadata = (detail ?? quick)?.media.metadata, let title = metadata.title else { return nil }
+        return SharedLink.content(trackId: itemId, title: title, artist: metadata.authorName, audioURL: nil)
+    }
 
     /// "1 track not available": the line under an album's buttons when
     /// songs did not resolve; none when all did.
@@ -999,7 +1009,9 @@ struct ArchiveSeriesPage: View {
         // track carries its own buttons in its row.
         .pageActions("album-actions") {
             CatalogQueueButtons(itemId: itemId)
+            if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
+        .sharedLink(shareContent, cover: router.coverURL(itemId), to: $shareOffer)
         .task {
             async let kopf: Void = loadQuickHeader()
             await load()
