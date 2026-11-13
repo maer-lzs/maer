@@ -83,7 +83,7 @@ struct AppTextDashFenceTests {
     /// lines are not dashes.
     nonisolated static let publishedTexts = [
         "README.md", "README.de.md", "CHANGELOG.md", "docs/EULA.md", "LICENSE-ADDITIONAL-TERMS", "docs/appstore.md",
-    ]
+    ] + PublicReadmeFenceTests.detailPages
 
     /// The one-based lines of a text that carry an em or en dash.
     nonisolated static func dashLines(in text: String) -> [Int] {

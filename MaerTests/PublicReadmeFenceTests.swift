@@ -269,6 +269,38 @@ struct PublicReadmeFenceTests {
         }
     }
 
+    /// The detail pages the READMEs link, each in both languages: what the
+    /// READMEs said at length (privacy, features, sync and sign-in, the
+    /// source layout, the endpoints) stands there word for word.
+    nonisolated static let detailPages = ["privacy", "features", "sync-and-sign-in", "architecture", "endpoints"]
+        .flatMap { ["docs/\($0).md", "docs/\($0).de.md"] }
+
+    /// The public surface a stranger reads: the READMEs and their detail
+    /// pages, read alike.
+    static func surfaceTexts() throws -> [(name: String, text: String)] {
+        try readmeTexts() + detailPages.map { name in
+            (name, try String(contentsOf: SourceTree.root.appendingPathComponent(name), encoding: .utf8))
+        }
+    }
+
+    @Test("die READMEs sind Startseiten: kurz, und jede verlinkt ihre Detailseiten, die es gibt", .needsTheSources)
+    func theReadmesAreShortAndLinkTheirDetails() throws {
+        for (name, text) in try Self.readmeTexts() {
+            let words = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).count
+            #expect(words <= 2_200, "\(name) has \(words) words, the start page holds about 2,000")
+            let german = name == "README.de.md"
+            for page in Self.detailPages where page.hasSuffix(".de.md") == german {
+                #expect(text.contains("](\(page))"), "\(name) does not link \(page)")
+            }
+        }
+        let pages = try Self.surfaceTexts().dropFirst(2)
+        #expect(pages.count == 10, "the precondition: the ten detail pages were read")
+        for (name, text) in pages {
+            let readme = name.hasSuffix(".de.md") ? "../README.de.md" : "../README.md"
+            #expect(text.contains("](\(readme))"), "\(name) does not lead back to its README")
+        }
+    }
+
     @Test("die zwei oeffentlichen READMEs nennen keine Rolle", .needsTheSources)
     func theTwoPublicReadmesNameNoRole() throws {
         let files = try Self.readmeTexts()
@@ -279,7 +311,7 @@ struct PublicReadmeFenceTests {
                          "\(name) ist nicht die Leseflaeche, der Zaun misst nichts")
         }
         var offenders: [String] = []
-        for (name, text) in files {
+        for (name, text) in try Self.surfaceTexts() {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 for hit in Self.roleNameHits(in: String(line)) {
                     offenders.append("\(name):\(number + 1) \(hit)")
@@ -584,6 +616,8 @@ struct PublicReadmeFenceTests {
     func bothSurfacesNameTheDeployedBuild() throws {
         for (name, text) in try Self.readmeTexts() {
             #expect(text.contains("Rust"), "\(name) sagt nicht, was ausgeliefert wird")
+        }
+        for (name, text) in try Self.surfaceTexts() {
             for statement in Self.statements(in: text) where statement.contains("Python") {
                 #expect(statement.contains("Rust"),
                         "\(name) nennt Python ohne die Fassung, die laeuft: \(statement.prefix(80))")
@@ -600,12 +634,16 @@ struct PublicReadmeFenceTests {
         for (name, text) in files {
             #expect(text.contains("maer-sync"), "\(name) nennt den Dienst nicht")
         }
-        let deutsch = try #require(files.first(where: { $0.name == "README.de.md" })?.text)
-        let abschnitt = try #require(deutsch.range(of: "## Privatsphäre"))
-        let rest = deutsch[abschnitt.upperBound...]
-        let ende = rest.range(of: "\n## ")?.lowerBound ?? rest.endIndex
-        #expect(rest[..<ende].contains("Sync-Dienst"),
-                "der deutsche Datenschutz-Abschnitt schweigt ueber den eigenen Dienst")
+        // The short section of the README and the full one on its detail
+        // page, each.
+        let surfaces = try Self.surfaceTexts()
+        for name in ["README.de.md", "docs/privacy.de.md"] {
+            let deutsch = try #require(surfaces.first(where: { $0.name == name })?.text)
+            let abschnitt = try #require(Self.section(startingWith: "## Privatsphäre", in: deutsch),
+                                         "\(name) hat keinen Datenschutz-Abschnitt")
+            #expect(abschnitt.contains("Sync-Dienst"),
+                    "der deutsche Datenschutz-Abschnitt in \(name) schweigt ueber den eigenen Dienst")
+        }
     }
 
     /// The carriers, held against each other rather than the whole sentence.
@@ -629,13 +667,14 @@ struct PublicReadmeFenceTests {
         return String(rest[..<end])
     }
 
-    @Test("beide Datenschutz-Abschnitte nennen beide Traeger", .needsTheSources)
+    @Test("beide ausfuehrlichen Datenschutz-Abschnitte nennen beide Traeger", .needsTheSources)
     func bothPrivacySectionsNameBothCarriers() throws {
-        let files = try Self.readmeTexts()
+        // The full statement stands on the detail pages; the READMEs link it.
+        let files = try Self.surfaceTexts()
         let englisch = try #require(Self.section(startingWith: "## Privacy",
-                                                 in: files.first(where: { $0.name == "README.md" })?.text ?? ""))
+                                                 in: files.first(where: { $0.name == "docs/privacy.md" })?.text ?? ""))
         let deutsch = try #require(Self.section(startingWith: "## Privatsphäre",
-                                                in: files.first(where: { $0.name == "README.de.md" })?.text ?? ""))
+                                                in: files.first(where: { $0.name == "docs/privacy.de.md" })?.text ?? ""))
         for paar in Self.carrierTerms {
             #expect(englisch.contains(paar.englisch),
                     "der englische Abschnitt nennt \(paar.englisch) nicht")
@@ -656,6 +695,10 @@ struct PublicReadmeFenceTests {
                     "\(name) nennt das Dienst-Repository nicht unter seiner oeffentlichen Adresse")
             #expect(text.contains("https://github.com/maer-lzs/maer>") && text.contains("https://www.reddit.com/r/maer_fm/"),
                     "\(name) nennt die Quelle oder die Gemeinschaft nicht im Kopf")
+        }
+        for (name, text) in try Self.surfaceTexts() {
+            #expect(!text.contains("git.lschroeder.eu"),
+                    "\(name) zeigt auf einen Wirt, den ein Fremder nicht erreicht")
         }
     }
 
@@ -679,7 +722,7 @@ struct PublicReadmeFenceTests {
     /// both files and may only stay there.
     @Test("die zwei READMEs tragen keinen Gedankenstrich", .needsTheSources)
     func theTwoReadmesCarryNoDash() throws {
-        for (name, text) in try Self.readmeTexts() {
+        for (name, text) in try Self.surfaceTexts() {
             let strich = text.filter { $0 == "\u{2014}" || $0 == "\u{2013}" }.count
             #expect(strich == 0, "\(name) traegt \(strich) Gedankenstriche")
         }

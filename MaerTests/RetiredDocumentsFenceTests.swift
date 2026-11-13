@@ -38,8 +38,11 @@ struct RetiredDocumentsFenceTests {
     /// app no longer takes.
     @Test("die READMEs nennen kein Dokument und keinen Umzug von vor den Zeilen", .needsTheSources)
     func theReadmesNameNoRetiredDocument() throws {
-        let readmes = try PublicReadmeFenceTests.readmeTexts()
-        #expect(readmes.map(\.name) == ["README.md", "README.de.md"], "the precondition: both READMEs were read")
+        // The file trees stand on the detail pages now; the READMEs and
+        // those pages are read alike.
+        let readmes = try PublicReadmeFenceTests.surfaceTexts()
+        #expect(readmes.map(\.name) == ["README.md", "README.de.md"] + PublicReadmeFenceTests.detailPages,
+                "the precondition: both READMEs and their detail pages were read")
         var found: [String] = []
         for (name, text) in readmes {
             for retired in Self.retired + Self.retiredSteps where text.contains(retired) {

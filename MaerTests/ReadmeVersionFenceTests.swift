@@ -112,7 +112,7 @@ struct ReadmeVersionFenceTests {
         // the short form `3.5 (56)` on purpose: it says which build the
         // pictures show, not the current stamp, and this reader leaves the
         // short form alone.
-        for name in Self.readmes {
+        for name in Self.readmes + PublicReadmeFenceTests.detailPages {
             let wrong = Self.namedStamps(in: try Self.text(name))
                 .filter { $0.version != version || $0.build != build }
                 .map { "\($0.version) (Build \($0.build))" }
@@ -134,6 +134,22 @@ struct ReadmeVersionFenceTests {
         #expect(english.fences == german.fences, "code fences: \(english.fences) against \(german.fences)")
         #expect(english.fences % 2 == 0 && german.fences % 2 == 0,
                 "a code block is not closed: \(english.fences) and \(german.fences) fence markers")
+    }
+
+    /// The detail pages the READMEs link carry the same outline in both
+    /// languages, as the READMEs do.
+    @Test("jede Detailseite traegt in beiden Sprachen dieselbe Gliederung", .needsTheSources)
+    func everyDetailPageHasTheSameOutlineInBothLanguages() throws {
+        let english = PublicReadmeFenceTests.detailPages.filter { !$0.hasSuffix(".de.md") }
+        #expect(english.count == 5, "the precondition: five detail pages in English")
+        for page in english {
+            let german = page.replacingOccurrences(of: ".md", with: ".de.md")
+            let en = Self.outline(of: try Self.text(page))
+            let de = Self.outline(of: try Self.text(german))
+            #expect(!en.headings.isEmpty, "\(page) has no headings")
+            #expect(en.headings == de.headings, "\(page) and \(german): heading levels \(en.headings) against \(de.headings)")
+            #expect(en.fences == de.fences && en.fences % 2 == 0, "\(page) and \(german): code fences \(en.fences) against \(de.fences)")
+        }
     }
 
     /// The readers on planted text: each would see the drift it guards.
