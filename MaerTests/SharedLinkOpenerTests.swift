@@ -38,7 +38,7 @@ struct SharedLinkOpenerTests {
                 resolveCatalog: { [self] in books.contains($0) },
                 resolveStation: { [self] uuid in
                     stationsAsked.append(uuid)
-                    return stations[uuid]
+                    return stations[uuid].map { .found($0) } ?? .unknown
                 })
         }
     }
