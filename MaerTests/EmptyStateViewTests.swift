@@ -40,6 +40,9 @@ struct EmptyStateViewTests {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow()
         window.frame = CGRect(x: 0, y: 0, width: width, height: 600)
+        // The ink is black only in the light appearance; the simulator's
+        // own setting must not decide the measure.
+        window.overrideUserInterfaceStyle = .light
         window.rootViewController = UIHostingController(rootView: list)
         window.isHidden = false
         defer { window.isHidden = true }

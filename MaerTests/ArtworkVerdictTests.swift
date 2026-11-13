@@ -75,6 +75,14 @@ struct ArtworkVerdictTests {
         #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
         defer { ImageCache.shared.removePersistent(coverURL: url) }
         #expect(Self.name(await Artwork.verdict(for: url)) == "picture:full", "the precondition: the kept cover answers")
+        // The write ends after the replaced file lands: the address stops
+        // waiting one step later, so the witness waits for the write's end.
+        let key = ImageCache.shared.testKey(for: url)
+        let (written, writtenGo) = AsyncStream<Void>.makeStream()
+        ImageCache.shared.testDiskHold = { stage, fileKey in
+            if stage == "written", fileKey == key { writtenGo.yield() }
+        }
+        defer { ImageCache.shared.testDiskHold = nil }
         Artwork.invalidate(url)
         // The count in the message tells a failure apart: 0 means no request
         // reached the stand (the test host), more means the stand was asked
@@ -82,7 +90,8 @@ struct ArtworkVerdictTests {
         let fresh = Self.name(await Artwork.verdict(for: url))
         #expect(fresh == "picture:net",
                 "the old kept cover answered after the invalidation: \(fresh), the stand was asked \(served.requestCount) times")
-        #expect(try await Self.persistentWidth(url, becomes: 24) == 24, "the server's picture did not replace the kept one")
+        try #require(await Self.arrives(written), "the precondition: the write finished")
+        #expect(Self.persistentWidth(url) == 24, "the server's picture did not replace the kept one")
         #expect(!ImageCache.shared.testIsRefreshing(url), "the address still waits for the network")
     }
 

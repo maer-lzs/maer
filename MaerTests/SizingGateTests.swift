@@ -13,22 +13,41 @@ import os
 /// At most two covers are brought to size at once; the others wait in the
 /// order they asked, and a cell that left gives its place up.
 struct SizingGateTests {
-    /// Eight ask at once; each holds its place a moment, so they overlap.
+    /// Polls `condition` until it holds or five seconds passed.
+    private static func until(_ condition: () async -> Bool) async throws -> Bool {
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            if await condition() { return true }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        return await condition()
+    }
+
+    /// Eight ask, each only after the one before stands in the gate, so the
+    /// order of asking is known. Each works until the witness lets it go,
+    /// one at a time, so each turn is recorded before the next is given.
     @Test("acht zugleich angefragt, nie mehr als zwei in Arbeit, in der Reihenfolge der Anfrage")
     func eightAskTwoWork() async throws {
         let gate = SizingGate(width: 2)
-        let state = OSAllocatedUnfairLock(initialState: (now: 0, most: 0, order: [Int]()))
+        let state = OSAllocatedUnfairLock(initialState: (now: 0, most: 0, order: [Int](), released: Set<Int>()))
         try await withThrowingTaskGroup(of: Void.self) { group in
             for n in 0..<8 {
                 group.addTask {
                     try await gate.enter()
                     state.withLock { $0.now += 1; $0.most = max($0.most, $0.now); $0.order.append(n) }
-                    try await Task.sleep(for: .milliseconds(30))
+                    while !state.withLock({ $0.released.contains(n) }) {
+                        try await Task.sleep(for: .milliseconds(1))
+                    }
                     state.withLock { $0.now -= 1 }
                     await gate.leave()
                 }
-                // The next asks after this one stands in line.
-                try await Task.sleep(for: .milliseconds(2))
+                let stands = try await Self.until { await gate.asked == n + 1 }
+                try #require(stands, "the precondition: ask \(n) stands in the gate")
+            }
+            for turn in 0..<8 {
+                let given = try await Self.until { state.withLock { $0.order.count } == min(turn + 2, 8) }
+                try #require(given, "the precondition: the gate gave turn \(turn + 1): \(state.withLock { $0.order })")
+                state.withLock { $0.released.insert($0.order[turn]) }
             }
             try await group.waitForAll()
         }

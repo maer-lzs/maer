@@ -111,9 +111,10 @@ struct PlannedQueueTests {
         await waitFor { model._testQueuedTracks() == [0, 1, 2] }
         try #require(model._testQueuedTracks() == [0, 1, 2], "the precondition: the start queued its window")
         model._testHoldAhead(at: 3, then: .none)
-        // The plans of 3 and 4 are asked after the failure is held.
+        // The plans of 3 and 4 are asked after the failure is held; they go
+        // out side by side, so either may reach the host first.
         model._testPlanWindow(from: 2)
-        await waitFor { Self.asks(slow, "/track-4.") == 1 }
+        await waitFor { Self.asks(slow, "/track-3.") == 1 && Self.asks(slow, "/track-4.") == 1 }
         try #require(Self.asks(slow, "/track-3.") == 1, "the precondition: track 3 was asked")
         try await Task.sleep(for: .milliseconds(1500))
         #expect(model._testQueuedTracks() == [0, 1, 2], "a plan that landed after the held failure joined behind it: \(model._testQueuedTracks())")

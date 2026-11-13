@@ -21,6 +21,9 @@ actor SizingGate {
     private var waiting: [Waiter] = []
     /// The most that ran at once since the start, for the witness.
     private(set) var mostAtOnce = 0
+    /// How many hold a place or wait for one, for the witness: it lets the
+    /// next ask only after the last one stands in the gate.
+    var asked: Int { running + waiting.count }
 
     init(width: Int) {
         self.width = width
