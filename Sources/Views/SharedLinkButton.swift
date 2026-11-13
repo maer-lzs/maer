@@ -13,7 +13,8 @@ struct SharedLinkOffer {
 }
 
 /// The share entry of a page's actions: a link on maer.fm for a public
-/// episode, show, station or catalog book, with the cover as its preview.
+/// episode, show, station, catalog book or Jamendo track, with the cover as
+/// its preview.
 struct SharedLinkButton: View {
     let offer: SharedLinkOffer
     let title: String?

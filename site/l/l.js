@@ -59,7 +59,7 @@
   // The question the app asks before it shares or opens a link
   // (PodcastFeedAddress.carriesAccess): an address with a user or password
   // before its host, or a query name that says access, carries access. The
-  // three lists are the app's, word for word (fence in SharedLinkPageTests).
+  // three lists are the app's, word for word (fence in SharedLinkPageAccessTests).
   var ACCESS_PARTS = ["token", "auth", "key", "secret", "pass", "password", "passwd", "sig", "signature", "session", "sid", "freebie", "apikey"];
   var ACCESS_HARD = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature", "pwd", "hmac"];
   var ACCESS_KEY_LEADS = ["api", "access", "auth", "secret", "private", "session", "client", "signing"];
