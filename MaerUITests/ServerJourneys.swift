@@ -74,6 +74,51 @@ nonisolated final class ServerJourneys: XCTestCase {
         app.terminate()
     }
 
+    /// The demo server offers single sign-on: its button stands under the
+    /// form, and a tap brings the system's question to sign in with Mär.
+    /// The journey cancels there, so it never signs in at the provider and
+    /// the server stays as it was; a cancelled question says nothing.
+    func testAudiobookServerOffersSingleSignOnUpToTheSystemQuestion() throws {
+        let server = try instance("abs")
+        let app = launchFresh()
+
+        let area = app.buttons["source-map-audiobooks"].firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 30), "a fresh app must show the map of sources")
+        area.tap()
+        let url = app.textFields["setup-url"].firstMatch
+        if !url.waitForExistence(timeout: 5) {
+            let row = app.buttons["settings-abs-source"].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "the audiobook area must lead to its server")
+            row.tap()
+        }
+        XCTAssertTrue(url.waitForExistence(timeout: 10), "the audiobook server must offer its form")
+        url.tap()
+        url.typeText(server.url + "\n")
+
+        let signOn = app.buttons["abs-sso"].firstMatch
+        if !signOn.waitForExistence(timeout: 30) {
+            try skipIfUnreachable(server)
+            XCTFail("the server offers single sign-on, the form shows no button for it")
+        }
+        signOn.tap()
+
+        // The system asks before its sign-in window opens, naming the app.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let cancel = springboard.buttons.matching(NSPredicate(format: "label IN %@", ["Cancel", "Abbrechen"])).firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15), "the system did not ask to sign in")
+        let question = springboard.alerts.firstMatch
+        XCTAssertTrue(question.label.contains("Mär") || question.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS %@", "Mär")).firstMatch.exists,
+                      "the system's question does not name the app: \(question.label)")
+        cancel.tap()
+
+        // Cancelled: back on the form, the button still there, no sentence.
+        XCTAssertTrue(signOn.waitForExistence(timeout: 10), "the form did not come back after the cancel")
+        XCTAssertFalse(app.staticTexts["setup-error"].firstMatch.exists, "a cancelled question must say nothing")
+        XCTAssertFalse(app.buttons["tab-audiobooks"].firstMatch.exists, "a cancelled question must not sign in")
+        app.terminate()
+    }
+
     // MARK: - Music against gonic
 
     func testMusicServerSignInFindAndPlay() throws {
