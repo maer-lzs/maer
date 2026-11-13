@@ -8,11 +8,19 @@
   var words = german ? {
     e: "Folge", s: "Sendung", r: "Radiosender", b: "Hörbuch", m: "Musiktitel",
     store: "Mär im App Store",
+    viaJamendo: "Creative Commons, via Jamendo",
+    onJamendo: "Auf Jamendo anhören",
+    onArchive: "Im Internet Archive ansehen",
+    archiveRights: "Diese Aufnahmen stammen aus dem Internet Archive. Ihre Rechtelage garantiert das Archiv nicht.",
     hint: "Mit Mär öffnet dieser Link direkt in der App.",
     unreadable: "Dieser Link lässt sich nicht öffnen."
   } : {
     e: "Episode", s: "Show", r: "Radio station", b: "Audiobook", m: "Track",
     store: "Get Mär on the App Store",
+    viaJamendo: "Creative Commons, via Jamendo",
+    onJamendo: "Listen on Jamendo",
+    onArchive: "View on the Internet Archive",
+    archiveRights: "These recordings come from the Internet Archive, which does not guarantee their rights status.",
     hint: "With Mär, this link opens right in the app.",
     unreadable: "This link can't be opened."
   };
@@ -21,6 +29,10 @@
   // does not load again by itself; it reads the new link from the start.
   window.addEventListener("hashchange", function () { location.reload(); });
   document.getElementById("store").textContent = words.store;
+
+  // The two forms of a free music track, as SharedLink checks them.
+  var JAMENDO = /^jam:([0-9]+)$/;
+  var ARCHIVE = /^lva:([^#]+)#[0-9]+$/;
 
   // The form SharedLink writes: "1?" and a query of keys, each once.
   function read(fragment) {
@@ -39,6 +51,8 @@
     for (var j = 0; j < needs.length; j++) {
       if (!values[needs[j]] || !values[needs[j]].trim()) { return null; }
     }
+    // A music track is a Jamendo track or a song of an archive.org release.
+    if (values.k === "m" && !JAMENDO.test(values.i) && !ARCHIVE.test(values.i)) { return null; }
     return values;
   }
 
@@ -63,8 +77,30 @@
     subtitle.textContent = link.s;
     subtitle.hidden = false;
   }
+  // A free music track names its provider and its page there. A Jamendo
+  // track never plays here, the page names the track on Jamendo instead;
+  // a song of the Internet Archive carries the archive's rights sentence.
+  var jamendo = link.k === "m" ? JAMENDO.exec(link.i) : null;
+  var archive = link.k === "m" ? ARCHIVE.exec(link.i) : null;
+  var source = document.getElementById("source");
+  if (jamendo) {
+    var provider = document.getElementById("provider");
+    provider.textContent = words.viaJamendo;
+    provider.hidden = false;
+    source.href = "https://www.jamendo.com/track/" + jamendo[1];
+    source.textContent = words.onJamendo;
+    source.hidden = false;
+  }
+  if (archive) {
+    var rights = document.getElementById("rights");
+    rights.textContent = words.archiveRights;
+    rights.hidden = false;
+    source.href = "https://archive.org/details/" + encodeURIComponent(archive[1]);
+    source.textContent = words.onArchive;
+    source.hidden = false;
+  }
   // Only an https address plays; the page holds no other.
-  if (link.a && link.a.indexOf("https://") === 0) {
+  if (!jamendo && link.a && link.a.indexOf("https://") === 0) {
     var audio = document.getElementById("audio");
     audio.src = link.a;
     audio.hidden = false;

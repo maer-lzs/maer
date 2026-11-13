@@ -19,6 +19,9 @@ struct SharedLinkPageTests {
     static let style = "site/l/l.css"
     /// The one address the page names: the app in the App Store.
     static let store = "https://apps.apple.com/app/id6799687154"
+    /// The pages of a shared music track at its source, the id appended.
+    static let jamendoTrack = "https://www.jamendo.com/track/"
+    static let archiveDetails = "https://archive.org/details/"
 
     private static func text(_ name: String) throws -> String {
         try String(contentsOf: SourceTree.root.appendingPathComponent(name), encoding: .utf8)
@@ -62,7 +65,7 @@ struct SharedLinkPageTests {
         // lets load.
         let pattern = try Regex("https?://[^\\s\"'<>)]*")
         let addresses = all.ranges(of: pattern).map { String(all[$0]) }
-        let foreign = addresses.filter { $0 != Self.store && $0 != "https://" }
+        let foreign = addresses.filter { ![Self.store, "https://", Self.jamendoTrack, Self.archiveDetails].contains($0) }
         #expect(!addresses.isEmpty, "the precondition: the page names the store")
         #expect(foreign.isEmpty, "the page names another address: \(foreign)")
         // The policy in the page itself, the same the site sets for /l/.
@@ -86,10 +89,30 @@ struct SharedLinkPageTests {
         // link and each only over https: the audio from a, the cover from c.
         let assigned = js.components(separatedBy: ".src = ").dropFirst().map { String($0.prefix(while: { $0 != ";" })) }
         #expect(assigned.sorted() == ["link.a", "link.c"], "the page loads from somewhere else: \(assigned)")
-        #expect(js.contains("if (link.a && link.a.indexOf(\"https://\") === 0)"), "the audio plays over http")
+        #expect(js.contains("if (!jamendo && link.a && link.a.indexOf(\"https://\") === 0)"),
+                "the audio plays over http, or a Jamendo track plays")
         #expect(js.contains("if (link.c && link.c.indexOf(\"https://\") === 0)"), "the cover loads over http")
         #expect(js.contains("cover.classList.add(\"failed\")") && css.contains(".cover.failed { visibility: hidden; }"),
                 "a cover that does not load does not leave its place empty")
+    }
+
+    @Test("Zaun: ein Musiktitel nennt seinen Anbieter und seine Seite dort, Jamendo spielt nie, archive.org traegt den Satz der App", .needsTheSite)
+    func aMusicTrackNamesItsSource() throws {
+        let html = try Self.text(Self.page)
+        let js = try Self.text(Self.script)
+        // The two forms the app shares, and nothing else reads as a track.
+        #expect(js.contains("var JAMENDO = /^jam:([0-9]+)$/;") && js.contains("var ARCHIVE = /^lva:([^#]+)#[0-9]+$/;"),
+                "the page reads other track forms than SharedLink")
+        #expect(js.contains("if (values.k === \"m\" && !JAMENDO.test(values.i) && !ARCHIVE.test(values.i)) { return null; }"))
+        // Exactly two pages are named, each built from the id of the link.
+        let links = js.components(separatedBy: ".href = ").dropFirst().map { String($0.prefix(while: { $0 != ";" })) }
+        #expect(links.sorted() == ["\"\(Self.archiveDetails)\" + encodeURIComponent(archive[1])",
+                                   "\"\(Self.jamendoTrack)\" + jamendo[1]"],
+                "the page links elsewhere: \(links)")
+        #expect(html.contains("<a class=\"source\" id=\"source\" rel=\"noreferrer noopener\" hidden></a>"))
+        // The attribution and the rights sentence are the app's own.
+        #expect(js.contains("viaJamendo: \"Creative Commons, via Jamendo\""), "the provider line is not the app's")
+        #expect(js.contains(FreeCatalog.archiveRightsNotice), "the rights sentence is not the app's: \(FreeCatalog.archiveRightsNotice)")
     }
 
     @Test("die Seite liest die Form, die SharedLink schreibt: Fassung, Arten, Schluessel", .needsTheSite)
