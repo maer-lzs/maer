@@ -13,8 +13,8 @@ three said the same sentence as a link built by hand.
 **The source now lives on GitHub.** The public source of Mär is at
 github.com/maer-lzs/maer and the sync service at
 github.com/maer-lzs/maer-sync. The guide for Mär Sync in Settings links
-there, and the READMEs and the end-user agreement name GitHub as the
-place of the source.
+there, and the READMEs, the end-user agreement and the additional
+license terms name GitHub as the place of the source.
 
 ## v3.7 (Build 64)
 

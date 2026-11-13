@@ -707,6 +707,7 @@ struct PublicReadmeFenceTests {
     @Test("keine Adresse des frueheren Wirts in der App, den READMEs und docs", .needsTheSources)
     func noAddressOfTheFormerHost() throws {
         var texts = try Self.readmeTexts()
+        texts.append(("LICENSE-ADDITIONAL-TERMS", try String(contentsOf: SourceTree.root.appendingPathComponent("LICENSE-ADDITIONAL-TERMS"), encoding: .utf8)))
         for folder in ["Sources", "docs"] {
             for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
             where ["swift", "md", "xcstrings", "plist", "html"].contains(file.pathExtension) {
