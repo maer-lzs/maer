@@ -288,8 +288,10 @@ actor StandStore {
 
     /// Brings the flushed table to the stock's entries, in one transaction.
     /// With `among`, only those rows can go: the ones that were there when
-    /// the caller read the stock; a row that arrived since stays. Returns
-    /// written and removed rows.
+    /// the caller read the stock; a row that arrived since stays. An entry
+    /// goes over a row only when it is newer, as the rows' import does: a
+    /// mark written since the read is never set back. Returns written and
+    /// removed rows.
     @discardableResult
     func replaceFlushed(with entries: [String: [Double]],
                         among: Set<String>? = nil) async throws -> (written: Int, removed: Int) {
@@ -301,11 +303,12 @@ actor StandStore {
             SQLiteConnection.Statement("""
                 INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
                 ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+                WHERE excluded.flushed_at_ms > stand_flushed.flushed_at_ms
                 """, [.text(entry.key), .real(entry.value[0]), .real(entry.value[1])])
         }
         guard !statements.isEmpty else { return (0, 0) }
-        _ = try await connection.transaction(statements)
-        return (changed.count, gone.count)
+        let rows = try await connection.transaction(statements)
+        return (rows - gone.count, gone.count)
     }
 
     /// Nil for a row that does not read; every caller counts it and says it
