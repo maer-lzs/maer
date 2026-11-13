@@ -20,7 +20,7 @@ Mär started as a private replacement for a client that regularly lost playback 
 
 What leaves the device, where it goes, and what stays. Every statement below can be checked in this repository.
 
-- **No account with this project.** Mär has no sign-up, no service of its own and no user database. It signs in only where you enter a login: your own servers, a Mär sync service you host yourself, a premium podcast feed, and, once for an import, Pocket Casts.
+- **No account with this project.** Mär has no sign-up, no service of its own and no user database. It signs in only where you enter a login: your own servers (for Audiobookshelf also through the single sign-on provider your server names), a Mär sync service you host yourself, a premium podcast feed, and, once for an import, Pocket Casts.
 - **No tracking.** No analytics, no ads and no third-party SDKs: the project has no external code dependencies. Only builds from Xcode keep MetricKit's daily reports on the device for a measurement page and send them nowhere; TestFlight and App Store builds do not receive them and ask the App Store nothing.
 - **On the device.** Listening positions, subscriptions, playlists, statistics, the listening history and the library live in one database file; downloads are files beside it; logins are in the keychain. The log of playback notices keeps at most 200 lines of the last seven days in a file of its own and does not leave the device. What travels between your devices is named in the next three points.
 - **Requests to outside services, each with a switch.** Every external service that is not one of your own servers has its own switch under Settings → External Sources & Privacy, eleven by name: LibriVox, Project Gutenberg, Internet Archive, Jamendo, Podcast Index, Apple Podcasts, Radio Browser, Wikidata / Wikimedia Commons, MusicBrainz / Cover Art Archive, LRCLIB, and covers from podcast hosts. Podcast Index appears there only when a key is set, the built-in one or your own; without a key the podcast search uses Apple's directory. Each switch states what it feeds and what stays when it is off. Which rows appear on the tabs is a separate question, answered under Settings → Rows. The optional built-in app keys for Jamendo and Podcast Index identify the app to those services, not you. Outside that page the app contacts Pocket Casts during an import you start.
@@ -28,6 +28,7 @@ What leaves the device, where it goes, and what stays. Every statement below can
 - **A sync service of your own, only if you set one up.** Under Settings, Sync, Mär can be pointed at a Mär sync service you host yourself (its own repository, [maer-sync](https://codeberg.org/LzS/maer-sync), one SQLite file, and since v0.2.0 two implementations of one contract: the Rust build is what gets deployed, the Python one stays in the tree as the way back). Signing in asks the service for its key and the account's salt and sends only a proof made from the password; the password itself neither travels nor is kept, and the token the service returns stays in this device's keychain. From the moment you sign in until you sign out, these travel to the service instead of iCloud: listening positions of podcasts, catalog titles and local files, the playback claim, the listening statistics, your Mär playlists and your choices with the subscriptions, and the logins of premium feeds, sealed for your other devices. The documents are encrypted on the way and stored on your host as they arrive; only the feed logins are sealed there. The service tells your other device about a change instead of waiting to be asked. This project runs no such service. A write the service refuses is shown on the Sync page with the service's own sentence.
 - **Logins and where they show.** Custom headers you enter for a server (for a guard in front of it) are kept in the keychain, travel with the iCloud keychain, and go only to that server, never along a redirect to another host: before a stream or a download of that server starts, the app asks once where it ends, and when it cannot find out, it does not start it. One limit stays: when that end later redirects again by itself, the headers go along. Server passwords, tokens and keys are kept in this device's keychain; the logins of premium feeds travel as named above. Some servers take their token inside the address of a request, so it appears in that server's logs and in the logs of any proxy in front of it: Audiobookshelf in cover and author image links, Subsonic in every request, Jellyfin in stream and cover links, Pinchflat in the channel list address. A stream that your server or a premium feed passes on to another server, a file host for example, carries the sign-in only to the server it belongs to: before such a stream starts, and before each next file of a book, the app asks once where it ends, and waits for the answer; when that request fails, playback stops at that file and says so, and the next tap on play asks again; the sign-in never goes to an address whose end is unknown. The app's own logs carry hosts, item ids and public stream addresses, no token. The OPML export leaves private feeds out by default: premium and token feeds, feeds from your own servers, feeds whose address carries a user name, a password or a key under any name, and episode addresses that carry one; it asks before it does. The address of such a feed is not sent to the podcast directory either.
 - **Importing from other apps.** Imports from Apple Podcasts, Overcast, AntennaPod and OPML files read a file you choose on the device. The Pocket Casts import signs in to Pocket Casts once with the e-mail address and password you enter, reads the subscriptions and listening states of your own account, and discards the login when it finishes; it uses an interface Pocket Casts does not document officially. Imported subscriptions then travel like any other subscription.
+- **Sharing a link.** The share button on the page of a podcast, an episode, a station, a free audiobook or a Jamendo track makes a link to `https://maer.fm/l/`. Everything the link names (title, subtitle, the cover's address and a public audio address) stands after the `#`, which a browser does not send, so maer.fm does not receive it; the page there is static and carries no tracking. A receiver's browser loads the cover (without a referrer) and the audio from their own addresses. Nothing from your own servers, no premium feed and no address that carries a key or a password is offered for sharing, and a Jamendo track's link carries no stream address. Opened on a device with Mär, the link opens the page in the app and plays nothing.
 - **Read the code.** Mär is GPL-3.0-or-later with additional terms (see License below); every statement above can be checked in this repository.
 
 ## Screenshots
@@ -60,7 +61,8 @@ Version 3.5 (56) in the simulator, against real sources (an Audiobookshelf and a
 
 ## Features
 
-- Sign in with username/password or an API token, compatible with both the old and new Audiobookshelf authentication systems
+- Sign in with username/password, an API token, or the server's single sign-on (OpenID Connect) when it offers one, compatible with both the old and new Audiobookshelf authentication systems
+- **Share as a link**: podcasts, episodes, stations, free audiobooks and Jamendo tracks have a share button; the link opens a page on maer.fm in any browser and the same page in Mär
 - **Custom headers per server**, under the sign-in of every server: what a guard in front of the server asks for (Cloudflare Access, Authelia, Authentik). When a connection check fails because such a guard answered, the page says so
 - Library as an adaptive cover grid for iPhone and iPad, self-sizing to always fit the actual screen width without overlap, even across rotation
 - **Global search across every source**: one search reaches audiobooks, podcasts, music, and radio at once. A standing scope bar narrows it to Library / Audiobooks / Podcasts / Music / Radio; an empty field shows a browse deck (recent searches, and entry tiles for authors/series/genres, artists, shows, albums); typing yields ranked results per type. The podcast and radio scopes fold in a catalog section (“New Shows” from PodcastIndex/iTunes, stations from Radio Browser), so you can subscribe to or play something you don't have yet. Offline-capable: each source searches its cached content, and results that can't play right now are dimmed and marked. An author, a series or the authors, series or genres of the library opened from the search open their page in the Audiobooks tab, and going back returns to the search with its query and results
@@ -200,7 +202,9 @@ available at <https://codeberg.org/LzS/maer>.
 
 ## 1. Sign-in options
 
-The app signs in either with your Audiobookshelf **username and password** (the default: it exchanges them for a token via `/login` and stores only the token in the keychain) or directly with an **API token**.
+The app signs in either with your Audiobookshelf **username and password** (the default: it exchanges them for a token via `/login` and stores only the token in the keychain) or directly with an **API token**. The password sign-in asks the server for its tokens in the answer and runs in a session of its own, so no cookie of the sign-in stays in the app.
+
+When the server offers **single sign-on** (OpenID Connect, set up in Audiobookshelf), the sign-in form shows a button for it under Connect. It opens your provider's page in the system's sign-in window and returns to Mär with the server's token; the server must admit the return address `audiobookshelf://oauth`, which Audiobookshelf does by default.
 
 Note for servers on the new JWT authentication (v2.26.0+): the password login receives a short-lived access token there, so the session can expire. The app keeps the token, shows the state at the Audiobookshelf source and checks again by itself; only when the server still refuses it does the app offer a new sign-in, prefilled, and it deletes nothing on its own. On such servers an API key is the more durable choice.
 
@@ -224,7 +228,8 @@ third-party dependencies**: no package manager step, nothing to resolve.
 
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK or newer).
 2. **Signing** (target `Maer` → Signing & Capabilities):
-   - **Team:** your Apple ID. `Maer.entitlements` asks for CarPlay audio, push notifications, iCloud (CloudKit container and key-value store) and an App Group. A free team cannot sign CarPlay, push or iCloud: with a free Apple ID, remove those three capabilities first. The app then syncs nothing over iCloud.
+   - **Team:** your Apple ID. `Maer.entitlements` asks for CarPlay audio, push notifications, iCloud (CloudKit container and key-value store), Associated Domains (`applinks:maer.fm`, so shared links open in the app) and an App Group. A free team cannot sign CarPlay, push, iCloud or Associated Domains: with a free Apple ID, remove those four capabilities first. The app then syncs nothing over iCloud, and shared links open in the browser.
+   - **Associated Domains** (paid team): maer.fm names only this project's app, so on your own build remove the capability, or point it at a domain of your own that serves `site/.well-known/apple-app-site-association` with your app ID.
    - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`Maer` and `MaerWidgetsExtension`; the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
    - In `Sources/Networking/KeychainStore.swift`, set the `service` constant to the same bundle identifier.
    - **App Group:** replace the group identifier in both targets' `.entitlements` files and in `Sources/Models/WidgetShared.swift` with one of your own (e.g. `group.de.yourname.maer`); a group registered to someone else's team will not sign.
@@ -234,12 +239,12 @@ third-party dependencies**: no package manager step, nothing to resolve.
 
 Background audio, the widget extension target, the CarPlay scene, and iPhone/iPad support are already configured in the project.
 
-**Free Apple ID without the Developer Program:** with the three capabilities removed, the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay** needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account) to sign the capability for a device and to use it in a real car. With Xcode 27 CarPlay shows only with an iPhone on a cable, not with a simulator.
+**Free Apple ID without the Developer Program:** with the four capabilities removed, the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay** needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account) to sign the capability for a device and to use it in a real car. With Xcode 27 CarPlay shows only with an iPhone on a cable, not with a simulator.
 
 ## 3. Log in inside the app
 
 - Server: `your-server.example.com`; `https://` is added automatically
-- Then either username + password, or an API token from step 1
+- Then either username + password, or an API token from step 1, or the single sign-on button when your server offers one
 
 ---
 
@@ -322,9 +327,13 @@ Sources/
 │   ├── UpNextAuto.swift            Pure: which new episodes go into Up Next, and where
 │   ├── ServerHeaderRule.swift      Pure: which request carries a server's own headers, and where a redirect leaves them
 │   ├── HeardElsewhere.swift        Pure: a mark from elsewhere that made a title played
+│   ├── SharedLink.swift            Pure: the maer.fm link, what it names and what may be shared
+│   ├── ABSSingleSignOn.swift, ABSSignInMethods.swift   Pure: the Audiobookshelf single sign-on
+│   │                               (start, return, exchange) and the ways a server offers
 │   └── PodcastAutoDownloadRules.swift  Pure: what the automatic download may clean up
 ├── Networking/
 │   ├── APIClient.swift             Audiobookshelf HTTP calls
+│   ├── ABSSSOFlow.swift            The single sign-on in the system's sign-in window
 │   ├── AppUserAgent.swift          THE one identity the app shows foreign servers
 │   ├── StandCarrier.swift, ClaimCarrier.swift, StatsCarrier.swift,
 │   │   PlaylistCarrier.swift, ChoiceCarrier.swift
@@ -365,6 +374,7 @@ Sources/
 │   └── PodcastServerSave.swift     Deferred server-side save of streamed feed episodes
 ├── ViewModels/
 │   ├── AuthViewModel.swift         Setup screen logic
+│   ├── SharedLinkOpener.swift      What a maer.fm link opens in the app (a page, never playback)
 │   ├── GlobalSearchModel.swift, SearchDoor.swift   Cross-source search and its one door
 │   ├── LibraryViewModel.swift      Loads book list and progress, sorting, series grouping,
 │   │                               offline cache as rows
@@ -417,6 +427,7 @@ Sources/
     ├── JellyfinSourceView.swift    Jellyfin source page
     ├── RadioSourceView.swift       Radio source page (enable, own stream URLs)
     ├── FreeAudiobooksPage.swift, CatalogSourcePage.swift   The open catalogs' pages
+    ├── SharedLinkButton.swift      The share button and the share sheet's preview with the cover
     ├── PodcastsView.swift          Podcast home (continue, recommendations, queue, shelves)
     ├── PodcastSourceView.swift     Add/import podcasts and pick subscription sources
     ├── Podcasts/                   Show, episode, queue, discover, per-show settings, cards
@@ -438,7 +449,9 @@ Audiobookshelf endpoints used (complete, measured on `Sources/Networking/APIClie
 | Book details, chapters and progress | `GET /api/items/{id}?expanded=1` |
 | Write progress (book, podcast episode) | `PATCH /api/me/progress/{itemId}`, `PATCH /api/me/progress/{itemId}/{episodeId}` |
 | Progress for the whole library | `GET /api/me` |
-| Password sign-in | `POST /login` |
+| Password sign-in | `POST /login` with `x-return-tokens: true` |
+| Sign-in methods the server offers | `GET /status` |
+| Single sign-on (OpenID Connect, with PKCE) | `GET /auth/openid?…&redirect_uri=audiobookshelf://oauth` in the system's sign-in window, then `GET /auth/openid/callback?state=&code=&code_verifier=` |
 | Search (books/authors/series) | `GET /api/libraries/{id}/search?q=` |
 | Bookmarks | `GET /api/me`, `POST /api/me/item/{id}/bookmark`, `DELETE /api/me/item/{id}/bookmark/{time}` |
 | Cover, author image | `GET /api/items/{id}/cover?width=400&token=...` (grids, rows, CarPlay, widget), `GET /api/items/{id}/cover?raw=1&token=...` (book page, full player, lock screen), `GET /api/authors/{id}/image?token=...` |
