@@ -41,6 +41,16 @@ nonisolated enum SharedLink {
                 return facts
             }
         }
+
+        /// The same content with other facts.
+        func with(_ facts: Facts) -> Content {
+            switch self {
+            case .episode(let feedURL, let guid, _): return .episode(feedURL: feedURL, guid: guid, facts)
+            case .show(let feedURL, _): return .show(feedURL: feedURL, facts)
+            case .station(let uuid, _): return .station(uuid: uuid, facts)
+            case .book(let itemId, _): return .book(itemId: itemId, facts)
+            }
+        }
     }
 
     /// What the page without the app shows. The app opens by the identity
@@ -51,11 +61,14 @@ nonisolated enum SharedLink {
         var subtitle: String?
         /// The public audio address: the episode, the stream, the first chapter.
         var audioURL: String?
+        /// The cover the page shows, straight from this address; only https.
+        var coverURL: String?
 
-        init(title: String? = nil, subtitle: String? = nil, audioURL: String? = nil) {
+        init(title: String? = nil, subtitle: String? = nil, audioURL: String? = nil, coverURL: String? = nil) {
             self.title = title
             self.subtitle = subtitle
             self.audioURL = audioURL
+            self.coverURL = coverURL
         }
     }
 
@@ -74,7 +87,7 @@ nonisolated enum SharedLink {
         case .book(let itemId, _): pairs = [("k", "b"), ("i", itemId)]
         }
         let facts = content.facts
-        pairs += [("t", facts.title), ("s", facts.subtitle), ("a", facts.audioURL)]
+        pairs += [("t", facts.title), ("s", facts.subtitle), ("a", facts.audioURL), ("c", facts.coverURL)]
         let query = pairs.compactMap { key, value -> String? in
             guard let value, !value.isEmpty else { return nil }
             return key + "=" + encoded(value)
@@ -115,7 +128,7 @@ nonisolated enum SharedLink {
             guard let value = values[key], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
             return value
         }
-        let facts = Facts(title: present("t"), subtitle: present("s"), audioURL: present("a"))
+        let facts = Facts(title: present("t"), subtitle: present("s"), audioURL: present("a"), coverURL: present("c"))
         switch values["k"] {
         case "e":
             guard let feedURL = present("f"), let guid = present("g") else { return nil }
@@ -157,7 +170,8 @@ nonisolated enum SharedLink {
                   itemId.count > prefix.count, !itemId.contains("#") else { return false }
             addresses = []
         }
-        return (addresses + [content.facts.audioURL].compactMap { $0 }).allSatisfy(isPublicAddress)
+        let named = [content.facts.audioURL, content.facts.coverURL].compactMap { $0 }
+        return (addresses + named).allSatisfy(isPublicAddress)
     }
 
     /// The link a page offers to share: nil when there is no content or
@@ -165,6 +179,20 @@ nonisolated enum SharedLink {
     static func shareURL(_ content: Content?, staysHome: (String) -> Bool) -> URL? {
         guard let content, offers(content, staysHome: staysHome) else { return nil }
         return url(for: content)
+    }
+
+    /// The content with the page's cover, when the cover is a public https
+    /// address; any other cover stays out of the link, and the content is
+    /// shared without one.
+    static func withCover(_ content: Content?, cover: String?) -> Content? {
+        guard let content else { return nil }
+        var facts = content.facts
+        if let cover, cover.lowercased().hasPrefix("https://"), isPublicAddress(cover) {
+            facts.coverURL = cover
+        } else {
+            facts.coverURL = nil
+        }
+        return content.with(facts)
     }
 
     /// An http or https address with a host and no access in it.

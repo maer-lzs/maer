@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src https:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src https:; img-src https:; base-uri 'none'; form-action 'none'">
 <title>Mär</title>
 <style>
   :root { color-scheme: light dark; --bg: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --muted: #6c6c70; --accent: #0a7aff; }
@@ -15,6 +15,8 @@
          font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
   main { max-width: 34rem; margin: 0 auto; padding: 2.5rem 1rem; }
   .card { background: var(--card); border-radius: 1.25rem; padding: 1.5rem; }
+  .cover { display: block; width: 10rem; height: 10rem; object-fit: cover; border-radius: 0.9rem; margin: 0 0 1.2rem; }
+  .cover.failed { visibility: hidden; }
   .kind { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.4rem; }
   h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.3rem; overflow-wrap: anywhere; }
   .subtitle { color: var(--muted); margin: 0 0 1.2rem; overflow-wrap: anywhere; }
@@ -28,6 +30,7 @@
 <body>
 <main>
   <div class="card">
+    <img class="cover" id="cover" alt="" referrerpolicy="no-referrer" hidden>
     <p class="kind" id="kind"></p>
     <h1 id="title">Mär</h1>
     <p class="subtitle" id="subtitle" hidden></p>
@@ -39,7 +42,8 @@
 <script>
 // The link names what is shared after the "#", so the server that answers
 // this page sees only "/l". The page reads the fragment in the browser,
-// asks nothing of any server, and sets every value as text.
+// sets every value as text, and loads only the cover and, when played, the
+// audio, each straight from its https address in the link.
 (function () {
   "use strict";
   var german = (navigator.language || "").toLowerCase().indexOf("de") === 0;
@@ -84,6 +88,14 @@
   if (!link) {
     document.getElementById("title").textContent = words.unreadable;
     return;
+  }
+  // The cover from its https address, without a referrer; a cover that does
+  // not load leaves its place empty.
+  if (link.c && link.c.indexOf("https://") === 0) {
+    var cover = document.getElementById("cover");
+    cover.addEventListener("error", function () { cover.classList.add("failed"); });
+    cover.src = link.c;
+    cover.hidden = false;
   }
   document.getElementById("kind").textContent = words[link.k];
   document.title = link.t ? link.t + " · Mär" : "Mär";

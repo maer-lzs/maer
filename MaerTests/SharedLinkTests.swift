@@ -18,7 +18,8 @@ struct SharedLinkTests {
 
     static let episode = SharedLink.Content.episode(
         feedURL: feed, guid: "tag:example.org,2026:214",
-        .init(title: "Folge 214: Radio & wir", subtitle: "Medien", audioURL: audio))
+        .init(title: "Folge 214: Radio & wir", subtitle: "Medien", audioURL: audio,
+              coverURL: "https://cdn.example.org/cover-214.jpg"))
     static let show = SharedLink.Content.show(feedURL: feed, .init(title: "Medien", subtitle: "Ein Verlag"))
     static let station = SharedLink.Content.station(
         uuid: uuid, .init(title: "Deutschlandfunk", audioURL: "https://st01.example.de/dlf.mp3"))
@@ -124,6 +125,43 @@ struct SharedLinkTests {
             }
         }
         #expect(!SharedLink.offers(.episode(feedURL: "ftp://feeds.example.org/x", guid: "g", .init()), staysHome: Self.open))
+    }
+
+    @Test("Ein Cover mit Zugang oder fremdem Schema im Link oeffnet nichts, je Art")
+    func aCoverWithAccessOpensNothing() throws {
+        let tainted = ["https://cdn.example.org/c.jpg?token=s3cr3t", "https://u:p@cdn.example.org/c.jpg",
+                       "javascript:alert(1)", "file:///etc/hosts"]
+        for content in Self.all {
+            #expect(SharedLink.offers(content, staysHome: Self.open), "the precondition: \(content) is shared")
+            for cover in tainted {
+                var facts = content.facts
+                facts.coverURL = cover
+                // Written by hand and read back, as a link from outside arrives.
+                let url = try #require(SharedLink.url(for: content.with(facts)))
+                let read = try #require(SharedLink.read(url))
+                #expect(read.facts.coverURL == cover, "the precondition: the link carries the cover")
+                #expect(!SharedLink.offers(read, staysHome: Self.open), "\(cover) in \(content)")
+            }
+        }
+    }
+
+    @Test("Das Cover der Seite kommt nur als oeffentliche https-Adresse in den Link, sonst ohne Cover")
+    func onlyAPublicHttpsCoverEntersTheLink() throws {
+        let cover = "https://cdn.example.org/show.jpg"
+        for content in Self.all {
+            #expect(SharedLink.withCover(content, cover: cover)?.facts.coverURL == cover, "\(content)")
+            #expect(SharedLink.withCover(content, cover: cover)?.with(content.facts) == content,
+                    "the cover changes more than the cover")
+            for other in [nil, "http://cdn.example.org/show.jpg", "https://cdn.example.org/show.jpg?token=s3cr3t",
+                          "https://u:p@cdn.example.org/show.jpg", "file:///var/cover.jpg", ""] {
+                let shared = try #require(SharedLink.withCover(content, cover: other))
+                #expect(shared.facts.coverURL == nil, "\(String(describing: other)) entered the link")
+                #expect(SharedLink.offers(shared, staysHome: Self.open), "a cover left out keeps \(content) from sharing")
+            }
+        }
+        #expect(SharedLink.withCover(nil, cover: cover) == nil)
+        let url = try #require(SharedLink.shareURL(SharedLink.withCover(Self.show, cover: cover), staysHome: Self.open))
+        #expect(url.absoluteString.hasSuffix("&c=https%3A%2F%2Fcdn.example.org%2Fshow.jpg"), "\(url)")
     }
 
     @Test("Ein Sender nur mit uuid, ein Buch nur aus einem Buchkatalog")

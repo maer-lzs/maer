@@ -37,7 +37,8 @@ struct SharedLinkPageTests {
     @Test("die Seite laedt nichts von einem fremden Host: kein Bild, keine Schrift, kein Skript, keine Vorlage", .needsTheSite)
     func thePageLoadsNothingFromElsewhere() throws {
         let html = try Self.text()
-        let loading = ["<img", "<link", "<iframe", "<object", "<embed", "<source", "<script src", "@import", "url(", "srcdoc"]
+        let loading = ["<link", "<iframe", "<object", "<embed", "<source", "<script src", "@import", "url(", "srcdoc",
+                       "srcset", "createelement", "new image"]
         let found = loading.filter { html.lowercased().contains($0) }
         #expect(found.isEmpty, "the page loads from elsewhere: \(found)")
         // Every address in the page is the store's, or the scheme the page
@@ -48,10 +49,27 @@ struct SharedLinkPageTests {
         #expect(!addresses.isEmpty, "the precondition: the page names the store")
         #expect(foreign.isEmpty, "the page names another address: \(foreign)")
         // The policy in the page itself: nothing from anywhere, audio over https.
-        #expect(html.contains("default-src 'none'") && html.contains("media-src https:"),
+        #expect(html.contains("default-src 'none'") && html.contains("media-src https:") && html.contains("img-src https:"),
                 "the page carries no policy that keeps it to itself")
         #expect(html.contains("<meta name=\"referrer\" content=\"no-referrer\">"))
         #expect(html.contains("preload=\"none\""), "the audio loads before it is played")
+    }
+
+    @Test("Zaun: die Seite zeigt genau ein Bild, das Cover aus c, nur ueber https und ohne Referrer", .needsTheSite)
+    func thePageShowsOnlyTheCoverOfTheLink() throws {
+        let html = try Self.text()
+        let images = html.lowercased().components(separatedBy: "<img").count - 1
+        #expect(images == 1, "the page holds \(images) pictures, the cover is the one")
+        #expect(html.contains("<img class=\"cover\" id=\"cover\" alt=\"\" referrerpolicy=\"no-referrer\" hidden>"),
+                "the cover is not the one picture without an address, without a referrer, hidden until the link names it")
+        // Exactly two addresses come into the page, each from its key of the
+        // link and each only over https: the audio from a, the cover from c.
+        let assigned = html.components(separatedBy: ".src = ").dropFirst().map { String($0.prefix(while: { $0 != ";" })) }
+        #expect(assigned.sorted() == ["link.a", "link.c"], "the page loads from somewhere else: \(assigned)")
+        #expect(html.contains("if (link.a && link.a.indexOf(\"https://\") === 0)"), "the audio plays over http")
+        #expect(html.contains("if (link.c && link.c.indexOf(\"https://\") === 0)"), "the cover loads over http")
+        #expect(html.contains("cover.classList.add(\"failed\")") && html.contains(".cover.failed { visibility: hidden; }"),
+                "a cover that does not load does not leave its place empty")
     }
 
     @Test("die Seite liest die Form, die SharedLink schreibt: Fassung, Arten, Schluessel", .needsTheSite)
@@ -62,15 +80,16 @@ struct SharedLinkPageTests {
             #expect(html.contains(kind), "the page misses the identity of a kind: \(kind)")
         }
         #expect(html.contains("> \(SharedLink.longestFragment)"), "the page reads a longer fragment than the app")
-        for key in ["link.t", "link.s", "link.a"] {
+        for key in ["link.t", "link.s", "link.a", "link.c"] {
             #expect(html.contains(key), "the page does not show \(key)")
         }
         // The kinds and keys the app writes are the ones the page reads.
         let written = try #require(SharedLink.url(for: .episode(feedURL: "https://f.example/x", guid: "g",
-                                                               .init(title: "T", subtitle: "S", audioURL: "https://a.example/a.mp3"))))
+                                                               .init(title: "T", subtitle: "S", audioURL: "https://a.example/a.mp3",
+                                                                     coverURL: "https://c.example/c.jpg"))))
         let keys = written.fragment(percentEncoded: true)?.dropFirst(2).split(separator: "&")
             .map { String($0.split(separator: "=")[0]) } ?? []
-        #expect(keys == ["k", "f", "g", "t", "s", "a"], "the app writes other keys than the page reads: \(keys)")
+        #expect(keys == ["k", "f", "g", "t", "s", "a", "c"], "the app writes other keys than the page reads: \(keys)")
     }
 }
 #endif

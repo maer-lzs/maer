@@ -47,14 +47,16 @@ enum SharedLinkPreview {
 }
 
 extension View {
-    /// Asks `SharedLink.shareURL` for the page's content once per content
-    /// and keeps the offer in `offer`, with the cover from the app's store as
-    /// the preview; nil leaves the page without a share entry. The question
-    /// whether a feed stays home reads settings and the keychain, so it is
-    /// not asked at every drawing.
+    /// Asks `SharedLink.shareURL` for the page's content with its cover
+    /// (`SharedLink.withCover`) once per content and keeps the offer in
+    /// `offer`, with the cover from the app's store as the preview; nil
+    /// leaves the page without a share entry. The question whether a feed
+    /// stays home reads settings and the keychain, so it is not asked at
+    /// every drawing.
     func sharedLink(_ content: SharedLink.Content?, cover: URL?, to offer: Binding<SharedLinkOffer?>) -> some View {
-        task(id: content) {
-            guard let url = SharedLink.shareURL(content, staysHome: { PodcastSubscriptions.staysHome($0) }) else {
+        let shared = SharedLink.withCover(content, cover: cover?.absoluteString)
+        return task(id: shared) {
+            guard let url = SharedLink.shareURL(shared, staysHome: { PodcastSubscriptions.staysHome($0) }) else {
                 offer.wrappedValue = nil
                 return
             }
