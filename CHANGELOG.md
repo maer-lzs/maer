@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A station link that does not open says why.** When the station
+catalog does not answer, because the device is offline or the request
+failed, the app says the station could not be loaded and that opening
+the link again tries once more. When Radio Browser is off in Settings,
+the app says so and does not ask the catalog. Only a station the
+catalog does not know says that the link can't be opened. Before, all
+three said the same sentence as a link built by hand.
+
 ## v3.7 (Build 64)
 
 **Share a podcast, an episode, a station, a free audiobook or a Jamendo
