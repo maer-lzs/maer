@@ -24,6 +24,25 @@ struct SharedLinkOpener {
         /// Not a link of this form, or one the app does not open; the one
         /// sentence says so, the reason goes to the log.
         case refused(reason: String)
+        /// What the link names could not be asked now: the device is
+        /// offline or the request failed. Opening the link again asks once
+        /// more; the reason goes to the log.
+        case notLoaded(reason: String)
+        /// The source that knows what the link names is switched off in
+        /// Settings; the reason goes to the log.
+        case sourceOff(reason: String)
+    }
+
+    /// What the catalog says of a station a link names.
+    enum StationLookup: Equatable {
+        /// The catalog's own station.
+        case found(RadioStation)
+        /// The catalog answered and does not know the id.
+        case unknown
+        /// The catalog did not answer.
+        case notLoaded
+        /// Radio Browser is switched off, so the catalog is not asked.
+        case sourceOff
     }
 
     /// The question of the export: whether a feed address stays home.
@@ -36,16 +55,35 @@ struct SharedLinkOpener {
     /// Resolves a catalog title, a book or a music track; false when it
     /// cannot be found.
     var resolveCatalog: (String) async -> Bool
-    /// The catalog's own station for an id a link names; nil when it cannot
-    /// be found. A link names a real station's id, so the name and the
-    /// stream come from here, never from the link: a link built by hand
-    /// would otherwise put a foreign stream under a real station, and it
-    /// would travel with the recent stations and the choices.
-    var resolveStation: (String) async -> RadioStation?
+    /// The catalog's own station for an id a link names, or whether the
+    /// catalog does not know it or did not answer. A link names a real
+    /// station's id, so the name and the stream come from here, never from
+    /// the link: a link built by hand would otherwise put a foreign stream
+    /// under a real station, and it would travel with the recent stations
+    /// and the choices.
+    var resolveStation: (String) async -> StationLookup
 
-    /// The one sentence for every link that opens nothing; a link does not
-    /// tell whether it named something private.
+    /// The one sentence for every link the app does not open; a link does
+    /// not tell whether it named something private.
     static let refusal = String(localized: "This link can't be opened.")
+
+    /// The sentence of a station link whose catalog did not answer: the link
+    /// itself may be fine, and opening it again asks once more.
+    static let stationNotLoaded = String(localized: "The station could not be loaded. Open the link again to try once more.")
+
+    /// The sentence of a station link while Radio Browser is switched off.
+    static let stationSourceOff = String(localized: "Radio Browser is off in Settings, so this station can't be opened.")
+
+    /// The sentence for an outcome that opens nothing; nil for one that
+    /// opens a page.
+    static func sentence(for outcome: Outcome) -> String? {
+        switch outcome {
+        case .refused: refusal
+        case .notLoaded: stationNotLoaded
+        case .sourceOff: stationSourceOff
+        case .episode, .show, .station, .book, .track: nil
+        }
+    }
 
     /// The opener of the app: a feed nobody follows is read as the show
     /// page reads it, a catalog title is resolved by the session (a Jamendo
@@ -62,11 +100,14 @@ struct SharedLinkOpener {
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
             resolveStation: { uuid in
+                guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else { return .sourceOff }
                 do {
-                    return try await RadioBrowserClient.station(uuid: uuid)
+                    return try await RadioBrowserClient.station(uuid: uuid).map { .found($0) } ?? .unknown
                 } catch {
-                    Logger.library.notice("SHAREDLINK station not resolved: \(FailureReason.of(error), privacy: .public)")
-                    return nil
+                    // A device without a way out, a failed request or a
+                    // cancelled one: no answer of the catalog.
+                    Logger.library.notice("SHAREDLINK station not loaded: \(FailureReason.of(error), privacy: .public)")
+                    return .notLoaded
                 }
             })
     }
@@ -76,10 +117,17 @@ struct SharedLinkOpener {
     func open(_ url: URL, refuse: (String) -> Void) async {
         let outcome = await outcome(for: url)
         guard let target = Self.target(of: outcome) else {
-            if case .refused(let reason) = outcome {
+            switch outcome {
+            case .refused(let reason):
                 Logger.library.notice("SHAREDLINK refused reason=\(reason, privacy: .public)")
+            case .notLoaded(let reason):
+                Logger.library.notice("SHAREDLINK not loaded reason=\(reason, privacy: .public)")
+            case .sourceOff(let reason):
+                Logger.library.notice("SHAREDLINK source off reason=\(reason, privacy: .public)")
+            default:
+                break
             }
-            refuse(Self.refusal)
+            refuse(Self.sentence(for: outcome) ?? Self.refusal)
             return
         }
         PlayerSourceRouter.shared.open(target)
@@ -94,7 +142,7 @@ struct SharedLinkOpener {
         case .station(let station): .radioStation(station)
         case .book(let itemId): .catalogBook(itemId: itemId)
         case .track(let itemId): PlayerSourceTargets.catalogPage(itemId, markedForm: nil)
-        case .refused: nil
+        case .refused, .notLoaded, .sourceOff: nil
         }
     }
 
@@ -114,10 +162,16 @@ struct SharedLinkOpener {
         case .station(let uuid, _):
             // The link's own name and stream are for the page on maer.fm;
             // the app takes the station as the catalog has it.
-            guard let station = await resolveStation(uuid),
-                  station.id.lowercased() == SharedLink.stationId(uuid: uuid).lowercased()
-            else { return .refused(reason: "stationUnknown") }
-            return .station(station)
+            switch await resolveStation(uuid) {
+            case .found(let station) where station.id.lowercased() == SharedLink.stationId(uuid: uuid).lowercased():
+                return .station(station)
+            case .found, .unknown:
+                return .refused(reason: "stationUnknown")
+            case .notLoaded:
+                return .notLoaded(reason: "stationNotLoaded")
+            case .sourceOff:
+                return .sourceOff(reason: "stationSourceOff")
+            }
         case .book(let itemId, _):
             return await resolveCatalog(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
         case .track(let itemId, _):

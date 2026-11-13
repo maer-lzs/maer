@@ -307,9 +307,15 @@ struct PositionStockTests {
         // The mark lies in the table and the read at the start does not
         // hold it: it arrives after that read.
         try await store.upsertFlushed(itemId: "rss:acct:c", entry: [30, 500])
+        // A mark for an item with an old key, newer than that key and
+        // written after the read as well.
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.localPosition("rss:old:b"))
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.flushedPosition("rss:old:b"))
+        try await store.upsertFlushed(itemId: "rss:old:b", entry: [40, 9_000])
         let readBefore: @Sendable () throws -> ListeningStore.Stock? = {
             var stock = try loadNow()
             stock?.flushed["rss:acct:c"] = nil
+            stock?.flushed["rss:old:b"] = nil
             return stock
         }
 
@@ -321,6 +327,7 @@ struct PositionStockTests {
         #expect(flushed["rss:old:a"] == [20, 2_000], "the precondition: the repair wrote the old key's mark")
         #expect(flushed["rss:gone:d"] == nil, "the precondition: the repair removes a mark that was there and has no old key")
         #expect(flushed["rss:acct:c"] == [30, 500], "the repair took a mark that arrived after its read")
+        #expect(flushed["rss:old:b"] == [40, 9_000], "the repair set a newer mark back to its old key")
     }
 
     @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")

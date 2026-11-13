@@ -9266,6 +9266,16 @@
         }
       }
     },
+    "Radio Browser is off in Settings, so this station can't be opened." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio Browser ist in den Einstellungen aus, darum lässt sich dieser Sender nicht öffnen."
+          }
+        }
+      }
+    },
     "Radio keeps your saved and recently played stations" : {
       "localizations" : {
         "de" : {
@@ -12485,6 +12495,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Quelle ist gerade ausgelastet. Bitte später erneut versuchen."
+          }
+        }
+      }
+    },
+    "The station could not be loaded. Open the link again to try once more." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Sender konnte nicht geladen werden. Öffne den Link erneut, um es noch einmal zu versuchen."
           }
         }
       }
