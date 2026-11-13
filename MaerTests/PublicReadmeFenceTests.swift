@@ -652,9 +652,27 @@ struct PublicReadmeFenceTests {
         for (name, text) in try Self.readmeTexts() {
             #expect(!text.contains("git.lschroeder.eu"),
                     "\(name) zeigt auf einen Wirt, den ein Fremder nicht erreicht")
-            #expect(text.contains("https://codeberg.org/LzS/maer-sync"),
+            #expect(text.contains("https://github.com/maer-lzs/maer-sync"),
                     "\(name) nennt das Dienst-Repository nicht unter seiner oeffentlichen Adresse")
+            #expect(text.contains("https://github.com/maer-lzs/maer>") && text.contains("https://www.reddit.com/r/maer_fm/"),
+                    "\(name) nennt die Quelle oder die Gemeinschaft nicht im Kopf")
         }
+    }
+
+    /// The public source lies on GitHub; the old host appears only in the
+    /// history of the changelog.
+    @Test("keine Adresse des frueheren Wirts in der App, den READMEs und docs", .needsTheSources)
+    func noAddressOfTheFormerHost() throws {
+        var texts = try Self.readmeTexts()
+        for folder in ["Sources", "docs"] {
+            for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
+            where ["swift", "md", "xcstrings", "plist", "html"].contains(file.pathExtension) {
+                texts.append((SourceTree.relativePath(of: file), try String(contentsOf: file, encoding: .utf8)))
+            }
+        }
+        #expect(texts.count > 10, "the precondition: the fence read the files")
+        let found = texts.filter { $0.1.contains("codeberg.org/LzS") }.map(\.0)
+        #expect(found.isEmpty, "these name the former host: \(found)")
     }
 
     /// One thought, one sentence, on the surface too. The stock is zero in

@@ -15,7 +15,7 @@ struct ServerGuidesTests {
     /// Every host a guide's address may point to. A positive list.
     nonisolated static let projectHosts: Set<String> = [
         "audiobookshelf.org", "www.audiobookshelf.org", "booksonic.org", "www.navidrome.org", "jellyfin.org",
-        "github.com", "docs.funkwhale.audio", "dev.funkwhale.audio", "codeberg.org"
+        "github.com", "docs.funkwhale.audio", "dev.funkwhale.audio"
     ]
 
     @Test("Jeder Server hat Doku und Quellcode, beide https auf einem Projekt-Host")
@@ -29,7 +29,7 @@ struct ServerGuidesTests {
             // Compared without the fragment: `repo#readme` is the repo page.
             // Where the README is the whole documentation, that is said by name.
             let docsPage = guide.docs.split(separator: "#").first.map(String.init) ?? guide.docs
-            let readmeIsTheDocs: Set<String> = ["https://github.com/kd2org/opodsync", "https://codeberg.org/LzS/maer-sync"]
+            let readmeIsTheDocs: Set<String> = ["https://github.com/kd2org/opodsync", "https://github.com/maer-lzs/maer-sync"]
             if !readmeIsTheDocs.contains(guide.repo) {
                 #expect(docsPage != guide.repo, "\(guide.name): two links, not one twice")
             }
@@ -44,7 +44,7 @@ struct ServerGuidesTests {
         }
         #expect(!ServerGuides.needs.isEmpty)
         let sync = ServerGuides.all.filter { $0.area == nil }
-        #expect(sync.map(\.name) == ["Mär Sync"] && sync.first?.repo == "https://codeberg.org/LzS/maer-sync")
+        #expect(sync.map(\.name) == ["Mär Sync"] && sync.first?.repo == "https://github.com/maer-lzs/maer-sync")
         #expect(Set(ServerGuides.all.map(\.signIn)) == Set(ServerGuide.SignIn.allCases), "no sign-in sentence without a server")
     }
 

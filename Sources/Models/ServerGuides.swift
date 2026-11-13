@@ -121,8 +121,8 @@ nonisolated enum ServerGuides {
         ServerGuide(name: "Mär Sync", area: nil,
                     oneLiner: "Your own sync service: keeps progress, subscriptions, playlists, settings and statistics in step between your devices, without iCloud.",
                     signIn: .maerSync,
-                    docs: "https://codeberg.org/LzS/maer-sync#readme",
-                    repo: "https://codeberg.org/LzS/maer-sync"),
+                    docs: "https://github.com/maer-lzs/maer-sync#readme",
+                    repo: "https://github.com/maer-lzs/maer-sync"),
     ]
 
     static func guides(for area: SourceMapArea) -> [ServerGuide] {

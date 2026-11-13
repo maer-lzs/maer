@@ -20,7 +20,7 @@ requires one; it does not take away any right the software's licence gives you.
    change it, and pass it on.
 
    The complete corresponding source code of every released version is publicly
-   available, free of charge, at https://codeberg.org/LzS/maer. You may obtain, build, and
+   available, free of charge, at https://github.com/maer-lzs/maer. You may obtain, build, and
    redistribute Mär from there without any of the limitations described in
    section 2.
 
