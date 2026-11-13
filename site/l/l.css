@@ -1,0 +1,18 @@
+:root { color-scheme: light dark; --bg: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --muted: #6c6c70; --accent: #0a7aff; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #000000; --card: #1c1c1e; --text: #f2f2f7; --muted: #98989f; --accent: #0a84ff; }
+}
+body { margin: 0; background: var(--bg); color: var(--text);
+       font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+main { max-width: 34rem; margin: 0 auto; padding: 2.5rem 1rem; }
+.card { background: var(--card); border-radius: 1.25rem; padding: 1.5rem; }
+.cover { display: block; width: 10rem; height: 10rem; object-fit: cover; border-radius: 0.9rem; margin: 0 0 1.2rem; }
+.cover.failed { visibility: hidden; }
+.kind { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.4rem; }
+h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.3rem; overflow-wrap: anywhere; }
+.subtitle { color: var(--muted); margin: 0 0 1.2rem; overflow-wrap: anywhere; }
+audio { width: 100%; margin: 0 0 1.2rem; }
+.store { display: block; text-align: center; background: var(--accent); color: #ffffff; text-decoration: none;
+         font-weight: 600; border-radius: 0.9rem; padding: 0.85rem 1rem; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 1rem 0 0; text-align: center; }
+[hidden] { display: none !important; }

@@ -4,28 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src https:; img-src https:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https:; media-src https:; base-uri 'none'; form-action 'none'">
 <title>Mär</title>
-<style>
-  :root { color-scheme: light dark; --bg: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --muted: #6c6c70; --accent: #0a7aff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #000000; --card: #1c1c1e; --text: #f2f2f7; --muted: #98989f; --accent: #0a84ff; }
-  }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  main { max-width: 34rem; margin: 0 auto; padding: 2.5rem 1rem; }
-  .card { background: var(--card); border-radius: 1.25rem; padding: 1.5rem; }
-  .cover { display: block; width: 10rem; height: 10rem; object-fit: cover; border-radius: 0.9rem; margin: 0 0 1.2rem; }
-  .cover.failed { visibility: hidden; }
-  .kind { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 0.4rem; }
-  h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.3rem; overflow-wrap: anywhere; }
-  .subtitle { color: var(--muted); margin: 0 0 1.2rem; overflow-wrap: anywhere; }
-  audio { width: 100%; margin: 0 0 1.2rem; }
-  .store { display: block; text-align: center; background: var(--accent); color: #ffffff; text-decoration: none;
-           font-weight: 600; border-radius: 0.9rem; padding: 0.85rem 1rem; }
-  .hint { color: var(--muted); font-size: 0.85rem; margin: 1rem 0 0; text-align: center; }
-  [hidden] { display: none !important; }
-</style>
+<link rel="stylesheet" href="/l/l.css">
 </head>
 <body>
 <main>
@@ -39,80 +20,6 @@
     <p class="hint" id="hint"></p>
   </div>
 </main>
-<script>
-// The link names what is shared after the "#", so the server that answers
-// this page sees only "/l". The page reads the fragment in the browser,
-// sets every value as text, and loads only the cover and, when played, the
-// audio, each straight from its https address in the link.
-(function () {
-  "use strict";
-  var german = (navigator.language || "").toLowerCase().indexOf("de") === 0;
-  var words = german ? {
-    e: "Folge", s: "Sendung", r: "Radiosender", b: "Hörbuch",
-    store: "Mär im App Store",
-    hint: "Mit Mär öffnet dieser Link direkt in der App.",
-    unreadable: "Dieser Link lässt sich nicht öffnen."
-  } : {
-    e: "Episode", s: "Show", r: "Radio station", b: "Audiobook",
-    store: "Get Mär on the App Store",
-    hint: "With Mär, this link opens right in the app.",
-    unreadable: "This link can't be opened."
-  };
-  document.documentElement.lang = german ? "de" : "en";
-  // A link opened in the same tab changes only the fragment, and the page
-  // does not load again by itself; it reads the new link from the start.
-  window.addEventListener("hashchange", function () { location.reload(); });
-  document.getElementById("store").textContent = words.store;
-
-  // The form SharedLink writes: "1?" and a query of keys, each once.
-  function read(fragment) {
-    if (fragment.length > 4096 || fragment.indexOf("1?") !== 0) { return null; }
-    var values = {};
-    var pairs = fragment.slice(2).split("&");
-    for (var i = 0; i < pairs.length; i++) {
-      var at = pairs[i].indexOf("=");
-      if (at < 0) { return null; }
-      var key = pairs[i].slice(0, at);
-      if (Object.prototype.hasOwnProperty.call(values, key)) { return null; }
-      try { values[key] = decodeURIComponent(pairs[i].slice(at + 1)); } catch (e) { return null; }
-    }
-    var needs = { e: ["f", "g"], s: ["f"], r: ["i"], b: ["i"] }[values.k];
-    if (!needs) { return null; }
-    for (var j = 0; j < needs.length; j++) {
-      if (!values[needs[j]] || !values[needs[j]].trim()) { return null; }
-    }
-    return values;
-  }
-
-  var link = read(location.hash.slice(1));
-  if (!link) {
-    document.getElementById("title").textContent = words.unreadable;
-    return;
-  }
-  // The cover from its https address, without a referrer; a cover that does
-  // not load leaves its place empty.
-  if (link.c && link.c.indexOf("https://") === 0) {
-    var cover = document.getElementById("cover");
-    cover.addEventListener("error", function () { cover.classList.add("failed"); });
-    cover.src = link.c;
-    cover.hidden = false;
-  }
-  document.getElementById("kind").textContent = words[link.k];
-  document.title = link.t ? link.t + " · Mär" : "Mär";
-  if (link.t) { document.getElementById("title").textContent = link.t; }
-  if (link.s) {
-    var subtitle = document.getElementById("subtitle");
-    subtitle.textContent = link.s;
-    subtitle.hidden = false;
-  }
-  // Only an https address plays; the page holds no other.
-  if (link.a && link.a.indexOf("https://") === 0) {
-    var audio = document.getElementById("audio");
-    audio.src = link.a;
-    audio.hidden = false;
-  }
-  document.getElementById("hint").textContent = words.hint;
-})();
-</script>
+<script src="/l/l.js"></script>
 </body>
 </html>

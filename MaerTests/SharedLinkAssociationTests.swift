@@ -66,15 +66,18 @@ struct SharedLinkAssociationTests {
         let appIDs = details[0]["appIDs"] as? [String]
         #expect(appIDs == ["\(identity.team).\(identity.bundle)"], "the file names another app: \(String(describing: appIDs))")
         let components = try #require(details[0]["components"] as? [[String: Any]])
-        try #require(components.count == 1, "the file opens \(components.count) kinds of address")
-        #expect(Set(components[0].keys).isSubset(of: ["/", "comment"]),
-                "the path is narrowed or widened by another key: \(components[0].keys.sorted())")
-        let path = components[0]["/"] as? String
-        #expect(path == SharedLink.path, "the file opens another path: \(String(describing: path))")
-        // The link the app writes falls under that path.
+        for component in components {
+            #expect(Set(component.keys).isSubset(of: ["/", "comment"]),
+                    "a path is narrowed or widened by another key: \(component.keys.sorted())")
+        }
+        let paths = components.compactMap { $0["/"] as? String }
+        #expect(paths.count == components.count, "a component names no path")
+        #expect(Set(paths) == SharedLink.paths && paths.count == SharedLink.paths.count,
+                "the file opens other paths than the app reads: \(paths)")
+        // The link the app writes falls under one of them.
         let link = try #require(SharedLink.url(for: .show(feedURL: "https://feeds.example.org/x.xml", .init())))
         #expect(link.host == SharedLink.host)
-        #expect(link.path == path)
+        #expect(paths.contains(link.path(percentEncoded: true)), "\(link)")
     }
 }
 #endif

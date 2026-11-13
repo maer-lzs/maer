@@ -39,9 +39,9 @@ struct SharedLinkTests {
     @Test("Alles steht hinter dem #, lesbar, in fester Reihenfolge")
     func theFormKeepsEverythingBehindTheHash() throws {
         let url = try #require(SharedLink.url(for: Self.show))
-        #expect(url.absoluteString == "https://maer.fm/l#1?k=s&f=https%3A%2F%2Ffeeds.example.org%2Fshow.xml&t=Medien&s=Ein%20Verlag")
+        #expect(url.absoluteString == "https://maer.fm/l/#1?k=s&f=https%3A%2F%2Ffeeds.example.org%2Fshow.xml&t=Medien&s=Ein%20Verlag")
         #expect(url.query == nil)
-        #expect(url.path == "/l")
+        #expect(url.path(percentEncoded: true) == "/l/")
     }
 
     @Test("Zeichen, die die Query trennen, ueberstehen den Rundlauf")
@@ -62,6 +62,11 @@ struct SharedLinkTests {
             "https://example.org/l#" + fragment,
             "http://maer.fm/l#" + fragment,
             "https://maer.fm/x#" + fragment,
+            "https://maer.fm/l//#" + fragment,
+            "https://maer.fm/l/x#" + fragment,
+            "https://maer.fm/lx#" + fragment,
+            "https://maer.fm/L/#" + fragment,
+            "https://maer.fm/l/?k=r#" + fragment,
             "https://maer.fm/l?k=r#" + fragment,
             "https://maer.fm/l#2" + fragment.dropFirst(),
             "https://maer.fm/l",
@@ -80,6 +85,20 @@ struct SharedLinkTests {
         // The instrument sees the difference: the same fragment on the right
         // address reads.
         #expect(SharedLink.read(try #require(URL(string: "https://MAER.fm/l#" + fragment))) == Self.station)
+        #expect(SharedLink.read(try #require(URL(string: "https://MAER.fm/l/#" + fragment))) == Self.station)
+    }
+
+    @Test("Ein Link liest sich mit und ohne Schraegstrich, geschrieben wird er mit")
+    func bothFormsOfThePathRead() throws {
+        for content in Self.all {
+            let written = try #require(SharedLink.url(for: content))
+            #expect(written.absoluteString.hasPrefix("https://maer.fm/l/#1?"), "\(written)")
+            let fragment = try #require(written.fragment(percentEncoded: true))
+            let withSlash = try #require(URL(string: "https://maer.fm/l/#" + fragment))
+            let withoutSlash = try #require(URL(string: "https://maer.fm/l#" + fragment))
+            #expect(SharedLink.read(withSlash) == content, "with the slash: \(content)")
+            #expect(SharedLink.read(withoutSlash) == content, "without the slash: \(content)")
+        }
     }
 
     @Test("Was teilbar ist, je Art")
@@ -229,7 +248,8 @@ struct SharedLinkTests {
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             let name = file.lastPathComponent
-            if code.contains("maer.fm/l") || code.contains("\"/l\"") || code.contains("/l#") { writesTheLink.insert(name) }
+            if code.contains("maer.fm/l") || code.contains("\"/l\"") || code.contains("\"/l/\"") || code.contains("/l#")
+                || code.contains("/l/#") { writesTheLink.insert(name) }
             if code.contains("ShareLink(") { systemShareLink.insert(name) }
             if code.contains("SharedLinkButton(") { usesTheButton.insert(name) }
         }

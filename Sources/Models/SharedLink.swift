@@ -8,8 +8,8 @@ import Foundation
 /// A link on maer.fm that names one public thing: a podcast episode, a
 /// show, a station of the Radio Browser catalog or a free audiobook.
 ///
-/// Everything stands after the `#` (`https://maer.fm/l#1?k=e&f=…`), so the
-/// server that answers the page sees only `/l`, never what is shared. The
+/// Everything stands after the `#` (`https://maer.fm/l/#1?k=e&f=…`), so the
+/// server that answers the page sees only `/l/`, never what is shared. The
 /// values are a readable query, percent-encoded, and anyone can read what a
 /// link names. The identity opens the content in the app; the facts (title,
 /// subtitle, audio) are for the page without the app.
@@ -19,7 +19,12 @@ import Foundation
 /// address with access opens nothing, whoever builds it.
 nonisolated enum SharedLink {
     static let host = "maer.fm"
-    static let path = "/l"
+    /// The path a link is written with: the page's folder, which the site
+    /// serves without a redirect.
+    static let path = "/l/"
+    /// The paths a link is read with: the written one and the same page
+    /// without its slash.
+    static let paths: Set<String> = [path, "/l"]
     /// The form of the fragment; a link of another form opens nothing.
     static let version = "1"
     /// A fragment longer than this is no link the app builds.
@@ -107,12 +112,12 @@ nonisolated enum SharedLink {
     // MARK: - Reading
 
     /// What a link names, or nil when it is not a link of this form: another
-    /// host or path, a query before the `#`, another version, a key twice, a
+    /// host or a path other than `paths`, a query before the `#`, another version, a key twice, a
     /// kind without its identity. Unknown keys are left alone. Whether the
     /// content may open is `offers`, not this.
     static func read(_ url: URL) -> Content? {
         guard url.scheme?.lowercased() == "https", url.host?.lowercased() == host,
-              url.path == path, url.query == nil,
+              paths.contains(url.path(percentEncoded: true)), url.query == nil,
               let fragment = url.fragment(percentEncoded: true),
               fragment.count <= longestFragment,
               fragment.hasPrefix(version + "?") else { return nil }
