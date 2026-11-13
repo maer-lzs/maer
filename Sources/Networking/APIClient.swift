@@ -106,8 +106,11 @@ final class APIClient {
     /// for its tokens in the answer (`x-return-tokens: true`). The request
     /// asks, and it runs in a session of its own (`HTTP.SignInFlow`), so a
     /// cookie the server sets anyway ends with it and never reaches the
-    /// store of the app's other requests. Redirects are followed as on
-    /// every other request. It is asked once.
+    /// store of the app's other requests. Redirects are followed, and a
+    /// failed answer is asked again, as on every other request
+    /// (`HTTP.SignInFlow.retryingData`, `RequestRetryPolicy`): a server that
+    /// restarts answers 502 or 503 for a moment, and the sign-in creates
+    /// nothing on the server that a second try would double.
     func login(username: String, password: String) async throws -> String {
         guard !accessUnknown else { throw APIError.accessUnknown }
         var request = URLRequest(url: baseURL.appendingPathComponent("login"))
