@@ -286,12 +286,15 @@ actor StandStore {
         return out
     }
 
-    /// Brings the flushed table to exactly the stock's entries, in one
-    /// transaction. Returns written and removed rows.
+    /// Brings the flushed table to the stock's entries, in one transaction.
+    /// With `among`, only those rows can go: the ones that were there when
+    /// the caller read the stock; a row that arrived since stays. Returns
+    /// written and removed rows.
     @discardableResult
-    func replaceFlushed(with entries: [String: [Double]]) async throws -> (written: Int, removed: Int) {
+    func replaceFlushed(with entries: [String: [Double]],
+                        among: Set<String>? = nil) async throws -> (written: Int, removed: Int) {
         let held = try await allFlushed()
-        let gone = held.keys.filter { entries[$0] == nil }
+        let gone = held.keys.filter { entries[$0] == nil && (among?.contains($0) ?? true) }
         var statements = gone.map { SQLiteConnection.Statement("DELETE FROM stand_flushed WHERE item_id = ?", [.text($0)]) }
         let changed = entries.filter { $0.value.count >= 2 && held[$0.key] != Array($0.value.prefix(2)) }
         statements += changed.map { entry in

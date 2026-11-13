@@ -124,8 +124,11 @@ nonisolated final class StandMirror: Sendable {
         let startWalk: ListeningStore.Stock? = moved ? nil : Self.walkedLegacy(defaults)
         // The rows that are there before the stock is read: the repair
         // removes among these only. A row that arrives later (from the
-        // account, with a moment of its own) is never one of them.
-        let present: Set<String>? = moved ? nil : Self.rowsNow(loadNow)
+        // account, with a moment of its own) is never one of them. The same
+        // holds for the flushed marks.
+        let presentNow = moved ? nil : Self.rowsNow(loadNow)
+        let present: Set<String>? = presentNow?.rows
+        let presentFlushed: Set<String>? = presentNow?.flushed
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
         let unread = resumes && ListeningStore.readFailed(in: defaults)
@@ -169,7 +172,7 @@ nonisolated final class StandMirror: Sendable {
                 if unnamed > 0 {
                     Logger.library.error("STAND repair kept \(unnamed) rows no old key names, newer than every old key: nothing removed")
                 }
-                let pushed = try await store.replaceFlushed(with: flushed)
+                let pushed = try await store.replaceFlushed(with: flushed, among: presentFlushed)
                 Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed) resumed=\(resumes)")
                 if movesNow { ListeningStore.markMoved(for: followed) }
             }
@@ -216,14 +219,15 @@ nonisolated final class StandMirror: Sendable {
     /// a reader: the repair then takes the rows it finds when it runs. An
     /// empty set without a database or when the table does not read, so
     /// the repair removes nothing.
-    private static func rowsNow(_ loadNow: (@Sendable () throws -> ListeningStore.Stock?)?) -> Set<String>? {
+    private static func rowsNow(_ loadNow: (@Sendable () throws -> ListeningStore.Stock?)?)
+        -> (rows: Set<String>, flushed: Set<String>)? {
         guard let loadNow else { return nil }
         do {
-            guard let stock = try loadNow() else { return [] }
-            return Set(stock.backups.keys)
+            guard let stock = try loadNow() else { return ([], []) }
+            return (Set(stock.backups.keys), Set(stock.flushed.keys))
         } catch {
             Logger.library.error("STAND rows not read before the repair, it removes nothing: \(FailureReason.of(error), privacy: .public)")
-            return []
+            return ([], [])
         }
     }
 

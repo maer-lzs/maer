@@ -291,6 +291,38 @@ struct PositionStockTests {
         #expect(rows["rss:acct:c"]?.entry == [30, 500], "the repair took a row that arrived after its read")
     }
 
+    @Test("eine Flush-Marke, die waehrend der Reparatur eintrifft, bleibt; eine, die da war und keinen alten Schluessel hat, geht")
+    func aFlushedMarkThatArrivesDuringTheRepairStays() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.listen(to: defaults, nil)
+        }
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.localPosition("rss:old:a"))
+        defaults.set([20.0, 2_000.0], forKey: AppStorageKeys.flushedPosition("rss:old:a"))
+        try await store.upsert(Stand(itemId: "rss:old:a", position: 10, updatedAtMs: 1_000, duration: nil))
+        try await store.upsertFlushed(itemId: "rss:gone:d", entry: [5, 500])
+        // The mark lies in the table and the read at the start does not
+        // hold it: it arrives after that read.
+        try await store.upsertFlushed(itemId: "rss:acct:c", entry: [30, 500])
+        let readBefore: @Sendable () throws -> ListeningStore.Stock? = {
+            var stock = try loadNow()
+            stock?.flushed["rss:acct:c"] = nil
+            return stock
+        }
+
+        let mirror = StandMirror(store: store, loadNow: readBefore)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        let flushed = try await store.allFlushed()
+        #expect(ListeningStore.isMoved(in: defaults), "the precondition: the repair ended")
+        #expect(flushed["rss:old:a"] == [20, 2_000], "the precondition: the repair wrote the old key's mark")
+        #expect(flushed["rss:gone:d"] == nil, "the precondition: the repair removes a mark that was there and has no old key")
+        #expect(flushed["rss:acct:c"] == [30, 500], "the repair took a mark that arrived after its read")
+    }
+
     @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")
     func aFailedReadWritesOnlyNewer() async throws {
         let (defaults, name) = suite()
