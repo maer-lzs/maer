@@ -10,6 +10,18 @@
     store: "Laden im App Store",
     more: "Mehr", website: "Webseite der Sendung", episodes: "Neueste Folgen",
     play: "Abspielen", pause: "Anhalten", hours: "Std.", minutes: "Min.", locale: "de-DE",
+    oneEpisode: "1 Folge", episodesCount: " Folgen",
+    daily: "täglich", severalWeekly: "mehrmals pro Woche", weekly: "wöchentlich",
+    biweekly: "alle zwei Wochen", monthly: "monatlich",
+    categories: {
+      "Arts": "Kunst", "Business": "Wirtschaft", "Comedy": "Comedy", "Education": "Bildung",
+      "Fiction": "Fiktion", "Government": "Politik und Verwaltung", "History": "Geschichte",
+      "Health & Fitness": "Gesundheit und Fitness", "Kids & Family": "Kinder und Familie",
+      "Leisure": "Freizeit", "Music": "Musik", "News": "Nachrichten",
+      "Religion & Spirituality": "Religion und Spiritualität", "Science": "Wissenschaft",
+      "Society & Culture": "Gesellschaft und Kultur", "Sports": "Sport", "Technology": "Technik",
+      "True Crime": "True Crime", "TV & Film": "Film und Fernsehen"
+    },
     viaJamendo: "Creative Commons, via Jamendo",
     onJamendo: "Auf Jamendo anhören",
     onArchive: "Im Internet Archive ansehen",
@@ -21,6 +33,10 @@
     store: "Download on the App Store",
     more: "More", website: "Website of the show", episodes: "Latest episodes",
     play: "Play", pause: "Pause", hours: "h", minutes: "min", locale: "en-US",
+    oneEpisode: "1 episode", episodesCount: " episodes",
+    daily: "daily", severalWeekly: "several times a week", weekly: "weekly",
+    biweekly: "every two weeks", monthly: "monthly",
+    categories: {},
     viaJamendo: "Creative Commons, via Jamendo",
     onJamendo: "Listen on Jamendo",
     onArchive: "View on the Internet Archive",
@@ -147,7 +163,17 @@
   if (link.t) { document.getElementById("title").textContent = link.t; }
   if (link.s) {
     var subtitle = document.getElementById("subtitle");
-    subtitle.textContent = link.s;
+    var toShow = link.k === "e" ? showLink(link, null) : null;
+    if (toShow) {
+      // An episode's show opens the show's page, in this tab.
+      var anchor = document.createElement("a");
+      anchor.id = "to-show";
+      anchor.href = toShow;
+      anchor.textContent = link.s;
+      subtitle.appendChild(anchor);
+    } else {
+      subtitle.textContent = link.s;
+    }
     subtitle.hidden = false;
   }
   // A free music track names its provider and its page there. A Jamendo
@@ -211,9 +237,15 @@
     for (var node = channel.firstElementChild; node; node = node.nextElementSibling) {
       if (node.nodeName === "item") { items.push(node); }
     }
+    var owner = child(channel, "itunes:owner");
+    var category = child(channel, "itunes:category");
     return {
       description: plain(childText(channel, "itunes:summary") || childText(channel, "description")),
       website: childText(channel, "link"),
+      title: childText(channel, "title"),
+      publisher: childText(channel, "itunes:author") || (owner ? childText(owner, "itunes:name") : ""),
+      category: category ? (category.getAttribute("text") || "").trim() : "",
+      language: childText(channel, "language"),
       items: items
     };
   }
@@ -256,17 +288,84 @@
 
   function showFeed(feed, link) {
     if (link.k === "s") {
+      // The publisher under the title: from the link, else from the feed.
+      if (!link.s && feed.publisher) { showLine("subtitle", feed.publisher); }
+      showLine("facts-line", factsLine(feed));
       showAbout(feed.description, usable(feed.website, ["https://", "http://"]) ? feed.website : null);
-      showEpisodes(feed.items);
+      showEpisodes(feed.items, link, feed);
     } else {
+      // Under the show, the publisher when it is another name.
+      if (feed.publisher && feed.publisher !== (link.s || feed.title)) { showLine("publisher", feed.publisher); }
+      var toShow = document.getElementById("to-show");
+      var page = showLink(link, feed.publisher);
+      if (toShow && page) { toShow.href = page; }
       var item = null;
       for (var i = 0; i < feed.items.length && !item; i++) {
         if (childText(feed.items[i], "guid") === link.g) { item = feed.items[i]; }
       }
       if (item) {
+        // Date and length of the episode, as in the list of the show.
+        showLine("facts-line", dateAndLength(Date.parse(childText(item, "pubDate")), childText(item, "itunes:duration")));
         showAbout(plain(childText(item, "content:encoded") || childText(item, "itunes:summary") || childText(item, "description")), null);
       }
     }
+  }
+
+  function showLine(id, text) {
+    if (!text) { return; }
+    var line = document.getElementById(id);
+    line.textContent = text;
+    line.hidden = false;
+  }
+
+  // Category, language, number of episodes and how often a new one comes,
+  // each only when the feed tells it.
+  function factsLine(feed) {
+    var parts = [];
+    if (feed.category) { parts.push(words.categories[feed.category] || feed.category); }
+    var language = languageName(feed.language);
+    if (language) { parts.push(language); }
+    var count = feed.items.length;
+    if (count > 0) { parts.push(count === 1 ? words.oneEpisode : count + words.episodesCount); }
+    var dates = [];
+    for (var i = 0; i < feed.items.length; i++) {
+      var date = Date.parse(childText(feed.items[i], "pubDate"));
+      if (date) { dates.push(date); }
+    }
+    var often = rhythm(dates);
+    if (often) { parts.push(words[often]); }
+    return parts.join(" · ");
+  }
+
+  // "en-us" as "English" in the language of the page; nothing for a code
+  // the browser does not know.
+  function languageName(code) {
+    if (!code || typeof Intl === "undefined" || !Intl.DisplayNames) { return ""; }
+    try {
+      var name = new Intl.DisplayNames([words.locale], { type: "language" }).of(code.trim().split(/[-_]/)[0]);
+      return name && name.toLowerCase() !== code.trim().toLowerCase() ? name : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // How often a new episode comes, from the median gap between the ten
+  // newest dates: daily, several times a week, weekly, every two weeks,
+  // monthly; nothing when fewer than three dates or no rule fits.
+  function rhythm(dates) {
+    var sorted = dates.slice().sort(function (a, b) { return b - a; }).slice(0, 10);
+    if (sorted.length < 3) { return ""; }
+    var gaps = [];
+    for (var i = 1; i < sorted.length; i++) { gaps.push((sorted[i - 1] - sorted[i]) / 86400000); }
+    gaps.sort(function (a, b) { return a - b; });
+    var middle = Math.floor(gaps.length / 2);
+    var days = gaps.length % 2 ? gaps[middle] : (gaps[middle - 1] + gaps[middle]) / 2;
+    if (days <= 1.5) { return "daily"; }
+    if (days <= 4.5) { return "severalWeekly"; }
+    if (days <= 9) { return "weekly"; }
+    if (days <= 17) { return "biweekly"; }
+    if (days >= 25 && days <= 35) { return "monthly"; }
+    return "";
   }
 
   // The description, cut to a few lines with "More" when it is longer, and
@@ -303,17 +402,19 @@
 
   // The ten newest episodes with date, length and a play button; an
   // episode whose audio is not https or carries access is left out.
-  function showEpisodes(items) {
+  function showEpisodes(items, link, feed) {
     var rows = [];
     for (var i = 0; i < items.length; i++) {
       var enclosure = child(items[i], "enclosure");
       var audio = enclosure ? enclosure.getAttribute("url") : "";
       if (!usable(audio, ["https://"])) { continue; }
+      var title = childText(items[i], "title");
       rows.push({
-        title: childText(items[i], "title"),
+        title: title,
         date: Date.parse(childText(items[i], "pubDate")),
         length: childText(items[i], "itunes:duration"),
-        audio: audio
+        audio: audio,
+        page: episodeLink(link, childText(items[i], "guid"), title, link.t || feed.title, audio)
       });
     }
     rows.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
@@ -325,24 +426,61 @@
     document.getElementById("episodes").hidden = false;
   }
 
+  // The link of one episode of the show in the form SharedLink writes:
+  // feed and guid, title, show, audio and the show's cover, the keys in the
+  // app's order, only the unreserved characters left as they are. Null
+  // without a guid, or when the link would be longer than the page reads.
+  function episodeLink(link, guid, title, show, audio) {
+    if (!guid) { return null; }
+    return linkOf([["k", "e"], ["f", link.f], ["g", guid], ["t", title], ["s", show], ["a", audio], ["c", link.c]]);
+  }
+
+  // The link of the show an episode belongs to: feed, title, publisher and
+  // cover, as far as they are known.
+  function showLink(link, publisher) {
+    return linkOf([["k", "s"], ["f", link.f], ["t", link.s], ["s", publisher], ["c", link.c]]);
+  }
+
+  function linkOf(pairs) {
+    var parts = [];
+    for (var i = 0; i < pairs.length; i++) {
+      if (pairs[i][1]) { parts.push(pairs[i][0] + "=" + escapeValue(pairs[i][1])); }
+    }
+    var fragment = "1?" + parts.join("&");
+    return fragment.length > 4096 ? null : "#" + fragment;
+  }
+
+  function escapeValue(value) {
+    return encodeURIComponent(value).replace(/[!'()*]/g, function (c) {
+      return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+    });
+  }
+
   function episodeRow(row) {
     var item = document.createElement("li");
-    var text = document.createElement("div");
+    // A row with its own page opens it; the browser's back returns here.
+    var text = document.createElement(row.page ? "a" : "div");
+    if (row.page) { text.href = row.page; }
     text.className = "episode";
     var title = document.createElement("p");
     title.className = "episode-title";
     title.textContent = row.title;
     var meta = document.createElement("p");
     meta.className = "episode-meta";
-    var parts = [];
-    if (row.date) {
-      parts.push(new Date(row.date).toLocaleDateString(words.locale, { day: "numeric", month: "short", year: "numeric" }));
+    meta.textContent = dateAndLength(row.date, row.length);
+    var lines = document.createElement("div");
+    lines.className = "episode-text";
+    lines.appendChild(title);
+    lines.appendChild(meta);
+    text.appendChild(lines);
+    if (row.page) {
+      // A muted sign that the row opens a page of its own.
+      var chevron = document.createElement("span");
+      chevron.className = "chevron";
+      chevron.setAttribute("aria-hidden", "true");
+      chevron.textContent = "›";
+      text.appendChild(chevron);
     }
-    var length = duration(row.length);
-    if (length) { parts.push(length); }
-    meta.textContent = parts.join(" · ");
-    text.appendChild(title);
-    text.appendChild(meta);
     var button = document.createElement("button");
     button.type = "button";
     button.className = "play";
@@ -372,6 +510,17 @@
     button.textContent = "❚❚";
     player.onpause = function () { button.setAttribute("aria-pressed", "false"); button.textContent = "▶"; };
     player.onplay = function () { button.setAttribute("aria-pressed", "true"); button.textContent = "❚❚"; };
+  }
+
+  // "13 Nov 2026 · 2 h 1 min", each part only when it is known.
+  function dateAndLength(date, length) {
+    var parts = [];
+    if (date) {
+      parts.push(new Date(date).toLocaleDateString(words.locale, { day: "numeric", month: "short", year: "numeric" }));
+    }
+    var spoken = duration(length);
+    if (spoken) { parts.push(spoken); }
+    return parts.join(" · ");
   }
 
   // "3600", "61:30" or "1:01:30" as "1 h 1 min" or "42 min".
