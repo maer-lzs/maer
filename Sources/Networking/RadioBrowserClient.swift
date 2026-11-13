@@ -44,6 +44,8 @@ nonisolated enum RadioBrowserClient {
         /// Current click-trend. Nationwide or per state.
         case byRegionClicktrend(countryCode: String, limit: Int)
         case byStateClicktrend(state: String, limit: Int)
+        /// One station by its catalog id, for a station a link names.
+        case byUUID(uuid: String)
 
         /// Path relative to a mirror host. Region/tag go into the PATH (exact-
         /// match endpoints), percent-encoded.
@@ -67,6 +69,8 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
             case .byStateClicktrend(let state, _):
                 return "/json/stations/bystateexact/\(Self.pathEscaped(state))"
+            case .byUUID(let uuid):
+                return "/json/stations/byuuid/\(Self.pathEscaped(uuid, keeping: "-"))"
             }
         }
 
@@ -88,6 +92,8 @@ nonisolated enum RadioBrowserClient {
                 ]
             case .states, .countries:
                 return [.init(name: "hidebroken", value: "true")]
+            case .byUUID:
+                return []
             case .byRegion(_, let limit), .byState(_, let limit):
                 return [
                     .init(name: "order", value: "votes"),
@@ -118,9 +124,17 @@ nonisolated enum RadioBrowserClient {
             }
         }
 
-        private static func pathEscaped(_ raw: String) -> String {
-            raw.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? raw
+        private static func pathEscaped(_ raw: String, keeping kept: String = "") -> String {
+            raw.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: kept))) ?? raw
         }
+    }
+
+    /// The catalog's own station for an id a link names; nil when the
+    /// catalog does not know it. Its name and stream are the catalog's.
+    static func station(uuid: String) async throws -> RadioStation? {
+        guard UUID(uuidString: uuid) != nil else { return nil }
+        let id = SharedLink.stationId(uuid: uuid)
+        return try await stations(.byUUID(uuid: uuid)).first { $0.id.lowercased() == id.lowercased() }
     }
 
     // MARK: - Convenience endpoints

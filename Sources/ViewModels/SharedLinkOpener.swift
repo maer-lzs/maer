@@ -36,6 +36,12 @@ struct SharedLinkOpener {
     /// Resolves a catalog title, a book or a music track; false when it
     /// cannot be found.
     var resolveCatalog: (String) async -> Bool
+    /// The catalog's own station for an id a link names; nil when it cannot
+    /// be found. A link names a real station's id, so the name and the
+    /// stream come from here, never from the link: a link built by hand
+    /// would otherwise put a foreign stream under a real station, and it
+    /// would travel with the recent stations and the choices.
+    var resolveStation: (String) async -> RadioStation?
 
     /// The one sentence for every link that opens nothing; a link does not
     /// tell whether it named something private.
@@ -54,7 +60,15 @@ struct SharedLinkOpener {
                 BrowsedEpisodes.shared.remember(show: show)
                 return true
             },
-            resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil })
+            resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
+            resolveStation: { uuid in
+                do {
+                    return try await RadioBrowserClient.station(uuid: uuid)
+                } catch {
+                    Logger.library.notice("SHAREDLINK station not resolved: \(FailureReason.of(error), privacy: .public)")
+                    return nil
+                }
+            })
     }
 
     /// Opens what the link names through the one navigation point, or hands
@@ -97,12 +111,13 @@ struct SharedLinkOpener {
             return knows(itemId) ? .episode(itemId: itemId) : .show(feedURL: feedURL)
         case .show(let feedURL, _):
             return .show(feedURL: feedURL)
-        case .station(let uuid, let facts):
-            // The station plays from the stream the link names; the app
-            // writes it with every station it shares.
-            guard let stream = facts.audioURL else { return .refused(reason: "stationWithoutStream") }
-            return .station(RadioStation(id: SharedLink.stationId(uuid: uuid), name: facts.title ?? "",
-                                         streamURL: stream))
+        case .station(let uuid, _):
+            // The link's own name and stream are for the page on maer.fm;
+            // the app takes the station as the catalog has it.
+            guard let station = await resolveStation(uuid),
+                  station.id.lowercased() == SharedLink.stationId(uuid: uuid).lowercased()
+            else { return .refused(reason: "stationUnknown") }
+            return .station(station)
         case .book(let itemId, _):
             return await resolveCatalog(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
         case .track(let itemId, _):

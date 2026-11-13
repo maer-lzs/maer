@@ -23,6 +23,8 @@ struct SharedLinkOpenerTests {
         var feedHolds: [String: String] = [:]
         var books: Set<String> = []
         var stayHome: Set<String> = []
+        var stations: [String: RadioStation] = [:]
+        var stationsAsked: [String] = []
 
         func opener() -> SharedLinkOpener {
             SharedLinkOpener(
@@ -33,7 +35,11 @@ struct SharedLinkOpenerTests {
                     if let id = feedHolds[feed] { known.insert(id) }
                     return loadsOnBrowse.contains(feed)
                 },
-                resolveCatalog: { [self] in books.contains($0) })
+                resolveCatalog: { [self] in books.contains($0) },
+                resolveStation: { [self] uuid in
+                    stationsAsked.append(uuid)
+                    return stations[uuid]
+                })
         }
     }
 
@@ -69,13 +75,19 @@ struct SharedLinkOpenerTests {
     func showStationAndBookOpenWhatTheyName() async throws {
         let ways = Ways()
         ways.books = ["lv:1234"]
+        let catalog = RadioStation(id: "radio:rb:\(Self.uuid)", name: "DLF", streamURL: "https://s.example/dlf")
+        ways.stations = [Self.uuid: catalog]
         let opener = ways.opener()
         #expect(await opener.outcome(for: try link(.show(feedURL: Self.feed, .init(title: "S")))) == .show(feedURL: Self.feed))
         let station = await opener.outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF", audioURL: "https://s.example/dlf"))))
-        #expect(station == .station(RadioStation(id: "radio:rb:\(Self.uuid)", name: "DLF", streamURL: "https://s.example/dlf")))
+        #expect(station == .station(catalog))
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:1234", .init(title: "B")))) == .book(itemId: "lv:1234"))
         #expect(await opener.outcome(for: try link(.book(itemId: "lv:9999", .init(title: "B")))) == .refused(reason: "bookUnknown"))
-        #expect(await opener.outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF")))) == .refused(reason: "stationWithoutStream"))
+        #expect(await opener.outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF")))) == .station(catalog),
+                "a station link without a stream opens the catalog's station")
+        let unknown = Ways()
+        #expect(await unknown.opener().outcome(for: try link(.station(uuid: Self.uuid, .init(title: "DLF", audioURL: "https://s.example/dlf"))))
+                == .refused(reason: "stationUnknown"))
     }
 
     @Test("Ein Musiktitel oeffnet sich, wenn der Katalog ihn findet: Jamendo und ein Lied von archive.org; ein unbekannter nicht")
