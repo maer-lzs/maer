@@ -2,28 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- CarPlay-Audio: Apples Freigabe fuer die App-ID wurde am 26.07.2026
-	     erteilt — seitdem gilt EINE Entitlements-Datei fuer Simulator UND
-	     Geraet. -->
+	<!-- CarPlay audio. The app ID carries Apple's grant, so one file serves
+	     the simulator and the device. -->
 	<key>com.apple.developer.carplay-audio</key>
 	<true/>
-	<!-- Geteilter Container fuer das Home-Screen-Widget (Snapshot + Cover).
-	     Forks: an eigene Bundle-Struktur anpassen (auch in
-	     WidgetShared.swift und MaerWidgets.entitlements). -->
+	<!-- Shared container for the home screen widget (snapshot and cover).
+	     Forks: match it to their own bundle structure (also in
+	     WidgetShared.swift and MaerWidgets.entitlements). -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.fm.maer.app</string>
 	</array>
-	<!-- iCloud Key-Value-Storage fuer den geraeteuebergreifenden Sync
-	     (Podcast-Fortschritt, Playlists, Wahlen, Hoerstatistik, Claim;
-	     NSUbiquitousKeyValueStore). Jeder Bestand hat lokale Wahrheit und
-	     veroeffentlicht sich beim ersten Abgleich in einen leeren Topf
-	     selbst. -->
+	<!-- iCloud key-value storage for the sync across devices (podcast
+	     progress, playlists, choices, listening statistics, claim;
+	     NSUbiquitousKeyValueStore). Every store keeps its local truth and
+	     publishes itself into an empty pot at its first sync. -->
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)fm.maer.app</string>
-	<!-- iCloud/CloudKit-Container. Aktuell NICHT vom Code genutzt (der
-	     Sync laeuft ueber KVS oben); registriert fuer kuenftige
-	     CloudKit-Daten. -->
+	<!-- iCloud and CloudKit container. The code does not use it; the sync
+	     runs over the key-value storage above. -->
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.fm.maer.app</string>
@@ -32,12 +29,18 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
-	<!-- Stille Pushes der Stand-Zone: sie BESCHLEUNIGEN den Abgleich im
-	     Vordergrund, sie tragen ihn nicht. Gemessen am 06.09.2026: im
-	     Vordergrund Median 1050 ms, am gesperrten Geraet kam im
-	     Sperrfenster nichts an (Apple drosselt stille Pushes). Die
-	     Zusage bleibt darum der Poll alle zehn Sekunden beim Spielen. -->
+	<!-- Silent pushes of the stand zone speed up the sync in the
+	     foreground; they do not carry it, because Apple throttles silent
+	     pushes on a locked device. The poll every ten seconds while playing
+	     carries it. -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal links: a link on maer.fm under /l opens the shared
+	     episode, show, station or audiobook in the app. The domain answers
+	     with site/.well-known/apple-app-site-association. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:maer.fm</string>
+	</array>
 </dict>
 </plist>

@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["WA68UQ6KAH.fm.maer.app"],
+        "components": [
+          {
+            "/": "/l",
+            "comment": "A shared episode, show, station or audiobook; what is shared stands after the # and never reaches the server."
+          }
+        ]
+      }
+    ]
+  }
+}
