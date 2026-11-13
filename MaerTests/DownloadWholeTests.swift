@@ -54,7 +54,13 @@ struct DownloadWholeTests {
         #expect(manager.contains("Self.isComplete(trackCount: tracks.count, present: Set(Self.trackMap(in: dir).keys))"),
                 "the marked title is judged by a count of its own")
         #expect(!manager.contains(".count >= tracks.count"), "a third form of whole by the number of files")
-        #expect(manager.components(separatedBy: "presentIndices(in: dir)").count - 1 == 2,
+        // The start scan lists a marked folder once, for the count of its
+        // tracks and its bytes.
+        let start = try #require(manager.range(of: "static func scanDownloads("))
+        let end = try #require(manager.range(of: "static func folderName(of", range: start.upperBound..<manager.endIndex))
+        let scan = String(manager[start.upperBound..<end.lowerBound])
+        #expect(scan.components(separatedBy: "folderFiles(dir)").count - 1 == 1, "the start scan does not list a folder once")
+        #expect(!scan.contains("presentIndices(in:") && !scan.contains("folderContents("),
                 "the start scan reads a folder more than once")
     }
 }

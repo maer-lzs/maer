@@ -328,13 +328,24 @@ final class DownloadManager {
         trackCount > 0 && Set(0..<trackCount).isSubset(of: present)
     }
 
+    /// The files directly in a download folder with their sizes at hand;
+    /// the hidden `.item-id` is no part of the download. One listing serves
+    /// the count of the tracks and the bytes.
+    nonisolated static func folderFiles(_ dir: URL) -> [URL] {
+        // bearable, because a folder that cannot be listed holds no track, and the title then counts as not whole
+        (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey],
+                                                      options: .skipsHiddenFiles)) ?? []
+    }
+
     /// The track indices whose file lies in a folder, by name only
     /// (`<index>.<ext>`): the count reads the folder and repairs nothing.
     nonisolated static func presentIndices(in dir: URL) -> Set<Int> {
-        // bearable, because a folder that cannot be listed holds no track, and the title then counts as not whole
-        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil,
-                                                                  options: .skipsHiddenFiles)) ?? []
-        return Set(files.compactMap { Int($0.deletingPathExtension().lastPathComponent) })
+        presentIndices(of: folderFiles(dir))
+    }
+
+    /// The track indices among a folder's files, by name only.
+    nonisolated static func presentIndices(of files: [URL]) -> Set<Int> {
+        Set(files.compactMap { Int($0.deletingPathExtension().lastPathComponent) })
     }
 
     /// `expected` holds the number of tracks of each marked title; a marked
@@ -363,14 +374,15 @@ final class DownloadManager {
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
-            if let count = expected[itemId], case let present = presentIndices(in: dir),
+            let files = folderFiles(dir)
+            if let count = expected[itemId], case let present = presentIndices(of: files),
                !isComplete(trackCount: count, present: present) {
                 Logger.library.error("DOWNLOADS marked but not whole, can be loaded again tracks=\(count) present=\(present.count)")
                 if let changed = lastChanged(dir) { remnants[itemId] = changed }
                 continue
             }
             ids.insert(itemId)
-            sizes[itemId] = folderContents(dir).bytes
+            sizes[itemId] = contents(of: files).bytes
         }
         return (ids, sizes, true, remnants)
     }
@@ -531,8 +543,11 @@ final class DownloadManager {
     /// The files directly in a download folder and their bytes; the hidden
     /// `.item-id` is no part of the download.
     nonisolated static func folderContents(_ dir: URL) -> (files: Int, bytes: Int64) {
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.fileSizeKey], options: .skipsHiddenFiles)) ?? []
+        contents(of: folderFiles(dir))
+    }
+
+    /// The number and bytes of a folder's files as `folderFiles` lists them.
+    nonisolated static func contents(of files: [URL]) -> (files: Int, bytes: Int64) {
         let bytes = files.reduce(Int64(0)) { sum, url in
             sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
         }
@@ -1033,7 +1048,13 @@ final class DownloadManager {
                 return
             }
         } else if !FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            // The first track's move into the folder fails on its own and
+            // fails the download; the line says why the folder is missing.
+            do {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            } catch {
+                Logger.library.error("DOWNLOADS folder not made: \(FailureReason.of(error), privacy: .public)")
+            }
         }
 
         // Carry mid-file resume data over from a pause. Used once, and ONLY
