@@ -4,24 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https:; media-src https:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https:; media-src https:; connect-src https:; base-uri 'none'; form-action 'none'">
+<meta name="apple-itunes-app" content="app-id=6799687154">
+<meta name="color-scheme" content="light dark">
 <title>Mär</title>
 <link rel="stylesheet" href="/l/l.css">
 </head>
 <body>
 <main>
-  <div class="card">
+  <header class="head">
     <img class="cover" id="cover" alt="" referrerpolicy="no-referrer" hidden>
-    <p class="kind" id="kind"></p>
-    <h1 id="title">Mär</h1>
-    <p class="subtitle" id="subtitle" hidden></p>
-    <p class="provider" id="provider" hidden></p>
-    <audio id="audio" controls preload="none" hidden></audio>
-    <p class="rights" id="rights" hidden></p>
-    <a class="source" id="source" rel="noreferrer noopener" hidden></a>
-    <a class="store" id="store" href="https://apps.apple.com/app/id6799687154"></a>
+    <div class="facts">
+      <p class="kind" id="kind"></p>
+      <h1 id="title">Mär</h1>
+      <p class="subtitle" id="subtitle" hidden></p>
+      <p class="provider" id="provider" hidden></p>
+      <audio id="audio" controls preload="none" hidden></audio>
+      <p class="rights" id="rights" hidden></p>
+      <a class="source" id="source" rel="noreferrer noopener" hidden></a>
+    </div>
+  </header>
+  <section class="about" id="about" hidden>
+    <p class="description" id="description"></p>
+    <button class="more" id="more" type="button" hidden></button>
+    <a class="website" id="website" rel="noreferrer noopener" hidden></a>
+  </section>
+  <section class="episodes" id="episodes" hidden>
+    <h2 id="episodes-title"></h2>
+    <ol class="list" id="list"></ol>
+  </section>
+  <footer class="store">
+    <a id="store" href="https://apps.apple.com/app/id6799687154"><img class="badge" id="badge" src="/l/app-store-badge.svg" alt="Download on the App Store" width="120" height="40"></a>
     <p class="hint" id="hint"></p>
-  </div>
+  </footer>
 </main>
 <script src="/l/l.js"></script>
 </body>

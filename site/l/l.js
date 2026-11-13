@@ -7,7 +7,9 @@
   var german = (navigator.language || "").toLowerCase().indexOf("de") === 0;
   var words = german ? {
     e: "Folge", s: "Sendung", r: "Radiosender", b: "Hörbuch", m: "Musiktitel",
-    store: "Mär im App Store",
+    store: "Laden im App Store",
+    more: "Mehr", website: "Webseite der Sendung", episodes: "Neueste Folgen",
+    play: "Abspielen", pause: "Anhalten", hours: "Std.", minutes: "Min.", locale: "de-DE",
     viaJamendo: "Creative Commons, via Jamendo",
     onJamendo: "Auf Jamendo anhören",
     onArchive: "Im Internet Archive ansehen",
@@ -16,7 +18,9 @@
     unreadable: "Dieser Link lässt sich nicht öffnen."
   } : {
     e: "Episode", s: "Show", r: "Radio station", b: "Audiobook", m: "Track",
-    store: "Get Mär on the App Store",
+    store: "Download on the App Store",
+    more: "More", website: "Website of the show", episodes: "Latest episodes",
+    play: "Play", pause: "Pause", hours: "h", minutes: "min", locale: "en-US",
     viaJamendo: "Creative Commons, via Jamendo",
     onJamendo: "Listen on Jamendo",
     onArchive: "View on the Internet Archive",
@@ -28,7 +32,7 @@
   // A link opened in the same tab changes only the fragment, and the page
   // does not load again by itself; it reads the new link from the start.
   window.addEventListener("hashchange", function () { location.reload(); });
-  document.getElementById("store").textContent = words.store;
+  document.getElementById("badge").alt = words.store;
 
   // The two forms of a free music track, as SharedLink checks them.
   var JAMENDO = /^jam:([0-9]+)$/;
@@ -172,4 +176,212 @@
     audio.hidden = false;
   }
   document.getElementById("hint").textContent = words.hint;
+
+  // A show or an episode reads its feed in this browser, from the address
+  // in the link; maer.fm learns nothing of it. Everything from the feed is
+  // set as text, no picture of it loads, and an address with access in it
+  // is left out. A feed that does not answer, or that its server does not
+  // let a page read, leaves the page as it is, without a word.
+  var FEED_LIMIT = 8 * 1024 * 1024;
+  if ((link.k === "s" || link.k === "e") && link.f.indexOf("https://") === 0) {
+    readFeed(link.f).then(function (feed) { if (feed) { showFeed(feed, link); } }, function () {});
+  }
+
+  function readFeed(address) {
+    return fetch(address, { credentials: "omit", referrerPolicy: "no-referrer" }).then(function (response) {
+      if (!response.ok) { return null; }
+      return response.text().then(function (text) {
+        return text.length > FEED_LIMIT ? null : parseFeed(text);
+      });
+    });
+  }
+
+  // The channel of an RSS feed, its description, website and items; null
+  // for anything else.
+  function parseFeed(text) {
+    var doc = new DOMParser().parseFromString(text, "application/xml");
+    if (doc.getElementsByTagName("parsererror").length > 0) { return null; }
+    var rss = doc.documentElement;
+    var channel = rss && rss.nodeName === "rss" ? child(rss, "channel") : null;
+    if (!channel) { return null; }
+    var items = [];
+    for (var node = channel.firstElementChild; node; node = node.nextElementSibling) {
+      if (node.nodeName === "item") { items.push(node); }
+    }
+    return {
+      description: plain(childText(channel, "itunes:summary") || childText(channel, "description")),
+      website: childText(channel, "link"),
+      items: items
+    };
+  }
+
+  function child(parent, name) {
+    for (var node = parent.firstElementChild; node; node = node.nextElementSibling) {
+      if (node.nodeName === name) { return node; }
+    }
+    return null;
+  }
+
+  function childText(parent, name) {
+    var node = child(parent, name);
+    return node ? node.textContent.trim() : "";
+  }
+
+  // The text of a description that may hold HTML. The HTML goes into a
+  // document of its own that is never shown, where nothing runs or loads,
+  // and only its text comes out, with its paragraphs and line breaks.
+  function plain(html) {
+    if (!html) { return ""; }
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    if (!doc.body) { return ""; }
+    var breaks = doc.body.querySelectorAll("br");
+    for (var i = 0; i < breaks.length; i++) { breaks[i].replaceWith("\n"); }
+    var blocks = doc.body.querySelectorAll("p, div, li");
+    for (var j = 0; j < blocks.length; j++) { blocks[j].append("\n\n"); }
+    return doc.body.textContent.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  // An address the page may open or play: https, or http for a website,
+  // and no access in it.
+  function usable(address, schemes) {
+    if (!address) { return false; }
+    for (var i = 0; i < schemes.length; i++) {
+      if (address.indexOf(schemes[i]) === 0) { return !carriesAccess(address); }
+    }
+    return false;
+  }
+
+  function showFeed(feed, link) {
+    if (link.k === "s") {
+      showAbout(feed.description, usable(feed.website, ["https://", "http://"]) ? feed.website : null);
+      showEpisodes(feed.items);
+    } else {
+      var item = null;
+      for (var i = 0; i < feed.items.length && !item; i++) {
+        if (childText(feed.items[i], "guid") === link.g) { item = feed.items[i]; }
+      }
+      if (item) {
+        showAbout(plain(childText(item, "content:encoded") || childText(item, "itunes:summary") || childText(item, "description")), null);
+      }
+    }
+  }
+
+  // The description, cut to a few lines with "More" when it is longer, and
+  // the website of the show.
+  function showAbout(text, website) {
+    if (!text && !website) { return; }
+    var about = document.getElementById("about");
+    var description = document.getElementById("description");
+    about.hidden = false;
+    if (text) {
+      description.textContent = text;
+      description.classList.add("short");
+      if (description.scrollHeight > description.clientHeight + 1) {
+        var more = document.getElementById("more");
+        more.textContent = words.more;
+        more.hidden = false;
+        more.addEventListener("click", function () {
+          description.classList.remove("short");
+          more.hidden = true;
+        });
+      } else {
+        description.classList.remove("short");
+      }
+    } else {
+      description.hidden = true;
+    }
+    if (website) {
+      var site = document.getElementById("website");
+      site.href = website;
+      site.textContent = words.website;
+      site.hidden = false;
+    }
+  }
+
+  // The ten newest episodes with date, length and a play button; an
+  // episode whose audio is not https or carries access is left out.
+  function showEpisodes(items) {
+    var rows = [];
+    for (var i = 0; i < items.length; i++) {
+      var enclosure = child(items[i], "enclosure");
+      var audio = enclosure ? enclosure.getAttribute("url") : "";
+      if (!usable(audio, ["https://"])) { continue; }
+      rows.push({
+        title: childText(items[i], "title"),
+        date: Date.parse(childText(items[i], "pubDate")),
+        length: childText(items[i], "itunes:duration"),
+        audio: audio
+      });
+    }
+    rows.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
+    rows = rows.slice(0, 10);
+    if (rows.length === 0) { return; }
+    document.getElementById("episodes-title").textContent = words.episodes;
+    var list = document.getElementById("list");
+    for (var j = 0; j < rows.length; j++) { list.appendChild(episodeRow(rows[j])); }
+    document.getElementById("episodes").hidden = false;
+  }
+
+  function episodeRow(row) {
+    var item = document.createElement("li");
+    var text = document.createElement("div");
+    text.className = "episode";
+    var title = document.createElement("p");
+    title.className = "episode-title";
+    title.textContent = row.title;
+    var meta = document.createElement("p");
+    meta.className = "episode-meta";
+    var parts = [];
+    if (row.date) {
+      parts.push(new Date(row.date).toLocaleDateString(words.locale, { day: "numeric", month: "short", year: "numeric" }));
+    }
+    var length = duration(row.length);
+    if (length) { parts.push(length); }
+    meta.textContent = parts.join(" · ");
+    text.appendChild(title);
+    text.appendChild(meta);
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "play";
+    button.textContent = "▶";
+    button.setAttribute("aria-label", words.play + ": " + row.title);
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", function () { playEpisode(row, button); });
+    item.appendChild(text);
+    item.appendChild(button);
+    return item;
+  }
+
+  // One player for the page: a row plays in it, and pressing the playing
+  // row again pauses it.
+  function playEpisode(row, button) {
+    var player = document.getElementById("audio");
+    if (player.src === row.audio && !player.paused) {
+      player.pause();
+      return;
+    }
+    var pressed = document.querySelectorAll(".play[aria-pressed=\"true\"]");
+    for (var i = 0; i < pressed.length; i++) { pressed[i].setAttribute("aria-pressed", "false"); pressed[i].textContent = "▶"; }
+    if (player.src !== row.audio) { player.src = row.audio; }
+    player.hidden = false;
+    player.play();
+    button.setAttribute("aria-pressed", "true");
+    button.textContent = "❚❚";
+    player.onpause = function () { button.setAttribute("aria-pressed", "false"); button.textContent = "▶"; };
+    player.onplay = function () { button.setAttribute("aria-pressed", "true"); button.textContent = "❚❚"; };
+  }
+
+  // "3600", "61:30" or "1:01:30" as "1 h 1 min" or "42 min".
+  function duration(raw) {
+    if (!raw || !/^[0-9:]+$/.test(raw)) { return ""; }
+    var seconds = 0;
+    var parts = raw.split(":");
+    for (var i = 0; i < parts.length; i++) { seconds = seconds * 60 + Number(parts[i]); }
+    if (!seconds) { return ""; }
+    var hours = Math.floor(seconds / 3600);
+    var minutes = Math.round((seconds % 3600) / 60);
+    if (hours && minutes === 60) { hours += 1; minutes = 0; }
+    if (!hours) { return Math.max(1, minutes) + " " + words.minutes; }
+    return hours + " " + words.hours + (minutes ? " " + minutes + " " + words.minutes : "");
+  }
 })();
