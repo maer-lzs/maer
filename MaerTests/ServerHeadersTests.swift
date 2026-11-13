@@ -135,12 +135,41 @@ struct ServerHeadersWayTests {
     }
 
     func headers(for origin: Host) -> MemoryKeys {
+        headers(port: Int(origin.port))
+    }
+
+    /// The headers of a server at a port of 127.0.0.1, in the witness's keys.
+    func headers(port: Int) -> MemoryKeys {
         let keys = MemoryKeys()
         ServerHeaders.$witness.withValue(keys.keys()) {
             _ = ServerHeaders.set([.init(name: Self.name, value: Self.value)],
-                                  for: URL(string: "http://127.0.0.1:\(origin.port)")!)
+                                  for: URL(string: "http://127.0.0.1:\(port)")!)
         }
         return keys
+    }
+
+    /// A port of 127.0.0.1 that is bound and never listens: a connection to
+    /// it is refused while the socket stays open, and no other listener can
+    /// take the port in that time. The caller closes the socket.
+    static func refusingPort() throws -> (socket: Int32, port: Int) {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw POSIXError(.EBADF) }
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = 0
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let bound = withUnsafeMutablePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { raw in
+                bind(fd, raw, length) == 0 && getsockname(fd, raw, &length) == 0
+            }
+        }
+        guard bound else {
+            close(fd)
+            throw POSIXError(.EADDRNOTAVAIL)
+        }
+        return (fd, Int(UInt16(bigEndian: address.sin_port)))
     }
 
     /// One request to `start` on `way`, with the witness's keys.
@@ -417,13 +446,11 @@ struct ServerHeadersWayTests {
 
     @Test("kann das Ende der Umleitungen eines Servers mit Headern nicht gefragt werden, gibt es keinen Strom und keine Anfrage mit den Headern")
     func anEndThatCannotBeAskedBuildsNoStream() async throws {
-        let origin = try Host(body: Data(), contentType: "audio/x-caf")
-        try await origin.start()
-        let keys = headers(for: origin)
-        let port = origin.port
-        // Nothing listens at the server's address any more.
-        origin.stop()
-        try await Task.sleep(for: .milliseconds(300))
+        // Nothing listens at the server's address, and nothing can start to
+        // while the port is held.
+        let (held, port) = try Self.refusingPort()
+        defer { close(held) }
+        let keys = headers(port: port)
         let track = try #require(URL(string: "http://127.0.0.1:\(port)/track"))
         let base = try #require(URL(string: "http://127.0.0.1:\(port)"))
         let (plan, end) = await ServerHeaders.$witness.withValue(keys.keys()) { () async -> (ServerHeaders.Stream, URLRequest?) in
