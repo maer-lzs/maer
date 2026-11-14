@@ -11,7 +11,7 @@ import Foundation
 /// Every tile of a mixed row says its kind, from the one glyph table;
 /// the storage lines carry the same glyphs.
 struct MixedRowGlyphTests {
-    @Test("Art und Platzhalter fragen dieselbe Zuordnung")
+    @Test("kind and placeholder ask the same mapping")
     func kindAndPlaceholderAgree() {
         let ids = ["rss:feed#e1", "abspod:p1:e1", "sub:album:a1", "jf:album:a1", "jf:book:b1",
                    "radio:s1", "lv:123", "gut:9", "lva:work", "lva:work#2", "jam:7", "li-1", "zzz:x"]
@@ -73,7 +73,7 @@ struct MixedRowGlyphTests {
         text.components(separatedBy: needle).count - 1
     }
 
-    @Test("jede gemischte Reihe traegt die Glyphe je Kachel, und jeder Mischer steht im Bestand", .needsTheSources)
+    @Test("every mixed row carries the glyph per tile, and every mixer is in the stock", .needsTheSources)
     func everyMixedRowMarksItsTiles() throws {
         let files = try Self.sources()
         #expect(files.count > 100, "the walk found only \(files.count) files")
@@ -95,7 +95,7 @@ struct MixedRowGlyphTests {
         }
     }
 
-    @Test("die Speicher-Zeilen tragen die Glyphe ihrer Art, Klassik heisst Musik", .needsTheSources)
+    @Test("the store rows carry the glyph of their kind, classical is called music", .needsTheSources)
     func theStorageLinesAndTheClassicalPlaceholder() throws {
         let settings = try Self.code("Sources/Views/SettingsView.swift")
         #expect(settings.contains("Label(kind.label, systemImage: kind.glyphKind.systemImage)"),

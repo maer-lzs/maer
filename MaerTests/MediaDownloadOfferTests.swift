@@ -8,31 +8,31 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// „Darf hier ueberhaupt geladen werden?" hatte keinen Platz, und der ganze
-/// Baum fragte stattdessen „liegt es schon hier?". Das liest sich im Normalfall
-/// gleich und in genau den Faellen anders, auf die es ankommt.
+/// „Darf hier ueberhaupt geladen werden?" had no place, and the whole
+/// tree asked „liegt es schon hier?" instead. In the normal case the two read
+/// the same, and differently in exactly the cases that matter.
 ///
-/// Der Ausloeser war eine Regression von mir: das Loesch-Tor lernte zu fragen,
-/// ob WIR etwas geholt haben, und damit bot ein importiertes lokales Hoerbuch
-/// nicht mehr „Download loeschen" an (richtig) sondern „Save for Offline"
-/// (falsch, und mit dem Bibliotheks-Anbieter fuer eine Datei, die er nicht
-/// kennt). Ein totes Angebot gegen ein sinnloses getauscht.
+/// The trigger was a regression of mine: the delete gate learned to ask
+/// whether WE fetched something, and so an imported local audiobook
+/// no longer offered „Download loeschen" (correct) but „Save for Offline"
+/// (wrong, and with the library provider for a file it does not
+/// know). A dead offer traded for a pointless one.
 struct MediaDownloadOfferTests {
-    @Test("Nur eine Quelle, die laden KANN, bekommt das Angebot")
+    @Test("Only a source that CAN download gets the offer")
     func onlyADownloadableSourceIsOffered() {
         #expect(MediaDownloadOffer.isPossible([.downloadable]))
         #expect(MediaDownloadOffer.isPossible([.progressSync, .downloadable, .bookmarks]))
-        // Importierte lokale Dateien: liegen da, koennen nicht geladen werden.
+        // Imported local files: they are there, cannot be downloaded.
         #expect(!MediaDownloadOffer.isPossible([.alwaysLocal]))
-        // Freie Kataloge und Radio tragen gar keine.
+        // Free catalogs and radio carry none at all.
         #expect(!MediaDownloadOffer.isPossible([]))
         #expect(!MediaDownloadOffer.isPossible([.remoteSearch]))
     }
 
-    /// Die Anbieter selbst, damit die Wahrheitstafel oben nicht an
-    /// erfundenen Mengen haengt: was der Baum wirklich fuehrt.
+    /// The providers themselves, so that the truth table above does not hang on
+    /// invented sets: what the tree really carries.
     @MainActor
-    @Test("Die echten Anbieter antworten wie erwartet")
+    @Test("The real providers answer as expected")
     func therealProvidersAnswerAsExpected() {
         #expect(!MediaDownloadOffer.isPossible(LocalProvider.shared.capabilities),
                 "eine importierte Datei darf kein Download-Angebot bekommen")
@@ -43,18 +43,18 @@ struct MediaDownloadOfferTests {
         #expect(MediaDownloadOffer.isPossible(JellyfinProvider.shared.capabilities))
     }
 
-    /// Der Bestand: jede Stelle, die einen Download ANBIETET, fragt vorher.
-    /// Gezaehlt wird der Aufruf, der den Download startet; wer einen anbietet,
-    /// ohne die Frage im selben Zweig zu stellen, faellt auf.
-    @Test("Kein Download-Angebot ohne die Frage, ob es geht", .needsTheSources)
+    /// The stock: every place that OFFERS a download asks first.
+    /// The call that starts the download is counted; whoever offers one
+    /// without asking the question in the same branch stands out.
+    @Test("No download offer without the question whether it works", .needsTheSources)
     func noOfferWithoutTheQuestion() throws {
-        // Diese starten einen Download, OHNE ihn anzubieten: sie handeln auf
-        // eine Entscheidung hin, die schon gefallen ist.
+        // These start a download WITHOUT offering it: they act on
+        // a decision that has already been made.
         //
-        // Die Detailseite stand hier zuerst mit dem Grund „das Angebot
-        // entscheidet der Abschnitt". Das war eine BEHAUPTUNG und nicht
-        // gemessen: ihr letzter Zweig bot „Save Offline" ungeprueft an. Eine
-        // Ausnahme, die man nicht nachgesehen hat, ist ein Loch mit Begruendung.
+        // The detail page stood here first with the reason
+        // „das Angebot entscheidet der Abschnitt". That was a CLAIM and not
+        // measured: its last branch offered „Save Offline" unchecked. An
+        // exception nobody has looked into is a hole with a justification.
         let actsWithoutOffering: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
                 "Selbstheilung: fragt `.downloadable` selbst, direkt daneben, und bietet nichts an",

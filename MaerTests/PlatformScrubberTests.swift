@@ -12,7 +12,7 @@ import Foundation
 /// thumb, no chapter ticks, it grows while held, and its arithmetic
 /// lives in `ScrubberMath`.
 struct PlatformScrubberTests {
-    @Test("der Balken ist eine Form ohne Griff und ohne Teilstriche, er waechst beim Halten", .needsTheSources)
+    @Test("the bar is a shape without a handle and without tick marks, it grows while held", .needsTheSources)
     func theBarHasNoThumbAndNoTicks() throws {
         let read = { (path: String) in
             SyncContractFenceTests.stripped(
@@ -39,7 +39,7 @@ struct PlatformScrubberTests {
     /// The three calculations were private members of the view, so nothing
     /// could reach them. Each one clamps and one of them divides, which is
     /// the half of this control that can actually be wrong.
-    @Test("die Rechnung haelt ihre Kanten")
+    @Test("the calculation holds its edges")
     func theArithmeticHoldsItsEdges() {
         let track = 0.0...120.0
         #expect(ScrubberMath.fraction(of: 60, in: track) == 0.5)
@@ -58,7 +58,7 @@ struct PlatformScrubberTests {
     /// red probe that said so. Only a value ON the bound divides zero by
     /// zero, and NaN walks straight through `min` and `max` in Swift,
     /// because every comparison with it is false.
-    @Test("eine Spur ohne Laenge teilt nicht")
+    @Test("a track without length does not divide")
     func anEmptyTrackDoesNotDivide() {
         #expect(ScrubberMath.fraction(of: 7, in: 7.0...7.0).isNaN == false,
                 "0 durch 0 ist NaN, und NaN geht durch jede Klemmung hindurch")
@@ -70,7 +70,7 @@ struct PlatformScrubberTests {
     /// `max(geo.size.width, 1)`. A safeguard kept by whoever calls is a claim
     /// about every future caller; this case is what makes it a property of
     /// the calculation instead.
-    @Test("eine Breite von null wird hier abgefangen, nicht beim Rufer")
+    @Test("a width of zero is caught here, not at the caller")
     func zeroWidthIsCaughtHereAndNotByTheCaller() {
         let track = 10.0...70.0
         #expect(ScrubberMath.value(atX: 5, width: 0, in: track) == 10)
@@ -83,7 +83,7 @@ struct PlatformScrubberTests {
     /// The adjustable action is how somebody moves this control without
     /// seeing it, so its step has to arrive somewhere and to stop at both
     /// ends.
-    @Test("ein Schritt kommt an und laeuft an beiden Enden nicht hinaus")
+    @Test("a step arrives and does not run past either end")
     func aStepArrivesAndStopsAtBothEnds() {
         let track = 0.0...200.0
         #expect(ScrubberMath.step(in: track) == 10)
@@ -95,7 +95,7 @@ struct PlatformScrubberTests {
 
     /// On a short track a twentieth is a fraction of a second, and a control
     /// that moves by that feels dead to somebody stepping through it.
-    @Test("auf einer kurzen Spur ist ein Schritt mindestens eine Sekunde")
+    @Test("on a short track a step is at least one second")
     func onAShortTrackAStepIsAtLeastASecond() {
         #expect(ScrubberMath.step(in: 0.0...10.0) == 1)
         #expect(ScrubberMath.stepped(from: 0, in: 0.0...10.0, increasing: true) == 1)

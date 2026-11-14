@@ -15,12 +15,12 @@ import Testing
 struct NavidromeIDTests {
     nonisolated static let cases = SharedCases.cases("kennungen", area: "navidrome")
 
-    @Test("gemeinsame Faelle: kennungen traegt 23 Faelle")
+    @Test("shared cases: kennungen carries 23 cases")
     func casesLoaded() {
         #expect(Self.cases.count == 23)
     }
 
-    @Test("gemeinsame Faelle: jede ID wird, was die Datei sagt", arguments: cases)
+    @Test("shared cases: every ID becomes what the file says", arguments: cases)
     func everyCaseAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let expect = try c.value("expect")
@@ -43,7 +43,7 @@ struct NavidromeIDTests {
         }
     }
 
-    @Test("der Pruefstand: 4143 Paare, davon 1741 geaendert")
+    @Test("the test bench: 4143 pairs, of which 1741 changed")
     func theBenchCountsHold() throws {
         let lists = Self.cases.filter { $0.ask == "canonical-list" }
         try #require(lists.count == 4)
@@ -59,7 +59,7 @@ struct NavidromeIDTests {
         #expect(changed == 1741)
     }
 
-    @Test("auf einer neuen ID ist die Vorschrift die Identitaet, an allen vier Formen")
+    @Test("on a new ID the rule is the identity, in all four forms")
     func newIdsStayAsTheyAre() throws {
         let olds = ["5cLJPkLA5DK2BADhoeotPk", "zzzzzzzzzzzzzzzzzzzzzz",
                     "e3b7fc2ae9447bbec37a13bf916e3cf6", "f47ac10b-58cc-4372-a567-0e02b2c3d479"]
@@ -73,7 +73,7 @@ struct NavidromeIDTests {
         #expect(bench.allSatisfy { NavidromeID.canonical($0) == $0 })
     }
 
-    @Test("die Grenze 128 Bit: genau 128 Bit passen, eins mehr nicht")
+    @Test("the 128-bit limit: exactly 128 bits fit, one more does not")
     func theBoundary() {
         #expect(NavidromeID.base62(Array("7N42dgm5tFLK9N8MT7fHC7".utf8)) != .overflows)
         #expect(NavidromeID.base62(Array("7N42dgm5tFLK9N8MT7fHC8".utf8)) == .overflows)
@@ -82,7 +82,7 @@ struct NavidromeIDTests {
 
     // MARK: - When the rule applies
 
-    @Test("die Regel: nur Navidrome ab 0.64.0", arguments: [
+    @Test("the rule: only Navidrome from 0.64.0", arguments: [
         ("navidrome", "0.64.0", true),
         ("navidrome", "0.64.2 (38dc2727)", true),
         ("Navidrome", "0.65.1", true),
@@ -100,7 +100,7 @@ struct NavidromeIDTests {
         #expect(NavidromeIDRule.applies(type: type, version: version) == applies, "\(type) \(version)")
     }
 
-    @Test("die Regel: fehlender Typ, fehlende oder unlesbare Fassung fassen nichts an")
+    @Test("the rule: a missing type, a missing or unreadable version touch nothing")
     func missingOrUnreadable() {
         #expect(!NavidromeIDRule.applies(type: nil, version: "0.64.0"))
         #expect(!NavidromeIDRule.applies(type: "navidrome", version: nil))
@@ -111,7 +111,7 @@ struct NavidromeIDTests {
 
     // MARK: - The version is kept per server
 
-    @Test("die Fassung wird je Server gemerkt, leer schreibt nichts")
+    @Test("the version is remembered per server, empty writes nothing")
     func theVersionIsKept() {
         let server = "navidrome-version-\(UUID().uuidString).example/music"
         defer { AppStorageKeys.set(nil, for: "subsonicServerVersion.\(server)") }
@@ -123,7 +123,7 @@ struct NavidromeIDTests {
         #expect(SubsonicClient.reportedVersion(server: server) == "0.64.2 (38dc2727)")
     }
 
-    @Test("die Antwort liest serverVersion aus dem OpenSubsonic-Kopf")
+    @Test("the answer reads serverVersion from the OpenSubsonic head")
     func theBodyReadsTheVersion() throws {
         let json = #"{"subsonic-response":{"status":"ok","version":"1.16.1","type":"navidrome","serverVersion":"0.64.2 (38dc2727)","openSubsonic":true}}"#
         let body = try JSONDecoder().decode(SubsonicEnvelope.self, from: Data(json.utf8)).subsonicResponse

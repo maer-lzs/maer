@@ -16,7 +16,7 @@ struct MusicSourceRuleTests {
     static let ids = ["jf:album:1", "jf:artist:2", "jf:song:3", "sub:album:1", "sub:artist:2",
                       "sub:song:3", "maer-playlist-42", ""]
 
-    @Test("mit EINER aktiven Musikquelle antwortet die Tuer je Eintrag dieselbe Quelle wie das Geraet")
+    @Test("with ONE active music source the door answers per entry the same source as the device")
     func withOneSourceTheDoorAnswersTheDevice() {
         for (subsonic, jellyfin) in [(true, false), (false, true)] {
             let device = MusicSourceRule.device(subsonicServesMusic: subsonic, jellyfinServesMusic: jellyfin)
@@ -31,7 +31,7 @@ struct MusicSourceRuleTests {
                 "ohne Musikquelle wie bisher")
     }
 
-    @Test("mit ZWEI Quellen gewinnt fuer einen Eintrag sein eigener Server")
+    @Test("with TWO sources an entry's own server wins")
     func withTwoSourcesTheItemsServerWins() {
         let device = MusicSourceRule.device(subsonicServesMusic: true, jellyfinServesMusic: true)
         #expect(device == .subsonic, "das Geraet: vorerst Subsonic, die Frage von F5b")
@@ -43,7 +43,7 @@ struct MusicSourceRuleTests {
 
     /// The search target keeps the hit's item id, so the page that opens it
     /// resolves the artist at the hit's own server.
-    @Test("ein Kuenstler-Treffer traegt seine Kennung bis zum Ziel")
+    @Test("an artist hit carries its identifier all the way to the target")
     func anArtistHitCarriesItsIdToTheTarget() {
         let hit = SearchResult(id: "jf:artist:9", kind: .artist, title: "A", subtitle: nil, coverURL: nil)
         var asked: [String] = []
@@ -60,7 +60,7 @@ struct MusicSourceRuleTests {
     }
 
     /// The single-item questions ask the door, whoever the receiver.
-    @Test("Spieler-Kuenstler und Such-Ziel fragen die Tuer je Eintrag", .needsTheSources)
+    @Test("player artist and search target ask the door per entry", .needsTheSources)
     func thePlayerAndTheSearchTargetAskTheDoor() throws {
         func code(_ path: String) throws -> String {
             try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8)
@@ -79,7 +79,7 @@ struct MusicSourceRuleTests {
 
     // MARK: One source or both
 
-    @Test("wer die Listen bedient: eine Quelle oder beide")
+    @Test("who serves the lists: one source or both")
     func servingTable() {
         #expect(MusicSourceRule.serving(subsonicServesMusic: true, jellyfinServesMusic: false) == .one(.subsonic))
         #expect(MusicSourceRule.serving(subsonicServesMusic: false, jellyfinServesMusic: true) == .one(.jellyfin))
@@ -88,7 +88,7 @@ struct MusicSourceRuleTests {
         #expect(MusicSourceRule.serving(subsonicServesMusic: true, jellyfinServesMusic: true) == .both)
     }
 
-    @Test("mit EINER Quelle ist die Antwort genau der Anbieter von vorher")
+    @Test("with ONE source the answer is exactly the provider from before")
     @MainActor
     func withOneSourceItIsTheSameObject() {
         let session = AppSession.shared
@@ -98,7 +98,7 @@ struct MusicSourceRuleTests {
 
     // MARK: Artists and playlists carry their source
 
-    @Test("Kuenstler und Playlists tragen ihre Kennung mit Namensraum, und die Tuer findet ihren Server")
+    @Test("artists and playlists carry their identifier with namespace, and the door finds their server")
     func artistsAndPlaylistsCarryTheirSource() throws {
         // Decoded from the wire, the way each provider receives them.
         func wire<T: Decodable>(_ json: String) throws -> T { try JSONDecoder().decode(T.self, from: Data(json.utf8)) }
@@ -118,7 +118,7 @@ struct MusicSourceRuleTests {
         }
     }
 
-    @Test("mit EINER Quelle fuehrt die Kennung eines Kuenstlers oder einer Playlist zur Quelle des Geraets")
+    @Test("with ONE source the identifier of an artist or a playlist leads to the device's source")
     func withOneSourceTheCarriedIdIsTheDevice() {
         let pairs: [(MusicSourceRule.Server, String, String)] = [
             (.subsonic, SubsonicProvider.itemId(artistId: "1"), SubsonicProvider.itemId(playlistId: "1")),
@@ -140,7 +140,7 @@ struct MusicSourceRuleTests {
         }.count
     }
 
-    @Test("ausserhalb der Anbieter baut niemand eine Kennung aus einer rohen Nummer", .needsTheSources)
+    @Test("outside the providers nobody builds an identifier from a raw number", .needsTheSources)
     func noRawIdBuildsOutsideTheProviders() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")
         var read = 0

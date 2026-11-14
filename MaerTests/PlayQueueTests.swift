@@ -72,25 +72,25 @@ struct PlayQueueTests {
         #expect(q.isEmpty)
     }
 
-    // GEWANDERT: `setUpNext` schrieb den Sammlungs-Rest in DIE Queue und
-    // warf damit die Hand-Bestellungen weg. Der Rest ist jetzt KONTEXT
-    // (eigene Struktur, eigene Lebensdauer); die Ersetzen-Semantik samt
-    // Radio-Filter lebt dort weiter, und die Bestellungen ueberleben jeden
-    // Sammlungs-Start.
-    @Test("ein Sammlungs-Start ersetzt den Kontext und laesst die Bestellungen leben")
+    // MOVED: `setUpNext` wrote the collection remainder into THE queue and
+    // thereby threw away the hand orders. The remainder is now CONTEXT
+    // (own structure, own lifetime); the replace semantics including the
+    // radio filter live on there, and the orders survive every
+    // collection start.
+    @Test("a collection start replaces the context and lets the orders live")
     func collectionStartSparesTheOrders() throws {
         let q = queue()
         ["bestellt1", "bestellt2"].forEach { q.playLast($0) }
         let context = PlaybackContext()
         context.replace(ids: ["s1", "s2", "radio:x", "s3"], source: "Album A")
-        // Rot-Probe gegen den Ist-Zustand von gestern: die Bestellungen
-        // waeren mit setUpNext ueberschrieben worden.
+        // Red probe against yesterday's actual state: the orders
+        // would have been overwritten by setUpNext.
         #expect(q.ids == ["bestellt1", "bestellt2"],
                 "der Sammlungs-Start hat die Bestellungen angefasst")
         #expect(context.ids == ["s1", "s2", "s3"], "Radio faehrt nie mit")
         #expect(context.sourceTitle == "Album A")
-        // Naechster Start ersetzt; einzelner Start loescht; Quelle faellt
-        // mit dem letzten Eintrag.
+        // Next start replaces; single start deletes; source falls
+        // with the last entry.
         context.replace(ids: ["t1"], source: "Album B")
         #expect(context.ids == ["t1"] && context.sourceTitle == "Album B")
         context.remove("t1")
@@ -100,42 +100,42 @@ struct PlayQueueTests {
         #expect(context.isEmpty && context.sourceTitle == nil)
     }
 
-    /// Der Fall, woertlich, an der puren Kaskade: Musik-Zufall laeuft
-    /// (Kontext voll), ein Podcast wird angetippt (Kontext stirbt — das
-    /// prueft der Koordinator-Pfad; hier steht die Regel danach), die Folge
-    /// endet: NAECHSTE FOLGE (Stufe 3 des Aufrufers), nie die alte Musik.
-    /// Und: eine Bestellung schlaegt beides, medienuebergreifend.
-    @Test("Bestellung vor Kontext vor Fortsetzung, und toter Kontext gewinnt nie")
+    /// The case, verbatim, at the pure cascade: music shuffle is running
+    /// (context full), a podcast is tapped (context dies, which is
+    /// checked by the coordinator path; here stands the rule after it), the episode
+    /// ends: NEXT EPISODE (stage 3 of the caller), never the old music.
+    /// And: an order beats both, across media.
+    @Test("order before context before continuation, and a dead context never wins")
     func advanceOrderIsOrdersThenContext() {
-        // Bestellung UND Kontext da: die Bestellung gewinnt.
+        // Order AND context present: the order wins.
         var hit = PlaybackAdvance.next(queueIds: ["rss:bestellt"],
                                        contextIds: ["sub:song:alt1"],
                                        isPlayable: { _ in true }, resolves: { _ in true })
         #expect(hit?.id == "rss:bestellt" && hit?.origin == .order)
-        // Nur Kontext: der Kontext.
+        // Only context: the context.
         hit = PlaybackAdvance.next(queueIds: [],
                                    contextIds: ["sub:song:alt1", "sub:song:alt2"],
                                    isPlayable: { _ in true }, resolves: { _ in true })
         #expect(hit?.id == "sub:song:alt1" && hit?.origin == .context)
-        // Der Fall: Kontext ist geleert (der Podcast-Tipp hat ihn
-        // getoetet), keine Bestellung — die Kaskade antwortet NICHTS, und
-        // der Aufrufer geht in die medium-eigene Fortsetzung (Binge).
+        // The case: context is emptied (the podcast tap killed
+        // it), no order: the cascade answers NOTHING, and
+        // the caller goes into the medium's own continuation (binge).
         hit = PlaybackAdvance.next(queueIds: [], contextIds: [],
                                    isPlayable: { _ in true }, resolves: { _ in true })
         #expect(hit == nil, "die alte Musik haette gewonnen")
-        // Unspielbarer Kontext blockiert die Antwort nicht.
+        // Unplayable context does not block the answer.
         hit = PlaybackAdvance.next(queueIds: [], contextIds: ["tot", "sub:song:ok"],
                                    isPlayable: { $0 != "tot" }, resolves: { _ in true })
         #expect(hit?.id == "sub:song:ok")
     }
 
-    /// Der Auftrags-Fall WOERTLICH an der ganzen Kaskade: vor Stunden
-    /// Musik-Zufall gestartet, dann ein Podcast angetippt (der Tipp toetet
-    /// den Musik-Kontext), die Folge endet — es spielt die NAECHSTE FOLGE,
-    /// nie die alte Musik. Die Rot-Probe daneben zeigt, dass genau das
-    /// Toeten den Fall traegt: mit ueberlebendem Kontext haette die Musik
-    /// gewonnen.
-    @Test("Zufall, dann Podcast, dann Ende: die naechste Folge spielt, nie die alte Musik")
+    /// The assignment case VERBATIM at the whole cascade: hours ago
+    /// music shuffle started, then a podcast was tapped (the tap kills
+    /// the music context), the episode ends: the NEXT EPISODE plays,
+    /// never the old music. The red probe next to it shows that exactly the
+    /// killing carries the case: with a surviving context the music would have
+    /// won.
+    @Test("shuffle, then podcast, then end: the next episode plays, never the old music")
     func theReportedCaseVerbatim() {
         func aufloesen(kontext: [String]) -> (id: String, origin: PlaybackAdvance.Origin)? {
             PlaybackAdvance.resolveNext(
@@ -146,24 +146,24 @@ struct PlayQueueTests {
                 bingeNext: { _ in "rss:folge2" },
                 seriesEnabled: false, seriesNext: { _ in nil })
         }
-        // Der Tipp hat den Kontext getoetet: die naechste Folge spielt.
+        // The tap killed the context: the next episode plays.
         let hit = aufloesen(kontext: [])
         #expect(hit?.id == "rss:folge2" && hit?.origin == .binge)
-        // Rot-Probe: haette der Kontext ueberlebt, gewaenne die alte Musik
-        // (der Ist-Zustand vor dem Neubau, als der Sammlungs-Rest in der
-        // Queue lag und Stufe 1 gewann).
+        // Red probe: had the context survived, the old music would win
+        // (the actual state before the rebuild, when the collection remainder lay in the
+        // queue and stage 1 won).
         let alt = aufloesen(kontext: ["sub:song:altemusik"])
         #expect(alt?.id == "sub:song:altemusik",
                 "die Probe saehe den Unterschied nicht")
-        // Und: eine BESTELLUNG schlaegt das Binge (der Abendplan gilt).
+        // And: an ORDER beats the binge (the evening plan holds).
         let bestellt = PlaybackAdvance.resolveNext(
             after: "rss:folge1", queueIds: ["book:krimi"], contextIds: [],
             isPlayable: { _ in true }, resolves: { _ in true },
             isPodcast: { _ in true }, bingeNext: { _ in "rss:folge2" },
             seriesEnabled: false, seriesNext: { _ in nil })
         #expect(bestellt?.id == "book:krimi" && bestellt?.origin == .order)
-        // Buecher: die Serie antwortet nur mit eingeschalteter Vorgabe,
-        // und Podcasts fallen NIE in die Serien-Stufe durch.
+        // Books: the series answers only with the default switched on,
+        // and podcasts NEVER fall through into the series stage.
         let serieAus = PlaybackAdvance.resolveNext(
             after: "buch1", queueIds: [], contextIds: [],
             isPlayable: { _ in true }, resolves: { _ in true },
@@ -178,7 +178,7 @@ struct PlayQueueTests {
         #expect(podcastOhneBinge == nil, "ein Podcast fiel in die Serien-Stufe durch")
     }
 
-    // MARK: - Cross-media auto-continue (Teil-1 core journey)
+    // MARK: - Cross-media auto-continue (Part 1 core journey)
 
     /// Proves the core journey "enqueue mixed types → auto-continue across the
     /// media boundary" deterministically: a book, an album and an episode share

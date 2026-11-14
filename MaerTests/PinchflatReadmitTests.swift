@@ -13,7 +13,7 @@ import Foundation
 /// read the mirror's total and let a channel the server had deleted vanish
 /// from the hidden list as long as any other channel stood.
 struct PinchflatReadmitTests {
-    @Test("ein Kanal, den der Server nicht mehr fuehrt, steht nach dem Spiegel in keiner Menge")
+    @Test("a channel the server no longer carries is in no set after the mirror")
     func aDeletedChannelIsInNeitherSet() {
         // Server lists A and B, the group mirrors A and B, X was just
         // unhidden: the diff neither subscribes nor unsubscribes X, so the
@@ -26,7 +26,7 @@ struct PinchflatReadmitTests {
         #expect(!members.contains("https://p/x.xml"), "X is not a member, whatever the size")
     }
 
-    @Test("das Ergebnis der Wiederaufnahme: Mitglied, sonst der Grund (Schalter, Liste)")
+    @Test("the result of the readmission: member, otherwise the reason (switch, list)")
     func theOutcomeIsMembershipOrTheReason() {
         func outcome(_ sourceOn: Bool, _ active: Bool, server: Bool = true, _ member: Bool) -> PinchflatMirror.ReadmitOutcome {
             PinchflatMirror.readmitOutcome(sourceOn: sourceOn, active: active, serverKnown: server, member: member)
@@ -36,18 +36,18 @@ struct PinchflatReadmitTests {
         #expect(outcome(false, false, false) == .switchedOff)
         #expect(outcome(false, false, true) == .switchedOff,
                 "with the source off nothing joined, whatever the store still holds")
-        // Der Schalter ist AN, nur der Reiter ist aus. Vorher bekam die
-        // Person hier „die Quelle ist ausgeschaltet" ueber einen Schalter,
-        // den sie gerade angelassen hatte.
+        // The switch is ON, only the tab is off. Before, the
+        // person here got „die Quelle ist ausgeschaltet" about a switch
+        // they had just left on.
         #expect(outcome(true, false, true) == .areaOff)
         #expect(outcome(true, false, false) == .areaOff,
                 "ohne den Bereich entscheidet die Mitgliedschaft nicht mehr")
-        // Ohne eingetragenen Server fragt der Spiegel keine Liste; die
-        // Antwort nennt den fehlenden Server, nie die Liste des Servers.
+        // Without a registered server the mirror asks no list; the
+        // answer names the missing server, never the list of the server.
         #expect(outcome(true, true, server: false, false) == .noServer)
         #expect(outcome(true, true, server: false, true) == .noServer,
                 "without a server nothing was asked, whatever the store still holds")
-        // Schalter und Bereich stehen davor: sie sind der naehere Grund.
+        // Switch and area come first: they are the nearer reason.
         #expect(outcome(false, false, server: false, false) == .switchedOff)
         #expect(outcome(true, false, server: false, false) == .areaOff)
     }
@@ -55,7 +55,7 @@ struct PinchflatReadmitTests {
     /// The page asks the membership of the channel, not the sum, and gates
     /// the button while a pass runs: a source fence, because the page is a
     /// view and the decision above is what it asks.
-    @Test("die Seite fragt die Mitgliedschaft dieses Kanals und sperrt den Knopf waehrend des Durchgangs", .needsTheSources)
+    @Test("the page asks the membership of this channel and locks the button during the pass", .needsTheSources)
     func thePageAsksTheMembershipAndGatesTheButton() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/PodcastSourceView.swift"), encoding: .utf8)
@@ -71,7 +71,7 @@ struct PinchflatReadmitTests {
     /// One question, one answer: a Pinchflat server is set up when its
     /// address has a host. Two predicates (`!= nil` and `?.host`) answered
     /// differently for an address without a host.
-    @Test("Pinchflat ist eingerichtet, wenn die Adresse einen Host hat; die Frage steht einmal", .needsTheSources)
+    @Test("Pinchflat is set up when the address has a host; the question exists once", .needsTheSources)
     func configuredIsOneQuestion() throws {
         #expect(PinchflatClient.isConfigured(URL(string: "https://tube.example.test")))
         #expect(!PinchflatClient.isConfigured(URL(string: "tube")), "an address without a host is none")

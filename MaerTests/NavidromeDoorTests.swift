@@ -8,17 +8,17 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Tuer: jede gespeicherte `sub:`-Kennung erreicht den Server in der
-/// Form, auf die er antwortet. Navidrome 0.64 hat Songs und Playlisten neue
-/// Kennungen gegeben und beantwortet eine alte mit Fehler 70; was vor dem
-/// Update gespeichert wurde, traegt die alte.
+/// The door: every stored `sub:` identifier reaches the server in the
+/// form it answers to. Navidrome 0.64 gave songs and playlists new
+/// identifiers and answers an old one with error 70; what was stored before the
+/// update carries the old one.
 struct NavidromeDoorTests {
     /// A song id from before 0.64 that no longer fits 128 bits, and the id
     /// Navidrome gave it (both from the shared case file).
     static let old = "7N42dgm5tFLK9N8MT7fHC8"
     static let new = "4lNKf50OxNrXbwJuGRpSfD"
 
-    @Test("die Tuer rechnet um, wenn die Regel gilt, und sonst nicht")
+    @Test("the door converts when the rule applies, and not otherwise")
     func theDoorRewritesWhenTheRuleHolds() {
         #expect(SubsonicProvider.id("sub:song:\(Self.old)", kind: "song", canonical: true) == Self.new)
         #expect(SubsonicProvider.id("sub:playlist:\(Self.old)", kind: "playlist", canonical: true) == Self.new)
@@ -33,7 +33,7 @@ struct NavidromeDoorTests {
                 "twice through the door is once")
     }
 
-    @Test("ob die Regel gilt, sagt der gemerkte Typ und die gemerkte Fassung des eingetragenen Servers")
+    @Test("whether the rule applies is told by the remembered type and the remembered version of the registered server")
     @MainActor
     func theRuleFollowsTheServerSetUpHere() throws {
         let address = "https://door-\(UUID().uuidString).example/music"
@@ -58,7 +58,7 @@ struct NavidromeDoorTests {
     /// The first answer after the update can be the refusal of an old id.
     /// OpenSubsonic names its server in that envelope too, and that is what
     /// turns the new ids on.
-    @Test("auch ein Fehler-Umschlag lehrt Typ und Fassung")
+    @Test("an error envelope also teaches type and version")
     func anErrorEnvelopeTeachesTheVersion() throws {
         let server = "door-error-\(UUID().uuidString).example/rest"
         defer {
@@ -80,7 +80,7 @@ struct NavidromeDoorTests {
     /// The order and the one door, held in the sources: the client learns
     /// before it looks at an error, and no stored id reaches the server past
     /// the door.
-    @Test("die Naht: zuerst lernen, dann der Fehler; keine rohe Kennung an der Tuer vorbei", .needsTheSources)
+    @Test("the seam: learn first, then the error; no raw identifier past the door", .needsTheSources)
     func theSeam() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -116,7 +116,7 @@ struct NavidromeDoorTests {
 
     // MARK: - Bookmarks: an id compared, not sent
 
-    @Test("die kanonische Item-Kennung: nur der rohe Teil einer sub:-Kennung, und nur wenn die Regel gilt")
+    @Test("the canonical item identifier: only the raw part of a sub: identifier, and only when the rule applies")
     func theCanonicalItemId() {
         #expect(SubsonicProvider.canonicalItemId("sub:playlist:\(Self.old)", canonical: true) == "sub:playlist:\(Self.new)")
         #expect(SubsonicProvider.canonicalItemId("sub:playlist:\(Self.new)", canonical: true) == "sub:playlist:\(Self.new)")
@@ -127,7 +127,7 @@ struct NavidromeDoorTests {
 
     /// Bookmarks written before the update carry the playlist's old id in
     /// their comment, newer ones the new id. Both are this playlist.
-    @Test("Lesezeichen: alter und neuer Kommentar sind dasselbe Item, der juengste gewinnt")
+    @Test("bookmarks: old and new comment are the same item, the youngest wins")
     func oldAndNewCommentsAreOneItem() throws {
         func bookmark(_ song: String, _ ms: Int, _ changed: String, comment: String) throws -> SubsonicBookmark {
             try JSONDecoder().decode(SubsonicBookmark.self, from: Data(
@@ -153,7 +153,7 @@ struct NavidromeDoorTests {
         #expect(plain.time == 10, "the precondition: without the key only the exact comment counts")
     }
 
-    @Test("Lesezeichen in der Naht: zusammengefasst, verglichen und geschrieben in der kanonischen Form", .needsTheSources)
+    @Test("bookmarks in the seam: merged, compared and written in the canonical form", .needsTheSources)
     func bookmarksGoThroughTheCanonicalForm() throws {
         let provider = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))

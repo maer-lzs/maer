@@ -13,7 +13,7 @@ import Foundation
 /// so one account under two types is recognisably the SAME account.
 struct MediaTypeSourcesTests {
 
-    @Test("jeder Bereich nennt seine Quellen, keiner ist leer")
+    @Test("every area names its sources, none is empty")
     func everyAreaNamesItsSources() {
         for area in SourceMapArea.allCases {
             #expect(!MediaTypeSources.all(for: area).isEmpty,
@@ -21,7 +21,7 @@ struct MediaTypeSourcesTests {
         }
     }
 
-    @Test("EIN Konto, EIN Name, EIN Symbol — unter jedem Typ")
+    @Test("ONE account, ONE name, ONE symbol, under every type")
     func oneAccountLooksTheSameEverywhere() {
         // The whole point of point 1: ABS under Audiobooks and under Podcasts
         // must be recognisable as the same account, not as two copies.
@@ -33,7 +33,7 @@ struct MediaTypeSourcesTests {
         #expect(MediaTypeSources.areas(servedBy: "abs") == [.audiobooks, .podcasts])
     }
 
-    @Test("kontolose Quellen fuegen sich ein und stehen hinten")
+    @Test("accountless sources fit in and come last")
     func accountLessSourcesComeLast() {
         // Point 3: catalogues and Radio Browser belong in their type's pill.
         // And they never need attention, so they do not lead the list.
@@ -50,7 +50,7 @@ struct MediaTypeSourcesTests {
         #expect(MediaTypeSources.all(for: .freeCatalogs).allSatisfy { !$0.needsAccount })
     }
 
-    @Test("Kennungen sind eindeutig und sprachunabhaengig adressierbar")
+    @Test("identifiers are unique and addressable independent of language")
     func identifiersAreUniqueAndStable() {
         for area in SourceMapArea.allCases {
             let ids = MediaTypeSources.all(for: area).map(\.id)
@@ -76,7 +76,7 @@ struct PodcastSubscribeToServerTests {
         UserDefaults(suiteName: "subscribe-to-server-\(UUID().uuidString)")!
     }
 
-    @Test("ausgeschaltet bleibt ausgeschaltet")
+    @Test("switched off stays switched off")
     func offStaysOff() {
         let d = suite()
         // Nothing stored yet: the behaviour every session had so far.
@@ -85,17 +85,17 @@ struct PodcastSubscribeToServerTests {
                 "der Startwert muss true bleiben — alles andere waere eine stille Aenderung")
 
         d.set(false, forKey: AppStorageKeys.podcastSubscribeToServer)
-        // "Seite verlassen und wieder oeffnen" ist genau das: neu lesen.
+        // "Seite verlassen und wieder oeffnen" is exactly that: reading anew.
         #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) as? Bool == false)
         d.set(true, forKey: AppStorageKeys.podcastSubscribeToServer)
         #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) as? Bool == true)
     }
 
-    @Test("es gibt nichts zu erben — der Wert wurde nie gespeichert")
+    @Test("there is nothing to inherit, the value was never stored")
     func noMigrationNeeded() {
-        // Geprueft statt angenommen: der Schluessel ist neu,
-        // ein Altbestand kann gar nicht existieren, und der Default deckt den
-        // ungesetzten Fall mit dem bisherigen Verhalten ab.
+        // Checked instead of assumed: the key is new,
+        // a legacy stock cannot exist at all, and the default covers the
+        // unset case with the previous behaviour.
         let d = suite()
         #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) == nil)
         #expect(AppStorageKeys.boolValue(AppStorageKeys.podcastSubscribeToServer) == true

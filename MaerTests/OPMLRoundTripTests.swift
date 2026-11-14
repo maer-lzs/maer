@@ -23,7 +23,7 @@ struct OPMLRoundTripTests {
                               position: position, finished: finished, stampedAt: stamp)
     }
 
-    @Test("Ausfuhr ⇒ Leser ⇒ identischer Bestand")
+    @Test("export ⇒ reader ⇒ identical holdings")
     func roundTrip() throws {
         var archived = state(free.feedURL, guid: "four", position: 0, finished: true)
         archived.archived = true
@@ -47,7 +47,7 @@ struct OPMLRoundTripTests {
         #expect(!back.states[0].archived)
     }
 
-    @Test("ein Premium-Feed nimmt seine Staende mit aus der Datei")
+    @Test("a premium feed takes its positions along from the file")
     func premiumStatesLeaveWithTheirFeed() throws {
         let all = [state(free.feedURL, guid: "f", position: 100),
                    state(premium.feedURL, guid: "p", position: 200)]
@@ -65,7 +65,7 @@ struct OPMLRoundTripTests {
         #expect(back.states.map(\.episodeGUID) == ["f"])
     }
 
-    @Test("ohne Staende bleibt die Datei das schlichte OPML")
+    @Test("without positions the file stays the plain OPML")
     func plainWithoutStates() throws {
         let doc = OPMLExport.document(shows: [free], generatedAt: Date(timeIntervalSince1970: 0))
         #expect(doc.contains(#"xmlUrl="https://free.example/rss"/>"#))

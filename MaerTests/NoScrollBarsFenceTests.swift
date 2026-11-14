@@ -12,7 +12,7 @@ import Foundation
 /// place says so (`noScrollBars`), the root and every presented leaf carry
 /// it with the appearance, and no view decides for itself.
 struct NoScrollBarsFenceTests {
-    @Test("die Rollbalken stehen an einer Stelle, Wurzel und Blaetter tragen sie, keine Ansicht entscheidet selbst", .needsTheSources)
+    @Test("the scroll bars are set in one place, root and leaves carry them, no view decides by itself", .needsTheSources)
     func oneRuleForScrollBars() throws {
         var setters: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {

@@ -41,7 +41,7 @@ struct CorpusFixtureTests {
         return found.sorted()
     }
 
-    @Test("jede Fixture im Testbuendel ist dieselbe Datei wie unter Fixtures/", .needsTheTests)
+    @Test("every fixture in the test bundle is the same file as under Fixtures/", .needsTheTests)
     func everyBundledFixtureIsTheFileUnderFixtures() throws {
         let files = try Self.fixtureFiles()
         #expect(files.contains("OPMLCorpus/OPML-MANIFEST.json"), "the witness does not find the fixtures: \(files.count)")
@@ -77,7 +77,7 @@ struct CorpusFixtureTests {
         return code.matches(of: call).map { (literal($0.output.1), literal($0.output.2), literal($0.output.3)) }
     }
 
-    @Test("jeder Aufruf des Laders nennt den Ordner, in dem seine Datei liegt", .needsTheTests)
+    @Test("every call of the loader names the folder in which its file lies", .needsTheTests)
     func everyLoaderCallNamesTheFolderOfItsFile() throws {
         let fixtures = SourceTree.root.appendingPathComponent("MaerTests/Fixtures")
         var named: Set<String> = []

@@ -13,7 +13,7 @@ import Foundation
 /// jump after it moved that title and wrote its position.
 @MainActor
 struct OpenThenSeekTests {
-    @Test("ein Sprung nach einem Oeffnen geschieht nur, wenn das Oeffnen steht")
+    @Test("a seek after an opening happens only when the opening stands")
     func theJumpStandsOnlyWithItsOpen() {
         #expect(PlayerCoordinator.jumpStands(opened: "b", active: "b", loaded: "b"))
         #expect(!PlayerCoordinator.jumpStands(opened: "b", active: "a", loaded: "a"),
@@ -23,7 +23,7 @@ struct OpenThenSeekTests {
         #expect(!PlayerCoordinator.jumpStands(opened: "b", active: nil, loaded: nil))
     }
 
-    @Test("ein abgewiesenes Oeffnen ohne Sitzung springt nicht und laesst die Sitzung leer")
+    @Test("a rejected opening without a session does not seek and leaves the session empty")
     func aRefusedOpenJumpsNowhere() async {
         let coordinator = PlayerCoordinator(provider: MockProvider())
         let title = LibraryItem(id: "open-seek-\(UUID().uuidString)", media: nil, addedAt: nil)
@@ -43,7 +43,7 @@ struct OpenThenSeekTests {
         "PodcastEpisodeDetailView.swift": (1, "a chapter of an episode"),
     ]
 
-    @Test("jede Flaeche, die oeffnet und springt, nimmt die eine Tuer; keine springt auf dem Modell der Sitzung", .needsTheSources)
+    @Test("every surface that opens and seeks takes the one door; none seeks on the model of the session", .needsTheSources)
     func everySurfaceTakesTheOneDoor() throws {
         var jumpers: [String: Int] = [:]
         var bare: [String] = []

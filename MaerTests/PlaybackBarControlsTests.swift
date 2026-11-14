@@ -13,7 +13,7 @@ import CoreGraphics
 /// and sleep menus exist once, for the full player and the bar alike.
 struct PlaybackBarControlsTests {
 
-    @Test("die breite Leiste je Medium in Gruppen und in der Reihenfolge von heute, Play ganz rechts")
+    @Test("the wide bar per medium in groups and in today's order, play at the far right")
     func eachMediumGetsItsControls() {
         #expect(PlaybackBarControls.wide(isLive: false, isMusic: false)
                 == [[.titleBack, .skipBack, .skipForward, .titleForward], [.speed, .sleepTimer, .airPlay], [.play]])
@@ -27,7 +27,7 @@ struct PlaybackBarControlsTests {
         }
     }
 
-    @Test("ueber einem Falz endet der Titel vor ihm, alle Knoepfe stehen rechts davon")
+    @Test("above a fold the title ends before it, all buttons stand to the right of it")
     func overAFoldTheButtonsStandRightOfIt() {
         // Open Duo across: fold 455.5 to 495.5, a bar from 8 to 859.
         #expect(PlaybackBarControls.titleWidth(barMinX: 8, barWidth: 851, fold: 455.5...495.5, leadingPadding: 12)
@@ -37,7 +37,7 @@ struct PlaybackBarControlsTests {
         #expect(PlaybackBarControls.titleWidth(barMinX: 500, barWidth: 300, fold: 455.5...495.5, leadingPadding: 12) == nil)
     }
 
-    @Test("die Leiste setzt die Gruppen ab und legt den Titel vor den Falz", .needsTheSources)
+    @Test("the bar sets the groups apart and puts the title before the fold", .needsTheSources)
     func theBarSetsTheGroupsApart() throws {
         let bar = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MiniPlayerBar.swift"), encoding: .utf8))
@@ -45,7 +45,7 @@ struct PlaybackBarControlsTests {
         #expect(bar.contains("PlaybackBarControls.titleWidth(barMinX: barMinX"))
     }
 
-    @Test("breit ab einem Fenster von 600 pt")
+    @Test("wide from a window of 600 pt")
     func wideFromSixHundred() {
         // Open Duo upright: a 669 window, the bar 649 wide.
         #expect(PlaybackBarControls.isWide(barWidth: 649))
@@ -55,7 +55,7 @@ struct PlaybackBarControlsTests {
         #expect(!PlaybackBarControls.isWide(barWidth: 314))
     }
 
-    @Test("der Griff schliesst auf Tippen wie auf Ziehen, ein Ziehen ueber dem Bild nur ab der Schwelle")
+    @Test("the handle closes on tapping as on dragging, a drag over the image only from the threshold")
     func theHandleClosesOnATap() {
         // A tap on the handle: a pull that did not move.
         #expect(PlayerDismiss.closes(translation: .zero, predictedHeight: 0, threshold: 180, onHandle: true))
@@ -72,7 +72,7 @@ struct PlaybackBarControlsTests {
                                      threshold: 180, onHandle: false))
     }
 
-    @Test("der Zieh-Strich steht nur ohne Seitenspalte, mit ihr schliesst der Knopf der Spalte", .needsTheSources)
+    @Test("the drag stroke appears only without a sidebar, with it the sidebar's button closes", .needsTheSources)
     func theHandleStandsOnlyWithoutTheColumn() throws {
         let overlay = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/FullPlayerOverlay.swift"),
@@ -83,7 +83,7 @@ struct PlaybackBarControlsTests {
         #expect(overlay.contains(".highPriorityGesture(dismissGesture(minimumDistance: 0, onHandle: true))"))
     }
 
-    @Test("Tempo und Schlaftimer gibt es einmal: der Wahlpunkt steht nur in PlaybackMenus", .needsTheSources)
+    @Test("speed and sleep timer exist once: the choice item appears only in PlaybackMenus", .needsTheSources)
     func oneSpeedAndOneSleepMenu() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

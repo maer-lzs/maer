@@ -20,7 +20,7 @@ struct OfflineDetailTests {
 
     // MARK: - The detail page
 
-    @Test("Detailseite: das Geladene zeigt sich sofort, offline ohne Frage ans Netz, ohne Geladenes offline ein eigener Satz")
+    @Test("detail page: what is downloaded shows at once, offline without a question to the network, without downloads offline a sentence of its own")
     func theStoreComesFirst() {
         #expect(DetailLoadPlan.decide(hasStored: true, isConnected: false) == .stored(refresh: false),
                 "the downloaded playlist offline: its tracks, no request")
@@ -30,7 +30,7 @@ struct OfflineDetailTests {
                 "flight mode is not a broken connection")
     }
 
-    @Test("Detailseite: sie liest den Speicher des Downloads, und ein gescheiterter Abgleich nimmt nichts weg", .needsTheSources)
+    @Test("detail page: it reads the store of the download, and a failed sync takes nothing away", .needsTheSources)
     func thePageReadsTheStore() throws {
         let page = try Self.source("Sources/Views/Music/MusicAlbumView.swift")
         #expect(page.contains("let stored = albumDownloads.loadCachedDetail(forItemId: item.id)"))
@@ -46,7 +46,7 @@ struct OfflineDetailTests {
 
     // MARK: - The sentence
 
-    @Test("Satz: ein Server-Fehler nennt sich mit seinem Satz, ein Typname erreicht nie eine Seite")
+    @Test("sentence: a server error names itself with its sentence, a type name never reaches a page")
     func noTypeNameInASentence() {
         struct OddFailure: Error {}
         let server = FreeCatalog.failureReason(SubsonicClient.SubsonicError.network, online: true)
@@ -63,7 +63,7 @@ struct OfflineDetailTests {
 
     // MARK: - The playlist card
 
-    @Test("Playlist-Karte: offline spielbar, sobald etwas davon hier ist; geladen erst, wenn alles hier ist")
+    @Test("playlist card: playable offline as soon as something of it is here; downloaded only when everything is here")
     func theCardSaysWhatIsHere() {
         #expect(PlaylistPresentation.downloadState(downloaded: [true])
                 == .init(anyHere: true, allHere: true), "the downloaded server list \"Fragile\"")
@@ -75,7 +75,7 @@ struct OfflineDetailTests {
                 == .init(anyHere: false, allHere: false), "an empty list plays nothing and is not downloaded")
     }
 
-    @Test("Playlist-Karte: sie traegt die Leiste jeder Kachel, und beide Welten nennen, was geladen sein muss", .needsTheSources)
+    @Test("playlist card: it carries the bar of every tile, and both worlds name what must be downloaded", .needsTheSources)
     func theCardWearsTheTileScope() throws {
         let card = try Self.source("Sources/Views/Music/PlaylistCard.swift")
         #expect(card.contains("MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in"))
@@ -93,7 +93,7 @@ struct OfflineDetailTests {
 
     // MARK: - A refresh takes nothing away
 
-    @Test("Abgleich: eine leere Antwort ersetzt kein gespeichertes Detail mit Titeln", .needsTheSources)
+    @Test("sync: an empty answer replaces no stored detail with titles", .needsTheSources)
     func anEmptyRefreshKeepsTheStore() throws {
         #expect(!DetailLoadPlan.adopts(fetchedTrackCount: 0, storedTrackCount: 12),
                 "the downloaded playlist whose server answers empty for a moment")
@@ -108,7 +108,7 @@ struct OfflineDetailTests {
 
     // MARK: - The log keeps its reason
 
-    @Test("Log: der Grund im Log ist die Art des Fehlers, nie ein uebersetzter Satz")
+    @Test("log: the reason in the log is the kind of error, never a translated sentence")
     func theLogKeepsTheKindOfFailure() {
         struct OddFailure: Error {}
         let server = SubsonicClient.SubsonicError.network
@@ -123,7 +123,7 @@ struct OfflineDetailTests {
         #expect(FreeCatalog.logReason(FetchHeldBack()) == nil)
     }
 
-    @Test("Log: die zwei Log-Leser fragen den Log-Grund", .needsTheSources)
+    @Test("log: the two log readers ask the log reason", .needsTheSources)
     func theLogReadersAskTheLogReason() throws {
         let stock = try Self.source("Sources/ViewModels/CatalogStockService.swift")
         #expect(stock.contains("let technical = FreeCatalog.logReason(error) ?? FailureReason.of(error)"))

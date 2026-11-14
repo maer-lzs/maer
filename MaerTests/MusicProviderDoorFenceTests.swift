@@ -8,20 +8,20 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Musik kommt von Subsonic ODER Jellyfin, und WELCHER es ist, beantwortet
-/// `AppSession.musicProvider`: Jellyfin, sobald es die einzige aktive
-/// Musikquelle ist, sonst Subsonic.
+/// Music comes from Subsonic OR Jellyfin, and WHICH one it is is answered by
+/// `AppSession.musicProvider`: Jellyfin as soon as it is the only active
+/// music source, otherwise Subsonic.
 ///
-/// Eine allgemeine Musik-Flaeche darf deshalb keinen konkreten Server nennen.
-/// `MusicAlbumView` tat es an DREI von achtzehn Stellen (beide Album-Downloads
-/// und die Zufallswiedergabe fragten fest Subsonic), waehrend die uebrigen
-/// fuenfzehn den eingestellten Anbieter fragten. Bei einer Jellyfin-Quelle
-/// liefen genau diese drei am Anbieter vorbei: der Download bekam den
-/// falschen Anbieter mitgegeben, und die Zufallswiedergabe fragte Subsonic
-/// nach den Titeln einer `jf:`-Kennung.
+/// A general music surface must therefore not name a concrete server.
+/// `MusicAlbumView` did so at THREE of eighteen places (both album downloads
+/// and the random playback asked Subsonic outright), while the remaining
+/// fifteen asked the configured provider. With a Jellyfin source
+/// exactly these three bypassed the provider: the download was handed the
+/// wrong provider, and the random playback asked Subsonic
+/// for the titles of a `jf:` identifier.
 ///
-/// Der Bestand nennt die Ausnahmen mit Grund. Es sind genau die zwei
-/// EINSTELLUNGSSEITEN, und dort ist der konkrete Server die Sache selbst.
+/// The stock names the exceptions with a reason. They are exactly the two
+/// SETTINGS PAGES, and there the concrete server is the subject itself.
 struct MusicProviderDoorFenceTests {
     private func codeOf(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -31,7 +31,7 @@ struct MusicProviderDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Keine allgemeine Flaeche nennt einen konkreten Musikserver", .needsTheSources)
+    @Test("No general surface names a concrete music server", .needsTheSources)
     func noGeneralSurfaceNamesAConcreteMusicServer() throws {
         let allowed: [String: String] = [
             "Sources/AppSession.swift":
@@ -62,10 +62,10 @@ struct MusicProviderDoorFenceTests {
                 "eine allgemeine Flaeche nennt einen konkreten Musikserver: \(offenders)")
     }
 
-    /// Gegenprobe, damit der Bestand oben nicht deshalb leer ist, weil die
-    /// Tuer verschwunden ist: sie waehlt wirklich zwischen beiden, und die
-    /// Bedingung ist die, auf die sich der Bestand beruft.
-    @Test("Die Tuer waehlt wirklich zwischen beiden Servern", .needsTheSources)
+    /// Cross-check, so that the stock above is not empty merely because the
+    /// door has vanished: it really chooses between both, and the
+    /// condition is the one the stock relies on.
+    @Test("The door really chooses between both servers", .needsTheSources)
     func theDoorReallyChooses() throws {
         let code = try codeOf("Sources/AppSession.swift")
         #expect(code.contains("var musicProvider: any MusicProvider"))
@@ -90,29 +90,28 @@ struct MusicProviderDoorFenceTests {
             .matches(of: #/\.\s*musicProvider(?![A-Za-z0-9_])(?!\s*\()/#).count
     }
 
-    /// Die Klasse eine Etage weiter, und diesmal ueber ALLE Ansichten.
+    /// The class one floor further, and this time over ALL views.
     ///
-    /// Der Zaun darueber haelt, dass keine Flaeche einen konkreten Server
-    /// NENNT. Das laesst die andere Haelfte offen: eine Flaeche darf
-    /// `AppSession.shared.musicProvider` fragen, und der antwortet „welche
-    /// Musikquelle nutzt dieses GERAET". Fuer eine Bibliotheks-Liste ist das
-    /// richtig. Fuer einen TITEL ist es falsch, denn der traegt seine Quelle
-    /// in der Kennung, und mit zwei eingerichteten Servern gewinnt Subsonic.
+    /// The fence above holds that no surface NAMES a concrete server.
+    /// That leaves the other half open: a surface may ask
+    /// `AppSession.shared.musicProvider`, and that answers „welche
+    /// Musikquelle nutzt dieses GERAET". For a library list that is
+    /// right. For a TITLE it is wrong, because the title carries its source
+    /// in the identifier, and with two configured servers Subsonic wins.
     ///
-    /// Gemessen und geheilt wurden **elf Stellen in FUENF Dateien** (drei je
-    /// `MixedMediaPage`, `MusicContinueCard` und `AddToPlaylistSheet`, je eine
-    /// in `MusicLibraryPages` und `Lyrics`); die zwoelfte steht in
-    /// `MusicAlbumView` und ist seit dem 09.09. geheilt. Alle mit sichtbarer
-    /// Folge: eine Jellyfin-Liste bekam die falsche Karte und das falsche
-    /// Platzhalter-Zeichen, ihre Zufallswiedergabe fand keine Titel, ihre
-    /// Cover fehlten, ihre Downloads standen nicht auf der Seite, und „zur
-    /// Playlist hinzufuegen" antwortete mit „Nothing to add".
+    /// Measured and healed were **eleven places in FIVE files** (three each in
+    /// `MixedMediaPage`, `MusicContinueCard` and `AddToPlaylistSheet`, one each
+    /// in `MusicLibraryPages` and `Lyrics`); the twelfth is in
+    /// `MusicAlbumView` and has been healed since 09.09. All with a visible
+    /// consequence: a Jellyfin list got the wrong card and the wrong
+    /// placeholder symbol, its random playback found no titles, its
+    /// covers were missing, its downloads were not on the page, and
+    /// „zur Playlist hinzufuegen" answered with „Nothing to add".
     ///
-    /// Der Bestand nennt, was BLEIBEN darf, mit Grund je Datei, und er faellt
-    /// nur. Ein Aufzaehlen der erlaubten Ruf-Formen waere der Fehler von
-    /// gestern: ein Zaun, der Formen kennt, bewacht nur, was er schon gesehen
-    /// hat.
-    @Test("keine Ansicht fragt das GERAET nach einem Titel", .needsTheSources)
+    /// The stock names what MAY STAY, with a reason per file, and it only
+    /// falls. Listing the allowed call forms would be yesterday's mistake:
+    /// a fence that knows forms guards only what it has already seen.
+    @Test("no view asks the DEVICE for a title", .needsTheSources)
     func noViewAsksTheDeviceAboutATitle() throws {
         let stock: [String: (count: Int, reason: String)] = [
             "HomeView.swift":
@@ -125,13 +124,13 @@ struct MusicProviderDoorFenceTests {
                     + "Zufallswiedergabe der Bibliothek"),
             "MusicView.swift":
                 (1, "das Signal der eingestellten Quelle, dass ihre Bibliothek sich bewegt hat"),
-            // AddToPlaylistSheet fragt den Server des Ziels
-            // (`musicProvider(serving: .one(server))`), nie mehr das Geraet: 2 → 0.
+            // AddToPlaylistSheet asks the server of the target
+            // (`musicProvider(serving: .one(server))`), never the device any more: 2 → 0.
         ]
-        // Kuenstler und Playlists tragen ihre Kennung mit Namensraum
-        // (`MusicArtist.itemId`, `MusicPlaylist.itemId`, gesetzt am Rand des
-        // Anbieters); die Kuenstler-Seite, das Portraet und jede
-        // Playlist-Kennung fragen deshalb die Tuer, keine rohe Nummer mehr.
+        // Artists and playlists carry their identifier with namespace
+        // (`MusicArtist.itemId`, `MusicPlaylist.itemId`, set at the edge of the
+        // provider); the artist page, the portrait and every
+        // playlist identifier therefore ask the door, no raw number any more.
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources/Views")
         var checked = 0
@@ -150,16 +149,16 @@ struct MusicProviderDoorFenceTests {
                 "der Zaehler sieht sie ueber einen Umbruch")
         #expect(Self.deviceQuestions(in: "_ = session.musicProvider(for: id).genres()") == 0,
                 "die Tuer je Eintrag zaehlt nicht")
-        // BEIDE Richtungen, und die zweite ist die stille: sperrt der Bestand
-        // nur nach oben, behauptet ein Eintrag weiter, sechs Rufe seien in
-        // Ordnung, lange nachdem es zwei sind. Ein Grund, der zu viel deckt,
-        // ist eine Ausnahme, die niemand mehr nachgesehen hat. Faellt die
-        // Zahl, wird sie hier zurueckgeschrieben, wie am Wachstums-Zaun.
+        // BOTH directions, and the second is the silent one: if the stock locks
+        // only upward, an entry keeps claiming that six calls are
+        // fine, long after there are two. A reason that covers too much
+        // is an exception nobody has looked into any more. If the
+        // number falls, it is written back here, as at the growth fence.
         let drift = StockDrift.findings(counts: found, stock: stock.mapValues(\.count))
         #expect(drift.isEmpty,
                 "eine Ansicht fragt das Geraet, wo die Kennung antwortet, oder der Bestand liegt ueber der Zaehlung: \(drift)")
-        // Gegenprobe: die Tuer, auf die geheilt wurde, gibt es wirklich, und
-        // sie leitet an der Kennung.
+        // Cross-check: the door that was healed to really exists, and
+        // it routes by the identifier.
         let session = try codeOf("Sources/AppSession.swift")
         #expect(session.contains("func musicProvider(for itemId: String) -> any MusicProvider"))
         #expect(session.contains("MusicSourceRule.item(itemId"),
@@ -169,14 +168,14 @@ struct MusicProviderDoorFenceTests {
                 "die Tuer leitet nicht mehr am Namensraum")
     }
 
-    /// Dieselbe Frage fuer die BIBLIOTHEK, und der Satz daneben war falsch
-    /// gemessen: `coordinator.provider` ist NICHT die laufende Sitzung,
-    /// sondern ein `let` aus dem `init`, das `AppSession` mit dem HAUPT-
-    /// Anbieter baut. Er beantwortet also keine Frage nach einem Titel, und
-    /// zwar aus einem anderen Grund als bisher behauptet: nicht weil er
-    /// wechselt, sondern weil er sich NIE aendert. Genau eine Flaeche darf ihn
-    /// nennen, und dort ist der Haupt-Anbieter die Sache selbst.
-    @Test("der Haupt-Anbieter wird nur dort gefragt, wo er gemeint ist", .needsTheSources)
+    /// The same question for the LIBRARY, and the sentence next to it was
+    /// measured wrongly: `coordinator.provider` is NOT the running session,
+    /// but a `let` from the `init` that `AppSession` builds with the MAIN
+    /// provider. So it answers no question about a title, and
+    /// for a different reason than claimed so far: not because it
+    /// switches, but because it NEVER changes. Exactly one surface may name
+    /// it, and there the main provider is the subject itself.
+    @Test("the main provider is asked only where it is meant", .needsTheSources)
     func theRunningSessionIsAskedOnlyWhereItIsMeant() throws {
         let allowed = "ABSSourceView.swift"
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -187,16 +186,16 @@ struct MusicProviderDoorFenceTests {
             let code = try codeOf("Sources/Views/"
                                   + url.path.components(separatedBy: "Sources/Views/")[1])
             checked += 1
-            // KLEIN geschrieben gesucht, und das ist keine Feinheit: die
-            // Rot-Probe setzte `playerCoordinator.provider` ein, also genau
-            // eine der vier Formen, an denen die Klasse gemessen wurde, und
-            // der Zaun blieb gruen. Ein Zaun, der die Schreibweise mitprueft,
-            // bewacht den Namen und nicht die Sache. Der Nachbar-Zaun in
-            // `JellyfinBooksSurfaceTests` macht es seit je so.
+            // Searched for in LOWER case, and that is no subtlety: the
+            // red probe inserted `playerCoordinator.provider`, exactly
+            // one of the four forms the class was measured on, and
+            // the fence stayed green. A fence that also checks the spelling
+            // guards the name and not the thing. The neighbouring fence in
+            // `JellyfinBooksSurfaceTests` has always done it this way.
             guard code.lowercased().contains("coordinator.provider") else { continue }
-            // Die Einrichtungsseite von Audiobookshelf: dort wird die
-            // Verbindung des HAUPT-Anbieters geprueft und seine Warteschlange
-            // geleert. Er IST dort die Sache.
+            // The setup page of Audiobookshelf: there the
+            // connection of the MAIN provider is checked and its queue
+            // emptied. It IS the subject there.
             if url.lastPathComponent != allowed { offenders.append(url.lastPathComponent) }
         }
         #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
@@ -204,10 +203,9 @@ struct MusicProviderDoorFenceTests {
                 "eine Ansicht fragt wieder den Haupt-Anbieter: \(offenders.sorted())")
     }
 
-    /// Und die Frage, an der der Fund haengt, am Protokoll: beide Anbieter
-    /// koennen sie beantworten, es gab also nie einen Grund, einen davon zu
-    /// nennen.
-    @Test("Was die drei Stellen brauchten, steht im Protokoll", .needsTheSources)
+    /// And the question on which the finding hangs, at the protocol: both providers
+    /// can answer it, so there was never a reason to name one of them.
+    @Test("What the three places needed is in the protocol", .needsTheSources)
     func whatTheThreeSitesNeededIsInTheProtocol() throws {
         let code = try codeOf("Sources/Providers/MusicProvider.swift")
         #expect(code.contains("func songItems(forItemId itemId: String) async -> [LibraryItem]"),

@@ -22,7 +22,7 @@ struct PlaybackNoticesTests {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 
-    @Test("jeder Fall hat seine Zeile: Sync-Infos nur ins Protokoll, Spruenge kurz, Konflikt kurz als Fehler, Halt-Fehler bis Play")
+    @Test("every case has its line: sync infos only into the log, jumps short, conflict short as an error, halt errors until play")
     func everyCaseHasItsRow() {
         typealias Row = (pops: Bool, holds: Bool, error: Bool)
         let table: [PlaybackNotice.Kind: Row] = [
@@ -41,7 +41,7 @@ struct PlaybackNoticesTests {
         }
     }
 
-    @Test("Sync-Infos poppen nicht auf und stehen doch im Protokoll")
+    @Test("sync infos do not pop up and are still in the log")
     func syncInfosOnlyGoToTheLog() {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -51,7 +51,7 @@ struct PlaybackNoticesTests {
         #expect(notices.log.allSatisfy { $0.title == "Buch" })
     }
 
-    @Test("ein Fehler, der die Wiedergabe anhielt: die Pille geht nach der kurzen Frist, der Fehler bleibt gehalten und faellt erst bei Play")
+    @Test("an error that halted playback: the pill goes after the short deadline, the error stays held and falls only on play")
     func aStoppingErrorHoldsUntilPlay() async {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -68,7 +68,7 @@ struct PlaybackNoticesTests {
         #expect(notices.shown == nil, "a short notice stayed")
     }
 
-    @Test("eine Info nach einem Fehler ersetzt ihn nicht")
+    @Test("an info after an error does not replace it")
     func anInfoDoesNotReplaceAnError() {
         let (notices, folder) = channel(expiry: 60)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -78,7 +78,7 @@ struct PlaybackNoticesTests {
         #expect(notices.log.map(\.kind) == [.conflict, .serverAdopted], "the info is not in the log")
     }
 
-    @Test("ein kurzer Fehler ueber einem Halt-Fehler: nach seiner Frist ist die Pille leer, der Halt-Fehler bleibt gehalten")
+    @Test("a short error over a halt error: after its deadline the pill is empty, the halt error stays held")
     func aHeldErrorOutlastsAShortOne() async {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -90,7 +90,7 @@ struct PlaybackNoticesTests {
         #expect(notices.held == .loadFailed(.server), "the player still stands, but the channel forgot why")
     }
 
-    @Test("ein anderer Titel nimmt den Halt-Fehler des vorigen mit")
+    @Test("another title takes the halt error of the previous one along")
     func anotherTitleTakesTheHeldError() {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -103,7 +103,7 @@ struct PlaybackNoticesTests {
     /// error stands outside the pill (the bar's second line, the line under
     /// the full player's controls) until the next start or change of title.
     /// Only the wait keeps its pill.
-    @Test("jeder Halt-Fehler: Pille kurz, danach steht er ausserhalb der Pille bis zum naechsten Start oder Titelwechsel; nur das Warten haelt die Pille")
+    @Test("every halt error: pill short, afterwards it stands outside the pill until the next start or title change; only waiting holds the pill")
     func everyHeldErrorLeavesThePillAndStaysHeld() {
         let held: [PlaybackNotice] = [.trackFailed, .streamFailed, .loadFailed(.network), .downloadUnreadableOffline,
                                       .cannotPlay("Kein Titel")]
@@ -150,7 +150,7 @@ struct PlaybackNoticesTests {
 
     /// The bar says the held error from the channel alone: the one
     /// placement, the channel's two values, no second rule beside it.
-    @Test("die Leiste sagt den Halt-Fehler aus dem Kanal, ueber die eine Platzierung, und nirgends sonst", .needsTheSources)
+    @Test("the bar says the halt error from the channel, through the one placement, and nowhere else", .needsTheSources)
     func theBarSaysTheHeldErrorFromTheChannel() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -168,7 +168,7 @@ struct PlaybackNoticesTests {
         #expect(channel.contains("if held != next.held { held = next.held }"), "the channel does not publish the held error")
     }
 
-    @Test("die Woerter der Leiste stehen deutsch im Katalog", .needsTheSources)
+    @Test("the words of the bar are in the catalog in German", .needsTheSources)
     func theBarWordsStandInTheCatalog() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -188,7 +188,7 @@ struct PlaybackNoticesTests {
 
     /// The error forms measured at a host that answers 401, 403, 404, 500,
     /// at a closed port and at a missing local file (AVPlayerItem.error).
-    @Test("die Ursache eines Ladefehlers nach der gemessenen Form, ein unbekannter Fehler ist nicht das Netz")
+    @Test("the cause of a load error by the measured form, an unknown error is not the network")
     func theCauseOfALoadFailure() {
         func error(_ domain: String, _ code: Int, under: Int? = nil) -> NSError {
             let info: [String: Any] = under.map { [NSUnderlyingErrorKey: NSError(domain: NSOSStatusErrorDomain, code: $0)] } ?? [:]
@@ -215,7 +215,7 @@ struct PlaybackNoticesTests {
         #expect(PlaybackNotice.loadFailed(.unknown).icon == "exclamationmark.triangle", "not knowing drew the network")
     }
 
-    @Test("das Protokoll liegt auf der Platte, ein neuer Start liest es, alte und zu viele Zeilen fallen")
+    @Test("the log lies on disk, a new start reads it, old lines and too many lines drop")
     func theLogLastsAndStaysSmall() async {
         let (notices, folder) = channel()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -234,7 +234,7 @@ struct PlaybackNoticesTests {
         #expect(NoticeLogEntry.trimmed(Array(many), now: now).count == NoticeLogEntry.limit)
     }
 
-    @Test("jeder Start der Wiedergabe laesst den Halt-Fehler fallen, auch von Sperrbildschirm und Kopfhoerern")
+    @Test("every start of playback drops the halt error, also from the lock screen and headphones")
     func everyStartLetsTheStoppingErrorFall() throws {
         let id = "rss:notice-start:\(UUID().uuidString)"
         let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
@@ -257,7 +257,7 @@ struct PlaybackNoticesTests {
         model.pause()
     }
 
-    @Test("jeder Start geht durch play(), und die Fernbedienung ruft es", .needsTheSources)
+    @Test("every start goes through play(), and the remote control calls it", .needsTheSources)
     func everyStartGoesThroughPlay() throws {
         let root = SourceTree.root
         let model = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
@@ -268,7 +268,7 @@ struct PlaybackNoticesTests {
                 "the remote command starts past play() and its check")
     }
 
-    @Test("das Protokoll reist nicht: sein Dokument steht in keinem Traeger und keiner Wahl", .needsTheSources)
+    @Test("the log does not travel: its document is in no carrier and no choice", .needsTheSources)
     func theLogDoesNotTravel() throws {
         let files = ProjectFileIntegrityTests.sourceTexts(in: ["Sources"])
         #expect(files.count > 100, "the fence did not read the sources")
@@ -280,7 +280,7 @@ struct PlaybackNoticesTests {
 
     /// The real attach: a title that cannot play says so over the change of
     /// title that brings it, and the next title takes that error with it.
-    @Test("der Halt-Fehler aus dem Laden ueberlebt den Titelwechsel, der ihn bringt; der naechste Titel nimmt ihn mit")
+    @Test("the halt error from loading survives the title change that brings it; the next title takes it along")
     func aStoppingErrorOfTheLoadOutlivesTheChange() throws {
         let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
         let (notices, folder) = channel(expiry: 60)
@@ -298,7 +298,7 @@ struct PlaybackNoticesTests {
         #expect(notices.shown == nil, "the previous title's stopping error stayed over the next title")
     }
 
-    @Test("eine Meldung aus dem Laden kommt an, obwohl das Modell erst danach am Koordinator haengt")
+    @Test("a message from loading arrives even though the model attaches to the coordinator only afterwards")
     func aNoticeOfTheLoadArrives() throws {
         let id = "rss:notice-load:\(UUID().uuidString)"
         let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
@@ -313,7 +313,7 @@ struct PlaybackNoticesTests {
         #expect(notices.log.map(\.kind) == [.localUsed])
     }
 
-    @Test("ein Titel ohne Spur sagt es in der Pille bis zum naechsten Start, im grossen Player genau einmal")
+    @Test("a title without a track says so in the pill until the next start, in the large player exactly once")
     func aTitleThatCannotPlaySaysSo() async {
         let id = "rss:notice-cannot:\(UUID().uuidString)"
         let detail = LibraryItemDetail(id: id, media: LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil),
@@ -326,7 +326,7 @@ struct PlaybackNoticesTests {
         #expect(NoticeRule.answer(.cannotPlay).holdsUntilPlay)
     }
 
-    @Test("ein gescheitertes Oeffnen ist die Pille des Kanals, der grosse Player zeigt denselben Satz")
+    @Test("a failed opening is the pill of the channel, the large player shows the same sentence")
     func aFailedOpenIsThePill() {
         let (notices, folder) = channel(expiry: 60)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -338,7 +338,7 @@ struct PlaybackNoticesTests {
         #expect(notices.log.last?.title == "Buch")
     }
 
-    @Test("Sync-Fehler und Oeffnen laufen durch den Kanal, keine eigene Zeile mehr", .needsTheSources)
+    @Test("sync errors and opening run through the channel, no line of their own any more", .needsTheSources)
     func syncAndOpenGoThroughTheChannel() throws {
         let root = SourceTree.root
         let sync = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8))
@@ -352,7 +352,7 @@ struct PlaybackNoticesTests {
     /// under the controls before they say the pill, the full player shows
     /// that line, and the channel, whose pill goes after its time, never
     /// touches it.
-    @Test("ein andauernder Sync-Fehler steht nach der Pille weiter als Zeile im grossen Player", .needsTheSources)
+    @Test("a lasting sync error stays after the pill as a line in the large player", .needsTheSources)
     func aLastingSyncFailureStaysAsTheLine() throws {
         let root = SourceTree.root
         func code(_ path: String) throws -> String {
@@ -382,7 +382,7 @@ struct PlaybackNoticesTests {
     /// The real open, not the door alone: offline, a title that is not on
     /// the device says so with the network symbol; an open nobody asked for
     /// says nothing.
-    @Test("offline sagt das echte Oeffnen eines nicht geladenen Titels es mit dem WLAN-Zeichen, ein Oeffnen ohne Geste schweigt")
+    @Test("offline the real opening of a title not downloaded says so with the Wi-Fi symbol, an opening without a gesture stays silent")
     func theRealOpenSaysOfflineWithTheNetwork() async {
         let (notices, folder) = channel(expiry: 60)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -406,7 +406,7 @@ struct PlaybackNoticesTests {
 
     private static let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
 
-    @Test("die Pille faengt nur ihre eigene Flaeche, ein Tipp oeffnet das Protokoll, die Einstellungen fuehren dorthin", .needsTheSources)
+    @Test("the pill catches only its own surface, a tap opens the log, the settings lead there", .needsTheSources)
     func thePillTakesOnlyItsOwnCapsule() throws {
         let root = SourceTree.root
         let banner = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Views/ResumeMessageBanner.swift"), encoding: .utf8))
@@ -424,7 +424,7 @@ struct PlaybackNoticesTests {
     /// The two notices of an unreadable download say the decided sentences,
     /// and those stand in the catalog, in German too; a change of the wording
     /// is a decision, not an edit.
-    @Test("die zwei Meldungen eines unlesbaren Downloads sagen die entschiedenen Saetze, und die stehen im Katalog", .needsTheSources)
+    @Test("the two messages of an unreadable download say the decided sentences, and these are in the catalog", .needsTheSources)
     func theUnreadableDownloadSentencesStandAsDecided() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]

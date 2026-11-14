@@ -188,7 +188,7 @@ struct ObserverPlaceFenceTests {
         return offenders
     }
 
-    @Test("Beobachtungen haeufiger Melder sitzen nicht in rollenden Containern", .needsTheSources)
+    @Test("observations of frequent reporters do not sit in rolling containers", .needsTheSources)
     func frequentPublishersAreNotObservedInScrollingContainers() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zaun hat den Ansichtsbaum nicht gelesen")
@@ -201,7 +201,7 @@ struct ObserverPlaceFenceTests {
 
     /// The reader itself, in both directions. Without this the fence could
     /// answer zero in silence, and a stock of zero would look like success.
-    @Test("der Leser findet die Ansicht, auch generisch und als Modifier")
+    @Test("the reader finds the view, also generic and as a modifier")
     func theReaderFindsTheView() {
         #expect(Self.declaredViewName(in: "struct Plain: View {") == "Plain")
         #expect(Self.declaredViewName(in: "private struct Scope<Content: View>: View {") == "Scope")

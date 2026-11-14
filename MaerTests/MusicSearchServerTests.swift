@@ -8,11 +8,11 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Welcher Musik-Server: die Suche laesst sich unter
-/// Musik auf einen der zwei Server eingrenzen, nach der Quelle des Treffers.
+/// Which music server: the search can be narrowed under
+/// music to one of the two servers, by the source of the hit.
 @MainActor
 struct MusicSearchServerTests {
-    @Test("ohne Wahl bleibt jeder Treffer, mit Wahl nur die Treffer dieses Servers, nach der Kennung")
+    @Test("without a choice every hit stays, with a choice only the hits of this server, by identifier")
     func narrowingByTheHitsServer() {
         for id in ["sub:song:1", "jf:song:1", "freecatalog:jamendo:1"] {
             #expect(MusicSourceRule.keeps(id, chosen: nil), "\(id)")
@@ -24,7 +24,7 @@ struct MusicSearchServerTests {
                 "a hit no music server holds is not that server's")
     }
 
-    @Test("die Reihe gibt es nur mit zwei Musik-Servern, in ihrer Ordnung und mit dem Namen der Kapsel")
+    @Test("the row exists only with two music servers, in their order and with the name of the capsule")
     func choicesOnlyWithTwoServers() {
         let names = ["sub": "Navidrome", "jf": "Jellyfin"]
         #expect(MusicSourceRule.searchChoices(serving: .one(.jellyfin), active: [.jellyfin], names: names).isEmpty)
@@ -38,7 +38,7 @@ struct MusicSearchServerTests {
         #expect(MusicSourceRule.Server.jellyfin.providerId == "jf")
     }
 
-    @Test("Keine Leer-Zeile, solange die Suche laeuft; danach die der Bibliothek oder die des einen Servers")
+    @Test("No empty row while the search runs; afterwards that of the library or that of the one server")
     func noEmptyLineWhileSearching() {
         func line(library: Bool, shown: Bool, narrowed: Bool, searching: Bool, failed: Bool = false) -> SearchEmptyLine? {
             SearchEmptyLine.of(libraryEmpty: library, shownEmpty: shown, narrowed: narrowed,
@@ -59,7 +59,7 @@ struct MusicSearchServerTests {
                 "a failure has its own page")
     }
 
-    @Test("die Seite grenzt nach der Kennung ein, nur unter Musik, und der Katalog springt nur ein, wenn die Bibliothek nichts hat", .needsTheSources)
+    @Test("the page narrows by identifier, only under music, and the catalog steps in only when the library has nothing", .needsTheSources)
     func theScreenIsWired() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let screen = try String(contentsOf: root.appendingPathComponent("Sources/Views/SearchScreen.swift"), encoding: .utf8)
@@ -84,7 +84,7 @@ struct MusicSearchServerTests {
     /// card drew nothing; the same code on iOS 26.5 drew the card. The
     /// journey `testGlobalSearchFindsAllTypes` holds it on the device; this
     /// holds the construction that cures it.
-    @Test("Die Katalog-Ansicht ist eine eigene Liste, damit iOS 27 sie nach dem Tipp zeichnet", .needsTheSources)
+    @Test("The catalog view is a list of its own, so that iOS 27 draws it after the tap", .needsTheSources)
     func theCatalogViewIsItsOwnList() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let screen = try String(contentsOf: root.appendingPathComponent("Sources/Views/SearchScreen.swift"), encoding: .utf8)

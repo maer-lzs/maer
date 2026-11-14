@@ -7,46 +7,46 @@
 import Testing
 @testable import Maer
 
-/// 🔴 Play-Haemmern unter schlechtem Netz darf nie zwei Tonspuren
-/// erzeugen. Jeder open() zieht eine Generation, nur die letzte gewinnt.
+/// 🔴 Hammering play under a bad network must never produce two audio
+/// tracks. Every open() draws a generation, only the last one wins.
 struct OpenGateTests {
-    @Test("N schnelle Taps auf DENSELBEN Titel ⇒ genau EIN Versuch")
+    @Test("N fast taps on the SAME title ⇒ exactly ONE attempt")
     func repeatedTapsCoalesce() {
         var gate = OpenGate()
         let first = gate.begin(itemId: "A", restart: false)
         #expect(first == 1)
-        // Die vier weiteren Taps im Zeitfenster des haengenden Abrufs
-        // koaleszieren. Kein zweiter Start.
+        // The four further taps within the time window of the hanging fetch
+        // coalesce. No second start.
         for _ in 0..<4 { #expect(gate.begin(itemId: "A", restart: false) == nil) }
         #expect(gate.isCurrent(first ?? 0))
     }
 
-    @Test("ein ausdruecklicher Neustart koalesziert NICHT")
+    @Test("an explicit restart does NOT coalesce")
     func restartAlwaysCounts() {
         var gate = OpenGate()
         _ = gate.begin(itemId: "A", restart: false)
         #expect(gate.begin(itemId: "A", restart: true) != nil)
     }
 
-    @Test("bei verschiedenen Titeln gewinnt die LETZTE Generation")
+    @Test("with different titles the LAST generation wins")
     func lastGenerationWins() {
         var gate = OpenGate()
         let a = gate.begin(itemId: "A", restart: false)!
         let b = gate.begin(itemId: "B", restart: false)!
         let c = gate.begin(itemId: "C", restart: false)!
-        // Die alten Rueckkehrer erkennen sich als veraltet und raeumen ab.
+        // The old returners recognise themselves as stale and clean up.
         #expect(!gate.isCurrent(a))
         #expect(!gate.isCurrent(b))
         #expect(gate.isCurrent(c))
     }
 
-    @Test("ein veralteter Abschluss nimmt der neuen Generation nichts weg")
+    @Test("a stale completion takes nothing away from the new generation")
     func staleFinishDoesNotClearTheNewer() {
         var gate = OpenGate()
         let a = gate.begin(itemId: "A", restart: false)!
         _ = gate.begin(itemId: "B", restart: false)
         gate.finish(a)                       // A kehrt spaet zurueck
-        // B haelt seinen Koaleszenz-Schutz weiterhin.
+        // B still keeps its coalescing protection.
         #expect(gate.begin(itemId: "B", restart: false) == nil)
     }
 
@@ -54,7 +54,7 @@ struct OpenGateTests {
     /// without playing, the widget's command asks to play the same title
     /// while that open runs. The coalesced call's wish stays with the
     /// running open; a new open starts without it.
-    @Test("ein Wunsch zu spielen geht beim Zusammenlegen nicht verloren, eine neue Oeffnung beginnt ohne ihn")
+    @Test("a wish to play is not lost on merging, a new opening starts without it")
     func aCoalescedPlayIsKept() {
         var gate = OpenGate()
         let silent = gate.begin(itemId: "A", restart: false, autoplay: false)!
@@ -71,7 +71,7 @@ struct OpenGateTests {
     /// The coordinator's `open` cannot run in a unit test (its provider
     /// comes from the session), so the wiring is read: `open` hands its
     /// wish to the gate, and `start` plays on its own wish or a coalesced one.
-    @Test("das Oeffnen gibt seinen Wunsch an das Tor, der Start spielt auch auf einen zusammengelegten", .needsTheSources)
+    @Test("opening passes its wish to the gate, the start also plays on a merged one", .needsTheSources)
     func theOpenAsksTheGate() throws {
         let code = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(code.contains("openGate.begin(itemId: item.id, restart: restart, autoplay: autoplay)"),

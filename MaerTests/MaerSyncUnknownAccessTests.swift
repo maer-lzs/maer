@@ -25,7 +25,7 @@ struct MaerSyncUnknownAccessTests {
     static let accessA = MaerSyncIdentityTests.accessA
     static let identityA = MaerSyncIdentityTests.identityA
 
-    @Test("ein unlesbares Token ist unbekannt, ein fehlendes kein Zugang")
+    @Test("an unreadable token is unknown, a missing one is no access")
     func anUnreadableTokenIsUnknown() {
         let url = "https://sync.example.test"
         #expect(MaerSyncAccessRead.of(url: url, token: .unreadable) == .unknown)
@@ -37,7 +37,7 @@ struct MaerSyncUnknownAccessTests {
         #expect(!MaerSyncAccessRead.absent.servesFamilies)
     }
 
-    @Test("bei unbekanntem Zugang waehlt keine Fabrik einen iCloud- oder Schluesselwert-Traeger")
+    @Test("with an unknown access no factory picks an iCloud or key-value carrier")
     func noFactoryPicksICloudOnAnUnknownAccess() {
         #expect(StandCarriers.make(read: .unknown) is MaerSyncStandCarrier)
         #expect(StatsCarriers.make(read: .unknown) is MaerSyncStatsCarrier)
@@ -55,7 +55,7 @@ struct MaerSyncUnknownAccessTests {
                         deviceId: { "dev-a" }, defaults: defaults)
     }
 
-    @Test("unbekannt, dann lesbar: nichts ohne Identitaet abgelegt, danach A's Stand wie nach einer Anmeldung")
+    @Test("unknown, then readable: nothing stored without an identity, afterwards A's state as after a sign-in")
     func anUnknownAccessIsReadAgainLikeASignIn() throws {
         let suite = "maer-unknown-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -91,7 +91,7 @@ struct MaerSyncUnknownAccessTests {
         #expect(old.isEmpty, "an older build finds \(old.sorted())")
     }
 
-    @Test("unbekannt, dann fehlend: der heutige Weg ohne Dienst")
+    @Test("unknown, then missing: today's way without a service")
     func anUnknownAccessThatTurnsOutMissingLeavesTheService() throws {
         let suite = "maer-unknown-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -113,7 +113,7 @@ struct MaerSyncUnknownAccessTests {
                 "the unknown window's write was kept under keys without an identity")
     }
 
-    @Test("lesbar geworden: jeder Laeufer startet neu und liest, bevor er schreibt")
+    @Test("became readable: every runner restarts and reads before it writes")
     func theRunnersStartAgainOnceTheAccessReads() {
         let suite = "maer-unknown-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

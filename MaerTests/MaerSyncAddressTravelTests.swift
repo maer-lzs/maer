@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Adresse des Mär Sync reist zum Zweitgeraet als Vorschlag unter dem
-/// Feld, statt dort von Hand getippt zu werden. Nur die Adresse: das Token
-/// und das Passwort betreten das Register nie, und das Zweitgeraet
-/// verbindet sich nicht von selbst.
+/// The address of Mär Sync travels to the second device as a suggestion under
+/// the field, instead of being typed there by hand. Only the address: the token
+/// and the password never enter the register, and the second device
+/// does not connect by itself.
 @MainActor
 struct MaerSyncAddressTravelTests {
 
@@ -40,7 +40,7 @@ struct MaerSyncAddressTravelTests {
         { $0.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:] }
     }
 
-    @Test("A meldet sich an, B bekommt die Adresse als Vorschlag, kein Zugangswert reist, B verbindet nichts")
+    @Test("A signs in, B gets the address as a suggestion, no credential travels, B connects nothing")
     func addressTravelsToTheSecondDevice() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -58,7 +58,7 @@ struct MaerSyncAddressTravelTests {
         #expect(offered.first?.service == .maerSync)
         #expect(b.defaults.string(forKey: AppStorageKeys.maerSyncURL) == nil,
                 "die Adresse wird angeboten, nicht eingerichtet")
-        // Kein Zugangswert: weder im Register noch irgendwo in der Wolke.
+        // No credential: neither in the register nor anywhere in the cloud.
         let data = b.defaults.data(forKey: KnownServers.storeKey) ?? Data()
         #expect(!String(decoding: data, as: UTF8.self).contains(token))
         let wolke = blob(cloud)
@@ -67,7 +67,7 @@ struct MaerSyncAddressTravelTests {
             #expect(!key.contains(token) && !"\(value)".contains(token), "Token in der Wolke: \(key)")
         }
 
-        // Eingeschwungen: B schreibt nichts zurueck, A auch nicht.
+        // Settled: B writes nothing back, and neither does A.
         let vorher = blob(cloud)
         b.sync.noteKnownServers()
         b.sync.reconcile()
@@ -75,11 +75,11 @@ struct MaerSyncAddressTravelTests {
         #expect(NSDictionary(dictionary: vorher).isEqual(to: blob(cloud)))
     }
 
-    /// So liest ein Geraet mit Build 47 den neuen Dienst: als unbekannten.
-    /// Der Eintrag reist einzeln, also bleibt er dort liegen, ohne Stempel
-    /// und ohne die bekannten Eintraege mitzureissen; das Register des
-    /// alten Geraets bleibt lesbar.
-    @Test("Ein unbekannter Dienst im Register der Wolke nimmt einem aelteren Geraet nichts")
+    /// This is how a device with Build 47 reads the new service: as unknown.
+    /// The entry travels alone, so it stays there, without a stamp
+    /// and without dragging the known entries along; the register of the
+    /// old device stays readable.
+    @Test("An unknown service in the cloud register takes nothing from an older device")
     func unknownServiceIsSkippedNotFatal() {
         let cloud = UserChoiceFakeCloud()
         let b = device(cloud, now: 2000)
@@ -94,7 +94,7 @@ struct MaerSyncAddressTravelTests {
                 "der Eintrag bleibt fuer Geraete liegen, die ihn kennen")
     }
 
-    @Test("Die Anmeldung merkt die Adresse, das Feld bietet sie an", .needsTheSources)
+    @Test("The sign-in remembers the address, the field offers it", .needsTheSources)
     func wiring() throws {
         let anmeldung = try sourceText("Sources/Networking/MaerSyncSignIn.swift")
         let store = try #require(anmeldung.range(of: "static func store(_ access: MaerSyncAccess"))

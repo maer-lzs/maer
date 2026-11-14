@@ -13,7 +13,7 @@ import Foundation
 /// acceptance, not the precondition. The same files go to the source
 /// watch, so the expectations here are the ones it checks.
 struct OvercastOPMLTests {
-    @Test("erweitertes OPML: Feeds in Dateiordnung, Staende je Folge mit Sendung")
+    @Test("extended OPML: feeds in file order, positions per episode with show")
     func extendedYieldsFeedsAndStates() throws {
         let extended = try CorpusFixture.data("overcast-extended", ext: "opml", subdirectory: "ForeignImport")
         let doc = try #require(OvercastOPML.parse(extended))
@@ -30,12 +30,12 @@ struct OvercastOPMLTests {
         #expect(a1.stampedAt == 1_706_781_600_000)
         let a2 = doc.states[1]
         #expect(a2.finished && a2.position == 0)
-        // `B1` traegt keinen Zeitpunkt: darf spaeter nur fuellen.
+        // `B1` carries no timestamp: may only fill in later.
         #expect(doc.states[2].stampedAt == nil)
         #expect(doc.states[2].feedURL == "https://b.example/rss")
     }
 
-    @Test("die eigene Ausfuhr-Datei liest sich mit GUID und Millisekunden")
+    @Test("the own export file reads back with GUID and milliseconds")
     func ownExportFixture() throws {
         let data = try CorpusFixture.data("maer-export", ext: "opml", subdirectory: "ForeignImport")
         let doc = try #require(OvercastOPML.parse(data))
@@ -48,7 +48,7 @@ struct OvercastOPMLTests {
         #expect(doc.states.allSatisfy { $0.feedURL == "https://free.example/rss" })
     }
 
-    @Test("ein schlichtes OPML bleibt der reine Abo-Import")
+    @Test("a plain OPML stays the pure subscription import")
     func plainOPMLHasNoStates() throws {
         let plain = """
         <opml version="1.0"><body>
@@ -63,14 +63,14 @@ struct OvercastOPMLTests {
         #expect(doc.states.isEmpty)
     }
 
-    /// Rot-Probe: eine kaputte Datei liefert nil, nie den Teil davor.
-    @Test("kaputtes XML ist nil, kein halber Import")
+    /// Red probe: a broken file yields nil, never the part before it.
+    @Test("broken XML is nil, no half import")
     func brokenIsNil() {
         let broken = "<opml><body><outline type=\"rss\" xmlUrl=\"https://a.example/rss\">"
         #expect(OvercastOPML.parse(Data(broken.utf8)) == nil)
     }
 
-    @Test("Zeitpunkte: ISO mit Zone, mit Bruchteilen, sonst nil")
+    @Test("timestamps: ISO with zone, with fractions, otherwise nil")
     func moments() {
         #expect(OvercastOPML.momentMs("2024-02-01T10:00:00-00:00") == 1_706_781_600_000)
         #expect(OvercastOPML.momentMs("2024-02-01T10:00:00.500Z") == 1_706_781_600_500)

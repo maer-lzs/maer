@@ -33,7 +33,7 @@ struct PlaybackContextRowsTests {
         return Home(directory: directory)
     }
 
-    @Test("eine frische Installation schreibt die Zeile; ein geleerter Kontext bleibt eine leere Zeile")
+    @Test("a fresh install writes the row; an emptied context stays an empty row")
     func freshInstallWritesTheRow() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

@@ -70,7 +70,7 @@ struct NoiseNKTests {
 
     // MARK: - Somebody else's numbers
 
-    @Test("beide veroeffentlichten Vektoren kommen Byte fuer Byte heraus", .needsTheTests)
+    @Test("both published vectors come out byte for byte", .needsTheTests)
     func bothPublishedVectorsAreReproducedByteForByte() throws {
         let vectors = try Self.fixture().vectors
         // The precondition, and without it this file could pass while
@@ -139,7 +139,7 @@ struct NoiseNKTests {
                 NoiseHandshake(initiator: false, staticPrivate: responderKey))
     }
 
-    @Test("ein frisches Paar ist sich in beiden Richtungen einig")
+    @Test("a fresh pair agrees in both directions")
     func aFreshPairAgreesBothWays() throws {
         let (initiator, responder) = Self.pair()
         _ = try responder.readMessage(try initiator.writeMessage(Data("hello".utf8)))
@@ -152,7 +152,7 @@ struct NoiseNKTests {
         #expect(try receive.decrypt(ad: Data(), ciphertext: back) == Data("an answer".utf8))
     }
 
-    @Test("zwei Handschlaege sehen sich nie gleich")
+    @Test("two handshakes never look alike")
     func twoHandshakesNeverLookAlike() throws {
         // Without a fresh ephemeral per handshake the whole thing collapses,
         // and nothing in a round trip would notice.
@@ -161,7 +161,7 @@ struct NoiseNKTests {
         #expect(try first.writeMessage(Data("x".utf8)) != (try second.writeMessage(Data("x".utf8))))
     }
 
-    @Test("der falsche statische Schluessel bekommt keine Sitzung")
+    @Test("the wrong static key gets no session")
     func theWrongStaticKeyGetsNoSession() throws {
         // Exactly the swapped counterpart: somebody answers, but not the one
         // whose key is pinned. It must fail, not quietly work.
@@ -174,7 +174,7 @@ struct NoiseNKTests {
         #expect(throws: (any Error).self) { try responder.readMessage(message) }
     }
 
-    @Test("ein veraendertes Byte wird abgewiesen")
+    @Test("an altered byte is rejected")
     func aChangedByteIsRefused() throws {
         let (initiator, responder) = Self.pair()
         var message = try initiator.writeMessage(Data("hello".utf8))
@@ -184,7 +184,7 @@ struct NoiseNKTests {
         #expect(throws: (any Error).self) { try responder.readMessage(message) }
     }
 
-    @Test("ein anderer Vorspann bekommt keine Sitzung")
+    @Test("a different prologue gets no session")
     func aDifferentPrologueGetsNoSession() throws {
         // The prologue is where the two sides state what they agreed on
         // before speaking. If they disagree, the session must not come up.
@@ -197,7 +197,7 @@ struct NoiseNKTests {
         #expect(throws: (any Error).self) { try responder.readMessage(message) }
     }
 
-    @Test("der Zaehler laeuft, also wird nie ein Nonce wiederverwendet")
+    @Test("the counter runs, so a nonce is never reused")
     func theCounterMovesSoANonceIsNeverReused() throws {
         let (initiator, responder) = Self.pair()
         _ = try responder.readMessage(try initiator.writeMessage())
@@ -211,7 +211,7 @@ struct NoiseNKTests {
         #expect(try responderReceive.decrypt(ad: Data(), ciphertext: second) == Data("same".utf8))
     }
 
-    @Test("eine Faelschung bewegt den Zaehler nicht")
+    @Test("a forgery does not move the counter")
     func aForgeryDoesNotMoveTheCounter() throws {
         // If a refused message advanced the counter, the two sides would be
         // out of step from then on and the session would end for the honest
@@ -240,14 +240,14 @@ struct NoiseNKTests {
     /// handshake that let a message be written twice, read out of turn or
     /// split early would hand out keys off a state the other side does not
     /// have, and nothing in a round trip would notice.
-    @Test("ein zweites erstes Wort wirft")
+    @Test("a second first word throws")
     func aSecondFirstMessageThrows() throws {
         let (initiator, _) = Self.pair()
         _ = try initiator.writeMessage()
         #expect(throws: NoiseFailure.self) { try initiator.writeMessage() }
     }
 
-    @Test("split vor dem Ende wirft, danach nicht")
+    @Test("split before the end throws, afterwards not")
     func splitBeforeTheEndThrows() throws {
         let (initiator, responder) = Self.pair()
         #expect(throws: NoiseFailure.self) { try initiator.split() }
@@ -258,7 +258,7 @@ struct NoiseNKTests {
         _ = try responder.split()
     }
 
-    @Test("ein Schritt ausser der Reihe wirft: der Antwortende schreibt nicht zuerst, der Anrufer liest nicht zuerst")
+    @Test("a step out of order throws: the responder does not write first, the caller does not read first")
     func aStepOutOfTurnThrows() throws {
         let (initiator, responder) = Self.pair()
         #expect(throws: NoiseFailure.self) { try responder.writeMessage() }

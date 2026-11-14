@@ -17,7 +17,7 @@ struct MediaFamilyKindTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Familie: jede Art unter jf: und sub: hat ein Ziel, eine unbekannte Art ist sichtbar unbekannt")
+    @Test("family: every kind under jf: and sub: has a target, an unknown kind is visibly unknown")
     func everyKindHasATarget() {
         let table: [(String, MediaFamily)] = [
             ("jf:album:1", .music), ("jf:song:1", .music), ("jf:playlist:1", .music), ("jf:artist:1", .music),
@@ -31,7 +31,7 @@ struct MediaFamilyKindTests {
         }
     }
 
-    @Test("Familie: jede Art, die ein Anbieter vergibt, steht in der Tabelle", .needsTheSources)
+    @Test("family: every kind a provider issues is in the table", .needsTheSources)
     func everyKindTheProvidersHandOutIsListed() throws {
         for (file, namespace) in [("Sources/Providers/JellyfinProvider.swift", "jf:"),
                                   ("Sources/Providers/SubsonicProvider.swift", "sub:")] {
@@ -54,7 +54,7 @@ struct MediaFamilyKindTests {
         }
     }
 
-    @Test("Jellyfin-Buch: Buch fuer jede Frage, die das Buch von der Musik trennt")
+    @Test("Jellyfin book: book for every question that separates the book from music")
     func aJellyfinBookIsABookEverywhere() {
         let book = "jf:book:b1"
         #expect(MediaFamily.booksTabMember(book, markedForm: nil), "Continue of the books tab")
@@ -75,7 +75,7 @@ struct MediaFamilyKindTests {
         #expect(!MusicSourceRule.isServerMusic("jf:book:7"), "a Jellyfin audiobook is no music")
     }
 
-    @Test("die Kennung hinter einer Jellyfin-Adresse liest die reine Schicht, der Anbieter fragt sie dort")
+    @Test("the identifier behind a Jellyfin address is read by the pure layer, the provider asks it there")
     func theJellyfinIdIsPure() {
         #expect(ItemNamespace.jellyfinId("jf:book:7", kind: "book") == "7")
         #expect(ItemNamespace.jellyfinId("jf:album:a:b", kind: "album") == "a:b")
@@ -84,7 +84,7 @@ struct MediaFamilyKindTests {
         #expect(JellyfinProvider.id("jf:song:9", kind: "song") == ItemNamespace.jellyfinId("jf:song:9", kind: "song"))
     }
 
-    @Test("ein Katalog-Lied ist im Player Musik: unter dem Titel steht der Kuenstler", .needsTheSources)
+    @Test("a catalog song is music in the player: the artist is under the title", .needsTheSources)
     func aCatalogSongIsMusicInThePlayer() throws {
         let song = CatalogSongID.make(album: FreeCatalog.archivePrefix + "MIXG032", index: 0)
         #expect(MediaFamily.isMusicByForm(song))

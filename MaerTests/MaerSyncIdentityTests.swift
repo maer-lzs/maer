@@ -61,7 +61,7 @@ struct MaerSyncIdentityTests {
         rig.session.reloadAccess()
     }
 
-    @Test("die Identitaet ist Dienst und Konto: andere Adresse, gleiche Identitaet; anderes Konto, andere")
+    @Test("the identity is service and account: other address, same identity; other account, other identity")
     func theIdentityIsServiceAndAccount() {
         #expect(MaerSyncIdentity(service: "fp", owner: "anna").scope == MaerSyncIdentity(service: "fp", owner: "anna").scope)
         #expect(MaerSyncIdentity(service: "fp", owner: "anna").scope != MaerSyncIdentity(service: "fp", owner: "bert").scope)
@@ -77,7 +77,7 @@ struct MaerSyncIdentityTests {
 
     /// Case 2 of the measurement: B's pot stood at the same version as A's,
     /// and A's mirror replaced it.
-    @Test("B's Topf in gleicher Fassung wird nie durch A's Abbild ersetzt, A's Schlange bleibt bei A")
+    @Test("B's pot in the same version is never replaced by A's image, A's queue stays with A")
     func anEqualVersionNeverReplacesB() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -103,7 +103,7 @@ struct MaerSyncIdentityTests {
 
     /// Case 1 of the measurement: B had no pot, and A's whole mirror became
     /// B's first document.
-    @Test("ein leeres B bekommt nur, was unter B geschieht")
+    @Test("an empty B gets only what happens under B")
     func anEmptyBGetsOnlyWhatHappensUnderB() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -120,7 +120,7 @@ struct MaerSyncIdentityTests {
 
     /// Right after the switch a runner may queue something before the first
     /// round ran: it waits until B is read, then goes out beside B's own.
-    @Test("nach dem Wechsel wird nichts geschrieben, bevor B gelesen ist")
+    @Test("after the switch nothing is written before B has been read")
     func nothingIsWrittenBeforeBIsRead() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -141,7 +141,7 @@ struct MaerSyncIdentityTests {
                 "after the read the write goes out beside B's own")
     }
 
-    @Test("Rueckweg: wieder bei A ist A wie vorher, und A's ungesendete Schlange geht zu A")
+    @Test("way back: at A again, A is as before, and A's unsent queue goes to A")
     func backToAFindsAAsItWas() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -168,7 +168,7 @@ struct MaerSyncIdentityTests {
     /// The witness of the decision of 03.10.: what waited for A arrives at
     /// A on the way back, for the playlists and the choices too, whose
     /// body the mirror held before the service took it.
-    @Test("Rueckweg: ein ungesendeter Playlisten- und Wahlen-Koerper von A geht zu A, nie zu B")
+    @Test("way back: an unsent playlist and choices body of A goes to A, never to B")
     func aBodyThatWaitedForAReachesA() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -199,7 +199,7 @@ struct MaerSyncIdentityTests {
         #expect(rig.transport.documents[choiceKey]?.body == choices, "A's choices never reached A")
     }
 
-    @Test("ein ungesendeter Koerper ueberlebt den Neustart und geht danach hinaus")
+    @Test("an unsent body survives the restart and goes out afterwards")
     func aWaitingBodySurvivesARestart() async throws {
         let suite = "maer-identity-\(UUID().uuidString)"
         defer { UserDefaults().removePersistentDomain(forName: suite) }
@@ -230,7 +230,7 @@ struct MaerSyncIdentityTests {
                 "a body written before the restart never went out")
     }
 
-    @Test("Ruhe nach dem Wechsel: danach schreibt keine Runde")
+    @Test("calm after the switch: afterwards no round writes")
     func quietAfterTheSwitch() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -248,7 +248,7 @@ struct MaerSyncIdentityTests {
 
     /// The same account reached under another address (a LAN address, a
     /// name) is not a switch: nothing is reloaded, nothing waits.
-    @Test("gleiche Identitaet unter anderer Adresse ist kein Wechsel")
+    @Test("the same identity under another address is no switch")
     func theSameAccountElsewhereIsNoSwitch() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -264,7 +264,7 @@ struct MaerSyncIdentityTests {
         #expect(rig.transport.writes.count > writes, "nothing waits for a read, it is the same account")
     }
 
-    @Test("der Stand vor den Identitaeten gehoert der ersten Identitaet, einmal, und die schlichten Schluessel leeren sich")
+    @Test("the state before the identities belongs to the first identity, once, and the plain keys empty themselves")
     func thePlainStateGoesToTheFirstIdentity() {
         let suite = "maer-identity-plain-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -311,7 +311,7 @@ struct MaerSyncIdentityTests {
     /// session, and it took the account its runners hold when they
     /// enrolled, not at its first use, when the new account was already
     /// stored and the change looked like none.
-    @Test("der erste Kontowechsel des Prozesses erreicht jeden Laeufer")
+    @Test("the first account switch of the process reaches every runner")
     func theFirstSwitchOfAProcessReachesEveryRunner() async {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -334,7 +334,7 @@ struct MaerSyncIdentityTests {
     /// A, signed out, then B: the stock is A's, and B is another account.
     /// The register held only the last account seen and lost it at the
     /// sign-out, so B looked like a first sign-in.
-    @Test("A, abgemeldet, dann B ist ein Kontowechsel; A, abgemeldet, dann A keiner; auch ueber einen Neustart")
+    @Test("A, signed out, then B is an account switch; A, signed out, then A is none; also across a restart")
     func aSwitchCountsAcrossASignOutAndARestart() {
         let suite = "maer-owner-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -362,7 +362,7 @@ struct MaerSyncIdentityTests {
         #expect(StockOwner.owner(in: defaults) == Self.identityB.scope)
     }
 
-    @Test("ein Kontowechsel uebergibt jeden Bestand mit dem Eigentuemer davor, vor dem Neustart der Traeger und ohne den Sync-Schalter zu fragen; abgemeldet nichts")
+    @Test("an account switch hands over every holding with the owner before it, before the restart of the carriers and without asking the sync switch; signed out nothing")
     func aSwitchHandsTheStockOverWithTheOwnerBefore() {
         let suite = "maer-owner-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -385,7 +385,7 @@ struct MaerSyncIdentityTests {
         #expect(runner.calls.suffix(2) == ["owner", "access"], "the carrier started before the stock followed")
     }
 
-    @Test("die Laeufer fragen nach dem Konto die Sitzung und keinen zweiten Speicher", .needsTheSources)
+    @Test("the runners ask the session for the account and no second store", .needsTheSources)
     func theRunnersAskTheSession() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/AccessFollowers.swift"), encoding: .utf8))
@@ -397,7 +397,7 @@ struct MaerSyncIdentityTests {
     /// to B, whose pot stands at the same version. Taken, it would become
     /// B's mirror and version, the read lock would fall, and the next write
     /// would land A's pot under B.
-    @Test("eine Antwort, die vor dem Wechsel erfragt wurde, wirkt danach nicht")
+    @Test("an answer asked for before the switch has no effect afterwards")
     func anAnswerAskedBeforeTheSwitchDoesNothing() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -427,7 +427,7 @@ struct MaerSyncIdentityTests {
 
     /// The switch closes A's line, but what was on its way still comes: an
     /// announcement of A's account would fetch A's document under B.
-    @Test("eine Ansage der Leitung von A, die nach dem Wechsel eintrifft, holt nichts; die Leitung von B holt")
+    @Test("an announcement from A's line that arrives after the switch fetches nothing; B's line fetches")
     func anAnnouncementOfTheOldLineDoesNothing() async throws {
         let suite = "maer-identity-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -462,7 +462,7 @@ struct MaerSyncIdentityTests {
     /// The line's history (failed opens, the last try, the paths that
     /// failed) belongs to the account it was opened for: B does not wait
     /// out A's failures.
-    @Test("ein Kontowechsel faengt die Geschichte der Leitung neu an, B wartet nicht auf die Fehlschlaege von A")
+    @Test("an account switch starts the history of the line anew, B does not wait for A's failures")
     func aNewAccountDoesNotWaitOutTheOldLine() async throws {
         let suite = "maer-identity-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -495,7 +495,7 @@ struct MaerSyncIdentityTests {
 
     /// The fields of the line live in one value, and the switch resets the
     /// value, so a field added later cannot be forgotten in the reset.
-    @Test("der Kontowechsel setzt die ganze Geschichte der Leitung zurueck, nicht einzelne Felder", .needsTheSources)
+    @Test("the account switch resets the whole history of the line, not single fields", .needsTheSources)
     func theSwitchResetsTheWholeLine() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
@@ -534,7 +534,7 @@ struct MaerSyncIdentityTests {
 
     /// The rule stands at eight assignments in three write loops; a
     /// ninth without the question, or one that lost it, turns this red.
-    @Test("die Schreibschleifen raeumen nur den gesendeten Koerper ab, an jeder Stelle", .needsTheSources)
+    @Test("the write loops clear only the sent body, at every place", .needsTheSources)
     func onlyTheSentBodyIsCleared() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
@@ -551,7 +551,7 @@ struct MaerSyncIdentityTests {
         #expect(calibration.guarded == 1 && calibration.bare == 1)
     }
 
-    @Test("auf jede Antwort des Dienstes folgt die Frage, ob sie noch dem Konto gilt, auch auf Ansagen der Leitung", .needsTheSources)
+    @Test("every answer of the service is followed by the question whether it still applies to the account, also on announcements of the line", .needsTheSources)
     func everyAnswerAsksForItsAccount() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))

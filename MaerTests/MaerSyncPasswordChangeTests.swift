@@ -37,7 +37,7 @@ struct MaerSyncPasswordChangeTests {
                                             device: "dev-a", transport: transport, freshSalt: { salt })
     }
 
-    @Test("Umzug (Form secret): das alte Passwort reist einmal als current.secret, das neue nur als Beweis, feed nur aus dem neuen")
+    @Test("move (form secret): the old password travels once as current.secret, the new one only as proof, feed only from the new one")
     func theMoveSendsTheOldOnceAndKeepsFeedOfTheNew() async throws {
         try await clean {
             let transport = MaerSyncCarrierTests.FakeTransport()
@@ -57,7 +57,7 @@ struct MaerSyncPasswordChangeTests {
         }
     }
 
-    @Test("Wechsel (Form proof): auch das geltende Passwort reist nur als Beweis")
+    @Test("change (form proof): the current password too travels only as proof")
     func anOrdinaryChangeSendsOnlyProofs() async throws {
         try await clean {
             let transport = MaerSyncCarrierTests.FakeTransport()
@@ -68,7 +68,7 @@ struct MaerSyncPasswordChangeTests {
         }
     }
 
-    @Test("Wechsel: die Passwort-Regel gilt, bevor irgendetwas gefragt wird, und ohne Zufall wird nichts gesendet")
+    @Test("change: the password rule applies before anything is asked, and without randomness nothing is sent")
     func theRuleComesFirstAndNoRandomnessSendsNothing() async {
         await clean {
             let transport = MaerSyncCarrierTests.FakeTransport()
@@ -83,7 +83,7 @@ struct MaerSyncPasswordChangeTests {
         }
     }
 
-    @Test("Anmeldung: feed aus dem Passwort, das nur als Beweis reiste, bleibt auf diesem Geraet")
+    @Test("sign-in: feed from the password that travelled only as proof stays on this device")
     func theSignInKeepsFeed() async throws {
         try await clean {
             let transport = MaerSyncCarrierTests.FakeTransport()
@@ -113,7 +113,7 @@ struct MaerSyncPasswordChangeTests {
         return result as? [String: Any]
     }
 
-    @Test("feed liegt nur auf diesem Geraet: nicht in einer Sicherung, nicht im iCloud-Schluesselbund; Abmelden vergisst ihn", .needsTheSources)
+    @Test("feed lives only on this device: not in a backup, not in the iCloud keychain; signing out forgets it", .needsTheSources)
     func feedStaysOnThisDevice() async throws {
         try await clean {
             let feed = Data(repeating: 5, count: 32)

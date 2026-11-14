@@ -17,7 +17,7 @@ struct NowPlayingRefreshTests {
     private let fields = NowPlayingRefresh.Fields(title: "Buch", subtitle: "Kapitel 1", duration: 3600, rate: 1,
                                                   isLive: false, artwork: nil)
 
-    @Test("ohne Schrieb und bei einem geaenderten Feld ist er faellig, bei laufender Zeit nicht")
+    @Test("without a write and with a changed field it is due, with running time it is not")
     func aChangedFieldIsDue() {
         let written = NowPlayingRefresh.Written(fields: fields, elapsed: 100, at: 1_000)
         #expect(NowPlayingRefresh.isDue(last: nil, fields: fields, elapsed: 100, at: 1_000))
@@ -30,7 +30,7 @@ struct NowPlayingRefreshTests {
 
     /// The system runs the time on from the last write; a stall leaves the
     /// real time behind it, and past the tolerance the tick writes anew.
-    @Test("ein Stocken laesst die weitergelaufene Zeit abweichen: ueber der Toleranz ist der Schrieb faellig")
+    @Test("a stall makes the elapsed time deviate: above the tolerance the write is due")
     func aDriftIsDue() {
         let written = NowPlayingRefresh.Written(fields: fields, elapsed: 100, at: 1_000)
         #expect(!NowPlayingRefresh.isDue(last: written, fields: fields, elapsed: 109.5, at: 1_010),
@@ -52,7 +52,7 @@ struct NowPlayingRefreshTests {
 
     /// The info is written on every event; the artwork is built once per
     /// image, and a new image builds it anew.
-    @Test("das Artwork wird einmal je Bild gebaut, ein neues Bild baut es neu")
+    @Test("the artwork is built once per image, a new image builds it anew")
     func aNewImageBuildsANewArtwork() {
         let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
                                     localTracks: { _ in [:] }, isOnline: { true })

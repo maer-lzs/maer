@@ -8,20 +8,20 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Umzug der eigenen Bestaende auf Navidromes neue Kennungen: einmal je
-/// Serveradresse, jede Ablage durch ihren eigenen Halter, die Marke erst
-/// nach dem letzten Bestand, ein zweiter Lauf schreibt nichts.
+/// The move of the own holdings to Navidrome's new identifiers: once per
+/// server address, every store through its own holder, the marker only
+/// after the last holding, a second run writes nothing.
 @MainActor
 struct NavidromeRekeyTests {
     static let old = NavidromeDoorTests.old
     static let new = NavidromeDoorTests.new
     static let map: (String) -> String = { SubsonicProvider.canonicalItemId($0, canonical: true) }
 
-    // MARK: - Die Regel
+    // MARK: - The rule
 
     /// Where an old and a new key land on one, one rule decides for every
     /// family: the key already in the new form, else the smaller key.
-    @Test("die Kollisionsregel steht einmal: der neue Schluessel gewinnt, sonst der kleinere", .needsTheSources)
+    @Test("the collision rule exists once: the new key wins, otherwise the smaller", .needsTheSources)
     func theCollisionRuleStandsOnce() throws {
         #expect(NavidromeRekey.prefers("new", over: "old", newKey: "new"))
         #expect(!NavidromeRekey.prefers("old", over: "new", newKey: "new"))
@@ -37,7 +37,7 @@ struct NavidromeRekeyTests {
     /// and a second pass changes nothing. On a database of its own, and its
     /// writes land before the witness ends: on the app's database it read
     /// and wrote the host's rows.
-    @Test("die Statistik zieht um: alt und neu eines Titels addieren sich, ein zweiter Lauf aendert nichts")
+    @Test("the statistics move: old and new of a title add up, a second run changes nothing")
     func theStatsMove() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-stats-\(UUID().uuidString)", isDirectory: true)
@@ -57,7 +57,7 @@ struct NavidromeRekeyTests {
         await stats.awaitPendingWrites()
     }
 
-    @Test("die Regel: Reihenfolge bleibt, alt und neu eines Titels bleiben einmal an der ersten Stelle")
+    @Test("the rule: order stays, old and new of a title stay once at the first position")
     func theListRule() {
         let ids = ["sub:song:\(Self.old)", "rss:feed:ep", "sub:song:\(Self.new)", "sub:album:a"]
         let rekeyed = NavidromeRekey.rekeyed(ids, Self.map)
@@ -66,7 +66,7 @@ struct NavidromeRekeyTests {
         #expect(NavidromeRekey.changedCount(ids, Self.map) == 1)
     }
 
-    @Test("die Regel: Sekunden je Titel addieren sich, die geaenderten Schluessel in fester Folge")
+    @Test("the rule: seconds per title add up, the changed keys in fixed order")
     func theCountAndKeyRules() {
         let counts = ["sub:song:\(Self.old)": 30, "sub:song:\(Self.new)": 12, "rss:feed:ep": 5]
         #expect(NavidromeRekey.summed(counts, Self.map) == ["sub:song:\(Self.new)": 42, "rss:feed:ep": 5])
@@ -76,9 +76,9 @@ struct NavidromeRekeyTests {
         #expect(NavidromeRekey.markerKey(server: "music.example/rest") == "navidromeRekeyed.music.example/rest")
     }
 
-    // MARK: - Die Ablagen
+    // MARK: - The stores
 
-    @Test("Warteschlange und Kontext ziehen um, alt und neu bleiben einmal, ein zweiter Lauf schreibt nichts")
+    @Test("queue and context move, old and new stay once, a second run writes nothing")
     func theQueueAndTheContextMove() {
         let queue = PlayQueue(persists: false)
         queue.playLast("sub:song:\(Self.old)")
@@ -106,7 +106,7 @@ struct NavidromeRekeyTests {
         let startReadFailed = false
     }
 
-    @Test("die Sync-Warteschlange zieht um, bei alt und neu bleibt der spaeter eingereihte")
+    @Test("the sync queue moves, of old and new the later queued one stays")
     func thePendingUpdatesMove() async {
         let storage = MemoryPending()
         storage.stored = [
@@ -124,7 +124,7 @@ struct NavidromeRekeyTests {
         #expect(storage.saves == saves, "a second pass writes nothing")
     }
 
-    // MARK: - Die Downloads
+    // MARK: - The downloads
 
     /// An album id as older Navidromes gave it: 32 hex, which the new rule
     /// turns into the same 128 bits in base 62. No exception per kind.
@@ -142,7 +142,7 @@ struct NavidromeRekeyTests {
             userMediaProgress: nil)
     }
 
-    @Test("die Regel: ein Download nennt seine Titel in neuer Form, auch wo das Album bleibt; ein Hoerbuch behaelt seine Spuren")
+    @Test("the rule: a download names its titles in the new form, even where the album stays; an audiobook keeps its tracks")
     func theDownloadDetailRule() {
         let hexAlbum = "sub:album:\(Self.hexAlbum)"
         #expect(Self.map(hexAlbum) != hexAlbum, "the precondition: a hex album id changes too")
@@ -185,7 +185,7 @@ struct NavidromeRekeyTests {
         _ = try await rows.replaceAll(marks)
     }
 
-    @Test("ein bleibendes Album findet seine Songs nach dem Umzug im selben Prozess, ohne Neustart")
+    @Test("a remaining album finds its songs after the move in the same process, without a restart")
     func aStayingAlbumFindsItsSongsAtOnce() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-index-\(UUID().uuidString)", isDirectory: true)
@@ -203,7 +203,7 @@ struct NavidromeRekeyTests {
         #expect(manager.localTrackMap(forItemId: "sub:song:b").count == 1, "a song that kept its id still finds its file")
     }
 
-    @Test("die Downloads ziehen um: Ordner, Zeile und Art unter die neue Kennung, die Titel in neuer Form, ein zweiter Lauf null")
+    @Test("the downloads move: folder, row and kind under the new identifier, the titles in the new form, a second run zero")
     func theDownloadsMove() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-downloads-\(UUID().uuidString)", isDirectory: true)
@@ -245,9 +245,9 @@ struct NavidromeRekeyTests {
         #expect(again.loadCachedDetail(forItemId: plain)?.media.tracks?.map(\.contentUrl) == [Self.new, Self.new])
     }
 
-    // MARK: - Die Wahlen
+    // MARK: - The choices
 
-    @Test("die Regel: Wahlen kanonisch gelesen, der spaetere Moment gewinnt, bei Gleichstand der neue Schluessel")
+    @Test("the rule: choices read canonically, the later moment wins, on a tie the new key")
     func theChoiceFoldRule() {
         let oldRate = "playbackRate.sub:song:\(Self.old)", newRate = "playbackRate.sub:song:\(Self.new)"
         #expect(NavidromeRekey.choiceKey(oldRate, Self.map) == newRate)
@@ -294,7 +294,7 @@ struct NavidromeRekeyTests {
         return Device(sync: sync, defaults: defaults, suite: suite)
     }
 
-    @Test("die eigenen Wahlen ziehen als Mechanik um: mit ihren Stempeln, ohne Notiz, alt und neu einmal, ein zweiter Lauf null")
+    @Test("the own choices move as mechanics: with their stamps, without a note, old and new once, a second run zero")
     func theOwnChoicesMove() throws {
         let cloud = CountingCloud()
         let here = device(cloud, now: 1000, map: Self.map)
@@ -328,7 +328,7 @@ struct NavidromeRekeyTests {
         #expect(here.sync.rekeyLocalChoices(Self.map)?.changed == 0, "a second pass changes nothing")
     }
 
-    @Test("Ruhe mit einem alten Geraet: es schreibt den alten Schluessel weiter, das umgezogene uebernimmt einmal und schreibt dann nichts")
+    @Test("calm with an old device: it keeps writing the old key, the moved one adopts once and then writes nothing")
     func quietBesideAnOldDevice() {
         let cloud = CountingCloud()
         let moved = device(cloud, now: 1000, map: Self.map)
@@ -373,7 +373,7 @@ struct NavidromeRekeyTests {
     /// every device runs a build that knows them (all devices are on the
     /// current version). A build from before the rekey
     /// still counts raw, and nothing here can change that.
-    @Test("ein Paar alt und neu kostet einen Platz im Deckel: 300 umgezogene Geschwindigkeiten bleiben, danach schreibt niemand")
+    @Test("a pair of old and new costs one place in the cap: 300 moved speeds stay, after that nobody writes")
     func aMovedPairCostsOnePlaceInTheCap() throws {
         let count = 300
         let map: (String) -> String = { id in
@@ -414,9 +414,9 @@ struct NavidromeRekeyTests {
         #expect(drop == ["playbackRate.sub:song:old2"], "the pair holds the one place, the single key goes")
     }
 
-    // MARK: - Die Mär-Playlisten
+    // MARK: - The Mär playlists
 
-    @Test("die Regel: eine Mär-Playlist kanonisch gelesen, alt und neu einmal, ein Entfernen unter dem neuen gilt fuer den alten")
+    @Test("the rule: a Mär playlist read canonically, old and new once, a removal under the new one applies to the old one")
     func thePlaylistRule() {
         let oldId = "sub:song:\(Self.old)", newId = "sub:song:\(Self.new)"
         let entry = MaerPlaylistMerge.Entry(
@@ -444,7 +444,7 @@ struct NavidromeRekeyTests {
 
     /// The line a dropped rule writes names its list: the merge takes the
     /// list's id without a default, and the move hands it on.
-    @Test("die Zeile einer fallengelassenen Regel nennt ihre Liste, auch beim Umschluesseln", .needsTheSources)
+    @Test("the row of a dropped rule names its list, also when rekeying", .needsTheSources)
     func theMergeLineNamesItsList() throws {
         let merge = try FetchAnswerTests.squeezedSource("Sources/Models/MaerPlaylistMerge.swift")
         #expect(merge.contains("static func unite(_ a: Entry, _ b: Entry, list: String) -> Entry {"),
@@ -470,7 +470,7 @@ struct NavidromeRekeyTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("Ruhe mit einem alten Geraet bei den Mär-Playlisten: kein Schrieb fuer die alte Form, ein Entfernen kommt nicht wieder")
+    @Test("calm with an old device for the Mär playlists: no write for the old form, a removal does not come back")
     func playlistsQuietBesideAnOldDevice() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-playlists-\(UUID().uuidString)", isDirectory: true)
@@ -518,14 +518,14 @@ struct NavidromeRekeyTests {
         withExtendedLifetime((old, moved)) {}
     }
 
-    // MARK: - Die Staende
+    // MARK: - The listening positions
 
     /// Navidrome's stands travel through the server's bookmarks, which are
     /// read in the new form, never through the stand carrier, which is not.
     /// The move of the ids rests on that: a `sub:` id let into the carrier
     /// would bring the old form back from a device on an older build, and
     /// the moved device would keep it as an orphan beside the new one.
-    @Test("der Stand-Traeger traegt keine Navidrome-Kennung, die Staende reisen ueber die Lesezeichen")
+    @Test("the position carrier carries no Navidrome identifier, the positions travel through the bookmarks")
     func theStandCarrierCarriesNoNavidromeId() {
         #expect(PodcastCloudSync.potCarries("rss:feed:ep"), "the precondition: the carrier carries stands at all")
         #expect(!PodcastCloudSync.potCarries("sub:song:\(Self.old)"))
@@ -533,9 +533,9 @@ struct NavidromeRekeyTests {
         #expect(!PodcastCloudSync.potCarries("sub:playlist:\(Self.new)"))
     }
 
-    // MARK: - Der Lauf
+    // MARK: - The run
 
-    @Test("der Lauf: nur wenn die Regel gilt und die Marke fehlt, die Marke erst nach dem letzten Bestand, einmal")
+    @Test("the run: only when the rule applies and the marker is missing, the marker only after the last holding, once")
     func theRunIsOncePerServer() async throws {
         let suite = "rekey-run-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -572,7 +572,7 @@ struct NavidromeRekeyTests {
     /// A step that cannot do its work now (a kept song list that stayed on
     /// the disk) keeps the pass open: no marker, and the next occasion runs
     /// it again.
-    @Test("ein Schritt, der nicht kann, haelt den Lauf offen; der naechste Lauf setzt die Marke")
+    @Test("a step that cannot keeps the run open; the next run sets the marker")
     func aStepThatCannotKeepsThePassOpen() async throws {
         let suite = "rekey-open-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -594,7 +594,7 @@ struct NavidromeRekeyTests {
 
     /// "Not now" keeps the pass open; "not possible here" is skipped with
     /// its reason and the marker may come, or the pass would run for ever.
-    @Test("jetzt nicht haelt den Lauf offen, hier nicht moeglich wird mit Grund uebersprungen und die Marke kommt")
+    @Test("not now keeps the run open, not possible here is skipped with a reason and the marker comes")
     func notHereIsSkippedNotNowWaits() async throws {
         let suite = "rekey-here-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -613,7 +613,7 @@ struct NavidromeRekeyTests {
     /// Rows that do not decode in this build do not decode at a later start
     /// either: the move does not wait for them, it names them, and they
     /// keep their old ids.
-    @Test("ein Bestand mit nicht dekodierten Zeilen haelt den Umzug nicht auf; die Zeile des Schritts nennt sie")
+    @Test("a holding with undecoded rows does not hold up the move; the step's row names them")
     func rowsNotReadDoNotHoldThePass() async throws {
         let suite = "rekey-missed-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -639,7 +639,7 @@ struct NavidromeRekeyTests {
 
     /// The kept song list: no address is "not possible here" (nothing on
     /// this device to drop), a list that stayed on the disk is "not now".
-    @Test("die Songliste: ohne Adresse hier nicht moeglich, eine gebliebene Liste jetzt nicht, eine entfernte erledigt")
+    @Test("the song list: without an address not possible here, a remaining list not now, a removed one done")
     func theSongListAnswersBothWays() async throws {
         let provider = SubsonicProvider.shared
         let none = await provider.forgetSongCatalog(at: nil, removing: { _ in Issue.record("removed without an address") })
@@ -656,7 +656,7 @@ struct NavidromeRekeyTests {
 
     /// One reading of the typed address: a setting the client cannot take
     /// gives no server key and no list address either.
-    @Test("eine Lesung der Server-Adresse: was der Klient nicht nimmt, gibt auch keinen Server-Schluessel und keine Listen-Adresse")
+    @Test("one reading of the server address: what the client does not accept also gives no server key and no list address")
     func oneReadingOfTheServerAddress() {
         let previous = AppStorageKeys.subsonicServerURLValue
         defer { AppStorageKeys.subsonicServerURLValue = previous }
@@ -677,7 +677,7 @@ struct NavidromeRekeyTests {
     /// a download that would move keeps the pass open instead of moving
     /// without its cover. Then music on: the download moves, the cover
     /// follows and stands kept under the new form.
-    @Test("ohne Musik-Klient haelt ein Download, der umziehen muesste, den Lauf offen; mit Klient zieht er um und das Cover folgt")
+    @Test("without a music client a download that would have to move keeps the run open; with a client it moves and the cover follows")
     func theDownloadsStepWaitsForTheCovers() async throws {
         let suite = "rekey-covers-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -736,7 +736,7 @@ struct NavidromeRekeyTests {
     /// move of the cover is held in the disk chain the pass stays pending,
     /// a sweep right then demotes nothing, and once the move lands the
     /// marker falls and the cover stands kept under the new form.
-    @Test("die Marke des Umzugs faellt erst, wenn das eingereihte Umbenennen des Covers gelandet ist")
+    @Test("the marker of the move falls only when the queued renaming of the cover has landed")
     func theMarkerWaitsForTheQueuedRename() async throws {
         let suite = "rekey-settle-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -784,7 +784,7 @@ struct NavidromeRekeyTests {
 
     /// The kept song list is named by the address the client reads, so the
     /// pass finds it by the stored address while music is off here.
-    @Test("die Songliste heisst nach der Adresse, mit Klient wie ohne")
+    @Test("the song list is named after the address, with a client as without")
     func theSongListIsNamedByTheAddress() throws {
         let setting = "  https://music.example.test/navidrome "
         let client = try #require(SubsonicClient(serverURL: setting, username: "u", password: "p"))
@@ -797,7 +797,7 @@ struct NavidromeRekeyTests {
     /// An interrupted download (a folder without a mark, kept for resume)
     /// moves with the pass, so a resume under the new id finds its parts;
     /// one whose new folder is already there stays.
-    @Test("ein abgebrochener Download zieht mit um, ein belegtes Ziel bleibt")
+    @Test("an aborted download moves along, an occupied target stays")
     func anInterruptedDownloadMovesToo() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-remnant-\(UUID().uuidString)", isDirectory: true)
@@ -830,7 +830,7 @@ struct NavidromeRekeyTests {
     /// A folder of downloads that exists but cannot be listed is "not now",
     /// with a line: no answer is no "no interrupted download". A missing
     /// folder holds none.
-    @Test("ein unlesbarer Download-Ordner haelt den Schritt offen, ein fehlender ist leer",
+    @Test("an unreadable download folder keeps the step open, a missing one is empty",
           .enabled(if: NavidromeRekeyTests.aShutFolderStaysShut, "a shut folder can be listed here, so there is nothing to measure"))
     func anUnreadableDownloadsFolderIsNotNow() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -871,7 +871,7 @@ struct NavidromeRekeyTests {
     /// A folder held for a resume neither moves nor is cleared: a resume
     /// clears the phase before its download runs, the control stands
     /// throughout. Both ways ask the one question.
-    @Test("der Waechter der abgebrochenen Downloads fragt die Steuerung mit", .needsTheSources)
+    @Test("the guard of the aborted downloads asks the control as well", .needsTheSources)
     func theRemnantGuardAsksTheControls() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
@@ -888,7 +888,7 @@ struct NavidromeRekeyTests {
 
     /// A pass over many downloads writes the marks and the kinds and
     /// measures the sizes once, not per download; a delete of many as well.
-    @Test("der Umzug und das Loeschen vieler schreiben und messen einmal", .needsTheSources)
+    @Test("the move and the deletion of many write and measure once", .needsTheSources)
     func manyMovesWriteAndMeasureOnce() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
@@ -904,7 +904,7 @@ struct NavidromeRekeyTests {
         }
     }
 
-    // MARK: - Ungelesene Ablagen
+    // MARK: - Unread stores
 
     /// A database file whose named tables carry no `key` and `payload`
     /// columns: the start read of each fails as a whole, as a read error
@@ -928,7 +928,7 @@ struct NavidromeRekeyTests {
     /// A store whose start could not read its rows holds in memory only what
     /// this run added; the rows may hold old ids. The step answers nil, so
     /// the marker stays off and a later start that reads moves them.
-    @Test("eine Ablage, deren Start-Lesen scheiterte, zieht nicht um: Warteschlange, Kontext, Sync-Warteschlange, Playlisten, Downloads antworten nil")
+    @Test("a store whose start read failed does not move: queue, context, sync queue, playlists, downloads answer nil")
     func aStoreWhoseStartReadFailedDoesNotMove() async throws {
         let directory = try Self.temporaryDirectory("rekey-unread")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -979,7 +979,7 @@ struct NavidromeRekeyTests {
         await RowKeepers.awaitAll()
     }
 
-    @Test("die Hoerstaende ziehen nicht um, solange das Lesen ihrer Tabelle scheiterte; gelesen ziehen sie um")
+    @Test("the listening positions do not move while reading their table failed; once read they move")
     func theStandsWaitForTheirTable() throws {
         let suite = "rekey-stands-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -1000,7 +1000,7 @@ struct NavidromeRekeyTests {
 
     /// The table the start could not read is read before the move, so its
     /// rows move with the run's; while it stays unread the step answers nil.
-    @Test("die Statistik liest eine ungelesene Tabelle vor dem Umzug nach; bleibt sie ungelesen, antwortet der Schritt nil")
+    @Test("the statistics read an unread table again before the move; if it stays unread, the step answers nil")
     func theStatsReadBeforeTheyMove() async throws {
         let directory = try Self.temporaryDirectory("rekey-stats")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -1031,7 +1031,7 @@ struct NavidromeRekeyTests {
     /// Each table on its own: a table the start read is not read again.
     /// Here the day table turns unreadable after the start and the item
     /// table readable; the read again asks only the item table and goes.
-    @Test("die Statistik liest nur die ungelesene Tabelle nach; eine beim Start gelesene haelt sie nicht auf")
+    @Test("the statistics re-read only the unread table; one read at start does not hold them up")
     func theStatsReadOnlyTheUnreadTable() async throws {
         let directory = try Self.temporaryDirectory("rekey-stats-table")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -1062,7 +1062,7 @@ struct NavidromeRekeyTests {
 
     /// Which stores the pass names, held in the sources: a store that keeps
     /// `sub:` ids and is left out would keep the old key silently.
-    @Test("die Naht: die Schritte des Laufs und der Ausloeser in der Wartung", .needsTheSources)
+    @Test("the seam: the steps of the run and the trigger in maintenance", .needsTheSources)
     func theSeam() throws {
         let run = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/NavidromeRekeyRun.swift"), encoding: .utf8))

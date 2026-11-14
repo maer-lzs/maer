@@ -20,7 +20,7 @@ struct MaerSyncAnswerTests {
 
     // MARK: - The two that carry the finding
 
-    @Test("412 ist NIEMALS written: ein abgewiesener Schrieb bleibt in der Warteschlange")
+    @Test("412 is NEVER written: a rejected write stays in the queue")
     func aRefusedWriteIsNeverWritten() throws {
         let stale = try MaerSyncAnswer.written(MaerSyncReply(status: 412, etag: "7"))
         #expect(stale == .stale(current: "7"))
@@ -30,7 +30,7 @@ struct MaerSyncAnswerTests {
         if case .written = stale { Issue.record("a 412 came back as written") }
     }
 
-    @Test("404 ist kein Fehler, sondern gibt es noch nicht: die erste Runde jedes Geraets")
+    @Test("404 is not an error but means not there yet: the first round of every device")
     func notFoundIsNotThereYet() throws {
         #expect(try MaerSyncAnswer.document(MaerSyncReply(status: 404)) == nil)
         #expect(failure { try MaerSyncAnswer.document(MaerSyncReply(status: 404)) } == nil, "no throw")
@@ -38,7 +38,7 @@ struct MaerSyncAnswerTests {
 
     // MARK: - The table, way by way
 
-    @Test("fetch: Dokument mit ETag und Fassung, sonst unlesbar; 401 haelt an; alles andere ist sein Status")
+    @Test("fetch: document with ETag and version, otherwise unreadable; 401 halts; everything else is its status")
     func fetchTranslations() throws {
         let body = Data("pot".utf8)
         let document = try MaerSyncAnswer.document(MaerSyncReply(status: 200, etag: "3", format: "1", body: body))
@@ -51,7 +51,7 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.document(MaerSyncReply(status: 403)) } == .status(403))
     }
 
-    @Test("write: written mit ETag, sonst unlesbar; 409 traegt den Satz des Dienstes; 401; sonst Status")
+    @Test("write: written with ETag, otherwise unreadable; 409 carries the service's sentence; 401; otherwise status")
     func writeTranslations() throws {
         #expect(try MaerSyncAnswer.written(MaerSyncReply(status: 200, etag: "4")) == .written(etag: "4"))
         #expect(failure { try MaerSyncAnswer.written(MaerSyncReply(status: 200)) } == .unreadable, "written without a version is no write")
@@ -63,7 +63,7 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.written(MaerSyncReply(status: 404)) } == .status(404), "a write has no such document to be missing")
     }
 
-    @Test("list: die Eintraege, ein unlesbarer Rumpf ist unlesbar; 401; sonst Status")
+    @Test("list: the entries, an unreadable body is unreadable; 401; otherwise status")
     func listTranslations() throws {
         let body = Data("{\"documents\": [{\"scope\": \"b\", \"version\": \"2\", \"format\": 1}, {\"scope\": \"a\", \"version\": \"9\", \"format\": 2}]}".utf8)
         let listed = try MaerSyncAnswer.listing(MaerSyncReply(status: 200, body: body))
@@ -74,7 +74,7 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.listing(MaerSyncReply(status: 502)) } == .status(502))
     }
 
-    @Test("token: das Zeichen, ein leeres ist keins; 401; sonst Status")
+    @Test("token: the token, an empty one is none; 401; otherwise status")
     func tokenTranslations() throws {
         #expect(try MaerSyncAnswer.token(MaerSyncReply(status: 200, body: Data("{\"token\": \"t-1\"}".utf8))) == "t-1")
         #expect(failure { try MaerSyncAnswer.token(MaerSyncReply(status: 200, body: Data("{\"token\": \"\"}".utf8))) } == .unreadable)
@@ -87,7 +87,7 @@ struct MaerSyncAnswerTests {
         Data("{\"key\": \"\(raw.base64EncodedString())\", \"fingerprint\": \"\(label)\"}".utf8)
     }
 
-    @Test("key: der Abdruck wird aus den Bytes gerechnet, das Etikett ist nur Gegenprobe, 31 Byte sind kein Schluessel")
+    @Test("key: the fingerprint is computed from the bytes, the label is only a cross-check, 31 bytes are no key")
     func keyTranslations() throws {
         let raw = Data(repeating: 7, count: 32)
         let key = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(raw, label: "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")))
@@ -107,7 +107,7 @@ struct MaerSyncAnswerTests {
                 "an older service, by its name here, so the sign-in AND the rounds read it (GT-20)")
     }
 
-    @Test("503 heisst nur mit dem Satz des Dienstes, dass er keinen Schluessel hat; ohne Satz ist es die Zahl eines anderen")
+    @Test("503 means that the service has no key only with the service's sentence; without the sentence it is the number of something else")
     func fiveOhThreeHasOneMeaningOnlyWithItsSentence() throws {
         let itsOwn = Data("{\"reason\": \"this service has no static key\"}".utf8)
         #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 503, body: itsOwn)) } == .serviceHasNoKey)
@@ -124,7 +124,7 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 400)) } == .status(400))
     }
 
-    @Test("aussen spricht nur die Sitzung: 200 sind die versiegelten Bytes, 410 ist beendet, 400 geht nicht auf")
+    @Test("on the outside only the session speaks: 200 is the sealed bytes, 410 is ended, 400 does not open")
     func theOuterAnswerSpeaksOnlyAboutTheSession() throws {
         #expect(try MaerSyncAnswer.tunnel(MaerSyncReply(status: 200, body: Data([1, 2]))) == Data([1, 2]))
         #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 410)) } == .sessionEnded)
@@ -136,7 +136,7 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 401)) } == .status(401))
     }
 
-    @Test("eine Antwort wird aus den drei benannten Koepfen gebaut, sonst aus nichts")
+    @Test("an answer is built from the three named headers, otherwise from nothing")
     func aReplyReadsTheNamedHeaders() throws {
         let response = try #require(HTTPURLResponse(url: URL(string: "https://sync.example.test/v1/doc/stands")!,
                                                      statusCode: 200, httpVersion: nil,
@@ -157,7 +157,7 @@ struct MaerSyncAnswerTests {
     /// which is exactly where the 412 lived until this file existed. The
     /// one number the door passes on is the health route's, and it passes
     /// it on as a number, not as a decision.
-    @Test("die Tuer vergleicht keinen Status; die Uebersetzung steht an einer Stelle", .needsTheSources)
+    @Test("the door compares no status; the translation lives in one place", .needsTheSources)
     func theDoorComparesNoStatus() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let whole = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),

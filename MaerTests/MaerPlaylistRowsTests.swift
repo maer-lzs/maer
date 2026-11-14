@@ -29,7 +29,7 @@ struct MaerPlaylistRowsTests {
         return Home(directory: directory)
     }
 
-    @Test("eine frische Installation schreibt Zeilen")
+    @Test("a fresh install writes rows")
     func freshInstallWritesRows() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -44,7 +44,7 @@ struct MaerPlaylistRowsTests {
         #expect(again.playlist(id: list.id)?.itemIds == ["jam:1", "lva:x"])
     }
 
-    @Test("eine Aenderung schreibt nur die geaenderte Liste; eine Loeschung nimmt die Zeile")
+    @Test("a change writes only the changed list; a deletion takes the row")
     func aChangeIsADiff() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -63,7 +63,7 @@ struct MaerPlaylistRowsTests {
 
     /// A row a later shape wrote leaves the base unknown; a list deleted in
     /// this run stays gone after a restart, the unread row stays.
-    @Test("bei unbekannter Grundlage bleibt eine geloeschte Liste nach dem Neustart weg, eine nie gelesene Zeile bleibt")
+    @Test("with an unknown base a deleted list stays gone after a restart, a row never read stays")
     func aDeletedListStaysGoneUnderAnUnknownBase() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

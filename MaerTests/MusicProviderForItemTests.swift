@@ -8,19 +8,19 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// `musicProvider` beantwortet „welche Musikquelle benutzt dieses Geraet",
-/// und mit zwei aktiven Servern gewinnt Subsonic vorerst. Das ist die richtige
-/// Antwort fuer eine Bibliotheks-Liste und die falsche fuer einen Titel, der
-/// seine Quelle in der Kennung traegt.
+/// `musicProvider` answers „welche Musikquelle benutzt dieses Geraet",
+/// and with two active servers Subsonic wins for now. That is the right
+/// answer for a library list and the wrong one for a title that
+/// carries its source in the identifier.
 ///
-/// Die Album-Seite wird auch aus dem VOLLPLAYER erreicht (Quellseiten-Sprung).
-/// Ein laufendes `jf:`-Album konnte sie also oeffnen, waehrend die
-/// eingestellte Antwort Subsonic war, und jede Frage nach dieser Kennung ging
-/// an einen Server, der sie nie gesehen hat: keine Titel, kein Stern, keine
-/// Album-Angaben.
+/// The album page is also reached from the FULL PLAYER (source page jump).
+/// A running `jf:` album could therefore open it while the
+/// configured answer was Subsonic, and every question about that identifier went
+/// to a server that had never seen it: no titles, no star, no
+/// album details.
 @MainActor
 struct MusicProviderForItemTests {
-    @Test("Die Kennung entscheidet, nicht die Einstellung")
+    @Test("The identifier decides, not the setting")
     func theIdDecidesNotTheSetting() {
         let session = AppSession.shared
         #expect(session.musicProvider(for: "jf:album:1") as AnyObject === JellyfinProvider.shared,
@@ -29,11 +29,11 @@ struct MusicProviderForItemTests {
         #expect(session.musicProvider(for: "sub:song:7") as AnyObject === SubsonicProvider.shared)
     }
 
-    /// Ohne Musik-Namensraum gibt es nichts zu entscheiden, und dann ist die
-    /// eingestellte Quelle die einzige sinnvolle Antwort. Ohne diesen Fall
-    /// koennte die Tuer auf einen festen Server zeigen und der obere Fall
-    /// waere trotzdem gruen.
-    @Test("Ohne Namensraum antwortet die eingestellte Quelle")
+    /// Without a music namespace there is nothing to decide, and then the
+    /// configured source is the only sensible answer. Without this case
+    /// the door could point at a fixed server and the case above
+    /// would still be green.
+    @Test("Without a namespace the configured source answers")
     func withoutANamespaceTheConfiguredSourceAnswers() {
         let session = AppSession.shared
         #expect(session.musicProvider(for: "maer-playlist-42") as AnyObject
@@ -41,11 +41,11 @@ struct MusicProviderForItemTests {
         #expect(session.musicProvider(for: "") as AnyObject === session.musicProvider as AnyObject)
     }
 
-    /// Der Bestand: die Album-Seite fragt die EINGESTELLTE Quelle nicht mehr.
-    /// Sechzehn Zeilen taten es, und vier davon banden sie sogar vorher an
-    /// ein lokales `music` — die Datei zeigte das Muster selbst und meinte
-    /// trotzdem die falsche Quelle.
-    @Test("Die Album-Seite fragt die eingestellte Quelle nicht mehr", .needsTheSources)
+    /// The stock: the album page no longer asks the CONFIGURED source.
+    /// Sixteen lines did, and four of them even bound it beforehand to
+    /// a local `music`: the file showed the pattern itself and still meant
+    /// the wrong source.
+    @Test("The album page no longer asks the configured source", .needsTheSources)
     func thealbumPageNoLongerAsksTheConfiguredSource() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let code = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),
@@ -53,7 +53,7 @@ struct MusicProviderForItemTests {
             .split(separator: "\n", omittingEmptySubsequences: false)
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             .joined(separator: "\n")
-        // Die eine erlaubte Nennung ist die Tuer selbst, mit der Kennung.
+        // The one allowed mention is the door itself, with the identifier.
         let asksTheDevice = code.components(separatedBy: "AppSession.shared.musicProvider").count - 1
         let asksTheItem = code.components(separatedBy: "AppSession.shared.musicProvider(for:").count - 1
         #expect(asksTheDevice == asksTheItem,

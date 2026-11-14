@@ -28,7 +28,7 @@ struct MarkGestureAtTrueEndTests {
 
     // MARK: - The rule
 
-    @Test("die Regel: echtes Ende bietet ungehoert, sonst gehoert")
+    @Test("the rule: true end offers unplayed, otherwise played")
     func theRule() {
         #expect(ProgressMark.markGesture(atTrueEnd: true) == .markUnplayed)
         #expect(ProgressMark.markGesture(atTrueEnd: false) == .markPlayed)
@@ -45,12 +45,12 @@ struct MarkGestureAtTrueEndTests {
         return podcastMarkGesture(Self.episode(id))
     }
 
-    @Test("Folge vor der Schwelle (halb gehoert): gehoert markieren")
+    @Test("episode before the threshold (half played): mark played")
     func episodeBeforeTheTail() {
         #expect(Self.episodeGesture(entry: [1_800, Self.now, Self.duration]) == .markPlayed)
     }
 
-    @Test("Folge in der Schwelle (59:00 von 60:00, Schwelle 60 s): gehoert markieren")
+    @Test("episode within the threshold (59:00 of 60:00, threshold 60 s): mark played")
     func episodeWithinTheTail() {
         let entry = [3_540, Self.now, Self.duration]
         // The precondition, assured: the row SHOWS this episode as played.
@@ -60,18 +60,18 @@ struct MarkGestureAtTrueEndTests {
                 "within the tail the toggle offers unplayed and writes 0")
     }
 
-    @Test("Folge am echten Ende und mit Marke ohne Dauer: ungehoert markieren")
+    @Test("episode at the true end and with a mark without duration: mark unplayed")
     func episodeAtTheTrueEnd() {
         #expect(Self.episodeGesture(entry: [Self.duration, Self.now, Self.duration]) == .markUnplayed)
         #expect(Self.episodeGesture(entry: [ProgressMark.playedSentinel, Self.now]) == .markUnplayed)
     }
 
-    @Test("Folge unberuehrt: gehoert markieren")
+    @Test("episode untouched: mark played")
     func episodeUntouched() {
         #expect(Self.episodeGesture(entry: nil) == .markPlayed)
     }
 
-    @Test("Folge in der Schwelle: die Frage schreibt nichts")
+    @Test("episode within the threshold: the question writes nothing")
     func askingWritesNothing() {
         let id = "rss:mark-gesture-read:\(UUID().uuidString)"
         defer { ListeningStore.clearBackup(id) }
@@ -83,7 +83,7 @@ struct MarkGestureAtTrueEndTests {
 
     // MARK: - Server episodes (the flag the server holds)
 
-    @Test("Server-Folge: Flag gesetzt ist das echte Ende, Bruchteil in der Schwelle nicht")
+    @Test("server episode: flag set is the true end, a fraction within the threshold is not")
     func serverEpisode() {
         let flagged = ProgressMark.serverState(isFinished: true, fraction: 0.5, duration: Self.duration, tail: 0)
         #expect(ProgressMark.markGesture(atTrueEnd: flagged == .played) == .markUnplayed)
@@ -100,7 +100,7 @@ struct MarkGestureAtTrueEndTests {
             .judged(duration: duration, tail: tail)
     }
 
-    @Test("Server-Buch vor der Schwelle, in der Schwelle, am echten Ende, mit Flag")
+    @Test("server book before the threshold, within the threshold, at the true end, with flag")
     func serverBook() {
         #expect(Self.book(fraction: 0.5, flag: false).markGesture == .markPlayed)
         let inTail = Self.book(fraction: 3_540 / Self.duration, flag: false)
@@ -114,7 +114,7 @@ struct MarkGestureAtTrueEndTests {
 
     // MARK: - Catalog books (mark on the device)
 
-    @Test("Katalog-Buch: Flag ist das echte Ende, die Schwelle steht daneben")
+    @Test("catalog book: flag is the true end, the threshold stands beside it")
     func catalogBook() {
         func progress(_ position: Double, marked: Double? = Self.duration) -> BookProgress {
             BookProgress.fromDeviceMark(position: position, updatedAtMs: Self.now, markedDuration: marked,
@@ -177,7 +177,7 @@ struct MarkGestureAtTrueEndTests {
         }.count
     }
 
-    @Test("der Zaehler sieht alte und neue Form")
+    @Test("the counter sees old and new form")
     func theCounterSeesBothForms() {
         let old = "Label(isPlayed ? String(localized: \"Mark as Unplayed\") : String(localized: \"Mark as Played\"))\npodcastSetPlayed(item, !isPlayed)"
         let new = "Label(gesture.marksPlayed ? String(localized: \"Mark as Played\") : String(localized: \"Mark as Unplayed\"))\npodcastSetPlayed(item, gesture.marksPlayed)"
@@ -206,7 +206,7 @@ struct MarkGestureAtTrueEndTests {
         #expect(Self.labelSites(in: shown).unasked == 2)
     }
 
-    @Test("jede Umschalt-Geste in einer Ansicht fragt die Regel", .needsTheSources)
+    @Test("every toggle gesture in a view asks the rule", .needsTheSources)
     func everyToggleAsksTheRule() throws {
         let views = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(!views.isEmpty, "no view source was read")

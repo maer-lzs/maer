@@ -8,11 +8,11 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Fast fertig gilt als gehoert. Eine Regel, zwei Fragen: `isPlayed`
-/// mit der Schwelle der Person fuer alles Sichtbare, `reachedEnd` (die
-/// Sekunde) fuer alles, was an einen Server geht oder eine Marke repariert.
+/// Almost finished counts as played. One rule, two questions: `isPlayed`
+/// with the person's threshold for everything visible, `reachedEnd` (the
+/// second) for everything that goes to a server or repairs a mark.
 struct PlayedTailTests {
-    @Test("Die Tabelle: Laenge 10 min, 60 min, 10 h; Stand 1 s, 30 s, 59 s, 61 s, 5 min vor Schluss; je Einstellung")
+    @Test("The table: length 10 min, 60 min, 10 h; position 1 s, 30 s, 59 s, 61 s, 5 min before the end; per setting")
     func theTable() {
         let offsets: [Double] = [1, 30, 59, 61, 300]
         // Played or not, per tail, in the order of the offsets above. The
@@ -48,14 +48,14 @@ struct PlayedTailTests {
         #expect(PlayedTail.choices == [0, 30, 60, 120, 300] && PlayedTail.standard == 60)
     }
 
-    @Test("Ein kurzer Titel gilt nicht nach der Haelfte als gehoert: die Schwelle ist hoechstens ein Zehntel")
+    @Test("A short title does not count as played after half: the threshold is at most a tenth")
     func shortItemsAreNotPlayedEarly() {
         #expect(!ProgressMark.withinTail(position: 60, duration: 120, tail: 60), "two-minute news at its first minute")
         #expect(ProgressMark.withinTail(position: 109, duration: 120, tail: 60), "the last twelve seconds")
         #expect(!ProgressMark.withinTail(position: 50, duration: 100, tail: 60))
     }
 
-    @Test("Nie noch 0 Min.: der Rest rundet auf")
+    @Test("Never 0 min left: the remainder rounds up")
     func neverZeroMinutes() {
         #expect(ProgressMark.minutesLeft(0) == 0)
         #expect(ProgressMark.minutesLeft(1) == 1)
@@ -68,7 +68,7 @@ struct PlayedTailTests {
         #expect(book.remainingText(bookDuration: 3_600) == String(localized: "\(1) min left"))
     }
 
-    @Test("Zwei Geraete, verschiedene Schwelle: dieselbe Marke, keiner schreibt, keiner zeigt 0 Min.")
+    @Test("Two devices, different threshold: the same mark, nobody writes, nobody shows 0 min")
     func twoDevicesReadTheSameMark() {
         let mark: [Double] = [3_560, 1_000, 3_600]
         #expect(ProgressMark.state(stored: mark, currentDuration: 3_600, tail: 60) == .played)
@@ -79,7 +79,7 @@ struct PlayedTailTests {
         #expect(ProgressMark.minutesLeft(remaining) == 1, "40 s left reads 1 min, never 0")
     }
 
-    @Test("Der Bestand wird nicht umgeschrieben: die Reparatur traegt nur am echten Ende eine Dauer ein")
+    @Test("The stock is not rewritten: the repair enters a duration only at the true end")
     func theStockIsOnlyRead() {
         // 30 s before the end counts as played (tail 60), but was not written
         // against that duration; a repair there would guess.
@@ -93,14 +93,14 @@ struct PlayedTailTests {
         #expect(!near.countsAsFinished, "not judged, nothing changes")
     }
 
-    @Test("Ein alter Plattenstand ohne das neue Feld liest sich weiter")
+    @Test("An old disk state without the new field still reads")
     func oldDiskCacheDecodes() throws {
         let literal = Data(#"{"fraction":0.5,"isFinished":false,"lastUpdate":1000,"currentTime":1800}"#.utf8)
         let decoded = try JSONDecoder().decode(BookProgress.self, from: literal)
         #expect(decoded.withinTail == nil && decoded.fraction == 0.5)
     }
 
-    @Test("Der Serverstand einer ABS-Folge kennt die Schwelle")
+    @Test("The server state of an ABS episode knows the threshold")
     func serverStateHasTheTail() {
         #expect(ProgressMark.serverState(isFinished: false, fraction: 0.99, duration: 3_600, tail: 60) == .played,
                 "36 s left")
@@ -109,7 +109,7 @@ struct PlayedTailTests {
         #expect(ProgressMark.serverState(isFinished: false, fraction: 0, duration: 3_600, tail: 300) == .unplayed)
     }
 
-    @Test("Die Wahl: Titel vor allgemein vor Grundwert; eine Folge liest ihre Sendung")
+    @Test("The choice: title before general before base value; an episode reads its show")
     func theLevels() throws {
         let suite = "played-tail-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -126,7 +126,7 @@ struct PlayedTailTests {
         #expect(PlayedTail.seconds(forItemId: "book-2", defaults: defaults) == 30, "an unknown value falls back")
     }
 
-    @Test("Die Wahl reist: allgemein und je Sendung oder Buch")
+    @Test("The choice travels: general and per show or book")
     func theChoiceTravels() {
         #expect(UserChoiceCatalog.statics[PlayedTail.generalKey] == .travels)
         #expect(UserChoiceCatalog.prefixes[PlayedTail.prefix] == .travels)

@@ -33,7 +33,7 @@ struct OfflineSongTests {
 
     // MARK: - The rule
 
-    @Test("Offline-Lied: ein Lied im fertigen Album- oder Playlist-Download desselben Servers ist gefunden, sonst nicht")
+    @Test("offline song: a song in a finished album or playlist download of the same server is found, otherwise not")
     func theIndexFindsHeldSongs() {
         let details = [
             "sub:album:A": Self.album("sub:album:A", songs: ["x", "y"]),
@@ -57,7 +57,7 @@ struct OfflineSongTests {
         #expect(!ItemNamespace.isServerSong("sub:album:A") && !ItemNamespace.isServerSong("rss:x:1"))
     }
 
-    @Test("Offline-Lied: das Lied als eigener Titel, aus dem Album geschnitten: Dauer, Name, Kuenstler, ein Stueck")
+    @Test("offline song: the song as a title of its own, cut from the album: duration, name, artist, one piece")
     func theSongIsCutFromItsAlbum() throws {
         let holder = Self.album("sub:album:A", songs: ["x", "y"])
         let detail = try #require(SongInDownload.detail(songId: "sub:song:y",
@@ -75,7 +75,7 @@ struct OfflineSongTests {
 
     // MARK: - The one question, on a real downloader
 
-    @Test("Offline-Lied: Spieler und Karte fragen dieselbe Stelle, ein Lied aus dem geladenen Album ist da und hat sein Detail")
+    @Test("offline song: player and card ask the same place, a song from the downloaded album is there and has its detail")
     func playerAndTileAgree() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("offline-song-\(UUID().uuidString)", isDirectory: true)
@@ -109,7 +109,7 @@ struct OfflineSongTests {
         #expect(manager.loadCachedDetail(forItemId: "sub:song:y") == nil)
     }
 
-    @Test("Offline-Lied: die Datei des Liedes ist die Datei seines Stuecks im Album, als Stueck 0", .needsTheSources)
+    @Test("offline song: the file of the song is the file of its piece in the album, as piece 0", .needsTheSources)
     func theFileIsTheAlbumsTrack() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Networking/DownloadManager.swift")
         #expect(flat.contains("let dir = itemDirectory(place.downloadId), let file = Self.trackMap(in: dir)[place.trackIndex] else { return [:] } return [0: file]"))

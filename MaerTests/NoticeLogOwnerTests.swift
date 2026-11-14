@@ -42,7 +42,7 @@ struct NoticeLogOwnerTests {
         try rig.shelf.rest([NoticeLogEntry].self, of: PlaybackNotices.shelfFamily, owner: owner)?.compactMap(\.title) ?? []
     }
 
-    @Test("Meldungen ohne Konto, das erste Konto A sieht alles; A abgemeldet weiter, wieder A sieht alles; B sieht nichts von A; zurueck zu A, dann B: B's Zeilen wieder da, keine von A; ueber einen Neustart")
+    @Test("messages without an account, the first account A sees everything; A signed out and on, A again sees everything; B sees nothing of A; back to A, then B: B's lines are back, none of A's; across a restart")
     func theLogFollowsTheAccount() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -93,7 +93,7 @@ struct NoticeLogOwnerTests {
     /// folder at that moment), afterwards it does: the hand-over holds, and
     /// it is tried again before B's first line is written, so B's line
     /// stands with B and none with A, also after a restart.
-    @Test("ein gehaltener Wechsel wird vor der naechsten Zeile wiederholt: B's Zeile bei B, keine bei A, ueber einen Neustart")
+    @Test("a held switch is repeated before the next line: B's line with B, none with A, across a restart")
     func aHeldSwitchIsTriedAgainBeforeTheNextLine() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -130,7 +130,7 @@ struct NoticeLogOwnerTests {
     /// (no rights on it): the hand-over holds, nothing is saved over A's
     /// lines, and B's lines wait. Readable again, B's next line tries the
     /// hand-over first: A's lines rest under A, B's stand with B.
-    @Test("ein Wechsel, waehrend das Protokoll unlesbar dasteht, haelt: nichts wird darueber gespeichert, B's Zeilen warten, A's ruhen ganz")
+    @Test("a switch while the log stands unreadable holds: nothing is stored over it, B's lines wait, A's rest entirely")
     func aSwitchOverAnUnreadDocumentHolds() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -165,7 +165,7 @@ struct NoticeLogOwnerTests {
         #expect(restOfA == ["ofA"], "A's line was lost or B's rests under A: \(restOfA)")
     }
 
-    @Test("wartet eine Zeile unter B und gelingt dann der Wechsel zu C, steht sie nicht bei C")
+    @Test("if a line waits under B and the switch to C then succeeds, it does not appear with C")
     func aLineWaitingForBNeverLandsAtC() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -192,7 +192,7 @@ struct NoticeLogOwnerTests {
     /// The document stands but cannot be read, and no account changes: a
     /// line said meanwhile is not saved over it, the file keeps its lines;
     /// once it reads again, its lines and the new ones stand in the log.
-    @Test("ein Protokoll, das unlesbar dasteht, wird ohne Wechsel nicht ueberschrieben: die Datei behaelt ihre Zeilen, danach stehen alte und neue")
+    @Test("a log that stands unreadable is not overwritten without a switch: the file keeps its lines, afterwards old and new stand")
     func anUnreadDocumentIsNotSavedOver() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -219,7 +219,7 @@ struct NoticeLogOwnerTests {
         #expect(said(again) == ["old", "new", "newer"], "a restart shows another log: \(said(again))")
     }
 
-    @Test("der Meldungs-Kanal der App traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)
+    @Test("the message channel of the app registers itself as a runner and follows at start", .needsTheSources)
     func theChannelIsEnrolledAndFollowsAtStart() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift"), encoding: .utf8))

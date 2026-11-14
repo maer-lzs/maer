@@ -9,12 +9,12 @@ import Foundation
 import SwiftUI
 @testable import Maer
 
-/// GOAL 3.0 Punkt 3, erste Scheibe: „bin ich online" ist ein WERT, kein
-/// Griff an eine Wache. Die Naht kommt mit ihrem Zaun: er haelt fest, dass
-/// der Wert an genau EINER Stelle gesetzt wird (ein vergessenes Reichen
-/// waere sonst still, weil der Vorgabewert „online" ist), und er
-/// inventarisiert die Stellen, die die Wache noch selbst fragen; der
-/// Bestand ist die Zaehlung, in beide Richtungen.
+/// GOAL 3.0 point 3, first slice: „bin ich online" is a VALUE, no
+/// reach into a guard. The seam comes with its fence: it pins down that
+/// the value is set at exactly ONE place (a forgotten handover
+/// would otherwise be silent, because the default value is „online"), and it
+/// inventories the places that still ask the guard themselves; the
+/// stock is the count, in both directions.
 struct OnlineValueFenceTests {
     private static func source(_ name: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -22,7 +22,7 @@ struct OnlineValueFenceTests {
         return try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
     }
 
-    /// Nicht-Kommentarzeilen einer Datei, die den Griff nennen.
+    /// Non-comment lines of a file that name the access.
     static func reaches(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
@@ -31,15 +31,15 @@ struct OnlineValueFenceTests {
             }.count
     }
 
-    /// Der Bestand je Datei, gleich der Zaehlung; jeder Eintrag traegt
-    /// seinen Grund NEBEN SICH.
+    /// The stock per file, equal to the count; every entry carries
+    /// its reason NEXT TO IT.
     ///
-    /// Das Musik-Kontextmenue stand hier einmal mit dem Grund „Helfer ohne
-    /// eigenes `self`" und zu Unrecht: seine zwei Griffe sassen in einem
-    /// `ViewModifier` mit eigenem `body`. Geheilt statt umbegruendet. Genau
-    /// dieser Fall ist der Grund, warum der Grund jetzt im Eintrag steht
-    /// und nicht in einem Absatz darueber: dort konnte er von seinem
-    /// Eintrag abdriften, ohne dass es jemand sieht.
+    /// The music context menu once stood here with the reason
+    /// „Helfer ohne eigenes `self`" and wrongly so: its two accesses sat in a
+    /// `ViewModifier` with its own `body`. Healed instead of re-justified. Exactly
+    /// this case is why the reason now stands in the entry
+    /// and not in a paragraph above it: there it could drift away from its
+    /// entry without anyone noticing.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
         "RootView.swift":
             (1, "die EINE Stelle, die die Wache beobachtet und den Wert reicht"),
@@ -56,7 +56,7 @@ struct OnlineValueFenceTests {
                 + "der Stand vom Aufgabenbeginn"),
     ]
 
-    @Test("Die Wache wird in den Ansichten nur noch im Bestand gefragt", .needsTheSources)
+    @Test("The guard is asked in the views only within the stock", .needsTheSources)
     func viewsAskTheMonitorOnlyWhereTheStockSaysSo() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -65,13 +65,13 @@ struct OnlineValueFenceTests {
         // Per file both ways, so the total is the stock's total as well.
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
         #expect(drift.isEmpty, "the monitor is back in a view, or a stock above the count: \(drift)")
-        // Rot-Probe in beide Richtungen: der Pruefer sieht den Griff…
+        // Red probe in both directions: the checker sees the access…
         #expect(Self.reaches(in: "guard NetworkMonitor.shared.isConnected else { return }") == 1)
-        // …und einen Kommentar ueber den Griff sieht er NICHT.
+        // …and a comment about the access it does NOT see.
         #expect(Self.reaches(in: "// used to ask NetworkMonitor.shared") == 0)
     }
 
-    @Test("Der Wert wird an genau EINER Stelle gereicht", .needsTheSources)
+    @Test("The value is handed over at exactly ONE place", .needsTheSources)
     func exactlyOnePlaceHandsTheValueDown() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -83,20 +83,20 @@ struct OnlineValueFenceTests {
                 }.count
             if count > 0 { setters.append("\(file.lastPathComponent): \(count)") }
         }
-        // Ein zweiter Setzer waere kein Fehler, den man sieht: der Vorgabewert
-        // ist „online", eine falsch gereichte Stelle bliebe also still.
+        // A second setter would be no error one can see: the default value
+        // is „online", so a wrongly handed-over place would stay silent.
         #expect(setters == ["RootView.swift: 1"], "gesetzt wird an: \(setters)")
     }
 
-    @Test("Die Wache veroeffentlicht GENAU eine Antwort, sonst kostet der Wurzel-Beobachter", .needsTheSources)
+    @Test("The guard publishes EXACTLY one answer, otherwise the root observer costs", .needsTheSources)
     func theMonitorPublishesExactlyOneAnswer() throws {
-        // Die Bedingung, an der die Ausnahme haengt. `@ObservedObject` haengt
-        // am OBJEKT, nicht am Feld: ein zweites `@Published` an dieser Wache
-        // (Verbindungsart, teures Netz, ein Zaehler) wuerde bei jeder seiner
-        // Aenderungen die Wurzel neu auswerten, also den ganzen Baum, obwohl
-        // die Online-Antwort stillsteht. Das waere die Ruckler-Konstruktion
-        // an der schlechtestmoeglichen Stelle. Wer hier ein Feld ergaenzen
-        // will, muss den Beobachter vorher aus der Wurzel holen.
+        // The condition on which the exception hangs. `@ObservedObject` hangs
+        // on the OBJECT, not on the field: a second `@Published` on this guard
+        // (connection kind, expensive network, a counter) would re-evaluate the root on every
+        // change of it, that is the whole tree, although
+        // the online answer stands still. That would be the stutter construction
+        // at the worst possible place. Whoever wants to add a field here
+        // must first take the observer out of the root.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/NetworkMonitor.swift"),
@@ -115,14 +115,14 @@ struct OnlineValueFenceTests {
         #expect(published.first?.contains("isConnected") == true)
     }
 
-    @Test("Der Vorgabewert ist ONLINE, weil die Tore nur daempfen")
+    @Test("The default value is ONLINE, because the gates only dim")
     func theDefaultIsOnline() {
-        // Eine Flaeche, die den Wert nie bekommt, verhaelt sich wie heute,
-        // statt alles zu dimmen. Die Gegenrichtung waere die schlimmere:
-        // eine Bibliothek, die sich ohne Grund als offline zeigt.
+        // A surface that never receives the value behaves as today,
+        // instead of dimming everything. The opposite direction would be the worse one:
+        // a library that shows itself as offline for no reason.
         #expect(EnvironmentValues().isOnline)
-        // Und die Regel dahinter bleibt die alte, pure: offline UND nicht
-        // geladen heisst nicht abspielbar, alles andere ist verfuegbar.
+        // And the rule behind it stays the old, pure one: offline AND not
+        // downloaded means not playable, everything else is available.
         #expect(MediaAvailability.offlineUnavailable(isConnected: false, isDownloaded: false))
         #expect(!MediaAvailability.offlineUnavailable(isConnected: false, isDownloaded: true))
         #expect(!MediaAvailability.offlineUnavailable(isConnected: true, isDownloaded: false))

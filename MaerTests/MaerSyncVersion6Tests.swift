@@ -19,7 +19,7 @@ struct MaerSyncVersion6Tests {
 
     // MARK: - The answers
 
-    @Test("428, 429 mit Retry-After und das zurueckgezogene Zeichen haben je ihren Namen")
+    @Test("428, 429 with Retry-After and the withdrawn token each have their own name")
     func versionSixAnswersHaveTheirNames() throws {
         #expect(failure { _ = try MaerSyncAnswer.token(MaerSyncReply(status: 428)) } == .operatorSetPassword)
         #expect(failure { _ = try MaerSyncAnswer.token(MaerSyncReply(status: 429, retryAfter: "120")) } == .tooManyAttempts(retryAfter: 120))
@@ -33,7 +33,7 @@ struct MaerSyncVersion6Tests {
         #expect(failure { _ = try MaerSyncAnswer.document(MaerSyncReply(status: 401)) } == .unauthorized, "a plain 401 stays what it was")
     }
 
-    @Test("das Salz wird gelesen, eine fremde Dehnung ist unlesbar, der Schluessel nennt seine Fassung")
+    @Test("the salt is read, a foreign stretching is unreadable, the key names its version")
     func saltAndKeyAreRead() throws {
         let body = Data("{\"salt\": \"AAECAwQFBgcICQoLDA0ODw==\", \"kdf\": \"pbkdf2-hmac-sha256\", \"rounds\": 600000, \"form\": \"secret\"}".utf8)
         let salt = try MaerSyncAnswer.salt(MaerSyncReply(status: 200, body: body))
@@ -47,7 +47,7 @@ struct MaerSyncVersion6Tests {
         #expect(try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody)).contract == nil)
     }
 
-    @Test("Wartezeit: Sekunden werden zu ganzen Minuten, aufgerundet, mindestens eine")
+    @Test("wait time: seconds become whole minutes, rounded up, at least one")
     func waitIsSaidInWholeMinutes() {
         #expect(MaerSyncWait.minutes(0) == 1)
         #expect(MaerSyncWait.minutes(1) == 1)
@@ -73,7 +73,7 @@ struct MaerSyncVersion6Tests {
         try await body()
     }
 
-    @Test("angemeldet wird nur mit dem Beweis, und er ist die Ableitung aus Passwort und Salz")
+    @Test("signing in happens only with the proof, and it is the derivation from password and salt")
     @MainActor
     func signInSendsOnlyTheProof() async throws {
         try await withCleanPin {
@@ -88,7 +88,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("ein Konto in Form secret meldet sich nicht an, und nichts vom Passwort reist")
+    @Test("an account in form secret does not sign in, and nothing of the password travels")
     @MainActor
     func formSecretStopsBeforeAnythingTravels() async {
         await withCleanPin {
@@ -100,7 +100,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("ein neuerer Dienst wird gesagt, bevor das Salz gefragt wird")
+    @Test("a newer service is reported before the salt is asked for")
     @MainActor
     func aNewerServiceIsSaidFirst() async {
         await withCleanPin {
@@ -111,7 +111,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("eine Dehnung, die das Geraet nicht annimmt, und zu viele Fehlversuche haben ihren Ausgang")
+    @Test("a stretching the device does not accept, and too many failed attempts, each have their outcome")
     @MainActor
     func refusedParametersAndTooManyAttempts() async {
         await withCleanPin {
@@ -127,7 +127,7 @@ struct MaerSyncVersion6Tests {
 
     // MARK: - The way back does not exist
 
-    @Test("Rueckfallverbot: ein Dienst der Fassung 5 ist aelter, und weder der alte Schluesselpfad noch ein Passwort geht hinaus")
+    @Test("fallback ban: a service of version 5 is older, and neither the old key path nor a password goes out")
     @MainActor
     func aVersionFiveServiceGetsNothing() async throws {
         let base = URL(string: "https://\(UUID().uuidString.lowercased()).test")!
@@ -158,7 +158,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("Rueckfallverbot: secret steht nur im Wechsel, gebaut wird es genau im Zweig der Form secret, und den alten Schluesselpfad kennt kein Code", .needsTheSources)
+    @Test("fallback ban: secret appears only in the change, it is built exactly in the branch of form secret, and no code knows the old key path", .needsTheSources)
     func theWayBackIsFenced() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let net = root.appendingPathComponent("Sources/Networking")
@@ -231,7 +231,7 @@ struct MaerSyncVersion6Tests {
         !namedHarmless.contains(part) && secretWords.contains { part.lowercased().contains($0) }
     }
 
-    @Test("Geheimnisse in Logzeilen: keine Logzeile der Anmeldung setzt ein Passwort, einen Beweis oder den Feed-Schluessel ein", .needsTheSources)
+    @Test("secrets in log lines: no log line of the sign-in interpolates a password, a proof or the feed key", .needsTheSources)
     func noSecretInALogLine() throws {
         let net = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Networking")
@@ -279,7 +279,7 @@ struct MaerSyncVersion6Tests {
         }
     }
 
-    @Test("typgenauer JSON-Vergleich: 600000 ist nicht 600000.0 und true ist nicht 1")
+    @Test("type-exact JSON comparison: 600000 is not 600000.0 and true is not 1")
     func typedEqualSeesNumberTypes() throws {
         func parsed(_ text: String) throws -> Any { try JSONSerialization.jsonObject(with: Data(text.utf8)) }
         #expect(Self.typedEqual(try parsed("{\"r\": 600000}"), try parsed("{\"r\": 600000}")))
@@ -306,13 +306,13 @@ struct MaerSyncVersion6Tests {
         return out
     }
 
-    @Test("die Fall-Datei ist die, gegen die der Dienst laeuft", .needsTheTests)
+    @Test("the case file is the one the service runs against", .needsTheTests)
     func theCasesAreTheServicesFile() throws {
         let digest = SHA256.hash(data: try Data(contentsOf: Self.casesURL())).map { String(format: "%02x", $0) }.joined()
         #expect(digest == Self.casesDigest)
     }
 
-    @Test("jede Anmelde-Anfrage der Faelle, die die App bauen darf, baut die echte Tuer genauso", .needsTheTests)
+    @Test("every sign-in request of the cases that the app may build is built the same way by the real door", .needsTheTests)
     @MainActor
     func theDoorBuildsTheCasesRequests() async throws {
         let base = URL(string: "https://\(UUID().uuidString.lowercased()).test")!

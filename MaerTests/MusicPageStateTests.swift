@@ -16,7 +16,7 @@ import Foundation
 struct MusicPageStateTests {
     private struct Boom: Error {}
 
-    @Test("ohne Server nie leer und nie Fehler, ein Fehlschlag auf leerer Seite ist der Fehler, eine volle Seite bleibt")
+    @Test("without a server never empty and never an error, a failure on an empty page is the error, a full page stays")
     func theDecision() {
         #expect(MusicPageState.of(serverMissing: true, asked: true, isEmpty: true, isLoading: false, failure: nil) == .missing)
         #expect(MusicPageState.of(serverMissing: true, asked: true, isEmpty: true, isLoading: true, failure: "x") == .missing)
@@ -29,7 +29,7 @@ struct MusicPageStateTests {
         #expect(MusicPageState.of(serverMissing: false, asked: true, isEmpty: true, isLoading: false, failure: nil) == .empty)
     }
 
-    @Test("eine Aenderung der Quellen fragt die Erreichbarkeit immer, laedt nur, wo vorher kein Server war")
+    @Test("a change of the sources always asks reachability, loads only where there was no server before")
     func theSourcesChange() {
         #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: true) == .showMissing)
         #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: true, asked: true) == .keep)
@@ -44,7 +44,7 @@ struct MusicPageStateTests {
         #expect(MusicPageState.onSourcesChange(reachableNow: false, wasMissing: false, asked: true, accountChanged: true) == .showMissing)
     }
 
-    @Test("nach einem Kontowechsel verwirft die Musikseite die Listen des frueheren Kontos, auch wenn das Laden des neuen scheitert")
+    @Test("after an account switch the music page discards the lists of the former account, even if loading the new one fails")
     @MainActor
     func anAccountSwitchDropsTheFormerLists() async throws {
         @MainActor final class Server { var account = "a"; var fails = false }
@@ -76,7 +76,7 @@ struct MusicPageStateTests {
         #expect(model.playlists.map(\.id) == ["b"])
     }
 
-    @Test("der Ladeweg fragt zuerst den Server, ein Fehlschlag wird der Satz der Seite, ein Abbruch entscheidet nichts")
+    @Test("the load path asks the server first, a failure becomes the sentence of the page, a cancellation decides nothing")
     func theLoad() async {
         var asked = 0
         let current = { true }
@@ -102,7 +102,7 @@ struct MusicPageStateTests {
 
     // MARK: - Superseded runs
 
-    @Test("ein Zuruecksetzen waehrend eines Laufs: der alte Lauf ist ueberholt, ein neuer beginnt, das spaete Ende des alten gibt den neuen nicht frei")
+    @Test("a reset during a run: the old run is overtaken, a new one begins, the late end of the old one does not release the new one")
     func thePageRuns() throws {
         var runs = PageRuns()
         let begun = runs.begin()
@@ -123,7 +123,7 @@ struct MusicPageStateTests {
 
     /// The fetch answers only after the page was reset: the answer, value
     /// or failure, decides nothing.
-    @Test("ein Holer, der nach dem Zuruecksetzen antwortet, entscheidet nichts")
+    @Test("a fetcher that answers after the reset decides nothing")
     func aSupersededRunDecidesNothing() async {
         final class Page { var runs = PageRuns() }
         let page = Page()
@@ -188,7 +188,7 @@ struct MusicPageStateTests {
         return found
     }
 
-    @Test("der Zaun erkennt eine Flaeche ohne Huelle und uebersieht einen anderen Server")
+    @Test("the fence recognises a surface without a shell and overlooks another server")
     func theFenceSeesTheClass() {
         let bare = """
         struct Bare: View {
@@ -210,7 +210,7 @@ struct MusicPageStateTests {
         #expect(found.first { $0.name == "Good" }.map { $0.drawsBody && $0.listens } == true)
     }
 
-    @Test("jede Flaeche, die den Musik-Server des Geraets fragt, zeichnet die Huelle und hoert auf die Quellen", .needsTheSources)
+    @Test("every surface that asks the device's music server draws the shell and listens to the sources", .needsTheSources)
     func everyMusicSurfaceAsksBeforeItSaysNone() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources)
@@ -239,7 +239,7 @@ struct MusicPageStateTests {
     /// point is about. And every load names the run it belongs to
     /// (`isCurrent:` from the page's `PageRuns`), so a superseded answer is
     /// dropped in the one place.
-    @Test("jeder Ladeweg einer Musik-Seite fragt die Erreichbarkeit des Anbieters und nennt seinen Lauf", .needsTheSources)
+    @Test("every load path of a music page asks the provider's reachability and names its run", .needsTheSources)
     func everyPageLoadAsksTheProvider() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift")
         let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -262,7 +262,7 @@ struct MusicPageStateTests {
 
     /// Before its first run a page has asked nothing: an empty page loads,
     /// it says neither "none" nor an error.
-    @Test("vor dem ersten Lauf sagt keine Seite leer, sie laedt")
+    @Test("before the first run no page says empty, it loads")
     func beforeTheFirstRunThePageLoads() {
         #expect(MusicPageState.of(serverMissing: false, asked: false, isEmpty: true, isLoading: false, failure: nil) == .loading,
                 "the first frame said none before the server was asked")
@@ -285,7 +285,7 @@ struct MusicPageStateTests {
     /// Every surface that draws `MusicPageBody` passes whether it has asked,
     /// from its runs, never a fixed answer, both to the body and to the
     /// change of the sources.
-    @Test("jede Seite mit dem Musik-Koerper sagt, ob sie schon gefragt hat, aus ihren Laeufen", .needsTheSources)
+    @Test("every page with the music body says whether it has already asked, from its runs", .needsTheSources)
     func everyPageSaysWhetherItAsked() throws {
         let views = SourceTree.root.appendingPathComponent("Sources/Views")
         let files = SourceTree.files(under: views).filter { $0.pathExtension == "swift" }

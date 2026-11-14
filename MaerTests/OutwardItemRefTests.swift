@@ -24,7 +24,7 @@ struct OutwardItemRefTests {
         return owners
     }
 
-    @Test("hin und zurueck ist die Kennung der App, auch mit Punkt und Doppelpunkt im Rest")
+    @Test("there and back is the identifier of the app, also with a dot and colon in the rest")
     func thereAndBack() throws {
         let ids = ["li_8a7f", "0b1c2d3e-aaaa-bbbb-cccc-1234567890ab", "a.b.c", "x-1/y:z"]
         let tagOf = OutwardServerTag.tagOf(owners: Self.owners(Dictionary(uniqueKeysWithValues: ids.map { ($0, Self.serverA) })),
@@ -39,7 +39,7 @@ struct OutwardItemRefTests {
         }
     }
 
-    @Test("ohne Besitzer, mit Namensraum oder ohne Etikett gibt es keine Kennung nach aussen")
+    @Test("without an owner, with a namespace or without a label there is no outward identifier")
     func nothingWithoutAnOwner() {
         let tagOf = OutwardServerTag.tagOf(owners: Self.owners(["a": Self.serverA]), salt: Self.saltA)
         #expect(tagOf("unowned") == nil)
@@ -50,7 +50,7 @@ struct OutwardItemRefTests {
         #expect(OutwardItemRef.ref(itemId: "", serverTag: tagOf("a")) == nil)
     }
 
-    @Test("zwei Server und zwei Salze geben zwei Etiketten")
+    @Test("two servers and two salts give two labels")
     func twoServersTwoSalts() throws {
         let tagA = try #require(OutwardServerTag.tag(owner: Self.serverA, salt: Self.saltA))
         let tagB = try #require(OutwardServerTag.tag(owner: Self.serverB, salt: Self.saltA))
@@ -61,7 +61,7 @@ struct OutwardItemRefTests {
         #expect(OutwardItemRef.ref(itemId: "a", serverTag: tagA) != OutwardItemRef.ref(itemId: "a", serverTag: tagB))
     }
 
-    @Test("ein Wechsel ohne Serverwechsel behaelt das Etikett, ein Serverwechsel nicht")
+    @Test("a switch without a server switch keeps the label, a server switch does not")
     func theTagFollowsTheSwitchRule() throws {
         let tag = { (address: String) in OutwardServerTag.tag(owner: address, salt: Self.saltA) }
         let base = try #require(tag("https://books.example.org"))
@@ -74,7 +74,7 @@ struct OutwardItemRefTests {
         #expect(tag("") == nil)
     }
 
-    @Test("der Rueckweg fragt das Register: ein fremdes Etikett findet ein Buch dieses Geraets")
+    @Test("the way back asks the register: a foreign label finds a book of this device")
     func theWayBackAsksTheRegister() throws {
         let tagOf = OutwardServerTag.tagOf(owners: Self.owners(["a": Self.serverA]), salt: Self.saltA)
         let otherDevice = try #require(OutwardServerTag.tag(owner: Self.serverA, salt: Self.saltB))
@@ -90,7 +90,7 @@ struct OutwardItemRefTests {
         #expect(OutwardItemRef.parts(of: "abs.tag.") == nil)
     }
 
-    @Test("keine Adresse und kein Zugang in einer Kennung nach aussen")
+    @Test("no address and no access in an outward identifier")
     func noAddressGoesOut() throws {
         let server = "https://reader:secret@books.example.org:13378/abs?token=abc"
         let tag = try #require(OutwardServerTag.tag(owner: server, salt: Self.saltA))
@@ -101,7 +101,7 @@ struct OutwardItemRefTests {
         }
     }
 
-    @Test("ein Salz entsteht nur, wenn der Schluesselbund keines hat")
+    @Test("a salt is created only when the keychain has none")
     func aSaltOnlyWhenThereIsNone() {
         let made = Data(repeating: 7, count: OutwardServerTag.saltLength)
         var written: [String] = []
@@ -124,7 +124,7 @@ struct OutwardItemRefTests {
                 "a salt that could not be written is not used")
     }
 
-    @Test("das Salz bleibt auf diesem Geraet, und nur der Typ des Etiketts kennt es", .needsTheSources)
+    @Test("the salt stays on this device, and only the type of the label knows it", .needsTheSources)
     func theSaltStaysHere() throws {
         let tagFile = try FetchAnswerTests.squeezedSource("Sources/Networking/OutwardServerTag.swift")
         #expect(tagFile.contains("kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly"))

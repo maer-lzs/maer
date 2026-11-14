@@ -11,7 +11,7 @@ import AVFoundation
 
 /// How far planned tracks may join a playing queue.
 struct QueueAppendTests {
-    @Test("Anhaengen: bis zur letzten Spur, bis vor einen gehaltenen Ladefehler, gar nicht nach einem Halt")
+    @Test("appending: up to the last track, up to before a held load error, not at all after a halt")
     func theEnd() {
         #expect(QueueAppend.end(trackCount: 5, heldAt: nil, failureNoted: false) == 5)
         #expect(QueueAppend.end(trackCount: 5, heldAt: 3, failureNoted: false) == 3)
@@ -79,7 +79,7 @@ struct PlannedQueueTests {
         return (quick, slow, title(addresses))
     }
 
-    @Test("Plan zuerst: Spuren hinter einem Ladefehler, die schon in der Warteschlange standen, gehen mit ihm, und ein spaeter landender Plan haengt nichts dahinter an")
+    @Test("plan first: tracks behind a load error that were already in the queue go with it, and a plan landing later appends nothing behind it")
     func aPlanThatLandsBeforeTheHeldFailureLeavesNothingBehindIt() async throws {
         let (quick, slow, title) = try await sixTracks()
         defer { quick.stop(); slow.stop() }
@@ -101,7 +101,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("Ladefehler zuerst: ein Plan, der nach dem gehaltenen Ladefehler landet, haengt nichts an, und die Wiedergabe haelt vor ihm",
+    @Test("load error first: a plan that lands after the held load error appends nothing, and playback holds before it",
           .needsAudio)
     func aPlanThatLandsAfterTheHeldFailureLeavesNothingBehindIt() async throws {
         let (quick, slow, title) = try await sixTracks()
@@ -129,7 +129,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("ein Ladefehler der laufenden Spur baut neu und fragt dabei den Plan der Spur neu")
+    @Test("a load error of the running track rebuilds and asks the plan of the track anew")
     func aFailureOfThePlayingTrackAsksItsPlanAnew() async throws {
         let (quick, slow, title) = try await sixTracks()
         defer { quick.stop(); slow.stop() }
@@ -145,7 +145,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("ein gehaltener Ladefehler, der vom Server weiterlaeuft, baut neu und fragt dabei den Plan der Spur neu")
+    @Test("a held load error that continues from the server rebuilds and asks the plan of the track anew")
     func aHeldFailureThatPlaysOnFromTheServerAsksItsPlanAnew() async throws {
         let (quick, slow, title) = try await sixTracks()
         defer { quick.stop(); slow.stop() }
@@ -162,7 +162,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("eine Warteschlange, deren naechste Spur jetzt nicht gefragt werden kann, haelt mit Hinweis statt bei spielt zu stehen, und ein spaeterer Druck auf Wiedergabe fragt neu",
+    @Test("a queue whose next track cannot be asked now holds with a notice instead of stopping at playing, and a later press on play asks anew",
           .needsAudio)
     func aDryQueueWhoseNextTrackCannotBeAskedStopsWithAHint() async throws {
         let quick = try await host()
@@ -196,7 +196,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("eine Warteschlange, die auf den Plan der naechsten Spur wartet, laeuft weiter, wenn er kommt",
+    @Test("a queue waiting for the plan of the next track continues when it arrives",
           .needsAudio)
     func aDryQueueGoesOnWhenThePlanComes() async throws {
         let quick = try await host()
@@ -215,7 +215,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("eine Spur, die die leergelaufene Warteschlange im selben Durchlauf aufnimmt, laeuft zuerst; der Halt vor der Spur dahinter kommt an ihrem Ende",
+    @Test("a track that the run-dry queue picks up in the same pass plays first; the halt before the track behind it comes at its end",
           .needsAudio)
     func aTrackThatJoinsBeforeAWaitingOnePlaysFirst() async throws {
         let quick = try await host()
@@ -259,7 +259,7 @@ struct PlannedQueueTests {
         return (hold, quick, model)
     }
 
-    @Test("die Spur eines Sprungs wird sofort gefragt, nicht hinter den Vorab-Fragen, die alle Plaetze halten")
+    @Test("the track of a jump is asked at once, not behind the advance asks that hold all slots")
     func aJumpIsNotAskedBehindTheAsksAhead() async throws {
         let (hold, quick, model) = try await heldTurns()
         defer { hold.stop(); quick.stop() }
@@ -307,7 +307,7 @@ struct PlannedQueueTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("haelt die leergelaufene Warteschlange vor einer Spur, die nicht gefragt werden kann, und die Spur davor kann nicht gebaut werden, steht der Stand auf der Spur davor",
+    @Test("if the run-dry queue holds before a track that cannot be asked, and the track before it cannot be built, the position stands on the track before it",
           .needsAudio)
     func aDryQueueStopsAtTheTrackItWaitedFor() async throws {
         let quick = try await host()
@@ -336,7 +336,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("ein Sprung an einen Wirt, der die Frage nach dem Ende annimmt und nie beantwortet, zeigt das Warten und baut nach der Grenze der Frage nichts an der unbekannten Adresse")
+    @Test("a jump to a host that accepts the question about the end and never answers shows the waiting and builds nothing at the unknown address after the limit of the question")
     func aJumpToASilentHostShowsTheWaitAndEndsAtTheLimit() async throws {
         let quick = try await host()
         let silent = try await host(delay: 30)
@@ -359,7 +359,7 @@ struct PlannedQueueTests {
         model.stop()
     }
 
-    @Test("ist die Anmeldung der naechsten Spur gerade unlesbar, haelt die leergelaufene Warteschlange mit Hinweis an ihrem Anfang",
+    @Test("if the sign-in of the next track is unreadable right now, the run-dry queue holds with a notice at its start",
           .needsAudio)
     func aDryQueueWhoseNextSignInCannotBeReadStops() async throws {
         let quick = try await host()

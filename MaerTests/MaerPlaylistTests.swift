@@ -8,9 +8,9 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Regeln der Mär-Playlists. Die Grenze, die Rückmeldungen und der
-/// Grundsatz, dass alles, was in die Warteschlange darf, auch in eine
-/// Playlist darf.
+/// The rules of the Mär playlists. The limit, the feedback and the
+/// principle that everything allowed into the queue is also allowed into a
+/// playlist.
 @MainActor
 struct MaerPlaylistTests {
     /// A store of its own over a database file and a directory of its
@@ -22,50 +22,50 @@ struct MaerPlaylistTests {
         return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
     }
 
-    @Test("die Grenze ist die VORHANDENE canEnqueue-Regel, keine zweite")
+    @Test("the limit is the EXISTING canEnqueue rule, not a second one")
     func gateIsTheQueueRule() {
         let store = fresh()
         let list = store.create(name: "Test")
-        // Radio ist ein endloser Strom. Kein Listeneintrag.
+        // Radio is an endless stream. Not a list entry.
         #expect(store.add(itemId: "radio:swr2", to: list.id) == .notQueueable)
         #expect(!PlayQueue.canEnqueue("radio:swr2"))
-        // Katalog-Kennungen dürfen. Das ist der ganze Zweck des Typs.
+        // Catalog identifiers are allowed. That is the whole purpose of the type.
         #expect(store.add(itemId: "jam:1886432", to: list.id) == .added)
         #expect(store.add(itemId: "lva:OTRR_Gunsmoke_Singles", to: list.id) == .added)
         store.delete(playlistId: list.id)
     }
 
-    // MARK: - Der Titel-Schnappschuss scheitert nicht mehr still
+    // MARK: - The title snapshot no longer fails silently
 
-    @Test("bei kaltem Katalog-Cache trägt die Fläche den Titel bei")
+    @Test("with a cold catalog cache the surface supplies the title")
     func snapshotComesFromTheAddingSurface() {
         let store = fresh()
         let list = store.create(name: "Test")
-        // Der gemessene Fall: der Cache kennt die Katalog-Kennung nicht
-        // (kalter Start), die Fläche hatte den Namen aber auf dem Schirm.
+        // The measured case: the cache does not know the catalog identifier
+        // (cold start), but the surface had the name on screen.
         #expect(store.add(itemId: "jam:1886432", to: list.id,
                           knownTitle: "Sonata No. 3") == .added)
         #expect(store.playlist(id: list.id)?.titles["jam:1886432"] == "Sonata No. 3")
-        // Ohne Mitgabe bleibt der Schnappschuss leer (und wird geloggt).
-        // Das ist der Zustand, den die Zeile per Detail-Abruf heilt.
+        // Without a supplied title the snapshot stays empty (and is logged).
+        // That is the state the row heals by a detail fetch.
         #expect(store.add(itemId: "jam:99", to: list.id) == .added)
         #expect(store.playlist(id: list.id)?.titles["jam:99"] == nil)
         store.delete(playlistId: list.id)
     }
 
-    @Test("ein Platzhalter darf NIE Schnappschuss werden")
+    @Test("a placeholder must NEVER become a snapshot")
     func placeholderIsNeverPersisted() {
-        // Der Zaun, vor dem der alte Kommentar zu Recht warnte. Jetzt an
-        // einer prüfbaren Stelle statt als Absicht.
+        // The fence the old comment rightly warned about. Now at a
+        // checkable place instead of an intention.
         #expect(MaerPlaylists.usableTitle("Unknown Title", for: "jam:1") == nil)
-        // Synchronisierte Daten: auch die Fassung eines fremdsprachigen
-        // Geräts darf nicht durchrutschen.
+        // Synced data: the version of a device in another language must
+        // not slip through either.
         #expect(MaerPlaylists.usableTitle(String(localized: "Unknown Title"), for: "jam:1") == nil)
         #expect(MaerPlaylists.usableTitle("jam:1", for: "jam:1") == nil)
         #expect(MaerPlaylists.usableTitle("   ", for: "jam:1") == nil)
         #expect(MaerPlaylists.usableTitle(nil, for: "jam:1") == nil)
         #expect(MaerPlaylists.usableTitle("  Echter Titel ", for: "jam:1") == "Echter Titel")
-        // Und er kommt auch über die Mitgabe nicht in die geteilten Daten.
+        // And it does not reach the shared data through the supplied title either.
         let store = fresh()
         let list = store.create(name: "Test")
         #expect(store.add(itemId: "jam:7", to: list.id, knownTitle: "Unknown Title") == .added)
@@ -73,7 +73,7 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
-    @Test("die Mehrfach-Zugabe reicht die Titel je Kennung durch")
+    @Test("the multiple add passes the titles through per identifier")
     func multiAddCarriesTitles() {
         let store = fresh()
         let list = store.create(name: "Test")
@@ -83,7 +83,7 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
-    @Test("eine Liste mischt Namensräume — das ist ihr Zweck")
+    @Test("a list mixes namespaces, which is its purpose")
     func mixesNamespaces() {
         let store = fresh()
         let list = store.create(name: "Gemischt",
@@ -92,7 +92,7 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
-    @Test("doppelt hinzufügen meldet sich, statt still zu wiederholen")
+    @Test("adding twice reports itself instead of repeating silently")
     func duplicateIsReported() {
         let store = fresh()
         let list = store.create(name: "Test")
@@ -102,20 +102,20 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
-    @Test("jedes Ergebnis bekommt einen Satz — außer dem Erfolg")
+    @Test("every result gets a sentence, except success")
     @MainActor
     func everyOutcomeSpeaks() {
-        // Erfolg braucht keine Meldung, alles andere schon.
+        // Success needs no message, everything else does.
         #expect(PlaylistPresenter.text(for: .added, listName: "L") == nil)
         #expect(PlaylistPresenter.text(for: .alreadyThere, listName: "L") != nil)
         #expect(PlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L") != nil)
         #expect(PlaylistPresenter.text(for: .notQueueable, listName: "L") != nil)
-        // Die Grenz-Meldung nennt die ZAHL, sonst ist sie nicht handelbar.
+        // The limit message names the NUMBER, otherwise it cannot be acted on.
         #expect(PlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L")?
             .contains("5") == true)
     }
 
-    @Test("das Umsortieren behält alle Einträge")
+    @Test("reordering keeps all entries")
     func reorderKeepsEverything() {
         let store = fresh()
         let list = store.create(name: "Test", itemIds: ["a1", "b2", "c3", "d4"])
@@ -129,30 +129,30 @@ struct MaerPlaylistTests {
 }
 #endif
 
-// MARK: - Playlisten sind SONGS
+// MARK: - Playlists are SONGS
 
 @MainActor
 struct PlaylistSongSemanticsTests {
-    @Test("ein WERK bleibt EIN Eintrag, ein Song bleibt er selbst")
+    @Test("a WORK stays ONE entry, a song stays itself")
     func worksAndSongsPassThrough() async {
-        // Ohne bekannte Form (kein Detail gesehen) wird NICHT geraten. Der
-        // Eintrag bleibt, wie er ist. Und eine Song-Kennung ist bereits ein
-        // Titel, sie wird nie noch einmal expandiert.
+        // Without a known shape (no detail seen) there is NO guessing. The
+        // entry stays as it is. And a song identifier already is a
+        // title, it is never expanded again.
         let songId = CatalogSongID.make(album: "ia:some-album", index: 2)
         let out = await PlaylistPresenter.expandedForDevice([songId])
         #expect(out.ids == [songId])
-        // Nicht-Katalog-Kennungen laufen unveraendert durch.
+        // Non-catalog identifiers pass through unchanged.
         let server = await PlaylistPresenter.expandedForDevice(["sub:song:1", "lv:176"])
         #expect(server.ids.contains("sub:song:1"))
     }
 
-    // MARK: - Die Regel selbst (rein, ohne Anbieter)
+    // MARK: - The rule itself (pure, no provider)
 
-    @Test("ein Server-ALBUM ist Titel, ein Server-Song ist einer")
+    @Test("a server ALBUM is a title, a server song is one")
     func serverContainersExpand() {
-        // Der eigentliche Fund: bis hierher fragte nur der Katalog-Pfad nach
-        // der Form. Ein Server-Album landete als EIN Eintrag in einer
-        // Geraeteliste, dieselbe Fehlerklasse einen Namensraum weiter.
+        // The actual finding: up to here only the catalog path asked for
+        // the shape. A server album ended up as ONE entry in a
+        // device list, the same class of error one namespace further.
         #expect(PlaylistDestination.expansion(for: "sub:album:1", serverKind: .album)
                 == .serverContainer)
         #expect(PlaylistDestination.expansion(for: "sub:playlist:1", serverKind: .playlist)
@@ -160,44 +160,44 @@ struct PlaylistSongSemanticsTests {
         #expect(PlaylistDestination.expansion(for: "sub:song:1", serverKind: .song) == .asIs)
     }
 
-    @Test("eine Katalog-Veroeffentlichung fragt die Form, eine Titel-Adresse nicht")
+    @Test("a catalog release asks for the shape, a title address does not")
     func catalogReleasesAskTheForm() {
         #expect(PlaylistDestination.expansion(for: "lva:some-release", serverKind: nil)
                 == .catalogRelease)
         let songId = CatalogSongID.make(album: "lva:some-release", index: 0)
         #expect(PlaylistDestination.expansion(for: songId, serverKind: nil) == .asIs)
-        // Ein Hoerbuch, eine Folge, eine Lesung: EIN Eintrag.
+        // An audiobook, an episode, a reading: ONE entry.
         #expect(PlaylistDestination.expansion(for: "lv:176", serverKind: nil) == .asIs)
         #expect(PlaylistDestination.expansion(for: "rss:abc#1", serverKind: nil) == .asIs)
     }
 
-    @Test("der Server-Ort steht nur mit Server UND nur fuer seine Titel")
+    @Test("the server place appears only with a server AND only for its titles")
     func placesAreHonest() {
-        // Kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
-        // Adresse. Die Sektion erscheint dann gar nicht.
+        // No dead target. A catalog title has no address on Navidrome.
+        // The section then does not appear at all.
         #expect(PlaylistDestination.places(servers: [.subsonic]) == [.server, .device])
         #expect(PlaylistDestination.places(servers: [.subsonic, .jellyfin]) == [.server, .device])
         #expect(PlaylistDestination.places(servers: []) == [.device])
-        // Der Geraete-Ort steht IMMER. Jede einreihbare Adresse passt dorthin.
+        // The device place is ALWAYS there. Every queueable address fits it.
         for servers: [MusicSourceRule.Server] in [[], [.subsonic], [.jellyfin], [.subsonic, .jellyfin]] {
             #expect(PlaylistDestination.places(servers: servers).contains(.device))
         }
     }
 
-    @Test("eine Server-Playlist bekommt nur Titel ihres Servers, gemischte nur das Geraet")
+    @Test("a server playlist gets only titles of its server, mixed ones only the device")
     func serversForEntries() {
         typealias S = MusicSourceRule.Server
         let both: [S] = [.subsonic, .jellyfin]
-        // (aktiv, Besitzer je Eintrag) -> Server zur Wahl
+        // (active, owner per entry) -> servers to choose from
         let table: [([S], [S?], [S])] = [
-            (both, [], both),                              // leere neue Liste: jeder aktive Server, „Wo?"
-            (both, [.jellyfin, .jellyfin], [.jellyfin]),   // Titel EINES Servers: dieser
+            (both, [], both),                              // empty new list: every active server, „Wo?"
+            (both, [.jellyfin, .jellyfin], [.jellyfin]),   // titles of ONE server: that one
             (both, [.subsonic], [.subsonic]),
-            (both, [.subsonic, .jellyfin], []),            // zwei Server: nur das Geraet
-            (both, [.subsonic, nil], []),                  // ein Katalog-Titel dabei: nur das Geraet
-            ([.subsonic], [.subsonic], [.subsonic]),       // EIN Server: wie bisher
+            (both, [.subsonic, .jellyfin], []),            // two servers: only the device
+            (both, [.subsonic, nil], []),                  // a catalog title among them: only the device
+            ([.subsonic], [.subsonic], [.subsonic]),       // ONE server: as before
             ([.subsonic], [], [.subsonic]),
-            ([.subsonic], [.jellyfin], []),                // der Server ist nicht aktiv
+            ([.subsonic], [.jellyfin], []),                // the server is not active
             ([], [], []),
         ]
         for (active, owners, expected) in table {
@@ -211,7 +211,7 @@ struct PlaylistSongSemanticsTests {
         #expect(MusicSourceRule.owner("lv:176") == nil)
     }
 
-    @Test("vorgewaehlt ist der Server, dessen Playlist zuletzt geaendert wurde")
+    @Test("preselected is the server whose playlist was changed last")
     func lastChangedServer() {
         #expect(PlaylistDestination.lastChanged([(.subsonic, 10), (.jellyfin, 30), (.subsonic, 20)]) == .jellyfin)
         #expect(PlaylistDestination.lastChanged([(.subsonic, nil), (.jellyfin, nil)]) == nil)
@@ -221,7 +221,7 @@ struct PlaylistSongSemanticsTests {
 
     /// The sentences of the add sheet name the music server by its product,
     /// never its address; an unknown one is "your music server".
-    @Test("die Saetze unter den Mär-Playlists nennen den Server beim Produktnamen, unbekannt heisst er dein Musikserver", .needsTheSources)
+    @Test("the sentences under the Mär playlists name the server by its product name, an unknown one is called your music server", .needsTheSources)
     func theSheetNamesTheServerByProduct() throws {
         #expect(MusicSourceName.product(.subsonic, reportedType: "navidrome") == "Navidrome")
         #expect(MusicSourceName.product(.subsonic, reportedType: "Navidrome") == "Navidrome")
@@ -260,7 +260,7 @@ struct PlaylistSongSemanticsTests {
 
     /// With no music server set up, the sentence under "Mär playlists"
     /// names none: "your music server" blamed a server that is not there.
-    @Test("ohne Musikserver nennt der Satz unter den Mär-Playlists keinen Server")
+    @Test("without a music server the sentence under the Mär playlists names no server")
     func withoutAMusicServerTheSentenceNamesNone() {
         // Compared with the catalog's own sentences, in whatever language the
         // test host runs.
@@ -274,7 +274,7 @@ struct PlaylistSongSemanticsTests {
 
     /// The footer of a Mär playlist's page names no server's music when no
     /// music server is set up.
-    @Test("ohne Musikserver nennt der Fusssatz einer Mär-Playlist keine Musik eines Servers", .needsTheSources)
+    @Test("without a music server the footer sentence of a Mär playlist names no server's music", .needsTheSources)
     func withoutAMusicServerTheFooterNamesNone() throws {
         let withoutServer = "Playlists on your devices mix music from open catalogs and your own files. They stay on your devices."
         #expect(MaerPlaylistFooter.text(anyMusicServer: false, routine: false) == String(localized: String.LocalizationValue(withoutServer)))

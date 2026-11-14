@@ -20,7 +20,7 @@ struct MusicMergeTests {
 
     // MARK: Zipper
 
-    @Test("Reissverschluss nach Namen: beide Quellen in einer Ordnung, keine Zusammenfuehrung")
+    @Test("zipper by name: both sources in one order, no merging")
     func zipperByName() {
         var s = Self.streams([["Abba", "Cure", "Eno"], ["Björk", "Cure", "Dylan"]])
         let page = MusicMerge.take(10, from: &s, inOrder: MusicMerge.nameOrder)
@@ -29,7 +29,7 @@ struct MusicMergeTests {
         #expect(page.needs.isEmpty)
     }
 
-    @Test("ein leerer Puffer einer nicht erschoepften Quelle haelt die Seite an")
+    @Test("an empty buffer of a source not yet exhausted halts the page")
     func anEmptyBufferWaits() {
         var s = [S(buffer: ["Abba", "Cure"], offset: 2, exhausted: false), S(buffer: ["Björk"], offset: 1, exhausted: false)]
         let page = MusicMerge.take(10, from: &s, inOrder: MusicMerge.nameOrder)
@@ -38,7 +38,7 @@ struct MusicMergeTests {
         #expect(s[0].buffer == ["Cure"], "was nicht ausgegeben ist, bleibt im Puffer")
     }
 
-    @Test("Blaettern mit einem Versatz je Quelle: jede Quelle wird an ihrer eigenen Stelle gefragt")
+    @Test("paging with an offset per source: every source is asked at its own position")
     func pagingWithAnOffsetPerSource() async {
         let a = (1...7).map { String(format: "a%02d", $0) }
         let b = (1...3).map { String(format: "b%02d", $0) }
@@ -60,7 +60,7 @@ struct MusicMergeTests {
         #expect(asked.map(\.1) == [0, 0, 4])
     }
 
-    @Test("faellt eine Quelle aus, blaettert die andere weiter, und der Ausfall wird gemeldet")
+    @Test("if one source fails, the other keeps paging, and the failure is reported")
     func aFailingSourceStopsOnlyItself() async {
         struct Down: Error {}
         var s = [S(), S()]
@@ -72,7 +72,7 @@ struct MusicMergeTests {
         #expect(page.failed == [1])
     }
 
-    @Test("Namensordnung: ohne Namen ans Ende, Zahlen wie Menschen sie lesen")
+    @Test("name order: without a name to the end, numbers as people read them")
     func nameOrder() {
         #expect(MusicMerge.nameOrder("Track 2", "Track 10"))
         #expect(MusicMerge.nameOrder("a", nil))
@@ -84,7 +84,7 @@ struct MusicMergeTests {
 
     struct Album: Equatable { let id: String; let played: Double? }
 
-    @Test("zuletzt gespielt: eine Uhr, wenn jedes Album seinen Zeitpunkt traegt")
+    @Test("recently played: a clock, when every album carries its time")
     func oneClock() {
         let a = [Album(id: "a1", played: 50), Album(id: "a2", played: 10)]
         let b = [Album(id: "b1", played: 40), Album(id: "b2", played: 30)]
@@ -92,7 +92,7 @@ struct MusicMergeTests {
         #expect(MusicMerge.byRecency([a, b], stamp: \.played).map(\.id) == ["a1", "b1", "b2", "a2"])
     }
 
-    @Test("fehlt einer Seite die Uhr, dann Rang um Rang, entschieden an den Daten")
+    @Test("if one side lacks the clock, then rank by rank, decided on the data")
     func rankByRankWithoutAClock() {
         let a = [Album(id: "a1", played: 50), Album(id: "a2", played: 10), Album(id: "a3", played: 5)]
         let b = [Album(id: "b1", played: nil)]
@@ -106,7 +106,7 @@ struct MusicMergeTests {
         #expect(MusicMerge.byRecency([a, partial], stamp: \.played).map(\.id) == ["a1", "c1", "a2", "c2", "a3"])
     }
 
-    @Test("gleiche Zeitpunkte behalten die Ordnung der Quelle")
+    @Test("equal times keep the order of the source")
     func equalMomentsKeepSourceOrder() {
         let a = [Album(id: "a1", played: 7)]
         let b = [Album(id: "b1", played: 7)]
@@ -116,7 +116,7 @@ struct MusicMergeTests {
 
     // MARK: Shuffle
 
-    @Test("Zufall: gleiche Anteile, und was eine Quelle nicht fuellt, fuellt die andere")
+    @Test("random: equal shares, and what one source does not fill, the other fills")
     func sharedPoolFills() {
         var rng = SystemRandomNumberGenerator()
         let big = (1...100).map { "a\($0)" }
@@ -138,9 +138,9 @@ struct MusicMergeTests {
         MusicGenre(name: name, songCount: songs, albumCount: albums)
     }
 
-    @Test("Genres: ein Name, den beide kennen, erscheint einmal; Zahlen addiert, wo beide zaehlen")
+    @Test("genres: a name both know appears once; numbers added where both count")
     func genresMergeByName() {
-        // (Server A, Server B) -> eine Zeile je Schluessel, in erster Erscheinung.
+        // (server A, server B) -> one line per key, in order of first appearance.
         let merged = MusicMerge.genres([
             (source: 0, genres: [Self.g("Jazz", songs: 10, albums: 2), Self.g("Rock", songs: 5, albums: 1),
                                  Self.g("Ambient", songs: 3, albums: 1)]),
@@ -154,7 +154,7 @@ struct MusicMergeTests {
         #expect(MusicMerge.genreKey("  Hip-Hop\n") == "hip-hop")
     }
 
-    @Test("Genre-Seite: jeder Server in seiner Schreibung, ein Server ohne das Genre gar nicht")
+    @Test("genre page: every server in its own spelling, a server without the genre not at all")
     func genreSpellingsPerSource() {
         let merged = MusicMerge.genres([
             (source: 0, genres: [Self.g("Jazz"), Self.g("Rock")]),
@@ -165,13 +165,13 @@ struct MusicMergeTests {
         #expect(s.name(for: "Jazz", source: 1) == " jazz ")
         #expect(s.name(for: "Rock", source: 1) == nil, "Server B kennt Rock nicht und wird nicht gefragt")
         #expect(s.name(for: "Klassik", source: 1) == "Klassik", "ein Genre aus keiner Liste wird ueberall gefragt, wie es kam")
-        // Eine Quelle, deren Liste scheiterte, fehlt nichts: sie wird mit dem Namen gefragt.
+        // A source whose list failed lacks nothing: it is asked with the name.
         let oneFailed = MusicMerge.genres([(source: 0, genres: [Self.g("Rock")])]).spellings
         #expect(oneFailed.name(for: "Rock", source: 1) == "Rock")
         #expect(oneFailed.name(for: "Rock", source: 0) == "Rock")
     }
 
-    @Test("Genres: ein leerer Name ist keine Zeile")
+    @Test("genres: an empty name is no row")
     func emptyGenreNameIsNoRow() {
         let merged = MusicMerge.genres([(source: 0, genres: [Self.g("  ")]), (source: 1, genres: [Self.g("Pop")])])
         #expect(merged.genres.map(\.name) == ["Pop"])
@@ -179,7 +179,7 @@ struct MusicMergeTests {
 
     // MARK: One source
 
-    @Test("mit EINER Liste gibt jede Regel sie unveraendert zurueck")
+    @Test("with ONE list every rule returns it unchanged")
     func oneListIsUnchanged() async {
         let list = ["z", "a", "m"]
         var s = [S(buffer: list, offset: 3, exhausted: true)]

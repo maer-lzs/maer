@@ -11,7 +11,7 @@ import Foundation
 /// A pause that comes while a finished mark holds the guard of the writes is
 /// written once after the mark, unless the mark set the title finished.
 struct MarkFollowUpTests {
-    @Test("eine Pause waehrend der Marke laeuft danach einmal, ausser die Marke schrieb fertig")
+    @Test("a pause during the mark runs once afterwards, unless the mark finished writing")
     func aPauseDuringAMarkRunsAfterIt() {
         #expect(MarkFollowUp.origin(asked: "pause", markedFinished: false) == "pause", "a pause is written after the mark")
         #expect(MarkFollowUp.origin(asked: "pause", markedFinished: true) == nil,
@@ -19,7 +19,7 @@ struct MarkFollowUpTests {
         #expect(MarkFollowUp.origin(asked: String?.none, markedFinished: false) == nil, "nothing asked, nothing runs")
     }
 
-    @Test("beide Marken laufen unter der einen Sperre, die den gemerkten Schrieb danach faehrt", .needsTheSources)
+    @Test("both marks run under the one lock that afterwards runs the remembered write", .needsTheSources)
     func bothMarksRunUnderTheOneGuard() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8))

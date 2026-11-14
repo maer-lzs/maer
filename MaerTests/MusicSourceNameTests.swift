@@ -11,7 +11,7 @@ import Foundation
 /// A music server is named by what it reports about itself, and the capsule
 /// shows that name only while two music servers are active.
 struct MusicSourceNameTests {
-    @Test("der Name ist der gemeldete Typ; Jellyfin heisst Jellyfin; ohne Angabe Subsonic")
+    @Test("the name is the reported type; Jellyfin is called Jellyfin; without a value Subsonic")
     func names() {
         #expect(MusicSourceName.name(providerId: "sub", reportedType: "navidrome") == "Navidrome")
         #expect(MusicSourceName.name(providerId: "sub", reportedType: "nextcloud music") == "Nextcloud Music")
@@ -25,7 +25,7 @@ struct MusicSourceNameTests {
     /// The capsule writes a known product as its project does, the same
     /// spelling the sentences of the add sheet use; an unknown type keeps
     /// its capital first letter.
-    @Test("die Kapsel schreibt einen bekannten Server wie sein Projekt, wie die Saetze des Blatts")
+    @Test("the capsule writes a known server like its project, like the sentences of the sheet")
     func knownServersKeepTheirSpelling() {
         #expect(MusicSourceName.name(providerId: "sub", reportedType: "gonic") == "gonic", "gonic writes itself small")
         #expect(MusicSourceName.name(providerId: "sub", reportedType: "lms") == "LMS")
@@ -37,14 +37,14 @@ struct MusicSourceNameTests {
         }
     }
 
-    @Test("die Kapsel nur bei zwei Musikservern")
+    @Test("the capsule only with two music servers")
     func capsuleOnlyWithTwo() {
         #expect(MusicSourceName.capsule(serving: .both, name: "Navidrome") == "Navidrome")
         #expect(MusicSourceName.capsule(serving: .one(.subsonic), name: "Navidrome") == nil)
         #expect(MusicSourceName.capsule(serving: .one(.jellyfin), name: "Jellyfin") == nil)
     }
 
-    @Test("nur eine Kennung eines Musikservers traegt die Kapsel, ein Katalog-Titel nie")
+    @Test("only an identifier of a music server carries the capsule, a catalog title never")
     func capsuleOnlyForServerIds() {
         #expect(MusicSourceName.capsule(forItemId: "jf:album:1", serving: .both, name: "Jellyfin") == "Jellyfin")
         #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .both, name: "Navidrome") == "Navidrome")
@@ -59,7 +59,7 @@ struct MusicSourceNameTests {
         #expect(MusicSourceName.capsule(forItemId: "jf:song:2", serving: .both, name: "Jellyfin") == "Jellyfin")
     }
 
-    @Test("Zelle, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
+    @Test("cell, listen tile and server playlist card ask the one capsule question", .needsTheSources)
     func surfacesAskTheOneQuestion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         // Through the router's door, not the session: the growth fence
@@ -89,7 +89,7 @@ struct MusicSourceNameTests {
         #expect(ItemRouter.empty.sourceLabel("jf:album:1") == nil, "der leere Router antwortet nichts")
     }
 
-    @Test("jede Musik-Zeile, die zwei Server mischen kann, fragt die Kapsel, je Typ", .needsTheSources)
+    @Test("every music row that two servers can mix asks the capsule, per type", .needsTheSources)
     func rowsAskTheOneQuestion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func body(_ type: String, _ path: String) throws -> String {
@@ -121,7 +121,7 @@ struct MusicSourceNameTests {
         #expect(carPlay.contains("session.musicSourceLabel(forItemId: item.id)"), "die CarPlay-Nebenzeile nennt den Server nicht")
     }
 
-    @Test("die Zeilen-Kapsel behaelt ihre Vorgabe, ihre alten Rufer aendern sich nicht")
+    @Test("the row capsule keeps its default, its old callers do not change")
     func originCapsuleKeepsItsDefault() {
         let capsule = OriginCapsule()
         #expect(capsule.text == "YouTube")
@@ -129,7 +129,7 @@ struct MusicSourceNameTests {
         #expect(OriginCapsule(compact: true, text: "Navidrome", systemImage: nil).systemImage == nil)
     }
 
-    @Test("eine Cover-Kapsel, keine Datei zeichnet sie selbst", .needsTheSources)
+    @Test("a cover capsule, no file draws it itself", .needsTheSources)
     func oneCoverCapsuleLook() throws {
         // The look as it stands and as it stood (pill), so neither form
         // comes back as a copy.
@@ -145,7 +145,7 @@ struct MusicSourceNameTests {
         #expect(home.contains(looks[1]), "the look the fence watches is not the one the capsule draws")
     }
 
-    @Test("der Ausfall-Satz nimmt dieselben Namen wie die Kapsel")
+    @Test("the failure sentence takes the same names as the capsule")
     func failureSentenceUsesTheNames() {
         let names = ["sub": "Navidrome", "jf": "Jellyfin"]
         let sentence = MusicSourceFailure.sentence(failed: ["sub"], all: ["sub", "jf"], names: names)
@@ -153,7 +153,7 @@ struct MusicSourceNameTests {
         #expect(sentence?.contains("Subsonic") == false)
     }
 
-    @Test("der Typ aus der Antwort wird gelesen, gespeichert und nur bei Aenderung ueberschrieben")
+    @Test("the type from the answer is read, stored and overwritten only on change")
     func reportedTypeIsReadAndKept() throws {
         let navidrome = #"{"subsonic-response":{"status":"ok","version":"1.16.1","type":"navidrome","openSubsonic":true}}"#
         let body = try JSONDecoder().decode(SubsonicEnvelope.self, from: Data(navidrome.utf8)).subsonicResponse

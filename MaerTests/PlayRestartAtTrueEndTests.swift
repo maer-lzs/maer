@@ -24,7 +24,7 @@ struct PlayRestartAtTrueEndTests {
 
     private static var now: Double { Date().timeIntervalSince1970 * 1000 }
 
-    @Test("Stand 59:00 von 60:00, Schwelle 60 s: Play setzt fort und schreibt nichts")
+    @Test("position 59:00 of 60:00, threshold 60 s: play resumes and writes nothing")
     func withinTheTailPlayResumes() {
         let id = "rss:play-tail:\(UUID().uuidString)"
         defer { ListeningStore.clearBackup(id) }
@@ -39,7 +39,7 @@ struct PlayRestartAtTrueEndTests {
         #expect(ListeningStore.backup(id) == entry, "asking wrote something")
     }
 
-    @Test("echtes Ende: Play beginnt von vorn wie bisher")
+    @Test("true end: play starts from the beginning as before")
     func atTheTrueEndPlayRestarts() {
         let id = "rss:play-end:\(UUID().uuidString)"
         defer { ListeningStore.clearBackup(id) }
@@ -47,7 +47,7 @@ struct PlayRestartAtTrueEndTests {
         #expect(podcastRestartsOnPlay(Self.episode(id)), "a finished episode no longer restarts")
     }
 
-    @Test("als gehoert markiert (Marke ohne Dauer): Play beginnt von vorn wie bisher")
+    @Test("marked as played (mark without duration): play starts from the beginning as before")
     func theMarkedPlayedSentinelRestarts() {
         let id = "rss:play-mark:\(UUID().uuidString)"
         defer { ListeningStore.clearBackup(id) }
@@ -55,7 +55,7 @@ struct PlayRestartAtTrueEndTests {
         #expect(podcastRestartsOnPlay(Self.episode(id)), "a marked episode no longer restarts")
     }
 
-    @Test("unberuehrt und halb gehoert: Play setzt fort")
+    @Test("untouched and half played: play resumes")
     func unplayedAndHalfHeardResume() {
         let half = "rss:play-half:\(UUID().uuidString)"
         defer { ListeningStore.clearBackup(half) }
@@ -83,7 +83,7 @@ struct PlayRestartAtTrueEndTests {
         return (asked, unasked)
     }
 
-    @Test("der Zaehler sieht beide Formen")
+    @Test("the counter sees both forms")
     func theCounterSeesBothForms() {
         let old = "} else if podcastPlayState(for: item) == .played {\n    podcastSetPlayed(item, false)\n    await c.open(item: item, restart: true)\n}"
         let new = "} else if podcastRestartsOnPlay(item) {\n    podcastSetPlayed(item, false)\n    await c.open(item: item, restart: true)\n}"
@@ -98,7 +98,7 @@ struct PlayRestartAtTrueEndTests {
         #expect(commentSites.asked + commentSites.unasked == 0)
     }
 
-    @Test("jeder Neustart in einer Ansicht fragt das echte Ende", .needsTheSources)
+    @Test("every restart in a view asks the true end", .needsTheSources)
     func everyRestartInAViewAsksTheTrueEnd() throws {
         let views = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(!views.isEmpty, "no view source was read")

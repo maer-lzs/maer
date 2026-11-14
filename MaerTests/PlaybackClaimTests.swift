@@ -200,7 +200,7 @@ struct PlaybackClaimRulesTests {
     /// The decided form (04.09.2026, after a device test of build 25): the paused
     /// device shows the foreign title too when it is ANOTHER one than its
     /// own standby, because there the hint is the only explanation.
-    @Test("Hinweis: jede fremde frische Wiedergabe, auch bei verschiedenem Titel")
+    @Test("notice: every foreign fresh playback, also with a different title")
     func hintMatrix() {
         let foreign = claim("dev-b", "item-1", ageSeconds: 30)
         #expect(PlaybackClaimRules.hintClaim(claim: foreign, ownDeviceId: "dev-a", nowMs: now) == foreign)
@@ -352,7 +352,7 @@ struct PlaybackClaimSyncTests {
     /// The poll is the promise of the takeover on a locked, playing
     /// device (no push reaches it), so it runs every ten seconds while
     /// playing; sync and heartbeat keep their thirty.
-    @Test("der Tick ist zehn Sekunden: Poll jeden Tick beim Spielen, sonst jeden dritten; Sync jeden dritten")
+    @Test("the tick is ten seconds: poll every tick while playing, otherwise every third; sync every third")
     func tickRules() {
         #expect(PlaybackClaimRules.tickSeconds == 10)
         #expect(PlaybackClaimRules.ticksPerSync == 3)
@@ -373,7 +373,7 @@ struct PlaybackClaimSyncTests {
     /// at the way they came from: the key-value carriers keep their
     /// measured ten seconds of heartbeat and pull and their minute of
     /// sending, the service chooses its own.
-    @Test("der Takt kommt vom Traeger, nicht aus einer Konstanten") @MainActor
+    @Test("the beat comes from the carrier, not from a constant") @MainActor
     func theCadenceIsTheCarriers() {
         let keyValue = KeyValueClaimCarrier(cloud: InMemoryCloudStore())
         #expect(keyValue.heartbeatSeconds == 10)

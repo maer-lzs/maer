@@ -8,7 +8,7 @@ import Testing
 @testable import Maer
 
 struct PlaybackSkipTests {
-    @Test("Musik springt kuerzer: Familie und Form entscheiden")
+    @Test("music skips shorter: family and form decide")
     func contentByIdentifier() {
         #expect(PlaybackSkip.content(forItemId: "sub:song:1") == .music)
         #expect(PlaybackSkip.content(forItemId: "jf:song:1") == .music)
@@ -22,7 +22,7 @@ struct PlaybackSkipTests {
         #expect(PlaybackSkip.content(forItemId: "radio:station") == .spokenWord)
     }
 
-    @Test("Die Vorgabe steht in den Wahlen, Musik unter dem gesprochenen Wort")
+    @Test("The default is in the choices, music under the spoken word")
     func standardsAndOptions() {
         for content in [PlaybackSkip.Content.spokenWord, .music] {
             #expect(PlaybackSkip.options(for: content).contains(PlaybackSkip.standardInterval(for: content)))

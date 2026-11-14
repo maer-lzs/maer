@@ -82,20 +82,20 @@ struct ArtistPortraitLookupTests {
 
 /// Play-count bars beside each track (pure).
 struct MusicPopularityTests {
-    @Test("drei Balken ab zwei Dritteln, zwei ab einem Drittel, einer darunter, keiner bei null, die Grenzen eingeschlossen")
+    @Test("three bars from two thirds, two from one third, one below, none at zero, the limits included")
     func barsByThirds() {
         #expect(MusicPopularity.bars(playCounts: [9, 6, 5, 3, 2, 1, 0, nil]) == [3, 3, 2, 2, 1, 1, 0, 0],
                 "6 of 9 is exactly two thirds, 3 of 9 exactly one third")
         #expect(MusicPopularity.bars(playCounts: [4]) == [3], "the most played has three")
     }
 
-    @Test("ohne Zahlen vom Server keine Balken, und jeder Titel behaelt seinen Platz")
+    @Test("without numbers from the server no bars, and every title keeps its place")
     func noCountsNoBars() {
         #expect(MusicPopularity.bars(playCounts: [nil, nil, 0]) == [0, 0, 0])
         #expect(MusicPopularity.bars(playCounts: []) == [])
     }
 
-    @Test("die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg", .needsTheSources)
+    @Test("the album page shows the bars in the one line, the section above it is gone", .needsTheSources)
     func thePageWiresTheBars() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicAlbumView.swift")
         #expect(flat.contains("MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))"))
@@ -104,7 +104,7 @@ struct MusicPopularityTests {
         #expect(PopularityBars.label(3) != PopularityBars.label(1), "the level is said in words")
     }
 
-    @Test("bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter", .needsTheSources)
+    @Test("with large type the title stands on its own line and wraps, bars and duration below", .needsTheSources)
     func theRowGivesTheTitleItsLine() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PopularityBars.swift")
         let large = try #require(flat.range(of: "if typeSize.isAccessibilitySize {"))

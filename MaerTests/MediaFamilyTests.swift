@@ -162,23 +162,23 @@ struct MediaFamilyTests {
 /// picking one by exclusion.
 @Suite struct PlaceholderSymbolTests {
 
-    @Test("jede Familie nennt ihr Platzhalter-Zeichen, kein Ausschluss faellt aufs Buch")
+    @Test("every family names its placeholder symbol, no exclusion falls to the book")
     func placeholderByFamily() {
         let table: [(String, ProgressMark.StartedForm?, String)] = [
             ("rss:feed#1", nil, "mic"),
             ("abspod:ep", nil, "mic"),
             ("sub:album:1", nil, "music.note"),
-            ("jf:album:1", nil, "music.note"),            // stand vorher auf dem Buch
-            ("radio:rb:uuid", nil, "dot.radiowaves.left.and.right"),  // ebenso
+            ("jf:album:1", nil, "music.note"),            // used to be on the book
+            ("radio:rb:uuid", nil, "dot.radiowaves.left.and.right"),  // likewise
             ("jam:album-1", nil, "music.note"),
-            ("lva:netlabel#3", nil, "music.note"),        // Archiv-Titel: Musik
-            ("lva:record", .album, "music.note"),         // als Album gestartet
-            ("lva:reading", nil, "book.closed"),          // ohne Form die Lesung
+            ("lva:netlabel#3", nil, "music.note"),        // archive title: music
+            ("lva:record", .album, "music.note"),         // started as an album
+            ("lva:reading", nil, "book.closed"),          // without a form, the reading
             ("lv:12345", nil, "book.closed"),
             ("gut:99", nil, "book.closed"),
             ("abs-book-uuid", nil, "book.closed"),
             ("local:side-load", nil, "book.closed"),
-            ("zzz:unknown", nil, "waveform"),             // unbekannt: neutral, nie das Buch
+            ("zzz:unknown", nil, "waveform"),             // unknown: neutral, never the book
         ]
         for (id, form, symbol) in table {
             #expect(MediaFamily.placeholderSymbol(for: id, markedForm: form) == symbol, "\(id)")
@@ -201,7 +201,7 @@ struct MediaFamilyTests {
         }.map { $0 + 1 }
     }
 
-    @Test("kein Platzhalter wird per Ausschluss neben einer Herkunftsfrage gewaehlt", .needsTheSources)
+    @Test("no placeholder is chosen by exclusion next to a question of origin", .needsTheSources)
     func noPlaceholderByExclusion() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -211,7 +211,7 @@ struct MediaFamilyTests {
         #expect(offenders.isEmpty, "a placeholder picked past MediaFamily.placeholderSymbol: \(offenders)")
     }
 
-    @Test("Eichzeilen: der Zaun sieht die ausgelieferten Formen und laesst die Regel stehen")
+    @Test("calibration lines: the fence sees the shipped forms and leaves the rule standing")
     func exclusionFenceCalibration() {
         #expect(Self.exclusionPicks(in: """
             if ItemNamespace.isPodcastEpisode(item.id) { return "mic" }

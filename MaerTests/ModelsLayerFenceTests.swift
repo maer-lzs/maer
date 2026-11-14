@@ -25,14 +25,14 @@ struct ModelsLayerFenceTests {
         return upward.filter { code.contains($0) }
     }
 
-    @Test("der Zaehler sieht den Namen im Code, nicht im Kommentar")
+    @Test("the counter sees the name in code, not in a comment")
     func theCounterSeesCodeNotComments() {
         #expect(Self.upwardNames(in: "isPossible(AppSession.shared.provider(for: id).capabilities)") == ["AppSession"])
         #expect(Self.upwardNames(in: "let r = ItemRouter.live").count == 1)
         #expect(Self.upwardNames(in: "/// asks `AppSession` nowhere\nlet x = 1 // not AppSession").isEmpty)
     }
 
-    @Test("keine Regel in Models fragt die Sitzung oder den Router", .needsTheSources)
+    @Test("no rule in Models asks the session or the router", .needsTheSources)
     func noModelAsksTheSession() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Models/") }
         try #require(files.count > 50, "der Zeuge hat Models nicht gelesen")
@@ -106,7 +106,7 @@ struct ModelsLayerFenceTests {
         }.count
     }
 
-    @Test("der Zaehler der Griffe nach oben sieht Code, keinen Kommentar, keine Zeichenkette und keinen eigenen Namen")
+    @Test("the counter of upward reaches sees code, no comment, no string and no name of its own")
     func theUpwardCounterSeesCodeOnly() {
         let names: Set = ["PlayerViewModel"]
         let text = """
@@ -125,7 +125,7 @@ struct ModelsLayerFenceTests {
 
     /// The models name the layers above them on no more lines than
     /// today, file by file, and the stock follows every fall.
-    @Test("Models greift je Datei nicht oefter nach oben als heute, und der Bestand folgt jedem Fallen", .needsTheSources)
+    @Test("Models reaches upward no more often per file than today, and the stock follows every fall", .needsTheSources)
     func modelsReachUpNoMoreThanToday() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         func layer(_ name: String) -> [URL] { files.filter { $0.path.contains("/Sources/\(name)/") } }

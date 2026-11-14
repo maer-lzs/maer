@@ -161,7 +161,7 @@ struct MusicUnionTests {
 
     // MARK: Paging, whatever the order of the questions
 
-    @Test("von vorn geblaettert: beide Quellen in einer Namensordnung, Dubletten bleiben")
+    @Test("paged from the start: both sources in one name order, duplicates stay")
     func fromTheFrontIsTheMergedSequence() async throws {
         let all = try await Self.fromTheFront(size: 3)
         #expect(all == ["Abba", "Björk", "Cure", "Cure", "Dylan", "Eno", "Fugazi", "Genesis", "Isis", "Kraan", "Muse"])
@@ -170,7 +170,7 @@ struct MusicUnionTests {
     /// A favorite goes to the album's own server, and a server that does
     /// not take it throws through the union: the album page then turns the
     /// heart back and says so, instead of showing a state the server never had.
-    @Test("ein Favorit geht an den Server des Albums, und ein Scheitern kommt beim Rufer an")
+    @Test("a favorite goes to the server of the album, and a failure reaches the caller")
     func aFavoriteThatFailsReachesTheCaller() async {
         let (union, sub, jf) = Self.pair()
         await #expect(throws: Never.self) { try await union.setStar(itemId: "jf:album:Dylan", starred: true) }
@@ -180,7 +180,7 @@ struct MusicUnionTests {
         await #expect(throws: Stand.Down.self) { try await union.setStar(itemId: "sub:album:Cure", starred: true) }
     }
 
-    @Test("Seite 3 zuerst gefragt ist dieselbe Seite wie beim Blaettern von vorn")
+    @Test("page 3 asked first is the same page as when paging from the start")
     func aLaterPageFirst() async throws {
         let reference = try await Self.fromTheFront(size: 3)
         let (union, _, _) = Self.pair()
@@ -190,7 +190,7 @@ struct MusicUnionTests {
         #expect(Self.titles(first) == Array(reference[0..<3]))
     }
 
-    @Test("zweimal dieselbe Seite: gleiche Eintraege, und die Quellen werden nicht erneut gefragt")
+    @Test("the same page twice: same entries, and the sources are not asked again")
     func theSamePageTwice() async throws {
         let (union, sub, jf) = Self.pair()
         _ = try await union.albumPage(sort: .nameAZ, offset: 0, size: 3)
@@ -201,7 +201,7 @@ struct MusicUnionTests {
         #expect(sub.asked.count + jf.asked.count == askedBefore)
     }
 
-    @Test("zwei Anfragen gleichzeitig werden hintereinander bedient und stimmen mit der Folge von vorn")
+    @Test("two requests at once are served one after the other and match the sequence from the start")
     func twoQuestionsAtOnce() async throws {
         let reference = try await Self.fromTheFront(size: 3)
         let (union, sub, jf) = Self.pair()
@@ -224,7 +224,7 @@ struct MusicUnionTests {
         #expect(jf.asked == ["page@0", "page@3"])
     }
 
-    @Test("Versatz 0 beginnt neu und sieht, was sich auf dem Server geaendert hat")
+    @Test("offset 0 starts anew and sees what has changed on the server")
     func offsetZeroStartsOver() async throws {
         let (union, sub, _) = Self.pair()
         _ = try await union.albumPage(sort: .nameAZ, offset: 0, size: 3)
@@ -233,7 +233,7 @@ struct MusicUnionTests {
         #expect(Self.titles(cached).first == "Aaa", "ein Neuladen ist ein Neuladen")
     }
 
-    @Test("jede Quelle wird an ihrem eigenen Versatz gefragt")
+    @Test("every source is asked at its own offset")
     func eachSourceAtItsOwnOffset() async throws {
         let (union, sub, jf) = Self.pair()
         var offset = 0
@@ -242,7 +242,7 @@ struct MusicUnionTests {
         #expect(jf.asked == ["page@0", "page@3"])
     }
 
-    @Test("Rang um Rang fuer Zuletzt gespielt, ueber Seiten hinweg")
+    @Test("rank by rank for Recently Played, across pages")
     func rankByRankAcrossPages() async throws {
         let (union, _, _) = Self.pair()
         let first = try await union.albumPage(sort: .zuletztGespielt, offset: 0, size: 4)
@@ -252,7 +252,7 @@ struct MusicUnionTests {
 
     // MARK: A failing source
 
-    @Test("faellt eine Quelle aus, bleibt die Liste der anderen, und der Ausfall ist benannt")
+    @Test("if one source fails, the list of the other stays, and the failure is named")
     func aFailingSourceIsNamed() async throws {
         let (union, _, jf) = Self.pair()
         jf.fails = true
@@ -267,7 +267,7 @@ struct MusicUnionTests {
         #expect(union.failedSources.isEmpty, "wieder da, nicht mehr benannt")
     }
 
-    @Test("scheitern beide, wirft die Liste wie eine einzelne Quelle")
+    @Test("if both fail, the list throws like a single source")
     func bothFailingThrows() async {
         let (union, sub, jf) = Self.pair()
         sub.fails = true
@@ -278,7 +278,7 @@ struct MusicUnionTests {
 
     // MARK: Genres
 
-    @Test("die Genre-Seite fragt jeden Server in seiner Schreibung und einen ohne das Genre gar nicht")
+    @Test("the genre page asks every server in its own spelling and a server without the genre not at all")
     func genrePageAsksEachInItsOwnWords() async throws {
         let (union, sub, jf) = Self.pair()
         sub.genreList = [MusicGenre(name: "Jazz"), MusicGenre(name: "Rock")]
@@ -292,7 +292,7 @@ struct MusicUnionTests {
                 "Jellyfin in seiner Schreibung, und nach Rock nicht gefragt")
     }
 
-    @Test("faellt eine Genre-Liste aus, wird dieser Server auf der Genre-Seite trotzdem gefragt")
+    @Test("if a genre list fails, this server is still asked on the genre page")
     func aFailedGenreListLacksNothing() async throws {
         let (union, sub, jf) = Self.pair()
         sub.genreList = [MusicGenre(name: "Rock")]
@@ -303,7 +303,7 @@ struct MusicUnionTests {
         #expect(jf.asked.contains("genreAlbums Rock"), "ein Ausfall heisst nicht, dass das Genre fehlt")
     }
 
-    @Test("der Verbund legt keine Playlist an: er ist zwei Server, das Anlegen nennt einen")
+    @Test("the union creates no playlist: it is two servers, the creating names one")
     func theUnionCreatesNowhere() async throws {
         let (union, sub, jf) = Self.pair()
         #expect(try await union.createPlaylist(name: "Neu") == nil)
@@ -312,7 +312,7 @@ struct MusicUnionTests {
 
     // MARK: Whole lists and ids
 
-    @Test("ganze Listen: Kuenstler beider Server, gleiche Namen zweimal; Regal Neu auf einer Uhr")
+    @Test("whole lists: artists of both servers, same names twice; shelf New on one clock")
     func wholeLists() async throws {
         let (union, _, _) = Self.pair()
         let artists = try await union.allArtists()
@@ -325,7 +325,7 @@ struct MusicUnionTests {
         #expect(Self.titles(newest) == ["B", "C", "A"])
     }
 
-    @Test("Fragen mit Kennung gehen an den Server der Kennung")
+    @Test("questions with an identifier go to the server of the identifier")
     func idsGoToTheirServer() async throws {
         let (union, sub, jf) = Self.pair()
         _ = await union.songIds(forItemId: "jf:album:Cure")
@@ -339,7 +339,7 @@ struct MusicUnionTests {
         #expect(union.kind(of: "jf:album:1") == .album && union.owns(itemId: "sub:x") && !union.owns(itemId: "abs:x"))
     }
 
-    @Test("Zufall aus beiden, und die kleine Bibliothek laesst keine halbe Liste")
+    @Test("random from both, and the small library leaves no half list")
     func shuffleFromBoth() async {
         let (union, _, _) = Self.pair()
         let pool = await union.shuffleLibrarySongItems(limit: 10)
@@ -347,7 +347,7 @@ struct MusicUnionTests {
         #expect(pool.filter { $0.id.hasPrefix("jf:") }.count == 4)
     }
 
-    @Test("das Signal einer Quelle erreicht den Verbund")
+    @Test("the signal of one source reaches the union")
     func theSignalRelays() {
         let (union, _, jf) = Self.pair()
         var heard = 0
@@ -359,7 +359,7 @@ struct MusicUnionTests {
 
     // MARK: The sentence when one server does not answer
 
-    @Test("der Satz nennt, wer nicht antwortet und wessen Haelfte zu sehen ist; sonst keiner")
+    @Test("the sentence names who does not answer and whose half is shown; otherwise none")
     func theFailureSentence() {
         let one = MusicSourceFailure.sentence(failed: ["jf"], all: ["sub", "jf"])
         #expect(one == String(localized: "\("Jellyfin") is not answering right now; showing only what \("Subsonic") has."))
@@ -369,7 +369,7 @@ struct MusicUnionTests {
         #expect(MusicSourceFailure.sentence(failed: [], all: ["sub"]) == nil, "eine Quelle hat keinen Satz")
     }
 
-    @Test("der Verbund liefert Ausfall und Quellen fuer den Satz")
+    @Test("the union supplies failure and sources for the sentence")
     func theUnionFeedsTheSentence() async throws {
         let (union, _, jf) = Self.pair()
         jf.fails = true
@@ -379,7 +379,7 @@ struct MusicUnionTests {
         #expect(Stand(prefix: "x:", titles: []).sourceIds == ["x:"], "ein einzelner Anbieter nennt sich selbst")
     }
 
-    @Test("der Musik-Reiter zeigt den Satz, und die geladene Haelfte bleibt")
+    @Test("the music tab shows the sentence, and the loaded half stays")
     func theTabShowsTheSentence() async {
         let album = Stand.item("sub:album:A", "A")
         let vm = MusicViewModel(source: MusicSource(
@@ -398,7 +398,7 @@ struct MusicUnionTests {
         #expect(quiet.errorText == nil, "ohne Ausfall kein Satz")
     }
 
-    @Test("Start fragt die Art eines Musik-Schluessels an dessen Server", .needsTheSources)
+    @Test("start asks the kind of a music key at its server", .needsTheSources)
     func homeAsksTheKindAtTheKeysServer() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"),
                               encoding: .utf8)
@@ -411,7 +411,7 @@ struct MusicUnionTests {
         #expect(lines.count == 1, "the kind is asked in \(lines.count) places")
     }
 
-    @Test("Portraets liegen unter der Kennung mit Quelle, nie unter der rohen Nummer", .needsTheSources)
+    @Test("portraits lie under the identifier with source, never under the raw number", .needsTheSources)
     func portraitsAreKeyedByTheCarriedId() throws {
         var calls: [String] = []
         let root = SourceTree.root.appendingPathComponent("Sources")
@@ -463,7 +463,7 @@ struct MusicUnionTests {
         return count
     }
 
-    @Test("keine Frage mit roher Nummer an die Geraete-Frage, in ganz Sources", .needsTheSources)
+    @Test("no question with a raw number to the device question, in all of Sources", .needsTheSources)
     func noRawQuestionToTheDevice() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")
         var read = 0
@@ -487,7 +487,7 @@ struct MusicUnionTests {
                 "eine Listen-Frage ist keine rohe")
     }
 
-    @Test("mit beiden Quellen ist die Antwort der Verbund")
+    @Test("with both sources the answer is the union")
     func bothIsTheUnion() {
         let first = AppSession.shared.musicProvider(serving: .both)
         #expect(first is MusicUnion)

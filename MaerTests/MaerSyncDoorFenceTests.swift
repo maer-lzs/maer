@@ -45,7 +45,7 @@ struct MaerSyncDoorFenceTests {
             }.count
     }
 
-    @Test("die Pfade des Dienstes entstehen in einer Datei, und nur sie liest das Zeichen", .needsTheSources)
+    @Test("the paths of the service arise in one file, and only it reads the token", .needsTheSources)
     func addressesLiveInOneFile() throws {
         var pathFiles: Set<String> = []
         var tokenFiles: Set<String> = []
@@ -64,7 +64,7 @@ struct MaerSyncDoorFenceTests {
         #expect(Self.lines(naming: "v1/doc", in: "// the path is v1/doc\nlet p = \"v1/doc\"") == 1)
     }
 
-    @Test("die Laeufer und die Regeln kennen den Dienst nicht", .needsTheSources)
+    @Test("the runners and the rules do not know the service", .needsTheSources)
     func runnersAndRulesAreBlind() throws {
         var offenders: [String] = []
         var seen = 0
@@ -78,7 +78,7 @@ struct MaerSyncDoorFenceTests {
         #expect(offenders.isEmpty, "these name the service beside the seam: \(offenders)")
     }
 
-    @Test("die Sitzung wird nur von den Traegern und den Fabriken genannt", .needsTheSources)
+    @Test("the session is named only by the carriers and the factories", .needsTheSources)
     func theSessionIsNamedOnlyBehindTheSeam() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -91,7 +91,7 @@ struct MaerSyncDoorFenceTests {
         #expect(drift.isEmpty, "the session is reached past the seam, or a stock above the count: \(drift)")
     }
 
-    @Test("keine Adresse des Dienstes traegt das Zeichen, und ein Zeichen in der Adresse wird abgewiesen")
+    @Test("no address of the service carries the token, and a token in the address is rejected")
     func noAddressCarriesTheToken() throws {
         let access = MaerSyncAccess(baseURL: try #require(URL(string: "https://sync.example.test")), token: "the-secret-token")
         let addresses = [

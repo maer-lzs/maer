@@ -279,7 +279,7 @@ struct MaerSyncCarrierTests {
 
     // MARK: - The stands
 
-    @Test("der erste Schrieb legt den Topf an, der zweite nennt die Fassung des ersten")
+    @Test("the first write creates the pot, the second names the version of the first")
     func firstWriteLaysDownThePot() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -303,7 +303,7 @@ struct MaerSyncCarrierTests {
         #expect(transport.writes.allSatisfy { !$0.declared }, "the stands never declare a shrink")
     }
 
-    @Test("eine Fassung, die sich unter dem Schrieb bewegt hat, wird geholt und zusammengefuehrt, nicht ueberschrieben")
+    @Test("a version that moved under the write is fetched and merged, not overwritten")
     func aMovedVersionIsMergedNotOverwritten() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -333,7 +333,7 @@ struct MaerSyncCarrierTests {
                 "one stale write, then the repeat names the version that was fetched")
     }
 
-    @Test("eine Abweisung haelt die Warteschlange, erklaert nichts und ueberlebt den Neustart")
+    @Test("a rejection keeps the queue, explains nothing and survives the restart")
     func aRefusalKeepsTheQueueAndDeclaresNothing() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -356,7 +356,7 @@ struct MaerSyncCarrierTests {
         #expect(try transport.stands()["rss:a:1"] == [100, 1_000])
     }
 
-    @Test("eine Meldung mit fremder Fassung holt den Topf und weckt den Laeufer; die eigene Fassung ist bekannt")
+    @Test("a message with a foreign version fetches the pot and wakes the runner; the own version is known")
     func anAnnouncementFetchesAndWakes() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -391,7 +391,7 @@ struct MaerSyncCarrierTests {
         #expect(woken == 1, "the foreign write woke the runner once")
     }
 
-    @Test("ein gestorbener Socket wird beim naechsten Anlass wieder geoeffnet, nie von selbst")
+    @Test("a dead socket is reopened at the next occasion, never by itself")
     func theSocketReopensOnTheNextOccasion() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -407,7 +407,7 @@ struct MaerSyncCarrierTests {
         #expect(announcer.opens == 2, "an open socket is left alone")
     }
 
-    @Test("ein abgewiesenes Zeichen haelt jede Runde an, bis die Anmeldung es aufhebt")
+    @Test("a rejected token halts every round until the sign-in lifts it")
     func unauthorizedStopsUntilSignIn() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -433,7 +433,7 @@ struct MaerSyncCarrierTests {
         #expect(transport.writes.count > calls, "the queue went out after the sign-in")
     }
 
-    @Test("ein durch einen Passwortwechsel zurueckgezogenes Zeichen haelt jede Runde an wie ein abgewiesenes")
+    @Test("a token withdrawn by a password change halts every round like a rejected one")
     func aWithdrawnTokenStopsLikeARefusedOne() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -461,7 +461,7 @@ struct MaerSyncCarrierTests {
         #expect(session.unauthorized && !session.passwordWithdrawn, "a refused token is not a withdrawn one")
     }
 
-    @Test("ein anderer Schluessel des Dienstes haelt jede Runde an, bis jemand ihn angenommen hat")
+    @Test("a different key of the service halts every round until someone has accepted it")
     func aChangedServiceKeyStopsUntilSomebodyLooks() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -489,14 +489,14 @@ struct MaerSyncCarrierTests {
         #expect(transport.writes.count > calls, "the queue went out after the acceptance")
     }
 
-    /// Diese Zusage hat sich am 15.09. geaendert, und zwar am Geraet:
-    /// „der naechste Schrieb ueberschreibt ihn nicht" war als Vorsicht
-    /// gemeint und war eine Aussperrung. Am Dienst lag ein abgeschnittenes
-    /// Dokument, das Geraet behielt seine alte Fassung, jeder Schrieb kam als
-    /// 412 zurueck, und stundenlang wurde kein Hoerstand gespeichert. Der
-    /// SPIEGEL bleibt weiter (unlesbar ist nicht leer), die FASSUNG wird
-    /// genommen, damit der naechste Schrieb landen kann.
-    @Test("ein unlesbarer Topf laesst den Spiegel stehen, sperrt das Geraet aber nicht aus")
+    /// This promise changed on 15.09., on the device:
+    /// „der naechste Schrieb ueberschreibt ihn nicht" was meant as caution
+    /// and was a lockout. At the service lay a truncated
+    /// document, the device kept its old version, every write came back as
+    /// 412, and for hours no listening position was saved. The
+    /// MIRROR stays (unreadable is not empty), the VERSION is
+    /// taken, so that the next write can land.
+    @Test("an unreadable pot leaves the mirror in place but does not lock the device out")
     func anUnreadablePotLeavesTheMirror() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -519,7 +519,7 @@ struct MaerSyncCarrierTests {
 
     // MARK: - The claim
 
-    @Test("der eigene Anspruch geht in den eigenen Scope, erklaert den Schrumpf und sonst nirgendwohin")
+    @Test("the own claim goes into the own scope, explains the shrink and goes nowhere else")
     func theOwnClaimGoesToItsOwnScope() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -543,7 +543,7 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncClaimWire.decode(transport.documents[FakeTransport.key(MaerSyncSession.claimKind, "dev-a")]!.body)?.released == true)
     }
 
-    @Test("ein aelterer Dienst haelt die Laeufe an, statt bei jeder Gelegenheit neu zu fragen; eine neue Anmeldung fragt wieder")
+    @Test("an older service halts the runs instead of asking anew at every opportunity; a new sign-in asks again")
     func anOlderServiceStopsTheRounds() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -568,7 +568,7 @@ struct MaerSyncCarrierTests {
         #expect(transport.requests > asked)
     }
 
-    @Test("fremde Ansprueche kommen ueber die Liste, nur bei unbekannter Fassung geholt; ein verschwundener Scope geht")
+    @Test("foreign claims come through the list, fetched only with an unknown version; a vanished scope goes")
     func foreignClaimsComeThroughTheListing() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -595,7 +595,7 @@ struct MaerSyncCarrierTests {
         #expect(woken == 2)
     }
 
-    @Test("eine Meldung fuer den Scope eines anderen Geraets holt ihn; die eigene wird uebergangen")
+    @Test("a message for another device's scope fetches it; the own one is skipped")
     func aClaimAnnouncementFetchesTheOneScope() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -623,7 +623,7 @@ struct MaerSyncCarrierTests {
         #expect(transport.fetches.count >= fetches)
     }
 
-    @Test("eine Waise wird nur hier vergessen, nie auf dem Dienst; der Dienst hat keinen Deckel")
+    @Test("an orphan is forgotten only here, never on the service; the service has no cap")
     func removeIsLocalOnly() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -649,7 +649,7 @@ struct MaerSyncCarrierTests {
 
     // MARK: - The wire and the addresses
 
-    @Test("der Anspruch reist als seine Plist-Form: jedes Feld kommt zurueck")
+    @Test("the claim travels as its plist form: every field comes back")
     func theClaimWireRoundTrips() throws {
         let full = PlaybackClaim(deviceId: "dev-a", itemId: "rss:f:ep", t: 1_000, released: true, position: 12.5,
                                  duration: 300, title: "Title", playAt: 900, deviceName: "iPad")
@@ -659,7 +659,7 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncClaimWire.decode(Data("nonsense".utf8)) == nil)
     }
 
-    @Test("der Topf reist als JSON mit sortierten Schluesseln; halbe Eintraege fallen, Unlesbares wirft")
+    @Test("the pot travels as JSON with sorted keys; half entries drop, unreadable content throws")
     func theStandsWireIsStableAndStrict() throws {
         let pot: [String: [Double]] = ["b": [1, 2], "a": [3, 4, 5, 6]]
         let bytes = try MaerSyncStandsWire.encode(pot)
@@ -671,7 +671,7 @@ struct MaerSyncCarrierTests {
         #expect(throws: (any Error).self) { try MaerSyncStandsWire.decode(Data("not json".utf8)) }
     }
 
-    @Test("die Adressen: Dokument mit und ohne Scope, Liste, Socket ueber wss, und nie ein Zeichen darin")
+    @Test("the addresses: document with and without scope, list, socket over wss, and never a token in them")
     func theAddresses() throws {
         let base = try #require(MaerSyncPaths.normalized(" https://sync.example.test/maer/ "))
         #expect(base.absoluteString == "https://sync.example.test/maer")
@@ -686,12 +686,12 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncPaths.normalized("") == nil)
     }
 
-    // MARK: - Der Topf faengt sich wieder (Nachtrag zu Build 37)
+    // MARK: - The pot recovers (addendum to Build 37)
 
-    /// Ein kaputter EINTRAG kostet seinen Eintrag, nicht den Topf. Der
-    /// Hoerstand war das einzige Dokument ohne diese Eigenschaft; ein Wert
-    /// vom falschen Typ warf alles weg.
-    @Test("ein Eintrag vom falschen Typ kostet nur sich selbst")
+    /// A broken ENTRY costs its entry, not the pot. The
+    /// listening position was the only document without this property; a value
+    /// of the wrong type threw everything away.
+    @Test("an entry of the wrong type costs only itself")
     func oneEntryOfTheWrongKindCostsOnlyItself() throws {
         let wire = Data(#"{"a":[12.5,1000],"kaputt":"nicht mal eine Liste","b":[7,2000],"kurz":[3]}"#.utf8)
         let pot = try MaerSyncStandsWire.decode(wire)
@@ -702,23 +702,23 @@ struct MaerSyncCarrierTests {
         #expect(pot.count == 2, "der Rest des Topfes ueberlebt")
     }
 
-    /// Und die Sackgasse selbst, mit einem ABGESCHNITTENEN Dokument, nicht
-    /// mit einem fremden Feld: am Dienst lag ein Koerper, der mitten in einer
-    /// Zahl abbricht. Das Geraet behielt seine alte Fassung, jeder Schrieb
-    /// kam als 412 zurueck, und stundenlang wurde kein Hoerstand gespeichert.
-    @Test("ein abgeschnittenes Dokument sperrt das Geraet nicht aus")
+    /// And the dead end itself, with a TRUNCATED document, not
+    /// with a foreign field: at the service lay a body that breaks off in the middle of a
+    /// number. The device kept its old version, every write
+    /// came back as 412, and for hours no listening position was saved.
+    @Test("a truncated document does not lock the device out")
     func aTruncatedDocumentDoesNotLockTheDeviceOut() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
         let transport = FakeTransport(), announcer = FakeAnnouncer()
-        // v65 gueltig, dann v66 abgeschnitten: genau die Abfolge vom Dienst.
+        // v65 valid, then v66 truncated: exactly the sequence from the service.
         transport.documents[FakeTransport.key("stands", "")] =
             .init(body: Data(#"{"a":[10,1000]}"#.utf8), format: MaerSyncStandsWire.format, version: 65)
         let carrier = MaerSyncStandCarrier(session: session(transport, announcer, defaults: defaults))
         await carrier.refresh(by: "erste Runde")
         try #require(carrier.stands()["a"] != nil, "die gueltige Fassung muss angekommen sein")
 
-        // v66: abgeschnitten mitten in einer Zahl, genau wie am Dienst.
+        // v66: truncated in the middle of a number, exactly as at the service.
         transport.documents[FakeTransport.key("stands", "")] =
             .init(body: Data(#"{"a":[10,1000],"b":[7,20"#.utf8), format: MaerSyncStandsWire.format, version: 66)
 
@@ -732,15 +732,15 @@ struct MaerSyncCarrierTests {
         #expect(pot["a"] == [10, 1000], "der Spiegel wurde weggeworfen statt behalten")
     }
 
-    // MARK: - Der Rueckweg nach einer Abweisung
+    // MARK: - The way back after a rejection
 
-    /// Die Invariante: **kein Schrieb verschwindet lautlos.** Am Dienst
-    /// gemessen (15.09.): vier Schriebe wurden mit 412 abgewiesen, drei
-    /// wiederholt, die Playlisten nie. Der Grund steht hier als Fall: das
-    /// Nachlesen beantwortet „hat sich das Dokument bewegt", nicht „ist mein
-    /// Schrieb gelandet". Hat ein anderer Weg die Fassung schon geholt,
-    /// meldet es nichts Neues, und der eigene Stand war weg.
-    @Test("ein Koerper, der waehrend eines abgewiesenen Playlist-Schriebs dazukam, bleibt und geht hinaus")
+    /// The invariant: **no write disappears silently.** Measured at the service
+    /// (15.09.): four writes were rejected with 412, three
+    /// repeated, the playlists never. The reason is a case here: the
+    /// re-read answers „hat sich das Dokument bewegt", not
+    /// „ist mein Schrieb gelandet". If another path has already fetched the version,
+    /// it reports nothing new, and the own state was gone.
+    @Test("a body that arrived during a rejected playlist write stays and goes out")
     func aBodyQueuedDuringARefusedPlaylistWriteStays() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -758,7 +758,7 @@ struct MaerSyncCarrierTests {
                 "the body queued during the refused write was dropped with it")
     }
 
-    @Test("ein Koerper, der waehrend eines veralteten Wahlen-Schriebs dazukam, bleibt und geht hinaus")
+    @Test("a body that arrived during a stale choices write stays and goes out")
     func aBodyQueuedDuringAStaleChoicesWriteStays() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -776,7 +776,7 @@ struct MaerSyncCarrierTests {
                 "the body queued during the stale write was dropped with it")
     }
 
-    @Test("ein abgewiesener Playlist-Schrieb wird wiederholt, auch wenn das Nachlesen nichts Neues meldet")
+    @Test("a rejected playlist write is repeated even if the re-read reports nothing new")
     func aRefusedPlaylistWriteIsRepeatedEvenWhenTheReReadFindsNothingNew() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -784,8 +784,8 @@ struct MaerSyncCarrierTests {
         transport.documents[FakeTransport.key("playlists", "")] =
             .init(body: Data("cloud".utf8), format: MaerSyncPlaylistWire.format, version: 1)
         let session = session(transport, announcer, defaults: defaults)
-        // Diese Fassung ist schon gelesen, das Nachlesen wird also nichts
-        // Neues melden. Genau die Voraussetzung, um die es geht.
+        // This version has already been read, so the re-read will report nothing
+        // new. Exactly the precondition at issue.
         await session.refresh(by: "test")
         let readVersion = transport.documents[FakeTransport.key("playlists", "")]?.version
         try #require(readVersion == 1, "der Zeuge braucht die gelesene Fassung 1")
@@ -793,8 +793,8 @@ struct MaerSyncCarrierTests {
         var asked = 0
         session.onPlaylistsChange = { [weak session] in
             asked += 1
-            // Der Laeufer verschmilzt und legt den neuen Stand hin, wie der
-            // echte es tut, wenn das Ergebnis vom Dienst-Stand abweicht.
+            // The runner merges and lays down the new state, as the
+            // real one does when the result differs from the service state.
             if asked == 1 { session?.writePlaylists(Data("merged".utf8), by: "runner") }
         }
 
@@ -810,7 +810,7 @@ struct MaerSyncCarrierTests {
         #expect(held.map { $0.version > 1 } == true, "die Fassung hat sich nie bewegt")
     }
 
-    @Test("dasselbe gilt fuer die Wahlen: abgewiesen heisst wiederholt")
+    @Test("the same holds for the choices: rejected means repeated")
     func aRefusedChoicesWriteIsRepeatedToo() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -834,12 +834,12 @@ struct MaerSyncCarrierTests {
         #expect(transport.documents[FakeTransport.key("choices", "")]?.body == Data("merged".utf8))
     }
 
-    /// Der Zaun ueber die KLASSE: kein `.stale`-Zweig darf seinen Rueckweg
-    /// davon abhaengig machen, dass das Nachlesen eine Aenderung meldet. Die
-    /// Form `if await take…(by: caller) { on…Change?() }` ist genau die, die
-    /// den Schrieb verloren hat, und sie faellt hier auf, bevor sie ein
-    /// drittes Mal entsteht.
-    @Test("kein Schreibweg macht seinen Rueckweg von einer gemeldeten Fremdaenderung abhaengig", .needsTheSources)
+    /// The fence over the CLASS: no `.stale` branch may make its way back
+    /// depend on the re-read reporting a change. The
+    /// form `if await take…(by: caller) { on…Change?() }` is exactly the one that
+    /// lost the write, and it is caught here before it arises
+    /// a third time.
+    @Test("no write path makes its way back depend on a reported foreign change", .needsTheSources)
     func noWritePathHangsItsRetryOnAReportedForeignChange() throws {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -848,15 +848,15 @@ struct MaerSyncCarrierTests {
         let branches = source.components(separatedBy: "case .stale").dropFirst()
         try #require(branches.count >= 4, "der Sucher findet die Schreibwege nicht mehr (\(branches.count))")
         for branch in branches {
-            // Nur bis zum naechsten Fall schauen, sonst faengt der Zaun den
-            // ganzen Rest der Datei mit ein.
+            // Look only up to the next case, otherwise the fence catches the
+            // whole rest of the file as well.
             let body = branch.components(separatedBy: "case .refused").first ?? branch
             #expect(!body.contains("if await take"),
                     "ein .stale-Zweig wiederholt nur bei gemeldeter Aenderung: \(body.prefix(120))")
         }
     }
 
-    @Test("eine Abweisung ist ein sichtbarer Zustand, bis ein Schrieb derselben Art landet")
+    @Test("a rejection is a visible state until a write of the same kind lands")
     func aRefusalIsVisibleUntilAWriteLands() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -896,7 +896,7 @@ struct MaerSyncCarrierTests {
     /// its own outcome on both buttons, never "did not answer": the service
     /// was never asked. Measured before this existed: the sign-in mapped
     /// it to `unreachable` and the page sent the person to the service.
-    @Test("die Weigerung der Plattform ist ein eigener Ausgang, auf beiden Knoepfen, nie Schweigen")
+    @Test("the platform's refusal is an outcome of its own, on both buttons, never silence")
     func thePlatformRefusalIsItsOwnOutcome() async {
         let refusal = URLError(.appTransportSecurityRequiresSecureConnection)
         #expect(MaerSyncSignIn.isPlatformRefusal(refusal))
@@ -916,7 +916,7 @@ struct MaerSyncCarrierTests {
                 "a service that says nothing is still silence")
     }
 
-    @Test("die Anmeldung tauscht das Passwort nur gegen ein Zeichen, wenn der Dienst ja sagt; die Form wird vorher geprueft")
+    @Test("the sign-in exchanges the password for a token only when the service says yes; the form is checked beforehand")
     func signInTradesTheSecretOnlyWhenTheServiceSaysYes() async {
         let transport = FakeTransport()
         // The sign-in holds the service's key on this device, so a run
@@ -968,7 +968,7 @@ struct MaerSyncCarrierTests {
         transport.healthStatus = 200
     }
 
-    @Test("ein Status ist noch kein Urteil: 200 erreicht, 403 aus dem falschen Netz, alles andere Schweigen")
+    @Test("a status is not yet a verdict: 200 reached, 403 from the wrong network, everything else silence")
     func statusBecomesTheSentence() {
         #expect(MaerSyncSignIn.reach(forStatus: 200) == .reached)
         #expect(MaerSyncSignIn.reach(forStatus: 403) == .blockedHere)
@@ -979,7 +979,7 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncSignIn.reach(forStatus: nil) == .silent)
     }
 
-    @Test("der Dienst waehlt seinen Takt selbst: der Topf wird jeden dritten Tick gefragt, der Anspruch schlaegt alle zehn Sekunden")
+    @Test("the service picks its own beat: the pot is asked every third tick, the claim beats every ten seconds")
     func theServiceChoosesItsOwnCadence() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -992,7 +992,7 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncClaimCarrier(session: session).heartbeatSeconds == 10)
     }
 
-    @Test("die Fabriken stellen Topf und Anspruch auf den Dienst, sobald ein Zugang da ist, und sonst nicht")
+    @Test("the factories put pot and claim on the service as soon as an access exists, and not otherwise")
     func theFactoriesChooseByAccess() {
         #expect(StandCarriers.make(access: access) is MaerSyncStandCarrier)
         #expect(!(StandCarriers.make(access: nil) is MaerSyncStandCarrier))
@@ -1003,17 +1003,17 @@ struct MaerSyncCarrierTests {
         #expect(KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0).historyService == .iCloud)
     }
 
-    @Test("die Dienst-Seite liest Schalter und Zugang; die Laeufer folgen dem Zugang, also gibt es kein Dazwischen")
+    @Test("the service page reads switch and access; the runners follow the access, so there is no in-between")
     func thePageReadsTheSwitchAndTheAccess() {
         func standing(_ on: Bool, _ signedIn: Bool) -> MaerSyncStanding {
             MaerSyncStanding.standing(syncAcrossDevices: on, signedIn: signedIn)
         }
-        // Der Schalter steht ueber allem: ist er aus, reist nichts, was
-        // hier auch eingerichtet sein mag.
+        // The switch overrides everything: when it is off, nothing travels, whatever
+        // may be set up here.
         #expect(standing(false, true) == .switchedOff)
         #expect(standing(false, false) == .switchedOff)
         #expect(standing(true, true) == .carrying)
-        // Nicht angemeldet: Apple traegt, wie zuvor.
+        // Not signed in: Apple carries, as before.
         #expect(standing(true, false) == .notInUse)
     }
 
@@ -1021,7 +1021,7 @@ struct MaerSyncCarrierTests {
     /// the settings' footer said the choices travel over the service with
     /// the switch off, a refused token or an older service. Both now ask
     /// what the service does.
-    @Test("ein offener Schluesselwechsel ist kein Tragen, und die Fusszeile sagt das Reisen nur, solange der Dienst traegt")
+    @Test("an open key change is not carrying, and the footer says the travelling only as long as the service carries")
     func anOpenKeyChangeIsNoCarrying() {
         #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true, keyChangeOpen: true) == .keyChangeOpen,
                 "an open key change read as carrying")
@@ -1044,7 +1044,7 @@ struct MaerSyncCarrierTests {
     /// "signed in" off the keychain while nothing travelled. The state is a
     /// value of the session, so the page can say it, and this is the rule
     /// the page says it by.
-    @Test("ein abgewiesenes Zeichen steht auf der Seite ueber allem ausser dem Schalter, und nach der Anmeldung ist es weg")
+    @Test("a rejected token stands on the page above everything except the switch, and after the sign-in it is gone")
     func aRefusedTokenIsSaidOnThePage() async {
         func standing(_ on: Bool, _ signedIn: Bool, refused: Bool) -> MaerSyncStanding {
             MaerSyncStanding.standing(syncAcrossDevices: on, signedIn: signedIn, tokenRefused: refused)
@@ -1074,7 +1074,7 @@ struct MaerSyncCarrierTests {
         #expect(standing(true, true, refused: session.unauthorized) == .carrying)
     }
 
-    @Test("ein neuer Zugang raeumt die Abweisung: sie gehoert zum Zugang, unter dem sie kam")
+    @Test("a new access clears the rejection: it belongs to the access under which it came")
     func reloadingTheAccessClearsTheRefusal() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -1112,7 +1112,7 @@ struct FeedAuthStartTests {
 
     /// The far side is "not asked yet" until the first listing,
     /// and that listing wakes the runner even when it finds nothing.
-    @Test("vor der ersten Auflistung gilt die Gegenseite als ungefragt, die erste weckt den Laeufer auch leer, ein neuer Zugang fragt neu")
+    @Test("before the first listing the other side counts as unasked, the first wakes the runner even when empty, a new access asks anew")
     @MainActor func theFirstListingIsWaitedFor() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -1134,7 +1134,7 @@ struct FeedAuthStartTests {
         #expect(!s.feedAuthListed, "a new access asks the far side again")
     }
 
-    @Test("mit Zugang startet der Laeufer aus dem Haushalt und faehrt genau eine Runde; eine Aenderung danach eine weitere")
+    @Test("with access the runner starts from the household and runs exactly one round; a change afterwards one more")
     @MainActor func startsWithAnAccessAndRunsOneRound() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -1157,7 +1157,7 @@ struct FeedAuthStartTests {
 
     /// The switch is asked on every round: turned off after the start, the
     /// runner writes nothing more, and turned on again it runs again.
-    @Test("der Schalter gilt je Runde: aus nach dem Start schreibt keine Runde mehr, an wieder")
+    @Test("the switch applies per round: off after the start writes no round any more, on again")
     @MainActor func theSwitchHoldsEveryRound() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -1177,7 +1177,7 @@ struct FeedAuthStartTests {
         #expect(runner.rounds == 2, "on again: a round runs")
     }
 
-    @Test("ohne Zugang oder mit dem Schalter aus: kein Start, keine Runde, nichts geschrieben")
+    @Test("without access or with the switch off: no start, no round, nothing written")
     @MainActor func withoutAnAccessNothingRuns() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -1198,7 +1198,7 @@ struct FeedAuthStartTests {
     /// The second start site: the switch's onChange names this runner
     /// beside the five it starts, so a switch turned on after the start
     /// reaches it.
-    @Test("der Schalter startet den Laeufer neben den fuenf anderen", .needsTheSources)
+    @Test("the switch starts the runner next to the five others", .needsTheSources)
     func theSwitchStartsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8)
@@ -1210,7 +1210,7 @@ struct FeedAuthStartTests {
 
     /// The source half: the housekeeping's runner list names this start.
     /// Taking the call out must tear here with the runner's name.
-    @Test("der Haushalt startet den Laeufer neben den sechs anderen", .needsTheSources)
+    @Test("the household starts the runner next to the six others", .needsTheSources)
     func theHousekeepingStartsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/AppHousekeeping.swift"),

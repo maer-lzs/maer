@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Sync-Verbindung, die als offen gilt und tot ist: erkannt ohne eigene
-/// Uhr, am Wechsel des Netzwegs, am Echo des eigenen Schreibens, an einer
-/// Anfrage, die auf der Leitung stirbt; neu geoeffnet mit wachsendem Abstand;
-/// was waehrenddessen geschrieben wurde, geht nicht verloren.
+/// The sync connection that counts as open and is dead: detected without a clock of
+/// its own, by the change of the network path, by the echo of its own write, by a
+/// request that dies on the line; reopened at growing intervals;
+/// what was written in the meantime is not lost.
 @MainActor
 struct MaerSyncSilenceTests {
     typealias FakeTransport = MaerSyncCarrierTests.FakeTransport
@@ -69,7 +69,7 @@ struct MaerSyncSilenceTests {
                                body: try MaerSyncStandsWire.encode(["rss:b:2": [300, 7_000]]))
     }
 
-    @Test("nach einem Wechsel des Netzwegs ist die Verbindung neu und das Verpasste geholt, ohne weiteres Zutun")
+    @Test("after a change of the network path the connection is new and what was missed is fetched, without further action")
     func aChangedPathReopensAndFetches() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -92,7 +92,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here")
     }
 
-    @Test("ein stummer Socket beim Spielen wird am ausbleibenden Echo des eigenen Anspruchs erkannt und neu verbunden")
+    @Test("a silent socket during playback is detected by the missing echo of the own claim and reconnected")
     func aSilentSocketIsFoundByTheMissingEcho() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -117,7 +117,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "and what was missed is fetched")
     }
 
-    @Test("das Echo, das kommt, beweist den Socket; es wird nichts neu verbunden")
+    @Test("the echo that comes proves the socket; nothing is reconnected")
     func anArrivingEchoProvesTheSocket() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -134,7 +134,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
-    @Test("Eine Runde, die die Steckdose stumm findet, wirft sie ab und holt jedes Dokument genau einmal; keine zweite Runde")
+    @Test("A round that finds the socket silent drops it and fetches every document exactly once; no second round")
     func aRoundThatFindsTheSocketSilentFetchesOnce() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -165,7 +165,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here")
     }
 
-    @Test("Eine stale-Antwort vor ihrer Ansage ist kein Befund, wenn die Ansage binnen der Frist kommt")
+    @Test("A stale answer before its announcement is no finding if the announcement comes within the deadline")
     func aStaleAnswerBeforeItsAnnouncementIsNoFinding() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -188,7 +188,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
-    @Test("Ein Schreiben ausserhalb der angekuendigten Arten erwartet kein Echo und loest kein stale aus")
+    @Test("A write outside the announced kinds expects no echo and triggers no stale")
     func aKindTheSocketDoesNotAnnounceIsNotAwaited() async throws {
         let rig = rig(announcedKinds: [MaerSyncSession.standsKind])
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -203,7 +203,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
-    @Test("I5 und I7: eine Anfrage, die auf der Leitung stirbt, wirft den Socket ab; die Warteschlange behaelt und schickt spaeter")
+    @Test("I5 and I7: a request that dies on the line drops the socket; the queue keeps and sends later")
     func aRequestThatDiesOnTheLineDropsTheSocket() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -223,7 +223,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.isOpen, "the next occasion opened the socket again")
     }
 
-    @Test("in einem Netz, das nichts durchlaesst, oeffnet eine Minute Anlaesse im Sekundentakt hoechstens sechsmal; danach genau ein Nachholen")
+    @Test("in a network that lets nothing through, a minute of occasions at one per second opens at most six times; afterwards exactly one catch-up")
     func aDyingNetworkIsNotRushed() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -253,12 +253,12 @@ struct MaerSyncSilenceTests {
         #expect(fetched == 1, "what was missed is fetched exactly once: \(fetched)")
     }
 
-    /// Ein flatternder Netzweg (Tunnel, VPN, Funkzellengrenze) darf die
-    /// Wartezeit nach gescheiterten Oeffnungen nicht aushebeln. Ein Wechsel hebt die
-    /// Wartezeit nur auf einem tragenden Weg auf, auf dem noch keine
-    /// Oeffnung scheiterte; ein Wechsel ohne Netz startet keine Runde;
-    /// Anlaesse waehrend einer Runde ergeben hoechstens eine wartende.
-    @Test("Ein flatternder Netzweg haelt die Wartezeit, fasst Runden zusammen und holt nach der Rueckkehr genau einmal nach")
+    /// A fluttering network path (tunnel, VPN, cell boundary) must not
+    /// defeat the wait time after failed openings. A change lifts the
+    /// wait time only on a carrying path on which no
+    /// opening has failed yet; a change without a network starts no round;
+    /// occasions during a round yield at most one waiting round.
+    @Test("A fluttering network path keeps the wait time, merges rounds and catches up exactly once after the return")
     func aFlappingPathIsNotRushed() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -269,16 +269,16 @@ struct MaerSyncSilenceTests {
         rig.announcer.failOpens = true
         rig.transport.offline = true
 
-        // Ein Stoss: zwanzig Wechsel ohne Pause. Hoechstens eine laufende und
-        // eine wartende Runde.
+        // A burst: twenty changes without a pause. At most one running and
+        // one waiting round.
         let swings = [Self.tunnel, Self.none, Self.wifi, Self.none]
         for i in 0..<20 { rig.path.change(to: swings[i % 4]) }
         await eventually { rig.session.refreshSettled }
         #expect(rig.session.peakRounds <= 2, "rounds standing at once: \(rig.session.peakRounds)")
 
-        // Ein Flattern ueber zehn Sekunden. Nach der Regel hoechstens vier
-        // Oeffnungen: je eine auf den zwei neuen Wegen, dann 2 s und 4 s
-        // Abstand; ohne die Bedingung waere es jeder tragende Wechsel.
+        // A fluttering over ten seconds. By the rule at most four
+        // openings: one each on the two new paths, then 2 s and 4 s
+        // apart; without the condition it would be every carrying change.
         rig.clock.now += 200
         let opensBefore = rig.announcer.opens
         var requestsOnNone = 0
@@ -293,7 +293,7 @@ struct MaerSyncSilenceTests {
         #expect(opens >= 1 && opens <= 4, "opens while the path flapped: \(opens)")
         #expect(requestsOnNone == 0, "a change without network asks nothing")
 
-        // Das Netz traegt wieder, ein anderes Geraet hat geschrieben.
+        // The network carries again, another device has written.
         rig.announcer.failOpens = false
         rig.transport.offline = false
         try foreignStand(rig.transport)
@@ -306,7 +306,7 @@ struct MaerSyncSilenceTests {
         #expect(fetched == 1, "after the last change exactly one fetch: \(fetched)")
     }
 
-    @Test("I3 und I4: kein Zeitgeber in der Sitzung, und jedes Ende nennt seinen Anlass", .needsTheSources)
+    @Test("I3 and I4: no timer in the session, and every end names its occasion", .needsTheSources)
     func noClockAndEveryEndNamesItsCause() throws {
         let session = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
@@ -319,7 +319,7 @@ struct MaerSyncSilenceTests {
         #expect(socket.contains("cause=\\(MaerSyncLiveness.Cause.closed.rawValue"))
     }
 
-    @Test("in Ruhe fragt die Sitzung nichts, auch nicht nach langer Zeit")
+    @Test("at rest the session asks nothing, not even after a long time")
     func restAsksNothing() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -330,7 +330,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.transport.requests == requests, "no request without an occasion")
     }
 
-    @Test("Die Regeln: Fenster, Wartezeit, und welche Fehler die Leitung meinen")
+    @Test("The rules: window, wait time, and which errors concern the line")
     func theRules() {
         let awaited = [MaerSyncLiveness.Awaited(kind: "claim", scope: "a", version: "3", since: 100)]
         #expect(!MaerSyncLiveness.isSilent(awaited, now: 109))
@@ -361,7 +361,7 @@ struct MaerSyncSilenceTests {
     /// Sign in, sign out, sign in again in one run: `start()` runs once per
     /// process, so the second sign-in must fetch and open on its own, with
     /// no foreground, tick or path change in between.
-    @Test("an, ab, an im selben Lauf: die zweite Anmeldung holt sofort und oeffnet den Socket")
+    @Test("on, off, on in the same run: the second sign-in fetches at once and opens the socket")
     func aSecondSignInFetchesRightAway() async throws {
         let suite = "maer-silence-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

@@ -11,7 +11,7 @@ import Foundation
 /// The hint names the device and the title in ONE line; the device's name
 /// rides the claim and an older claim without it still reads.
 struct PlaybackClaimHintTests {
-    @Test("Der Hinweis ersetzt die Standby-Zeile: oben was dort spielt, darunter das Geraet; dasselbe Stueck behaelt den eigenen Titel")
+    @Test("The notice replaces the standby line: above what is playing there, below the device; the same piece keeps the own title")
     func theHintReplacesTheStandbyLine() {
         let foreign = PlaybackClaim(deviceId: "dev-ipad", itemId: "rss:f:eurotrash", t: 1, title: "Eurotrash", deviceName: "iPad")
         let lines = PlaybackClaimRules.hintLines(claim: foreign, ownTitle: "97. Top Ten Mistresses", ownItemId: "rss:f:mistresses")
@@ -25,7 +25,7 @@ struct PlaybackClaimHintTests {
                 "a claim without a title leaves the own title standing")
     }
 
-    @Test("Der Geraetename reist im Anspruch; ein alter Anspruch ohne Namen liest sich weiter")
+    @Test("The device name travels in the claim; an old claim without a name still reads")
     func deviceNameTravels() {
         let named = PlaybackClaim(deviceId: "dev-a", itemId: "lva:x#3", t: 42, title: "Track", deviceName: "iPad")
         #expect(PlaybackClaim.from(plist: named.plist) == named)
@@ -34,7 +34,7 @@ struct PlaybackClaimHintTests {
         #expect(PlaybackClaim.from(plist: old)?.deviceName == nil)
     }
 
-    @Test("Play im Mini-Player: bei fremdem Anspruch auf eine andere Folge oeffnet er GENAU diese, sonst schaltet er die eigene Sitzung")
+    @Test("play in the mini player: with a foreign claim on another episode it opens EXACTLY that one, otherwise it switches the own session")
     func miniPlayOpensTheClaimedEpisode() {
         let now = 1_000_000.0
         let foreign = PlaybackClaim(deviceId: "dev-ipad", itemId: "rss:f:ep-42", t: now - 1_000, title: "Ep 42", deviceName: "iPad")
@@ -54,7 +54,7 @@ struct PlaybackClaimHintTests {
                                                   isPlaying: false, nowMs: now) == .toggle)
     }
 
-    @Test("die Geraete-Zeile nennt das Geraet, ohne Namen ein anderes Geraet")
+    @Test("the device line names the device, without a name another device")
     func theDeviceLine() {
         let claim = PlaybackClaim(deviceId: "dev-a", itemId: "abs:1q84", t: 1, title: "1Q84 (Unabridged)", deviceName: "iPad")
         let lines = PlaybackClaimRules.hintLines(claim: claim, ownTitle: "Own", ownItemId: "abs:other")

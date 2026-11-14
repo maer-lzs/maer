@@ -51,7 +51,7 @@ struct MusicViewModelTests {
     /// A server that takes the request and never answers: the first page
     /// ends at its deadline with the sentence of a server that takes too
     /// long, the bar goes, and the retry surface has its sentence.
-    @Test("die erste Albumseite endet an ihrer Frist mit dem Satz eines zu langsamen Servers statt endlos zu laden", .timeLimit(.minutes(1)))
+    @Test("the first album page ends at its deadline with the sentence of a server that is too slow instead of loading endlessly", .timeLimit(.minutes(1)))
     func theFirstPageEndsAtItsDeadline() async {
         let vm = MusicViewModel(source: MusicSource(
             albumsPage: { _, _, _ in
@@ -77,7 +77,7 @@ struct MusicViewModelTests {
     /// music switch arrived over sync, the server's access did not). The
     /// page said "your server reported an empty library" about a server it
     /// never asked.
-    @Test("ohne Server auf diesem Geraet: nichts wird gefragt, die Seite sagt es, und der naechste Auftritt fragt neu")
+    @Test("without a server on this device: nothing is asked, the page says so, and the next appearance asks anew")
     func noServerHereAsksNothingAndSaysSo() async {
         let controls = Controls()
         controls.reachable = false
@@ -103,7 +103,7 @@ struct MusicViewModelTests {
     /// The address is added while the page stands (tabs stay mounted): a
     /// change of the sources asks again at once, without a new appearance;
     /// a page that has its albums is left as it is.
-    @Test("eine Aenderung der Quellen fragt eine Seite ohne Server sofort neu, eine volle nicht")
+    @Test("a change of the sources asks a page without a server again at once, a full one not")
     func aChangeOfTheSourcesAsksAgain() async {
         let controls = Controls()
         controls.reachable = false
@@ -126,7 +126,7 @@ struct MusicViewModelTests {
 
     /// The server goes away while a full page stands: the change asks the
     /// reachability again and the page shows the way out, without a load.
-    @Test("eine volle Seite fragt bei einer Aenderung der Quellen die Erreichbarkeit neu und zeigt den Ausweg, wenn der Server weg ist")
+    @Test("a full page asks reachability anew on a change of the sources and shows the way out when the server is gone")
     func aFullPageAsksTheReachabilityAgain() async {
         let controls = Controls()
         let vm = makeVM(controls)
@@ -143,7 +143,7 @@ struct MusicViewModelTests {
     /// back. The page loads by itself; the attempt gate of the first run
     /// stood and refused the load, and "no server" stood over a server that
     /// was there until the person tapped retry.
-    @Test("eine Quelle, die wiederkommt, laedt von selbst: voll, weg, wieder da")
+    @Test("a source that comes back loads by itself: full, gone, back again")
     func aServerThatComesBackLoadsByItself() async {
         let controls = Controls()
         let vm = makeVM(controls)
@@ -163,7 +163,7 @@ struct MusicViewModelTests {
     /// configured server), and before its first run an empty tab shows the
     /// loading state. When the server is entered, the change of the sources
     /// loads it; no loading state stands without a run.
-    @Test("der ohne Server montierte Reiter laedt, sobald ein Server eingetragen ist, und dreht nicht ohne Lauf")
+    @Test("the tab mounted without a server loads as soon as a server is entered, and does not spin without a run")
     func aTabMountedWithoutAServerLoadsWhenOneComes() async {
         let controls = Controls()
         controls.reachable = false
@@ -232,7 +232,7 @@ struct MusicViewModelTests {
     /// A later page fails: the pages read stay, and the page says the list
     /// is not whole (before, the loop broke silently and a cut library
     /// looked complete).
-    @Test("eine spaetere Albenseite scheitert: die gelesenen Seiten bleiben, und die Liste ist als unvollstaendig markiert")
+    @Test("a later album page fails: the pages read stay, and the list is marked as incomplete")
     func aLaterFailedPageMarksTheListIncomplete() async {
         let controls = Controls()
         controls.albumsError = URLError(.timedOut)
@@ -308,7 +308,7 @@ struct MusicViewModelTests {
         #expect(vm.albums.isEmpty)
     }
 
-    // MARK: - Teil 2: server-side sort
+    // MARK: - Part 2: server-side sort
 
     final class SortRec { var calls: [(sort: MusicSortOption, offset: Int)] = [] }
 
@@ -337,7 +337,7 @@ struct MusicViewModelTests {
     /// The sort changes while a later page of the old sort is on its way:
     /// that page does not land in the new grid, and the run it belonged to
     /// leaves the loading state to the new one.
-    @Test("ein Sortierwechsel, waehrend eine Seite der alten Sortierung unterwegs ist: sie landet nicht im neuen Raster")
+    @Test("a sort change while a page of the old sort is in flight: it does not land in the new grid")
     func aPageOfTheOldSortDoesNotLand() async {
         final class Hook { var vm: MusicViewModel?; var oldLateAsked = false }
         let hook = Hook()
@@ -363,7 +363,7 @@ struct MusicViewModelTests {
     /// A first run is waiting when a second one finds no server: the second
     /// is the page's run now and must clear the loading state, because the
     /// first one no longer does.
-    @Test("ein zweiter Lauf ohne Server, waehrend der erste wartet: die Ladeanzeige geht aus")
+    @Test("a second run without a server while the first waits: the loading indicator goes off")
     func aRunWithoutAServerClearsTheLoadingState() async {
         final class Hook { var vm: MusicViewModel?; var reachable = true; var secondRan = false }
         let hook = Hook()

@@ -12,7 +12,7 @@ import Foundation
 /// Title is always the work (tested at the call sites); the chapter shows in the
 /// subtitle only when it's a REAL chapter. Never a fallback marker.
 struct NowPlayingPresentationTests {
-    @Test("Mini-Player: bei einem Song fuehrt der Kuenstler die zweite Zeile, nie der Titel noch einmal")
+    @Test("mini player: for a song the artist leads the second line, never the title again")
     func miniLeadForASongIsTheArtist() {
         #expect(NowPlayingPresentation.miniLead(isMusic: true, chapterTitle: "Diavolo rosso",
                                                 artist: "Paolo Conte") == "Paolo Conte")
@@ -94,7 +94,7 @@ struct NowPlayingPresentationTests {
 
     // MARK: - The playing song of a music entry of several songs
 
-    @Test("Lied in einer Playlist: Kuenstler und Cover des Liedes, die Playlist hat keine")
+    @Test("song in a playlist: artist and cover of the song, the playlist has none")
     func songInAPlaylistCarriesItsOwnArtistAndCover() {
         let song = NowPlayingPresentation.song(inPlaylist: true, songArtist: "Nicolas Falcon",
                                                songCoverArt: "al-51", entryArtist: nil)
@@ -104,7 +104,7 @@ struct NowPlayingPresentationTests {
         #expect(bare == .init(artist: nil, coverArt: nil), "without facts the entry's cover stays, no artist")
     }
 
-    @Test("Lied in einem Album: Kuenstler des Liedes, sonst des Albums; das Cover bleibt das des Albums")
+    @Test("song in an album: artist of the song, otherwise of the album; the cover stays that of the album")
     func songInAnAlbum() {
         #expect(NowPlayingPresentation.song(inPlaylist: false, songArtist: "Gast", songCoverArt: "mf-1",
                                             entryArtist: "Band") == .init(artist: "Gast", coverArt: nil))
@@ -115,7 +115,7 @@ struct NowPlayingPresentationTests {
                 "a single song keeps its entry's cover")
     }
 
-    @Test("Die Zusammensetzung traegt Kuenstler und Cover jedes Liedes bis in seine Spur")
+    @Test("The composition carries artist and cover of every song down into its track")
     func assemblyCarriesEachSongsFacts() {
         let built = MusicTrackAssembly.build([
             .init(id: "tr-214", title: "What I Know", duration: 148, size: nil,
@@ -134,7 +134,7 @@ struct NowPlayingPresentationTests {
     /// A netlabel release states title and performer per file; the track
     /// carries both (archive.org `eg0_234`, measured: `title` "track
     /// 00_soundboards_intro", `creator` "Ayato").
-    @Test("Ein Netlabel-Album traegt Titel und Kuenstler jeder Datei bis in die Spur")
+    @Test("A netlabel album carries title and artist of every file down into the track")
     func archiveTracksCarryTitleAndPerformer() {
         let tracks = FreeCatalog.archiveTracks(identifier: "eg0_234", files: [
             ArchiveFile(name: "track 00_soundboards_intro.mp3", length: "60", title: "track 00_soundboards_intro",
@@ -148,7 +148,7 @@ struct NowPlayingPresentationTests {
 
     /// Music from a catalogue names the playing song and its artist like
     /// a music server: the song from its chapter, the artist by the rule.
-    @Test("Musik aus einem Katalog nennt das laufende Lied und seinen Kuenstler wie ein Musikserver", .needsTheSources)
+    @Test("Music from a catalog names the running song and its artist like a music server", .needsTheSources)
     func catalogueMusicNamesItsSong() throws {
         let lock = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+NowPlaying.swift"), encoding: .utf8))
@@ -160,7 +160,7 @@ struct NowPlayingPresentationTests {
 
     /// The surfaces read the one answer: the artist from `musicArtist`, the
     /// time from `playbackSpan`, the cover from `songCoverURL`.
-    @Test("Leiste, grosser Player und Sperrbildschirm lesen Kuenstler, Spanne und Cover an einer Stelle", .needsTheSources)
+    @Test("Bar, large player and lock screen read artist, span and cover at one place", .needsTheSources)
     func surfacesReadTheOneAnswer() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path),

@@ -19,11 +19,11 @@ struct MediaAvailabilityTests {
         #expect(!MediaAvailability.offlineUnavailable(isConnected: true, isDownloaded: true))
     }
 
-    /// Dieselbe Tatsache andersherum. Die Anzeige fragt „dimmen?", die
-    /// Spiel-Tore fragen „geht das jetzt?", und das MUSS dieselbe Antwort
-    /// sein: eine Zeile, die als unspielbar dimmt, waehrend ein Menue
-    /// daneben Abspielen anbietet, ist ein Widerspruch auf einem Bildschirm.
-    @Test("Die positive Fassung ist in allen vier Faellen genau die Verneinung")
+    /// The same fact the other way round. The display asks „dimmen?", the
+    /// play gates ask „geht das jetzt?", and that MUST be the same answer:
+    /// a row that dims as unplayable while a menu
+    /// next to it offers playing is a contradiction on one screen.
+    @Test("The positive form is exactly the negation in all four cases")
     func canPlayNowIsExactlyTheNegation() {
         for connected in [true, false] {
             for downloaded in [true, false] {
@@ -33,19 +33,19 @@ struct MediaAvailabilityTests {
                         "verbunden=\(connected) geladen=\(downloaded)")
             }
         }
-        // Und der eine Fall, auf den es ankommt, ausgeschrieben.
+        // And the one case that matters, written out.
         #expect(!MediaAvailability.canPlayNow(isConnected: false, isDownloaded: false))
     }
 
-    /// Die positive Fassung hatte lange KEINEN Namen, also buchstabierten
-    /// neun Rufer sie von Hand, jeder etwas anders: `!offline ||`,
-    /// `online ||`, `isOnline ||`, `!isOffline ||`. Sie waren sich einig, was
-    /// Glueck war und keine Zusicherung. Dieser Bestand haelt fest, dass die
-    /// zwei Tatsachen nicht mehr von Hand verbunden werden.
+    /// The positive form had NO name for a long time, so nine callers spelled
+    /// it out by hand, each a little differently: `!offline ||`,
+    /// `online ||`, `isOnline ||`, `!isOffline ||`. They agreed, which
+    /// was luck and no guarantee. This stock pins down that the
+    /// two facts are no longer joined by hand.
     ///
-    /// Die drei Eintraege sind KEINE Verstoesse, sondern andere Fragen, und
-    /// jeder nennt seine. Wer einen vierten anlegt, muss ihn begruenden.
-    @Test("Niemand verbindet Netz und Download mehr von Hand", .needsTheSources)
+    /// The three entries are NOT violations but other questions, and
+    /// each names its own. Whoever adds a fourth must justify it.
+    @Test("Nobody joins network and download by hand any more", .needsTheSources)
     func nobodyJoinsTheTwoFactsByHand() throws {
         let expected: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
@@ -60,22 +60,22 @@ struct MediaAvailabilityTests {
         var found: Set<String> = []
         for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
             let text = try String(contentsOf: url, encoding: .utf8)
-            // Kommentare weg (eine Erklaerung ist kein Aufruf), dann alle
-            // Zwischenraeume zu einem, damit ein mehrzeiliger Ausdruck als
-            // EIN Text gelesen wird.
+            // Comments gone (an explanation is not a call), then all
+            // whitespace to one, so that a multi-line expression is
+            // read as ONE text.
             let flat = text.split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: " ")
                 .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             for range in flat.ranges(of: "isDownloaded(itemId:") {
-                // Wer die Regel RUFT, verbindet nichts von Hand. Die Frage
-                // muss LOKAL gestellt werden: „steht dieses Vorkommen als
-                // Argument `isDownloaded:` da?". Meine erste Fassung suchte
-                // `MediaAvailability.` irgendwo in den 260 Zeichen davor —
-                // damit deckte EIN echter Aufruf weiter oben in derselben
-                // Datei jede Handschrift daneben mit ab, und die Rot-Probe
-                // blieb gruen. Ein Ausschluss darf nur den Fund erklaeren,
-                // den er anfasst, nicht seine Nachbarschaft.
+                // Whoever CALLS the rule joins nothing by hand. The question
+                // must be asked LOCALLY:
+                // „steht dieses Vorkommen als Argument `isDownloaded:` da?". My first version searched for
+                // `MediaAvailability.` anywhere in the 260 characters before it,
+                // so ONE real call further up in the same
+                // file also covered every handwriting next to it, and the red probe
+                // stayed green. An exclusion may only explain the finding
+                // it touches, not its neighbourhood.
                 let lookBack = flat.index(range.lowerBound, offsetBy: -60, limitedBy: flat.startIndex)
                     ?? flat.startIndex
                 if flat[lookBack..<range.lowerBound].contains("isDownloaded:") { continue }

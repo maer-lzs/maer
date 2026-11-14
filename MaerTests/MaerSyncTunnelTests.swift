@@ -94,7 +94,7 @@ struct MaerSyncTunnelTests {
         MaerSyncTunnel(base: base) { request in try await service.answer(request) }
     }
 
-    @Test("ein Handschlag traegt viele Anfragen, und innen reist die gewoehnliche Anfrage samt Zeichen")
+    @Test("one handshake carries many requests, and inside travels the ordinary request including the token")
     func oneHandshakeCarriesManyRequests() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
@@ -115,7 +115,7 @@ struct MaerSyncTunnelTests {
         #expect(ServiceKeyPin.held(for: base) == (await service.fingerprint), "the first meeting held the key")
     }
 
-    @Test("eine beendete Sitzung kostet einen Handschlag und eine Wiederholung, sonst nichts")
+    @Test("an ended session costs one handshake and one repetition, nothing else")
     func anEndedSessionCostsOneHandshakeAndOneRetry() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
@@ -137,7 +137,7 @@ struct MaerSyncTunnelTests {
         func take() -> Bool { defer { armed = false }; return armed }
     }
 
-    @Test("eine verlorene Antwort verbraucht die Leitung: die naechste Anfrage handelt neu aus, statt nie mehr aufzugehen")
+    @Test("a lost answer uses up the line: the next request negotiates anew instead of never opening again")
     func aLostReplySpendsTheLine() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
@@ -166,7 +166,7 @@ struct MaerSyncTunnelTests {
         #expect(await service.handshakes == 2, "one fresh meeting, not one per request")
     }
 
-    @Test("zwei Anfragen ueberholen sich nie: fuenf auf einmal gehen alle auf")
+    @Test("two requests never overtake each other: five at once all open")
     func requestsNeverOvertakeEachOther() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
@@ -188,7 +188,7 @@ struct MaerSyncTunnelTests {
         #expect(await service.handshakes == 1)
     }
 
-    @Test("ein anderer Schluessel haelt alles an, bevor ein Handschlag hinausgeht")
+    @Test("a different key halts everything before a handshake goes out")
     func aDifferentKeyStopsBeforeAnyHandshake() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
@@ -203,7 +203,7 @@ struct MaerSyncTunnelTests {
         #expect(ServiceKeyPin.held(for: base) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
     }
 
-    @Test("die Tuer schickt die drei Wege und die Anmeldung durch den Tunnel")
+    @Test("the door sends the three paths and the sign-in through the tunnel")
     func theDoorGoesThroughTheTunnel() async throws {
         let base = host()
         defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }

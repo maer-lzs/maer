@@ -13,7 +13,7 @@ import MetricKit
 /// gate decides at run time and fails closed; the records stay on the
 /// device for two weeks and carry numbers only.
 struct MetricGateTests {
-    @Test("das Tor: Debug an, Xcode und Sandbox an, Store aus, Unbekanntes aus")
+    @Test("the gate: debug on, Xcode and sandbox on, store off, unknown off")
     func theGateFailsClosed() {
         for environment in MetricGate.Environment.allCases {
             #expect(MetricGate.receives(environment: environment, isDebugBuild: true), "a Debug build is on")
@@ -28,7 +28,7 @@ struct MetricGateTests {
     /// there the read asked the person to sign in at every start. The rule,
     /// the receiver answering Xcode's without the store, and the question
     /// standing before the only read of the transaction.
-    @Test("eine Installation mit Profil fragt den Store nie, sie ist die von Xcode", .needsTheSources)
+    @Test("an installation with a profile never asks the store, it is the one from Xcode", .needsTheSources)
     func anInstallWithAProfileNeverAsksTheStore() async throws {
         #expect(!MetricGate.asksTheStore(carriesProfile: true), "a profile install asked the store")
         #expect(MetricGate.asksTheStore(carriesProfile: false))
@@ -50,7 +50,7 @@ struct MetricGateTests {
                                         "syncRound": .init(count: 40, cpuSeconds: 3.24, meanSeconds: 0.12)])
     }
 
-    @Test("je Signpost Anzahl, CPU-Zeit und mittlere Dauer aus dem Histogramm; ein Name in zwei Kategorien steht einmal")
+    @Test("per signpost count, CPU time and mean duration from the histogram; a name in two categories appears once")
     func theSignpostCosts() {
         let mean = MetricRecord.meanSeconds([(start: 0, end: 0.01, count: 3), (start: 0.01, end: 0.03, count: 1)])
         #expect(abs((mean ?? 0) - 0.00875) < 1e-12, "each bucket at its middle: (0.005 * 3 + 0.02) / 4")
@@ -68,7 +68,7 @@ struct MetricGateTests {
     /// What a signpost wrote to disk, where MetricKit gives it: a name in
     /// two categories adds its writes, a reading without them adds nothing,
     /// a name with none stays unknown and shows as "-", never 0.
-    @Test("je Signpost die Schreibmenge in MB, wo MetricKit sie gibt, sonst unbekannt, nie null; mit Einheit in Zeile und Text")
+    @Test("per signpost the write volume in MB, where MetricKit gives it, otherwise unknown, never zero; with unit in line and text")
     func theSignpostWritesCarryTheirUnit() throws {
         let costs = MetricRecord.costs([
             .init(name: "syncRound", count: 30, cpuSeconds: 2, buckets: [], writesMB: 1.25),
@@ -88,7 +88,7 @@ struct MetricGateTests {
         #expect(again.signposts["syncRound"]?.writesMB == 1.75 && again.signposts["tick"]?.writesMB == nil)
     }
 
-    @Test("zwei Wochen bleiben, aelteres faellt, dieselbe Periode steht einmal, aelteste zuerst")
+    @Test("two weeks stay, older drops, the same period appears once, oldest first")
     func twoWeeksAreKept() {
         let held = [Self.record(daysAgo: 20), Self.record(daysAgo: 13), Self.record(.diagnostics, daysAgo: 13)]
         let kept = MetricRecord.kept(held, adding: [Self.record(daysAgo: 1), Self.record(daysAgo: 13)], now: Self.now)
@@ -98,7 +98,7 @@ struct MetricGateTests {
         #expect(MetricRecord.kept([], adding: [Self.record(daysAgo: 14)], now: Self.now).count == 1, "the edge day stays")
     }
 
-    @Test("die Logzeile traegt Zahlen und die festen Signpost-Namen, sonst nichts")
+    @Test("the log line carries numbers and the fixed signpost names, nothing else")
     func theLogLineCarriesNumbers() {
         let record = Self.record(daysAgo: 1)
         #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=- wifiUp=- wifiDown=- cellUp=- cellDown=- writes=- hang=- firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=- exitsBg=- signposts=syncRound=40/cpu=3.2400/mean=0.1200/writes=-,tick=3600/cpu=12.0000/mean=0.0035/writes=- unfiredOrLost=nowPlaying,statsMerge,syncLoop,syncRoundOf,standMerge,standMergeOf,feedParse,thumb-hit,decode,originalCached,downloadedEntries-recompute,standingRead,accessRead,barCollapsedFlip,walkPositions,walkRetiredChoices,walkChoices")
@@ -109,7 +109,7 @@ struct MetricGateTests {
     /// back, so a missing one is seen, not silent. The device does not
     /// note what fired, so the word says both readings: never fired in the
     /// period, or fired and not kept.
-    @Test("der Satz nennt die Signpost-Namen, die nicht kamen, und sagt, dass sie nicht feuerten oder verloren gingen")
+    @Test("the sentence names the signpost names that did not come, and says that they did not fire or were lost")
     func aRecordNamesTheSignpostsThatDidNotCome() {
         var record = Self.record(daysAgo: 1)
         record.signposts = Dictionary(uniqueKeysWithValues: PerfSignpost.names.map { ($0, .init(count: 1)) })
@@ -124,7 +124,7 @@ struct MetricGateTests {
     /// The launch to the first frame and the return to the app, each as
     /// how many times the mean; the hitch ratios with the unit MetricKit
     /// handed over, its spaces taken out.
-    @Test("Start, Rueckkehr und Hitch stehen mit Einheit in der Zeile")
+    @Test("launch, resume and hitch appear with unit in the line")
     func launchAndHitchCarryTheirUnits() {
         let draws = MetricRecord.durations([(start: 0.5, end: 1, count: 3), (start: 1, end: 2, count: 1)])
         #expect(draws == .init(count: 4, meanSeconds: 0.9375), "each bucket at its middle: (0.75 * 3 + 1.5) / 4")
@@ -143,7 +143,7 @@ struct MetricGateTests {
     /// Hangs and crashes are what a diagnostics payload counts. A metrics
     /// record does not measure them, so its line never says 0 for them;
     /// a diagnostics record names nothing else.
-    @Test("hangs und crashes stehen nur im Diagnose-Satz")
+    @Test("hangs and crashes appear only in the diagnostics sentence")
     func hangsAndCrashesOnlyInDiagnostics() {
         var metrics = Self.record(daysAgo: 1)
         metrics.hangs = 2
@@ -154,7 +154,7 @@ struct MetricGateTests {
 
     /// Background audio, the network, the disk, the hang time and the
     /// exits: each with its unit, an unknown as "-", a counted zero as 0.
-    @Test("jede neue Groesse steht mit Einheit in der Zeile")
+    @Test("every new quantity appears with unit in the line")
     func theNewSizesCarryTheirUnits() {
         var record = Self.record(daysAgo: 1)
         record.signposts = [:]
@@ -170,7 +170,7 @@ struct MetricGateTests {
         #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 bgAudio=3600.0s wifiUp=1.2MB wifiDown=310.0MB cellUp=0.0MB cellDown=42.5MB writes=18.0MB hang=1.5s/3 firstDraw=- resume=- scrollHitch=- hitch=- exitsFg=abnormal:2,memLimit:1 exitsBg=0 signposts=- unfiredOrLost=" + PerfSignpost.names.joined(separator: ","))
     }
 
-    @Test("Beendigungen nur mit Zahl; die Hangzeit aus dem Histogramm, ohne Klasse eine gemessene Null")
+    @Test("exits only with a number; the hang time from the histogram, without a class a measured zero")
     func exitsAndHangTime() {
         #expect(MetricRecord.exits(["normal": 0, "memPressure": 4, "memLimit": 0, "watchdog": 1]) == ["memPressure": 4, "watchdog": 1])
         #expect(MetricRecord.exits(["normal": 0]).isEmpty, "nothing counted is an empty list, not unknown")
@@ -181,7 +181,7 @@ struct MetricGateTests {
 
     /// The week's four empty records (hours=0.0, no number) are no
     /// measurement: neither the page nor its text shows them.
-    @Test("ein Satz ohne Zeitraum und ohne Zahl ist keine Messung")
+    @Test("a sentence without a period and without a number is no measurement")
     func aRecordWithoutPeriodOrNumberIsNotShown() {
         let empty = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now)
         let instant = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now, hangs: 1)
@@ -200,7 +200,7 @@ struct MetricGateTests {
 
     /// The page takes the same rule as the shared text: what it lists is
     /// what `shown` keeps.
-    @Test("die Messseite zeigt nur Messungen", .needsTheSources)
+    @Test("the measurement page shows only measurements", .needsTheSources)
     func thePageShowsOnlyMeasurements() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MetricRecordsView.swift"), encoding: .utf8))
@@ -209,7 +209,7 @@ struct MetricGateTests {
 
     /// The records already on a device were written before the new sizes
     /// existed; they read, and what they did not carry stays unknown.
-    @Test("ein alter Satz bleibt lesbar, was er nicht trug, bleibt unbekannt")
+    @Test("an old sentence stays readable, what it did not carry stays unknown")
     func anOldRecordStaysReadable() throws {
         let old = #"[{"kind":"metrics","begin":781092800,"end":781179200,"cpuSeconds":182,"foregroundSeconds":64,"backgroundSeconds":3600,"peakMemoryMB":726,"hangs":0,"crashes":0,"signposts":{"tick":{"count":64,"cpuSeconds":1.5,"meanSeconds":0.002}}},{"kind":"diagnostics","begin":781179200,"end":781179200,"hangs":1,"crashes":0,"signposts":{}}]"#
         let records = try JSONDecoder().decode([MetricRecord].self, from: Data(old.utf8))
@@ -378,7 +378,7 @@ struct MetricGateTests {
         return (due, Set(table.keys).subtracting(due))
     }
 
-    @Test("jede Gruppe der Nutzlast hat einen Leser oder eine Ausnahme mit Grund, nie beides, je Laufzeit", .needsTheSources)
+    @Test("every group of the payload has a reader or an exception with a reason, never both, per runtime", .needsTheSources)
     func everyGroupOfThePayloadIsReadOrExcepted() throws {
         let receiver = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
@@ -405,7 +405,7 @@ struct MetricGateTests {
     /// exit counts of front and back, the writes of the disk and of a
     /// signpost) is judged in its own function. What the walk does not see:
     /// a size read in that function from another type of the same name.
-    @Test("je gelesene Gruppe ist jede Groesse, die die Laufzeit traegt, gelesen oder mit Grund ausgenommen, nie beides, je Laufzeit", .needsTheSources)
+    @Test("per group read, every quantity the runtime carries is read or exempted with a reason, never both, per runtime", .needsTheSources)
     func everySizeOfAReadGroupIsReadOrExcepted() throws {
         let receiver = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
@@ -439,7 +439,7 @@ struct MetricGateTests {
     /// The split by version, without a runtime: on 18 only the old four
     /// groups are due, on 26 the disk space joins, on 27 all eight; of the
     /// sizes eleven from 18 and six more from 27.
-    @Test("die Ausnahmen je Laufzeit: 18, 26 und 27")
+    @Test("the exceptions per runtime: 18, 26 and 27")
     func theExceptionsByRuntime() {
         let old: Set = ["gpuMetrics", "cellularConditionMetrics", "locationActivityMetrics", "displayMetrics"]
         #expect(Self.expectedExceptions(onMajor: 18).due == old)
@@ -452,7 +452,7 @@ struct MetricGateTests {
         #expect(Self.expectedExceptions(Self.unreadSizes, onMajor: 18).notYet.count == 6)
     }
 
-    @Test("die Ablage behaelt die Eintraege ueber die Naht, ein zweiter Empfang kommt dazu")
+    @Test("the store keeps the entries across the seam, a second receipt is added")
     func theLogKeepsThroughTheSeam() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("metric-log-\(UUID().uuidString)", isDirectory: true)
@@ -470,7 +470,7 @@ struct MetricGateTests {
     /// An unreadable kept file is not "none yet": the page says it was set
     /// aside, and a later delivery of only old records does not write an
     /// empty list over it.
-    @Test("eine unlesbare Ablage heisst nicht noch keine; ein leerer Schrieb begraebt sie nicht")
+    @Test("an unreadable store does not mean none yet; an empty write does not bury it")
     func anUnreadableLogSaysSo() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("metric-log-bad-\(UUID().uuidString)", isDirectory: true)
@@ -490,7 +490,7 @@ struct MetricGateTests {
         #expect(await log.records() == .records([fresh]), "the log stayed unreadable after a real delivery")
     }
 
-    @Test("der Empfang abonniert einmal je Prozess", .needsTheSources)
+    @Test("the receipt subscribes once per process", .needsTheSources)
     func theReceiverSubscribesOnce() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
@@ -499,7 +499,7 @@ struct MetricGateTests {
         #expect(body.contains("guard !started else { return }"), "a second start subscribes again")
     }
 
-    @Test("der geteilte Text: eine Zeile je Eintrag, neueste zuerst, das Ende in UTC vor den Zahlen")
+    @Test("the shared text: one line per entry, newest first, the end in UTC before the numbers")
     func theSharedText() {
         let older = Self.record(daysAgo: 3), newer = Self.record(.diagnostics, daysAgo: 1)
         let lines = MetricRecord.shareText([older, newer]).split(separator: "\n").map(String.init)
@@ -511,7 +511,7 @@ struct MetricGateTests {
 
     /// The measurement page exists only where the gate opened: the switch
     /// is set behind the gate, and the one entry asks it.
-    @Test("die Messseite steht nur hinter dem Tor", .needsTheSources)
+    @Test("the measurement page stands only behind the gate", .needsTheSources)
     func thePageStandsBehindTheGate() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -535,7 +535,7 @@ struct MetricGateTests {
     /// The radio's icy-name check costs one more request per play and only
     /// writes a log line, so it runs behind the same gate: never in the App
     /// Store, kept where its log is read.
-    @Test("die Radio-Pruefung je Wiedergabe steht hinter dem Tor, an einer Stelle", .needsTheSources)
+    @Test("the radio check per playback stands behind the gate, at one place", .needsTheSources)
     func theRadioCheckStandsBehindTheGate() throws {
         let provider = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/RadioProvider.swift"), encoding: .utf8))
@@ -570,7 +570,7 @@ struct MetricGateTests {
     /// What no behaviour case can see: where the receiver writes, that it
     /// subscribes at one place behind the gate, and that nothing asks the
     /// person to sign in to the App Store.
-    @Test("die Naht: nur lokal, eine Anmeldung hinter dem Tor, kein refresh, Start im Haushalt", .needsTheSources)
+    @Test("the seam: local only, one registration behind the gate, no refresh, start in the household", .needsTheSources)
     func theSeam() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

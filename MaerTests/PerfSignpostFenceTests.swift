@@ -93,7 +93,7 @@ struct PerfSignpostFenceTests {
         code(text).joined(separator: "\n").matches(of: #/snapshotInterval\(\.?\w+, "([^"]+)"\)/#).map { String($0.1) }
     }
 
-    @Test("die Zaehler sehen, was sie sehen sollen")
+    @Test("the counters see what they should see")
     func theCountersSeeTheForms() {
         #expect(Self.directUse("let s = OSSignposter(subsystem: a, category: b)\n// os_signpost(.event)") == 1)
         #expect(Self.directUse("PerfSignpost.cover.emitEvent(\"x\")") == 1)
@@ -107,7 +107,7 @@ struct PerfSignpostFenceTests {
         #expect(Self.parameterTypes("static func a(x: Int, _ f: Family) -> I\nstatic func b()") == ["Int", "Family"])
     }
 
-    @Test("kein Signposter ausserhalb von PerfSignpost, jede Messstelle steht da, jedes Intervall schliesst", .needsTheSources)
+    @Test("no signposter outside PerfSignpost, every measuring point is there, every interval closes", .needsTheSources)
     func theMeasuringPointsStandAndGoThroughOneFile() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 100, "the sources were not read")
@@ -133,7 +133,7 @@ struct PerfSignpostFenceTests {
         #expect(seen == Set(Self.sites.keys), "\(Set(Self.sites.keys).subtracting(seen))")
     }
 
-    @Test("eine Messstelle nimmt nur Wahrheitswerte, Zahlen, Familie und Traeger", .needsTheSources)
+    @Test("a measuring point takes only truth values, numbers, family and carrier", .needsTheSources)
     func theParametersCarryNoIdentifier() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
         let types = Self.parameterTypes(try String(contentsOf: file, encoding: .utf8))
@@ -146,7 +146,7 @@ struct PerfSignpostFenceTests {
     /// every signposter stands on one, the app's own logs are the other
     /// side, and the expensive snapshot stands only at the named rare
     /// intervals.
-    @Test("die Messstellen schreiben auf Logs von MetricKit, der Schnappschuss nur an den seltenen Intervallen", .needsTheSources)
+    @Test("the measuring points write to logs of MetricKit, the snapshot only at the rare intervals", .needsTheSources)
     func theSignpostsReachMetricKit() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
         let text = try String(contentsOf: file, encoding: .utf8)
@@ -166,7 +166,7 @@ struct PerfSignpostFenceTests {
     /// signpost writes to a log of MetricKit and no snapshot is taken.
     /// MetricKit's logs are reached only where the gate is asked, and the
     /// gate opens them once, behind the receiver's gate.
-    @Test("geschlossen oder unentschieden schreibt keine Messstelle auf einen Log von MetricKit", .needsTheSources)
+    @Test("closed or undecided, no measuring point writes to a log of MetricKit", .needsTheSources)
     func theGateHoldsForTheMeasuringPoints() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -191,7 +191,7 @@ struct PerfSignpostFenceTests {
 
     /// The list a day's record checks against is every name the file
     /// writes, each once.
-    @Test("die Liste der Namen ist jeder geschriebene Name, jeder einmal", .needsTheSources)
+    @Test("the list of names is every written name, each once", .needsTheSources)
     func theNamesListIsEveryWrittenName() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
         let written = Self.writtenNames(try String(contentsOf: file, encoding: .utf8))
@@ -203,7 +203,7 @@ struct PerfSignpostFenceTests {
     /// The merge's snapshot carries no number, so an event at its start
     /// names how many positions the device brought, the way a sync round
     /// names its family and carrier.
-    @Test("die Zusammenfuehrung nennt ihre Zahl in einem Ereignis davor", .needsTheSources)
+    @Test("the merge names its count in an event before it", .needsTheSources)
     func theMergeNamesItsCount() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -220,7 +220,7 @@ struct PerfSignpostFenceTests {
     /// Apple calls a plain signpost nearly free without a recording tool.
     /// The inventory says that once, and says what it does not hold for:
     /// the snapshot and the question to the switch.
-    @Test("das Inventar sagt, wofuer nahezu kostenlos gilt", .needsTheSources)
+    @Test("the inventory says what nearly free applies to", .needsTheSources)
     func theInventorySaysWhatIsNearlyFree() throws {
         let inventory = try String(contentsOf: SourceTree.root.appendingPathComponent("docs/components.md"), encoding: .utf8)
         let sentences = inventory.components(separatedBy: ". ").filter { $0.contains("nahezu kostenlos") }
@@ -232,7 +232,7 @@ struct PerfSignpostFenceTests {
 
     /// The fences of the measuring instrument read the source tree; where
     /// it does not lie beside the run, each one is skipped, never passed.
-    @Test("jeder Zaun des Messinstruments, der den Quellbaum liest, steht unter needsTheSources", .needsTheTests)
+    @Test("every fence of the measuring instrument that reads the source tree is under needsTheSources", .needsTheTests)
     func everyMeasuringFenceNeedsTheSources() throws {
         var unmarked: [String] = []
         for name in ["PerfSignpostFenceTests.swift", "MetricGateTests.swift"] {

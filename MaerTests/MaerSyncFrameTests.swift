@@ -16,14 +16,14 @@ struct MaerSyncFrameTests {
     static let requestVector = Data(hex: "00587b2268656164657273223a7b22417574686f72697a6174696f6e223a224265617265722074227d2c226d6574686f64223a22474554222c22746172676574223a222f76312f646f632f7374616e64733f73636f70653d227d78")
     static let replyVector = Data(hex: "00397b2268656164657273223a7b2265746167223a2233222c22782d6d6165722d666f726d6174223a2231227d2c22737461747573223a3230307d7b226b223a2276227d")
 
-    @Test("ein Anfrage-Rahmen ist byteweise der des Dienstes")
+    @Test("a request frame is byte for byte the service's")
     func aRequestFramePacksToTheServicesBytes() throws {
         let head = MaerSyncFrame.requestHead(method: "GET", target: "/v1/doc/stands?scope=",
                                              headers: ["Authorization": "Bearer t"])
         #expect(try MaerSyncFrame.pack(head: head, body: Data("x".utf8)) == Self.requestVector)
     }
 
-    @Test("ein Antwort-Rahmen des Dienstes geht hier auf, Status, Koepfe und Rumpf")
+    @Test("a response frame of the service opens here, status, headers and body")
     func aReplyFrameFromTheServiceUnpacks() throws {
         let (head, body) = try MaerSyncFrame.unpack(Self.replyVector)
         let (status, headers) = try MaerSyncFrame.reply(of: head)
@@ -32,7 +32,7 @@ struct MaerSyncFrameTests {
         #expect(body == Data("{\"k\":\"v\"}".utf8))
     }
 
-    @Test("der Rumpf reist roh, und ein Rahmen aus einer Verkettung geht auf")
+    @Test("the body travels raw, and a frame from a concatenation opens")
     func theBodyIsRawAndConcatenatedFramesUnpack() throws {
         let raw = Data((0...255).map { UInt8($0) })
         let frame = try MaerSyncFrame.pack(head: ["status": 200, "headers": [:]], body: raw)
@@ -44,13 +44,13 @@ struct MaerSyncFrameTests {
         #expect(try MaerSyncFrame.unpack(try MaerSyncFrame.pack(head: ["status": 200, "headers": [:]], body: Data())).body == Data())
     }
 
-    @Test("Kopfnamen kommen klein geschrieben an, wie von einem Draht")
+    @Test("header names arrive in lower case, as from a wire")
     func headerNamesArriveLowercased() throws {
         let (status, headers) = try MaerSyncFrame.reply(of: ["status": 412, "headers": ["ETag": "7"]])
         #expect(status == 412 && headers == ["etag": "7"])
     }
 
-    @Test("was kein Rahmen ist, ist unlesbar, und ein Kopf ohne Status auch")
+    @Test("what is no frame is unreadable, and a head without status too")
     func whatIsNotAFrameIsUnreadable() {
         for wrong in [Data(), Data([0]), Data([0, 5, 97, 98]), Data([0, 2, 91, 93]), Data([0, 3, 97, 98, 99])] {
             #expect(throws: MaerSyncFailure.unreadable) { try MaerSyncFrame.unpack(wrong) }
@@ -60,7 +60,7 @@ struct MaerSyncFrameTests {
         #expect(throws: MaerSyncFailure.unreadable) { try MaerSyncFrame.reply(of: ["status": 200, "headers": ["a": 1]]) }
     }
 
-    @Test("das Ziel einer Adresse ist Pfad und Anfrage, wie eine Anfragezeile")
+    @Test("the target of an address is path and query, like a request line")
     func theTargetOfAnAddress() {
         let base = URL(string: "https://sync.example.test")!
         #expect(MaerSyncFrame.target(of: MaerSyncPaths.document(base, kind: "claim", scope: "dev:a")) == "/v1/doc/claim?scope=dev:a")
