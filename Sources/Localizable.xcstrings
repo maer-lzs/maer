@@ -12499,16 +12499,6 @@
         }
       }
     },
-    "The station could not be loaded. Open the link again to try once more." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Sender konnte nicht geladen werden. Öffne den Link erneut, um es noch einmal zu versuchen."
-          }
-        }
-      }
-    },
     "The statistics of this account cannot be read on this device, so this device's listening time is not shown." : {
       "localizations" : {
         "de" : {

@@ -2,13 +2,15 @@
 
 ## Next build (not yet cut)
 
-**A station link that does not open says why.** When the station
-catalog does not answer, because the device is offline or the request
-failed, the app says the station could not be loaded and that opening
-the link again tries once more. When Radio Browser is off in Settings,
-the app says so and does not ask the catalog. Only a station the
-catalog does not know says that the link can't be opened. Before, all
-three said the same sentence as a link built by hand.
+**A station link that does not load opens the station's page with
+Retry.** When the station catalog does not answer, because the device
+is offline or the request failed, the link opens the radio page that
+says it could not be loaded, with Retry; once the catalog answers, the
+page becomes the station's page. When Radio Browser is off in Settings,
+the page says so instead of offering Retry, and the catalog is not
+asked. Only a station the catalog does not know says that the link
+can't be opened. Before, all three said the same sentence as a link
+built by hand.
 
 **The source now lives on GitHub.** The public source of Mär is at
 github.com/maer-lzs/maer and the sync service at

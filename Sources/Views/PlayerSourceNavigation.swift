@@ -25,6 +25,9 @@ nonisolated enum PlayerSourceTarget {
     case musicArtist(MusicArtist)
     /// The station detail page. Radio has a source target now.
     case radioStation(RadioStation)
+    /// The page of a station link the catalog gave no station for yet: it
+    /// shows why and, when the catalog did not answer, asks again on Retry.
+    case radioStationLink(uuid: String, SharedLinkOpener.StationGap)
     /// The list of latest episodes across shows. Where a message about
     /// SEVERAL shows leads. No single page can answer it, and this one was
     /// already there.
@@ -40,7 +43,7 @@ extension PlayerSourceTarget {
         case .book, .catalogBook: .audiobooks
         case .podcastShow, .podcastEpisode, .podcastLatest: .podcasts
         case .musicAlbum, .musicArtist, .catalogAlbum: .music
-        case .radioStation: .radio
+        case .radioStation, .radioStationLink: .radio
         }
     }
 }

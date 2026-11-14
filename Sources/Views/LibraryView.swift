@@ -961,6 +961,8 @@ struct LibraryView: View {
                 pushToActive(MusicRoute.artist(artist))
             case .radioStation(let station):
                 pushToActive(RadioRoute.station(station))
+            case .radioStationLink(let uuid, let gap):
+                pushToActive(RadioRoute.stationLink(uuid: uuid, gap: gap))
             case .catalogAlbum(let itemId):
                 pushToActive(MusicRoute.catalogAlbum(itemId))
             }

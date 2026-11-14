@@ -14,6 +14,8 @@ enum RadioRoute: Hashable {
     case genre(tag: String, title: String)
     /// Teil 1: a station's detail page (info + codec/bitrate variant picker).
     case station(RadioStation)
+    /// The page a station link opens when the catalog gave no station.
+    case stationLink(uuid: String, gap: SharedLinkOpener.StationGap)
     /// The full page behind a counted browse row. One parameterised page,
     /// the row passes its whole stock.
     case stationList(title: String, stations: [RadioStation])
@@ -45,6 +47,8 @@ extension View {
                 RadioGenreView(tag: tag, title: title, playerCoordinator: playerCoordinator)
             case .station(let station):
                 RadioStationDetailView(station: station, playerCoordinator: playerCoordinator)
+            case .stationLink(let uuid, let gap):
+                SharedStationLinkPage(uuid: uuid, gap: gap, playerCoordinator: playerCoordinator)
             case .stationList(let title, let stations):
                 RadioStationListPage(title: title, stations: stations,
                                      playerCoordinator: playerCoordinator)

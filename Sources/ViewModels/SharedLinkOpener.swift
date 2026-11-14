@@ -24,13 +24,28 @@ struct SharedLinkOpener {
         /// Not a link of this form, or one the app does not open; the one
         /// sentence says so, the reason goes to the log.
         case refused(reason: String)
-        /// What the link names could not be asked now: the device is
-        /// offline or the request failed. Opening the link again asks once
-        /// more; the reason goes to the log.
-        case notLoaded(reason: String)
-        /// The source that knows what the link names is switched off in
-        /// Settings; the reason goes to the log.
-        case sourceOff(reason: String)
+        /// A station the catalog gave no answer for, or one whose source is
+        /// switched off in Settings: the station's page opens in that state.
+        case stationPage(uuid: String, StationGap)
+    }
+
+    /// Why the page of a station link opens without its station.
+    nonisolated enum StationGap: Hashable, Sendable {
+        /// The catalog did not answer: the device is offline or the request
+        /// failed. The page asks again on Retry.
+        case notLoaded
+        /// Radio Browser is switched off in Settings, so the catalog is not
+        /// asked. The page says so and offers no Retry.
+        case sourceOff
+    }
+
+    /// What the page of a station link shows for an answer of the catalog.
+    nonisolated enum StationPageState: Hashable, Sendable {
+        case station(RadioStation)
+        case notLoaded
+        case sourceOff
+        /// The catalog answered and does not confirm the id.
+        case unknown
     }
 
     /// What the catalog says of a station a link names.
@@ -67,11 +82,7 @@ struct SharedLinkOpener {
     /// not tell whether it named something private.
     static let refusal = String(localized: "This link can't be opened.")
 
-    /// The sentence of a station link whose catalog did not answer: the link
-    /// itself may be fine, and opening it again asks once more.
-    static let stationNotLoaded = String(localized: "The station could not be loaded. Open the link again to try once more.")
-
-    /// The sentence of a station link while Radio Browser is switched off.
+    /// The sentence of a station page while Radio Browser is switched off.
     static let stationSourceOff = String(localized: "Radio Browser is off in Settings, so this station can't be opened.")
 
     /// The sentence for an outcome that opens nothing; nil for one that
@@ -79,9 +90,36 @@ struct SharedLinkOpener {
     static func sentence(for outcome: Outcome) -> String? {
         switch outcome {
         case .refused: refusal
-        case .notLoaded: stationNotLoaded
-        case .sourceOff: stationSourceOff
-        case .episode, .show, .station, .book, .track: nil
+        case .episode, .show, .station, .book, .track, .stationPage: nil
+        }
+    }
+
+    /// The page's state for the catalog's answer about the id a link names.
+    /// Only the catalog's station with that very id is the station.
+    nonisolated static func pageState(uuid: String, lookup: StationLookup) -> StationPageState {
+        switch lookup {
+        case .found(let station) where station.id.lowercased() == SharedLink.stationId(uuid: uuid).lowercased():
+            .station(station)
+        case .found, .unknown:
+            .unknown
+        case .notLoaded:
+            .notLoaded
+        case .sourceOff:
+            .sourceOff
+        }
+    }
+
+    /// The catalog's answer about a station id, asked only while Radio
+    /// Browser is switched on.
+    static func lookUpStation(_ uuid: String) async -> StationLookup {
+        guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else { return .sourceOff }
+        do {
+            return try await RadioBrowserClient.station(uuid: uuid).map { .found($0) } ?? .unknown
+        } catch {
+            // A device without a way out, a failed request or a cancelled
+            // one: no answer of the catalog.
+            Logger.library.notice("SHAREDLINK station not loaded: \(FailureReason.of(error), privacy: .public)")
+            return .notLoaded
         }
     }
 
@@ -99,33 +137,19 @@ struct SharedLinkOpener {
                 return true
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
-            resolveStation: { uuid in
-                guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else { return .sourceOff }
-                do {
-                    return try await RadioBrowserClient.station(uuid: uuid).map { .found($0) } ?? .unknown
-                } catch {
-                    // A device without a way out, a failed request or a
-                    // cancelled one: no answer of the catalog.
-                    Logger.library.notice("SHAREDLINK station not loaded: \(FailureReason.of(error), privacy: .public)")
-                    return .notLoaded
-                }
-            })
+            resolveStation: { await lookUpStation($0) })
     }
 
     /// Opens what the link names through the one navigation point, or hands
     /// the one sentence to `refuse` and writes the reason to the log.
     func open(_ url: URL, refuse: (String) -> Void) async {
         let outcome = await outcome(for: url)
+        if case .stationPage(_, let gap) = outcome {
+            Logger.library.notice("SHAREDLINK station page gap=\(String(describing: gap), privacy: .public)")
+        }
         guard let target = Self.target(of: outcome) else {
-            switch outcome {
-            case .refused(let reason):
+            if case .refused(let reason) = outcome {
                 Logger.library.notice("SHAREDLINK refused reason=\(reason, privacy: .public)")
-            case .notLoaded(let reason):
-                Logger.library.notice("SHAREDLINK not loaded reason=\(reason, privacy: .public)")
-            case .sourceOff(let reason):
-                Logger.library.notice("SHAREDLINK source off reason=\(reason, privacy: .public)")
-            default:
-                break
             }
             refuse(Self.sentence(for: outcome) ?? Self.refusal)
             return
@@ -142,7 +166,8 @@ struct SharedLinkOpener {
         case .station(let station): .radioStation(station)
         case .book(let itemId): .catalogBook(itemId: itemId)
         case .track(let itemId): PlayerSourceTargets.catalogPage(itemId, markedForm: nil)
-        case .refused, .notLoaded, .sourceOff: nil
+        case .stationPage(let uuid, let gap): .radioStationLink(uuid: uuid, gap)
+        case .refused: nil
         }
     }
 
@@ -162,15 +187,15 @@ struct SharedLinkOpener {
         case .station(let uuid, _):
             // The link's own name and stream are for the page on maer.fm;
             // the app takes the station as the catalog has it.
-            switch await resolveStation(uuid) {
-            case .found(let station) where station.id.lowercased() == SharedLink.stationId(uuid: uuid).lowercased():
+            switch Self.pageState(uuid: uuid, lookup: await resolveStation(uuid)) {
+            case .station(let station):
                 return .station(station)
-            case .found, .unknown:
+            case .unknown:
                 return .refused(reason: "stationUnknown")
             case .notLoaded:
-                return .notLoaded(reason: "stationNotLoaded")
+                return .stationPage(uuid: uuid, .notLoaded)
             case .sourceOff:
-                return .sourceOff(reason: "stationSourceOff")
+                return .stationPage(uuid: uuid, .sourceOff)
             }
         case .book(let itemId, _):
             return await resolveCatalog(itemId) ? .book(itemId: itemId) : .refused(reason: "bookUnknown")
