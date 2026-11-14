@@ -53,7 +53,7 @@ struct UITestSeedTests {
 
     /// A server sends a progress with its time; a seeded one without it
     /// starts the player at 0 while Continue shows the fraction.
-    @Test("jeder geseedete Stand traegt seine Zeit wie ein Server", .needsTheSources)
+    @Test("every seeded stand carries its time like a server", .needsTheSources)
     func everySeededProgressCarriesItsTime() throws {
         let seed = try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/UITestSeed.swift"), encoding: .utf8)

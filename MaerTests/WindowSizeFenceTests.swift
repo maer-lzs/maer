@@ -24,7 +24,7 @@ struct WindowSizeFenceTests {
         }
     }
 
-    @Test("der Zaehler sieht jede Frage nach Geraet und Bildschirm, im Kommentar keine")
+    @Test("the counter sees every question about device and screen, none in a comment")
     func theCounterReads() {
         #expect(Self.asks("let p = UIDevice.current.userInterfaceIdiom == .phone").count == 1)
         #expect(Self.asks("let w = UIScreen.main.bounds.width").count == 1)
@@ -34,7 +34,7 @@ struct WindowSizeFenceTests {
         #expect(Self.asks("let w = geo.size.width").isEmpty)
     }
 
-    @Test("keine Ansicht fragt nach Geraet oder Bildschirm", .needsTheSources)
+    @Test("no view asks about device or screen", .needsTheSources)
     func noLayoutAsksTheDevice() throws {
         var found: [String] = []
         let files = ProjectFileIntegrityTests.sourceFiles()
@@ -46,7 +46,7 @@ struct WindowSizeFenceTests {
         #expect(found.isEmpty, "a layout asks the device or the screen instead of its window: \(found)")
     }
 
-    @Test("die Buchseite fuellt die Hoehe scharf nur, wo sie kurz ist")
+    @Test("the book page fills the height tightly only where it is short")
     func theBookPageDecidesByItsHeight() {
         // A phone on its side and the folded Duo on its side.
         #expect(BookDetailCover.sharpFills(height: 390))

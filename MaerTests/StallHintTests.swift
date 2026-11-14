@@ -29,7 +29,7 @@ struct StallHintTests {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 
-    @Test("der Hinweis kommt ab 5 s Warten")
+    @Test("the hint comes after 5 s of waiting")
     func theHintAfterFiveSeconds() {
         #expect(StallRule.hintAfterSeconds == 5)
         #expect(!StallRule.hints(waitedSeconds: 4.9))
@@ -39,7 +39,7 @@ struct StallHintTests {
 
     /// No halt timer and no deadline: the wait reaches the channel, the
     /// channel shows the hint, nothing on that way stops playback.
-    @Test("ein Warten haelt die Wiedergabe nie an: keine Frist, kein Halt auf dem Weg des Hinweises", .needsTheSources)
+    @Test("a wait never stops playback: no deadline, no halt on the way of the hint", .needsTheSources)
     func aWaitNeverStopsPlayback() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -66,7 +66,7 @@ struct StallHintTests {
         }
     }
 
-    @Test("der Hinweis haelt, solange gewartet wird, ist kein Fehler, und das Weiterlaufen nimmt nur ihn weg")
+    @Test("the hint holds as long as the wait lasts, is no error, and running again removes only it")
     func theRuleOfTheWait() {
         let answer = NoticeRule.answer(.waitingForNetwork)
         #expect(answer == NoticeRule.Answer(pops: true, holdsUntilPlay: true, isError: false))
@@ -86,7 +86,7 @@ struct StallHintTests {
                 "the stream running again took a stopping error: \(stopped)")
     }
 
-    @Test("der Kanal zeigt den Hinweis erst nach der Frist, ein kurzes Warten sagt nichts, das Weiterlaufen nimmt ihn")
+    @Test("the channel shows the hint only after the time, a short wait says nothing, running again removes it")
     func theChannelTimesTheHint() async {
         let (notices, folder) = channel(stallHint: 0.3)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -106,7 +106,7 @@ struct StallHintTests {
         #expect(notices.log.count == logged)
     }
 
-    @Test("der Koordinator gibt das Warten des Modells als Zustand an den Kanal", .needsTheSources)
+    @Test("the coordinator passes the model's wait to the channel as a state", .needsTheSources)
     func theCoordinatorHandsTheWaitOver() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift"), encoding: .utf8))
@@ -206,7 +206,7 @@ struct StallHintTests {
     /// pause ends the wait. Measured here at the start (the player never
     /// began with the cut stream); mid-play the same reason stands (measured
     /// before with a cut after thirty seconds of audio).
-    @Test("ein Strom, der nicht mehr liefert, meldet das Modell als Warten auf den Strom, eine Pause beendet es", .needsAudio)
+    @Test("a stream that stops delivering is reported by the model as waiting for the stream, a pause ends it", .needsAudio)
     func aStreamThatStopsIsAWait() async throws {
         let body = wav(seconds: 60)
         let host = try CuttingHost(body: body, sendBytes: 44 + 44_100 * 20)

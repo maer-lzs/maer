@@ -25,7 +25,7 @@ struct TokenTwinTwoStageTests {
                            })
     }
 
-    @Test("Zwei Token-Zwillinge: nach dem ersten Start steht nur der vollere in den Zeilen, der zweite Start faltet nichts mehr")
+    @Test("Two token twins: after the first start only the fuller one stands in the rows, the second start folds nothing more")
     func theRowsHoldTheSurvivorAloneAfterOneStart() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("twin-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -61,7 +61,7 @@ struct TokenTwinTwoStageTests {
         }
     }
 
-    @Test("Die Kopf-Stufe faltet nicht: zwischen den Koepfen und den vollen Zeilen ruft der Start migrated nicht", .needsTheSources)
+    @Test("The head stage does not fold: between the heads and the full rows the start does not call migrated", .needsTheSources)
     func theHeadStageDoesNotFold() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"),

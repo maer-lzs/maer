@@ -13,43 +13,43 @@ import Foundation
 /// "Enter server, username and password" to somebody whose server, username
 /// and password were all filled in, while the source's own switch was off.
 struct SourceReadinessTests {
-    @Test("die Ursache, die wirklich gilt, und nur sie")
+    @Test("the cause that really holds, and only that one")
     func theCauseThatReallyHolds() {
         #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "", username: "") == .address)
         #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "   ", username: "u") == .address,
                 "eine Adresse aus Leerzeichen ist keine")
         #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "https://s", username: "") == .account)
-        // Der gemessene Fall: alles ausgefuellt, nur der Schalter ist aus.
+        // The measured case: everything filled in, only the switch is off.
         #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "https://s", username: "u") == .switchedOff)
         #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "https://s", username: "u") == nil)
     }
 
-    /// **Der Fall, der den Zaun ausgeloest hat.** `active` ist ZUSAMMENGESETZT
-    /// (Quellenschalter und Reiter, bei manchen Quellen dazu „bedient sie
-    /// diese Art ueberhaupt"). Wer den Schalter anlaesst und nur den Reiter
-    /// ausschaltet, bekam den Satz „der Schalter darueber ist aus" ueber
-    /// einen Schalter, der an war.
-    @Test("Schalter AN und Bereich aus nennt nicht den Schalter")
+    /// **The case that triggered the fence.** `active` is COMPOSITE
+    /// (source switch and tab, for some sources also „bedient sie
+    /// diese Art ueberhaupt"). Whoever leaves the switch on and turns off only
+    /// the tab got the sentence „der Schalter darueber ist aus" about
+    /// a switch that was on.
+    @Test("switch ON and area off does not name the switch")
     func theSwitchIsNotBlamedWhenOnlyTheAreaIsOff() {
         let urteil = SourceReadiness.missing(active: false, sourceEnabled: true, servesAnything: true,
                                              address: "https://s", username: "u")
         #expect(urteil == .noAreaOn)
         #expect(urteil != .switchedOff, "der eingeschaltete Schalter wird als aus gemeldet")
-        // Und die Gegenrichtung bleibt, wie sie war: ist der Schalter wirklich
-        // aus, heisst es weiterhin so.
+        // And the opposite direction stays as it was: if the switch is really
+        // off, it still says so.
         #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true,
                                         address: "https://s", username: "u") == .switchedOff)
-        // Der Satz nennt den Schalter dann auch nicht mehr.
+        // The sentence then no longer names the switch either.
         #expect(SourceReadiness.noAreaOn.sentence != SourceReadiness.switchedOff.sentence)
     }
 
-    /// **Der Befund aus der Abnahme dieses Falls.** Bei Subsonic kann die Menge der
-    /// bedienten Arten leer sein (beide auf der Quellen-Seite abgewaehlt).
-    /// Dann faellt das Lebendig-Tor am leeren Satz, BEVOR es einen Bereich
-    /// fragt, und der Bereichs-Satz schickte die Person zu Schaltern, die
-    /// alle an sind. Hier die ganze Kette: die echten Arten, das echte Tor,
-    /// alle Bereiche an.
-    @Test("eine Quelle, die keine Art bedient, nennt das und nicht die Bereiche")
+    /// **The finding from the acceptance of this case.** With Subsonic the set of
+    /// served kinds can be empty (both deselected on the sources page).
+    /// Then the liveness gate fails on the empty set BEFORE it asks an
+    /// area, and the area sentence sent the person to switches that are
+    /// all on. Here the whole chain: the real kinds, the real gate,
+    /// all areas on.
+    @Test("a source that serves no kind says so and does not name the areas")
     func aSourceServingNothingSaysSo() {
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
         let allTabs = Set(MediaType.allCases)
@@ -59,33 +59,33 @@ struct SourceReadinessTests {
                                              address: "https://s", username: "u")
         #expect(urteil == .servesNothing)
         #expect(urteil != .noAreaOn, "der Satz schickt zu den Bereichen, die alle an sind")
-        // Die Reihenfolge der Seite bleibt: ist der Schalter aus, heisst es so,
-        // und die Felder kommen vor allem.
+        // The order of the page stays: if the switch is off, it says so,
+        // and the fields come before everything.
         #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: false,
                                         address: "https://s", username: "u") == .switchedOff)
         #expect(SourceReadiness.missing(active: false, sourceEnabled: true, servesAnything: false,
                                         address: "", username: "u") == .address)
     }
 
-    /// Die Reihenfolge ist die der Seite: erst was eingetippt wird, dann der
-    /// Schalter darueber. Ein Satz, der zum Schalter schickt, waehrend die
-    /// Felder darunter leer sind, schickt die Person zweimal.
-    @Test("der Schalter wird zuletzt genannt, nicht zuerst")
+    /// The order is that of the page: first what is typed in, then the
+    /// switch above. A sentence that sends to the switch while the
+    /// fields below are empty sends the person twice.
+    @Test("the switch is named last, not first")
     func theSwitchIsNamedLast() {
         #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "", username: "") == .address)
         #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "https://s", username: "") == .account)
     }
 
-    @Test("jede Ursache hat ihren eigenen Satz, und keiner zaehlt drei Dinge auf")
+    @Test("each cause has its own sentence, and none lists three things")
     func eachCauseHasItsOwnSentence() {
         let saetze = [SourceReadiness.address.sentence,
                       SourceReadiness.account.sentence,
                       SourceReadiness.switchedOff.sentence,
                       SourceReadiness.noAreaOn.sentence,
                       SourceReadiness.servesNothing.sentence]
-        // Sprachunabhaengig gefragt: der Wirt laeuft deutsch, ein Zeuge auf
-        // ein englisches Wort haette die Uebersetzung gemessen und nicht die
-        // Regel.
+        // Asked independent of language: the host runs German, a witness on
+        // an English word would have measured the translation and not the
+        // rule.
         #expect(Set(saetze).count == 5, "zwei Ursachen sagen dasselbe")
         for satz in saetze {
             #expect(satz.count > 10, "ein Satz, der nichts sagt")
@@ -94,9 +94,9 @@ struct SourceReadinessTests {
         }
     }
 
-    /// Der Zaun ueber die KLASSE: keine Quelle haelt sich ihren eigenen
-    /// Bereitschafts-Satz. Beide Musik-Quellen hatten woertlich denselben.
-    @Test("kein Provider baut sich seinen eigenen Bereitschafts-Satz", .needsTheSources)
+    /// The fence over the CLASS: no source keeps its own
+    /// readiness sentence. Both music sources had the same one word for word.
+    @Test("no provider builds its own readiness sentence", .needsTheSources)
     func noProviderBuildsItsOwnReadinessSentence() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
         let dateien = SourceTree.files(under: wurzel)
@@ -112,12 +112,12 @@ struct SourceReadinessTests {
         #expect(stellen.isEmpty, "der alte Sammelsatz steht wieder in \(stellen)")
     }
 
-    /// **Der Zaun ueber die KLASSE dieses Falls:** wer eine Ursache benennt, muss
-    /// den EINZELNEN Wert bekommen, nicht den zusammengesetzten. Die Regeln
-    /// nehmen ihren Schalter deshalb aus einem `…EnabledValue`; kaeme dort
-    /// wieder ein `…Active` an, saehe niemand es, weil beide `Bool` sind und
-    /// der Unterschied erst auf der Flaeche auffaellt.
-    @Test("kein Rufer reicht einen zusammengesetzten Wert als Schalter durch", .needsTheSources)
+    /// **The fence over the CLASS of this case:** whoever names a cause must
+    /// get the SINGLE value, not the composite one. The rules
+    /// therefore take their switch from an `…EnabledValue`; if an `…Active`
+    /// arrived there again, nobody would see it, because both are `Bool` and
+    /// the difference shows only on the surface.
+    @Test("no caller passes a composite value through as a switch", .needsTheSources)
     func noCallerPassesAComposedValueAsTheSwitch() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
         let dateien = SourceTree.files(under: wurzel)
@@ -126,10 +126,10 @@ struct SourceReadinessTests {
         var stellen: [String] = []
         for datei in dateien {
             let text = try String(contentsOf: datei, encoding: .utf8)
-            // Der Leerraum wird ZUSAMMENGEZOGEN und das Argument endet am
-            // Komma: ein Zeichenfenster haette hier die naechste Zeile
-            // mitgelesen und meinen eigenen richtigen Aufruf als Verstoss
-            // gemeldet (genau so ist dieser Zaun beim ersten Lauf gerissen).
+            // The whitespace is COLLAPSED and the argument ends at the
+            // comma: a character window would have read the next line here
+            // and reported my own correct call as a violation
+            // (exactly how this fence broke on the first run).
             let flach = text.components(separatedBy: "\n")
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: " ")

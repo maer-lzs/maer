@@ -73,7 +73,7 @@ struct SyncPlanTests {
         return eventSinceLoad ? .recordEpisode : .nothing
     }
 
-    @Test("jeder bewusste Anlass hat in jedem Zustand denselben Plan, der Tick den frueheren ohne force")
+    @Test("every deliberate occasion has the same plan in every state, the tick the earlier one without force")
     func theOccasionDecidesOnlyWhatForceDecided() {
         let states = Self.allStates
         #expect(states.count == 384)
@@ -93,12 +93,12 @@ struct SyncPlanTests {
     // Each branch of the plan, named once, so a probe on one branch tears
     // one line here.
 
-    @Test("ein Start ohne Antwort schreibt nicht, auch nicht bewusst")
+    @Test("a start without an answer does not write, not even deliberately")
     func anUnansweredStartDoesNotWrite() {
         #expect(SyncRules.plan(origin: .pause, state: Self.state(resolved: false)).gate == .unresolvedStart)
     }
 
-    @Test("der Tick wartet fuenf Sekunden, ein bewusster Anlass nicht")
+    @Test("the tick waits five seconds, a deliberate occasion does not")
     func theTickWaitsFiveSeconds() {
         let near = Self.state(at: 103, last: 100)
         #expect(SyncRules.plan(origin: .tick, state: near).gate == .belowThreshold)
@@ -109,7 +109,7 @@ struct SyncPlanTests {
         #expect(SyncRules.plan(origin: .tick, state: Self.state(at: 100, last: .nan)).gate == .belowThreshold)
     }
 
-    @Test("ein grosser Ruecksprung wird nie still geschrieben, ausser er ist bestaetigt")
+    @Test("a big jump back is never written silently, unless it is confirmed")
     func aBigDropIsNeverWrittenSilently() {
         #expect(SyncRules.plan(origin: .pause, state: Self.state(at: 0, last: 500)).gate == .conflict(raise: true))
         #expect(SyncRules.plan(origin: .pause, state: Self.state(at: 0, last: 500, pending: true)).gate
@@ -118,7 +118,7 @@ struct SyncPlanTests {
                 == .write, "ein bestaetigter Ruecksprung wird geschrieben")
     }
 
-    @Test("ein Buch raeumt den Absturz-Rueckhalt, eine Folge schreibt nur nach einem Ereignis")
+    @Test("a book clears the crash safeguard, an episode writes only after an event")
     func booksFlushEpisodesRecordOnlyAfterAnEvent() {
         let book = SyncRules.plan(origin: .pause, state: Self.state())
         #expect(book.local(eventSinceLoad: false) == .flushBackup)
@@ -131,7 +131,7 @@ struct SyncPlanTests {
         #expect(scrobbler.local(eventSinceLoad: true) == .recordEpisode && !scrobbler.noteServerWrite)
     }
 
-    @Test("der Topf und das Log hoeren bewusste Anlaesse sofort, den Tick nicht")
+    @Test("the pot and the log hear deliberate occasions at once, the tick not")
     func theTickIsQuiet() {
         let tick = SyncRules.plan(origin: .tick, state: Self.state())
         let pause = SyncRules.plan(origin: .pause, state: Self.state())
@@ -139,7 +139,7 @@ struct SyncPlanTests {
         #expect(pause.potDeliberate && pause.logWrite)
     }
 
-    @Test("was der Topf traegt, lernt das Bibliotheksmodell nicht")
+    @Test("what the pot carries, the library model does not learn")
     func whatThePotCarriesSkipsTheLibrary() {
         #expect(!SyncRules.plan(origin: .pause, state: Self.state(pot: true)).noteLibrary)
         #expect(SyncRules.plan(origin: .pause, state: Self.state(pot: false)).noteLibrary)
@@ -168,7 +168,7 @@ struct SyncPlanTests {
             .filter { !$0.contains("plan.") && !outcomeBranches.contains($0) }
     }
 
-    @Test("die Ausfuehrung entscheidet nichts selbst", .needsTheSources)
+    @Test("the execution decides nothing itself", .needsTheSources)
     func theExecutionDecidesNothing() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)

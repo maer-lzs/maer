@@ -8,16 +8,16 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Kennung der App steht an EINER Stelle. Vorher setzte jede Aufrufstelle
-/// sie von Hand, zwanzigmal und ueber drei Aliasse, und vier Wege (der Feed-Trichter, RSSProvider,
-/// Transkripte, Pocket Casts) gingen ohne sie hinaus. Jetzt setzen die drei
-/// Wege nach aussen sie, und nur `AppUserAgent` nennt den Kopf.
+/// The identity of the app stands in ONE place. Before, every call site set
+/// it by hand, twenty times and across three aliases, and four paths (the feed funnel, RSSProvider,
+/// transcripts, Pocket Casts) went out without it. Now the three
+/// paths to the outside set it, and only `AppUserAgent` names the header.
 struct UserAgentFenceTests {
     private static func code(_ file: URL) throws -> String {
         SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
     }
 
-    @Test("Kennung: gesetzt, wenn keine da ist; eine vorhandene bleibt")
+    @Test("Identity: set when none is there; an existing one stays")
     func appliesOnlyWhenMissing() {
         var bare = URLRequest(url: URL(string: "https://example.org/feed")!)
         AppUserAgent.applyIfMissing(to: &bare)
@@ -30,11 +30,11 @@ struct UserAgentFenceTests {
         #expect(named.value(forHTTPHeaderField: "User-Agent") == "Probe/1")
     }
 
-    /// Wer den Kopf nennt, setzt eine zweite Kennung; wer `applyIfMissing`
-    /// ruft, ist ein Weg nach aussen und steht auf der Liste.
+    /// Whoever names the header sets a second identity; whoever calls `applyIfMissing`
+    /// is a path to the outside and stands on the list.
     nonisolated static let ways: Set<String> = ["HTTP.swift", "Retry.swift", "FileDownloader.swift"]
 
-    @Test("Kennung: nur AppUserAgent nennt den Kopf, und genau die drei Wege setzen ihn", .needsTheSources)
+    @Test("Identity: only AppUserAgent names the header, and exactly the three paths set it", .needsTheSources)
     func oneOwnerThreeWays() throws {
         var namesHeader: [String] = []
         var setters: Set<String> = []
@@ -51,7 +51,7 @@ struct UserAgentFenceTests {
         #expect(setters == Self.ways, "the ways out that set the identity: \(setters.sorted())")
     }
 
-    @Test("Kennung: jeder Weg setzt sie, bevor er fragt", .needsTheSources)
+    @Test("Identity: every path sets it before it asks", .needsTheSources)
     func eachWaySetsItBeforeAsking() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func order(_ path: String, _ ask: String) throws {
@@ -79,7 +79,7 @@ struct UserAgentFenceTests {
         "LocalLibrary.swift": (2, "local files are read for their tags, no network"),
     ]
 
-    @Test("Kennung: jedes Medien-Asset am Netz traegt sie, die lokalen Ausnahmen sind benannt", .needsTheSources)
+    @Test("Identity: every media asset on the network carries it, the local exceptions are named", .needsTheSources)
     func assetsCarryItOrAreNamed() throws {
         var found: [String: Int] = [:]
         var carrying: [String] = []

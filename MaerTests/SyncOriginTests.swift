@@ -11,7 +11,7 @@ import Foundation
 /// Every position write of the player names its occasion. Before, only
 /// "forced or not" arrived, and no witness could tell a pause from a seek.
 struct SyncOriginTests {
-    @Test("nur der Tick ist nicht bewusst, genau wie frueher nur der Tick nicht forciert war")
+    @Test("only the tick is not deliberate, exactly as only the tick used to be not forced")
     func onlyTheTickIsNotDeliberate() {
         #expect(SyncOrigin.allCases.filter { !$0.isDeliberate } == [.tick])
         #expect(SyncOrigin.allCases.count == 11, "elf Anlaesse, einer je Rufer")
@@ -50,7 +50,7 @@ struct SyncOriginTests {
 
     /// Measured: every occasion is named by exactly one caller. A new
     /// caller takes its own occasion or shows up here.
-    @Test("jeder Rufer nennt seinen Anlass, jeder Anlass hat genau einen Rufer", .needsTheSources)
+    @Test("every caller names its occasion, every occasion has exactly one caller", .needsTheSources)
     func everyCallerNamesItsOccasion() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")

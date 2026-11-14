@@ -15,7 +15,7 @@ import Foundation
 /// `.navigationBarTitleDisplayMode(.large)` the older modifier wins and the
 /// title drops back into a row of its own. So the older one must not return.
 struct TitleRowFenceTests {
-    @Test("die Reiter-Wurzeln nennen den Titelmodus genau einmal, und zwar inlineLarge", .needsTheSources)
+    @Test("the tab roots name the title mode exactly once, and that is inlineLarge", .needsTheSources)
     func theTabRootsNameInlineLargeOnly() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "LibraryView.swift" })

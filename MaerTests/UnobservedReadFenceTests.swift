@@ -213,7 +213,7 @@ struct UnobservedReadFenceTests {
         "PodcastsView.swift": 1,
     ]
 
-    @Test("Ansichten lesen den Premium-Status nicht, ohne den Abo-Speicher zu beobachten", .needsTheSources)
+    @Test("Views do not read the premium status without observing the subscription store", .needsTheSources)
     func viewsDoNotReadThePremiumMarkWithoutObserving() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zaun hat den Ansichtsbaum nicht gelesen")
@@ -237,7 +237,7 @@ struct UnobservedReadFenceTests {
         #expect(try Self.reads(in: menu, matching: Self.premiumPattern, unlessObserving: "PodcastSubscriptions.shared").isEmpty)
     }
 
-    @Test("Ansichten lesen den Download-Zustand nicht, ohne zu beobachten", .needsTheSources)
+    @Test("Views do not read the download state without observing", .needsTheSources)
     func viewsDoNotReadDownloadStateWithoutObserving() throws {
         let published = try Self.publishedProperties(in: Self.managerSource())
         try #require(published.contains("downloadedItemIds"), "der Leser hat den Manager nicht gelesen")
@@ -272,7 +272,7 @@ struct UnobservedReadFenceTests {
 
     /// The instrument, in both directions, and the member list against the
     /// manager's source.
-    @Test("der Zaehler sieht die Lesung, und nur die ohne Beobachtung", .needsTheSources)
+    @Test("the counter sees the read, and only the one without observation", .needsTheSources)
     func theCounterSeesTheReadAndOnlyTheUnobservedOne() throws {
         let members = ["isDownloaded", "phase"]
         let bare = """

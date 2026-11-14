@@ -31,7 +31,7 @@ struct SubscriptionFoldTests {
             isPremium: { $0.id == "p" }, fold: fold)
     }
 
-    @Test("die Regel: eine Sendung steht in den Abos, wenn jede ihrer Marken eingeklappt ist")
+    @Test("the rule: a show stands in the subscriptions when each of its brands is folded in")
     func theFoldRule() {
         let none = SubscriptionFold()
         #expect(none.admits(mirrored: false, premium: false))
@@ -42,7 +42,7 @@ struct SubscriptionFoldTests {
         #expect(!SubscriptionFold(pinchflat: true).admits(mirrored: false, premium: true))
     }
 
-    @Test("ausgeklappt stehen Pinchflat und Premium nur in ihrer Reihe, eingeklappt in den Abos und zaehlen mit")
+    @Test("unfolded, Pinchflat and Premium stand only in their row, folded in the subscriptions and count along")
     func foldedShowsStandInTheSubscriptions() {
         let off = sections(SubscriptionFold())
         #expect(off.recentShows.map(\.show.id) == ["a"])
@@ -55,7 +55,7 @@ struct SubscriptionFoldTests {
         #expect(premium.mirroredShows.map(\.show.id) == ["m"])
     }
 
-    @Test("der Reiter folgt den Schaltern und der Sortierung der Seite, die Kachel traegt die Pinchflat-Glyphe", .needsTheSources)
+    @Test("the tab follows the switches and the sort of the page, the tile carries the Pinchflat glyph", .needsTheSources)
     func theTabFollowsTheSwitchesAndTheSort() throws {
         let tab = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PodcastsView.swift"), encoding: .utf8))

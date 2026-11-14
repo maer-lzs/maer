@@ -38,7 +38,7 @@ struct SubsonicSignInTests {
 
     // MARK: The rule
 
-    @Test("mit dem Schluessel reist nichts anderes: kein u, t, s oder p")
+    @Test("nothing else travels with the key: no u, t, s or p")
     func theKeyTravelsAlone() {
         let items = SubsonicSignIn.items(.apiKey, username: "hoerer", secret: "k", token: "t0", salt: "s0")
         #expect(items.map(\.name) == ["apiKey"])
@@ -48,7 +48,7 @@ struct SubsonicSignInTests {
         #expect(!token.contains { $0.value == "k" }, "das Passwort reist beim Token nie im Klartext")
     }
 
-    @Test("nach einem Code: 41 nur mit Angebot UND verschluesselt zum Schluessel, 42 zurueck zum Token")
+    @Test("after a code: 41 goes to the key only with an offer AND encrypted, 42 back to the token")
     func decisionTable() {
         func d(_ code: Int, _ mode: SubsonicSignIn.Mode, offers: Bool = true, safe: Bool = true) -> SubsonicSignIn.Decision {
             SubsonicSignIn.decision(afterCode: code, current: mode, offersKeySignIn: offers, transportIsSafe: safe)
@@ -65,7 +65,7 @@ struct SubsonicSignInTests {
         }
     }
 
-    @Test("nur https traegt den Schluessel")
+    @Test("only https carries the key")
     func onlyHTTPSCarriesTheKey() throws {
         #expect(SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "https://music.example/sub"))))
         #expect(SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "HTTPS://music.example/sub"))))
@@ -75,7 +75,7 @@ struct SubsonicSignInTests {
 
     /// The wire corpus of the test stand (10.09. and 23.09.): Nextcloud
     /// Music offers the key sign-in, Navidrome does not.
-    @Test("die Erweiterungen am Wire-Korpus: Nextcloud Music ja, Navidrome nein")
+    @Test("the extensions on the wire corpus: Nextcloud Music yes, Navidrome no")
     func extensionsFromTheCorpus() throws {
         let nextcloud = #"{"subsonic-response":{"openSubsonicExtensions":[{"name":"apiKeyAuthentication","versions":[1]},{"name":"formPost","versions":[1]},{"name":"getPodcastEpisode","versions":[1]},{"name":"songLyrics","versions":[1]},{"name":"indexBasedQueue","versions":[1]}],"status":"ok","version":"1.16.1","type":"nextcloud music","serverVersion":"3.2.1","openSubsonic":true}}"#
         let navidrome = #"{"subsonic-response":{"status":"ok","version":"1.16.1","type":"navidrome","serverVersion":"0.63.2 (be10f89c)","openSubsonic":true,"openSubsonicExtensions":[{"name":"transcodeOffset","versions":[1]},{"name":"formPost","versions":[1]},{"name":"songLyrics","versions":[1,2]},{"name":"indexBasedQueue","versions":[1]},{"name":"transcoding","versions":[1]},{"name":"playbackReport","versions":[1]}]}}"#
@@ -91,7 +91,7 @@ struct SubsonicSignInTests {
 
     // MARK: The address the client builds
 
-    @Test("die gebaute Adresse: Token wie vor E3, Schluessel ohne u, t, s, p")
+    @Test("the built address: token as before E3, key without u, t, s, p")
     func theBuiltAddress() throws {
         let server = Self.freshServer()
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)/sub") }
@@ -114,7 +114,7 @@ struct SubsonicSignInTests {
         }
     }
 
-    @Test("eine gemerkte Schluessel-Art gilt nicht fuer eine http-Adresse")
+    @Test("a remembered key mode does not apply to an http address")
     func aStoredKeyModeStaysOffPlainHTTP() throws {
         let server = Self.freshServer()
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)/sub") }
@@ -132,7 +132,7 @@ struct SubsonicSignInTests {
 
     /// A loopback server that answers like Nextcloud Music as measured:
     /// token 41, extensions public, key alone ok, key plus user 43.
-    @Test("am Draht: Token 41, Erweiterungen ohne Anmeldung, dann der Schluessel allein")
+    @Test("on the wire: token 41, extensions without sign-in, then the key alone")
     func theNegotiationOnTheWire() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
@@ -161,7 +161,7 @@ struct SubsonicSignInTests {
         #expect(stand.requests.count == 4 && stand.requests.last?.names.first == "apiKey")
     }
 
-    @Test("am Draht: ein Server ohne Schluessel-Angebot behaelt 41 und seinen Satz")
+    @Test("on the wire: a server without a key offer keeps 41 and its sentence")
     func noOfferKeepsTheRefusal() async throws {
         let stand = try await Loopback.start(offersKey: false, key: "geheim-42")
         defer { stand.stop() }
@@ -177,7 +177,7 @@ struct SubsonicSignInTests {
         #expect(!stand.requests.contains { $0.names.contains("apiKey") }, "kein Schluessel ohne Angebot")
     }
 
-    @Test("am Draht ueber http: Angebot und 41, aber kein Schluessel, ein eigener Satz")
+    @Test("on the wire over http: offer and 41, but no key, a sentence of its own")
     func plainHTTPNeverSendsTheKey() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
@@ -202,7 +202,7 @@ struct SubsonicSignInTests {
     /// unencrypted one a redirect points to.
     nonisolated static func trusting127(_ url: URL) -> Bool { url.host == "127.0.0.1" }
 
-    @Test("mit Schluessel folgt der Client keiner Umleitung auf eine unverschluesselte Adresse")
+    @Test("with a key the client follows no redirect to an unencrypted address")
     func theKeyDoesNotFollowARedirectToPlainHTTP() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
@@ -221,7 +221,7 @@ struct SubsonicSignInTests {
         #expect(stand.requests.count == 1, "die Umleitung wurde nicht verfolgt: \(stand.requests.count) Anfragen")
     }
 
-    @Test("Gegenprobe: eine Umleitung auf eine erlaubte Adresse wird verfolgt, und der Token folgt jeder wie heute")
+    @Test("Counter-check: a redirect to an allowed address is followed, and the token follows every one as today")
     func allowedRedirectsAreFollowed() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
@@ -258,7 +258,7 @@ struct SubsonicSignInTests {
 
     // MARK: The sentences
 
-    @Test("die Saetze folgen den gemessenen Codes; 41 und 43 sagen dasselbe")
+    @Test("the sentences follow the measured codes; 41 and 43 say the same")
     func sentences() {
         func text(_ code: Int) -> String? { SubsonicClient.SubsonicError.api(code: code, message: "raw").errorDescription }
         #expect(text(41) == text(43))
@@ -307,7 +307,7 @@ struct SubsonicSignInTests {
         }
     }
 
-    @Test("keine Logzeile der Subsonic-Anmeldung nennt einen Zugangswert", .needsTheSources)
+    @Test("no log line of the Subsonic sign-in names a credential value", .needsTheSources)
     func noLogLineNamesACredential() throws {
         let files = ["Sources/Networking/SubsonicClient.swift", "Sources/Providers/SubsonicProvider.swift",
                      "Sources/Models/SubsonicSignIn.swift"]

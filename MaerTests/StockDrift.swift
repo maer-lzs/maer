@@ -42,7 +42,7 @@ nonisolated enum StockDrift {
 }
 
 struct StockDriftTests {
-    @Test("ein Bestand sperrt in beide Richtungen: gewachsen, Polster und ein Eintrag auf null reissen, die Zaehlung selbst nicht")
+    @Test("a stock locks in both directions: growth, padding and an entry at zero fail, the count itself does not")
     func aStockLocksBothWays() {
         let stock = ["A.swift": 2, "B.swift": 1]
         #expect(StockDrift.findings(counts: ["A.swift": 2, "B.swift": 1], stock: stock).isEmpty)
@@ -125,7 +125,7 @@ struct StockDriftTests {
     /// Every numeric stock of the suite goes through `StockDrift` or is
     /// compared for equality, so a stock that locks one way only cannot
     /// come back where a search for one spelling of the check did not look.
-    @Test("jeder Zahlen-Bestand der Tests geht ueber StockDrift oder wird auf Gleichheit verglichen", .needsTheSources)
+    @Test("every numeric stock of the tests goes through StockDrift or is compared for equality", .needsTheSources)
     func everyStockLocksBothWays() throws {
         var declared = 0
         var oneWay: [String] = []

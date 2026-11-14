@@ -14,7 +14,7 @@ import AVFoundation
 /// finished, and nothing after it plays.
 @MainActor
 struct TrackGapTests {
-    @Test("eine Spur ohne Adresse in der Mitte: bis dorthin, dort halten, nie fertig", .needsAudio)
+    @Test("a track without an address in the middle: up to there, hold there, never finished", .needsAudio)
     func aTrackWithoutAnAddressHolds() async throws {
         let tone = try TickWorkTests().tone(seconds: 1)
         defer { try? FileManager.default.removeItem(at: tone) }

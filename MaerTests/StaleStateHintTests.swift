@@ -8,11 +8,11 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Hinweis ueber einem Reiter mit dem zuletzt bekannten Stand sagt, warum:
-/// ohne Netz „Offline“, mit Netz und ohne Antwort des Servers „Server nicht
-/// erreichbar“. Die eine Eingabe ist der Netzwert der App.
+/// The hint above a tab with the last known stand says why:
+/// without network „Offline“, with network and no answer from the server
+/// „Server nicht erreichbar“. The one input is the app's network value.
 struct StaleStateHintTests {
-    @Test("Ohne Netz Offline, mit Netz Server nicht erreichbar, je mit eigenem Zeichen")
+    @Test("Without network offline, with network server unreachable, each with its own symbol")
     func bothCases() {
         #expect(StaleStateHint.of(isOnline: false) == .offline)
         #expect(StaleStateHint.of(isOnline: true) == .serverUnreachable)
@@ -22,7 +22,7 @@ struct StaleStateHintTests {
         #expect(StaleStateHint.serverUnreachable.text.key == "Server unreachable: last known state")
     }
 
-    @Test("Beide Saetze stehen deutsch im Katalog")
+    @Test("Both sentences are in the catalog in German")
     func bothLanguages() {
         var offline = StaleStateHint.offline.text, server = StaleStateHint.serverUnreachable.text
         offline.locale = Locale(identifier: "de")
@@ -31,7 +31,7 @@ struct StaleStateHintTests {
         #expect(String(localized: server) == "Server nicht erreichbar: zuletzt bekannter Stand")
     }
 
-    @Test("Der Hinweis der Reiter nimmt die Regel und den Netzwert, keinen eigenen Satz", .needsTheSources)
+    @Test("The hint of the tabs takes the rule and the network value, no sentence of its own", .needsTheSources)
     func theBannerTakesTheRule() throws {
         let view = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))

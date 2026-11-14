@@ -23,7 +23,7 @@ struct StoppedStaysStoppedTests {
         return model
     }
 
-    @Test("nach stop() ist isPlaying falsch und das Modell gestoppt", .needsAudio)
+    @Test("after stop() isPlaying is false and the model is stopped", .needsAudio)
     func afterStopNothingPlays() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -35,7 +35,7 @@ struct StoppedStaysStoppedTests {
         #expect(model.player == nil)
     }
 
-    @Test("die Pruefung vor dem Start, die nach dem Stopp zurueckkommt, startet nichts", .needsAudio)
+    @Test("the check before the start that comes back after the stop starts nothing", .needsAudio)
     func theCheckBeforePlayStartsNothingOnAStoppedModel() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -59,7 +59,7 @@ struct StoppedStaysStoppedTests {
         #expect(starts == 0, "the stopped model counted a start")
     }
 
-    @Test("eine Pause, waehrend die Pruefung vor dem Start wartet, gewinnt: es startet nichts", .needsAudio)
+    @Test("a pause while the check before the start waits wins: nothing starts", .needsAudio)
     func aPauseDuringTheCheckWins() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -78,7 +78,7 @@ struct StoppedStaysStoppedTests {
         #expect(!model.isStopped, "a pause is no stop")
     }
 
-    @Test("ein Laden, das keinen Spieler baute, startet nichts: kein spielt, kein Anspruch, kein gezaehlter Start")
+    @Test("a load that built no player starts nothing: no plays, no claim, no counted start")
     func aFailedLoadStartsNothing() {
         let model = PlayerViewModel(provider: MockProvider())
         var starts = 0
@@ -91,7 +91,7 @@ struct StoppedStaysStoppedTests {
         #expect(starts == 0, "a title that did not load counted a start")
     }
 
-    @Test("das Fenster: Titel, Spieler und Halte; jede Aenderung bricht es")
+    @Test("the window: title, player and holds; every change breaks it")
     func theWaitWindowRule() {
         let model = PlayerViewModel(provider: MockProvider())
         let before = WaitWindow(itemId: "a", player: ObjectIdentifier(model), holds: 2)
@@ -101,7 +101,7 @@ struct StoppedStaysStoppedTests {
         #expect(!WaitWindow.stillStands(before, WaitWindow(itemId: "a", player: ObjectIdentifier(model), holds: 3)))
     }
 
-    @Test("die Grenze vor dem Start ist hart: ein Abgleich, der spaet antwortet, haelt den Start nicht laenger als die Grenze")
+    @Test("the limit before the start is hard: a reconcile that answers late holds the start no longer than the limit")
     func theLimitBeforeTheStartIsHard() async {
         let slow = Task { _ = try? await Task.sleep(for: .seconds(5)) }
         let started = ContinuousClock.now
@@ -118,7 +118,7 @@ struct StoppedStaysStoppedTests {
         #expect(PlayerViewModel.reconcileWaitLimit == .milliseconds(1500))
     }
 
-    @Test("ein Sprung auf einem gestoppten Modell baut keinen Player und bewegt nichts", .needsAudio)
+    @Test("a seek on a stopped model builds no player and moves nothing", .needsAudio)
     func aJumpOnAStoppedModelBuildsNothing() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }

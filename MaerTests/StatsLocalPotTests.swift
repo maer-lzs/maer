@@ -28,7 +28,7 @@ struct StatsLocalPotTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("die Decke des Traegers kappt nie den LOKALEN Topf: mehr Eintraege als die Kappe, der Traeger kippt, nach dem Schreiben sind alle noch da")
+    @Test("the carrier's ceiling never caps the LOCAL pot: more entries than the cap, the carrier flips, after the write all are still there")
     func theCeilingNeverCutsTheLocalPot() {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }

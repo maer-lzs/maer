@@ -15,7 +15,7 @@ struct StandStoreTests {
         try await StandStore(connection: try SQLiteConnection(path: ":memory:"))
     }
 
-    @Test("Die Defaults-Form geht hinein und kommt gleich heraus: zwei, drei und vier Stellen")
+    @Test("The defaults shape goes in and comes out the same: two, three and four slots")
     func shapeRoundTrip() async throws {
         let store = try await store()
         try await store.upsert(Stand(itemId: "rss:a", entry: [600, 1_700_000_000_000, 3600])!)
@@ -39,7 +39,7 @@ struct StandStoreTests {
 
     /// The import is the normal case (Rule 9): many entries, one stamp, no
     /// fresh action, empty delta on the second run, and it never shrinks.
-    @Test("Import aus dem Altbestand: einmal alles, zweiter Lauf leer, nie ein Schrumpf, nie ueber einen neueren Moment")
+    @Test("Import from the old stock: everything once, second run empty, never a shrink, never over a newer moment")
     func importIsIdempotentAndNeverShrinks() async throws {
         let store = try await store()
         var stock: [String: [Double]] = [:]

@@ -13,7 +13,7 @@ import Foundation
 /// everywhere else, and there is one tab bar in the app.
 struct TabBarPlacementTests {
 
-    @Test("die Leiste steht, wo das System seine Leisten aufrecht stellt, sonst unten")
+    @Test("the bar stands where the system stands its bars upright, otherwise at the bottom")
     func theBarFollowsTheSystem() {
         #expect(TabBarPlacement.of(verticalBarSide: nil) == .bottom)
         #expect(TabBarPlacement.of(verticalBarSide: .trailing) == .side(.trailing))
@@ -22,7 +22,7 @@ struct TabBarPlacementTests {
         #expect(TabBarPlacement.side(.trailing).isSide)
     }
 
-    @Test("seitlich nur, wo das System an der Kante eine Spalte frei haelt")
+    @Test("at the side only where the system keeps a column free at the edge")
     func theSideNeedsAFreeColumn() {
         // Folded upright: the status column keeps 84 pt free at the right.
         #expect(TabBarPlacement.side(systemEdge: .trailing, freeColumn: 84) == .trailing)
@@ -36,14 +36,14 @@ struct TabBarPlacementTests {
     /// One form of the settings for both postures of the Duo: beside the
     /// side column over the whole window with a column of their own; a
     /// sheet in a wide window floated over the fold and kept no column free.
-    @Test("die Einstellungen stehen neben der Spalte vollflaechig, zugeklappt wie aufgeklappt, mit Leiste unten als Blatt")
+    @Test("the settings stand beside the column over the whole window, folded as well as unfolded, with the bar at the bottom as a sheet")
     func theSettingsTakeTheWindowBesideTheColumn() {
         #expect(SettingsPresentation.of(.side(.trailing)) == .fullScreen)
         #expect(SettingsPresentation.of(.side(.leading)) == .fullScreen)
         #expect(SettingsPresentation.of(.bottom) == .sheet)
     }
 
-    @Test("die Bibliothek zeigt die Einstellungen in der Form der Regel, breit stehen sie in zwei Spalten am Falz", .needsTheSources)
+    @Test("the library shows the settings in the form of the rule, wide they stand in two columns at the fold", .needsTheSources)
     func theSettingsFollowTheRuleAndTheFold() throws {
         let library = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
         #expect(library.contains(".sheet(isPresented: settingsShown(as: .sheet)) { settingsPage.followsAppearanceChoice() }"))
@@ -62,7 +62,7 @@ struct TabBarPlacementTests {
                 "the sections at the fold keep another gutter")
     }
 
-    @Test("eine Rechnung fuer Bibliothek und Blatt: die Spalte trifft die Achse auch, wo ihr Streifen vor dem Fensterrand endet")
+    @Test("one calculation for library and sheet: the column hits the axis also where its strip ends before the window edge")
     func oneReckoningForLibraryAndSheet() {
         var reading = ReservedStrip()
         reading.axisShift = -6
@@ -76,7 +76,7 @@ struct TabBarPlacementTests {
         #expect(ReservedStrip(axisShift: -6).shift(stripMaxX: 458) == -6)
     }
 
-    @Test("die Achse der Statuszeichen liegt in beiden Haltungen des Duo auf den gemessenen Zeichen")
+    @Test("the axis of the status glyphs lies on the measured glyphs in both postures of the Duo")
     func theStatusAxisMatchesBothPostures() {
         // Folded: column from 382, 84 wide, glyphs measured at 418.1.
         #expect(abs(StatusColumnAxis.x(columnMinX: 382, columnWidth: 84) - 418.1) < 1)
@@ -86,7 +86,7 @@ struct TabBarPlacementTests {
         #expect(abs(StatusColumnAxis.x(columnMinX: 867, columnWidth: 84) - 909) > 5)
     }
 
-    @Test("jede Reihe, die ueber ihren Rahmen zeichnet, laeuft unter die Seitenspalte und endet vor ihr", .needsTheSources)
+    @Test("every row that draws beyond its frame runs under the side column and ends before it", .needsTheSources)
     func everyRowReachesUnderTheSideColumn() throws {
         var bare: [String] = []
         var rows = 0
@@ -100,7 +100,7 @@ struct TabBarPlacementTests {
         #expect(bare.isEmpty, "a row draws past its frame without the side column: \(bare)")
     }
 
-    @Test("eine Reiterleiste: die Bibliothek und die Einstellungen bauen dieselbe, je einmal", .needsTheSources)
+    @Test("one tab bar: the library and the settings build the same one, once each", .needsTheSources)
     func oneTabBar() throws {
         var builds: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -129,7 +129,7 @@ struct TabBarPlacementTests {
     /// 24.10.2026; the accessibility tree still called them hittable). A
     /// UIKit view that only measures never takes a touch; a control
     /// (`AirPlayButton`) is the one that may.
-    @Test("eine UIKit-Ansicht, die nur misst, nimmt keine Beruehrung an", .needsTheSources)
+    @Test("a UIKit view that only measures takes no touch", .needsTheSources)
     func measuringViewsTakeNoTouch() throws {
         let controls: Set<String> = ["AirPlayButton.swift"]
         var readers: [String] = []
@@ -149,7 +149,7 @@ struct TabBarPlacementTests {
         #expect(reader.contains(".takesInput(false)"), "the strip reader's background takes input")
     }
 
-    @Test("ein Mass fuer die Seitenspalte: Reiter, Lupe, Zahnrad und die Wiedergabeleiste daneben", .needsTheSources)
+    @Test("one measure for the side column: tabs, magnifier, cog and the playback bar beside it", .needsTheSources)
     func oneMeasureForTheSideColumn() throws {
         #expect(TabBarPlacement.sideMeasure == 48)
         func source(_ path: String) throws -> String {
@@ -166,13 +166,13 @@ struct TabBarPlacementTests {
         #expect(settings.contains(".frame(width: TabBarPlacement.sideMeasure)"))
         let bar = try source("Sources/Views/MiniPlayerBar.swift")
         #expect(bar.contains("slim ? TabBarPlacement.sideMeasure - 2 : 48"), "the bar beside the column has its own height")
-        // Rot-Probe: eine eigene Zahl in der Spalte faellt auf.
+        // Red probe: a number of its own in the column is noticed.
         for text in [library, settings, bar] {
             #expect(!text.contains("frame(width: 46)") && !text.contains("slim ? 44"))
         }
     }
 
-    @Test("die obere Kante ist weich in jeder Haltung, nur die Einstellungen tragen in beiden Formen keine", .needsTheSources)
+    @Test("the top edge is soft in every posture, only the settings carry none in both forms", .needsTheSources)
     func theTopEdgeIsSoft() throws {
         let edge = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TopScrollEdge.swift"), encoding: .utf8))

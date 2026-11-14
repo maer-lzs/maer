@@ -40,7 +40,7 @@ struct SubscriptionFamilyServerTests {
                                               description: nil, imageURL: nil, chaptersURL: nil)])
     }
 
-    @Test("gpodder → iPhone → iPad; Abbestellen iPad → iPhone → gpodder, der Pull bringt es nicht zurueck; neues Abo iPad → gpodder; Hoerstaende bleiben")
+    @Test("gpodder → iPhone → iPad; unsubscribe iPad → iPhone → gpodder, the pull does not bring it back; new subscription iPad → gpodder; listening stands stay")
     func theFamilyAndGpodderConverge() async throws {
         let subs = PodcastSubscriptions.shared
         await subs.ensureLoaded()
@@ -128,7 +128,7 @@ struct SubscriptionFamilyServerTests {
     /// What the round applies locally is noted to the family (the fence on
     /// the two call sites, because the shared family runner stays silent in
     /// the test host and cannot witness the note itself).
-    @Test("die gpodder-Runde notiert, was sie lokal anwendet, in die Familie", .needsTheSources)
+    @Test("the gpodder round notes what it applies locally into the family", .needsTheSources)
     func theRoundNotesItsLocalChangesToTheFamily() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8)

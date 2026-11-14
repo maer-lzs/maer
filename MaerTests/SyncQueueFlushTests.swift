@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// In-Memory-Storage für Tests (Klasse: Zustand nach dem Flush inspizierbar).
+/// In-memory storage for tests (class: state can be inspected after the flush).
 private final class MemoryStorage: SyncQueueStorage {
     var dict: [String: SyncQueue.PendingUpdate] = [:]
     func load() -> [String: SyncQueue.PendingUpdate] { dict }
@@ -23,8 +23,8 @@ private final class MockAPI: ProgressSyncAPI {
     var fetchError: Error?
     var updateError: Error?
     var written: [(itemId: String, currentTime: Double, isFinished: Bool)] = []
-    /// Hook, um während des Flushs Nebenläufigkeit zu simulieren
-    /// (z. B. aktiver Player entfernt einen Queue-Eintrag).
+    /// Hook to simulate concurrency during the flush
+    /// (e.g. the active player removes a queue entry).
     var onUpdate: ((String) async -> Void)?
     /// Runs while the server's states are asked, before they come back.
     var onFetch: (() async -> Void)?
@@ -46,7 +46,7 @@ private func offlineError() -> Error {
     NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
 }
 
-/// Tests für den Flush-Ablauf der SyncQueue (Regeln selbst: SyncRulesTests).
+/// Tests for the flush procedure of the SyncQueue (rules themselves: SyncRulesTests).
 @MainActor
 struct SyncQueueFlushTests {
 
@@ -55,20 +55,20 @@ struct SyncQueueFlushTests {
         return (SyncQueue(storage: storage), storage, MockAPI())
     }
 
-    // MARK: - Jeder Eintrag zu SEINEM Server
+    // MARK: - Every entry to ITS server
 
-    /// Die Warteschlange haelt einen Eintrag je TITEL, und ein Titel traegt
-    /// seine Quelle in der Kennung. Sie nahm trotzdem EINEN Klienten fuer
-    /// alles darin, und beide Rufer gaben den Haupt-Anbieter. Seit das Regal
-    /// Zweitquellen mischt, landet damit eine `jf:`-Position beim
-    /// Bibliotheks-Server.
+    /// The queue holds one entry per TITLE, and a title carries
+    /// its source in the id. It nevertheless took ONE client for
+    /// everything in it, and both callers passed the main provider. Since the shelf
+    /// mixes secondary sources, a `jf:` position thereby landed at the
+    /// library server.
     ///
-    /// Zwei Haelften, und die zweite ist die leisere: der Schrieb ging an den
-    /// falschen Server, UND die Pruefung „der Server gewinnt" fragte
-    /// denselben falschen. Fuer ein fremdes Buch steht dort nichts, ein
-    /// fehlender Eintrag liest sich als „kein Serverstand", und der Schutz
-    /// entfiel still.
-    @Test("jeder Eintrag geht an den Server, dem seine Kennung gehoert")
+    /// Two halves, and the second is the quieter one: the write went to the
+    /// wrong server, AND the check „der Server gewinnt" asked
+    /// the same wrong one. For a foreign book nothing stands there, a
+    /// missing entry reads as „kein Serverstand", and the protection
+    /// silently fell away.
+    @Test("every entry goes to the server that its id belongs to")
     func eachEntryGoesToTheServerThatOwnsIt() async {
         let storage = MemoryStorage()
         let queue = SyncQueue(storage: storage)
@@ -87,24 +87,24 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty, "beide sind gelandet und damit aus der Warteschlange")
     }
 
-    /// Die zweite Haelfte, einzeln: die Stale-Pruefung fragt denselben Server
-    /// wie der Schrieb. Sonst gewinnt ein fremder Stand von einem Server, der
-    /// den Titel gar nicht kennt, oder er entfaellt ganz.
-    @Test("die Stale-Pruefung fragt den Server, der den Titel hat")
+    /// The second half, on its own: the stale check asks the same server
+    /// as the write. Otherwise a foreign stand wins from a server that
+    /// does not know the title at all, or it falls away entirely.
+    @Test("the stale check asks the server that has the title")
     func theStaleCheckAsksTheOwningServer() async {
         let storage = MemoryStorage()
         let queue = SyncQueue(storage: storage)
         let main = MockAPI()
         let other = MockAPI()
-        // Die Kennungen sind so gewaehlt, dass die des HAUPT-Servers zuerst
-        // drankommt: wer den Stand einmal fuer alle holt, holt also seinen.
-        // Sonst haenge der Fall an der Reihenfolge eines Woerterbuchs, und
-        // eine launische Probe misst nichts.
+        // The ids are chosen so that the one of the MAIN server comes first:
+        // whoever fetches the stand once for all fetches its own. Otherwise
+        // the case would hang on the order of a dictionary, and a
+        // moody probe measures nothing.
         //
-        // Der falsche Server behauptet, das fremde Buch sei fast durch. Wird
-        // er gefragt, gilt der Eintrag als veraltet und verschwindet; wird
-        // der richtige gefragt, weiss der nichts davon und die Position geht
-        // hinaus, wohin sie gehoert.
+        // The wrong server claims the foreign book is almost finished. If
+        // it is asked, the entry counts as stale and disappears; if
+        // the right one is asked, it knows nothing of it and the position goes
+        // out, where it belongs.
         main.progress["z-jf:book:x"] = BookProgress(fraction: 0.9, isFinished: false, lastUpdate: 0)
         await queue.enqueue(itemId: "a-mine", currentTime: 100, duration: 1000, isFinished: false)
         await queue.enqueue(itemId: "z-jf:book:x", currentTime: 100, duration: 1000, isFinished: false)
@@ -120,7 +120,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty, "beide sind gelandet")
     }
 
-    @Test("eine Kennung ohne Besitzer wird aufgehoben, nicht irgendwem angeboten")
+    @Test("an id without an owner is kept, not offered to just anybody")
     func anEntryWithoutAnOwnerIsKept() async {
         let storage = MemoryStorage()
         let queue = SyncQueue(storage: storage)
@@ -135,7 +135,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict["niemand:1"] != nil, "und sie bleibt, statt still verworfen zu werden")
     }
 
-    @Test("ein Server, der nicht antwortet, haelt die anderen nicht auf")
+    @Test("a server that does not answer does not hold up the others")
     func oneUnreachableServerDoesNotHoldUpTheOthers() async {
         let storage = MemoryStorage()
         let queue = SyncQueue(storage: storage)
@@ -167,7 +167,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty)
     }
 
-    @Test("Server weiter voraus → veralteten Eintrag verwerfen statt schreiben")
+    @Test("Server further ahead → discard the stale entry instead of writing")
     func flushDropsStaleUpdate() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
@@ -179,7 +179,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty)
     }
 
-    @Test("ein wartendes 0 ohne Dauer geht nicht ueber die Zeit des Servers, auch bei veraltetem Bruchteil")
+    @Test("a waiting 0 without a duration does not override the server's time, even with a stale fraction")
     func flushDropsAQueuedZeroWithoutDuration() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 0, duration: 0, isFinished: false)
@@ -191,7 +191,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.isEmpty)
     }
 
-    @Test("ein Servereintrag ohne bekannte Stelle haelt den wartenden Stand in der Schlange")
+    @Test("a server entry without a known position keeps the waiting stand in the queue")
     func flushHoldsAgainstAnUnknownServerPosition() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 0, isFinished: false)
@@ -203,7 +203,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict["a"]?.currentTime == 100)
     }
 
-    @Test("finished-Updates werden auch bei weiter fortgeschrittenem Server geschrieben")
+    @Test("finished updates are also written when the server is further along")
     func flushKeepsFinishedUpdates() async {
         let (queue, _, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: true)
@@ -215,7 +215,7 @@ struct SyncQueueFlushTests {
         #expect(api.written[0].isFinished)
     }
 
-    @Test("Scheitert der Serverstand-Abruf, wird NICHT blind geschrieben")
+    @Test("If the server stand fetch fails, nothing is written blindly")
     func flushAbortsWhenFetchFails() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
@@ -227,7 +227,7 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.count == 1)
     }
 
-    @Test("Fehlgeschlagener Write bleibt in der Queue (nächster Versuch)")
+    @Test("A failed write stays in the queue (next attempt)")
     func flushKeepsEntryOnWriteFailure() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
@@ -238,12 +238,12 @@ struct SyncQueueFlushTests {
         #expect(storage.dict.count == 1)
     }
 
-    @Test("Vom Player parallel erledigte Einträge werden übersprungen")
+    @Test("Entries completed in parallel by the player are skipped")
     func flushSkipsEntriesRemovedMidFlight() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         await queue.enqueue(itemId: "b", currentTime: 200, duration: 1000, isFinished: false)
-        // Beim ersten Write entfernt der Player den jeweils anderen Eintrag.
+        // At the first write the player removes the respective other entry.
         api.onUpdate = { written in
             let other = written == "a" ? "b" : "a"
             let seen = await queue.pendingUpdate(itemId: other)
@@ -252,7 +252,7 @@ struct SyncQueueFlushTests {
 
         await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
 
-        // Nur einer geschrieben. Der andere war beim zweiten Durchgang weg.
+        // Only one written. The other was gone at the second pass.
         #expect(api.written.count == 1)
         #expect(storage.dict.isEmpty)
     }
@@ -260,7 +260,7 @@ struct SyncQueueFlushTests {
     /// The player writes, and while its write is on the way the detail
     /// sheet queues "marked as heard" for the same book (its own write
     /// failed). The player's success may take only what it saw before.
-    @Test("ein waehrend des Spieler-Schriebs eingereihter Entscheid ueberlebt dessen Erfolg")
+    @Test("a decision queued during the player's write survives its success")
     func aDecisionQueuedDuringTheWriteSurvives() async {
         let (queue, storage, _) = makeQueue()
         // Nothing waited when the write started.
@@ -283,7 +283,7 @@ struct SyncQueueFlushTests {
 
     /// Both writes of the player hand over what they saw; an unconditional
     /// removal there was the way a decision got lost.
-    @Test("der Spieler entfernt nur, was er vor seinem Schrieb gesehen hat", .needsTheSources)
+    @Test("the player removes only what it saw before its write", .needsTheSources)
     func thePlayerRemovesOnlyWhatItSaw() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+Sync.swift"),
@@ -298,7 +298,7 @@ struct SyncQueueFlushTests {
 
     /// A newer position for the same title, queued while the older one is
     /// on its way to the server, stays: only the entry that was sent leaves.
-    @Test("Ein waehrend des Sendens neu eingereihter Stand desselben Titels bleibt")
+    @Test("A stand of the same title newly queued during sending stays")
     func aNewerUpdateQueuedWhileSendingStays() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
@@ -315,7 +315,7 @@ struct SyncQueueFlushTests {
     /// A newer position queued while the flush asks the server is not
     /// overwritten by the older one the flush read: only the entry that was
     /// read may go out, and it is no longer the queued one.
-    @Test("ein waehrend des Holens neu eingereihter Stand wird nicht mit dem alten ueberschrieben")
+    @Test("a stand newly queued during the fetch is not overwritten with the old one")
     func aNewerUpdateQueuedWhileFetchingIsNotOvertaken() async {
         let (queue, storage, api) = makeQueue()
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
@@ -331,7 +331,7 @@ struct SyncQueueFlushTests {
 
     /// A send that failed keeps its entry and says why, in the shape the
     /// bookmark queue uses: a reason without an address or a token.
-    @Test("ein gescheitertes Senden bleibt in der Schlange und sagt warum", .needsTheSources)
+    @Test("a failed send stays in the queue and says why", .needsTheSources)
     func aFailedSendSaysWhy() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/SyncQueue.swift"), encoding: .utf8))

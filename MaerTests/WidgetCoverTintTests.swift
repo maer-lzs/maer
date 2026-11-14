@@ -21,7 +21,7 @@ struct WidgetCoverTintTests {
         }
     }
 
-    @Test("die Farbe kommt aus dem unteren Rand des Covers, abgedunkelt wie auf den Karten")
+    @Test("the colour comes from the bottom edge of the cover, darkened as on the cards")
     func theColourIsTheBottomEdge() throws {
         let tint = try #require(CoverColorLoader.bottomComponents(of: Self.cover(top: .white, bottom: .red)))
         #expect(tint.count == 4)
@@ -32,7 +32,7 @@ struct WidgetCoverTintTests {
         #expect(abs(light[0] - light[1]) < 0.01 && abs(light[1] - light[2]) < 0.01, "a grey bottom left its tone: \(light)")
     }
 
-    @Test("ein helles Cover wird in seinem Ton abgedunkelt, bis weisse Schrift 4,5:1 hat; ein dunkles bleibt")
+    @Test("a light cover is darkened in its own tone until white text reaches 4.5:1; a dark one stays")
     func aLightTintDarkensInItsTone() {
         let cream = TextContrast.darkenedForWhite([0.98, 0.95, 0.85, 1])
         #expect(TextContrast.againstWhite(red: cream[0], green: cream[1], blue: cream[2]) >= 4.5)
@@ -46,7 +46,7 @@ struct WidgetCoverTintTests {
         #expect(abs(TextContrast.againstWhite(red: 0, green: 0, blue: 0) - 21) < 0.001)
     }
 
-    @Test("ein Schnappschuss ohne Farbe liest sich, einer mit Farbe traegt sie")
+    @Test("a snapshot without a colour reads, one with a colour carries it")
     func aSnapshotWithoutTheColourReads() throws {
         let old = #"{"itemId":"a","title":"T","fraction":0.5,"isPlaying":false}"#
         let read = try JSONDecoder().decode(WidgetSnapshot.self, from: Data(old.utf8))
@@ -57,7 +57,7 @@ struct WidgetCoverTintTests {
         #expect(again.coverTint == [0.1, 0.2, 0.3, 1])
     }
 
-    @Test("die App legt die Farbe beim Schreiben des Covers in den Schnappschuss, das Widget rechnet nichts", .needsTheSources)
+    @Test("the app puts the colour into the snapshot when writing the cover, the widget computes nothing", .needsTheSources)
     func theAppWritesTheColour() throws {
         let writer = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+Widget.swift")
         #expect(writer.contains("if Self.lastWidgetCoverItemId == item.id { snapshot.coverTint = Self.lastWidgetCoverTint }"),

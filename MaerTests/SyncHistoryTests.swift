@@ -24,7 +24,7 @@ struct SyncHistoryTests {
     /// Every service whose clean run leaves a stamp stands in the "last
     /// checked" header: Mär Sync does since the header comes from the
     /// service; the statistics write held writes only and stay out.
-    @Test("die Kopfzeile des Verlaufs fuehrt jeden Dienst mit sauberem Lauf, Mär Sync dabei, die Statistik nicht")
+    @Test("the header of the history lists every service with a clean run, Mär Sync included, the statistics not")
     func theHeaderListsEveryServiceWithACleanRun() {
         #expect(SyncHistoryEntry.Service.checkedOrder == [.absProgress, .music, .gpodder, .iCloud, .maerSync])
         #expect(!SyncHistoryEntry.Service.checkedOrder.contains(.statistics), "held writes are no clean run")
@@ -52,7 +52,7 @@ struct SyncHistoryTests {
     /// process. The rule takes no value from the defaults, so a device whose
     /// id stood only there (or that a backup gave another device's) mints
     /// its own and the old pot stays an orphan.
-    @Test("die Kennung des Geraets kommt nur aus dem Schluesselbund, ein Wert in den Einstellungen wird nie uebernommen")
+    @Test("the id of the device comes only from the keychain, a value in the settings is never taken over")
     func theDeviceIdComesFromTheKeychainAlone() {
         let fresh = { "fresh-id" }
         #expect(DeviceIdOrigin.of(.value("kept-id"), fresh: fresh) == .kept("kept-id"))
@@ -68,7 +68,7 @@ struct SyncHistoryTests {
 
     /// No place keeps the device id in the defaults any more: the one place
     /// reads the keychain and removes the old copy, nothing sets it.
-    @Test("keine Stelle legt die Kennung des Geraets in die Einstellungen, die eine Stelle nimmt den alten Wert weg", .needsTheSources)
+    @Test("no place puts the id of the device into the settings, the one place removes the old value", .needsTheSources)
     func noCopyOfTheDeviceIdInTheDefaults() throws {
         var setting: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
@@ -88,7 +88,7 @@ struct SyncHistoryTests {
                 "the old copy in the defaults stays")
     }
 
-    @Test("jeder Dienst, der den Verlauf schreibt, hat seinen Platz in der Kopfzeile, Ausnahmen mit Grund", .needsTheSources)
+    @Test("every service that writes the history has its place in the header, exceptions with a reason", .needsTheSources)
     func everyStampedServiceHasItsRank() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }

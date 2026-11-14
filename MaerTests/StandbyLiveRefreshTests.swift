@@ -26,7 +26,7 @@ struct StandbyLiveRefreshTests {
             duration: 100, chapters: nil, tracks: nil)
     }
 
-    @Test("Das Ende der Leiter: die geholte Folge ist die Folge; die Nachbarin nimmt nur die Wiederherstellung beim Start, nie der Spiegel oder der Play auf den fremden Anspruch")
+    @Test("The end of the ladder: the fetched episode is the episode; the neighbour is taken only by the restore at the start, never by the mirror or the play on the foreign claim")
     func ladderTailNeverTakesANeighbourForTheMirror() {
         let fetched = item("rss:f:wanted")
         let newest = item("rss:f:neighbour")
@@ -43,7 +43,7 @@ struct StandbyLiveRefreshTests {
         #expect(PlayerCoordinator.standbyTail(fetched: nil, showNewest: nil, allowsShowNewest: true).1 == "none")
     }
 
-    @Test("Der Zwilling: dieselbe Folge unter anderem Feed-Schluessel, nie sie selbst, nie eine Nachbarin")
+    @Test("The twin: the same episode under another feed key, never itself, never a neighbour")
     func twinIsTheSameEpisodeUnderAnotherKey() {
         let wanted = "rss:key-ipad:https://example.org/ep/42"
         let guids = ["rss:key-iphone:https://example.org/ep/41",
@@ -81,7 +81,7 @@ struct StandbyLiveRefreshTests {
     /// was opened at t+2 s, and the mirror swapped the book against the
     /// episode in the 1.5 s before `play()` (six times in 25 s). An own
     /// open younger than the adopted pointer is this device's session.
-    @Test("ein eigenes Oeffnen, juenger als der adoptierte Zeiger, wird nie getauscht")
+    @Test("an own open, younger than the adopted pointer, is never swapped")
     func ownOpenYoungerThanForeignPointerIsKept() {
         let verdict = PlayerCoordinator.standbyVerdict(
             stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,
@@ -97,7 +97,7 @@ struct StandbyLiveRefreshTests {
 
     /// The mirror rule stays for real rest: an own open OLDER than the
     /// foreign pointer, paused, follows the fresher truth.
-    @Test("Ein aelteres eigenes Oeffnen, pausiert, folgt dem frischeren fremden Zeiger")
+    @Test("An older own open, paused, follows the fresher foreign pointer")
     func olderOwnOpenStillFollowsTheMirror() {
         let verdict = PlayerCoordinator.standbyVerdict(
             stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,
@@ -113,7 +113,7 @@ struct StandbyLiveRefreshTests {
 
     /// The coordinator itself: seeded session, own open noted, a foreign
     /// pointer adopted with an OLDER stamp, revision burst: nothing moves.
-    @Test("E83 am Koordinator: nach dem eigenen Oeffnen tauscht der Stoss nichts")
+    @Test("E83 at the coordinator: after the own open the burst swaps nothing")
     func coordinatorKeepsOwnOpenAgainstOlderForeignPointer() async {
         let own = "rss:standby-test:\(UUID().uuidString)"
         let foreign = "lv:standby-foreign-\(UUID().uuidString)"
@@ -142,7 +142,7 @@ struct StandbyLiveRefreshTests {
 
     /// Mechanics never note: the mirror's swap and the restore take the
     /// item, leave the pointer, the stamps and `ownOpenedAtMs` alone.
-    @Test("Spiegel-Tausch und Wiederherstellung notieren nicht; nur die Geste")
+    @Test("mirror swap and restore do not note; only the gesture does")
     func onlyAGestureNotes() {
         let foreign = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
@@ -244,20 +244,20 @@ struct StandbyLiveRefreshTests {
         #expect(coord.activeItem == nil)   // nothing appeared
     }
 
-    @Test("ein Oeffnen, das scheitert, nimmt den gesendeten Standby-Zeiger zurueck")
+    @Test("an open that fails takes back the sent standby pointer")
     func aFailedOpenWithdrawsTheBroadcastPointer() async {
-        // Der Zeiger geht am GRIFF hinaus, vor dem Laden: die anderen
-        // Geraete sollen von der Uebernahme erfahren, wenn jemand tippt,
-        // nicht wenn die Bytes da sind. Scheitert das Oeffnen, zeigte der
-        // Standby aller Geraete danach auf einen Titel, der nie lief.
+        // The pointer goes out at the GRIP, before loading: the other
+        // devices should learn of the takeover when someone taps,
+        // not when the bytes are there. If the open fails, the
+        // standby of all devices would afterwards point at a title that never played.
         let before = "abspod:the-one-that-really-played"
         let restore = AppStorageKeys.lastPlayedItemIdValue
         AppStorageKeys.lastPlayedItemIdValue = before
         defer { AppStorageKeys.lastPlayedItemIdValue = restore }
 
         let coord = PlayerCoordinator(provider: MockProvider())
-        // MockProvider wirft beim Detail-Abruf, der Fehlweg ist also der
-        // echte Weg dieses Laufs und kein Nachbau.
+        // MockProvider throws on the detail fetch, so the failure path is the
+        // real path of this run and not a replica.
         await coord.open(item: item("abspod:never-opens"), autoplay: false)
 
         #expect(coord.activeItem == nil, "der gescheiterte Titel steht nicht als aktiv")
@@ -265,11 +265,11 @@ struct StandbyLiveRefreshTests {
                 "der Zeiger sagt wieder, was er vorher sagte")
     }
 
-    @Test("eine ueberholende Geste macht den ueberholten Titel nicht zum 'was vorher stand'")
+    @Test("an overtaking gesture does not make the overtaken title the 'was vorher stand'")
     func anOvertakingGestureDoesNotBecomeTheFallback() {
-        // A lief wirklich. Eine Geste auf B verschiebt den Zeiger, eine
-        // Geste auf C ueberholt B, C scheitert. Zurueck muss A, nicht B:
-        // B hat nie gespielt, es wurde nur angetippt.
+        // A really played. A gesture on B moves the pointer, a
+        // gesture on C overtakes B, C fails. Back must go to A, not B:
+        // B never played, it was only tapped.
         let played = "abspod:A-really-played"
         let restore = AppStorageKeys.lastPlayedItemIdValue
         AppStorageKeys.lastPlayedItemIdValue = played
@@ -284,13 +284,13 @@ struct StandbyLiveRefreshTests {
                 "zurueck kommt der Titel, der wirklich lief")
     }
 
-    @Test("der gelungene Weg ruft die Bestaetigung wirklich auf", .needsTheSources)
+    @Test("the successful path really calls the confirmation", .needsTheSources)
     func theSuccessfulPathCallsTheConfirmation() throws {
-        // Der Fall darunter treibt confirmOwnSession() selbst und belegt
-        // damit die METHODE, nicht ihre Verdrahtung: eine Rot-Probe, die
-        // den Aufruf aus dem Erfolgsweg entfernt, blieb gruen. Fahren laesst
-        // sich der Erfolgsweg hier nicht, er baut einen Spieler. Also am
-        // Quelltext, und damit faellt wenigstens auf, wenn er verschwindet.
+        // The case below drives confirmOwnSession() itself and so proves
+        // the METHOD, not its wiring: a red probe that removes
+        // the call from the success path stayed green. The success path
+        // cannot be driven here, it builds a player. So at the
+        // source text, and so it is at least noticed when it disappears.
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "PlayerCoordinator.swift" })
         let calls = try String(contentsOf: file, encoding: .utf8)
@@ -302,7 +302,7 @@ struct StandbyLiveRefreshTests {
         #expect(calls.count == 1, "genau ein Aufruf im Erfolgsweg, gezaehlt: \(calls.count)")
     }
 
-    @Test("nach einem gelungenen Oeffnen gibt es nichts mehr zurueckzunehmen")
+    @Test("after a successful open there is nothing left to take back")
     func a_successful_open_leaves_nothing_to_withdraw() {
         let played = "abspod:A-really-played"
         let restore = AppStorageKeys.lastPlayedItemIdValue

@@ -26,7 +26,7 @@ struct SubscribeTapTests {
     /// or failed subscribed nothing.
     private func standing(_ tap: SubscribeTap) -> Bool { tap == .subscribed || tap == .heldOnServer }
 
-    @Test("jede Antwort der zwei Zweige: nur ein stehendes Abo uebernimmt die Sendung")
+    @Test("every answer of the two branches: only a standing subscription takes over the show")
     func onlyAStandingSubscriptionTakesTheShowOver() {
         #expect(SubscribeTap.local(.subscribed) == .subscribed)
         #expect(SubscribeTap.local(.subscribedUnchecked) == .subscribed)
@@ -40,7 +40,7 @@ struct SubscribeTapTests {
     /// The tap's end on the remembered episodes, per answer: the browsed
     /// half and the kept rows stay unless a subscription stands, and a
     /// failure is said.
-    @Test("ein gescheiterter oder ausgesetzter Tipp behaelt die gemerkten Folgen und sagt es, ein Abo raeumt sie")
+    @Test("a failed or set-out tap keeps the remembered episodes and says so, a subscription clears them")
     func aFailedTapKeepsTheHeardEpisodes() {
         let suite = "tap-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -80,7 +80,7 @@ struct SubscribeTapTests {
 
     /// The badge's one way: both branches hand their answer to `settle`, no
     /// forgetting outside it, no discarded server answer.
-    @Test("der Abo-Weg des Abzeichens vergisst nur in settle und verwirft keine Antwort", .needsTheSources)
+    @Test("the subscription path of the badge forgets only in settle and discards no answer", .needsTheSources)
     func theBadgeForgetsOnlyInSettle() throws {
         let squeezed = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastComponents.swift")
         #expect(!squeezed.contains("_ = await ABSPodcastProvider.shared.subscribeOnServer"),

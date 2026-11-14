@@ -25,7 +25,7 @@ struct UnreadableStoreTests {
     private let station = RadioStation(id: "radio:manual:probe", name: "Probe",
                                        streamURL: "https://probe.example/stream")
 
-    @Test("die Schreibregel: nichts beiseite ohne Wert und bei lesbarem Wert; ein unlesbarer Wert oder einer anderer Art liegt danach beiseite, ein spaeterer ersetzt die Beiseite-Kopie")
+    @Test("the write rule: nothing aside without a value and with a readable value; an unreadable value or one of another kind lies aside afterwards, a later one replaces the aside copy")
     func theWriteRule() throws {
         let defaults = try fresh()
         let key = "probe"
@@ -50,7 +50,7 @@ struct UnreadableStoreTests {
     /// (`radioFavorites`, `recentSearches`, `knownServers`) with `.corrupt`
     /// behind it stood one letter away. The hardest key is the family stem
     /// itself; its aside copy begins no family either.
-    @Test("kein Beiseite-Schluessel faellt in eine reisende Familie, auch nicht der des Familienstamms; keine Familie und kein reisender Wert beginnt mit dem Beiseite-Praefix")
+    @Test("no aside key falls into a travelling family, not even that of the family stem; no family and no travelling value begins with the aside prefix")
     func noAsideKeyTravels() {
         let families = UserChoiceCatalog.travelingPrefixes + UserChoiceCatalog.familyPrefixes
         let asidePrefix = CorruptStore.asideKey("")
@@ -73,7 +73,7 @@ struct UnreadableStoreTests {
         code.contains(".corrupt\"") || code.contains("\"corrupt.") || code.contains(")corrupt.")
     }
 
-    @Test("ein Beiseite-Schluessel entsteht nur in CorruptStore, auch nicht ueber Interpolation", .needsTheSources)
+    @Test("an aside key arises only in CorruptStore, not even through interpolation", .needsTheSources)
     func onlyTheStoreNamesAsideKeys() throws {
         var builders: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "CorruptStore.swift" {
@@ -82,7 +82,7 @@ struct UnreadableStoreTests {
         #expect(builders.isEmpty, "a file builds an aside key past CorruptStore.asideKey: \(builders)")
     }
 
-    @Test("der Leser der Beiseite-Schluessel sieht jede Schreibweise, nicht die Datei-Endung")
+    @Test("the reader of the aside keys sees every spelling, not the file extension")
     func theAsideKeyReaderReads() {
         #expect(Self.buildsAsideKey(#"let k = key + ".corrupt""#))
         #expect(Self.buildsAsideKey(#"let k = "\(key).corrupt""#))
@@ -91,7 +91,7 @@ struct UnreadableStoreTests {
         #expect(!Self.buildsAsideKey(#"url.appendingPathExtension("corrupt")"#), "the file aside is no key")
     }
 
-    @Test("unlesbare Radio-Listen und Zaehler liegen beiseite, der neue Sender steht", .needsTheSources)
+    @Test("unreadable radio lists and counters lie aside, the new station stands", .needsTheSources)
     func radioListsAreSetAside() throws {
         let defaults = try fresh()
         let keys = [RadioStore.favoritesKey, RadioStore.manualKey, RadioStore.recentsKey,
@@ -117,7 +117,7 @@ struct UnreadableStoreTests {
         #expect(stillAside == Self.unreadable, "a second write replaced the aside copy")
     }
 
-    @Test("eine unlesbare Server-Liste liegt beiseite, der gelungene Login steht")
+    @Test("an unreadable server list lies aside, the successful login stands")
     func knownServersAreSetAside() throws {
         let defaults = try fresh()
         defaults.set(Self.unreadable, forKey: KnownServers.storeKey)
@@ -159,7 +159,7 @@ struct UnreadableStoreTests {
             && ["return[]", "return[:]", "??[]", "??[:]"].contains { tight.contains($0) }
     }
 
-    @Test("jede Stelle, die Unlesbares als leer liest, ist gezaehlt; die Speicher einer Person schreiben nur ueber die Schreibregel", .needsTheSources)
+    @Test("every place that reads the unreadable as empty is counted; the stores of a person write only through the write rule", .needsTheSources)
     func everyEmptyReadIsCounted() throws {
         var counts: [String: Int] = [:]
         var asks: [String: Int] = [:]

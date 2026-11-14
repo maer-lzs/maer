@@ -20,7 +20,7 @@ struct WidgetLineTests {
                        isPlaying: false, steps: nil, savedAt: 1000, kindSymbol: symbol, isLive: live)
     }
 
-    @Test("die Zeile je Art: Hoerbuch, Folge, Lied mit Restzeit und Anteil, ein Sender live ohne beides, ein alter Schnappschuss mit dem Zeichen ohne Art")
+    @Test("the line per kind: audiobook, episode, song with remaining time and share, a station live without both, an old snapshot with the symbol without a kind")
     func theLineOfEachKind() {
         let now = Date(timeIntervalSince1970: 2000)
         for (id, symbol) in [("book-1", "book.closed"), ("rss:ep-1", "mic"), ("sub:song:1", "music.note")] {
@@ -37,7 +37,7 @@ struct WidgetLineTests {
 
     /// A file in the form without the kind and without live, steps and
     /// all: a literal, no round trip.
-    @Test("die Datei der heutigen Form liest sich: ohne Art und ohne Live, mit Schritten")
+    @Test("the file of today's form reads: without kind and without live, with steps")
     func theFileOfTodayReads() throws {
         let file = #"{"itemId":"book-1","title":"t","author":"a","fraction":0.5,"remainingText":"noch 1 Std.","isPlaying":true,"#
             + #""steps":[{"fraction":0.5,"remainingText":"noch 1 Std."},{"fraction":0.51,"remainingText":"noch 59 Min."}],"savedAt":1000}"#
@@ -47,7 +47,7 @@ struct WidgetLineTests {
         #expect(line.fraction == 0.51 && line.remainingText == "noch 59 Min." && !line.isLive)
     }
 
-    @Test("ohne bekannte Laenge schreibt ein Titel nichts, ein Sender immer, live und ohne Anteil; ein Titel mit Laenge Anteil, Restzeit und Schritte aus Position, Laenge und Rate")
+    @Test("without a known length a title writes nothing, a station always, live and without share; a title with a length writes share, remaining time and steps from position, length and rate")
     func whatTheWriterWrites() {
         let text: (Double) -> String? = { "\(Int($0))" }
         let book = WidgetSnapshot.of(itemId: "book-1", title: "t", author: "a", kindSymbol: "book.closed", isLive: false,
@@ -75,7 +75,7 @@ struct WidgetLineTests {
 
     /// The real player, a book: the pause writes the fields as position
     /// and length give them, no steps, and the book's kind.
-    @Test("ein Hoerbuch schreibt nach der Pause denselben Schnappschuss wie vorher, dazu seine Art", .needsAudio)
+    @Test("an audiobook writes the same snapshot after the pause as before, plus its kind", .needsAudio)
     func aBookWritesTheSameSnapshot() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -101,7 +101,7 @@ struct WidgetLineTests {
     /// A station from a host that sends without a length and without an
     /// end, the way an Icecast station does: the player's duration grows
     /// with the position, and the pause still writes it as live.
-    @Test("ein Sender ohne Laenge schreibt nach der Pause live, ohne vollen Balken und ohne Restzeit", .needsAudio)
+    @Test("a station without a length writes live after the pause, without a full bar and without remaining time", .needsAudio)
     func aPausedStationIsLive() async throws {
         let host = try EndlessHost(chunk: try adts(seconds: 0.5))
         try await host.start()
@@ -187,7 +187,7 @@ struct WidgetLineTests {
 
     /// The description in the widget gallery and in "Edit Widget": the
     /// English key says "tap", the German value says it the same way.
-    @Test("die Beschreibung von Weiterhoeren: mit einem Tippen, im Widget und im Katalog", .needsTheSources)
+    @Test("the description of Continue Listening: with a tap, in the widget and in the catalog", .needsTheSources)
     func theDescriptionSaysOneTap() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains(".description(\"The last thing you played, one tap away.\")"))

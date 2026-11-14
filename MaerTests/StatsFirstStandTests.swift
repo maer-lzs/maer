@@ -38,7 +38,7 @@ struct StatsFirstStandTests {
         return (MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path), directory)
     }
 
-    @Test("ein Start ohne Zeilen wartet auf den ersten Stand des Traegers, sonst nicht")
+    @Test("a start without rows waits for the first stand of the carrier, otherwise not")
     func whoWaits() {
         let seen = ListeningStatsData(secondsPerDay: ["d": 1], secondsPerItem: [:])
         let table: [(RowBase<ListeningStatsData>, Bool, Bool)] = [
@@ -55,7 +55,7 @@ struct StatsFirstStandTests {
         }
     }
 
-    @Test("dieselbe Frage fuer Halt und Zuruecknehmen: nur ein Start, der keine Zeile lesen konnte, nimmt den Topf zurueck")
+    @Test("the same question for hold and taking back: only a start that could read no row takes the pot back")
     func whoTakesThePotBack() {
         let seen = ListeningStatsData(secondsPerDay: ["d": 1], secondsPerItem: [:])
         let pot = ListeningStatsData(secondsPerDay: ["d": 5], secondsPerItem: [:])
@@ -74,7 +74,7 @@ struct StatsFirstStandTests {
         }
     }
 
-    @Test("nach einer Neuinstallation wird der spaet eintreffende eigene Topf zurueckgenommen, nicht ueberschrieben")
+    @Test("after a reinstall the own pot that arrives late is taken back, not overwritten")
     func aLatePotIsTakenBackNotReplaced() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -99,7 +99,7 @@ struct StatsFirstStandTests {
         #expect(sent.secondsPerDay["2026-01-02"] == 900, "the published pot keeps the days from before")
     }
 
-    @Test("nach dem Halt kommt der Topf von vorher als Summe dazu: derselbe Tag und derselbe Titel ergeben 930")
+    @Test("after the hold the pot from before is added as a sum: the same day and the same title give 930")
     func theHeldStartAddsThePot() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -150,7 +150,7 @@ struct StatsFirstStandTests {
         return (stats, today, directory)
     }
 
-    @Test("nach dem ersten Veroeffentlichen addiert kein Halt mehr: ein zweiter Traeger mit demselben Tag zaehlt ihn einmal")
+    @Test("after the first publish no hold adds any more: a second carrier with the same day counts it once")
     func theSumRunsBeforeTheFirstPublishOnly() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -168,7 +168,7 @@ struct StatsFirstStandTests {
     /// than the one signed in, and the shelf the handing over writes to is
     /// not writable. The sum stands in the stock all the same, so the second
     /// carrier's pot with the same history is not added again.
-    @Test("haelt das Veroeffentlichen nach der Summe, weil der Besitzer wartet, addiert der naechste Traeger nicht noch einmal")
+    @Test("if the publish after the sum holds because the owner waits, the next carrier does not add again")
     func aWaitingOwnerKeepsTheSumOnce() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -206,7 +206,7 @@ struct StatsFirstStandTests {
         #expect(stats.ownData.secondsPerItem[title] == 930, "the title counts once, not 1830")
     }
 
-    @Test("ein leerer erster Topf: nach dem Veroeffentlichen nimmt der zweite Traeger das Maximum, dieser Lauf faellt auf einem gemeinsamen Tag weg")
+    @Test("an empty first pot: after the publish the second carrier takes the maximum, this run drops out on a shared day")
     func anEmptyFirstPotTakesTheLargerValueLater() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -223,7 +223,7 @@ struct StatsFirstStandTests {
         #expect(stats.ownData.secondsPerItem[title] == 900)
     }
 
-    @Test("ein Traeger, der nie liefert, haelt den Topf nur bis zur Frist")
+    @Test("a carrier that never delivers holds the pot only until the limit")
     func theWaitEndsAtItsLimit() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -242,7 +242,7 @@ struct StatsFirstStandTests {
         #expect(carrier.published.last?.secondsPerItem["rss:first-stand:limit"] == 30, "the next pause after the limit publishes")
     }
 
-    @Test("CloudKit: der eigene Datensatz von vorher wird gelesen, bevor der neue Topf hinausgeht")
+    @Test("CloudKit: the own record from before is read before the new pot goes out")
     func cloudKitReadsTheOwnRecordFirst() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -282,7 +282,7 @@ struct StatsFirstStandTests {
         #expect(counted(pot) >= 30, "and this run's listening is in it")
     }
 
-    @Test("Mär Sync: der eigene Topf von vorher wird einmal gelesen, und der naechste Schrieb nennt seine Fassung")
+    @Test("Mär Sync: the own pot from before is read once, and the next write names its version")
     func theServiceReadsTheOwnPotOnce() async throws {
         let name = "first-stand-service-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -307,7 +307,7 @@ struct StatsFirstStandTests {
         #expect(write.ifMatch == stored, "the write names the version it read")
     }
 
-    @Test("der Schluessel-Speicher: der Speicher von iCloud wartet auf seine Meldung, einer im Speicher nicht")
+    @Test("the key store: the iCloud store waits for its notice, one in memory does not")
     func theKeyValueStoreWaitsOnlyForICloud() {
         #expect(KeyValueStatsCarrier(store: InMemoryCloudStore()).hasDeliveredFirst, "a store in memory has no far side")
         #expect(!KeyValueStatsCarrier(store: NSUbiquitousKeyValueStore.default).hasDeliveredFirst,

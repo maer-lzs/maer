@@ -113,7 +113,7 @@ nonisolated enum SourceTree {
 /// says nothing and returns each. Neither of these two reads the tree, so
 /// neither carries a condition; the count of walks reads the tests.
 struct SourceTreeWalkTests {
-    @Test("ein Lauf ueber einen Ordner, den es nicht gibt, meldet ein Issue")
+    @Test("a walk over a folder that does not exist reports an issue")
     func aWalkOverNothingSaysSo() {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("no-tree-\(UUID().uuidString)")
         withKnownIssue("the walk over a missing folder records its issue") {
@@ -121,7 +121,7 @@ struct SourceTreeWalkTests {
         }
     }
 
-    @Test("ein Lauf ueber Dateien meldet nichts und liefert jede, auch in Unterordnern")
+    @Test("a walk over files reports nothing and returns each, also in subfolders")
     func aWalkOverFilesFindsEach() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("tree-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -140,7 +140,7 @@ struct SourceTreeWalkTests {
         "FeedAuthOwnerTests.swift": (1, "the folder of a test rig, not the tree"),
     ]
 
-    @Test("kein Test laeuft selbst ueber einen Ordner, ausser dem einen Lauf und dem Ordner eines Pruefstands", .needsTheTests)
+    @Test("no test walks a folder itself, except the one walk and the folder of a test bench", .needsTheTests)
     func everyWalkGoesThroughTheOne() {
         // Built from two parts, so this file does not count its own search.
         let token = "FileManager.default." + "enumerator("

@@ -38,7 +38,7 @@ struct StringCatalogOrderTests {
         }
     }
 
-    @Test("Der String-Katalog liegt in Xcodes Ordnung, sonst macht der naechste Bau den Baum schmutzig", .needsTheSources)
+    @Test("The string catalog lies in Xcode's order, otherwise the next build makes the tree dirty", .needsTheSources)
     func theCatalogIsInXcodesOrder() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
@@ -63,7 +63,7 @@ struct StringCatalogOrderTests {
             .map { $0.offset + 1 }
     }
 
-    @Test("Die String-Kataloge haben keine leere Zeile, die der naechste Bau entfernen wuerde", .needsTheSources)
+    @Test("The string catalogs have no empty line that the next build would remove", .needsTheSources)
     func theCatalogsHaveNoEmptyLine() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for name in ["Localizable.xcstrings", "InfoPlist.xcstrings"] {
@@ -98,7 +98,7 @@ struct StringCatalogOrderTests {
             + ServerGuides.localizedKeys
     }
 
-    @Test("Der String-Katalog traegt keinen stale-Schluessel: was der Bau nicht ausgibt, ist weg (GOAL-3-4 Platz 8)", .needsTheSources)
+    @Test("The string catalog carries no stale key: what the build does not output is gone (GOAL-3-4 Platz 8)", .needsTheSources)
     func theCatalogCarriesNoStaleKey() throws {
         let entries = try Self.entries()
         #expect(entries.count > 1000, "the precondition: the keys were read")
@@ -142,7 +142,7 @@ struct StringCatalogOrderTests {
     /// gone sits unmarked in the catalog until someone builds in Xcode, and
     /// then that tree is dirty. Every key but the dynamic ones held manual
     /// stands as a string literal in the app or widget sources.
-    @Test("Jeder Schluessel des String-Katalogs steht als Literal im Quelltext, ein toter macht den naechsten Xcode-Bau schmutzig", .needsTheSources)
+    @Test("Every key of the string catalog stands as a literal in the source, a dead one makes the next Xcode build dirty", .needsTheSources)
     func everyCatalogKeyStandsInTheSources() throws {
         let entries = try Self.entries()
         var source = ""
@@ -190,7 +190,7 @@ struct StringCatalogOrderTests {
     /// true)` and missed the second, which it then marked stale. Its German
     /// held only while the stale entry was built along. A wording stands in
     /// an initializer of its own, never as a tuple in a branch.
-    @Test("Kein Wortlaut steht als Literal-Tupel im Zweig einer Bedingung, Xcode zieht ihn dort nicht heraus", .needsTheSources)
+    @Test("No wording stands as a literal tuple in the branch of a conditional, Xcode does not extract it there", .needsTheSources)
     func noWordingStandsInATupleBranch() throws {
         var found: [String] = []
         for folder in ["Sources", "LiveActivityWidget"] {
@@ -220,7 +220,7 @@ struct StringCatalogOrderTests {
             """).count == 1)
     }
 
-    @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen", .needsTheSources)
+    @Test("Every dynamic guide key stands in the catalog as manual, otherwise its German drops out at the next cleanup", .needsTheSources)
     func everyDynamicGuideKeyIsHeldManual() throws {
         let entries = try Self.entries()
         let keys = Set(Self.dynamicKeys)

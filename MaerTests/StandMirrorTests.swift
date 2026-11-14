@@ -22,7 +22,7 @@ struct StandMirrorTests {
         return (StandMirror(store: store), store)
     }
 
-    @Test("Jeder Schreibweg des Bestands landet in der Tabelle, in seiner Reihenfolge")
+    @Test("Every write path of the stock lands in the table, in its order")
     func everyWritePathLandsInOrder() async throws {
         let defaults = suite()
         let (mirror, store) = try await mirror()
@@ -52,7 +52,7 @@ struct StandMirrorTests {
     /// The start is the normal case (Rule 9): a stock of old entries in every
     /// shape, one transaction, keys untouched, a second start writes nothing
     /// and never over a newer row.
-    @Test("Der Start giesst den Altbestand einmal in die Tabelle; die Schluessel bleiben; ein zweiter Start schreibt nichts")
+    @Test("The start pours the old stock into the table once; the keys stay; a second start writes nothing")
     func startPoursTheStockOnceAndKeepsTheKeys() async throws {
         let defaults = suite()
         let t = 1_700_000_000_000.0

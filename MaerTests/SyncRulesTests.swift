@@ -7,13 +7,13 @@
 import Testing
 @testable import Maer
 
-/// Tests für die reinen Sync-Entscheidungsregeln (SyncRules) und die
-/// Multi-File-Zeitrechnung (TrackMath). Der gehärtete Kern der App.
+/// Tests for the pure sync decision rules (SyncRules) and the
+/// multi-file time arithmetic (TrackMath). The hardened core of the app.
 struct SyncRulesTests {
 
-    // MARK: - Eigenes Echo nach einem Funkloch (isOwnServerEcho)
+    // MARK: - Own echo after a dead spot (isOwnServerEcho)
 
-    @Test("Funkloch: der Server haelt den eigenen Schrieb von vor 35 s, die Warteschlange ist weiter, lokal bleibt")
+    @Test("Dead spot: the server holds the own write from 35 s ago, the queue is further along, local stays")
     func deadSpotKeepsTheLocalPosition() {
         // The last write the server took: 965. Then the dead spot: the ticks
         // queued 1000 and moved lastSyncedTime on. The server's moment is
@@ -34,7 +34,7 @@ struct SyncRulesTests {
         #expect(!SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: 1000))
     }
 
-    @Test("ein fremdes Geraet voraus wird weiter uebernommen, auch mit eigener Warteschlange")
+    @Test("a foreign device ahead is still taken over, even with an own queue")
     func aForeignDeviceAheadIsStillAdopted() {
         #expect(!SyncRules.isOwnServerEcho(serverTime: 1200, lastSyncedTime: 1000,
                                            flushedTime: 965, queuedTime: 1000))
@@ -42,13 +42,13 @@ struct SyncRulesTests {
             serverTime: 1200, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 1000))
     }
 
-    @Test("ein bewusstes Zurueckspulen des anderen Geraets ohne eigene Warteschlange wird uebernommen")
+    @Test("a deliberate rewind on the other device without an own queue is taken over")
     func aForeignRewindWithoutAQueueIsAdopted() {
         #expect(!SyncRules.isOwnServerEcho(serverTime: 500, lastSyncedTime: 1000,
                                            flushedTime: 965, queuedTime: nil))
     }
 
-    // MARK: - Geräte-Abgleich (shouldAdoptServerState)
+    // MARK: - Device reconcile (shouldAdoptServerState)
 
     @Test func adoptsNewerServerEntryForward() {
         #expect(SyncRules.shouldAdoptServerState(
@@ -56,7 +56,7 @@ struct SyncRulesTests {
         ))
     }
 
-    @Test("Bewusstes Zurückspulen auf anderem Gerät: neuerer Eintrag gewinnt auch rückwärts")
+    @Test("Deliberate rewind on another device: the newer entry wins backwards too")
     func adoptsNewerServerEntryBackward() {
         #expect(SyncRules.shouldAdoptServerState(
             serverTime: 100, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 500
@@ -69,14 +69,14 @@ struct SyncRulesTests {
         ))
     }
 
-    @Test("Nach eigenem Write: Eintrag neuer, Position aber (fast) identisch")
+    @Test("After an own write: entry newer, but position (almost) identical")
     func ignoresOwnWriteEcho() {
         #expect(!SyncRules.shouldAdoptServerState(
             serverTime: 101, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 100
         ))
     }
 
-    @Test("Alte Server ohne Zeitstempel: nur vorwärts übernehmen")
+    @Test("Old servers without a timestamp: take over forwards only")
     func legacyServerWithoutTimestamp() {
         #expect(SyncRules.shouldAdoptServerState(
             serverTime: 500, serverUpdateMs: 0, lastKnownServerUpdateMs: 0, currentTime: 100
@@ -111,7 +111,7 @@ struct SyncRulesTests {
         ) == .send)
     }
 
-    @Test("Statusentscheidung: finished-Updates werden nie verworfen")
+    @Test("Status decision: finished updates are never discarded")
     func neverDropsFinishedUpdates() {
         #expect(SyncRules.queuedFate(
             queuedTime: 100, queuedIsFinished: true, duration: 1000,
@@ -119,14 +119,14 @@ struct SyncRulesTests {
         ) == .send)
     }
 
-    @Test("ohne Servereintrag geht der wartende Stand raus, es gibt nichts zu ueberschreiben")
+    @Test("without a server entry the waiting stand goes out, there is nothing to overwrite")
     func sendsQueuedUpdateWithoutServerEntry() {
         #expect(SyncRules.queuedFate(
             queuedTime: 100, queuedIsFinished: false, duration: 1000, server: nil
         ) == .send)
     }
 
-    @Test("ein wartendes 0 ohne bekannte Dauer geht nie ueber einen weiteren Serverstand")
+    @Test("a waiting 0 without a known duration never overrides a further server stand")
     func aQueuedZeroWithoutDurationNeverOverwrites() {
         // The server's time stands, its fraction is stale: a write without a
         // known duration sends no fraction.
@@ -140,7 +140,7 @@ struct SyncRulesTests {
         ) == .drop)
     }
 
-    @Test("ein Servereintrag ohne bekannte Stelle haelt den wartenden Stand, er geht nicht raus")
+    @Test("a server entry without a known position holds the waiting stand, it does not go out")
     func anUnknownServerPositionHoldsTheUpdate() {
         #expect(SyncRules.queuedFate(
             queuedTime: 100, queuedIsFinished: false, duration: 0,
@@ -153,7 +153,7 @@ struct SyncRulesTests {
         ) == .send)
     }
 
-    // MARK: - Crash-Sicherung (shouldRestoreLocalPosition)
+    // MARK: - Crash safeguard (shouldRestoreLocalPosition)
 
     @Test func restoresNewerLocalPosition() {
         #expect(SyncRules.shouldRestoreLocalPosition(
@@ -173,12 +173,12 @@ struct SyncRulesTests {
         ))
     }
 
-    // MARK: - Verdächtiger Rückschritt (isSuspiciousDrop)
+    // MARK: - Suspicious step back (isSuspiciousDrop)
 
     @Test(arguments: [
-        (current: 0.0, expected: true),    // harter Reset → verdächtig
-        (current: 450.0, expected: false), // kleiner Rückschritt → ok
-        (current: 600.0, expected: false)  // vorwärts → ok
+        (current: 0.0, expected: true),    // hard reset → suspicious
+        (current: 450.0, expected: false), // small step back → ok
+        (current: 600.0, expected: false)  // forwards → ok
     ])
     func detectsSuspiciousDrop(current: Double, expected: Bool) {
         #expect(SyncRules.isSuspiciousDrop(
@@ -189,7 +189,7 @@ struct SyncRulesTests {
 
 /// The flushed witness. Every case here is one the MEASUREMENT
 /// produced on the simulator, not an invented one.
-@Suite("Der geflusht-Zeuge traegt den Start nur, wenn der Server nichts Besseres sagt")
+@Suite("The flushed witness carries the start only when the server says nothing better")
 struct FlushedWitnessTests {
 
     /// The measured incident: downloaded book, crash backup deleted, cached
@@ -246,30 +246,30 @@ struct FlushedWitnessTests {
     }
 }
 
-/// Das Stomp-Fenster. Der gefaehrliche Pfad braucht einen Testfall:
-/// frische Sitzung, Position nahe 0, Server deutlich voraus.
-@Suite("Ein Start ohne Antwort darf nichts zum Server schreiben")
+/// The stomp window. The dangerous path needs a test case:
+/// fresh session, position near 0, server clearly ahead.
+@Suite("A start without an answer must write nothing to the server")
 struct StompWindowTests {
 
-    /// Der gemeldete Realfall: Vollplayer bei 00:00, Server bei 8:29:33.
-    /// Ein Push von hier ueberschriebe acht Stunden.
+    /// The reported real case: full player at 00:00, server at 8:29:33.
+    /// A push from here would overwrite eight hours.
     @Test func unresolvedStartMayNotPush() {
         #expect(!SyncRules.mayPushProgress(startSourceResolved: false))
     }
 
-    /// Ein Server, der nichts weiss, IST eine Antwort. Ein wirklich neues Buch
-    /// muss seinen Fortschritt melden koennen.
+    /// A server that knows nothing IS an answer. A really new book
+    /// must be able to report its progress.
     @Test func answeredStartPushesAsBefore() {
         #expect(SyncRules.mayPushProgress(startSourceResolved: true))
     }
 }
 
-/// Die dritte Erscheinung der eingefrorenen Null.
-@Suite("Weiterhoeren fragt die gewonnene Quelle")
+/// The third appearance of the frozen zero.
+@Suite("Continue Listening asks the won source")
 struct ContinueStartedTests {
 
-    /// Der Testfall: heruntergeladen, Detail-Progress leer, Server voraus.
-    /// Die Karte MUSS stehen. Der Zeuge ist der Beweis des Angefangenhabens.
+    /// The test case: downloaded, detail progress empty, server ahead.
+    /// The card MUST stand. The witness is the proof of having started.
     @Test func frozenZeroDoesNotDeleteTheCard() {
         #expect(ContinueSources.isStarted(serverSaysStarted: false,
                                           flushed: [8_000, 1_000]))
@@ -279,8 +279,8 @@ struct ContinueStartedTests {
         #expect(ContinueSources.isStarted(serverSaysStarted: true, flushed: nil))
     }
 
-    /// Ein Antippen ist kein begonnenes Buch. Dieselbe 30-s-Kante wie in
-    /// `started(in:)`, nicht eine zweite erfunden.
+    /// A tap is no begun book. The same 30 s edge as in
+    /// `started(in:)`, not a second one invented.
     @Test func aTapIsNotAStartedBook() {
         #expect(!ContinueSources.isStarted(serverSaysStarted: false, flushed: [12, 1_000]))
         #expect(!ContinueSources.isStarted(serverSaysStarted: false, flushed: nil))
@@ -293,7 +293,7 @@ struct TrackMathTests {
         ABSAudioTrack(index: index, startOffset: start, duration: duration, contentUrl: "t\(index)", metadata: nil)
     }
 
-    /// Drei Tracks à 100 s, Buchdauer 300.
+    /// Three tracks of 100 s each, book duration 300.
     private var tracks: [ABSAudioTrack] {
         [track(index: 0, duration: 100), track(index: 1, duration: 100), track(index: 2, duration: 100)]
     }
@@ -318,13 +318,13 @@ struct TrackMathTests {
         (time: 99.9, expected: 0),
         (time: 100.0, expected: 1),
         (time: 250.0, expected: 2),
-        (time: 999.0, expected: 2)  // hinter Buchende → letzter Track
+        (time: 999.0, expected: 2)  // past the end of the book → last track
     ])
     func trackIndexForAbsoluteTime(time: Double, expected: Int) {
         #expect(TrackMath.trackIndex(for: time, tracks: tracks, bookDuration: 300) == expected)
     }
 
-    @Test("Fehlende Dauern dürfen nicht crashen; Rest fällt auf letzten Track")
+    @Test("Missing durations must not crash; the rest falls to the last track")
     func trackIndexWithMissingDurations() {
         let t = [track(index: 0, duration: nil), track(index: 1, duration: 100)]
         #expect(TrackMath.trackIndex(for: 50, tracks: t, bookDuration: 100) == 1)

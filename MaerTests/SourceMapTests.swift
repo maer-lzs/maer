@@ -57,7 +57,7 @@ struct SourceMapTests {
     /// A gpodder switched off with its credentials still stored was named
     /// as the sync (seen on a device); with the sync service carrying, the
     /// line names the service.
-    @Test("die Podcast-Zeile nennt nur einen Abgleich, der an ist, und Mär Sync, wenn er traegt")
+    @Test("the podcast line names only a sync that is on, and Mär Sync when it carries")
     func thePodcastLineNamesOnlyASyncThatIsOn() {
         var facts = SourceMapFacts()
         facts.gpodderConfigured = true

@@ -18,7 +18,7 @@ struct StatsCarrierTests {
     private let pot = ListeningStatsData(secondsPerDay: ["2026-09-10": 600],
                                          secondsPerItem: ["radio:a": 500, "rss:show:ep": 100])
 
-    @Test("der Schluessel-Traeger: ein Schluessel je Geraet, nur der eigene wird geschrieben, alle werden gelesen")
+    @Test("the key carrier: one key per device, only the own one is written, all are read")
     func keyValueCarrierKeepsOneKeyPerDevice() throws {
         let store = InMemoryCloudStore()
         let carrier = KeyValueStatsCarrier(store: store)
@@ -36,7 +36,7 @@ struct StatsCarrierTests {
         #expect(pots["dev-b"] == foreign)
     }
 
-    @Test("der Dienst-Traeger: ein Dokument je Geraet, fremde Toepfe ueber die Liste, kein Deckel")
+    @Test("the service carrier: one document per device, foreign pots through the list, no ceiling")
     func serviceCarrierWritesOneDocumentPerDevice() async throws {
         let name = "stats-carrier-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -70,14 +70,14 @@ struct StatsCarrierTests {
         #expect(session.claims.isEmpty)
     }
 
-    @Test("die Fabrik stellt die Statistik auf den Dienst, sobald ein Zugang da ist, und sonst auf den Schluessel")
+    @Test("the factory puts the statistics on the service as soon as an access exists, and otherwise on the key")
     func theFactoryChoosesByAccess() {
         let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
         #expect(StatsCarriers.make(access: access) is MaerSyncStatsCarrier)
         #expect(StatsCarriers.make(access: nil) is KeyValueStatsCarrier)
     }
 
-    @Test("der Topf reist als sein eigenes JSON mit sortierten Schluesseln; Unlesbares ist kein Topf")
+    @Test("the pot travels as its own JSON with sorted keys; what is unreadable is no pot")
     func theStatsWire() throws {
         let bytes = try MaerSyncStatsWire.encode(pot)
         #expect(try MaerSyncStatsWire.encode(pot) == bytes)
@@ -88,7 +88,7 @@ struct StatsCarrierTests {
                 == ListeningStatsData(secondsPerDay: ["2026-01-01": 5], secondsPerItem: [:]))
     }
 
-    @Test("die Kappen gehoeren dem Deckel: was reist und was bleibt, entscheidet der Traeger")
+    @Test("the caps belong to the ceiling: what travels and what stays is decided by the carrier")
     func theCapsBelongToTheCeiling() {
         // On the key-value store only the live items travel and the item
         // pot is capped; the rules themselves are unchanged.

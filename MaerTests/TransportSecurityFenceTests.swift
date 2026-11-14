@@ -29,7 +29,7 @@ struct TransportSecurityFenceTests {
         return top["NSAppTransportSecurity"] as? [String: Any]
     }
 
-    @Test("die Plist erlaubt plain http mit genau dem globalen Schluessel, ohne feineren daneben", .needsTheSources)
+    @Test("the plist allows plain http with exactly the global key, without a finer one beside it", .needsTheSources)
     func thePlistHoldsExactlyTheGlobalKey() throws {
         let declaration = try #require(Self.transportSecurity(), "the plist has no NSAppTransportSecurity dict")
         #expect(declaration["NSAllowsArbitraryLoads"] as? Bool == true, "the global key is missing or false")
@@ -45,7 +45,7 @@ struct TransportSecurityFenceTests {
     /// address; since the sealed session it does not. Zero hits in the
     /// sources and the catalog, and the two new sentences hang on the
     /// catalog with a German form.
-    @Test("die alte Klartext-Behauptung kommt nicht mehr vor, und die zwei neuen Saetze haengen am Katalog", .needsTheSources)
+    @Test("the old clear-text claim no longer occurs, and the two new sentences hang on the catalog", .needsTheSources)
     func theSentencesAreTheMeasuredOnes() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources)

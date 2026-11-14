@@ -36,7 +36,7 @@ struct TransportSecurityWitnessTests {
         return found
     }
 
-    @Test("die Tuer der App erreicht eine plain-http-Adresse ausserhalb privater Bereiche",
+    @Test("the app's door reaches a plain http address outside private ranges",
           .enabled("no plain http host answers below the platform's rule, so there is nothing to measure") {
               let found = await TransportSecurityWitnessTests.answering()
               return !found.isEmpty

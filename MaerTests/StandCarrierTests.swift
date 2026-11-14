@@ -35,7 +35,7 @@ struct StandCarrierTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("die Raeumung gehoert dem Deckel, nicht dem Topf: der Schluessel-Traeger hat einen, ein geraeumiger Traeger nicht") @MainActor
+    @Test("pruning belongs to the cap, not the pot: the key carrier has one, a roomy carrier does not") @MainActor
     func pruningBelongsToTheCeiling() {
         // The blob holds a megabyte for everything, so a finished episode
         // of an unsubscribed show leaves it. CloudKit has room, and there
@@ -52,7 +52,7 @@ struct StandCarrierTests {
         #expect(PodcastCloudSync.travels(id: "rss:kept:ep", entry: finished, isSubscribedShow: { _ in true }))
     }
 
-    @Test("der Laeufer liest und schreibt nur ueber den Traeger: fremd neuer kommt an, eigen neuer geht hinaus, Grabstein ist ein Schrieb") @MainActor
+    @Test("the runner reads and writes only through the carrier: a newer foreign stand arrives, a newer own stand goes out, a tombstone is a write") @MainActor
     func runnerTalksOnlyToTheCarrier() {
         // The runner is silent without the switch, so the switch is SET here
         // and put back afterwards. Reading it and returning would be a case
@@ -94,7 +94,7 @@ struct StandCarrierTests {
         #expect(carrier.writes.last?.upserts[id]?[0] == 0)
     }
 
-    @Test("das Sende-Tor sitzt im Laeufer: innerhalb der Kadenz des Traegers sendet der Tick nicht, ein Anlass immer") @MainActor
+    @Test("the send gate sits in the runner: within the carrier's cadence the tick does not send, an occasion always does") @MainActor
     func theSendGateIsTheRunners() {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -119,7 +119,7 @@ struct StandCarrierTests {
         #expect(carrier.writes.count == 3, "the cadence is due again")
     }
 
-    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher und den Blob", .needsTheSources) @MainActor
+    @Test("the fence: only the key carrier names the store and the blob", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/PodcastCloudSync.swift"), encoding: .utf8)
@@ -130,7 +130,7 @@ struct StandCarrierTests {
         #expect(KeyValueStandCarrier.blobKey == "podcastProgress")
     }
 
-    @Test("der Schluessel-Traeger: ein Blob, Einfuegen und Entfernen, nur Eintraege mit Moment") @MainActor
+    @Test("the key carrier: one blob, insert and remove, only entries with a moment") @MainActor
     func keyValueCarrierHoldsOneBlob() {
         let store = InMemoryCloudStore()
         let carrier = KeyValueStandCarrier(cloud: store, spacingSeconds: 0)
@@ -152,7 +152,7 @@ struct StandCarrierTests {
         #expect(carrier.stands().keys.sorted() == ["b", "d"])
     }
 
-    @Test("der nachlaufende Schrieb: innerhalb der Spanne wartet der zweite und traegt den Stand des ersten mit") @MainActor
+    @Test("the trailing write: within the span the second waits and carries the stand of the first along") @MainActor
     func trailingWriteKeepsTheQueuedState() async throws {
         let store = InMemoryCloudStore()
         let carrier = KeyValueStandCarrier(cloud: store, spacingSeconds: 0.2)

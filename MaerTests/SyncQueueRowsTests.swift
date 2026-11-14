@@ -33,7 +33,7 @@ struct SyncQueueRowsTests {
         return Home(directory: directory)
     }
 
-    @Test("eine frische Installation schreibt Zeilen; ein Eintrag ist gelandet, wenn enqueue zurueckkehrt")
+    @Test("a fresh install writes rows; an entry has landed when enqueue returns")
     func freshInstallWritesRows() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -55,7 +55,7 @@ struct SyncQueueRowsTests {
         #expect(again.allPending() == queue.allPending())
     }
 
-    @Test("ein entfernter Eintrag verlaesst die Zeile, bevor der naechste Start ihn zurueckholen koennte")
+    @Test("a removed entry leaves the row before the next start could bring it back")
     func aRemovedEntryLeavesTheRows() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -84,7 +84,7 @@ struct SyncQueueRowsTests {
         }
     }
 
-    @Test("die Schlange laesst nur einen Titel fallen, den der Server nicht kennt; 403 und ein voruebergehender Fehler bleiben")
+    @Test("the queue drops only a title that the server does not know; 403 and a transient error stay")
     func onlyAnAbsentTitleLeavesTheQueue() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

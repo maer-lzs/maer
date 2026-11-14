@@ -20,12 +20,12 @@ struct StatsNamesTests {
     /// name among the heard, a subscribed one its own, an unknown id none.
     nonisolated static let names = SharedCases.cases("show-names")
 
-    @Test("gemeinsame Faelle: show-names traegt drei Faelle")
+    @Test("shared cases: show-names carries three cases")
     func nameCasesLoaded() {
         #expect(Self.names.count == 3)
     }
 
-    @Test("gemeinsame Faelle: showTitle antwortet je Fall wie die Datei sagt", arguments: names)
+    @Test("shared cases: showTitle answers each case as the file says", arguments: names)
     func showTitle(_ c: SharedCase) throws {
         let input = try c.value("input")
         let showId = try #require(input["showId"]?.string
@@ -41,7 +41,7 @@ struct StatsNamesTests {
         #expect(PodcastIdentity.showTitle(for: showId, in: shows, heard: heard) == c["expect"]?.string, "\(c.slug)")
     }
 
-    @Test("ein Sender, der aus Wieder hoeren gefallen ist, behaelt seinen Namen aus Meistgespielt")
+    @Test("a station that dropped out of Listen Again keeps its name from Most Played")
     func aStationOutOfListenAgainKeepsItsName() {
         let name = "stats-names-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -54,7 +54,7 @@ struct StatsNamesTests {
         #expect(RadioStore.stationName(forId: "radio:rb:none", defaults: defaults) == nil)
     }
 
-    @Test("unter einer Minute steht nichts in meistgehoert und nimmt keinen Platz")
+    @Test("under a minute nothing appears in most heard and takes no place")
     @MainActor func nothingUnderAMinute() throws {
         #expect(StatsView.shortest == 60)
         // The limit leaves room, so only the floor can keep the 59 out.
@@ -78,7 +78,7 @@ struct StatsNamesTests {
                 "der Sender mit 0 Min. steht nicht da und verdraengt keinen")
     }
 
-    @Test("GT-25/26: die Seite zeigt nie eine Kennung, die Dauer steht in einer Zeile rechts, beide Listen tragen die Minute", .needsTheSources)
+    @Test("GT-25/26: the page never shows an id, the duration sits in one line on the right, both lists carry the minute", .needsTheSources)
     func thePageWiresTheRules() throws {
         let view = try Self.source("Sources/Views/StatsView.swift")
         #expect(!view.contains("?? entry.id") && !view.contains("?? showId"), "keine Kennung als Ersatz")

@@ -21,7 +21,7 @@ struct UpNextAutoTests {
                         isUnheard: { !heard.contains($0) }, isQueued: { queued.contains($0) })
     }
 
-    @Test("die Regel als Tabelle: aus, oben, hinten; gehoert, angefangen, schon drin, vor dem Einschalten; zwei Sendungen nach Erscheinen")
+    @Test("the rule as a table: off, top, end; heard, begun, already in, before switching on; two shows by appearance")
     func theRuleAsATable() {
         let arrivals = [Arrival(id: "a2", showId: "A", pubDate: 2_000), Arrival(id: "a1", showId: "A", pubDate: 1_500),
                         Arrival(id: "b1", showId: "B", pubDate: 1_800), Arrival(id: "c1", showId: "C", pubDate: 1_900),
@@ -45,7 +45,7 @@ struct UpNextAutoTests {
         #expect(mixed.end == ["x1", "y1", "x2"])
     }
 
-    @Test("ein Feed, der seine Kennungen neu vergibt, flutet nichts: 50 neue Kennungen, alle vor dem Einschalten erschienen")
+    @Test("a feed that reissues its ids floods nothing: 50 new ids, all appeared before switching on")
     func newIdsForAnOldBacklogQueueNothing() {
         let stored = Self.show("flood", episodes: (0..<50).map { ("old-\($0)", Double($0) * 1_000) })
         let moved = Self.show("flood", episodes: (0..<50).map { ("new-\($0)", Double($0) * 1_000) })
@@ -57,7 +57,7 @@ struct UpNextAutoTests {
         #expect(Self.plan(arrivals, placement: [stored.id: .top], since: [stored.id: -1]).top.count == 50)
     }
 
-    @Test("was ankommt, ist nur, was die Ablage vorher nicht hatte; eine Sendung zum ersten Mal bringt nichts")
+    @Test("what arrives is only what the storage did not have before; a show for the first time brings nothing")
     func onlyWhatWasNotStoredArrives() {
         let stored = Self.show("arrive", episodes: [("e1", 1_000), ("e2", 2_000)])
         let fresh = Self.show("arrive", episodes: [("e2", 2_000), ("e3", 3_000)])
@@ -66,7 +66,7 @@ struct UpNextAutoTests {
         #expect(UpNextAuto.arrivals(stored: nil, merged: fresh).isEmpty, "the first contact is the backlog")
     }
 
-    @Test("die Warteschlange: oben als Block vor dem Bestand, hinten danach, nichts Vorhandenes bewegt sich")
+    @Test("the queue: at the top as a block before the stock, at the end after it, nothing existing moves")
     func theQueueTakesBlocks() {
         let queue = PlayQueue()
         queue.playLast("book-1")
@@ -77,7 +77,7 @@ struct UpNextAutoTests {
         #expect(queue.ids.count == 5, "a station never, a queued one not again")
     }
 
-    @Test("ein Auffrischen reiht die neue Folge ein, ein zweites reiht nichts doppelt ein, eine entfernte kommt nicht zurueck, das Einschalten reiht nichts ein")
+    @Test("a refresh queues the new episode, a second one queues nothing twice, a removed one does not come back, switching on queues nothing")
     func aRefreshQueuesOnceAndNotAgain() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("upnext-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -123,7 +123,7 @@ struct UpNextAutoTests {
         #expect(queue.ids.isEmpty, "a removed episode came back")
     }
 
-    @Test("eine uebernommene Wahl ohne Moment bekommt den Moment des Auffrischens, und was jetzt ankommt, bleibt draussen")
+    @Test("an adopted choice without a moment gets the moment of the refresh, and what arrives now stays out")
     func anAdoptedChoiceTakesTheMomentOfTheRefresh() throws {
         let suite = "upnext-adopted-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -137,7 +137,7 @@ struct UpNextAutoTests {
         #expect(queue.ids.isEmpty, "an episode from before the moment was queued")
     }
 
-    @Test("die Wahl reist wie Neue Folgen, der Moment bleibt auf dem Geraet, das offene Blatt liest sie nach")
+    @Test("the choice travels like New Episodes, the moment stays on the device, the open sheet reads it again")
     func whatTravels() {
         #expect(UserChoiceCatalog.prefixes["podcastUpNextAdd."] == .travels)
         #expect(UserChoiceCatalog.travelingPrefixes.contains("podcastUpNextAdd."))
@@ -149,7 +149,7 @@ struct UpNextAutoTests {
         #expect(PodcastShowPreferences.travellingKeys(showId: "s").contains(UpNextAuto.key("s")))
     }
 
-    @Test("jeder Weg, der einen frischen Feed in eine gefolgte Sendung fuehrt, gibt die Ankuenfte an die eine Stelle; das Abonnieren nicht", .needsTheSources)
+    @Test("every path that leads a fresh feed into a followed show hands the arrivals to the one place; subscribing does not", .needsTheSources)
     func everyMergeHandsItsArrivals() throws {
         let source = try PodcastGeneralRuleTests.source("Sources/Providers/PodcastSubscriptions.swift")
         let stripped = SyncContractFenceTests.stripped(source)

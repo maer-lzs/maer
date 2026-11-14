@@ -7,11 +7,11 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Nur eine Kachel, die stehen bleibt, fragt das Netz: die Frist zaehlt ab
-/// dem Erscheinen, eine Kachel, die vorher verschwindet, fragt nicht, und
-/// Speicher und Platte antworten ohne Frist.
+/// Only a tile that stays asks the network: the time counts from
+/// the appearance, a tile that disappears before asks nothing, and
+/// memory and disk answer without a delay.
 struct TileDwellTests {
-    @Test("Regel: 0,4 s fuer ein Cover aus dem Netz, 0,8 s fuer Dauer, Metadaten, Bild und Logo; ausserhalb einer Kachel wartet nichts")
+    @Test("Rule: 0.4 s for a cover from the network, 0.8 s for duration, metadata, image and logo; outside a tile nothing waits")
     func outsideAStayNothingWaits() async {
         #expect(TileDwell.cover == .milliseconds(400) && TileDwell.lookup == .milliseconds(800))
         let clock = ContinuousClock()
@@ -20,7 +20,7 @@ struct TileDwellTests {
         #expect(started.duration(to: clock.now) < .milliseconds(100), "a question outside a tile waited")
     }
 
-    @Test("Kachel: die Frist zaehlt ab dem Erscheinen, eine zweite Frage derselben Kachel wartet nur den Rest")
+    @Test("Tile: the time counts from the appearance, a second question of the same tile waits only the rest")
     func theStayCountsFromAppearance() async {
         let clock = ContinuousClock()
         let started = clock.now
@@ -37,7 +37,7 @@ struct TileDwellTests {
         }
     }
 
-    @Test("Kachel: eine Dauer-Kachel, die vor der Frist verschwindet, fragt nicht; eine, die bleibt, fragt einmal nach 0,8 s")
+    @Test("Tile: a duration tile that disappears before the time asks nothing; one that stays asks once after 0.8 s")
     func aRuntimeTileThatLeavesAsksNothing() async throws {
         let asks = Count()
         let service = ArchiveRuntimeService(
@@ -59,7 +59,7 @@ struct TileDwellTests {
         #expect(asks.count == 1)
     }
 
-    @Test("Kachel: ein Feed-Bild wird fuer eine Kachel, die verschwindet, nicht geholt; fuer eine, die bleibt, einmal")
+    @Test("Tile: a feed image is not fetched for a tile that disappears; for one that stays, once")
     func aFeedImageTileThatLeavesAsksNothing() async throws {
         let asks = Count()
         let service = FeedArtworkService(suite: "TileDwellTests-\(UUID().uuidString)")
@@ -82,7 +82,7 @@ struct TileDwellTests {
         #expect(asks.count == 1)
     }
 
-    @Test("Kachel: ein Cover aus dem Netz wird fuer eine Kachel, die verschwindet, nicht geholt; fuer eine, die bleibt, nach 0,4 s")
+    @Test("Tile: a cover from the network is not fetched for a tile that disappears; for one that stays, after 0.4 s")
     func aCoverTileThatLeavesAsksNothing() async throws {
         // A 404 is absent for the cover door and asked once. A 503 would run
         // the door's retry ladder after the stay, which is not what this
@@ -105,7 +105,7 @@ struct TileDwellTests {
         #expect(await stand.settledCount(expected: 1) >= 1, "the tile that stayed never asked")
     }
 
-    @Test("Flug: eine fuer die Sitzung gehaltene Antwort kommt ohne Frist, und die Metadaten-Tueren fragen sie vor der Frist", .needsTheSources)
+    @Test("Flight: an answer held for the session comes without a delay, and the metadata doors ask it before the time", .needsTheSources)
     func aKeptAnswerWaitsNothing() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 4, bytes: 1000))
         #expect(await flights.kept(for: "k") == nil)
@@ -145,7 +145,7 @@ struct TileDwellTests {
         "PlayQueueView.swift": (1, "the queue row's metadata"),
     ]
 
-    @Test("Zaun: jede Netzstelle einer Kachel-Frage steht erst, jede Kachel markiert ihre Fragen, beide Bestaende fallen nur", .needsTheSources)
+    @Test("Fence: every network site of a tile question stays first, every tile marks its questions, both stocks only fall", .needsTheSources)
     func everyTileQuestionStandsFirst() throws {
         let network = StockDrift.findings(counts: try Self.sites(of: "TileDwell.stood("), stock: Self.networkSites.mapValues(\.count))
         #expect(network.isEmpty, "TileDwell.stood(: \(network)")

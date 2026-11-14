@@ -44,7 +44,7 @@ struct UserChoiceUnknownKindTests {
 
     // MARK: - The rule, pure
 
-    @Test("ueber einen Eintrag unbekannter Art entscheidet die Zeit, angewandt wird er nie")
+    @Test("time decides over an entry of an unknown kind, it is never applied")
     func theMergeDecidesByTimeAndNeverApplies() throws {
         let unknown = try #require(UserChoiceEntry.from(plist: ["t": 5000.0, "v": Date()]))
         #expect(unknown.unknownKind, "the precondition: a value of no known kind reads as unknown")
@@ -70,7 +70,7 @@ struct UserChoiceUnknownKindTests {
 
     // MARK: - The key-value blob
 
-    @Test("ein neuerer Eintrag unbekannter Art loescht hier nichts und geht beim naechsten Schrieb unveraendert hinaus")
+    @Test("a newer entry of an unknown kind deletes nothing here and goes out unchanged at the next write")
     func aNewerUnknownEntryDeletesNothingAndTravelsBack() throws {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -94,7 +94,7 @@ struct UserChoiceUnknownKindTests {
         #expect(a.defaults.object(forKey: key) as? Bool == false, "and nothing here was cleared")
     }
 
-    @Test("ein aelterer Eintrag unbekannter Art verliert gegen die lokale Aussage, ein neuerer Grabstein ersetzt ihn")
+    @Test("an older entry of an unknown kind loses against the local statement, a newer tombstone replaces it")
     func anOlderUnknownEntryLoses() throws {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -126,7 +126,7 @@ struct UserChoiceUnknownKindTests {
                 "the round replaced it with the newer tombstone: \(derived)")
     }
 
-    @Test("ein lokaler Wert unbekannter Art erzeugt keinen Grabstein")
+    @Test("a local value of an unknown kind creates no tombstone")
     func aLocalValueOfAnUnknownKindMakesNoTombstone() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -152,7 +152,7 @@ struct UserChoiceUnknownKindTests {
 
     // MARK: - The service document and the cloud records
 
-    @Test("das Dienst-Dokument reicht einen unbekannten Tag unveraendert durch")
+    @Test("the service document passes an unknown tag through unchanged")
     func theServiceWirePassesAnUnknownTagThrough() throws {
         let body = Data(#"{"entries":{"podcastSort.feed:unknown-kind":{"t":5000,"v":{"z":"neu"}}}}"#.utf8)
         let decoded = try #require(MaerSyncChoiceWire.decode(body))
@@ -162,7 +162,7 @@ struct UserChoiceUnknownKindTests {
         #expect(again == body, "written back byte for byte: \(String(decoding: again, as: UTF8.self))")
     }
 
-    @Test("ein Datensatz unbekannter Art bleibt in der Wolke und wird kein Grabstein")
+    @Test("a record of an unknown kind stays in the cloud and becomes no tombstone")
     func aCloudRecordOfAnUnknownKindStays() throws {
         let payload = Data(#"{"z":"neu"}"#.utf8)
         let record = CloudChoiceRecord(key: key, payload: payload, t: 5000, tombstone: false)
@@ -180,7 +180,7 @@ struct UserChoiceUnknownKindTests {
     /// The service wire tags every kind of value; a new kind is a new tag
     /// and an older build cannot read it, so it raises the format. Held at
     /// the source: the cases of `UserChoiceValue` against format 1.
-    @Test("eine neue Wert-Art hebt das Format des Dienst-Dokuments", .needsTheSources)
+    @Test("a new value kind raises the format of the service document", .needsTheSources)
     func aNewKindOfValueRaisesTheFormat() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/UserChoiceSync.swift"),
                               encoding: .utf8)

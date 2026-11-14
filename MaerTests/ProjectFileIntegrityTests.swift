@@ -1900,9 +1900,7 @@ extension ProjectFileIntegrityTests {
         "PodcastSubscribeNoticeTests.swift": 2,
         "ProjectFileIntegrityTests.swift": 7,
         "PublicReadmeFenceTests.swift": 2,
-        "StockReasonFenceTests.swift": 2,
-        "SyncContractFenceTests.swift": 1,
-        "SyncRulesTests.swift": 1,
+        "StockReasonFenceTests.swift": 1,
     ]
 
     @Test("decision words in the comments of the tests only fall", .needsTheTests)

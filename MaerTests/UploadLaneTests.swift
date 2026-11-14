@@ -11,7 +11,7 @@ import Foundation
 /// An upload is bounded only by the wait without movement, never by a
 /// total: the API lane's 60 s cap ended a book's upload mid-stream.
 struct UploadLaneTests {
-    @Test("ein Hochladen kennt keine Gesamtgrenze der API-Spur")
+    @Test("an upload knows no total limit of the API lane")
     func anUploadHasNoTotalCapOfTheAPILane() throws {
         let upload = HTTP.session(.upload)
         #expect(upload !== HTTP.session(.api), "the upload rides the API lane's session again")
@@ -39,7 +39,7 @@ struct UploadLaneTests {
         return calls
     }
 
-    @Test("jedes Hochladen nimmt die Spur fuer Uploads", .needsTheSources)
+    @Test("every upload takes the lane for uploads", .needsTheSources)
     func everyUploadTakesTheUploadLane() throws {
         let door = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/HTTP.swift"), encoding: .utf8))

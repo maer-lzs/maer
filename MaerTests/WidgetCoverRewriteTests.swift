@@ -22,7 +22,7 @@ struct WidgetCoverRewriteTests {
     /// The mark follows the file: only a written cover moves it, a failed one
     /// leaves it, so the next update tries again instead of showing the
     /// previous title's cover for good.
-    @Test("die Marke des Widget-Covers wandert nur mit einem geschriebenen Bild")
+    @Test("the mark of the widget cover moves only with a written image")
     func theMarkMovesOnlyWithAWrittenCover() {
         #expect(PlayerViewModel.coverMark(previous: "a", current: "b", written: true) == "b")
         #expect(PlayerViewModel.coverMark(previous: "a", current: "b", written: false) == "a",

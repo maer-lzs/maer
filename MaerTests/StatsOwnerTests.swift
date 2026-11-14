@@ -54,7 +54,7 @@ struct StatsOwnerTests {
 
     private var device: String { SyncHistoryStore.deviceId }
 
-    @Test("was das Geraet unter A hoerte, bleibt A's, B beginnt bei null, jedes Konto veroeffentlicht nur seins, auch ueber einen Neustart")
+    @Test("what the device heard under A stays A's, B starts at zero, each account publishes only its own, also across a restart")
     func theTotalsFollowTheAccount() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -99,7 +99,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("ist das Hauptbuch nicht lesbar, wird nichts uebergeben und nichts veroeffentlicht")
+    @Test("if the ledger is not readable, nothing is handed over and nothing is published")
     func anUnreadLedgerHoldsThePublish() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -124,7 +124,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Hoerzeit von A, A's bleibt bei A")
+    @Test("an open replacement of an earlier run and a third account: B's rest carries no listening time of A, A's stays with A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -151,7 +151,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("ein Wechsel ohne Halter: A's Hoerzeit ruht unter A, B beginnt bei null")
+    @Test("a switch without a holder: A's listening time rests under A, B starts at zero")
     func aSwitchWithoutAHolder() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -167,7 +167,7 @@ struct StatsOwnerTests {
         await stats.awaitPendingWrites()
     }
 
-    @Test("ein unlesbares Hauptbuch beim selben Halter: keine fremde Zahl gezeigt oder gesendet, die Seite sagt es; lesbar geworden laeuft alles wieder")
+    @Test("an unreadable ledger with the same holder: no foreign number shown or sent, the page says so; once readable everything runs again")
     func anUnreadLedgerShowsNoForeignNumberAndIsReadAgain() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -197,7 +197,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("ein unlesbares Hauptbuch beim Start ueber Zeilen mit Hoerzeit: schon das erste Lesen vor jeder Aenderung zeigt keine Sekunde des Geraets")
+    @Test("an unreadable ledger at the start over rows with listening time: even the first read before any change shows no second of the device")
     func anUnreadLedgerShowsNothingOfTheDeviceFromTheFirstRead() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -222,7 +222,7 @@ struct StatsOwnerTests {
         await stats.awaitPendingWrites()
     }
 
-    @Test("das eigene Topf-Abbild nach einem Zuruecksetzen der Zeilen kommt im Raum des Geraets zurueck: kein Doppel, kein Unterzaehlen")
+    @Test("the own pot image after a reset of the rows comes back in the device's space: no double, no undercount")
     func theOwnPotComesBackInTheDevicesSpace() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -249,7 +249,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("der Navidrome-Umzug zieht auch die ruhenden Summen der anderen Konten mit")
+    @Test("the Navidrome move also takes along the resting totals of the other accounts")
     func theRestingTotalsMoveWithTheIds() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -265,7 +265,7 @@ struct StatsOwnerTests {
         await stats.awaitPendingWrites()
     }
 
-    @Test("wirft der Umzug an einer ruhenden Summe, bleiben Hauptbuch und Geraete-Summen im selben Raum und nichts vom Konto davor zaehlt fuer das jetzige; ein zweiter Lauf zieht alles um")
+    @Test("if the move throws at a resting total, ledger and device totals stay in the same space and nothing of the account before counts for the current one; a second run moves everything")
     func aMoveThatThrowsKeepsTheLedgerWithTheDevice() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -304,7 +304,7 @@ struct StatsOwnerTests {
         await stats.awaitPendingWrites()
     }
 
-    @Test("ist das Hauptbuch nicht lesbar und keine Identitaet da, geht kein Topf hinaus, auch kein leerer")
+    @Test("if the ledger is not readable and no identity exists, no pot goes out, not even an empty one")
     func anUnreadLedgerHoldsThePublishWithoutAnIdentity() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.folder) }
@@ -327,7 +327,7 @@ struct StatsOwnerTests {
         }
     }
 
-    @Test("der Weg zurueck: aus den Summen des Kontos die des Geraets, so dass owned wieder dasselbe Konto ergibt")
+    @Test("the way back: from the totals of the account those of the device, so that owned yields the same account again")
     func theWayBackToTheDevice() {
         let carried = ListeningStatsData(secondsPerDay: ["d0": 7], secondsPerItem: ["b": 7])
         let since = ListeningStatsData(secondsPerDay: ["d1": 100], secondsPerItem: ["a": 100])
@@ -339,7 +339,7 @@ struct StatsOwnerTests {
                 "before the first change of account the two spaces are one")
     }
 
-    @Test("die Rechnung: Mitgebrachtes plus was das Geraet seit der Uebernahme zaehlte, nie unter null")
+    @Test("the calculation: what was brought along plus what the device counted since the takeover, never below zero")
     func theOwnedTotals() {
         let device = ListeningStatsData(secondsPerDay: ["d1": 130, "d2": 10], secondsPerItem: ["a": 100, "b": 30])
         let since = ListeningStatsData(secondsPerDay: ["d1": 100], secondsPerItem: ["a": 100])

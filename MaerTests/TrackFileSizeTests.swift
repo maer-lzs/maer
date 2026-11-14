@@ -20,7 +20,7 @@ import OSLog
 @MainActor
 struct TrackFileSizeTests {
 
-    @Test("die Regel: weniger Bytes als die Quelle nennt ist keine fertige Spur, nur wo der Download die Datei selbst ist")
+    @Test("the rule: fewer bytes than the source names is no finished track, only where the download is the file itself")
     func theRule() {
         #expect(TrackFileSize.stated(60_000, downloadsTheOriginalFile: true) == 60_000)
         #expect(TrackFileSize.stated(60_000, downloadsTheOriginalFile: false) == nil, "a source that may transcode is held to nothing")
@@ -37,7 +37,7 @@ struct TrackFileSizeTests {
     /// The capability is stated by the real sources, not by a test double:
     /// a source that loses it drops the rule in silence, one that gains it
     /// throws away every transcoded download.
-    @Test("die Faehigkeit an den echten Anbietern: nur Audiobookshelf laedt die Datei selbst")
+    @Test("the capability on the real providers: only Audiobookshelf downloads the file itself")
     func theRealSourcesStateTheCapability() {
         let abs = APIClient(baseURL: URL(string: "https://abs.example.invalid")!, token: nil)
         #expect(abs.capabilities.contains(.downloadsTheOriginalFile), "Audiobookshelf books")
@@ -126,7 +126,7 @@ struct TrackFileSizeTests {
         }
     }
 
-    @Test("Ablegen: ein frueh beendeter Koerper ohne Laenge und ein chunked ohne Schlussblock werden nicht abgelegt; ganz und groesser bleiben")
+    @Test("Storing: an early-ended body without a length and a chunked one without a final block are not stored; whole and larger ones stay")
     func storingHoldsTheStatedSize() async throws {
         let half = Self.audioBytes(50_000)
         let noLength = try await store(head: Self.noLength, body: half, stated: 60_000)
@@ -144,13 +144,13 @@ struct TrackFileSizeTests {
         #expect(larger.error == nil && larger.bytes == 50_000, "more than stated is kept")
     }
 
-    @Test("Ablegen ohne genannte Groesse: der frueh beendete Koerper bleibt, diese Quellen faengt die Regel nicht")
+    @Test("Storing without a stated size: the early-ended body stays, the rule does not catch these sources")
     func storingWithoutAStatedSizeKeepsWhatCame() async throws {
         let stored = try await store(head: Self.noLength, body: Self.audioBytes(50_000), stated: nil)
         #expect(stored.error == nil && stored.bytes == 50_000, "the open case, named in the inventory")
     }
 
-    @Test("ein Anspruch haelt nur, wenn die Antwort selbst die Groesse und den Typ des Originals nennt")
+    @Test("a claim holds only if the answer itself names the size and the type of the original")
     func aClaimHoldsOnlyByTheAnswer() {
         let claim = TrackFileSize.Claim(size: 60_000, contentType: "audio/mpeg")
         let original = TrackFileSize.statedByAnswer(claim, answerLength: 60_000, answerType: "Audio/MPEG")
@@ -179,7 +179,7 @@ struct TrackFileSizeTests {
     /// less: the one answer a claim holds while the body falls short.
     static let partialOfTheOriginal = "HTTP/1.1 206 Partial Content\r\nContent-Type: audio/mpeg\r\nContent-Length: 50000\r\nContent-Range: bytes 0-49999/60000\r\nConnection: close\r\n\r\n"
 
-    @Test("Subsonic: die Spur traegt Groesse und Typ des Songs, ein kuerzeres Original wird nicht abgelegt, ein umkodiertes bleibt")
+    @Test("Subsonic: the track carries size and type of the song, a shorter original is not stored, a transcoded one stays")
     func aSubsonicDownloadIsHeldWhenTheOriginalArrives() async throws {
         let built = MusicTrackAssembly.build([.init(id: "s1", title: nil, duration: 1, size: 60_000, contentType: "audio/mpeg")])
         let metadata = try #require(built.tracks.first?.metadata)
@@ -199,7 +199,7 @@ struct TrackFileSizeTests {
         #expect(noLength.error == nil && noLength.bytes == 50_000, "an answer without length is held to nothing, as before: \(String(describing: noLength.error))")
     }
 
-    @Test("ein Download, der an seinem Status scheitert, schreibt den Status ins Log, nie die Adresse")
+    @Test("a download that fails on its status writes the status to the log, never the address")
     func aDownloadThatFailsByStatusWritesItsLine() async throws {
         let since = Date()
         // A host that closes without answering is asked again and again by
@@ -217,7 +217,7 @@ struct TrackFileSizeTests {
         #expect(!lines.contains { $0.contains("127.0.0.1") }, "no address in the line")
     }
 
-    @Test("ein Server, der eine Laenge nennt und frueh schliesst, endet als unvollstaendige Spur statt ohne Ende")
+    @Test("a server that names a length and closes early ends as an incomplete track instead of without end")
     func aServerThatClosesEarlyEndsTheDownload() async throws {
         let host = try FixedAnswerHost(head: Self.withLength(100_000), body: Self.audioBytes(50_000))
         try await host.start()
@@ -279,7 +279,7 @@ struct TrackFileSizeTests {
             userMediaProgress: nil)
     }
 
-    @Test("Fortsetzen: eine liegende Spur mit weniger Bytes als genannt wird nicht uebersprungen, sondern neu geladen")
+    @Test("Resuming: a stored track with fewer bytes than stated is not skipped, but loaded anew")
     func resumingLoadsAShortTrackAgain() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("trackfile-resume-\(UUID().uuidString)", isDirectory: true)
@@ -304,7 +304,7 @@ struct TrackFileSizeTests {
         #expect(TrackFileSize.bytes(at: stored) == 50_000, "the short track was loaded again: \(String(describing: TrackFileSize.bytes(at: stored)))")
     }
 
-    @Test("der Download-Weg reicht den Anspruch einer Quelle ohne die Faehigkeit weiter: ein kuerzeres Original liegt nicht als Spur")
+    @Test("the download path passes on the claim of a source without the capability: a shorter original does not lie as a track")
     func theDownloadHandsTheClaimOn() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("trackfile-claim-\(UUID().uuidString)", isDirectory: true)
@@ -358,7 +358,7 @@ struct TrackFileSizeTests {
         (model.player?.currentItem?.asset as? AVURLAsset)?.url
     }
 
-    @Test("Abspielen: eine schon liegende Spur mit weniger Bytes als genannt wird nicht abgespielt, sie kommt vom Server und die lokale Datei geht", .needsAudio)
+    @Test("Playing: an already stored track with fewer bytes than stated is not played, it comes from the server and the local file goes", .needsAudio)
     func playingTakesAShortStoredTrackFromTheServer() async throws {
         let server = try tone(seconds: 2)
         let (local, stated) = try shortCopy(of: server)
@@ -375,7 +375,7 @@ struct TrackFileSizeTests {
     /// cannot load is: it stays, it is not played, and playback holds with
     /// the hint that the download is unavailable offline. The next load
     /// with network drops it and plays from the server.
-    @Test("ohne Netz: die kurze Spur bleibt liegen, wird nicht gespielt, Halt mit dem Offline-Hinweis; mit Netz geht sie", .needsAudio)
+    @Test("without network: the short track stays, is not played, hold with the offline hint; with network it goes", .needsAudio)
     func offlineAShortStoredTrackStaysAndHolds() async throws {
         let server = try tone(seconds: 2)
         let (local, stated) = try shortCopy(of: server)
@@ -407,7 +407,7 @@ struct TrackFileSizeTests {
         }
     }
 
-    @Test("eine Quelle, deren Download umkodiert sein kann: die kleinere Datei bleibt und wird abgespielt", .needsAudio)
+    @Test("a source whose download may be transcoded: the smaller file stays and is played", .needsAudio)
     func aSourceThatMayTranscodeKeepsItsFile() async throws {
         let server = try tone(seconds: 2)
         let (local, stated) = try shortCopy(of: server)

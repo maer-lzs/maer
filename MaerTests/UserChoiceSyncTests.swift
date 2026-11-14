@@ -24,7 +24,7 @@ struct UserChoiceMergeTests {
                                        cloud: entry(.string("b"), 200)) == .push(300))
     }
 
-    @Test("der Abgleich zaehlt Abos hier, im Dokument, geloescht und im Dokument, aber hier nicht gehalten")
+    @Test("the reconcile counts subscriptions here, in the document, deleted, and in the document but not held here")
     func subscriptionsCounted() {
         let prefix = UserChoiceCatalog.subscriptionPrefix
         let blob: [String: Any] = [
@@ -48,7 +48,7 @@ struct UserChoiceMergeTests {
                 == .init(local: 1, document: 2, removed: 1, unheld: 1, push: 1))
     }
 
-    @Test("der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich", .needsTheSources)
+    @Test("the reconcile reports the numbers, the silent feed round reports itself", .needsTheSources)
     func theCountsAreSaid() throws {
         let flat = FetchAnswerTests.squeezedSource
         let choices = try flat("Sources/Networking/UserChoiceCloudSync.swift")
@@ -201,7 +201,7 @@ struct UserChoiceCloudSyncTests {
         return (sync, defaults, suite)
     }
 
-    @Test("Sortierung und Filter je Sendung reisen zum zweiten Geraet, ein Loeschen als Grabstein")
+    @Test("sort and filter per show travel to the second device, a deletion as a tombstone")
     func showSortAndFilterTravel() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -243,7 +243,7 @@ struct UserChoiceCloudSyncTests {
     /// A source switch chosen on A arrives on B and takes the one door of
     /// the sources, as a switch flipped on B does; a choice that is no
     /// source switch does not.
-    @Test("ein uebernommener Quellen-Schalter wirkt wie ein hier gestellter, eine andere Wahl nicht")
+    @Test("an adopted source switch acts like one set here, another choice does not")
     func anAdoptedSourceSwitchTakesTheSourceDoor() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -270,7 +270,7 @@ struct UserChoiceCloudSyncTests {
 
     /// Plan A: what the adoption announces is what an open show page and its
     /// sheet ask the rule with, and reading again gives B what A chose.
-    @Test("Eine Uebernahme meldet die Werte der Sendung so, dass die offene Seite sie nachliest, und nur fuer diese Sendung")
+    @Test("An adoption reports the values of the show so that the open page reads them again, and only for this show")
     func anAdoptionTellsTheOpenShowPage() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -311,7 +311,7 @@ struct UserChoiceCloudSyncTests {
     /// value against an equal-stamp tombstone is written back), which a
     /// neighbour witness holds; this one holds that A writes nothing at all,
     /// or the two devices would trade the key on every round.
-    @Test("Ein weggeraeumter Schluessel reist nicht als Loeschung, weil sein Grabstein den Stempel des Werts traegt")
+    @Test("A cleaned-up key does not travel as a deletion, because its tombstone carries the stamp of the value")
     func aCleanedKeyDoesNotTravelAsARemoval() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -346,7 +346,7 @@ struct UserChoiceCloudSyncTests {
     /// field; only address, service and date travel, and a forget travels
     /// as a tombstone. B connects to nothing by itself: the register is a
     /// suggestion, not a configuration.
-    @Test("Eine bekannte Serveradresse reist A → B, ohne Zugangsdaten; Vergessen reist mit")
+    @Test("A known server address travels A → B, without credentials; forgetting travels along")
     func knownServerTravels() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -378,11 +378,11 @@ struct UserChoiceCloudSyncTests {
         #expect(KnownServers.suggestions(for: .subsonic, defaults: b.defaults).isEmpty)
     }
 
-    /// Abos reisen: A abonniert, B (ohne Server) bekommt die Adresse zum
-    /// Nachziehen; A bestellt ab, B bekommt den Grabstein. Ein Geraet MIT
-    /// Podcast-Server wendet nichts an (der Server ist seine Wahrheit) und
-    /// laesst den Stempel liegen, damit es spaeter noch angeboten wird.
-    @Test("Abos reisen als Familie: abonnieren, abbestellen, Server-Geraet ignoriert")
+    /// Subscriptions travel: A subscribes, B (without a server) gets the address to
+    /// follow; A unsubscribes, B gets the tombstone. A device WITH a
+    /// podcast server applies nothing (the server is its truth) and
+    /// leaves the stamp, so that it is still offered later.
+    @Test("Subscriptions travel as a family: subscribe, unsubscribe, server device ignored")
     func subscriptionsTravel() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -442,7 +442,7 @@ struct UserChoiceCloudSyncTests {
     /// account's feeds (or one of them failed to load), a second reconcile
     /// must neither bury the missing ones for the whole account nor stamp
     /// them as held. Only the person's unsubscribe writes a tombstone.
-    @Test("Unfertige Adoption: keine Grabsteine, keine Stempel, offene Abos werden erneut angeboten; nur Abbestellen begraebt")
+    @Test("Unfinished adoption: no tombstones, no stamps, open subscriptions are offered again; only unsubscribing buries")
     func unfinishedAdoptionWritesNoTombstones() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -497,12 +497,12 @@ struct UserChoiceCloudSyncTests {
     /// derived loop) must not freeze the account: the device that holds the
     /// value writes it back, the other device adopts it. Stamp zero stays
     /// the honest tie (pre-family stock against a legacy removal).
-    @Test("Unentschieden Wert gegen Grabstein mit gleichem Stempel: der gehaltene Wert reist, Stempel null bleibt liegen")
+    @Test("Tie of value against tombstone with the same stamp: the held value travels, stamp zero stays")
     func heldValueBeatsATombstoneWithTheSameStamp() {
         let value = UserChoiceEntry(value: .string("https://example.org/feed.xml"), t: 5000)
         let tombstone = UserChoiceEntry(value: nil, t: 5000)
         #expect(UserChoiceMerge.decide(local: value, cloud: tombstone) == .push(5000))
-        // Rot-Proben: a NEWER tombstone still wins, and stamp zero ties.
+        // Red probes: a NEWER tombstone still wins, and stamp zero ties.
         #expect(UserChoiceMerge.decide(local: value, cloud: UserChoiceEntry(value: nil, t: 6000)) == .adopt)
         #expect(UserChoiceMerge.decide(local: UserChoiceEntry(value: .bool(true), t: 0),
                                        cloud: UserChoiceEntry(value: nil, t: 0)) == .none)
@@ -530,7 +530,7 @@ struct UserChoiceCloudSyncTests {
     /// Absence is not deletion: the cloud carries an address B has not
     /// adopted yet; B signs in somewhere else in that window. The address
     /// must survive, because only a forget on a device may bury it.
-    @Test("Ein Eintrag, den B noch nicht uebernommen hat, stirbt nicht an B's naechster Anmeldung")
+    @Test("An entry that B has not adopted yet does not die at B's next sign-in")
     func absenceIsNotDeletion() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -554,7 +554,7 @@ struct UserChoiceCloudSyncTests {
         #expect(NSDictionary(dictionary: before).isEqual(to: after))
     }
 
-    @Test("Zugangsdaten in der Adresse reisen nie: das Register merkt sich den Host")
+    @Test("Credentials in the address never travel: the register remembers the host")
     func userInfoNeverTravels() {
         #expect(KnownServers.normalized("https://name:geheim@abs.example/") == "https://abs.example")
         #expect(KnownServers.normalized("https://abs.example/") == "https://abs.example")
@@ -695,7 +695,7 @@ struct UserChoiceCloudSyncTests {
     /// The last-heard stations travel: both devices see both, newest play
     /// first; a removal on one device is a tombstone and takes the station
     /// off the other, and it does not come back on the next reconcile.
-    @Test("Radio-Verlaeufe reisen: beide sehen beide, Entfernen auf A folgt B")
+    @Test("Radio histories travel: both see both, removing on A is followed by B")
     func recentStationsTravel() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
@@ -925,7 +925,7 @@ struct UserChoiceGateTests {
     /// no decision behind it. This one reads the whole source tree: a key
     /// family built as `"name.\(id)"` anywhere carries a class, or it is
     /// named here as no key at all.
-    @Test("jede Schluessel-Familie im ganzen Quellbaum hat eine Klasse", .needsTheSources)
+    @Test("every key family in the whole source tree has a class", .needsTheSources)
     func everyKeyFamilyInTheSourcesIsClassified() throws {
         let notKeys: [String: String] = [
             "gobackward.": "an SF Symbol name for the skip button, never stored",
@@ -1049,7 +1049,7 @@ struct UserChoiceGateTests {
         #expect(Set(UserChoiceCatalog.travelingPrefixes) == decidedPrefixes)
     }
 
-    @Test("Was beim Geraet bleibt, bleibt mit Grund; der Sync-Schalter selbst reist nie")
+    @Test("What stays with the device stays with a reason; the sync switch itself never travels")
     func whatStaysWithTheDeviceIsNamed() {
         let staying = Set(UserChoiceCatalog.statics.filter { $0.value == .device }.keys)
         // Each of these has its reason written at the entry: the switch

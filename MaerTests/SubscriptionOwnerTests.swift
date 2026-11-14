@@ -53,7 +53,7 @@ struct SubscriptionOwnerTests {
 
     private func sorted(_ shows: [PodcastShow]) -> [PodcastShow] { shows.sorted { $0.id < $1.id } }
 
-    @Test("A's Abos ruhen samt Folgen und wartenden Feeds, B sieht keine davon, nichts wird abbestellt, der Rueckweg bringt jede Sendung Zeile fuer Zeile zurueck")
+    @Test("A's subscriptions rest together with episodes and waiting feeds, B sees none of them, nothing is unsubscribed, the way back brings every show back row for row")
     func theSubscriptionsRestUnderTheirAccount() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -83,7 +83,7 @@ struct SubscriptionOwnerTests {
         #expect(sorted(await rig.store().shows) == ofA)
     }
 
-    @Test("Zeilen, die dieser Bau nicht liest, ruhen mit A, stehen nie unter B und kommen auf dem Rueckweg ungelesen zurueck")
+    @Test("rows that this build does not read rest with A, never stand under B and come back unread on the way back")
     func unreadRowsRestWithTheirAccount() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -162,7 +162,7 @@ struct SubscriptionOwnerTests {
                 "the unread rows of the way back did not land")
     }
 
-    @Test("ein ungelesenes Folgen-Paket setzt nur Folgen ein, deren Sendung steht")
+    @Test("an unread episode package inserts only episodes whose show stands")
     func carriedEpisodesNeedTheirShow() {
         let raw = PodcastRowStore.RawRows(
             shows: [.init(id: "feed:raw", position: 0, payload: Data("x".utf8))],
@@ -179,7 +179,7 @@ struct SubscriptionOwnerTests {
     /// hold a row this build cannot read: the hand-over asks `replace`
     /// without `current()` before, so the read of the unread rows starts
     /// there. The first round holds and touches nothing; a later one replaces.
-    @Test("ein unterbrochenes Ersetzen ueber einer ungelesenen Zeile haelt, ohne etwas anzufassen, und ersetzt danach")
+    @Test("an interrupted replacement over an unread row holds without touching anything, and replaces afterwards")
     func anUnfinishedReplacementOverAnUnreadRowTouchesNothingFirst() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -211,7 +211,7 @@ struct SubscriptionOwnerTests {
     /// After a replacement the memo of the unread rows does not say what
     /// should stand: the next question reads the table. A row that appears
     /// there after the hand-over rests with its account at the next one.
-    @Test("nach einem Ersetzen liest die naechste Frage die Tabelle neu, statt dem Merker der Absicht zu glauben")
+    @Test("after a replacement the next question reads the table anew, instead of believing the memo of the intent")
     func theUnreadMemoFollowsTheTableAfterAReplacement() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -243,7 +243,7 @@ struct SubscriptionOwnerTests {
     /// An unsubscribe given while a show stood narrows its own write; a save
     /// queued afterwards that is refused empty speaks as a suspicion and
     /// leaves its note.
-    @Test("bei den Abos deckt eine abgewertete Erlaubnis nur ihren eigenen Schrieb")
+    @Test("with the subscriptions a devalued permission covers only its own write")
     func aNarrowedUnsubscribeCoversItsOwnWrite() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -267,7 +267,7 @@ struct SubscriptionOwnerTests {
     /// is not there (`foreign_keys=ON`, `REFERENCES show(id)`), and the whole
     /// transaction with it, so an unfiltered carry would break the
     /// replacement on every start.
-    @Test("eine Folge ohne ihre Sendung in apply(also:) wirft, und nichts aus derselben Transaktion landet")
+    @Test("an episode without its show in apply(also:) throws, and nothing from the same transaction lands")
     func anEpisodeWithoutItsShowBreaksTheTransaction() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -287,7 +287,7 @@ struct SubscriptionOwnerTests {
         #expect(try await rows.counts() == before, "a statement of the broken transaction landed")
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Sendung von A, A's bleiben bei A")
+    @Test("an open replacement of an earlier run and a third account: B's rest carries no show of A, A's stay with A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -309,7 +309,7 @@ struct SubscriptionOwnerTests {
         #expect(subs.shows.isEmpty, "C sees a show of another account")
     }
 
-    @Test("das Ersetzen der Abos landet mit seiner Marke, erst dann settled der Halter; ein Neustart davor ersetzt nicht noch einmal, was B danach abonnierte")
+    @Test("the replacement of the subscriptions lands with its mark, only then the holder settles; a restart before it does not replace again what B subscribed to afterwards")
     func theReplacementLandsWithItsMark() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -336,7 +336,7 @@ struct SubscriptionOwnerTests {
         #expect(try shelf.holding(of: family) == .init(owner: "account-b"))
     }
 
-    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Abos und Wahlen ruhen unter A, B sieht keine davon")
+    @Test("a switch with sync off and no holder: A's subscriptions and choices rest under A, B sees none of them")
     func aSwitchWithSyncOffAndNoHolder() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -358,7 +358,7 @@ struct SubscriptionOwnerTests {
         await subs.awaitPendingWrites()
     }
 
-    @Test("solange der Bestand nicht geladen ist, ruht nichts und die Runde der Wahlen haelt an")
+    @Test("as long as the stock is not loaded, nothing rests and the round of the choices holds")
     func anUnloadedStockHoldsTheChoices() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -382,7 +382,7 @@ struct SubscriptionOwnerTests {
         #expect(cloud.storage.isEmpty, "the round ran while the subscriptions could not follow")
     }
 
-    @Test("gpodder ruht, solange ein anderes Konto die Abos haelt als das, fuer das es lief", .needsTheSources)
+    @Test("gpodder rests as long as another account holds the subscriptions than the one it ran for", .needsTheSources)
     func gpodderRestsUnderAnotherAccount() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("gpodder-rest-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -403,7 +403,7 @@ struct SubscriptionOwnerTests {
                 "the gpodder round does not ask whose subscriptions these are")
     }
 
-    @Test("auch der Einzel-Push einer Wiedergabe an gpodder ruht unter einem anderen Konto, still", .needsTheSources)
+    @Test("the single push of a playback to gpodder also rests under another account, silently", .needsTheSources)
     func gpodderPlaybackPushRestsToo() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("gpodder-push-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }

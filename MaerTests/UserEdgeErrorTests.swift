@@ -22,7 +22,7 @@ struct UserEdgeErrorTests {
         "NotFollowedRow.swift": (1, "beside its two sibling buttons, which keep their look"),
     ]
 
-    @Test("Erneut versuchen ist ueberall die Pille, kein Textknopf kommt zurueck", .needsTheSources)
+    @Test("Retry is the pill everywhere, no text button comes back", .needsTheSources)
     func retryIsThePillEverywhere() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
@@ -66,7 +66,7 @@ struct UserEdgeErrorTests {
     /// before it touches the lists: the context stays and the title stays
     /// in Up Next. Only the shortcut for the title already open takes the
     /// lists over before that check, because it does play.
-    @Test("ein abgewiesener Tipp laesst Kontext und Up Next stehen: die Listen werden erst nach der Offline-Abweisung uebernommen", .needsTheSources)
+    @Test("a turned-away tap leaves context and Up Next alone: the lists are taken over only after the offline rejection", .needsTheSources)
     func aRefusedTapLeavesTheLists() throws {
         let coordinator = try code("Sources/ViewModels/PlayerCoordinator.swift")
         let open = try #require(coordinator.range(of: "func open(item: LibraryItem"), "the open is gone")
@@ -94,7 +94,7 @@ struct UserEdgeErrorTests {
     /// and Up Next stand as they were. The late refusal, after the offline
     /// check, used to empty the context and take the title out of Up Next.
     @MainActor
-    @Test("ein Oeffnen, dessen Detail nicht kommt, laesst Kontext und Up Next stehen")
+    @Test("an open whose detail does not arrive leaves context and Up Next alone")
     func aFailedFetchLeavesTheLists() async {
         let id = "jf:album:w4010-\(UUID().uuidString)"
         let other = "jf:album:w4010-other-\(UUID().uuidString)"
@@ -118,7 +118,7 @@ struct UserEdgeErrorTests {
 
     /// The silent spots of the order: each now has its line, and the visible
     /// ones an outcome.
-    @Test("die stillen Stellen an der Nutzerkante haben ihre Zeile und ihren Ausgang", .needsTheSources)
+    @Test("the silent spots at the user edge have their line and their outcome", .needsTheSources)
     func theSilentSpotsSpeak() throws {
         let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
         let reconcile = try #require(sync.range(of: "func reconcileWithServer()"), "the reconcile is gone")
@@ -151,7 +151,7 @@ struct UserEdgeErrorTests {
 
     /// The part of a region list in the log line: a failure names its
     /// reason, an answer its count (an empty answer is an answer).
-    @Test("eine gescheiterte Liste der Region sagt in der Logzeile failed mit ihrem Grund, eine beantwortete ihre Zahl")
+    @Test("a failed list of the region says failed with its reason in the log line, an answered one its count")
     func aRegionListLogsItsReason() async {
         let failure = URLError(.timedOut)
         let failed = await RadioRegionList.fetch { throw failure }
@@ -166,7 +166,7 @@ struct UserEdgeErrorTests {
 
     /// A handed sentence is said by the one alert (`sentenceAlert`), not by
     /// a hand-built alert beside it.
-    @Test("ein uebergebener Satz kommt ueber die eine Meldung, keine von Hand gebaute daneben", .needsTheSources)
+    @Test("a handed-over sentence comes through the one alert, no hand-built one beside it", .needsTheSources)
     func aSentenceIsSaidByTheOneAlert() throws {
         var handBuilt: [String] = []
         var users = 0
@@ -182,7 +182,7 @@ struct UserEdgeErrorTests {
         #expect(StockDriftTests.squeezed(SyncContractFenceTests.stripped(try code("Sources/Views/Podcasts/PodcastShowView.swift"))).contains(".sentenceAlert($deleteError)"))
     }
 
-    @Test("die Region ist gescheitert, wenn jede Namensvariante scheiterte; ein leerer Erfolg ist keiner, eine einzelne Antwort reicht")
+    @Test("the region has failed if every name variant failed; an empty success is none, a single answer is enough")
     func aRegionFailsOnlyWhenEveryVariantFailed() {
         #expect(!RadioStore.regionFailed(variantAnswered: []), "no variant asked counts as failed")
         #expect(RadioStore.regionFailed(variantAnswered: [false]))
@@ -194,7 +194,7 @@ struct UserEdgeErrorTests {
     /// In a list section the failure reads like the empty text beside it
     /// ("No playlists yet."): body size, leading, Retry at the end. The small
     /// centred line stays for the places below rows already read.
-    @Test("in einem Listen-Abschnitt steht ein Ladefehler in der Form der Leerzeile daneben, nicht als kleine Zeile in der Mitte", .needsTheSources)
+    @Test("in a list section a load error stands in the form of the empty line beside it, not as a small line in the middle", .needsTheSources)
     func aFailureInAListReadsLikeItsEmptyText() throws {
         let view = try code("Sources/Views/LoadFailedView.swift")
         let row = try #require(view.range(of: "case .row:"), "the failure has no row form")
@@ -223,7 +223,7 @@ struct UserEdgeErrorTests {
     /// page says "No tracks" with a sentence of its own and offers no retry.
     /// The failure stays for a load that threw: the page reaches it only
     /// from the catch.
-    @Test("eine leere Playlist sagt Keine Titel ohne Fehlerton, der Fehler steht nur nach einem gescheiterten Laden", .needsTheSources)
+    @Test("an empty playlist says No tracks without an error tone, the error appears only after a failed load", .needsTheSources)
     func anEmptyPlaylistIsNotAFailure() throws {
         let playlist = MusicAlbumView.emptyWording(isPlaylist: true)
         #expect(playlist.sentence.key == "This playlist has no tracks yet.")

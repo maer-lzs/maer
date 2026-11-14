@@ -64,7 +64,7 @@ struct TupleTryAwaitFenceTests {
         return word == "return" || word == "in"
     }
 
-    @Test("der Leser findet die reissende Form und laesst die heilen stehen")
+    @Test("the reader finds the tearing form and leaves the intact ones alone")
     func theReaderTellsTheForms() {
         #expect(Self.bareTryAwaitReturns(in: "do { return (key, try await ask(key), nil) } catch { }") == [1])
         #expect(Self.bareTryAwaitReturns(in: "return (\n    key,\n    try? await ask(key))") == [1])
@@ -78,7 +78,7 @@ struct TupleTryAwaitFenceTests {
         #expect(Self.bareTryAwaitReturns(in: "let x = call(a, (b, try await c))").isEmpty, "an argument is not returned")
     }
 
-    @Test("kein Tupel in Sources gibt ein nacktes try await zurueck", .needsTheSources)
+    @Test("no tuple in Sources returns a bare try await", .needsTheSources)
     func noTupleReturnsABareTryAwait() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

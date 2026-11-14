@@ -12,7 +12,7 @@ import SwiftUI
 /// The one row of album and playlist lists, and its mark for the song
 /// that plays.
 struct TrackRowTests {
-    @Test("Die Zeile eines Albums oder einer Server-Playlist spielt, wenn ihr Eintrag beim Kapitel der Zeile steht")
+    @Test("The row of an album or a server playlist plays when its entry is at the row's chapter")
     func aRowOfAnEntryPlaysAtItsChapter() {
         let row = TrackPlaying.Row(entryId: "sub:playlist:pl-1", start: 148, ownId: "sub:song:tr-2")
         #expect(TrackPlaying.isCurrent(row, playingId: "sub:playlist:pl-1", playingChapterStart: 148))
@@ -25,7 +25,7 @@ struct TrackRowTests {
         #expect(!TrackPlaying.isCurrent(row, playingId: "sub:playlist:pl-1", playingChapterStart: nil))
     }
 
-    @Test("Ein Lied, das fuer sich spielt (Zufall, Geraete-Playlist), markiert seine Zeile")
+    @Test("A song that plays on its own (shuffle, device playlist) marks its row")
     func aSongPlayedOnItsOwnMarksItsRow() {
         let inList = TrackPlaying.Row(entryId: "sub:playlist:pl-1", start: 148, ownId: "sub:song:tr-2")
         #expect(TrackPlaying.isCurrent(inList, playingId: "sub:song:tr-2", playingChapterStart: 0))
@@ -34,7 +34,7 @@ struct TrackRowTests {
         #expect(!TrackPlaying.isCurrent(onDevice, playingId: "sub:song:tr-9", playingChapterStart: nil))
     }
 
-    @Test("Eine Album-Zeile nennt den Kuenstler des Liedes nur, wenn er nicht der des Albums ist")
+    @Test("An album row names the artist of the song only if it is not the artist of the album")
     func anAlbumRowNamesOnlyADifferentArtist() {
         #expect(TrackRowArtist.inAlbum(song: "Ayato", album: "Ayato") == nil, "an album of one artist")
         #expect(TrackRowArtist.inAlbum(song: "  björk ", album: "Bjork") == nil, "case, accents and spaces are no difference")
@@ -46,7 +46,7 @@ struct TrackRowTests {
         #expect(TrackRowArtist.inAlbum(song: "", album: "Ayato") == nil)
     }
 
-    @Test("Die Marke bewegt sich beim Spielen und steht in der Pause still")
+    @Test("The mark moves while playing and stands still in the pause")
     func theMarkMovesOnlyWhilePlaying() {
         let still = (0..<3).map { PlayingBars.share(bar: $0, at: 1, moving: false) }
         #expect(still == (0..<3).map { PlayingBars.share(bar: $0, at: 99, moving: false) }, "pause stands still")
@@ -59,7 +59,7 @@ struct TrackRowTests {
 
     /// Album, server playlist and device playlist draw the one row; the
     /// playlist rows lead with the song's cover and name the artist.
-    @Test("Album, Server- und Geraete-Playlist zeichnen die eine Zeile, die Playlist mit Cover und Kuenstler", .needsTheSources)
+    @Test("Album, server and device playlist draw the one row, the playlist with cover and artist", .needsTheSources)
     func everyListDrawsTheOneRow() throws {
         let flat = FetchAnswerTests.squeezedSource
         let album = try flat("Sources/Views/Music/MusicAlbumView.swift")
@@ -87,7 +87,7 @@ struct TrackRowTests {
     /// whole and the row grows, at the default size beyond one line and at
     /// xxxL beyond two, where two lines cut it; a track keeps one line, and
     /// a short reason takes no more room without a limit.
-    @Test("der Grund einer Regel steht in jeder Schriftgroesse ganz da; ein Lied bleibt einzeilig")
+    @Test("the reason of a rule stands whole in every text size; a song stays one line")
     @MainActor
     func aRulesReasonStandsWholeAtEverySize() {
         let reason = RoutineWords.answer(.showUnknown)
@@ -103,7 +103,7 @@ struct TrackRowTests {
     }
 
     /// The rule's row lifts the limit; the lists of songs do not.
-    @Test("die Zeile einer Regel nimmt fuer den Grund so viele Zeilen, wie er braucht, die Listen der Lieder keine", .needsTheSources)
+    @Test("the row of a rule takes as many lines for the reason as it needs, the lists of songs none", .needsTheSources)
     func onlyTheRuleLiftsTheLimit() throws {
         let flat = FetchAnswerTests.squeezedSource
         #expect(try flat("Sources/Views/Music/RoutineRuleRow.swift").contains("unavailable: plays ? nil : said, secondLines: nil)"))

@@ -36,21 +36,21 @@ struct TitleChangeHoldTests {
         return (opened, left, unstarted)
     }
 
-    @Test("ein Titel, der nicht startet, wird uebersprungen, der naechste startet")
+    @Test("a title that does not start is skipped, the next one starts")
     func aDeadTitleIsSkipped() async {
         let run = await walk(["B", "C", "D"], dead: ["B"])
         #expect(run.opened == ["B", "C"], "the walk opened \(run.opened)")
         #expect(run.left == ["B"] && run.unstarted == ["B"], "the dead title stays in the lists: \(run.left)")
     }
 
-    @Test("hoechstens drei in Folge, dann endet die Folge")
+    @Test("at most three in a row, then the sequence ends")
     func threeInARowEnd() async {
         let run = await walk(["B", "C", "D", "E", "F"], dead: ["B", "C", "D", "E", "F"])
         #expect(run.opened == ["B", "C", "D"], "the walk opened \(run.opened)")
         #expect(run.unstarted.count == PlayerCoordinator.unstartedSkipLimit)
     }
 
-    @Test("folgt nichts, endet die Folge nach dem einen")
+    @Test("if nothing follows, the sequence ends after the one")
     func nothingFollows() async {
         let run = await walk(["B"], dead: ["B"])
         #expect(run.opened == ["B"] && run.unstarted == ["B"])
@@ -58,7 +58,7 @@ struct TitleChangeHoldTests {
         #expect(started.opened == ["B"] && started.left.isEmpty, "a title that starts leaves nothing")
     }
 
-    @Test("Ton ohne Leiste: ein Modell spielt und ist nicht die Sitzung, oder die Sitzung hat keinen Titel")
+    @Test("Sound without a bar: a model plays and is not the session, or the session has no title")
     func soundWithoutBar() {
         #expect(!SoundWithoutBar.strays(isPlaying: true, isSession: true, hasTitle: true))
         #expect(SoundWithoutBar.strays(isPlaying: true, isSession: false, hasTitle: true))
@@ -66,14 +66,14 @@ struct TitleChangeHoldTests {
         #expect(!SoundWithoutBar.strays(isPlaying: false, isSession: false, hasTitle: false))
     }
 
-    @Test("ueber die Folge haelt jede Ansicht ihre Sitzung, auch zwischen zwei uebersprungenen Titeln")
+    @Test("across the sequence every view keeps its session, also between two skipped titles")
     func theHoldSpansTheAdvance() {
         #expect(PlayerScreenContent.of(hasSession: false, isLoading: true, loadError: "gone", holdsShown: true) == .held,
                 "a skipped title's sentence drops the held session between two opens")
         #expect(PlayerScreenContent.of(hasSession: false, isLoading: false, loadError: nil, holdsShown: true) == .nothing)
     }
 
-    @Test("der Mini-Player haelt nach der Regel des grossen Players und taucht nicht mehr ab", .needsTheSources)
+    @Test("the mini player holds by the rule of the big player and no longer dips away", .needsTheSources)
     func theMiniHoldsByTheSameRule() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

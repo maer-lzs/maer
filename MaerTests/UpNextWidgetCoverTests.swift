@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Das mittlere Widget Als Naechstes zeigt je Eintrag sein Cover. Das Widget
-/// laedt nichts aus dem Netz, also legt die App fuer die ersten Eintraege ein
-/// kleines Bild in die geteilte Ablage; der Name haengt nur an der Kennung,
-/// und was die Vorschau nicht mehr nennt, geht.
+/// The medium widget Up Next shows its cover for each entry. The widget
+/// loads nothing from the network, so the app puts a small image for the first entries
+/// into the shared storage; the name depends only on the id,
+/// and what the preview no longer names goes.
 struct UpNextWidgetCoverTests {
     private let store = WidgetCoverStore.upNext
 
-    @Test("der Name eines Covers haengt nur an der Kennung, verschiedene Kennungen verschiedene Namen")
+    @Test("the name of a cover depends only on the id, different ids different names")
     func theNameFollowsTheId() {
         let name = store.name(for: "rss:feed:ep-1")
         #expect(name == store.name(for: "rss:feed:ep-1"))
@@ -24,7 +24,7 @@ struct UpNextWidgetCoverTests {
         #expect(!name.contains(":") && !name.contains("/"), "a file name, not a path")
     }
 
-    @Test("weg gehen nur Cover der Vorschau, die der Schnappschuss nicht mehr nennt")
+    @Test("only covers of the preview that the snapshot no longer names go away")
     func onlyStaleCoversGo() {
         let kept = store.name(for: "a"), gone = store.name(for: "b")
         let present = [kept, gone, "widget-cover.png", "podcast-queue-snapshot.json"]
@@ -32,7 +32,7 @@ struct UpNextWidgetCoverTests {
         #expect(store.stale(in: present, keeping: [kept, gone]).isEmpty)
     }
 
-    @Test("die Ablage ist geteilt: jedes Widget raeumt nur seine eigenen Cover, derselbe Titel hat je Widget eine Datei")
+    @Test("the storage is shared: each widget clears only its own covers, the same title has one file per widget")
     func eachWidgetCleansItsOwnCovers() {
         let other = WidgetCoverStore(prefix: "other-cover-", pixel: 120)
         let queueCover = store.name(for: "a"), otherCover = other.name(for: "a")
@@ -42,7 +42,7 @@ struct UpNextWidgetCoverTests {
         #expect(other.stale(in: present, keeping: []) == [otherCover])
     }
 
-    @Test("ein Schnappschuss ohne Cover und Platzhalter liest sich weiter")
+    @Test("a snapshot without covers and placeholders still reads")
     func anOlderSnapshotStillReads() throws {
         let old = Data(#"{"items":[{"title":"Folge","show":"Sendung"}]}"#.utf8)
         let snapshot = try JSONDecoder().decode(PodcastQueueSnapshot.self, from: old)
@@ -50,7 +50,7 @@ struct UpNextWidgetCoverTests {
         #expect(snapshot.items.first?.cover == nil && snapshot.items.first?.placeholder == nil)
     }
 
-    @Test("die Warteschlange legt die Cover der ersten Eintraege ab, das Widget zeigt sie nur mittel", .needsTheSources)
+    @Test("the queue stores the covers of the first entries, the widget shows them only at medium size", .needsTheSources)
     func theQueueLeavesTheCovers() throws {
         func flat(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(

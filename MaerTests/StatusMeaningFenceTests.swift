@@ -105,7 +105,7 @@ struct StatusMeaningFenceTests {
             .contains("StatusMeaning.from(status:")
     }
 
-    @Test("wer einen Status liest, ruft die Regel oder steht mit Grund im Bestand; die Leiter ruft sie nie", .needsTheSources)
+    @Test("whoever reads a status calls the rule or is in the stock with a reason; the ladder never calls it", .needsTheSources)
     func everyStatusReaderIsAccountedFor() throws {
         var offenders: [String] = []
         var seen: Set<String> = []

@@ -42,7 +42,7 @@ struct SourcePrefixFenceTests {
             .filter { $0.pathExtension == "swift" }
     }
 
-    @Test("Views, ViewModels, CarPlay, Models, Networking und die Wurzel buchstabieren keinen Quell-Praefix", .needsTheSources)
+    @Test("Views, ViewModels, CarPlay, Models, Networking and the root spell no source prefix", .needsTheSources)
     func surfacesSpellNoPrefix() throws {
         var offenders: [String] = []
         var files = try Self.rootFiles()
@@ -72,7 +72,7 @@ struct SourcePrefixFenceTests {
         "PlayQueue.swift": ["radio:"],
     ]
 
-    @Test("Ein Provider buchstabiert nur seine eigene Quelle", .needsTheSources)
+    @Test("A provider spells only its own source", .needsTheSources)
     func providersSpellOnlyTheirOwnSource() throws {
         var offenders: [String] = []
         for file in Self.files(under: "Providers") {

@@ -48,7 +48,7 @@ struct StartWalkMeasureTests {
     static let localShowPrefixes = ["podcastAutoDownload.", "podcastAutoDownloadSince.",
                                     "podcastAutoDownloadKeep.", "podcastAutoDownloadError."]
 
-    @Test("Messung: die Gaenge ueber die Voreinstellungen beim Start, je Groesse der Domaene")
+    @Test("Measurement: the walks over the defaults at the start, per size of the domain")
     func theWalksAtThreeSizes() throws {
         for size in Self.sizes {
             let suite = "e4rmess-\(size.name)-\(UUID().uuidString)"

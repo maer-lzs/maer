@@ -7,29 +7,29 @@
 import Foundation
 @testable import Maer
 
-/// Der Schalter, unter dem die Traeger ueberhaupt reden, als ZUSICHERUNG
-/// statt als Hoffnung.
+/// The switch under which the carriers talk at all, as an ASSERTION
+/// instead of a hope.
 ///
-/// Vier Zeugen begannen mit `guard AppStorageKeys.syncAcrossDevicesEnabled
-/// else { return }`. Das ist kein Ueberspringen: steht die Vorgabe auf aus,
-/// meldet der Fall BESTANDEN und hat nichts gemessen, und ein gruener Lauf
-/// ohne Messung ist der teuerste Ausgang.
+/// Four witnesses began with `guard AppStorageKeys.syncAcrossDevicesEnabled
+/// else { return }`. That is no skipping: if the default is off,
+/// the case reports PASSED and has measured nothing, and a green run
+/// without a measurement is the most expensive outcome.
 ///
-/// Die Vorgabe ist prozessweit, und zwei Nachbarsuiten setzen genau sie auf
-/// aus. Sie legen sie zurueck, aber einmal ohne `defer`: reisst der Fall
-/// dazwischen, bleibt der Schalter unten, und jeder spaetere Zeuge mit dem
-/// Wachposten oben besteht ab da, ohne zu messen. Keine dieser Suiten ist
-/// `.serialized`, also steht die Reihenfolge nirgends fest.
+/// The default is process-wide, and two neighbouring suites set exactly it to
+/// off. They put it back, but once without `defer`: if the case breaks
+/// in between, the switch stays down, and every later witness with the
+/// guard above passes from then on without measuring. None of these suites is
+/// `.serialized`, so the order is fixed nowhere.
 ///
-/// Deshalb wird der Schalter hier GESETZT und danach genau so
-/// wiederhergestellt, wie er war, statt gelesen zu werden.
+/// That is why the switch is SET here and afterwards restored exactly as
+/// it was, instead of being read.
 @MainActor
 enum SyncSwitchProbe {
-    /// Legt den Schalter um und gibt zurueck, wie er zurueckgelegt wird.
+    /// Flips the switch and returns how it is put back.
     ///
-    /// Die Rueckgabe statt eines Blocks um den ganzen Fall ist Absicht: sie
-    /// kostet die Zeugen zwei Zeilen statt einer Einrueckung, und ein
-    /// `defer` daneben liest sich wie jede andere Aufraeumzeile im Fall.
+    /// The return value instead of a block around the whole case is deliberate: it
+    /// costs the witnesses two lines instead of an indentation, and a
+    /// `defer` beside it reads like any other cleanup line in the case.
     static func armOn() -> @MainActor () -> Void {
         let key = AppStorageKeys.podcastICloudSync
         let was = UserDefaults.standard.object(forKey: key)

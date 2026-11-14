@@ -20,7 +20,7 @@ struct StampRuleTests {
     /// the device zone, these two drift apart by that offset. And the drift
     /// is invisible on a device standing in UTC, which is why it is a test and
     /// not an inspection.
-    @Test("derselbe Zeitpunkt in zwei Schreibweisen ergibt dieselbe Epoche")
+    @Test("the same instant in two spellings yields the same epoch")
     func twoStringsOneInstant() {
         let pairs = [
             ("2026-08-17T14:30:00+02:00", "2026-08-17T12:30:00Z"),
@@ -37,7 +37,7 @@ struct StampRuleTests {
 
     /// The same for the Jellyfin shape (seven fraction digits, trimmed to
     /// three). The trimming must not eat the offset.
-    @Test("die Jellyfin-Form verliert beim Kuerzen den Offset nicht")
+    @Test("the Jellyfin shape does not lose the offset when trimmed")
     func jellyfinTrimKeepsTheOffset() {
         let withOffset = JellyfinProvider.epochMs(fromJFDate: "2026-08-17T14:30:00.1234567+02:00")
         let asZulu = JellyfinProvider.epochMs(fromJFDate: "2026-08-17T12:30:00.1234567Z")
@@ -50,7 +50,7 @@ struct StampRuleTests {
     /// different year. Measured defect: the listening statistics used the day
     /// string as a STORED KEY without one, so a calendar change split the
     /// history into two key spaces.
-    @Test("ein festes Format braucht ein festes Gebietsschema")
+    @Test("a fixed format needs a fixed locale")
     func fixedFormatNeedsFixedLocale() {
         let instant = Date(timeIntervalSince1970: 1_755_432_600)
         let gregorian = DateFormatter()

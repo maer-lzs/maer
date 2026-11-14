@@ -51,7 +51,7 @@ struct UserChoiceOwnerTests {
         (blob ?? [:]).map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "\n")
     }
 
-    @Test("A's Wahlen ruhen samt Stempeln, B sieht keine davon und bekommt keinen Grabstein von A, der Rueckweg bringt jeden Wert zurueck")
+    @Test("A's choices rest together with stamps, B sees none of them and gets no tombstone from A, the way back brings every value back")
     func theChoicesRestUnderTheirAccount() throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -124,7 +124,7 @@ struct UserChoiceOwnerTests {
         #expect(text(carrier.pots["account-b"]).contains("author"))
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Wahl von A, A's bleiben bei A")
+    @Test("an open replacement of an earlier run and a third account: B's rest carries no choice of A, A's stay with A")
     func aThirdAccountAfterAnOpenReplacement() throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -153,7 +153,7 @@ struct UserChoiceOwnerTests {
         #expect(defaults.object(forKey: "librarySortOption") == nil, "C sees a choice of another account")
     }
 
-    @Test("die Meldung der Uebernahme nennt auch die Schluessel, die beim Wechsel gingen")
+    @Test("the notice of the adoption also names the keys that left at the switch")
     func theAnnouncementNamesTheKeysThatLeft() throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -181,7 +181,7 @@ struct UserChoiceOwnerTests {
         #expect(heard.keys.contains("playbackRate.krimi-buch"), "the announcement left out a key that left")
     }
 
-    @Test("kann die Ruhe nicht gelegt werden, bleiben die Wahlen und nichts geht zu B")
+    @Test("if the rest cannot be laid, the choices stay and nothing goes to B")
     func anUnlaidRestHoldsTheChoices() throws {
         let rig = rig()
         defer { rig.cleanup() }

@@ -80,7 +80,7 @@ struct TickWorkTests {
         return work
     }
 
-    @Test("ruhige Wiedergabe: der Tick schreibt die Sperrbildschirm-Anzeige nicht neu und baut kein Artwork", .needsAudio)
+    @Test("quiet playback: the tick does not rewrite the lock screen display and builds no artwork", .needsAudio)
     func quietPlaybackWritesNoLockScreen() async throws {
         let work = try await quietWork(seconds: 3)
         #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
@@ -92,7 +92,7 @@ struct TickWorkTests {
     /// its own clock: in quiet playback the model publishes nothing, the
     /// clock once a second. A surface that observes the model and not the
     /// clock is not woken.
-    @Test("ruhige Wiedergabe: das Modell publiziert nichts, die Uhr die laufende Zeit, einmal je Sekunde", .needsAudio)
+    @Test("quiet playback: the model publishes nothing, the clock the running time, once per second", .needsAudio)
     func quietPlaybackPublishesOnlyTheTime() async throws {
         let work = try await quietWork(seconds: 3)
         #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
@@ -112,7 +112,7 @@ struct TickWorkTests {
     /// The drive page observes the coordinator, which does not move with the
     /// running time: its progress, its remaining time and its live time are
     /// each a leaf of the clock, so they move every second.
-    @Test("die Fahrseite zeichnet Fortschritt, Restzeit und Live-Zeit aus der Uhr, jede Sekunde", .needsTheSources)
+    @Test("the drive page draws progress, remaining time and live time from the clock, every second", .needsTheSources)
     func theDrivePageDrawsTheTimeFromTheClock() throws {
         let url = SourceTree.root.appendingPathComponent("Sources/Views/DriveModeView.swift")
         let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
@@ -127,7 +127,7 @@ struct TickWorkTests {
 
     /// Below an hour the drive page writes minutes in the app's one duration
     /// form (in German "12 Min."), from an hour on its clock form stays.
-    @Test("die Fahrseite schreibt Minuten unter einer Stunde in der einen Form der App, die Uhrform ab einer Stunde bleibt")
+    @Test("the drive page writes minutes under an hour in the one form of the app, the clock form stays from an hour on")
     func theDrivePageWritesMinutesByTheRule() {
         #expect(DriveModeView.elapsedText(12 * 60 + 30) == DurationText.length(minutes: 12))
         #expect(DriveModeView.remainingText(time: 0, duration: 12 * 60 + 30) == "-" + DurationText.length(minutes: 12))
@@ -144,7 +144,7 @@ struct TickWorkTests {
             .count
     }
 
-    @Test("die Ansichten lesen die Zeit des Modells nur ueber die Uhr; jede andere Stelle ist je Datei gezaehlt, mit Grund", .needsTheSources)
+    @Test("the views read the model's time only through the clock; every other place is counted per file, with a reason", .needsTheSources)
     func viewsReadTheTimeThroughTheClock() {
         var counts: [String: Int] = [:]
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
@@ -165,7 +165,7 @@ struct TickWorkTests {
         #expect(Self.directTimeReads.values.allSatisfy { !$0.reason.isEmpty })
     }
 
-    @Test("ruhige Wiedergabe: die Statistik fuehrt die Toepfe nicht je Sekunde zusammen", .needsAudio)
+    @Test("quiet playback: the statistics do not merge the pots every second", .needsAudio)
     func quietPlaybackMergesNoPots() async throws {
         let work = try await quietWork(seconds: 3)
         #expect(work.ticks >= 2, "the precondition: the tone played on: \(work)")
@@ -185,7 +185,7 @@ struct TickWorkTests {
 
     /// Summed on read: seconds added without a reader merge nothing, the
     /// next read merges once and carries every second.
-    @Test("die Statistik fuehrt beim Lesen zusammen, einmal, mit jeder Sekunde")
+    @Test("the statistics merge on read, once, with every second")
     func theStatsMergeWhenRead() {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("tick-stats-\(UUID().uuidString)", isDirectory: true)
@@ -208,7 +208,7 @@ struct TickWorkTests {
     /// new chapter on the tick it begins, a jump with the jump. Read from
     /// what this model wrote, not from the shared info centre, which other
     /// suites write as well.
-    @Test("Kapitelwechsel und Sprung: die Sperrbildschirm-Anzeige stimmt sofort, Kapitel und Position", .needsAudio)
+    @Test("chapter change and jump: the lock screen display is right at once, chapter and position", .needsAudio)
     func chaptersAndJumpsReachTheLockScreenAtOnce() async throws {
         let file = try tone(seconds: 10)
         defer { try? FileManager.default.removeItem(at: file) }

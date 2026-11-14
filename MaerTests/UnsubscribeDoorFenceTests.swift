@@ -8,18 +8,18 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Abbestellen ist EINE Handlung: `podcastUnsubscribe(_:)`. Sie entfernt alle
-/// RSS-Kopien derselben normalisierten Adresse, ARCHIVIERT die ABS-Kopien und
-/// stösst den gpodder-Abgleich an.
+/// Unsubscribing is ONE action: `podcastUnsubscribe(_:)`. It removes all
+/// RSS copies of the same normalized address, ARCHIVES the ABS copies and
+/// kicks off the gpodder reconcile.
 ///
-/// Drei Nutzer-Flächen riefen stattdessen `subs.unsubscribe(id:)` allein, das
-/// nur die RSS-Hälfte kennt. Wer so abbestellte, hatte danach eine Sendung,
-/// die im Tab WEITERSTAND (jetzt als Server-Kopie) und in den Einstellungen
-/// weg war. Das ist die Gegenrichtung einer gemeldeten Sendung und derselbe
-/// Mechanismus: zwei Wege für eine Handlung, einer unvollständig.
+/// Three user surfaces called `subs.unsubscribe(id:)` alone instead, which
+/// knows only the RSS half. Whoever unsubscribed that way afterwards had a show
+/// that stood in the tab WEITERSTAND (now as a server copy) and was gone
+/// in the settings. That is the opposite direction of a reported show and the same
+/// mechanism: two paths for one action, one of them incomplete.
 ///
-/// Der Bestand nennt je Rufer seinen Grund. Die zwei, die bleiben dürfen,
-/// sind KEINE Nutzer-Handlungen.
+/// The stock names its reason per caller. The two that may remain
+/// are NOT user actions.
 struct UnsubscribeDoorFenceTests {
     private func codeOf(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -29,7 +29,7 @@ struct UnsubscribeDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Nur die eine Handlung und zwei abgeleitete Rufer fassen das Abbestellen an", .needsTheSources)
+    @Test("Only the one action and two derived callers touch unsubscribing", .needsTheSources)
     func onlyTheOneActionUnsubscribes() throws {
         let expected: [String: (count: Int, reason: String)] = [
             "Sources/Views/Podcasts/PodcastHelpers.swift":
@@ -60,10 +60,10 @@ struct UnsubscribeDoorFenceTests {
                 "eine Flaeche bestellt an der einen Handlung vorbei ab")
     }
 
-    /// Gegenprobe: die eine Handlung tut wirklich beide Hälften. Ohne diesen
-    /// Fall könnte der Bestand oben stimmen, während `podcastUnsubscribe`
-    /// selbst auf die RSS-Hälfte zusammengeschrumpft ist.
-    @Test("Die eine Handlung raeumt beide Seiten", .needsTheSources)
+    /// Counter-check: the one action really does both halves. Without this
+    /// case the stock above could be right while `podcastUnsubscribe`
+    /// itself has shrunk to the RSS half.
+    @Test("The one action clears both sides", .needsTheSources)
     func theOneActionClearsBothSides() throws {
         let code = try codeOf("Sources/Views/Podcasts/PodcastHelpers.swift")
         guard let action = code.range(of: "func podcastUnsubscribe") else {

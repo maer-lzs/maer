@@ -79,7 +79,7 @@ struct StandOwnerTests {
         try await body()
     }
 
-    @Test("A offline gehoert, Wechsel zu B, B bekommt nichts, das weiterlaufende Stueck schreibt nichts, zurueck zu A ist der Stand bei A, auch in den Zeilen")
+    @Test("A listens offline, switch to B, B gets nothing, the piece that plays on writes nothing, back to A the stand is with A, also in the rows")
     func theStandsRestUnderTheirAccount() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -147,7 +147,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keinen Stand von A, A's bleiben bei A")
+    @Test("an open replacement of an earlier run and a third account: B's rest carries no stand of A, A's stay with A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -176,7 +176,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("das Ersetzen der Staende landet in einer Transaktion mit seiner Marke; ein Neustart davor ersetzt nicht noch einmal, was B danach hoerte")
+    @Test("the replacement of the stands lands in one transaction with its mark; a restart before it does not replace again what B listened to afterwards")
     func theReplacementLandsWithItsMark() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -220,7 +220,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Staende ruhen unter A, B sieht keinen")
+    @Test("a switch with sync off and no holder: A's stands rest under A, B sees none")
     func aSwitchWithSyncOffAndNoHolder() throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -259,7 +259,7 @@ struct StandOwnerTests {
     /// the next account: the stand at the hold carries the epoch of A and
     /// lands in A; written after the hand over it would count for nothing,
     /// and A would come back with the stand from before.
-    @Test("ein Kontowechsel haelt das laufende Stueck vor der Uebergabe an: sein Stand beim Anhalten landet bei A, nichts davon bei B")
+    @Test("a change of account holds the running piece before the hand over: its stand at the hold lands with A, none of it with B")
     func aSwitchHoldsWhatPlaysBeforeTheHandOver() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -302,7 +302,7 @@ struct StandOwnerTests {
 
     /// The app's register holds the player, and the player records the
     /// stand under its epoch before it pauses.
-    @Test("das Register der App haelt den Player an, der Player nimmt den Stand mit seiner Epoche vor dem Anhalten auf", .needsTheSources)
+    @Test("the app's register holds the player, the player records the stand with its epoch before it pauses", .needsTheSources)
     func theAppHoldsThePlayerAtASwitch() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -332,7 +332,7 @@ struct StandOwnerTests {
     /// The rule of the hold: a playing piece and a paused one whose record
     /// waits for the server are recorded; a stand recorded long ago is not
     /// stamped anew.
-    @Test("beim Kontowechsel wird aufgenommen, wenn ein Stueck spielt oder die Aufnahme seiner Pause noch aussteht, sonst nicht")
+    @Test("at a change of account the stand is recorded if a piece plays or the record of its pause is still pending, otherwise not")
     func theHoldRecordsWhatPlaysOrWaits() {
         #expect(AccountSwitchHold.records(isPlaying: true, pauseRecordPending: false))
         #expect(AccountSwitchHold.records(isPlaying: false, pauseRecordPending: true))
@@ -347,7 +347,7 @@ struct StandOwnerTests {
     /// before its write (an unanswered start, a conflict): the mark stays,
     /// and the change of account records the stand of the pause. A round
     /// that writes clears it.
-    @Test("eine Runde ohne Schrieb laesst die Pausen-Marke stehen, der Kontowechsel nimmt den Stand auf; eine Runde mit Schrieb loescht sie")
+    @Test("a round without a write leaves the pause mark, the change of account records the stand; a round with a write clears it")
     func aRoundWithoutAWriteKeepsThePauseMark() async throws {
         func model(progress: Double?) async -> (PlayerViewModel, String) {
             let id = "pausemark-\(UUID().uuidString)"
@@ -407,7 +407,7 @@ struct StandOwnerTests {
         ListeningStore.listen(to: defaults, nil)
     }
 
-    @Test("Schriebe nicht wandernder Kennungen, die eine offene Ersetzung landen, gehen nicht verloren: das Loeschen eines Hoerbuch-Stands und ein Musik-Stand stehen danach richtig in der Tabelle")
+    @Test("writes of non-travelling ids that land during an open replacement are not lost: the deletion of an audiobook stand and a music stand are correct in the table afterwards")
     func writesOfIdsThatDoNotTravelSurviveAReplacement() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -457,7 +457,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("kann der ganze Schrieb nicht landen, Bestand nicht geladen oder ein Wurf, laeuft jeder andere Schrieb trotzdem, und das Ersetzen wird wieder versucht")
+    @Test("if the whole write cannot land, stock not loaded or a throw, every other write still runs, and the replacement is tried again")
     func aHeldWholeWriteDropsNoOtherWrite() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -532,7 +532,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("mehrere Schriebe wandernder Kennungen des Kontos davor stehen beim Wechsel in der Kette: keiner schreibt seinen alten Stand in die Zeilen des neuen Kontos, ein Schrieb nach dem Lesen laeuft")
+    @Test("several writes of travelling ids of the account before it are in the chain at the switch: none writes its old stand into the rows of the new account, a write after the read runs")
     func queuedWritesOfTheAccountBeforeStayOutOfTheRows() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -584,7 +584,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("ein Neustart im gehaltenen Fenster: danach steht kein wandernder Stand des Kontos davor unter dem jetzigen; gemessen, was aus dem Schrieb des neuen Kontos aus dem Fenster wird")
+    @Test("a restart in the held window: afterwards no travelling stand of the account before it stands under the current one; measured what becomes of the write of the new account from the window")
     func aRestartInTheHeldWindow() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -644,7 +644,7 @@ struct StandOwnerTests {
         }
     }
 
-    @Test("ist der Bestand nicht ganz gelesen, ruht nichts, nichts wird ersetzt und die Runde haelt an")
+    @Test("if the stock is not fully read, nothing rests, nothing is replaced and the round stops")
     func anUnreadStockHoldsTheRound() async throws {
         let rig = rig()
         defer { rig.cleanup() }
@@ -692,7 +692,7 @@ struct StandOwnerTests {
         return found
     }
 
-    @Test("der Bestand kennt genau die benannten Entfernungswege, der Kontowechsel ist einer, gerufen an einer Stelle", .needsTheSources)
+    @Test("the stock knows exactly the named removal paths, the change of account is one, called in one place", .needsTheSources)
     func theStockHasItsNamedRemovals() throws {
         let store = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStore.swift"),
                                encoding: .utf8)
@@ -734,7 +734,7 @@ struct StandOwnerTests {
         return sites
     }
 
-    @Test("jede Aufnahme und jeder Anspruch im Player traegt die Epoche, toggleFinishedMark ist die benannte Ausnahme", .needsTheSources)
+    @Test("every record and every claim in the player carries the epoch, toggleFinishedMark is the named exception", .needsTheSources)
     func everyPlayerWriteCarriesTheEpoch() throws {
         let folder = SourceTree.root.appendingPathComponent("Sources/ViewModels")
         let files = try FileManager.default.contentsOfDirectory(atPath: folder.path)

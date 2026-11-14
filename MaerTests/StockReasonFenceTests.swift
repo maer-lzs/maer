@@ -8,50 +8,50 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Ein Zaun mit begruendetem Bestand ist besser als einer ohne, aber jede
-/// Begruendung darin ist eine AUSSAGE UEBER DEN CODE, und die kann altern
-/// oder von Anfang an danebenliegen. Belegte Faelle: ein Satz behauptete
-/// „kein neuer Beobachter", wo einer entstand; eine Begruendung nannte
-/// einen Helfer ohne eigenes `self`, wo ein `ViewModifier` mit eigenem
-/// `body` stand. Jedes Mal war der BAU richtig und der Satz daneben
-/// falsch, und keiner dieser Fehler wird je rot.
+/// A fence with a reasoned stock is better than one without, but every
+/// reason in it is a STATEMENT ABOUT THE CODE, and it can age
+/// or be off from the start. Documented cases: a sentence claimed
+/// „kein neuer Beobachter" where one arose; a reason named
+/// a helper without its own `self` where a `ViewModifier` with its own
+/// `body` stood. Each time the BUILD was right and the sentence beside it
+/// wrong, and none of these errors ever turns red.
 ///
-/// Der erste Versuch dagegen war ein Zaun, der Begruendungs-Absatz und
-/// Bestand gegeneinander haelt. Er hat zwei Sachen gezeigt, beide gegen
-/// sich selbst: er zwang einen WAHREN Satz zur Umformulierung (eine Notiz,
-/// dass eine Datei einmal zu Unrecht im Bestand stand, stoerte ihn), und
-/// er fuehrte eine Opt-in-Liste, also einen Fundort-Fix an genau der
-/// Klasse, deren Lehre „die Klasse suchen, nicht den Fundort fixen" heisst.
+/// The first attempt against it was a fence that holds the reason paragraph and
+/// the stock against each other. It showed two things, both against
+/// itself: it forced a TRUE sentence to be reworded (a note
+/// that a file once wrongly stood in the stock disturbed it), and
+/// it kept an opt-in list, that is a fix at the place of discovery for exactly the
+/// class whose lesson is „die Klasse suchen, nicht den Fundort fixen".
 ///
-/// Beides faellt weg, wenn der Grund gar nicht erst neben dem Eintrag
-/// stehen kann, sondern DARIN: `[String: (count: Int, reason: String)]`.
-/// Dann kann keine Begruendung von ihrem Eintrag abdriften, keine Datei
-/// erfinden und keine verschweigen, und ein Fliesstext daneben ist wieder
-/// frei. Die Form gab es im Repo schon (`AblageFenceTests`,
-/// `PublicLogAddressFenceTests`); die zwei jungen Zaeune hatten eine
-/// zweite erfunden und sind auf die bestehende gezogen.
+/// Both go away when the reason cannot stand beside the entry at all,
+/// but INSIDE it: `[String: (count: Int, reason: String)]`.
+/// Then no reason can drift away from its entry, none can invent a file
+/// and none can leave one out, and running text beside it is free again.
+/// The shape already existed in the repo (`AblageFenceTests`,
+/// `PublicLogAddressFenceTests`); the two young fences had invented a
+/// second one and were moved to the existing one.
 ///
-/// Dieser Zaun haelt nur noch die FORM, und er SUCHT seine Kandidaten:
-/// jede Testdatei mit einem Datei-Bestand fuehrt ihre Gruende im Eintrag
-/// oder sagt ausdruecklich, dass sie keine fuehrt.
+/// This fence now holds only the SHAPE, and it SEARCHES for its candidates:
+/// every test file with a file stock keeps its reasons in the entry
+/// or says expressly that it keeps none.
 ///
-/// Einzelgruende zahlen sich aus, wo die Eintraege sich UNTERSCHEIDEN. Wo
-/// ein Satz den ganzen Bestand deckt, gehoert er darueber und der Merker
-/// sagt das: bei der Concurrency-Naht steht der Grund ohnehin AM FUNDORT
-/// und wird dort erzwungen, ein Abbild hier waere eine zweite Stelle, die
-/// abdriften kann. Der Merker ist keine Ausrede, er ist die sichtbare
-/// Wahl; ohne ihn ist es nur nie jemandem aufgefallen.
+/// Individual reasons pay off where the entries DIFFER. Where
+/// one sentence covers the whole stock, it belongs above it and the marker
+/// says so: at the concurrency seam the reason stands AT THE PLACE OF DISCOVERY
+/// anyway and is enforced there, a copy here would be a second place that can
+/// drift. The marker is no excuse, it is the visible
+/// choice; without it nobody has merely never noticed.
 struct StockReasonFenceTests {
     static let marker = "BESTAND OHNE EINZELGRUENDE:"
 
-    /// Ein Datei-Bestand ist eine `static let`-Sammlung, die Dateinamen auf
-    /// eine ZAHL abbildet, also auf eine erlaubte Menge. Drei Sorten fallen
-    /// damit heraus, und das ist Absicht:
+    /// A file stock is a `static let` collection that maps file names to
+    /// a NUMBER, that is to an allowed amount. Three kinds drop
+    /// out with that, and that is intended:
     ///
-    /// - ein Zaun, der zwei Quelldateien bloss LIEST, hat keine Sammlung
-    /// - `[String: String]` bildet auf einen Grund ab, ist also selbst schon
-    ///   die begruendete Form
-    /// - `[String: Set<String>]` ist eine Datenzuordnung, kein Bestand
+    /// - a fence that merely READS two source files has no collection
+    /// - `[String: String]` maps to a reason, so it is itself already
+    ///   the reasoned shape
+    /// - `[String: Set<String>]` is a data mapping, no stock
     static func fileStocks(in text: String) -> [(declaration: String, names: Set<String>, excused: Bool)] {
         var out: [(String, Set<String>, Bool)] = []
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
@@ -60,10 +60,10 @@ struct StockReasonFenceTests {
             let head = lines[index].trimmingCharacters(in: .whitespaces)
             guard !head.hasPrefix("//"), head.contains("static let"),
                   head.contains("[String"), head.contains("Int") else { index += 1; continue }
-            // Der Merker gehoert an den BESTAND, nicht an die Datei: eine
-            // Datei kann mehrere fuehren, und ein Merker fuer alle wuerde
-            // einen kuenftigen, begruendbaren still mitbefreien. Er steht
-            // also im Kommentarblock unmittelbar darueber.
+            // The marker belongs to the STOCK, not to the file: a
+            // file can keep several, and one marker for all would
+            // silently exempt a future one that could be reasoned. So it stands
+            // in the comment block directly above.
             var excused = false
             var above = index - 1
             while above >= 0 {
@@ -80,10 +80,10 @@ struct StockReasonFenceTests {
                 where token.hasSuffix(".swift") {
                     names.insert(String(token))
                 }
-                // Die Deklaration endet, wo ihre Klammer schliesst; steht sie
-                // ganz in einer Zeile, ist sie mit dieser Zeile zu Ende. Ohne
-                // das las der Sucher in die naechste Deklaration hinein und
-                // schrieb einem leeren Bestand fremde Namen zu.
+                // The declaration ends where its bracket closes; if it lies
+                // wholly in one line, it ends with that line. Without
+                // that the searcher read into the next declaration and
+                // credited an empty stock with foreign names.
                 if body.hasSuffix("]") || (cursor > index && body.hasPrefix("]")) { break }
                 cursor += 1
             }
@@ -93,7 +93,7 @@ struct StockReasonFenceTests {
         return out
     }
 
-    @Test("Jeder Datei-Bestand traegt seine Gruende im Eintrag, oder sagt dass er keine hat", .needsTheTests)
+    @Test("Every file stock keeps its reasons in the entry, or says that it has none", .needsTheTests)
     func everyFileStockCarriesItsReasons() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let files = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
@@ -101,12 +101,12 @@ struct StockReasonFenceTests {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         var offenders: [String] = []
         var candidates = 0
-        // Die eigene Datei bleibt draussen, und zwar mit Grund: ihre
-        // Bestaende sind Testdaten in Zeichenketten, keine Bestaende. Der
-        // Sucher kann das nicht unterscheiden, und ihm das beizubringen
-        // hiesse, ihn an einem Sonderfall auszurichten. Die Zusicherung auf
-        // die Kandidatenzahl darunter faengt es, falls die Ausnahme je mehr
-        // verdeckt als sie soll.
+        // The own file stays out, and with a reason: its
+        // stocks are test data in strings, no stocks. The
+        // searcher cannot tell the difference, and teaching it that
+        // would mean aligning it to a special case. The assertion on
+        // the candidate count below catches it, should the exception ever hide
+        // more than it should.
         let own = URL(fileURLWithPath: #filePath).lastPathComponent
         for file in files where file.lastPathComponent != own {
             let text = try String(contentsOf: file, encoding: .utf8)
@@ -117,8 +117,8 @@ struct StockReasonFenceTests {
                 offenders.append("\(file.lastPathComponent): \(stock.names.count) Dateien ohne Grund im Eintrag")
             }
         }
-        // Ohne diese Zusicherung waere ein Sucher, der nichts mehr findet,
-        // ein gruener Zaun ohne Messung.
+        // Without this assertion a searcher that finds nothing any more would be
+        // a green fence without a measurement.
         #expect(candidates >= 7, "der Kandidaten-Sucher findet fast nichts: \(candidates)")
         #expect(offenders.isEmpty,
                 """
@@ -129,7 +129,7 @@ struct StockReasonFenceTests {
                 """)
     }
 
-    @Test("Der Sucher findet Bestaende und keine gelesenen Pfade")
+    @Test("The searcher finds stocks and no read paths")
     func theSearcherFindsStocksNotPaths() {
         let stock = """
             struct A {
@@ -140,8 +140,8 @@ struct StockReasonFenceTests {
             }
             """
         #expect(Self.fileStocks(in: stock).first?.names == ["Foo.swift", "Bar.swift"])
-        // Rot-Probe in die andere Richtung: zwei GELESENE Pfade sind kein
-        // Bestand, und ein Zaun, der nur greppt, soll nicht in die Pflicht.
+        // Red probe in the other direction: two READ paths are no
+        // stock, and a fence that only greps should not be put under the duty.
         let paths = """
             func check() throws {
                 let a = try source("Sources/Views/Foo.swift")
@@ -149,17 +149,17 @@ struct StockReasonFenceTests {
             }
             """
         #expect(Self.fileStocks(in: paths).isEmpty)
-        // Und ein einzelner Name ist noch keine Sammlung.
+        // And a single name is not yet a collection.
         let single = "    static let home: [String: Int] = [\"Foo.swift\": 1]"
         #expect(Self.fileStocks(in: single).isEmpty)
     }
 
-    @Test("Der Merker befreit den BESTAND, nicht die Datei")
+    @Test("The marker exempts the STOCK, not the file")
     func theExcuseBindsToTheStockNotTheFile() {
-        // Eine Datei kann mehrere Bestaende fuehren. Ein Merker irgendwo in
-        // ihr wuerde einen kuenftigen, begruendbaren still mitbefreien; das
-        // ist die Klasse „die Ausnahme ist grobkoerniger als der gepruefte
-        // Gegenstand".
+        // A file can keep several stocks. A marker anywhere in
+        // it would silently exempt a future one that could be reasoned; that
+        // is the class
+        // „die Ausnahme ist grobkoerniger als der gepruefte Gegenstand".
         let two = """
             struct A {
                 // \(Self.marker) ein reines Inventar

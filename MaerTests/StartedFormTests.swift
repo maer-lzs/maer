@@ -18,14 +18,14 @@ struct StartedFormTests {
 
     private let now: Double = 1_760_000_000_000
 
-    // MARK: - Die Falle, die den Entwurf geformt hat
+    // MARK: - The trap that shaped the design
 
-    @Test("die Form ueberlebt das naechste Positions-Schreiben")
+    @Test("the form survives the next position write")
     func formSurvivesTheNextPositionWrite() {
         let started = ProgressMark.entry(position: 0, duration: 0, nowMs: now, form: .album)
         #expect(ProgressMark.markedForm(started) == .album)
 
-        // Genau das, was der Sekunden-Ticker tut.
+        // Exactly what the seconds ticker does.
         var entry = started
         for second in 1...5 {
             entry = ProgressMark.advancing(entry, position: Double(second),
@@ -36,7 +36,7 @@ struct StartedFormTests {
         #expect(entry[0] == 5)
     }
 
-    @Test("die Form ueberlebt auch das Nachtragen der Dauer")
+    @Test("the form also survives the adding of the duration")
     func formSurvivesSupplementing() {
         let entry = ProgressMark.entry(position: 120, duration: 0, nowMs: now, form: .album)
         let supplemented = ProgressMark.supplementing(entry, duration: 300)
@@ -47,7 +47,7 @@ struct StartedFormTests {
         #expect(supplemented![1] == now, "Zeitstempel bleibt unberuehrt")
     }
 
-    @Test("eine bekannte Dauer und die Form stehen nebeneinander")
+    @Test("a known duration and the form sit side by side")
     func durationAndFormCoexist() {
         let entry = ProgressMark.entry(position: 30, duration: 600, nowMs: now, form: .work)
         #expect(ProgressMark.markedDuration(entry) == 600)
@@ -55,9 +55,9 @@ struct StartedFormTests {
         #expect(ProgressMark.timestamp(entry) == now)
     }
 
-    // MARK: - Der Altbestand wird nicht geraten
+    // MARK: - The old stock is not guessed
 
-    @Test("ein Eintrag ohne Form bleibt, was er war")
+    @Test("an entry without a form stays what it was")
     func entryWithoutFormIsUnchanged() {
         let legacy: [Double] = [42, now, 600]
         #expect(ProgressMark.markedForm(legacy) == nil)
@@ -68,7 +68,7 @@ struct StartedFormTests {
         #expect(ContinueSources.belongsInContinue(two))
     }
 
-    @Test("die Weiche hat zwei Seiten, und nie beide")
+    @Test("the switch has two sides, and never both")
     func theSwitchHasTwoSides() {
         let album = ProgressMark.entry(position: 90, duration: 0, nowMs: now, form: .album)
         let work = ProgressMark.entry(position: 90, duration: 0, nowMs: now, form: .work)
@@ -76,9 +76,9 @@ struct StartedFormTests {
         #expect(ContinueSources.belongsInContinue(work), "ein Werk gehoert in Weiterhoeren")
     }
 
-    // MARK: - Was die Reihen daraus machen
+    // MARK: - What the rows make of it
 
-    @Test("Album-Spuren verlassen Weiterhoeren und erscheinen in Wieder anhoeren")
+    @Test("Album tracks leave Continue Listening and appear in Listen Again")
     func albumTracksSwapRows() {
         let defaults: [String: Any] = [
             "localPosition.lva:album-one": ProgressMark.entry(position: 90, duration: 0,
@@ -96,7 +96,7 @@ struct StartedFormTests {
 
     /// "Remove from Listen Again" on a catalogue title: the marker hides the
     /// tile, newer progress brings it back, the position itself stays.
-    @Test("ein Wieder-anhoeren-Marker versteckt den Katalog-Titel, neuer Fortschritt holt ihn zurueck")
+    @Test("a Listen Again marker hides the catalogue title, new progress brings it back")
     func hiddenMarkerHidesTheCatalogTile() {
         let now = Date().timeIntervalSince1970 * 1000
         let defaults: [String: Any] = [
@@ -112,7 +112,7 @@ struct StartedFormTests {
         #expect(back == ["lva:album-h"], "newer progress must bring the tile back")
     }
 
-    @Test("die Reihe mischt Katalog, Sender und Server-Alben nach ZEIT")
+    @Test("the row mixes catalogue, stations and server albums by TIME")
     func rowMergesByTime() {
         let entries = RecentlyPlayedRow.merged(
             albums: ["sub:album:a"], albumTimes: ["sub:album:a": 300],
@@ -125,7 +125,7 @@ struct StartedFormTests {
                             .station(id: "radio:rb:x")])
     }
 
-    @Test("Katalog-Eintraege ohne Zeit ranken hinter allem Datierten")
+    @Test("catalogue entries without a time rank behind everything dated")
     func undatedCatalogRanksLast() {
         let entries = RecentlyPlayedRow.merged(
             albums: [], albumTimes: [:], continued: [],
@@ -135,9 +135,9 @@ struct StartedFormTests {
         #expect(entries == [.station(id: "radio:rb:x"), .catalogTrack(id: "lva:track")])
     }
 
-    // MARK: - Die Ablage
+    // MARK: - The storage
 
-    @Test("die Form landet am Eintrag, ohne Position und Zeit zu verlieren")
+    @Test("the form lands on the entry without losing position and time")
     func storeWritesTheFormOntoTheEntry() {
         let name = "started-form-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -154,7 +154,7 @@ struct StartedFormTests {
         #expect(ListeningStore.startedForm(id, in: defaults) == .album)
     }
 
-    @Test("ein Live-Strom bekommt keine Form — er hat keinen Eintrag")
+    @Test("a live stream gets no form: it has no entry")
     func liveStreamsGetNoForm() {
         let name = "started-form-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -165,17 +165,17 @@ struct StartedFormTests {
     }
 }
 
-/// Die Messfrage: was passiert mit der Form, wenn ein Geraet noch auf altem
-/// Stand ist und Dreiwert-Eintraege schreibt? Genau das ist der
-/// Alltag. iPhone aktualisiert, iPad noch nicht.
+/// The measuring question: what happens to the form when a device is still on an old
+/// build and writes three-value entries? That is exactly
+/// everyday life. iPhone updated, iPad not yet.
 struct StartedFormAcrossDevicesTests {
 
     private let old: Double = 1_760_000_000_000
     private let new: Double = 1_760_000_100_000
 
-    @Test("das Altgeraet gewinnt: die Form des neuen Eintrags ueberlebt lokal")
+    @Test("the old device wins: the form of the new entry survives locally")
     func oldDeviceWinsButFormSurvivesLocally() {
-        // Lokal: neuer Bau, mit Form. Wolke: Altgeraet, drei Werte, juenger.
+        // Local: new build, with form. Cloud: old device, three values, younger.
         let local = ["rss:a:1": ProgressMark.entry(position: 10, duration: 300,
                                                   nowMs: old, form: .album)]
         let cloud: [String: [Double]] = ["rss:a:1": [200, new, 300]]
@@ -186,9 +186,9 @@ struct StartedFormAcrossDevicesTests {
                 "die Form ueberlebt aus dem vorhandenen Eintrag — wie die Dauer")
     }
 
-    @Test("das neue Geraet gewinnt: die Form muss MITREISEN, sonst kommt sie nie an")
+    @Test("the new device wins: the form must TRAVEL ALONG, otherwise it never arrives")
     func newDeviceWinsAndTheFormMustTravel() {
-        // Lokal: neuer Bau, mit Form, juenger. Wolke: Altgeraet, drei Werte.
+        // Local: new build, with form, younger. Cloud: old device, three values.
         let local = ["rss:a:1": ProgressMark.entry(position: 200, duration: 300,
                                                   nowMs: new, form: .album)]
         let cloud: [String: [Double]] = ["rss:a:1": [10, old, 300]]
@@ -199,7 +199,7 @@ struct StartedFormAcrossDevicesTests {
                 "ohne das erreicht die Form NIE ein zweites Geraet")
     }
 
-    @Test("gar kein Eintrag in der Wolke: die Form reist trotzdem mit")
+    @Test("no entry at all in the cloud: the form still travels along")
     func formTravelsWhenTheCloudKnowsNothing() {
         let local = ["lva:track": ProgressMark.entry(position: 90, duration: 0,
                                                     nowMs: new, form: .album)]

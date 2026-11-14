@@ -43,7 +43,7 @@ struct SourceSwitchesFenceTests {
         return Set(names.compactMap { values[$0] })
     }
 
-    @Test("die Liste der Quellen-Schalter ist genau, was die zwei Tueren schalten", .needsTheSources)
+    @Test("the list of source switches is exactly what the two doors switch", .needsTheSources)
     func theListIsWhatTheDoorsSwitch() throws {
         func read(_ path: String) throws -> String {
             try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8)

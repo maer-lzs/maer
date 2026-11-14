@@ -12,7 +12,7 @@ import Foundation
 /// digit over a digit. The rule thins them at an accessibility size, and the
 /// label stands in one line in its own width over its empty neighbours.
 struct StatsChartLabelTests {
-    @Test("die Tagesbeschriftung der 14 Tage: jede zweite, in AX3 jede dritte")
+    @Test("the day labels of the 14 days: every second, at AX3 every third")
     func theDayLabelsThinAtAccessibilitySizes() {
         let normal = (0..<14).filter { StatsView.labelsDay(at: $0, of: 14, accessibilitySize: false) }
         let large = (0..<14).filter { StatsView.labelsDay(at: $0, of: 14, accessibilitySize: true) }
@@ -21,7 +21,7 @@ struct StatsChartLabelTests {
         #expect(normal.contains(13) && large.contains(13), "the anchor is today, the right end; today always carries its date")
     }
 
-    @Test("jede Saeule sagt VoiceOver ihren Tag und ihre Hoerzeit")
+    @Test("every bar tells VoiceOver its day and its listening time")
     func eachBarSpeaksItsDayAndTime() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current
@@ -33,7 +33,7 @@ struct StatsChartLabelTests {
         #expect(StatsView.barAccessibility(date: date, seconds: 0).value == DurationText.length(seconds: 0))
     }
 
-    @Test("die Saeulen sind je ein Element mit Tag und Hoerzeit", .needsTheSources)
+    @Test("the bars are each one element with day and listening time", .needsTheSources)
     func theBarsAreElements() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/StatsView.swift"), encoding: .utf8))
@@ -43,7 +43,7 @@ struct StatsChartLabelTests {
                 "a bar says neither its day nor its time")
     }
 
-    @Test("die Tagesbeschriftung steht in einer Zeile in eigener Breite ueber der Saeule", .needsTheSources)
+    @Test("the day label sits in one line in its own width above the bar", .needsTheSources)
     func theDayLabelStandsInOneLine() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/StatsView.swift"), encoding: .utf8))

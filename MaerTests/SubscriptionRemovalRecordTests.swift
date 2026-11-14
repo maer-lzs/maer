@@ -8,60 +8,60 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Ein Abbestellen bei AUSGESCHALTETEM Abgleich ging verloren: `note` legt in
-/// diesem Zweig nur die Ereignis-ZEIT ab, und fuer Abos ist die Aussage
-/// absichtlich nicht aus dem lokalen Bestand herleitbar. Beim naechsten
-/// Einschalten gewann die aeltere „abonniert"-Aussage aus der Wolke, und die
-/// Uebernahme holte die Sendung zurueck.
+/// An unsubscribe with the sync switched OFF was lost: `note` stores in
+/// this branch only the event TIME, and for subscriptions the statement is
+/// deliberately not derivable from the local stock. At the next
+/// switch-on the older „abonniert" statement from the cloud won, and the
+/// takeover brought the show back.
 ///
-/// Die Antwort ist NICHT, sie doch herzuleiten. Die Gefahr im Kommentar der
-/// Ablage („nicht im Speicher" heisst auch „noch nicht uebernommen") kommt vom
-/// RATEN, nicht vom Erinnern.
+/// The answer is NOT to derive it after all. The danger named in the comment of
+/// the storage („nicht im Speicher" also means „noch nicht uebernommen") comes from
+/// GUESSING, not from remembering.
 struct SubscriptionRemovalRecordTests {
-    @Test("Eine aufgezeichnete Entfernung wird ausgesprochen")
+    @Test("A recorded removal is spoken")
     func arecordedRemovalIsStated() {
         let pending = SubscriptionRemovalRecord.pending(recorded: ["feed-a": 100],
                                                         subscribedKeys: [])
         #expect(pending == ["feed-a": 100])
     }
 
-    /// Die eigentliche Sicherung: wer bei ausgeschaltetem Abgleich abbestellt
-    /// und DANN wieder abonniert, darf nicht von seiner eigenen aelteren
-    /// Aussage ueberholt werden.
-    @Test("Ein neues Abo derselben Adresse loescht die Aussage")
+    /// The actual safeguard: whoever unsubscribes with the sync switched off
+    /// and THEN subscribes again must not be overtaken by their own older
+    /// statement.
+    @Test("A new subscription of the same address deletes the statement")
     func aFreshSubscribeSilencesTheRecord() {
         let pending = SubscriptionRemovalRecord.pending(recorded: ["feed-a": 100, "feed-b": 100],
                                                         subscribedKeys: ["feed-a"])
         #expect(pending == ["feed-b": 100])
     }
 
-    @Test("Was die Wolke schon traegt, wird vergessen")
+    @Test("What the cloud already carries is forgotten")
     func whatTheCloudCarriesIsForgotten() {
         let settled = SubscriptionRemovalRecord.settled(
             recorded: ["gleich": 100, "neuer": 100, "aelter": 100],
             cloudRemovalTimes: ["gleich": 100, "neuer": 200, "aelter": 50])
-        // „Mindestens so neu": ein anderes Geraet kann dieselbe Sendung
-        // spaeter entfernt haben, dann sagt seine Aussage dasselbe mit der
-        // besseren Zeit.
+        // „Mindestens so neu": another device may have removed the same show
+        // later, then its statement says the same with the
+        // better time.
         #expect(settled == ["gleich", "neuer"])
     }
 
-    @Test("Ohne Aussage in der Wolke bleibt die Aufzeichnung stehen")
+    @Test("Without a statement in the cloud the record stays")
     func withoutACloudStatementTheRecordStays() {
         #expect(SubscriptionRemovalRecord.settled(recorded: ["feed-a": 100],
                                                   cloudRemovalTimes: [:]).isEmpty)
-        // Und ein ABO in der Wolke ist keine Entfernung: der Aufrufer reicht
-        // nur Entfernungen herein, aber der Fall haelt fest, dass eine leere
-        // Liste nichts verbraucht.
+        // And a SUBSCRIPTION in the cloud is no removal: the caller passes in
+        // only removals, but the case pins down that an empty
+        // list consumes nothing.
         #expect(SubscriptionRemovalRecord.settled(recorded: ["feed-a": 100],
                                                   cloudRemovalTimes: ["anderer": 999]).isEmpty)
     }
 
-    /// Der Bestand: die HERLEITUNG bleibt verweigert. Waere sie
-    /// zurueckgekommen, waere der ganze Zug sinnlos und gefaehrlich, und kein
-    /// Verhaltens-Fall wuerde es merken, weil beide Wege dasselbe Ergebnis
-    /// haetten, solange nichts schiefgeht.
-    @Test("Die Ableitung eines Abo-Grabsteins bleibt verweigert", .needsTheSources)
+    /// The stock: the DERIVATION stays refused. Had it
+    /// come back, the whole move would be pointless and dangerous, and no
+    /// behaviour case would notice, because both ways would have the same result
+    /// as long as nothing goes wrong.
+    @Test("The derivation of a subscription tombstone stays refused", .needsTheSources)
     func theDerivationStaysRefused() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let code = try String(contentsOf: root.appendingPathComponent("Sources/Networking/UserChoiceCloudSync.swift"),
@@ -71,7 +71,7 @@ struct SubscriptionRemovalRecordTests {
             .joined(separator: "\n")
         #expect(code.contains("if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) { continue }"),
                 "die Schleife leitet wieder Abo-Grabsteine aus Stempeln ab")
-        // Und die Aufzeichnung ist die Stelle, die stattdessen spricht.
+        // And the record is the place that speaks instead.
         #expect(code.contains("SubscriptionRemovalRecord.pending("),
                 "die aufgezeichneten Entfernungen werden nicht mehr ausgesprochen")
         #expect(code.contains("SubscriptionRemovalRecord.settled("),

@@ -13,7 +13,7 @@ import Foundation
 /// single tap. That is the part worth testing.
 struct SourceModesTests {
 
-    @Test("der Altbestand liest sich als ein Modus an, der andere aus")
+    @Test("the old stock reads as one mode on, the other off")
     func legacyReadsAsOneModeOn() {
         // The three states a stock can be in. Including "never touched".
         #expect(SourceModes.fromLegacyContentType("audiobooks")
@@ -25,7 +25,7 @@ struct SourceModesTests {
                 "ein nie angefasster Bestand muss Musik bedeuten, wie bisher")
     }
 
-    @Test("ein Modus verhaelt sich wie heute — nichts zuzuordnen, kein Sprung")
+    @Test("one mode behaves as today: nothing to assign, no jump")
     func oneModeBehavesAsBefore() {
         let musicOnly = SourceModes(servesMusic: true, servesAudiobooks: false)
         let booksOnly = SourceModes(servesMusic: false, servesAudiobooks: true)
@@ -34,12 +34,12 @@ struct SourceModesTests {
             #expect(!modes.needsLibraryAssignment,
                     "wer nur einen Modus nutzt, darf keine Zuordnungs-Flaeche sehen")
         }
-        // Und der Rückweg ist verlustfrei, solange es EIN Modus ist.
+        // And the way back is lossless as long as it is ONE mode.
         #expect(SourceModes.fromLegacyContentType(musicOnly.legacyContentType) == musicOnly)
         #expect(SourceModes.fromLegacyContentType(booksOnly.legacyContentType) == booksOnly)
     }
 
-    @Test("zwei Modi brauchen die Zuordnung — sichtbar unvollstaendig, nie leer")
+    @Test("two modes need the assignment: visibly incomplete, never empty")
     func twoModesNeedTheAssignment() {
         let both = SourceModes(servesMusic: true, servesAudiobooks: true)
         #expect(both.count == 2)
@@ -47,7 +47,7 @@ struct SourceModesTests {
                 "G8: ein zweiter Modus ohne Zuordnung muss sich als unvollstaendig zeigen")
     }
 
-    @Test("kein Modus ist ein eigener Zustand, kein Rueckfall auf Musik")
+    @Test("no mode is a state of its own, no fallback to music")
     func noModeIsItsOwnState() {
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
         #expect(none.isEmpty)
@@ -55,20 +55,20 @@ struct SourceModesTests {
         #expect(!none.needsLibraryAssignment, "nichts zugeordnet, nichts zuzuordnen")
     }
 
-    /// Der Alt-Wert kann den Leer-Zustand nicht ausdruecken: wer ihn trotzdem
-    /// liest, bekommt einen Modus. Das stille Gegenteil der Eingabe.
-    @Test("beide aus heisst: speist nichts, nicht Musik")
+    /// The old value cannot express the empty state: whoever reads it anyway
+    /// gets a mode. The silent opposite of the input.
+    @Test("both off means: feeds nothing, not music")
     func emptyMeansNothingNotMusic() {
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
-        // Der Alt-Wert LUEGE hier, deshalb wird er fuer diesen Zustand nicht
-        // befragt. Die Aktivierung beantwortet ihn.
+        // The old value would LIE here, so it is not asked for this state.
+        // The activation answers it.
         #expect(none.legacyContentType == "music")
         #expect(none.isEmpty, "genau daran erkennt die Aktivierung den Fall")
 
         let suite = UserDefaults(suiteName: "subsonic-modes-\(UUID().uuidString)")!
         suite.set("music", forKey: AppStorageKeys.subsonicContentType)
-        // Die Ableitung selbst bleibt unveraendert: ein gespeicherter Wert
-        // IST ein Modus. Der Leer-Zustand entsteht nur durch die Eingabe.
+        // The derivation itself stays unchanged: a stored value IS a mode.
+        // The empty state arises only from the input.
         #expect(SourceModes.fromLegacyContentType(
             suite.string(forKey: AppStorageKeys.subsonicContentType)).servesMusic)
     }

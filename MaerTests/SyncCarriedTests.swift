@@ -19,7 +19,7 @@ struct SyncCarriedTests {
             duration: duration, chapters: nil, tracks: nil), addedAt: nil)
     }
 
-    @Test("Der Schnappschuss traegt Titel, Untertitel, Dauer und Quelle; ein Platzhalter reist nie; ein Server-Cover reist nie")
+    @Test("The snapshot carries title, subtitle, duration and source; a placeholder never travels; a server cover never travels")
     func snapshotCarriesWhatNamesTheItem() {
         let cover = URL(string: "https://archive.org/services/img/x")!
         let catalog = SyncCarried.snapshot(forId: "lva:x#3", known: item("lva:x#3"), coverURL: cover)
@@ -35,7 +35,7 @@ struct SyncCarriedTests {
         #expect(SyncCarried.source(of: "abc123") == "library")
     }
 
-    @Test("Aufloesung je Quelle: bekannt spielt; Katalog spielt aus sich selbst mit Namen; Server, Datei, Folge nennen ihren Grund")
+    @Test("Resolution per source: known plays; catalogue plays from itself with a name; server, file, episode name their reason")
     func resolutionPerSource() {
         let carried = CarriedItem(id: "lva:album#2", title: "Track Two", subtitle: "Netlabel", duration: 200)
         // Known anywhere: plays.
