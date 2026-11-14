@@ -155,6 +155,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// instead of one M4B) play back-to-back seamlessly. All existing AVPlayer
     /// calls (rate, pause, …) work unchanged, AVQueuePlayer is a subclass.
     var player: AVQueuePlayer?
+    /// The sound filter's setting for the route the sound goes out on;
+    /// every filter of this player reads it.
+    let soundState = SoundTapState()
     private var timeObserverToken: Any?
     // These opaque NotificationCenter tokens are assigned only in methods of
     // this main-actor class (setup) and read again there (stop) or in the
@@ -375,6 +378,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Drive mode: every route change re-evaluates the remembered car
             // route (auto-enter on connect, exit on disconnect).
             Task { @MainActor in DriveModeController.shared.handleRouteChange() }
+            // The sound filter takes the setting of the new route; a route
+            // that sound goes out on while playing is noted.
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.followSoundRoute(notingRoute: self.isPlaying)
+            }
             guard let reasonValue = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
                   AVAudioSession.RouteChangeReason(rawValue: reasonValue) == .oldDeviceUnavailable else { return }
             Task { @MainActor [weak self] in
@@ -1000,6 +1009,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return false
         }
         guard startIndex >= 0, startIndex < tracks.count else { return false }
+        // The route this queue will play on is noted, and its setting is the
+        // one the new items' filters start with.
+        followSoundRoute(notingRoute: true)
         // A new queue holds new items: a noted load failure is healed by it.
         loadFailureNoted = false
 
@@ -1141,6 +1153,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
             item.add(output)
         }
+        hangSound(on: item, isRadio: isRadio)
         itemTrackIndex[ObjectIdentifier(item)] = index
         // Surface a load failure that never starts playback (ATS block,
         // dead stream, 404). Otherwise it stalls silently.

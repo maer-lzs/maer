@@ -1063,6 +1063,9 @@ struct UserChoiceGateTests {
             "podcastFreeTwinSearched", "podcastFreeTwinDeclined", "podcastPaidTwin",
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
+            // The sound filter per output device: a Bluetooth id names the
+            // device for the phone it is paired with.
+            "soundBook",
             // Automatic downloads stay on the device that downloads
             // for all shows as for each show: whether
             // they run and how many they keep. The one value of

@@ -985,6 +985,25 @@ nonisolated enum AppStorageKeys {
         UserDefaults.standard.set(minutes, forKey: sleepTimerLastMinutes)
     }
 
+    /// The sound filter's settings: every output device the app played on
+    /// and the default for the others (`SoundBook`). An unreadable book is
+    /// kept aside under `.corrupt` with its line and reads as empty, so
+    /// every device plays as it comes until someone sets it again.
+    static let soundBook = "soundBook"
+    nonisolated static var soundBookValue: SoundBook {
+        get {
+            let outcome = CorruptStore.load(SoundBook.self, defaultsKey: soundBook, label: "SOUND book")
+            if case .corrupt = outcome { UserDefaults.standard.removeObject(forKey: soundBook) }
+            return outcome.value ?? SoundBook()
+        }
+        set {
+            // bearable, because a book of names and numbers always encodes;
+            // and if it did not, the device would keep its last stored book.
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            UserDefaults.standard.set(data, forKey: soundBook)
+        }
+    }
+
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
     /// What THIS device last pushed successfully, and when.

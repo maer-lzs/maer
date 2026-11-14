@@ -71,6 +71,9 @@ nonisolated enum UserChoiceCatalog {
         // on the bedside phone says nothing about the tablet in the kitchen.
         // The travelling set is a decided list, and this is not on it.
         "sleepTimerLastMinutes": .device,
+        // The sound filter per output device. A Bluetooth device is paired
+        // with one phone, and its id there names it for that phone only.
+        "soundBook": .device,
         // Which shows a person does not want to see is that person's
         // choice; the kept browsed episodes behind it stay local, so the
         // other device applies the choice to what IT heard.
