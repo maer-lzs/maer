@@ -1869,7 +1869,7 @@ extension ProjectFileIntegrityTests {
         var found: [String] = []
         for (name, text) in files {
             for (number, comment) in Self.comments(in: text) {
-                let words = Self.germanWords(in: comment)
+                let words = Self.germanWords(in: comment) + Self.workPackageNumbers(in: comment)
                 if !words.isEmpty { found.append("\(name):\(number + 1) \(words)") }
             }
             for (number, title) in Self.testNames(in: text) {
@@ -1911,11 +1911,7 @@ extension ProjectFileIntegrityTests {
             hits.append(token)
         }
         if line.contains("Auftrag ") { hits.append("Auftrag") }
-        // A work package's number (`Teil 2`) is history too; a quoted one
-        // ("Teil 3 von 5", an episode marker the code reads) is content.
-        let unquoted = withoutCodeSpans(line)
-            .replacingOccurrences(of: #""[^"]*"|„[^“"]*[“"]"#, with: " ", options: .regularExpression)
-        hits += matches(of: #"\bTeil [0-9]+"#, in: unquoted)
+        hits += workPackageNumbers(in: line)
         hits += decisionWords(in: line)
         // A build number and a finding number (`Build 48`, `47-6`) are the
         // same history in another shape. A range of numbers (`0,99-1,49`)
@@ -1944,6 +1940,16 @@ extension ProjectFileIntegrityTests {
         #"\b[Ee]xceptions?\s+\(?[A-Z]{1,3}[0-9]+"#,
         #"(?i)\bper\s+(laurenz|momo|pie|takt|wache|fable|chonk|lechonk|kreide)\b"#,
     ]
+
+    /// A work package's number (`Teil 2`) is history; a quoted one
+    /// ("Teil 3 von 5", an episode marker the code reads) or one in
+    /// backticks is content. The app's order fence and the tests' English
+    /// fence ask this.
+    static func workPackageNumbers(in line: String) -> [String] {
+        let unquoted = withoutCodeSpans(line)
+            .replacingOccurrences(of: #""[^"]*"|„[^“"]*[“"]"#, with: " ", options: .regularExpression)
+        return matches(of: #"\bTeil [0-9]+"#, in: unquoted)
+    }
 
     static func decisionWords(in line: String) -> [String] {
         let lowered = line.lowercased()
@@ -2211,6 +2217,10 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// the decision, see 3.5. for the rows").isEmpty,
                 "a section number is no date")
         #expect(Self.orderShorthands(in: "/// stays (decided 06.09.)") == ["decided 06.09."])
+        #expect(Self.orderShorthands(in: "/// stays (decided 6.9.)").isEmpty,
+                "the limit, on purpose: a date counts with two-digit day and month, so a section number like 3.5. is no date and a date written 6.9. passes too")
+        #expect(Self.workPackageNumbers(in: "// MARK: - Teil 2: grid sort") == ["Teil 2"], "the tests' fence asks the same helper")
+        #expect(Self.workPackageNumbers(in: "/// named \"Teil 1 von 2\" and `Teil 3`").isEmpty)
         #expect(Self.orderShorthands(in: "/// kept, decided 2026-11-14 for now") == ["decided 2026-11-14"],
                 "the date in its ISO form")
         #expect(Self.orderShorthands(in: "/// Teil 2: the cover of the song") == ["Teil 2"], "a work package's number")

@@ -213,7 +213,7 @@ struct PodcastSectionsTests {
         expectEqual(result, referenceSections(shows: shows, world: world))
     }
 
-    // MARK: - Teil 2: grid sort + filter
+    // MARK: - Grid sort and filter
 
     @Test("mirrored shows move into the group, not into the subscription grid")
     func mirroredShowsSplitIntoTheirGroup() {

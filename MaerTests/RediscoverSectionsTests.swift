@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Teil 3: the Rediscover picks. Source thresholds, daily-deterministic
+/// The Rediscover picks. Source thresholds, daily-deterministic
 /// rotation, empty-section behaviour; plus the Discover subscribed-filter and
 /// the author-portrait tap rule.
 struct RediscoverSectionsTests {
@@ -94,7 +94,7 @@ struct RediscoverSectionsTests {
     }
 }
 
-/// Teil 4: a subscribed show must never appear as a recommendation.
+/// A subscribed show must never appear as a recommendation.
 @MainActor
 struct DiscoverFilterTests {
     @Test("subscribed feeds and duplicates are dropped, order kept")

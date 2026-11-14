@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Teil 1 (global Up-Next): the queue holds ids of ALL media types, dedups by
+/// Global Up Next: the queue holds ids of ALL media types, dedups by
 /// podcast twin (rss:/abspod:) and enforces "heard = flies out" via
 /// markedPlayed.
 @MainActor
